@@ -1,0 +1,75 @@
+Extension my registered
+Exiting dl example!
+Exiting dl example!
+Extension my unregistered
+Extension my was not already registered
+zsv: streaming csv processor
+
+Usage:
+  zsv version: display version info (and if applicable, extension info)
+  zsv register [<extension_id>]: register an extension
+  zsv help [<command>]
+  zsv license [<extension_id>]
+  zsv <command> <options> <arguments>: run a command on data (see below for details)
+  zsv <id>-<cmd> <options> <arguments>: invoke command 'cmd' of extension 'id'
+
+Options common to all commands:
+  -c,--max-column-count: set the maximum number of columns parsed per row. defaults to 1024
+  -r,--max-row-size: set the minimum supported maximum row size. defaults to 128k
+  -B,--buff-size: set internal buffer size. defaults to 256k
+  -t,--tab-delim: set column delimiter to tab
+  -O,--other-delim: set column delimiter to other column
+  -q,--no-quote: turn off quote handling
+
+Commands:
+  select: extract rows/columns by name or position and perform other basic and 'cleanup' operations
+  sql: run ad-hoc SQL
+  count: print the number of rows
+  desc: describe each column
+  pretty: pretty print for console display
+  flatten: flatten a table consisting of N groups of data, each with 1 or
+           more rows in the table, into a table of N rows
+  2json: convert to json
+  2tsv : convert to tab-delimited text
+  serialize: convert into 3-column format (id, column name, cell value)
+  stack: stack tables vertically, aligning columns with common names
+
+(No extended commands)
+Extension my registered
+Exiting dl example!
+Exiting dl example!
+zsv: streaming csv processor
+
+Usage:
+  zsv version: display version info (and if applicable, extension info)
+  zsv register [<extension_id>]: register an extension
+  zsv help [<command>]
+  zsv license [<extension_id>]
+  zsv <command> <options> <arguments>: run a command on data (see below for details)
+  zsv <id>-<cmd> <options> <arguments>: invoke command 'cmd' of extension 'id'
+
+Options common to all commands:
+  -c,--max-column-count: set the maximum number of columns parsed per row. defaults to 1024
+  -r,--max-row-size: set the minimum supported maximum row size. defaults to 128k
+  -B,--buff-size: set internal buffer size. defaults to 256k
+  -t,--tab-delim: set column delimiter to tab
+  -O,--other-delim: set column delimiter to other column
+  -q,--no-quote: turn off quote handling
+
+Commands:
+  select: extract rows/columns by name or position and perform other basic and 'cleanup' operations
+  sql: run ad-hoc SQL
+  count: print the number of rows
+  desc: describe each column
+  pretty: pretty print for console display
+  flatten: flatten a table consisting of N groups of data, each with 1 or
+           more rows in the table, into a table of N rows
+  2json: convert to json
+  2tsv : convert to tab-delimited text
+  serialize: convert into 3-column format (id, column name, cell value)
+  stack: stack tables vertically, aligning columns with common names
+
+Extended commands:
+  Extension 'my': Sample zsv extension
+    my-count: print the number of rows
+    my-echo: print the input data back to stdout

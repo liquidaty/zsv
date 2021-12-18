@@ -1,0 +1,168 @@
+/*
+ * Copyright (C) 2021 Liquidaty and the zsv/lib contributors
+ * All rights reserved
+ *
+ * This file is part of zsv/lib, distributed under the license defined at
+ * https://opensource.org/licenses/MIT
+ */
+
+#include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#include <zsv/utils/compiler.h>
+#include <zsv/utils/utf8.h>
+#include <zsv/utils/string.h>
+
+#ifndef NO_UTF8PROC
+#include <utf8proc.h>
+
+static utf8proc_int32_t utf8proc_tolower1(utf8proc_int32_t codepoint, void *data) {
+  (void)data;
+  return utf8proc_tolower(codepoint);
+}
+
+static unsigned char *utf8proc_tolower_str(const unsigned char *str, size_t *len) {
+  utf8proc_uint8_t *output;
+  utf8proc_option_t options;
+  /* options = UTF8PROC_COMPOSE | UTF8PROC_COMPAT
+  | UTF8PROC_CASEFOLD | UTF8PROC_IGNORE | UTF8PROC_STRIPMARK | UTF8PROC_STRIPCC | UTF8PROC_STRIPNA;
+  */
+  memset(&options, 0, sizeof(options));
+
+  // utf8proc_map_custom allocates new mem
+  options = UTF8PROC_STRIPNA;
+  *len = (size_t) utf8proc_map_custom((const utf8proc_uint8_t *)str, *len, &output,
+                                      options, utf8proc_tolower1, NULL);
+  return (unsigned char *)output;
+}
+
+#endif
+
+// zsv_strtolowercase(): to do: utf8 support
+unsigned char *zsv_strtolowercase(const unsigned char *s, size_t *lenp) {
+#ifndef NO_UTF8PROC
+  size_t len_orig = *lenp;
+  unsigned char *new_s = utf8proc_tolower_str(s, lenp);
+  if(!new_s && len_orig) { //
+    unsigned char *tmp_s = malloc(len_orig + 1);
+    if(tmp_s) {
+      fprintf(stderr, "Warning: malformed UTF8 '%.*s'\n", (int)len_orig, s);
+      memcpy(tmp_s, s, len_orig);
+      tmp_s[len_orig] = '\0';
+      *lenp = zsv_strencode(tmp_s, len_orig, '?');
+      new_s = utf8proc_tolower_str(tmp_s, lenp);
+      free(tmp_s);
+    }
+  }
+#else
+  unsigned char *new_s = malloc((*lenp + 1) * sizeof(*new_s));
+  if(new_s) {
+    for(size_t i = 0, j = *lenp; i < j; i++)
+      new_s[i] = tolower(s[i]);
+    new_s[*lenp] = '\0';
+  }
+#endif
+  return new_s;
+}
+
+// zsv_strstr(): strstr
+const unsigned char *zsv_strstr(const unsigned char *hay, const unsigned char *needle) {
+  return (const unsigned char *)strstr(
+                                       (const char *)hay,
+                                       (const char *)needle);
+}
+
+// zsv_stricmp(). to do: utf8 support
+int zsv_stricmp(const unsigned char *s1, const unsigned char *s2) {
+  while(1) {
+    char c1 = tolower(*s1);
+    char c2 = tolower(*s2);
+    if(c1 == c2) {
+      if(!c1)
+        return 0;
+      s1++, s2++;
+    } else
+      return c1 < c2 ? -1 : 1;
+  }
+}
+
+// zsv_strincmp(). to do: utf8 support
+int zsv_strincmp(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2) {
+  // this is just a placeholder for demonstration purposes
+  // this function will NOT work properly on multi-byte utf8 chars, but will work fine on ascii
+  if(len1 != len2)
+    return len1 < len2 ? -1 : 1;
+
+  while(len1) {
+    char c1 = tolower(*s1);
+    char c2 = tolower(*s2);
+    if(c1 == c2) {
+      if(!c1)
+        return 0;
+      s1++, s2++, len1--;
+    } else
+      return c1 < c2 ? -1 : 1;
+  }
+  return 0;
+}
+
+// zsv_trim(): trim leading and trailing white space. to do: utf8 support
+unsigned char *zsv_strtrim(char unsigned * restrict s, size_t *lenp) {
+  if(UNLIKELY(s == NULL))
+    return s;
+  while(isspace(*s) && *lenp)
+    s++, (*lenp)--;
+  while(*lenp && isspace(s[(*lenp)-1]))
+    (*lenp)--;
+  return s;
+}
+
+// zsv_strwhite(): convert consecutive white to single space. to do: utf8 support
+size_t zsv_strwhite(unsigned char *s, size_t len) {
+  size_t new_len = 0;
+  char last_was_space = 0;
+  for(size_t i = 0; i < len; i++) {
+    if(isspace(s[i])) {
+      if(last_was_space)
+        continue;
+      last_was_space = 1;
+    }
+    s[new_len++] = s[i];
+  }
+  return new_len;
+}
+
+// zsv_strencode(): force UTF8 encoding
+// replace any non-conforming utf8 with the specified char, or
+// remove from the string (and shorten the string) if replace = 0.
+// returns the length of the valid string
+size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace) {
+  size_t new_len = 0;
+  char clen; 
+  for(size_t i2 = 0; i2 < n; i2 += clen) {
+    clen = ZSV_UTF8_CHARLEN(s[i2]); 
+    if(LIKELY(clen == 1)) 
+      s[new_len++] = s[i2];
+    else if(UNLIKELY(clen == -1) || UNLIKELY(i2 + clen >= n)) {
+      if(replace)
+        s[new_len++] = replace; 
+      clen = 1; 
+    } else { /* might be valid multi-byte utf8; check */  
+      unsigned char valid_n;
+      for(valid_n = 1; valid_n < clen; valid_n++)
+        if(!ZSV_UTF8_SUBSEQUENT_CHAR_OK(s[i2 + valid_n]))
+          break; 
+      if(valid_n == clen) { /* valid_n utf8; copy it */ 
+        memmove(s + new_len, s + i2, clen);                    
+        new_len += clen;                                       
+      } else { /* invalid; valid_n smaller than expected */ 
+        memset(s + new_len, replace, valid_n); 
+        new_len += valid_n; 
+        clen = valid_n; 
+      }
+    }
+  }
+  return new_len; // new length
+}
