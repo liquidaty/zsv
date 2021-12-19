@@ -120,12 +120,12 @@ int MAIN(int argc, const char *argv[]) {
     struct zsv_sql_data data;
     zsv_sql_data_init(&data);
     int err = 0;
-    char with_bom = 0;
     int max_cols = 0;
     const char *input_filename = NULL;
     const char *my_sql = NULL;
     struct string_list **next_input_filename = &data.more_input_filenames;
 
+    struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
     for(int arg_i = 1; !err && arg_i < argc; arg_i++) {
       const char *arg = argv[arg_i];
       if(!my_sql && strlen(arg) > strlen("select ")
@@ -134,8 +134,17 @@ int MAIN(int argc, const char *argv[]) {
                           (const unsigned char *)arg, strlen("select "))
          )
         my_sql = arg;
-      else if(!strcmp(arg, "-b"))
-        with_bom = 1;
+      else if(!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
+        if(!(++arg_i < argc)) {
+          fprintf(stderr, "option %s requires a filename\n", arg);
+          err = 1;
+        } else if(!(writer_opts.stream = fopen(argv[arg_i], "wb"))) {
+          fprintf(stderr, "Could not open for writing: %s\n", argv[arg_i]);
+          err = 1;
+        }
+      } else if(!strcmp(arg, "-b"))
+        writer_opts.with_bom = 1;
+
       else if(!strcmp(arg, "-C") || !strcmp(arg, "--max-cols")) {
         if(arg_i+1 < argc && atoi(argv[arg_i+1]) > 0 && atoi(argv[arg_i+1]) <= 2000)
           max_cols = atoi(argv[++arg_i]);
@@ -230,8 +239,6 @@ int MAIN(int argc, const char *argv[]) {
 
       sqlite3 *db = NULL;
       int rc;
-      struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
-      writer_opts.with_bom = with_bom;
 
       zsv_csv_writer cw = zsv_writer_new(&writer_opts);
       unsigned char cw_buff[1024];

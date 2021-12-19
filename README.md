@@ -52,6 +52,14 @@ into a shared library callable from C.
   - automate column mapping and transformations
   - create, train and share re-usable data domains using github-like features
 
+## Binary downloads
+Pre-built binaries for OSX, Windows and Linux are available at https://zsvhub.com/download
+
+## Demo
+`zsv` runs best-- by far-- as a desktop CLI. But, you can also try out an extended
+ZSV version in the browser (though it runs *much* slower), at
+https://zsvhub.com/playground
+
 ## Why another CSV parser / utility?
 
 Our objectives, which we were unable to find in a pre-existing project, are:
