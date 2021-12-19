@@ -13,7 +13,7 @@ the difference was much smaller (~20%but still the same direction):<br>
 <img src="https://user-images.githubusercontent.com/26302468/146497899-48174114-3b18-49b0-97da-35754ab56e48.png" alt="count speed" height="150px">
 <img src="https://user-images.githubusercontent.com/26302468/146498211-afc77ce6-4229-4599-bf33-81bf00c725a8.png" alt="select speed" height="150px">
 
-** See 12/19 update re M1 processor
+** See 12/19 update re M1 processor at https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md
 
 ZSV (`zsv`) is an extensible CSV utility, which uses ZSVlib,
 for tasks such as slicing and dicing, querying with SQL,
