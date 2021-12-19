@@ -39,7 +39,7 @@ https://github.com/liquidaty/zsv/blob/main/include/zsv/ext/implementation_privat
   edge cases*). Gracefully handles (and can "clean") real-world data that may be
   "dirty"
 * Runs on OSX (tested on clang/gcc), Linux (gcc), Windows (mingw),
-  BSD (gcc-only) (and soon, in your browser)
+  BSD (gcc-only) and in-browser (emscripten/wasm)
 * Fast (maybe the fastest ever?). See
   [app/benchmark/README.md](app/benchmark/README.md)
 * Low memory usage (regardless of how big your data is)
