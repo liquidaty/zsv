@@ -60,7 +60,7 @@ Pre-built binaries for OSX, Windows and Linux are available at https://zsvhub.co
 ## Demo
 `zsv` runs best-- by far-- as a desktop CLI. But, you can also try out an extended
 ZSV version in the browser (though it runs *much* slower), at
-https://zsvhub.com/playground. A tutorial that demonstrates a small subset of the
+https://zsvhub.com/playground/. A tutorial that demonstrates a small subset of the
 capabilities of ZSV and the ZSVHub extension is available at
 https://github.com/liquidaty/zsvhub-cli/blob/main/demos/covid_vaccine/README.md
 
@@ -154,8 +154,10 @@ This alpha release does not yet implement the full range of core features
 that are planned for implementation prior to beta release. If you are interested in
 helping, please post an issue.
 
-Possible next steps:
-* online "playground"
+### Possible enhancements and related developments
+
+* <strike>online "playground"</strike> See https://zsvhub.com/playground
 * optimize search; add search with hyperscan or re2 regex matching, possibly parallelize?
 * auto-generated documentation, and better documentation in general
 * Additional benchmarking. Would be great to use https://bitbucket.org/ewanhiggs/csv-game/src/master/ as a springboard to benchmarking a number of various tasks
+* encoding conversion e.g. UTF18 to UTF8
