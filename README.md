@@ -27,7 +27,9 @@ and collaboration.
 ZSVlib and ZSV are written in C, but since ZSVlib is a library, and ZSV
 extensions are just shared libraries, you can use ZSVlib with
 your own code in any programming language, so long as it has been compiled
-into a shared library callable from C.
+into a shared library that implements the expected [interface](./include/zsv/ext/implementation_private.h).
+
+https://github.com/liquidaty/zsv/blob/main/include/zsv/ext/implementation_private.h
 
 ## Key highlights
 
