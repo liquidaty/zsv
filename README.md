@@ -13,7 +13,7 @@ the difference was much smaller (~20%but still the same direction):<br>
 <img src="https://user-images.githubusercontent.com/26302468/146497899-48174114-3b18-49b0-97da-35754ab56e48.png" alt="count speed" height="150px">
 <img src="https://user-images.githubusercontent.com/26302468/146498211-afc77ce6-4229-4599-bf33-81bf00c725a8.png" alt="select speed" height="150px">
 
-** See 12/19 update re M1 processor
+** See 12/19 update re M1 processor at https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md
 
 ZSV (`zsv`) is an extensible CSV utility, which uses ZSVlib,
 for tasks such as slicing and dicing, querying with SQL,
@@ -27,7 +27,9 @@ and collaboration.
 ZSVlib and ZSV are written in C, but since ZSVlib is a library, and ZSV
 extensions are just shared libraries, you can use ZSVlib with
 your own code in any programming language, so long as it has been compiled
-into a shared library callable from C.
+into a shared library that implements the expected [interface](./include/zsv/ext/implementation_private.h).
+
+https://github.com/liquidaty/zsv/blob/main/include/zsv/ext/implementation_private.h
 
 ## Key highlights
 
@@ -37,7 +39,7 @@ into a shared library callable from C.
   edge cases*). Gracefully handles (and can "clean") real-world data that may be
   "dirty"
 * Runs on OSX (tested on clang/gcc), Linux (gcc), Windows (mingw),
-  BSD (gcc-only) (and soon, in your browser)
+  BSD (gcc-only) and in-browser (emscripten/wasm)
 * Fast (maybe the fastest ever?). See
   [app/benchmark/README.md](app/benchmark/README.md)
 * Low memory usage (regardless of how big your data is)
