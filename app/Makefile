@@ -276,9 +276,6 @@ cli_internal.c.in: cli_internal.h.in
 
 ${USE_SGLIB_TARGETS}: MORE_SOURCE=-Iexternal/sglib
 
-${USE_UTF8PROC_TARGETS}: MORE_SOURCE+= ${UTF8PROC_SRC}/utf8proc.c
-${USE_UTF8PROC_TARGETS}: ${UTF8PROC_SRC}/utf8proc.c $@ # circular reference necessary
-
 ${USE_TERMCAP_TARGETS}: MORE_OBJECTS+=${TERMCAP_LIB}
 
 ${SQLITE_EXT}: ${SQLITE_SRC}
