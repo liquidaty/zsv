@@ -58,7 +58,9 @@ Pre-built binaries for OSX, Windows and Linux are available at https://zsvhub.co
 ## Demo
 `zsv` runs best-- by far-- as a desktop CLI. But, you can also try out an extended
 ZSV version in the browser (though it runs *much* slower), at
-https://zsvhub.com/playground
+https://zsvhub.com/playground. A tutorial that demonstrates a small subset of the
+capabilities of ZSV and the ZSVHub extension is available at
+https://github.com/liquidaty/zsvhub-cli/blob/main/demos/covid_vaccine/README.md
 
 ## Why another CSV parser / utility?
 
