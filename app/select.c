@@ -107,6 +107,7 @@ struct zsv_select_data {
   zsv_csv_writer csv_writer;
 
   size_t overflow_size;
+  unsigned char whitspace_clean_flags;
 
   unsigned char print_all_cols:1;
   unsigned char use_header_indexes:1;
@@ -259,7 +260,7 @@ zsv_select_cell_clean(struct zsv_select_data *data, unsigned char *utf8_value, c
     utf8_value = (unsigned char *)zsv_strtrim(utf8_value, &len);
 
   if(UNLIKELY(data->clean_white))
-    len = zsv_strwhite(utf8_value, len); // to do: zsv_clean
+    len = zsv_strwhite(utf8_value, len, data->whitspace_clean_flags); // to do: zsv_clean
 
   if(UNLIKELY(data->embedded_lineend && quoted)) {
     unsigned char *tmp;
@@ -539,8 +540,9 @@ const char *zsv_select_usage_msg[] =
 #endif
    "  -u, --malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8 input",
    "     (default value is '?')",
-   "  -w, --whitespace-clean: clean whitespace. also normalizes wide-char smart quotes and dashes",
-   "  -W: do not trim whitespace",
+   "  -w, --whitespace-clean: normalize all whitespace to space or newline, single-char (non-consecutive) occurrences",
+   "  --whitespace-clean-no-newline: clean whitespace and remove embedded newlines",
+   "  -W, --no-trim: do not trim whitespace",
 #ifndef ZSV_CLI
    "  -C <maximum_number_of_columns>: defaults to " ZSV_SELECT_MAX_COLS_DEFAULT_S,
    "  -L, --max-row-size <n>: set the maximum memory used for a single row",
@@ -661,7 +663,10 @@ int MAIN(int argc, const char *argv1[]) {
 #endif
         } else if(!strcmp(argv[arg_i], "-w") || !strcmp(argv[arg_i], "--whitespace-clean"))
           data.clean_white = 1;
-        else if(!strcmp(argv[arg_i], "-W"))
+        else if(!strcmp(argv[arg_i], "--whitespace-clean-no-newline")) {
+          data.clean_white = 1;
+          data.whitspace_clean_flags = 1;
+        } else if(!strcmp(argv[arg_i], "-W") || !strcmp(argv[arg_i], "--no-trim"))
           data.no_trim_whitespace = 1;
         /*
           else if(!strcmp(argv[arg_i], "-r")) {

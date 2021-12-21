@@ -221,6 +221,7 @@ const char *serialize_usage_msg[] =
    "Serializes a CSV file",
    "",
    "Options:",
+   "  -b: output with BOM",
    "  -f <value>, --filter <value>: only output cells with text that contains the given value",
    "  -i, --case-insensitive: use case-insensitive match for the filter value",
    "  -e, --entire: match the entire cell's content",
@@ -296,6 +297,8 @@ int MAIN(int argc, const char *argv[]) {
         data.filter.case_insensitive = 1;
       else if(!strcmp(arg, "-e") || !strcmp(arg, "--entire"))
         data.filter.entire = 1;
+      else if(!strcmp(argv[arg_i], "-b"))
+        writer_opts.with_bom = 1;
       else if(data.in) {
         err = 1;
         fprintf(stderr, "Input file specified twice, or unrecognized argument: %s\n", argv[arg_i]);

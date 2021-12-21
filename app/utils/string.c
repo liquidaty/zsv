@@ -37,8 +37,7 @@ static unsigned char *utf8proc_tolower_str(const unsigned char *str, size_t *len
                                       options, utf8proc_tolower1, NULL);
   return (unsigned char *)output;
 }
-
-#endif
+#endif // ndef NO_UTF8PROC
 
 // zsv_strtolowercase(): to do: utf8 support
 unsigned char *zsv_strtolowercase(const unsigned char *s, size_t *lenp) {
@@ -56,14 +55,14 @@ unsigned char *zsv_strtolowercase(const unsigned char *s, size_t *lenp) {
       free(tmp_s);
     }
   }
-#else
+#else // ndef NO_UTF8PROC
   unsigned char *new_s = malloc((*lenp + 1) * sizeof(*new_s));
   if(new_s) {
     for(size_t i = 0, j = *lenp; i < j; i++)
       new_s[i] = tolower(s[i]);
     new_s[*lenp] = '\0';
   }
-#endif
+#endif // ndef NO_UTF8PROC
   return new_s;
 }
 
@@ -119,17 +118,73 @@ unsigned char *zsv_strtrim(char unsigned * restrict s, size_t *lenp) {
   return s;
 }
 
-// zsv_strwhite(): convert consecutive white to single space. to do: utf8 support
-size_t zsv_strwhite(unsigned char *s, size_t len) {
+
+/**
+ * zsv_strwhite(): convert consecutive white to single space
+ *
+ * @param s     string to convert
+ * @param len   length of input string
+ * @param flags bitfield of ZSV_STRWHITE_FLAG_XXX values
+ */
+size_t zsv_strwhite(unsigned char *s, size_t len, unsigned int flags) {
+  char this_is_space, last_was_space = 0;
   size_t new_len = 0;
-  char last_was_space = 0;
-  for(size_t i = 0; i < len; i++) {
-    if(isspace(s[i])) {
-      if(last_was_space)
-        continue;
-      last_was_space = 1;
+  char replacement;
+  int clen;
+
+  for(size_t i = 0; i < len; i += clen) {
+#ifndef NO_UTF8PROC
+    clen = ZSV_UTF8_CHARLEN(s[i]);
+    this_is_space = 0;
+    if(UNLIKELY(clen < 1 || i + clen > len)) { // bad UTF8. replace w '?'
+      clen = 1;
+      s[i] = '?';
+    } else if(UNLIKELY(clen > 1)) { // multi-byte UTF8
+      utf8proc_int32_t codepoint;
+      utf8proc_ssize_t bytes_read = utf8proc_iterate(s + i, clen, &codepoint);
+      if(UNLIKELY(bytes_read < 1)) { // error! but this could only happen if ZSV_UTF8_CHARLEN was wrong
+        clen = 1;
+        s[i] = '?';
+      } else {
+        utf8proc_category_t category = utf8proc_category(codepoint);
+        switch(category) { // Unicode space categories
+        case UTF8PROC_CATEGORY_ZL: // line separator
+        case UTF8PROC_CATEGORY_ZP: // paragraph separator
+          this_is_space = 1;
+          s[i] = (flags & ZSV_STRWHITE_FLAG_NO_EMBEDDED_NEWLINE ? ' ' : '\n');
+          break;
+        case UTF8PROC_CATEGORY_ZS: // regular space
+          this_is_space = 1;
+          s[i] = ' ';
+          break;
+        default:
+          break;
+        }
+      }
+    } else { // regular ascii, clen == 1
+      this_is_space = isspace(s[i]);
     }
-    s[new_len++] = s[i];
+#else // no UTF8PROC, assume clen = 1
+    {
+      clen = 1;
+      this_is_space = isspace(s[i]);
+    }
+#endif // ndef NO_UTF8PROC
+
+    if(this_is_space) {
+      if(UNLIKELY(s[i] == '\n' || s[i] == '\r') && !(flags & ZSV_STRWHITE_FLAG_NO_EMBEDDED_NEWLINE))
+        replacement = '\n';
+      else if(!last_was_space)
+        replacement = ' ';
+      last_was_space = 1;
+    } else {
+      // current position is not a space
+      if(last_was_space)
+        s[new_len++] = replacement;
+      for(int j = 0; j < clen; j++)
+        s[new_len++] = s[i + j];
+      last_was_space = 0;
+    }
   }
   return new_len;
 }
@@ -140,27 +195,27 @@ size_t zsv_strwhite(unsigned char *s, size_t len) {
 // returns the length of the valid string
 size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace) {
   size_t new_len = 0;
-  char clen; 
+  char clen;
   for(size_t i2 = 0; i2 < n; i2 += clen) {
-    clen = ZSV_UTF8_CHARLEN(s[i2]); 
-    if(LIKELY(clen == 1)) 
+    clen = ZSV_UTF8_CHARLEN(s[i2]);
+    if(LIKELY(clen == 1))
       s[new_len++] = s[i2];
     else if(UNLIKELY(clen == -1) || UNLIKELY(i2 + clen >= n)) {
       if(replace)
-        s[new_len++] = replace; 
-      clen = 1; 
-    } else { /* might be valid multi-byte utf8; check */  
+        s[new_len++] = replace;
+      clen = 1;
+    } else { /* might be valid multi-byte utf8; check */
       unsigned char valid_n;
       for(valid_n = 1; valid_n < clen; valid_n++)
         if(!ZSV_UTF8_SUBSEQUENT_CHAR_OK(s[i2 + valid_n]))
-          break; 
-      if(valid_n == clen) { /* valid_n utf8; copy it */ 
-        memmove(s + new_len, s + i2, clen);                    
-        new_len += clen;                                       
-      } else { /* invalid; valid_n smaller than expected */ 
-        memset(s + new_len, replace, valid_n); 
-        new_len += valid_n; 
-        clen = valid_n; 
+          break;
+      if(valid_n == clen) { /* valid_n utf8; copy it */
+        memmove(s + new_len, s + i2, clen);
+        new_len += clen;
+      } else { /* invalid; valid_n smaller than expected */
+        memset(s + new_len, replace, valid_n);
+        new_len += valid_n;
+        clen = valid_n;
       }
     }
   }

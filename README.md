@@ -125,6 +125,15 @@ Basically: `./configure && sudo make install`
 
 See [INSTALL.md](INSTALL.md) for more details.
 
+### Running the CLI
+
+After installing, run `zsv help` to see usage details. The typical syntax is `zsv <command> <parameters>`
+e.g.
+
+```
+zsv sql my_population_data.csv "select * from data where population > 100000"
+```
+
 ### Third-party extensions
 
 In addition to the above extensions, at least one third-party extensions will be made

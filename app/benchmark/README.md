@@ -67,6 +67,7 @@ The following utilities were compared:
 * `tsv-utils` (v2.2.1): installed via download of pre-built PGO-optimized binaries
 * `mlr` (5.10.2): installed via brew (not shown in graph)
 * `zsv` (alpha): built from source using the default `configure` settings
+* `csvcut` (1.0.6)
 
 ### Further notes:
 
@@ -76,10 +77,11 @@ The following utilities were compared:
   that had been converted from the original CSV data. The performance in either case
   was effectively the same
 
-* `mlr` is not shown in the graph since its performance was about 10-20x slower
-  than the others. The reason it was included in the test was to compare with
+* `mlr` and `csvcut` are not shown in the graph since their performance was well over 10x slower
+  than the others. `mlr` was included in the test was to compare with
   another solution written in the same language (i.e. C) as zsv, since
-  tsv-utils, xsv and zsv are all written in different languages
+  tsv-utils, xsv and zsv are all written in different languages, and `csvcut` was
+  included since csvcut/csvkit seem to be fairly commonly used for CSV processing
 
 * Our test system was a pre-M1 OSX MBA. We performed limited testing on other
   operating systems including Linux, BSD
@@ -96,9 +98,11 @@ zsv:  0.076
 xsv:  0.151
 tsv-utils: 0.150
 mlr: not run
+csvcut: n/a
 
 #### select (5 runs, excluding first run)
 zsv: 0.162
 xsv: 0.327
 tsv-utils: 0.24
+csvcut: 6.88
 mlr: 4.53

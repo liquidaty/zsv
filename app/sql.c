@@ -16,7 +16,7 @@
 #include <unistd.h> // unlink
 
 #ifndef APPNAME
-#define APPNAME "zsv_sql"
+#define APPNAME "sql"
 #endif
 
 extern sqlite3_module CsvModule;

@@ -61,7 +61,7 @@ ARGS-sql='select [Loan Number] from data'
 
 LEAKS=
 ifneq ($(LEAKS),)
-  PREFIX=leaks 2>/dev/null --atExit -- 
+  PREFIX=leaks 2>/dev/null --atExit --
   REDIRECT=>/tmp/leaks.txt; grep leak /tmp/leaks.txt | grep bytes \# # stop processing at this step
   REDIRECT1=>/tmp/leaks.txt; grep leak /tmp/leaks.txt | grep bytes ) \# # stop processing at this step
   CMP=\# # don't run this step
@@ -95,7 +95,7 @@ test-count: ${BUILD_DIR}/bin/zsv_count worldcitiespop_mil.csv
 	@cat worldcitiespop_mil.csv | ${PREFIX}$< ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select: test-select-n test-select-6
+test-select: test-select-n test-select-6 test-select-7 test-select-8
 
 test-select-n: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_NAME}
@@ -115,6 +115,25 @@ test-select-6: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${PREFIX}$<  ${TEST_DATA_DIR}/test/tab.txt -T ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
+test-select-7: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_NAME}
+	@${PREFIX}$< ${TEST_DATA_DIR}/test/white.csv ${REDIRECT} /tmp/$@.out1
+	@${CMP} /tmp/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX}$< --whitespace-clean ${TEST_DATA_DIR}/test/white.csv ${REDIRECT} /tmp/$@.out2
+	@${CMP} /tmp/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX}$< --whitespace-clean-no-newline ${TEST_DATA_DIR}/test/white.csv ${REDIRECT} /tmp/$@.out3
+	@${CMP} /tmp/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
+
+test-select-8: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_NAME}
+	@${PREFIX}$< ${TEST_DATA_DIR}/test/white_utf8.csv ${REDIRECT} /tmp/$@.out1
+	@${CMP} /tmp/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX}$< --whitespace-clean ${TEST_DATA_DIR}/test/white_utf8.csv ${REDIRECT} /tmp/$@.out2
+	@${CMP} /tmp/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX}$< --whitespace-clean-no-newline ${TEST_DATA_DIR}/test/white_utf8.csv ${REDIRECT} /tmp/$@.out3
+	@${CMP} /tmp/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
+
+
 test-stack: test-stack1 test-stack2
 
 test-stack1: ${BUILD_DIR}/bin/zsv_stack${EXE}
@@ -132,6 +151,3 @@ test-2tsv test-sql test-2json test-serialize test-flatten test-pretty test-desc 
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX}$< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out && \
 	${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
-
-
-

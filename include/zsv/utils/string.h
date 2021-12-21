@@ -21,7 +21,15 @@ int zsv_strincmp(const unsigned char *s1, size_t len1, const unsigned char *s2, 
 
 unsigned char *zsv_strtrim(unsigned char * restrict s, size_t *lenp);
 
-size_t zsv_strwhite(unsigned char *s, size_t len);
+/**
+ * zsv_strwhite(): convert consecutive white to single space
+ *
+ * @param s     string to convert
+ * @param len   length of input string
+ * @param flags bitfield of ZSV_STRWHITE_FLAG_XXX values
+ */
+#define ZSV_STRWHITE_FLAG_NO_EMBEDDED_NEWLINE 1
+size_t zsv_strwhite(unsigned char *s, size_t len, unsigned int flags);
 
 size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace);
 

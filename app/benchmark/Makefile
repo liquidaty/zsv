@@ -62,6 +62,11 @@ select: worldcitiespop_mil.csv worldcitiespop_mil.tsv
 	@echo "tsv-utils (tsv input)"
 	@printf "   "
 	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/tsv-select -f 1-7 < $(word 2,$^) > /dev/null) 2>&1 | xargs
+
+	@echo csvcut
+	@printf "   "
+	@(time csvcut -c 2,1,3-7 < $< > /dev/null) 2>&1 | xargs
+
 	@echo "miller"
 	@printf "   "
 	@(time mlr --csv cut -o -f City,Country,AccentCity,Region,Population,Latitude,Longitude $< > /dev/null) 2>&1 | xargs
