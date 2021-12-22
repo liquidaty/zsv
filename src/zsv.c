@@ -12,6 +12,7 @@
 
 #include "zsv.h"
 #include <zsv/utils/utf8.h>
+#include <zsv/utils/compiler.h>
 
 #include "zsv_internal.c"
 
@@ -54,9 +55,9 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   scanner->cum_scanned_length += scanner->scanned_length;
   size_t capacity = scanner->buff.size - scanner->partial_row_length;
 
-  if(!capacity) { // our row size was too small to fit a single row of data
+  if(VERY_UNLIKELY(capacity == 0)) { // our row size was too small to fit a single row of data
     fprintf(stderr, "Warning: row truncated\n");
-    if(BUILTIN_EXPECT(row1(scanner), 0))
+    if(VERY_UNLIKELY(row1(scanner)))
       return zsv_status_cancelled;
 
     // throw away the next row end
@@ -72,7 +73,7 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
 
   size_t bytes_read;
 
-  if(!scanner->checked_bom) {
+  if(UNLIKELY(!scanner->checked_bom)) {
     size_t bom_len = strlen(ZSV_BOM);
     scanner->checked_bom = 1;
     if(scanner->read(scanner->buff.buff, 1, bom_len, scanner->in) == bom_len
@@ -85,13 +86,13 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   } else // already checked bom. read as usual
     bytes_read = scanner->read(scanner->buff.buff + scanner->partial_row_length, 1,
                                capacity, scanner->in);
-  if(scanner->filter)
+  if(UNLIKELY(scanner->filter != NULL))
     bytes_read = scanner->filter(scanner->filter_ctx,
                                  scanner->buff.buff + scanner->partial_row_length, bytes_read);
-  if(bytes_read)
+  if(LIKELY(bytes_read))
     return zsv_scan(scanner, scanner->buff.buff, bytes_read);
-  else
-    scanner->scanned_length = scanner->partial_row_length;
+
+  scanner->scanned_length = scanner->partial_row_length;
   return zsv_status_no_more_input;
 }
 

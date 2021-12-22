@@ -93,14 +93,16 @@ NO_$upper2 = 1"
 }
 
 tryccfn () {
+    rm -f "$tmpc"
     if [ "$5" != "" ] ; then
         printf "checking whether compiler accepts %s from %s with %s... " "$2" "$3" "$5"
-        echo "$5" > "$tmpc"
+        echo "$5" >> "$tmpc"
     else
         printf "checking whether compiler accepts %s from %s..." "$2" "$3"
-        rm -f "$tmpc"
     fi
-    printf "%s\n" $3 | sed 's/\(.*\)/#include <\1>/' >> "$tmpc"
+    if [ "$3" != "" ]; then
+        printf "%s\n" $3 | sed 's/\(.*\)/#include <\1>/' >> "$tmpc"
+    fi
     cat >> "$tmpc" <<EOF
 int main() {$2;}
 EOF
@@ -122,12 +124,41 @@ USE_LIB_$lib = 1"
         return 0
     else
         printf "no\n"
+        cat $tmpc
         NO_HAVE="$NO_HAVE
 NO_$flag = 1"
         echo "------" >> $CONFIGFILE.log
         echo "Failed: $CC -o $tmpo tmp.c" >> $CONFIGFILE.log
         cat "$tmpc" >> $CONFIGFILE.log
         echo "------" >> $CONFIGFILE.log
+        return 1
+    fi
+}
+
+tryccfn1 () {
+    rm -f "$tmpc"
+    printf "checking whether compiler accepts %s from %s..." "$2" "$3"
+    cat >> "$tmpc" <<EOF
+int main() {$2($3);}
+EOF
+    flag=$(echo "$2" | cut -d'(' -f1 | tr a-z A-Z)
+    eval "vars=\$$1"
+    if $CC -o "$tmpo" "$tmpc" >/dev/null 2>&1 ; then
+        flag="-DHAVE_${flag}"
+        have=1
+    else
+        flag="-DNO_${flag}"
+        have=0
+    fi
+    if ! printf "%s\n" ${vars} | grep "\-D${flag}\$" >/dev/null 2>&1; then
+        eval "$1=\"\${vars} \${flag}\""
+        eval "$1=\${$1# }"
+    fi
+    if [ "$have" == "1" ]; then
+        printf "yes\n"
+        return 0
+    else
+        printf "no\n"
         return 1
     fi
 }
@@ -423,6 +454,8 @@ tryccfn CFLAGS_AUTO "memmem" "string.h"
 tryccfn CFLAGS_AUTO "tgetent" "termcap.h" termcap
 tryccfn CFLAGS_AUTO "_mm256_movemask_epi8" "immintrin.h"
 tryccfn CFLAGS_AUTO "arc4random_uniform" "stdlib.h" || tryccfn CFLAGS_AUTO "rand_s" "stdlib.h" "" "#define _CRT_RAND_S"
+tryccfn1 CFLAGS_AUTO "__builtin_expect" "0,0"
+tryccfn1 CFLAGS_AUTO "__builtin_expect_with_probability" "0,0,0.5"
 
 # Optional features
 if test "$usesmalllut" = "yes" ; then

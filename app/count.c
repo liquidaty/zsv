@@ -7,7 +7,6 @@
  */
 
 #include <zsv.h>
-#include <zsv/utils/writer.h>
 #include <zsv/utils/signal.h>
 #include <stdio.h>
 #include <string.h>
@@ -41,7 +40,6 @@ static int count_usage() {
 }
 
 int MAIN(int argc, const char *argv1[]) {
-  struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   struct data data;
   memset(&data, 0, sizeof(data));
 

@@ -521,7 +521,7 @@ const char *zsv_select_usage_msg[] =
    "  --sample-pct   <percentage>: output a randomly-selected sample (32 bits of randomness) of n percent of the input rows",
    "  -d, --header-row-span <n>: apply header depth (rowspan) of n",
    "  --distinct: skip subsequent occurrences of columns with the same name",
-  // --rename: like distinct, but instead of removing cols with dupe names, renames them, trying _<n> for n up to max cols
+   // --rename: like distinct, but instead of removing cols with dupe names, renames them, trying _<n> for n up to max cols
    "  -R, --skip-head <n>: skip specified number of rows",
    "  -D, --skip-data <n>: skip the specified number of data rows",
    "  -r <prefix>: skip rows until the contents of the first cell in a row matches the specified prefix",

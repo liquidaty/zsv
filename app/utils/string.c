@@ -129,7 +129,7 @@ unsigned char *zsv_strtrim(char unsigned * restrict s, size_t *lenp) {
 size_t zsv_strwhite(unsigned char *s, size_t len, unsigned int flags) {
   char this_is_space, last_was_space = 0;
   size_t new_len = 0;
-  char replacement;
+  char replacement = ' ';
   int clen;
 
   for(size_t i = 0; i < len; i += clen) {

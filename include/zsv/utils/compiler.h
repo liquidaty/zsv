@@ -10,10 +10,27 @@
 #define ZSV_UTILS_COMPILER
 
 #ifndef LIKELY
-#define LIKELY(x) __builtin_expect(x, 1)
+# define LIKELY(x) __builtin_expect(x, 1)
 #endif
+
 #ifndef UNLIKELY
-#define UNLIKELY(x) __builtin_expect(x, 0)
+# define UNLIKELY(x) __builtin_expect(x, 0)
+#endif
+
+#ifndef VERY_LIKELY
+# ifdef NO___BUILTIN_EXPECT_WITH_PROBABILITY
+#  define VERY_LIKELY(x) LIKELY(x)
+# else
+#  define VERY_LIKELY(x) __builtin_expect_with_probability(x, 1, 0.999)
+# endif
+#endif
+
+#ifndef VERY_UNLIKELY
+# ifdef NO___BUILTIN_EXPECT_WITH_PROBABILITY
+#  define VERY_UNLIKELY(x) UNLIKELY(x)
+# else
+#  define VERY_UNLIKELY(x) __builtin_expect_with_probability(x, 0, 0.999)
+# endif
 #endif
 
 #endif

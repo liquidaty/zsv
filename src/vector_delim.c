@@ -36,7 +36,7 @@ static inline int vec_delims(const unsigned char *s, size_t n,
     vtmp += (str_simd == *char_match3);
     vtmp += (str_simd == *char_match4);
     mask = movemask_pseudo(vtmp);
-    if(BUILTIN_EXPECT(mask != 0, 1)) { // check if we found one of the 4 chars
+    if(LIKELY(mask != 0)) { // check if we found one of the 4 chars
       *maskp = mask;
       return total_bytes;
     } else {

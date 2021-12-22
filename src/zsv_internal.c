@@ -14,14 +14,7 @@
 #include <assert.h>
 
 #include <zsv/utils/utf8.h>
-
-#ifdef NO_BIE
-#define BUILTIN_EXPECT(x, y) x
-#else
-#ifndef BUILTIN_EXPECT
-#define BUILTIN_EXPECT(x, y) __builtin_expect(x, y)
-#endif
-#endif
+#include <zsv/utils/compiler.h>
 
 struct zsv_callbacks {
   void (*cell)(void *ctx, unsigned char *restrict utf8_value, size_t len);
@@ -83,9 +76,9 @@ __attribute__((always_inline)) static inline void zsv_clear_cell(struct zsv_scan
 
 __attribute__((always_inline)) static inline void cell1(struct zsv_scanner * scanner, unsigned char * s, size_t n, char is_end) {
   // handle quoting
-  if(BUILTIN_EXPECT(scanner->quoted > 0, 0)) {
-    if(BUILTIN_EXPECT(scanner->quote_close_position + 1 == n, 1)) {
-      if(BUILTIN_EXPECT((scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) == 0, 1)) {
+  if(UNLIKELY(scanner->quoted > 0)) {
+    if(LIKELY(scanner->quote_close_position + 1 == n)) {
+      if(LIKELY((scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) == 0)) {
         // this is the easy and usual case: no embedded double-quotes
         // just remove surrounding quotes from content
         s++;
@@ -112,7 +105,7 @@ __attribute__((always_inline)) static inline void cell1(struct zsv_scanner * sca
         memmove(s + 1, s, scanner->quote_close_position);
         s += 2;
         n -= 2;
-        if(BUILTIN_EXPECT((scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) != 0, 0)) {
+        if(UNLIKELY((scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) != 0)) {
           // remove dbl-quotes
           for(size_t i = 0; i + 1 < n; i++) {
             if(s[i] == '"' && s[i+1] == '"') {
@@ -124,19 +117,19 @@ __attribute__((always_inline)) static inline void cell1(struct zsv_scanner * sca
         }
       }
     }
-  } else if(BUILTIN_EXPECT(scanner->opts.delimiter != ',', 0)) {
+  } else if(UNLIKELY(scanner->opts.delimiter != ',')) {
     if(memchr(s, ',', n))
       scanner->quoted = ZSV_PARSER_QUOTE_NEEDED;
   }
   // end quote handling
   
-  if(BUILTIN_EXPECT(scanner->waiting_for_end != 0, 0)) {
+  if(VERY_UNLIKELY(scanner->waiting_for_end != 0)) { // overflow: cell size exceeds allocated memory
     if(scanner->opts.overflow)
       scanner->opts.overflow(scanner->opts.ctx, s, n);
   } else {
     if(scanner->opts.cell)
       scanner->opts.cell(scanner->opts.ctx, s, n);
-    if(BUILTIN_EXPECT(scanner->row.used < scanner->row.allocated, 1)) {
+    if(VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
       struct zsv_row *row = &scanner->row;
       struct zsv_cell c = { s, n, scanner->quoted };
       row->cells[row->used++] = c;
@@ -150,14 +143,14 @@ __attribute__((always_inline)) static inline void cell1(struct zsv_scanner * sca
 }
 
 __attribute__((always_inline)) static inline char row1(struct zsv_scanner *scanner) {
-  if(BUILTIN_EXPECT(scanner->row.overflow, 0)) {
+  if(UNLIKELY(scanner->row.overflow)) {
     fprintf(stderr, "Warning: number of columns (%zu) exceeds row max (%zu)\n",
             scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
     scanner->row.overflow = 0;
   }
   if(scanner->opts.row) {
     scanner->opts.row(scanner->opts.ctx);
-    if(BUILTIN_EXPECT(scanner->abort != 0, 0))
+    if(VERY_UNLIKELY(scanner->abort))
       return 1;
   }
   scanner->have_cell = 0;
@@ -261,7 +254,7 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
         continue;
       }
     }
-    if(BUILTIN_EXPECT(mask, 1)) {
+    if(VERY_LIKELY(mask)) {
       size_t next_offset = __builtin_ffs(mask);
       i = mask_last_start + next_offset - 1;
       mask = clear_lowest_bit(mask);
@@ -273,7 +266,7 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
 
     // to do: consolidate csv and tsv/scanner->delimiter parsers
     c = buff[i];
-    if(BUILTIN_EXPECT(c == delimiter, 1)) { // case ',':
+    if(LIKELY(c == delimiter)) { // case ',':
       if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
         cell1(scanner, buff + scanner->cell_start, i - scanner->cell_start, 1);
@@ -283,18 +276,18 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
       } else
         // we are inside an open quote, which is needed to escape this char
         scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
-    } else if(BUILTIN_EXPECT(c == '\r', 0)) {
+    } else if(UNLIKELY(c == '\r')) {
       if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
-        if(BUILTIN_EXPECT(cell_and_row(scanner, buff + scanner->cell_start, i - scanner->cell_start), 0))
-           return zsv_status_cancelled;
+        if(VERY_UNLIKELY(cell_and_row(scanner, buff + scanner->cell_start, i - scanner->cell_start)))
+          return zsv_status_cancelled;
         scanner->cell_start = i + 1;
         scanner->row_start = i + 1;
         continue; // this char is not part of the cell content
       } else
         // we are inside an open quote, which is needed to escape this char
         scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
-    } else if(BUILTIN_EXPECT(c == '\n', 0)) {
+    } else if(UNLIKELY(c == '\n')) {
       if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         if(scanner_last == '\r') { // ignore; we are outside a cell and last char was rowend
           scanner->cell_start = i + 1;
@@ -302,8 +295,8 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
         } else {
           // this is a row end
           scanner->scanned_length = i;
-          if(BUILTIN_EXPECT(cell_and_row(scanner, buff + scanner->cell_start, i - scanner->cell_start), 0))
-             return zsv_status_cancelled; // abort
+          if(VERY_UNLIKELY(cell_and_row(scanner, buff + scanner->cell_start, i - scanner->cell_start)))
+            return zsv_status_cancelled; // abort
           scanner->cell_start = i + 1;
           scanner->row_start = i + 1;
         }
@@ -311,23 +304,23 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
       } else
         // we are inside an open quote, which is needed to escape this char
         scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
-    } else if(BUILTIN_EXPECT(c == quote, 1)) {
+    } else if(LIKELY(c == quote)) {
       if(i == scanner->cell_start) {
         scanner->quoted = ZSV_PARSER_QUOTE_UNCLOSED;
         scanner->quote_close_position = 0;
         c = 0;
       } else if(scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) {
         // the cell started with a quote that is not yet closed
-        if(BUILTIN_EXPECT(i + 1 < bytes_read, 1)) {
-          if(BUILTIN_EXPECT(buff[i+1] != quote, 1)) {
-            // this is the closing quote
+        if(VERY_LIKELY(i + 1 < bytes_read)) {
+          if(LIKELY(buff[i+1] != quote)) {
+            // buff[i] is the closing quote (not an escaped quote)
             scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
             scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
 
             // keep track of closing quote position to handle the edge case
             // where content follows the closing quote e.g. cell content is:
             //  "this-cell"-did-not-need-quotes
-            if(BUILTIN_EXPECT(scanner->quote_close_position == 0, 1))
+            if(LIKELY(scanner->quote_close_position == 0))
               scanner->quote_close_position = i - scanner->cell_start;
           } else {
             // next char is also '"'
