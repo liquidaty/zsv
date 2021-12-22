@@ -144,11 +144,25 @@ static void zsv_2tsv_row(void *ctx) {
 #define MAIN main
 #endif
 
-int MAIN(int argc, const char *argv[]) {
+#ifdef ZSV_CLI
+#include "cli_cmd_internal.h"
+#endif
+
+int MAIN(int argc, const char *argv1[]) {
   FILE *f_in = NULL;
   struct zsv_2tsv_data data;
   memset(&data, 0, sizeof(data));
+  struct zsv_opts opts;
+  memset(&opts, 0, sizeof(opts));
+
+#ifdef ZSV_CLI
+  const char **argv = NULL;
+  int err = cli_args_to_opts(argc, argv1, &argc, &argv, &opts);
+#else
   int err = 0;
+  const char **argv = argv1;
+#endif
+
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       fprintf(stdout, "Usage: zsv_2tsv [filename]\n");
@@ -174,13 +188,14 @@ int MAIN(int argc, const char *argv[]) {
       fclose(f_in);
     if(data.out.stream)
       fclose(data.out.stream);
-    return 0;
+    goto exit_2tsv;
   }
 
   if(!f_in) {
 #ifdef NO_STDIN
     fprintf(stderr, "Please specify an input file\n");
-    return 0;
+    err = 1;
+    goto exit_2tsv;
 #else
     f_in = stdin;
 #endif
@@ -188,9 +203,6 @@ int MAIN(int argc, const char *argv[]) {
 
   if(!data.out.stream)
     data.out.stream = stdout;
-
-  struct zsv_opts opts;
-  memset(&opts, 0, sizeof(opts));
 
   opts.cell = zsv_2tsv_cell;
   opts.row = zsv_2tsv_row;
@@ -217,5 +229,9 @@ int MAIN(int argc, const char *argv[]) {
   if(data.out.stream)
     fclose(data.out.stream);
 
+ exit_2tsv:
+#ifdef ZSV_CLI
+  free(argv);
+#endif
   return err;
 }

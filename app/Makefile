@@ -126,7 +126,7 @@ endif
 ZSV=$(BINDIR)/zsv${EXE}
 
 SOURCES= echo count select 2json serialize flatten pretty stack desc 2tsv sql # noop
-CLI_SOURCES=select desc count pretty sql flatten 2json serialize stack
+CLI_SOURCES=select desc count pretty sql flatten 2json 2tsv serialize stack
 
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES})) ${CLI}
 
@@ -154,6 +154,7 @@ ifeq ($(NO_LTO),1)
   CFLAGS+= -fno-lto
 else
   CFLAGS+=${CFLAGS_LTO}
+  LDFLAGS_OPT+= ${LDFLAGS_OPT_LTO}
 endif
 
 ifeq ($(VERBOSE),1)

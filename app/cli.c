@@ -56,6 +56,7 @@ CLI_BUILTIN_DECL(pretty);
 CLI_BUILTIN_DECL(sql);
 CLI_BUILTIN_DECL(flatten);
 CLI_BUILTIN_DECL(2json);
+CLI_BUILTIN_DECL(2tsv);
 CLI_BUILTIN_DECL(serialize);
 CLI_BUILTIN_DECL(stack);
 
@@ -75,6 +76,7 @@ struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_CMD(sql),
   CLI_BUILTIN_CMD(flatten),
   CLI_BUILTIN_CMD(2json),
+  CLI_BUILTIN_CMD(2tsv),
   CLI_BUILTIN_CMD(serialize),
   CLI_BUILTIN_CMD(stack)
 };

@@ -429,7 +429,7 @@ tryflag CFLAGS_CLMUL -mvpclmulqdq
 tryflag CFLAGS_LTO -flto
 tryflag CFLAGS_OPT -fvisibility=hidden
 tryldflag LDFLAGS_AUTO -Wl,--gc-sections
-tryldflag LDFLAGS_OPT -flto
+tryldflag LDFLAGS_OPT_LTO -flto
 tryldflag LDFLAGS_OPT -fwhole-program
 tryldflag LDFLAGS_OPT -march=native
 tryldflag LDFLAGS_OPT -ldl
@@ -453,10 +453,10 @@ esac
 fi
 
 # Check function availability
-trycchdr CFLAGS_AUTO "immintrin.h"
+tryccfn CFLAGS_AUTO "_mm256_movemask_epi8" "immintrin.h" && trycchdr CFLAGS_AUTO "immintrin.h"
 tryccfn CFLAGS_AUTO "memmem" "string.h"
 tryccfn CFLAGS_AUTO "tgetent" "termcap.h" termcap
-tryccfn CFLAGS_AUTO "_mm256_movemask_epi8" "immintrin.h"
+
 tryccfn CFLAGS_AUTO "arc4random_uniform" "stdlib.h" || tryccfn CFLAGS_AUTO "rand_s" "stdlib.h" "" "#define _CRT_RAND_S"
 tryccfn1 CFLAGS_AUTO "__builtin_expect" "0,0"
 tryccfn1 CFLAGS_AUTO "__builtin_expect_with_probability" "0,0,0.5"

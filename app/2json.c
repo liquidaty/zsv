@@ -126,11 +126,25 @@ static void zsv_2json_row(void *ctx) {
 #define MAIN main
 #endif
 
-int MAIN(int argc, const char *argv[]) {
+#ifdef ZSV_CLI
+#include "cli_cmd_internal.h"
+#endif
+
+int MAIN(int argc, const char *argv1[]) {
   FILE *f_in = NULL;
   struct zsv_2json_data data;
   memset(&data, 0, sizeof(data));
   data.headers_next = &data.headers;
+
+  struct zsv_opts opts;
+  memset(&opts, 0, sizeof(opts));
+#ifdef ZSV_CLI
+  const char **argv = NULL;
+  int err = cli_args_to_opts(argc, argv1, &argc, &argv, &opts);
+#else
+  int err = 0;
+  const char **argv = argv1;
+#endif
 
   const char *usage[] =
     {
@@ -140,17 +154,16 @@ int MAIN(int argc, const char *argv[]) {
      "Options:",
      "  -h, --help",
      "  -o, --output <filename>: output to specified filename",
-     "  -O, --object : output as array of objects",
+     "  --object : output as array of objects",
      NULL
     };
 
   FILE *out = NULL;
-  int err = 0;
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       for(int j = 0; usage[j]; j++)
         fprintf(stderr, "%s\n", usage[j]);
-      return 0;
+      goto exit_2json;
     } else if(!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if(++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;
@@ -158,7 +171,7 @@ int MAIN(int argc, const char *argv[]) {
         fprintf(stderr, "Output file specified more than once\n"), err = 1;
       else if(!(out = fopen(argv[i], "wb")))
         fprintf(stderr, "Unable to open for writing: %s\n", argv[i]), err = 1;
-    } else if(!strcmp(argv[i], "-O") || !strcmp(argv[i], "--object"))
+    } else if(!strcmp(argv[i], "--object"))
       data.as_objects = 1;
     else {
       if(f_in)
@@ -181,14 +194,11 @@ int MAIN(int argc, const char *argv[]) {
       fclose(f_in);
     if(out)
       fclose(out);
-    return 1;
+    goto exit_2json;
   }
 
   if(!out)
     out = stdout;
-
-  struct zsv_opts opts;
-  memset(&opts, 0, sizeof(opts));
 
   opts.cell = zsv_2json_cell;
   opts.row = zsv_2json_row;
@@ -215,8 +225,15 @@ int MAIN(int argc, const char *argv[]) {
     fclose(out);
   if(f_in && f_in != stdin)
     fclose(f_in);
-  return data.err;
-}            
+
+  err = data.err;
+
+ exit_2json:
+#ifdef ZSV_CLI
+  free(argv);
+#endif
+  return err;
+}
 
 
 

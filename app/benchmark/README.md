@@ -15,7 +15,8 @@
 12/19 update: today we ran our first tests with the Apple M1 chip, between xsv and zsv, and the
 results were mixed: zsv's count was about 7% slower, but select was about 20% faster.
 Probably, pure CSV parsing (count) was getting hit harder in zsv than xsv due to the
-smaller 128bit vector size of M1, while zsv's select is still benefitting
+smaller 128bit vector size of M1 (see e.g. https://lemire.me/blog/2020/12/13/arm-macbook-vs-intel-macbook-a-simd-benchmark/),
+while zsv's select is still benefitting
 from [memory operation efficiencies](../../docs/memory.md) (which has nothing to do with vectorization).
 
 ### Choice of tests and input data

@@ -167,9 +167,13 @@ static inline char cell_and_row(struct zsv_scanner *scanner, unsigned char *s, s
 # define VECTOR_BYTES 32
 typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (32)));
 
-#if defined(HAVE_IMMINTRIN_H) && defined(HAVE__MM256_MOVEMASK_EPI8)
-#include <immintrin.h>
-#define movemask_pseudo(x) _mm256_movemask_epi8((__m256i)x)
+#if defined(HAVE__MM256_MOVEMASK_EPI8)
+# if defined(HAVE_IMMINTRIN_H)
+#  include <immintrin.h>
+# else
+#  error MM256_MOVEMASK_EPI8 include unhandled
+# endif
+# define movemask_pseudo(x) _mm256_movemask_epi8((__m256i)x)
 
 #else
 /*
