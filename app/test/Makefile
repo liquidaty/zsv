@@ -84,7 +84,7 @@ test: ${TESTS}
 
 test-echo: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_NAME}
-	@${PREFIX}$< ${TEST_DATA_DIR}/loans_1.csv ${REDIRECT} /tmp/$@.out
+	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 worldcitiespop_mil.csv:
@@ -92,45 +92,45 @@ worldcitiespop_mil.csv:
 
 test-count: ${BUILD_DIR}/bin/zsv_count worldcitiespop_mil.csv
 	@${TEST_NAME}
-	@cat worldcitiespop_mil.csv | ${PREFIX}$< ${REDIRECT} /tmp/$@.out
+	@cat worldcitiespop_mil.csv | ${PREFIX} $< ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-select: test-select-n test-select-6 test-select-7 test-select-8
 
 test-select-n: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_NAME}
-	@${PREFIX}$< ${TEST_DATA_DIR}/loans_1.csv -u "?" -R 4 -d 2 ${REDIRECT} /tmp/test-select.out
+	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv -u "?" -R 4 -d 2 ${REDIRECT} /tmp/test-select.out
 	@${CMP} /tmp/test-select.out expected/test-select.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX}$< ${TEST_DATA_DIR}/test/embedded.csv -e 'X' ${REDIRECT} /tmp/test-select.2.out
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/embedded.csv -e 'X' ${REDIRECT} /tmp/test-select.2.out
 	@${CMP} /tmp/test-select.2.out expected/test-select.2.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX}$< ${TEST_DATA_DIR}/test/embedded_dos.csv -e 'X' ${REDIRECT} /tmp/test-select.3.out
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/embedded_dos.csv -e 'X' ${REDIRECT} /tmp/test-select.3.out
 	@${CMP} /tmp/test-select.3.out expected/test-select.3.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX}$< ${TEST_DATA_DIR}/loans_1.csv -u "?" -R 4 -d 2 -N ${REDIRECT} /tmp/test-select.4.out
+	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv -u "?" -R 4 -d 2 -N ${REDIRECT} /tmp/test-select.4.out
 	@${CMP} /tmp/test-select.4.out expected/test-select.4.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX}$<  ${TEST_DATA_DIR}/quoted.csv -e 'x' ${REDIRECT} /tmp/test-select.5.out
+	@${PREFIX} $<  ${TEST_DATA_DIR}/quoted.csv -e 'x' ${REDIRECT} /tmp/test-select.5.out
 	@${CMP} /tmp/test-select.5.out expected/test-select.5.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-select-6: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_NAME}
-	@${PREFIX}$<  ${TEST_DATA_DIR}/test/tab.txt -T ${REDIRECT} /tmp/$@.out
+	@${PREFIX} $<  ${TEST_DATA_DIR}/test/tab.txt -T ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-select-7: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_NAME}
-	@${PREFIX}$< ${TEST_DATA_DIR}/test/white.csv ${REDIRECT} /tmp/$@.out1
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/white.csv ${REDIRECT} /tmp/$@.out1
 	@${CMP} /tmp/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX}$< --whitespace-clean ${TEST_DATA_DIR}/test/white.csv ${REDIRECT} /tmp/$@.out2
+	@${PREFIX} $< --whitespace-clean ${TEST_DATA_DIR}/test/white.csv ${REDIRECT} /tmp/$@.out2
 	@${CMP} /tmp/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX}$< --whitespace-clean-no-newline ${TEST_DATA_DIR}/test/white.csv ${REDIRECT} /tmp/$@.out3
+	@${PREFIX} $< --whitespace-clean-no-newline ${TEST_DATA_DIR}/test/white.csv ${REDIRECT} /tmp/$@.out3
 	@${CMP} /tmp/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
 
 test-select-8: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_NAME}
-	@${PREFIX}$< ${TEST_DATA_DIR}/test/white_utf8.csv ${REDIRECT} /tmp/$@.out1
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/white_utf8.csv ${REDIRECT} /tmp/$@.out1
 	@${CMP} /tmp/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX}$< --whitespace-clean ${TEST_DATA_DIR}/test/white_utf8.csv ${REDIRECT} /tmp/$@.out2
+	@${PREFIX} $< --whitespace-clean ${TEST_DATA_DIR}/test/white_utf8.csv ${REDIRECT} /tmp/$@.out2
 	@${CMP} /tmp/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX}$< --whitespace-clean-no-newline ${TEST_DATA_DIR}/test/white_utf8.csv ${REDIRECT} /tmp/$@.out3
+	@${PREFIX} $< --whitespace-clean-no-newline ${TEST_DATA_DIR}/test/white_utf8.csv ${REDIRECT} /tmp/$@.out3
 	@${CMP} /tmp/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
 
 
@@ -138,16 +138,16 @@ test-stack: test-stack1 test-stack2
 
 test-stack1: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${TEST_NAME}
-	@${PREFIX}$< ${TEST_DATA_DIR}/stack[12].csv ${REDIRECT} /tmp/$@.out
+	@${PREFIX} $< ${TEST_DATA_DIR}/stack[12].csv ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-stack2: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${TEST_NAME}
-	@${PREFIX}$< ${TEST_DATA_DIR}/stack2-[12].csv ${REDIRECT} /tmp/$@.out
+	@${PREFIX} $< ${TEST_DATA_DIR}/stack2-[12].csv ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-2tsv test-sql test-2json test-serialize test-flatten test-pretty test-desc : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_NAME}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
-	(${PREFIX}$< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out && \
+	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out && \
 	${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})

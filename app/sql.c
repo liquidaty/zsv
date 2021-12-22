@@ -102,9 +102,8 @@ static int create_virtual_csv_table(const char *fname, sqlite3 *db,
     asprintf(&sql, "CREATE VIRTUAL TABLE data%s USING csv(filename='%s',max_columns=%i)", table_name_suffix, fname, max_columns);
            
   else
-    asprintf(&sql, "CREATE VIRTUAL TABLE data%s USING csv(filename='%s',header=YES)", table_name_suffix, fname);
-  asprintf(&sql, "CREATE VIRTUAL TABLE data%s USING csv(filename='%s')", table_name_suffix, fname);
-           
+    asprintf(&sql, "CREATE VIRTUAL TABLE data%s USING csv(filename='%s')", table_name_suffix, fname);
+
   int rc = sqlite3_exec(db, sql, NULL, NULL, err_msg);
   free(sql);
   return rc;
