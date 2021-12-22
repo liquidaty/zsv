@@ -124,7 +124,6 @@ USE_LIB_$lib = 1"
         return 0
     else
         printf "no\n"
-        cat $tmpc
         NO_HAVE="$NO_HAVE
 NO_$flag = 1"
         echo "------" >> $CONFIGFILE.log
@@ -137,7 +136,7 @@ NO_$flag = 1"
 
 tryccfn1 () {
     rm -f "$tmpc"
-    printf "checking whether compiler accepts %s from %s..." "$2" "$3"
+    printf "checking whether compiler accepts %s(%s)..." "$2" "$3"
     cat >> "$tmpc" <<EOF
 int main() {$2($3);}
 EOF
@@ -211,7 +210,10 @@ CFLAGS_AUTO=
 CFLAGS_TRY=
 LDFLAGS_AUTO=
 LDFLAGS_TRY=
-CONFIGFILE=config.mk
+CONFIGFILE=$CONFIGFILE
+if [ "$CONFIGFILE" == "" ]; then
+    CONFIGFILE=config.mk
+fi
 PREFIX=$PREFIX
 if [ "$PREFIX" == "" ]; then
     PREFIX=/usr/local
@@ -260,6 +262,8 @@ LDFLAGS=*) LDFLAGS=${arg#*=} ;;
 *) ;;
 esac
 done
+
+echo "config will be saved to $CONFIGFILE"
 
 for i in PREFIX EXEC_PREFIX BINDIR SHAREDIR DOCDIR MANDIR ; do
 stripdir $i
