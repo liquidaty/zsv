@@ -149,8 +149,6 @@ __attribute__((always_inline)) static inline void cell1(struct zsv_scanner * sca
 }
 
 __attribute__((always_inline)) static inline char row1(struct zsv_scanner *scanner) {
-  if(VERY_UNLIKELY(scanner->abort))
-    return 1;
   if(VERY_UNLIKELY(scanner->row.overflow)) {
     fprintf(stderr, "Warning: number of columns (%zu) exceeds row max (%zu)\n",
             scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
@@ -165,6 +163,8 @@ __attribute__((always_inline)) static inline char row1(struct zsv_scanner *scann
       scanner->abort = scanner->opts.progress.callback(scanner->opts.progress.ctx, scanner->progress_cum_row_count);
   }
 # endif
+  if(VERY_UNLIKELY(scanner->abort))
+    return 1;
   scanner->have_cell = 0;
   if(scanner->row.used)
     scanner->row.used = 0;
