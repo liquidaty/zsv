@@ -11,20 +11,12 @@
 #include <string.h>
 #include <ctype.h>
 
-#include <assert.h>
+#ifdef ZSV_EXTRAS
+#include <time.h>
+#endif
 
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/compiler.h>
-
-/*
-struct zsv_callbacks {
-  void (*cell)(void *ctx, unsigned char *restrict utf8_value, size_t len);
-  void (*row)(void *ctx);
-  void (*overflow)(void *ctx, unsigned char *restrict utf8, size_t len);
-  void (*error)(void *ctx, enum zsv_status status, const unsigned char *err_msg, size_t err_msg_len, unsigned char bad_c, size_t cum_scanned_length);
-  void *ctx;
-};
-*/
 
 struct zsv_row {
   size_t used, allocated, overflow;
@@ -65,7 +57,10 @@ struct zsv_scanner {
   const char *insert_string;
 
 #ifdef ZSV_EXTRAS
-  size_t progress_cum_row_count; /* total number of rows read */
+  struct {
+    size_t cum_row_count; /* total number of rows read */
+    time_t last_time;     /* last time from which to check seconds_interval */
+  } progress;
 #endif
 
   unsigned char checked_bom:1;
@@ -157,10 +152,25 @@ __attribute__((always_inline)) static inline char row1(struct zsv_scanner *scann
   if(scanner->opts.row)
     scanner->opts.row(scanner->opts.ctx);
 # ifdef ZSV_EXTRAS
-  if(VERY_UNLIKELY(scanner->opts.progress.frequency
-                   && ++scanner->progress_cum_row_count % scanner->opts.progress.frequency == 0)) {
-    if(scanner->opts.progress.callback)
-      scanner->abort = scanner->opts.progress.callback(scanner->opts.progress.ctx, scanner->progress_cum_row_count);
+  if(VERY_UNLIKELY(scanner->opts.progress.rows_interval
+                   && ++scanner->progress.cum_row_count % scanner->opts.progress.rows_interval == 0)) {
+    char ok;
+    if(!scanner->opts.progress.seconds_interval)
+      ok = 1;
+    else {
+      // using timer_create() would be better, but is not currently supported on
+      // all platforms, so the fallback is to poll
+      time_t now = time(NULL);
+      if(now > scanner->progress.last_time &&
+         (unsigned int)(now - scanner->progress.last_time) >=
+         scanner->opts.progress.seconds_interval) {
+        ok = 1;
+        scanner->progress.last_time = now;
+      } else
+        ok = 0;
+    }
+    if(ok && scanner->opts.progress.callback)
+      scanner->abort = scanner->opts.progress.callback(scanner->opts.progress.ctx, scanner->progress.cum_row_count);
   }
 # endif
   if(VERY_UNLIKELY(scanner->abort))

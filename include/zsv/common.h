@@ -153,7 +153,8 @@ struct zsv_opts {
 
 #  ifdef ZSV_EXTRAS
   struct {
-    size_t frequency; // number of rows between progress callback calls
+    size_t rows_interval; // min number of rows between progress callback calls
+    unsigned int seconds_interval; // min number of seconds b/w callback calls
     zsv_progress_callback callback;
     void *ctx;
   } progress;
@@ -175,7 +176,7 @@ struct zsv_opts zsv_get_default_opts();
  * @param ctx pointer passed to callback
  * @param frequency number of rows to parse between progress calls
  */
-void zsv_set_default_progress_callback(zsv_progress_callback cb, void *ctx, size_t frequency);
+void zsv_set_default_progress_callback(zsv_progress_callback cb, void *ctx, size_t rows_interval, unsigned int seconds_interval);
 #  else
 #   define zsv_get_default_opts() { 0 }
 #  endif

@@ -74,6 +74,13 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   size_t bytes_read;
 
   if(UNLIKELY(!scanner->checked_bom)) {
+
+#ifdef ZSV_EXTRAS
+    // initialize progress timer
+    if(scanner->opts.progress.seconds_interval)
+      scanner->progress.last_time = time(NULL);
+#endif
+
     size_t bom_len = strlen(ZSV_BOM);
     scanner->checked_bom = 1;
     if(scanner->read(scanner->buff.buff, 1, bom_len, scanner->in) == bom_len
@@ -227,9 +234,10 @@ ZSV_EXPORT void zsv_set_default_opts(struct zsv_opts opts) {
 }
 
 ZSV_EXPORT
-void zsv_set_default_progress_callback(zsv_progress_callback cb, void *ctx, size_t frequency) {
+void zsv_set_default_progress_callback(zsv_progress_callback cb, void *ctx, size_t rows_interval, unsigned int seconds_interval) {
   zsv_default_opts.progress.callback = cb;
   zsv_default_opts.progress.ctx = ctx;
-  zsv_default_opts.progress.frequency = frequency;
+  zsv_default_opts.progress.rows_interval = rows_interval;
+  zsv_default_opts.progress.seconds_interval = seconds_interval;
 }
 #endif
