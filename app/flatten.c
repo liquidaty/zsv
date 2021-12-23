@@ -773,11 +773,7 @@ int MAIN(int argc, const char *argv[]) {
   }
 
   int passes = data.column_name_column.name || !data.have_agg ? 2 : 1;
-  struct zsv_opts opts;
-//  char buff[8194];
-//  size_t bytes_read;
-
-  memset(&opts, 0, sizeof(opts));
+  struct zsv_opts opts = zsv_get_default_opts();
   FILE *in = NULL;
   char *tmp_fn = NULL;
   zsv_handle_ctrl_c_signal();

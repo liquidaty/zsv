@@ -19,7 +19,8 @@ struct zsv_csv_writer_options {
   void (*table_init)(void *);
   void *table_init_ctx;
 };
-void zsv_writer_set_default_opts(struct zsv_csv_writer_options *opts);
+
+void zsv_writer_set_default_opts(struct zsv_csv_writer_options opts);
 struct zsv_csv_writer_options zsv_writer_get_default_opts();
 
 enum zsv_writer_status {

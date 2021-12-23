@@ -64,9 +64,7 @@ int MAIN(int argc, const char *argv[]) {
   if(!f)
     f = stdin;
 
-  struct zsv_opts opts;
-  memset(&opts, 0, sizeof(opts));
-
+  struct zsv_opts opts = zsv_get_default_opts();
   opts.row = row;
   opts.ctx = &data;
   if(tab)

@@ -43,8 +43,7 @@ int MAIN(int argc, const char *argv1[]) {
   struct data data;
   memset(&data, 0, sizeof(data));
 
-  struct zsv_opts opts;
-  memset(&opts, 0, sizeof(opts));
+  struct zsv_opts opts = zsv_get_default_opts();
 #ifdef ZSV_CLI
   const char **argv = NULL;
   int err = cli_args_to_opts(argc, argv1, &argc, &argv, &opts);

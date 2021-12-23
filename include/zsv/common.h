@@ -59,13 +59,23 @@ struct zsv_cell {
 typedef size_t (*zsv_generic_write)(const void * restrict,  size_t,  size_t,  void * restrict);
 typedef size_t (*zsv_generic_read)(void * restrict, size_t n, size_t size, void * restrict);
 
+# ifdef ZSV_EXTRAS
+/**
+ * progress callback function signature
+ * @param context pointer set in parser opts.progress.ctx
+ * @param cumulative_row_count number of input rows read so far
+ * @return zero to continue processing, non-zero to cancel parse
+ */
+typedef int (*zsv_progress_callback)(void *ctx, size_t cumulative_row_count);
+# endif
+
 struct zsv_opts {
   // callbacks for handling cell and/or row data
-  void (*row)(void *ctx);
   void (*cell)(void *ctx, unsigned char *utf8_value, size_t len);
+  void (*row)(void *ctx);
+  void *ctx;
   void (*overflow)(void *ctx, unsigned char *utf8, size_t len);
   void (*error)(void *ctx, enum zsv_status status, const unsigned char *err_msg, size_t err_msg_len, unsigned char bad_c, size_t cum_scanned_length);
-  void *ctx;
 
   /**
    * caller can specify its own read function for fetching data to be parsed
@@ -140,6 +150,34 @@ struct zsv_opts {
    * first row of data
    */
   const char *insert_header_row;
+
+#  ifdef ZSV_EXTRAS
+  struct {
+    size_t frequency; // number of rows between progress callback calls
+    zsv_progress_callback callback;
+    void *ctx;
+  } progress;
+# endif
 };
+
+#  ifdef ZSV_EXTRAS
+/**
+ * set or get default parser options
+ */
+void zsv_set_default_opts(struct zsv_opts);
+
+struct zsv_opts zsv_get_default_opts();
+
+/**
+ * set the default option progress callback (e.g. from wasm where `struct zsv_opts`
+ * cannot be independently accessed set
+ * @param cb callback to call
+ * @param ctx pointer passed to callback
+ * @param frequency number of rows to parse between progress calls
+ */
+void zsv_set_default_progress_callback(zsv_progress_callback cb, void *ctx, size_t frequency);
+#  else
+#   define zsv_get_default_opts() { 0 }
+#  endif
 
 #endif

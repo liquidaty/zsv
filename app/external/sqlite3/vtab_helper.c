@@ -90,32 +90,3 @@ static int csv_boolean(const char *z){
   }
   return -1;
 }
-
-/* Check to see if the string is of the form:  "TAG = BOOLEAN" or just "TAG".
-** If it is, set *pValue to be the value of the boolean ("true" if there is
-** not "= BOOLEAN" component) and return non-zero.  If the input string
-** does not begin with TAG, return zero.
-*/
-static int csv_boolean_parameter(
-  const char *zTag,       /* Tag we are looking for */
-  int nTag,               /* Size of the tag in bytes */
-  const char *z,          /* Input parameter */
-  int *pValue             /* Write boolean value here */
-){
-  int b;
-  z = csv_skip_whitespace(z);
-  if( strncmp(zTag, z, nTag)!=0 ) return 0;
-  z = csv_skip_whitespace(z + nTag);
-  if( z[0]==0 ){
-    *pValue = 1;
-    return 1;
-  }
-  if( z[0]!='=' ) return 0;
-  z = csv_skip_whitespace(z+1);
-  b = csv_boolean(z);
-  if( b>=0 ){
-    *pValue = b;
-    return 1;
-  }
-  return 0;
-}

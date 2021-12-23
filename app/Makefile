@@ -103,10 +103,13 @@ BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 UTILS1=writer file err signal mem clock arg dl string dirs
 LDFLAGS=
 
+ZSV_EXTRAS=
 ifneq ($(WIN),0)
  UTILS1+= os
 endif
+
 ifneq ($(findstring emcc,$(CC)),) # emcc
+  ZSV_EXTRAS=1
   UTILS1+=emcc/fs_api
   ifeq ($(NO_THREADING),0)
     LDFLAGS+=-pthread
@@ -115,6 +118,10 @@ else
     LDFLAGS+=-lpthread # Linux explicitly requires
 endif
 UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
+
+ifeq ($(ZSV_EXTRAS),1)
+  CFLAGS+= -DZSV_EXTRAS
+endif
 
 OBJECTS=${UTILS}
 
@@ -304,7 +311,7 @@ ${BUILD_DIR}/external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}/external/%.o 
 test: ${TESTS}
 
 test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
-	cd test && make $@ LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH}
+	cd test && make $@ LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} ZSV_EXTRAS=${ZSV_EXTRAS}
 
 clean: clean-obj clean-lib
 	rm -rf ${BUILD_DIR}

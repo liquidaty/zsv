@@ -111,6 +111,9 @@ struct zsvTable *zsvTable_new() {
   struct zsvTable *z = sqlite3_malloc(sizeof(*z));
   if(z) {
     memset(z, 0, sizeof(*z));
+#ifdef ZSV_EXTRAS
+    z->parser_opts = zsv_get_default_opts();
+#endif
     z->header.last = &z->header.rows;
     z->data.last = &z->data.rows;
   }
@@ -243,7 +246,7 @@ static int zsvtabConnect(
   zsvTable *pNew = NULL;
   int rc = SQLITE_OK;        /* Result code from this routine */
   static const char *azParam[] = {
-     "filename", "max_columns" // , "data", "schema",
+     "filename", "max_columns"
   };
   char *azPValue[1];         /* Parameter values */
 # define CSV_FILENAME (azPValue[0])
@@ -416,7 +419,6 @@ static int zsvtabDisconnect(sqlite3_vtab *pVtab){
 ** Constructor for a new zsvTable cursor object.
 */
 static int zsvtabOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
-  //  zsvTable *pTab = (zsvTable*)p;
   (void)(p);
   struct zsvCursor *pCur = sqlite3_malloc64(sizeof(*pCur));
   if( pCur==0 ) return SQLITE_NOMEM;
@@ -429,7 +431,6 @@ static int zsvtabOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
 ** Destructor for a zsvCursor.
 */
 static int zsvtabClose(sqlite3_vtab_cursor *cur){
-//  zsvCursor *pCur = (zsvCursor*)cur;
   sqlite3_free(cur);
   return SQLITE_OK;
 }
@@ -448,7 +449,6 @@ static int zsvtabFilter(
   (void)(idxStr);
   (void)(argc);
   (void)(argv);
-  // zsvCursor *pCur = (zsvCursor*)pVtabCursor;
   zsvTable *pTab = (zsvTable*)pVtabCursor->pVtab;
 
   zsvTable_clear(pTab);
@@ -458,7 +458,6 @@ static int zsvtabFilter(
   if(!(pTab->parser = zsv_new(&pTab->parser_opts)))
     return SQLITE_NOMEM;
   pTab->parser_status = zsv_parse_more(pTab->parser);
-//  return zsvtabNext(pVtabCursor);
   return SQLITE_OK;
 }
 
@@ -468,7 +467,6 @@ static int zsvtabFilter(
 ** Set the EOF marker if we reach the end of input.
 */
 static int zsvtabNext(sqlite3_vtab_cursor *cur){
-  // zsvCursor *pCur = (zsvCursor*)cur;
   zsvTable *pTab = (zsvTable*)cur->pVtab;
 
   remove_row_from_cache(&pTab->data);
@@ -485,7 +483,6 @@ static int zsvtabNext(sqlite3_vtab_cursor *cur){
 ** row of output.
 */
 static int zsvtabEof(sqlite3_vtab_cursor *cur){
-  //  zsvCursor *pCur = (zsvCursor*)cur;
   zsvTable *pTab = (zsvTable*)cur->pVtab;
   return !pTab->data.rows && pTab->parser_status == zsv_status_no_more_input;
 }
@@ -499,7 +496,6 @@ static int zsvtabColumn(
   sqlite3_context *ctx,       /* First argument to sqlite3_result_...() */
   int i                       /* Which column to return */
 ){
-  // zsvCursor *pCur = (zsvCursor*)cur;
   zsvTable *pTab = (zsvTable*)cur->pVtab;
 
   struct zsv_cell c = get_cell_from_cache(&pTab->data, i);
@@ -511,7 +507,6 @@ static int zsvtabColumn(
 ** Return the rowid for the current row.
 */
 static int zsvtabRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid){
-  // zsvCursor *pCur = (zsvCursor*)cur;
   zsvTable *pTab = (zsvTable*)cur->pVtab;
   struct zsv_vtab_cache_row *r = pTab->data.rows;
   if(r)

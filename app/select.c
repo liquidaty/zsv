@@ -527,9 +527,6 @@ const char *zsv_select_usage_msg[] =
    "  -r <prefix>: skip rows until the contents of the first cell in a row matches the specified prefix",
    "  -e <embedded lineend char>: char to replace embedded lineend. if none provided, embedded lineends are preserved",
    "      If the provided string begins with 0x, it will be interpreted as the hex representation of a string",
-//   "  --align: for each non-header row, print exactly the same number of columns as the header row",
-//   "           this is the default behavior when any specific columns are selected",
-//   "           so this option only matters when no columns are specified",
    "  -x <column>: exclude the indicated column. can be specified more than once",
    "  -N, --line-number: prefix each row with the row number",
    "  -n: provided column indexes are numbers corresponding to column positions (starting with 1), instead of names",
@@ -584,8 +581,10 @@ int MAIN(int argc, const char *argv1[]) {
   if(argc > 1 && (!strcmp(argv1[1], "-h") || !strcmp(argv1[1], "--help")))
     zsv_select_usage();
   else {
-    struct zsv_select_data data;
-    memset(&data, 0, sizeof(data));
+    struct zsv_select_data data = { 0 };
+#ifdef ZSV_EXTRAS
+    data.opts = zsv_get_default_opts();
+#endif
     data.opts.max_row_size = ZSV_ROW_MAX_SIZE_DEFAULT;
     data.opts.max_columns = ZSV_SELECT_MAX_COLS_DEFAULT;
 

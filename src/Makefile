@@ -34,6 +34,15 @@ ifeq ($(VERBOSE),1)
   CFLAGS+= ${CFLAGS_VECTORIZE_OPTIMIZED} ${CFLAGS_VECTORIZE_MISSED} ${CFLAGS_VECTORIZE_ALL}
 endif
 
+ZSV_EXTRAS=
+ifneq ($(findstring emcc,$(CC)),) # emcc
+  ZSV_EXTRAS=1
+endif
+
+ifeq ($(ZSV_EXTRAS),1)
+  CFLAGS+= -DZSV_EXTRAS
+endif
+
 ifeq ($(DEBUG),0)
   CFLAGS+= -DNDEBUG -O3
 

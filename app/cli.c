@@ -18,6 +18,7 @@
 #include <zsv/ext.h>
 #include "cli_internal.h"
 #include "cli_const.h"
+#include "cli_export.h"
 
 struct cli_config {
   struct zsv_ext *extensions;
@@ -184,6 +185,9 @@ int cli_args_to_opts(int argc, const char *argv[],
                      int *argc_out, const char ***argv_out,
                      struct zsv_opts *opts_out
                      ) {
+#ifdef ZSV_EXTRAS
+  *opts_out = zsv_get_default_opts();
+#endif
   unsigned int options_start = 1; // skip this many args before we start looking for options
   int err = 0;
   unsigned int new_argc = 0;
@@ -533,15 +537,12 @@ static const char *extension_cmd_from_arg(const char *arg) {
   return NULL;
 }
 
-
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-EMSCRIPTEN_KEEPALIVE
-int zsv(int argc, const char *argv[])
-#else
-int main(int argc, const char *argv[])
+#ifndef CLI_MAIN
+#define CLI_MAIN main
 #endif
-{
+
+ZSV_CLI_EXPORT
+int CLI_MAIN(int argc, const char *argv[]) {
   const char **alt_argv = NULL;
   struct builtin_cmd *builtin = find_builtin(argc > 1 ? argv[1] : "help");
   if(builtin) {

@@ -330,9 +330,7 @@ int MAIN(int argc, const char *argv[]) {
       return 1;
     }
 
-    struct zsv_opts opts;
-    memset(&opts, 0, sizeof(opts));
-
+    struct zsv_opts opts = zsv_get_default_opts();
     opts.cell = serialize_cell;
     opts.row = serialize_row;
     opts.overflow = serialize_overflow;

@@ -308,8 +308,7 @@ int MAIN(int argc, const char *argv[]) {
     // collect all header names so we can line them up
     unsigned i = 0;
     for(struct zsv_stack_input_file *input = data.inputs; !data.err && input; input = input->next, i++) {
-      struct zsv_opts opts;
-      memset(&opts, 0, sizeof(opts));
+      struct zsv_opts opts = zsv_get_default_opts();
       opts.row = zsv_stack_header_row;
       opts.ctx = input;
       opts.delimiter = delimiter;
@@ -382,8 +381,7 @@ int MAIN(int argc, const char *argv[]) {
     // process data
     for(struct zsv_stack_input_file *input = data.inputs; input && !data.err; input = input->next, i++) {
       if(input->headers_done) {
-        struct zsv_opts opts;
-        memset(&opts, 0, sizeof(opts));
+        struct zsv_opts opts = zsv_get_default_opts();
         opts.row = zsv_stack_data_row;
         opts.ctx = input;
         if(delimiter == '\t')

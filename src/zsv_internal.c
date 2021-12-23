@@ -16,6 +16,7 @@
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/compiler.h>
 
+/*
 struct zsv_callbacks {
   void (*cell)(void *ctx, unsigned char *restrict utf8_value, size_t len);
   void (*row)(void *ctx);
@@ -23,6 +24,7 @@ struct zsv_callbacks {
   void (*error)(void *ctx, enum zsv_status status, const unsigned char *err_msg, size_t err_msg_len, unsigned char bad_c, size_t cum_scanned_length);
   void *ctx;
 };
+*/
 
 struct zsv_row {
   size_t used, allocated, overflow;
@@ -61,6 +63,10 @@ struct zsv_scanner {
   size_t old_bytes_read; // only non-zero if we must shift upon next parse_more()
 
   const char *insert_string;
+
+#ifdef ZSV_EXTRAS
+  size_t progress_cum_row_count; /* total number of rows read */
+#endif
 
   unsigned char checked_bom:1;
   unsigned char free_buff:1;
@@ -143,16 +149,22 @@ __attribute__((always_inline)) static inline void cell1(struct zsv_scanner * sca
 }
 
 __attribute__((always_inline)) static inline char row1(struct zsv_scanner *scanner) {
-  if(UNLIKELY(scanner->row.overflow)) {
+  if(VERY_UNLIKELY(scanner->abort))
+    return 1;
+  if(VERY_UNLIKELY(scanner->row.overflow)) {
     fprintf(stderr, "Warning: number of columns (%zu) exceeds row max (%zu)\n",
             scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
     scanner->row.overflow = 0;
   }
-  if(scanner->opts.row) {
+  if(scanner->opts.row)
     scanner->opts.row(scanner->opts.ctx);
-    if(VERY_UNLIKELY(scanner->abort))
-      return 1;
+# ifdef ZSV_EXTRAS
+  if(VERY_UNLIKELY(scanner->opts.progress.frequency
+                   && ++scanner->progress_cum_row_count % scanner->opts.progress.frequency == 0)) {
+    if(scanner->opts.progress.callback)
+      scanner->abort = scanner->opts.progress.callback(scanner->opts.progress.ctx, scanner->progress_cum_row_count);
   }
+# endif
   scanner->have_cell = 0;
   if(scanner->row.used)
     scanner->row.used = 0;

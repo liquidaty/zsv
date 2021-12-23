@@ -25,4 +25,5 @@ int cli_args_to_opts(int argc, const char *argv[],
                      int *argc_out, const char ***argv_out,
                      struct zsv_opts *opts_out
                      );
+
 #endif

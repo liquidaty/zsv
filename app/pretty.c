@@ -155,10 +155,7 @@ static struct zsv_cached_row *zsv_pretty_dupe_row(zsv_parser parser) {
 
 struct zsv_pretty_data {
   int err;
-//  zsv_row row;
   size_t row_ix;
-
-  struct zsv_opts parse_opts;
   zsv_parser parser;
   enum zsv_status parser_status;
 
@@ -559,6 +556,7 @@ static struct zsv_pretty_data * zsv_pretty_init(struct zsv_pretty_opts *opts,
   if(!data)
     return NULL;
 
+  struct zsv_opts zsv_opts = zsv_get_default_opts();
   data->ignore_header_lengths = opts->ignore_header_lengths;
   data->markdown = opts->markdown;
   data->markdown_pad = opts->markdown_pad;
@@ -569,10 +567,10 @@ static struct zsv_pretty_data * zsv_pretty_init(struct zsv_pretty_opts *opts,
   else if(!(data->line.max = get_console_width()))
     data->line.max = ZSV_PRETTY_DEFAULT_LINE_MAX_WIDTH;
 
-  data->parse_opts.row = zsv_pretty_row;
-  data->parse_opts.ctx = data;
-  data->parse_opts.stream = in;
-  data->parser = zsv_new(&data->parse_opts);
+  zsv_opts.row = zsv_pretty_row;
+  zsv_opts.ctx = data;
+  zsv_opts.stream = in;
+  data->parser = zsv_new(&zsv_opts);
 
   data->write = (size_t (*)(const void *, size_t, size_t, void *))fwrite;
   data->write_arg = opts->out ? opts->out : stdout;
@@ -605,8 +603,7 @@ int MAIN(int argc, const char *argv[]) {
     return 0;
   }
 
-  struct zsv_pretty_opts opts;
-  memset(&opts, 0, sizeof(opts));
+  struct zsv_pretty_opts opts = { 0 };
   opts.line_width_max = ZSV_PRETTY_DEFAULT_LINE_MAX_WIDTH;
   opts.column_width_min = ZSV_PRETTY_DEFAULT_COLUMN_MIN_WIDTH;
   opts.column_width_max = ZSV_PRETTY_DEFAULT_COLUMN_MAX_WIDTH;

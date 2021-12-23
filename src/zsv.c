@@ -212,3 +212,24 @@ ZSV_EXPORT
 size_t zsv_cum_scanned_length(zsv_parser parser) {
   return parser->cum_scanned_length + parser->scanned_length + (parser->had_bom ? strlen(ZSV_BOM) : 0);
 }
+
+#ifdef ZSV_EXTRAS
+
+static struct zsv_opts zsv_default_opts = { 0 };
+
+ZSV_EXPORT
+struct zsv_opts zsv_get_default_opts() {
+  return zsv_default_opts;
+}
+
+ZSV_EXPORT void zsv_set_default_opts(struct zsv_opts opts) {
+  zsv_default_opts = opts;
+}
+
+ZSV_EXPORT
+void zsv_set_default_progress_callback(zsv_progress_callback cb, void *ctx, size_t frequency) {
+  zsv_default_opts.progress.callback = cb;
+  zsv_default_opts.progress.ctx = ctx;
+  zsv_default_opts.progress.frequency = frequency;
+}
+#endif

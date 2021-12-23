@@ -28,8 +28,8 @@ static inline char UTF8_charLenC_noerr(int c) {
 }
 
 static struct zsv_csv_writer_options zsv_csv_writer_default_opts = { 0 };
-void zsv_writer_set_default_opts(struct zsv_csv_writer_options *opts) {
-  zsv_csv_writer_default_opts = *opts;
+void zsv_writer_set_default_opts(struct zsv_csv_writer_options opts) {
+  zsv_csv_writer_default_opts = opts;
 }
 
 struct zsv_csv_writer_options zsv_writer_get_default_opts() {

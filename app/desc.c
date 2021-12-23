@@ -527,9 +527,7 @@ static void zsv_desc_cleanup(struct zsv_desc_data *data) {
 #define ZSV_DESC_TMPFN_TEMPLATE "zsv_desc_XXXXXXXXXXXX"
 
 static void zsv_desc_execute(struct zsv_desc_data *data) {
-  struct zsv_opts opts;
-  memset(&opts, 0, sizeof(opts));
-
+  struct zsv_opts opts = zsv_get_default_opts();
   opts.cell = zsv_desc_cell;
   opts.row = zsv_desc_row;
   opts.overflow = zsv_desc_overflow;
