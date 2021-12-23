@@ -79,7 +79,7 @@ else
 endif
 
 ifeq ($(DEBUG),0)
-  CFLAGS+= -O3 -DNDEBUG ${CFLAGS_AVX2} -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -ftree-vectorize ${CFLAGS_OPT}
+  CFLAGS+= -O3 -DNDEBUG -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -ftree-vectorize ${CFLAGS_OPT}
 
   ifeq ($(PGO),1)
     CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4
@@ -114,8 +114,9 @@ ifneq ($(findstring emcc,$(CC)),) # emcc
   ifeq ($(NO_THREADING),0)
     LDFLAGS+=-pthread
   endif
-else
-    LDFLAGS+=-lpthread # Linux explicitly requires
+else # not emcc
+  CFLAGS+= ${CFLAGS_AVX2}
+  LDFLAGS+=-lpthread # Linux explicitly requires
 endif
 UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
 

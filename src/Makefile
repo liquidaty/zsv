@@ -28,7 +28,7 @@ ifeq ($(WIN),)
 endif
 
 CFLAGS+= ${CFLAG_O} ${CFLAGS_OPT}
-CFLAGS+= ${CFLAGS_AUTO} ${CFLAGS_AVX2}
+CFLAGS+= ${CFLAGS_AUTO}
 
 ifeq ($(VERBOSE),1)
   CFLAGS+= ${CFLAGS_VECTORIZE_OPTIMIZED} ${CFLAGS_VECTORIZE_MISSED} ${CFLAGS_VECTORIZE_ALL}
@@ -37,6 +37,8 @@ endif
 ZSV_EXTRAS=
 ifneq ($(findstring emcc,$(CC)),) # emcc
   ZSV_EXTRAS=1
+else # not emcc
+  CFLAGS+= ${CFLAGS_AVX2}
 endif
 
 ifeq ($(ZSV_EXTRAS),1)
