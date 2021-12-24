@@ -139,4 +139,33 @@ zsv_opts_new(
  */
 ZSV_EXPORT void zsv_opts_delete(struct zsv_opts *);
 
+#  ifdef ZSV_EXTRAS
+/**
+ * set or get default parser options
+ */
+void zsv_set_default_opts(struct zsv_opts);
+
+struct zsv_opts zsv_get_default_opts();
+
+/**
+ * set the default option progress callback (e.g. from wasm where `struct zsv_opts`
+ * cannot be independently accessed)
+ * @param cb callback to call
+ * @param ctx pointer passed to callback
+ * @param frequency number of rows to parse between progress calls
+ */
+void zsv_set_default_progress_callback(zsv_progress_callback cb, void *ctx, size_t rows_interval, unsigned int seconds_interval);
+
+/**
+ * set the default option completed callback (e.g. from wasm where `struct zsv_opts`
+ * cannot be independently accessed)
+ * @param cb callback to call
+ * @param ctx pointer passed to callback
+ */
+void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx);
+
+#  else
+#   define zsv_get_default_opts() { 0 }
+#  endif
+
 #endif

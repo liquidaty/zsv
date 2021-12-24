@@ -69,24 +69,3 @@ static int csv_string_parameter(
   csv_dequote(*pzVal);
   return 1;
 }
-
-/* Return 0 if the argument is false and 1 if it is true.  Return -1 if
-** we cannot really tell.
-*/
-static int csv_boolean(const char *z){
-  if( sqlite3_stricmp("yes",z)==0
-   || sqlite3_stricmp("on",z)==0
-   || sqlite3_stricmp("true",z)==0
-   || (z[0]=='1' && z[1]==0)
-  ){
-    return 1;
-  }
-  if( sqlite3_stricmp("no",z)==0
-   || sqlite3_stricmp("off",z)==0
-   || sqlite3_stricmp("false",z)==0
-   || (z[0]=='0' && z[1]==0)
-  ){
-    return 0;
-  }
-  return -1;
-}

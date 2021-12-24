@@ -169,8 +169,12 @@ __attribute__((always_inline)) static inline char row1(struct zsv_scanner *scann
       } else
         ok = 0;
     }
-    if(ok && scanner->opts.progress.callback)
+    if(ok && scanner->opts.progress.callback) {
+#  if defined(__EMSCRIPTEN__) && defined(ASYNCIFY)
+      emscripten_sleep(0);
       scanner->abort = scanner->opts.progress.callback(scanner->opts.progress.ctx, scanner->progress.cum_row_count);
+#  endif // __EMSCRIPTEN__ + ASYNCIFY
+    }
   }
 # endif
   if(VERY_UNLIKELY(scanner->abort))
@@ -374,19 +378,6 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
   // from doing this until the next parse_more() call, so that the entirety
   // of all rows parsed thus far are still available until that next call
   scanner->old_bytes_read = bytes_read;
-  return zsv_status_ok;
-}
-
-enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
-  if(!scanner->finished) {
-    scanner->finished = 1;
-    if(scanner->scanned_length > scanner->cell_start)
-      cell1(scanner, scanner->buff.buff + scanner->cell_start,
-            scanner->scanned_length - scanner->cell_start, 1);
-    if(scanner->have_cell)
-      if(row1(scanner))
-        return zsv_status_cancelled;
-  }
   return zsv_status_ok;
 }
 

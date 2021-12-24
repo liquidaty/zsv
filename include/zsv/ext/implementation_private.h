@@ -30,16 +30,6 @@ ZSV_EXT_EXPORT
 const char *zsv_ext_id();
 
 /**
- * Return the module commands (excluding the module id prefix), terminated
- * with a NULL
- *
- * For example, to implement sub-commands "my-echo" and "my-count",
- * this function should return {"echo","count",NULL}
-xxxZxxSV_EXT_EXPORT
-const char **zsv_ext_commands();
- */
-
-/**
  * Initialize your module
  *
  * Called once, when your library is loaded
@@ -50,21 +40,6 @@ const char **zsv_ext_commands();
 ZSV_EXT_EXPORT
 enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *callbacks, zsv_execution_context ctx);
 
-/**
- * Run a command
- *
- * Required. Called by ZSV when a user enters a subcommand that is
- * prefixed by your module id followed by a dash
- *
- * @param context Execution context
- * @param argc Number of arguments
- * @param argv Arguments
- * @return Zero on success, non-zero on fail
-
-ZxxxSV_EXT_EXPORT
-xxxenum zsv_ext_status zsv_ext_main(zsv_execution_context context, int argc, const char *argv[]);
-
-*/
 /**
  * Get your extension's internal error code
  *

@@ -1,4 +1,4 @@
-M# Copyright (C) zsv contributors. All rights reserved.
+# Copyright (C) zsv contributors. All rights reserved.
 #
 # Makefile for use with GNU make
 
@@ -46,6 +46,7 @@ else
   CFLAGS += -g
 endif
 
+THIS_LIB_BASE=$(shell cd ../.. && pwd)
 CCBN=$(shell basename ${CC})
 EXTENSION_ID=xx
 BUILD_DIR=${THIS_MAKEFILE_DIR}/build/${BUILD_SUBDIR}/${CCBN}
@@ -61,6 +62,8 @@ endif
 
 UTILS1+= # put any zsv utils here
 UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
+
+CFLAGS+= -I${THIS_LIB_BASE}/include
 
 all: ${TARGET}
 
