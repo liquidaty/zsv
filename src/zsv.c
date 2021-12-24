@@ -175,6 +175,7 @@ zsv_parser zsv_new(struct zsv_opts *opts) {
 
 ZSV_EXPORT
 enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
+  enum zsv_status stat = zsv_status_ok;
   if(!scanner->finished) {
     scanner->finished = 1;
     if(scanner->scanned_length > scanner->cell_start)
@@ -182,9 +183,13 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
             scanner->scanned_length - scanner->cell_start, 1);
     if(scanner->have_cell)
       if(row1(scanner))
-        return zsv_status_cancelled;
+        stat = zsv_status_cancelled;
+#ifdef ZSV_EXTRAS
+    if(scanner->opts.completed.callback)
+      scanner->opts.completed.callback(scanner->opts.completed.ctx, stat);
+#endif
   }
-  return zsv_status_ok;
+  return stat;
 }
 
 ZSV_EXPORT
