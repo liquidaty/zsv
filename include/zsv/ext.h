@@ -90,9 +90,12 @@ struct zsv_ext_callbacks {
   void (*ext_set_context)(zsv_execution_context ctx, void *private_context);
   void *(*ext_get_context)(zsv_execution_context ctx);
 
-  void (*ext_set_parser)(zsv_execution_context ctx, zsv_parser parser);
   zsv_parser (*ext_get_parser)(zsv_execution_context ctx);
 
+  /**
+   * To add an extension command, invoke `ext_add_command`, passing it your command's
+   * handler function as a callback with a `zsv_ext_main` signature
+   */
   enum zsv_ext_status (*ext_add_command)(zsv_execution_context ctx,
                                          const char *id, const char *help,
                                          zsv_ext_main main);

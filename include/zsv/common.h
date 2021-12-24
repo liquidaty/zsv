@@ -67,6 +67,13 @@ typedef size_t (*zsv_generic_read)(void * restrict, size_t n, size_t size, void 
  * @return zero to continue processing, non-zero to cancel parse
  */
 typedef int (*zsv_progress_callback)(void *ctx, size_t cumulative_row_count);
+
+/**
+ * completed callback function signature
+ * @param context pointer set in parser opts.progress.ctx
+ * @param exit code
+ */
+typedef void (*zsv_completed_callback)(void *ctx, int code);
 # endif
 
 struct zsv_opts {
@@ -158,27 +165,11 @@ struct zsv_opts {
     zsv_progress_callback callback;
     void *ctx;
   } progress;
+  struct {
+    zsv_completed_callback callback;
+    void *ctx;
+  } completed;
 # endif
 };
-
-#  ifdef ZSV_EXTRAS
-/**
- * set or get default parser options
- */
-void zsv_set_default_opts(struct zsv_opts);
-
-struct zsv_opts zsv_get_default_opts();
-
-/**
- * set the default option progress callback (e.g. from wasm where `struct zsv_opts`
- * cannot be independently accessed set
- * @param cb callback to call
- * @param ctx pointer passed to callback
- * @param frequency number of rows to parse between progress calls
- */
-void zsv_set_default_progress_callback(zsv_progress_callback cb, void *ctx, size_t rows_interval, unsigned int seconds_interval);
-#  else
-#   define zsv_get_default_opts() { 0 }
-#  endif
 
 #endif

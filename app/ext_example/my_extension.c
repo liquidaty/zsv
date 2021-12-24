@@ -90,7 +90,7 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
     NULL
   };
   zsv_cb.ext_set_thirdparty(ctx, third_party_licenses);
-  zsv_cb.ext_add_command(ctx, "count", "xprint the number of rows", count_main);
+  zsv_cb.ext_add_command(ctx, "count", "print the number of rows", count_main);
   zsv_cb.ext_add_command(ctx, "echo", "print the input data back to stdout", echo_main);
   return zsv_ext_status_ok;
 }
@@ -169,6 +169,8 @@ static void echo_rowhandler(void *ctx) {
  * perform any final steps after all data has been processed
  */
 static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const char *argv[]) {
+  (void)(argc);
+  (void)(argv);
   /* initialize private data */
   struct my_data data;
   memset(&data, 0, sizeof(data));

@@ -174,6 +174,20 @@ zsv_parser zsv_new(struct zsv_opts *opts) {
 }
 
 ZSV_EXPORT
+enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
+  if(!scanner->finished) {
+    scanner->finished = 1;
+    if(scanner->scanned_length > scanner->cell_start)
+      cell1(scanner, scanner->buff.buff + scanner->cell_start,
+            scanner->scanned_length - scanner->cell_start, 1);
+    if(scanner->have_cell)
+      if(row1(scanner))
+        return zsv_status_cancelled;
+  }
+  return zsv_status_ok;
+}
+
+ZSV_EXPORT
 enum zsv_status zsv_delete(zsv_parser parser) {
   if(parser) {
     if(parser->free_buff && parser->buff.buff)
@@ -240,4 +254,11 @@ void zsv_set_default_progress_callback(zsv_progress_callback cb, void *ctx, size
   zsv_default_opts.progress.rows_interval = rows_interval;
   zsv_default_opts.progress.seconds_interval = seconds_interval;
 }
+
+ZSV_EXPORT
+void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx) {
+  zsv_default_opts.completed.callback = cb;
+  zsv_default_opts.completed.ctx = ctx;
+}
+
 #endif

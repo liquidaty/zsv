@@ -188,10 +188,10 @@ int cli_args_to_opts(int argc, const char *argv[],
 #ifdef ZSV_EXTRAS
   *opts_out = zsv_get_default_opts();
 #endif
-  unsigned int options_start = 1; // skip this many args before we start looking for options
+  int options_start = 1; // skip this many args before we start looking for options
   int err = 0;
-  unsigned int new_argc = 0;
   const char **new_argv = calloc(argc, sizeof(*new_argv)); // maximum number of returned args = argc
+  int new_argc = 0;
   for(; new_argc < options_start && new_argc < argc; new_argc++)
     new_argv[new_argc] = argv[new_argc];
 
@@ -440,7 +440,6 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
 
     e->ext_set_context = ext_set_context;
     e->ext_get_context = ext_get_context;
-    e->ext_set_parser = ext_set_parser;
     e->ext_get_parser = ext_get_parser;
     e->ext_add_command = ext_add_command;
 
@@ -748,8 +747,9 @@ static struct zsv_ext *zsv_ext_new(const char *dl_name, const char *id, char ver
     tmp.ok = 0;
   } else if(h && tmp.ok) {
     if(verbose) {
-      const char *image_name = dl_name_from_func((const void *)tmp.module.id);
+      char *image_name = dl_name_from_func((const void *)tmp.module.id);
       fprintf(stderr, "Loaded %s from %s\n", dl_name, image_name ? image_name : "unknown location");
+      free(image_name);
     }
   }
   tmp.dl = h;

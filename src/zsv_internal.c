@@ -377,19 +377,6 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
   return zsv_status_ok;
 }
 
-enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
-  if(!scanner->finished) {
-    scanner->finished = 1;
-    if(scanner->scanned_length > scanner->cell_start)
-      cell1(scanner, scanner->buff.buff + scanner->cell_start,
-            scanner->scanned_length - scanner->cell_start, 1);
-    if(scanner->have_cell)
-      if(row1(scanner))
-        return zsv_status_cancelled;
-  }
-  return zsv_status_ok;
-}
-
 #define ZSV_BOM "\xef\xbb\xbf"
 
 // optional: set a filter function to filter data before it is processed
