@@ -167,7 +167,7 @@ helping, please post an issue.
 
 ### Possible enhancements and related developments
 
-* <strike>online "playground"</strike> See https://zsvhub.com/playground
+* <strike>online "playground"</strike> See https://zsvhub.com/playground/
 * optimize search; add search with hyperscan or re2 regex matching, possibly parallelize?
 * auto-generated documentation, and better documentation in general
 * Additional benchmarking. Would be great to use https://bitbucket.org/ewanhiggs/csv-game/src/master/ as a springboard to benchmarking a number of various tasks
