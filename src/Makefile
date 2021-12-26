@@ -37,7 +37,6 @@ endif
 ZSV_EXTRAS=
 ifneq ($(findstring emcc,$(CC)),) # emcc
   ZSV_EXTRAS=1
-  CFLAGS+= -DASYNCIFY
 else # not emcc
   CFLAGS+= ${CFLAGS_AVX2}
 endif
