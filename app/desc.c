@@ -131,12 +131,8 @@ static void zsv_desc_column_unique_values_delete(zsv_desc_unique_key **tree) {
   }
 }
 
-#ifndef FREEIF
-#define FREEIF(x) if(x) free(x), x = NULL
-#endif
-
 static void zsv_desc_column_data_free(struct zsv_desc_column_data *e) {
-  FREEIF(e->name);
+  free(e->name);
   zsv_desc_column_unique_values_delete(&e->unique_values.key);
   zsv_desc_column_unique_values_delete(&e->unique_values_ci.key);
   zsv_desc_string_list_free(e->examples);
@@ -153,7 +149,7 @@ static void zsv_desc_column_names_delete(struct zsv_desc_column_name **p) {
     struct zsv_desc_column_name *next;
     for(struct zsv_desc_column_name *e = *p; e; e = next) {
       next = e->next;
-      FREEIF(e->name);
+      free(e->name);
       free(e);
     }
     *p = NULL;
@@ -169,12 +165,10 @@ enum zsv_desc_status {
 };
 
 struct zsv_desc_data {
-  FILE *in;
+  struct zsv_opts opts;
   const char *input_filename;
   zsv_csv_writer csv_writer;
 
-  size_t (*write_func)(const void *, size_t, size_t, void *);
-  void *write_arg;
   char header_only;
   char *filename;
 
@@ -209,7 +203,7 @@ struct zsv_desc_data {
   char *overflowed;
   size_t overflow_count;
 
-  unsigned char verbose:1;
+  unsigned char quick:1;
   unsigned char _:7;
 };
 
@@ -299,7 +293,7 @@ static void zsv_desc_print(struct zsv_desc_data *data) {
           char *tmp;
           asprintf(&tmp, "%s (%zu)", sl->value, sl->count + 1);
           zsv_writer_cell_s(data->csv_writer, 0, (unsigned char *)tmp, 1);
-          FREEIF(tmp);
+          free(tmp);
         } else
           zsv_writer_cell_s(data->csv_writer, 0, sl->value, 1);
       }
@@ -309,10 +303,11 @@ static void zsv_desc_print(struct zsv_desc_data *data) {
 
 static void zsv_desc_data_init(struct zsv_desc_data *data) {
   memset(data, 0, sizeof(*data));
+#ifdef ZSV_EXTRAS
+  data->opts = zsv_get_default_opts();
+#endif
   data->max_cols = ZSV_DESC_MAX_COLS_DEFAULT; // default
   data->column_names_tail = &data->column_names;
-  data->write_func = (size_t (*)(const void *, size_t, size_t, void *))fwrite;
-  data->write_arg = stdout;
   data->malformed_utf8_replace = "?";
 }
 
@@ -374,7 +369,7 @@ static void zsv_desc_cell(void *ctx, unsigned char *restrict utf8_value, size_t 
             col->lengths.lo = len;
           if(len > col->lengths.hi)
             col->lengths.hi = len;
-          if(col->examples_count < ZSV_DESC_MAX_EXAMPLE_COUNT) {
+          if(col->examples_count < ZSV_DESC_MAX_EXAMPLE_COUNT || !data->quick) {
             char already_have = 0;
             if(!col->examples_tail)
               col->examples_tail = &col->examples;
@@ -385,7 +380,7 @@ static void zsv_desc_cell(void *ctx, unsigned char *restrict utf8_value, size_t 
                 sl->count++;
               }
             }
-            if(!already_have) {
+            if(!already_have && col->examples_count < ZSV_DESC_MAX_EXAMPLE_COUNT) {
               struct zsv_desc_string_list *sl;
               if((sl = *col->examples_tail = calloc(1, sizeof(*sl)))) {
                 col->examples_tail = &sl->next;
@@ -464,7 +459,7 @@ static void zsv_desc_row(void *ctx) {
     if(data->header_only)
       data->done = 1;
   } else {
-    if(data->row_count % 50000 == 0 && data->verbose)
+    if(data->row_count % 50000 == 0 && data->opts.verbose)
       fprintf(stderr, "%zu rows read\n", data->row_count);
   }
 
@@ -485,13 +480,11 @@ const char *zsv_desc_usage_msg[] =
    "  -b, --with-bom : output with BOM",
    "  -C <maximum_number_of_columns>: defaults to 1024",
    "  -H: only output header names",
-   "  -L, --max-cell-length <n>: defaults to 8190 (min 256). If this is limit is reached",
-   "    for the length of any single cell value, the cell content will be truncated",
+   "  -q, --quick: minimize example counts,",
    "  -a, --all: calculate all metadata (for now, this only adds uniqueness info)",
    "  -u, --malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8 input",
    "     (default value is '?')",
    "  -o <output filename>: name of file to save output to (defaults to stdout)",
-   "  -v, --verbose: verbose output",
    NULL
   };
 
@@ -510,11 +503,12 @@ static void zsv_desc_cleanup(struct zsv_desc_data *data) {
   }
 
   zsv_desc_column_names_delete(&data->column_names);
-  FREEIF(data->err_msg);
+  free(data->err_msg);
+  data->err_msg = NULL;
 
-  if(data->in && data->in != stdin) {
-    fclose(data->in);
-    data->in = NULL;
+  if(data->opts.stream && data->opts.stream != stdin) {
+    fclose(data->opts.stream);
+    data->opts.stream = NULL;
   }
 
   if(data->overflowed) {
@@ -527,17 +521,14 @@ static void zsv_desc_cleanup(struct zsv_desc_data *data) {
 #define ZSV_DESC_TMPFN_TEMPLATE "zsv_desc_XXXXXXXXXXXX"
 
 static void zsv_desc_execute(struct zsv_desc_data *data) {
-  struct zsv_opts opts = zsv_get_default_opts();
-  opts.cell = zsv_desc_cell;
-  opts.row = zsv_desc_row;
-  opts.overflow = zsv_desc_overflow;
-  opts.ctx = data;
-  opts.max_row_size = data->max_row_size;
+  data->opts.cell = zsv_desc_cell;
+  data->opts.row = zsv_desc_row;
+  data->opts.overflow = zsv_desc_overflow;
+  data->opts.ctx = data;
 
   if(!data->max_enum)
     data->max_enum = ZSV_DESC_MAX_ENUM_DEFAULT;
-  opts.stream = data->in;
-  data->parser = zsv_new(&opts);
+  data->parser = zsv_new(&data->opts);
 
   FILE *input_temp_file = NULL;
   
@@ -575,22 +566,15 @@ int MAIN(int argc, const char *argv[]) {
         if(++arg_i >= argc)
           data.err = zsv_printerr(zsv_desc_status_error,
                                   "%s option requires a filename", argv[arg_i-1]);
-        else if(!(data.write_arg = fopen(argv[arg_i], "wb")))
+        else if(!(writer_opts.stream = fopen(argv[arg_i], "wb")))
           data.err = zsv_printerr(zsv_desc_status_error,
                                   "Unable to open for write: %s", argv[arg_i]);
       } else if(!strcmp(argv[arg_i], "-a") || !strcmp(argv[arg_i], "--all"))
         data.flags = 0xff;
+      else if(!strcmp(argv[arg_i], "-q") || !strcmp(argv[arg_i], "--quick"))
+        data.quick = 1;
       else if(!strcmp(argv[arg_i], "-H"))
         data.header_only = 1;
-      else if(!strcmp(argv[arg_i], "-L") || !strcmp(argv[arg_i], "--max-row-length")) {
-        if(++arg_i >= argc)
-          data.err = zsv_printerr(zsv_desc_status_error, "--max-row-length option requires parameter");
-        else if(atoi(argv[arg_i]) <= 256)
-          data.err = zsv_printerr(zsv_desc_status_error, "--max-row-length should be positive integer > 256 (got %s)", argv[arg_i]);
-        else
-          data.max_row_size = atoi(argv[arg_i]);
-      } else if(!strcmp(argv[arg_i], "-v") || !strcmp(argv[arg_i], "--verbose"))
-        data.verbose = 1;
       else if(!strcmp(argv[arg_i], "-u") || !strcmp(argv[arg_i], "--malformed-utf8-replacement")) {
         arg_i++;
         if(!(arg_i < argc))
@@ -608,15 +592,15 @@ int MAIN(int argc, const char *argv[]) {
       }
       else {
         int err = 0;
-        if(data.in) {
+        if(data.opts.stream) {
           err = 1;
           fprintf(stderr, "Input file specified twice, or unrecognized argument: %s\n", argv[arg_i]);
-        } else if(!(data.in = fopen(argv[arg_i], "rb"))) {
+        } else if(!(data.opts.stream = fopen(argv[arg_i], "rb"))) {
           err = 1;
           fprintf(stderr, "Could not open for reading: %s\n", argv[arg_i]);
         }
 
-        if(data.in && data.in != stdin)
+        if(data.opts.stream && data.opts.stream != stdin)
           data.input_filename = argv[arg_i];
         if(err)
           data.err = err;
@@ -628,11 +612,11 @@ int MAIN(int argc, const char *argv[]) {
     if(!data.err && !(data.csv_writer = zsv_writer_new(&writer_opts)))
       data.err = zsv_printerr(zsv_desc_status_error, "Unable to create csv writer");
 
-    if(!data.in) {
+    if(!data.opts.stream) {
 #ifdef NO_STDIN
       data.err = zsv_printerr(zsv_desc_status_error, "Please specify an input file");
 #else
-      data.in = stdin;
+      data.opts.stream = stdin;
 #endif
     }
 

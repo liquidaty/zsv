@@ -64,11 +64,13 @@ ifneq ($(LEAKS),)
   PREFIX=leaks 2>/dev/null --atExit --
   REDIRECT=>/tmp/leaks.txt; grep leak /tmp/leaks.txt | grep bytes \# # stop processing at this step
   REDIRECT1=>/tmp/leaks.txt; grep leak /tmp/leaks.txt | grep bytes ) \# # stop processing at this step
+  REDIRECT2=> /tmp/leaks.txt; grep leak /tmp/leaks.txt | grep bytes ) \# # stop processing at this step
   CMP=\# # don't run this step
 else
   PREFIX=
   REDIRECT=>
   REDIRECT1=>
+  REDIRECT2=-o
   CMP=cmp
 endif
 
@@ -146,8 +148,16 @@ test-stack2: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${PREFIX} $< ${TEST_DATA_DIR}/stack2-[12].csv ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-2tsv test-sql test-2json test-serialize test-flatten test-pretty test-desc : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+test-2tsv test-sql test-2json test-serialize test-flatten test-pretty : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_NAME}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out && \
 	${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+	@${TEST_NAME}
+	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
+	(${PREFIX} $< -q < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out && \
+	${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+	@(${PREFIX} $< < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT2} /tmp/$@.out2 && \
+	${CMP} /tmp/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL})

@@ -1,0 +1,174 @@
+#,Column name,Min Length,Max Length,Count,Blank %,Example 1,Example 2,Example 3,Example 4,Example 5
+1,Loan Number,9,10,511,0.00,978000019,978000078,1000001102,1010007709,1030004301
+2,useful data --> useful data -->,15,15,511,99.61,useful data --> (2)
+3,Primary Servicer,7,7,511,0.00,1002338 (24),1000383 (279),1000634 (201),1000200 (7)
+4,ServicingFee %,6,7,511,0.00,0.0025 (506),0.00375 (5)
+5,ServicingFee? Flatdollar,,,511,100.00
+6,ServicingAdvance Methodology,,,511,100.00
+7,Originator,7,7,511,0.00,1002338 (24),9999999 (165),1000536 (30),1008498 (26),1001105 (29)
+8,Loan Group,7,7,511,0.00,Group 1 (219),Group 2 (292)
+9,Amortization Type,1,1,511,0.00,2 (99),1 (412)
+10,Lien Position,1,1,511,0.00,1 (511)
+11,HELOC Indicator,1,1,511,0.00,0 (511)
+12,Loan Purpose,1,1,511,0.00,9 (316),7 (149),6 (16),3 (30)
+13,Cash Out Amount,,,511,100.00
+14,Total Origination and Discount Points,,,511,100.00
+15,Covered/High Cost Loan Indicator,,,511,100.00
+16,Relocation Loan Indicator,,,511,100.00
+17,Broker Indicator,,,511,100.00
+18,Channel,1,1,511,0.00,1 (370),2 (110),5 (31)
+19,Escrow Indicator,1,2,511,0.00,0 (318),4 (159),1 (29),2,5 (3)
+20,Senior Loan Amount(s),1,1,511,0.00,0 (511)
+21,Loan Type of Most Senior Lien,,,511,100.00
+22,Hybrid PeriodofMost Senior Lien (inmonths),,,511,100.00
+23,Neg Am Limit ofMost Senior Lien,,,511,100.00
+24,Junior MortgageBalance,1,7,511,0.00,0 (468),280000,57500,250000 (3),430000
+25,Origination Date ofMost Senior Lien,,,511,100.00
+26,Origination Date,8,8,511,0.00,20111025,20110707,20111024,20121023 (10),20120911 (4)
+27,Original LoanAmount,5,7,511,0.00,1000000 (18),502500,715000 (3),694000 (4),770000
+28,Original InterestRate,4,7,511,0.00,0.042,0.0415,0.04625 (11),0.035 (25),0.0375 (38)
+29,OriginalAmortization Term,3,3,511,0.00,360 (390),180 (114),120 (6),240
+30,Original Term toMaturity,3,3,511,0.00,360 (390),180 (114),120 (6),240
+31,First Payment Dateof Loan,8,8,511,0.00,20111201 (4),20110901 (5),20121201 (152),20121101 (50),20120301 (7)
+32,Interest Type Indicator,1,1,511,0.00,1 (511)
+33,Original Interest Only Term,1,3,511,0.00,120 (20),0 (491)
+34,Buy Down Period,1,1,511,0.00,0 (511)
+35,HELOC Draw Period,,,511,100.00
+36,Current Loan Amount,6,12,511,0.00,"1,000,000.00 (2)","493,213.96","708,939.19","685,162.93","760,195.16"
+37,Current Interest Rate,4,7,511,0.00,0.042,0.0415,0.04625 (8),0.035 (25),0.0375 (38)
+38,Current Payment Amount Due,4,8,511,0.00,3500,3458.33,2583.55,5111.41,4961.28
+39,Interest Paid Through Date,8,8,511,0.00,20130101 (511)
+40,Current Payment Status,1,1,511,0.00,0 (511)
+41,Index Type,2,2,511,80.63,35 (7),39 (92)
+42,ARM Look-backDays,2,2,511,80.63,45 (98),15
+43,Gross Margin,6,7,511,80.63,0.01625 (6),0.0275,0.0225 (91),0.0145
+44,ARM Round Flag,1,1,511,80.63,3 (99)
+45,ARM Round Factor,7,7,511,80.63,0.00125 (99)
+46,Initial Fixed RatePeriod,2,3,511,80.63,120 (83),60 (15),84
+47,Initial Interest RateCap (Change Up),4,4,511,80.63,0.05 (99)
+48,Initial Interest RateCap (Change Down),4,4,511,80.63,0.05 (99)
+49,Subsequent InterestRate Reset Period,1,2,511,80.63,1 (7),12 (92)
+50,Subsequent InterestRate Cap (Change Down),1,4,511,80.63,0 (7),0.02 (92)
+51,Subsequent InterestRate Cap (ChangeUp),1,4,511,80.63,0 (7),0.02 (92)
+52,Lifetime MaximumRate (Ceiling),4,7,511,80.63,0.092,0.0915,0.09625 (4),0.09375 (8),0.08375 (7)
+53,Lifetime MinimumRate (Floor),5,6,511,80.63,0.029 (5),0.0275,0.0225 (91),0.0285,0.027
+54,NegativeAmortization Limit,,,511,100.00
+55,Initial NegativeAmortization RecastPeriod,,,511,100.00
+56,SubsequentNegativeAmortization RecastPeriod,,,511,100.00
+57,Initial FixedPayment Period,,,511,100.00
+58,SubsequentPayment ResetPeriod,,,511,100.00
+59,Initial PeriodicPayment Cap,,,511,100.00
+60,SubsequentPeriodic PaymentCap,,,511,100.00
+61,Initial MinimumPayment ResetPeriod,,,511,100.00
+62,SubsequentMinimum PaymentReset Period,,,511,100.00
+63,Option ARMIndicator,,,511,100.00
+64,Options at Recast,,,511,100.00
+65,Initial MinimumPayment,,,511,100.00
+66,Current MinimumPayment,,,511,100.00
+67,Prepayment PenaltyCalculation,2,2,511,95.50,99 (23)
+68,Prepayment PenaltyType,2,2,511,95.50,99 (23)
+69,Prepayment PenaltyTotal Term,1,2,511,0.00,60 (21),0 (488),48 (2)
+70,Prepayment PenaltyHard Term,,,511,100.00
+71,Primary Borrower ID,1,3,511,0.00,58,455,364,420,202
+72,Number ofMortgagedProperties,1,1,511,0.00,1 (290),3 (46),2 (137),4 (24),0 (6)
+73,Total Number ofBorrowers,,,511,100.00
+74,Self-employmentFlag,1,1,511,0.00,1 (135),0 (376)
+75,Current ?Other?Monthly Payment,,,511,100.00
+76,Length ofEmployment:Borrower,1,5,511,1.17,14 (12),15 (13),0.5 (7),11 (12),8.5 (6)
+77,Length ofEmployment: Co-Borrower,1,5,511,53.23,0 (22),3 (8),3.8,33 (2),6 (9)
+78,Years in Home,1,5,511,0.00,7 (24),0 (182),4 (17),2 (21),9 (12)
+79,FICO Model Used,1,1,511,0.00,1 (511)
+80,Most Recent FICODate,8,8,511,48.53,20121212 (34),20120928 (199),20121218,20121022 (29)
+81,Primary WageEarner OriginalFICO: Equifax,,,511,100.00
+82,Primary WageEarner OriginalFICO: Experian,,,511,100.00
+83,Primary WageEarner OriginalFICO: TransUnion,,,511,100.00
+84,Secondary WageEarner OriginalFICO: Equifax,,,511,100.00
+85,Secondary WageEarner OriginalFICO: Experian,,,511,100.00
+86,Secondary WageEarner OriginalFICO: TransUnion,,,511,100.00
+87,OriginalPrimary BorrowerFICO,3,3,511,0.00,801 (7),788 (11),762 (8),772 (3),767 (6)
+88,Most RecentPrimary BorrowerFICO,3,3,511,48.53,789 (2),788 (4),743 (4),723 (2),736
+89,Most Recent Co-Borrower FICO,,,511,100.00
+90,Most Recent FICOMethod,1,1,511,48.53,3 (64),2 (199)
+91,VantageScore:Primary Borrower,,,511,100.00
+92,VantageScore: Co-Borrower,,,511,100.00
+93,Most RecentVantageScoreMethod,,,511,100.00
+94,VantageScore Date,,,511,100.00
+95,Credit Report:Longest Trade Line,,,511,100.00
+96,Credit Report:Maximum TradeLine,,,511,100.00
+97,Credit Report:Number of TradeLines,,,511,100.00
+98,Credit Line UsageRatio,,,511,100.00
+99,Most Recent 12-month Pay History,1,1,511,0.00,0 (511)
+100,Months Bankruptcy,,,511,100.00
+101,Months Foreclosure,,,511,100.00
+102,Primary BorrowerWage Income,1,9,511,0.20,6193,8333.33,6229.17,25781.25,24723
+103,Co-Borrower WageIncome,1,9,511,0.00,0 (307),7002,7355.79,269436.19,2228.3
+104,Primary BorrowerOther Income,1,9,511,0.00,5155,10870.56,0 (401),37595.06,23934
+105,Co-Borrower OtherIncome,1,8,511,0.00,0 (491),11262.51,751,-683,1067.1
+106,All Borrower WageIncome,1,9,511,0.00,6193,15335.33,13584.96,25781.25,24723
+107,All Borrower TotalIncome,4,9,511,0.00,11348,26205.97,13584.96,25781.25,24723
+108,4506-T Indicator,1,1,511,0.00,0 (45),1 (466)
+109,Borrower IncomeVerification Level,1,1,511,0.00,5 (499),4 (12)
+110,Co-BorrowerIncome Verification,,,511,100.00
+111,BorrowerEmploymentVerification,1,1,511,0.00,2 (19),3 (492)
+112,Co-BorrowerEmploymentVerification,,,511,100.00
+113,Borrower AssetVerification,1,1,511,0.00,3 (2),4 (509)
+114,Co-Borrower AssetVerification,,,511,100.00
+115,Liquid / CashReserves,5,11,511,0.00,966841.81,4942401.6,67201.4,196542.45,652220.12
+116,Monthly Debt AllBorrowers,4,8,511,0.00,4530.12,7337.67,5879.57,8405.41,8687.54
+117,Originator DTI,3,8,511,0.00,0.3992,0.28,0.4328,0.326028,0.351395
+118,Fully Indexed Rate,,,511,100.00
+119,QualificationMethod,,,511,100.00
+120,Percentage of DownPayment fromBorrower OwnFunds,1,7,511,38.94,100 (155),0 (149),70,87.631,86.1423
+121,City,4,22,511,0.00,Vancouver,KELSO,Olympia,GIG HARBOR,MARYSVILLE
+122,State,2,2,511,0.00,WA (22),OR (4),HI,CA (195),NV (5)
+123,Postal Code,4,5,511,0.00,98661,98626,98502,98332,98271
+124,Property Type,1,2,511,0.00,2 (2),1 (347),7 (137),4 (5),3 (12)
+125,Occupancy,1,1,511,0.00,1 (484),2 (23),3 (4)
+126,Sales Price,6,9,511,67.32,1600000 (2),599000,1025000,1695000,1200000 (3)
+127,Original AppraisedProperty Value,6,7,511,0.00,1740000,1700000 (2),670000,2100000 (2),900000 (10)
+128,Original PropertyValuation Type,1,2,511,0.00,3 (510),98
+129,Original PropertyValuation Date,8,8,511,0.00,20110914,20110602,20110906,20121003 (9),20120419
+130,OriginalAutomated Valuation Model (AVM) Model Name,,,511,100.00
+131,OriginalAVM Confidence Score,,,511,100.00
+132,MostRecent Property Value2,6,7,511,88.65,1800000,860000,535000,1850000,932500
+133,MostRecent Property Valuation Type,1,2,511,88.65,9 (22),98 (5),10 (14),5 (17)
+134,MostRecent Property Valuation Date,8,8,511,88.65,20120828 (13),20120906,20120910 (4),20121201 (11),20120909 (3)
+135,MostRecent AVM ModelName,,,511,100.00
+136,MostRecent AVM Confidence Score,,,511,100.00
+137,OriginalCLTV,3,6,511,0.00,0.5747,0.8 (91),0.8358,0.4595,0.7711
+138,OriginalLTV,3,6,511,0.00,0.5747,0.625 (2),0.75 (32),0.3404,0.7711
+139,OriginalPledged Assets,1,1,511,0.00,0 (511)
+140,MortgageInsurance CompanyName,1,1,511,0.00,0 (511)
+141,Mortgage Insurance Percent,1,1,511,0.00,0 (511)
+142,MI: Lender orBorrower Paid?,,,511,100.00
+143,Pool Insurance Co.Name,,,511,100.00
+144,Pool Insurance StopLoss %,,,511,100.00
+145,MI CertificateNumber,,,511,100.00
+146,Updated DTI(Front-end),,,511,100.00
+147,Updated DTI(Back-end),,,511,100.00
+148,ModificationEffective PaymentDate,7,7,511,98.24,9/19/11,4/17/12,1/28/12,3/16/12,4/25/12
+149,Total CapitalizedAmount,,,511,100.00
+150,Total DeferredAmount,,,511,100.00
+151,Pre- ModificationInterest (Note) Rate,5,7,511,98.24,0.055 (2),0.04875 (4),0.04625 (3)
+152,Pre- Modification P&IPayment,6,7,511,98.24,5053.32,4542.31,3545.7,2646.04,2593.12
+153,Pre- ModificationInitial Interest RateChange DownwardCap,,,511,100.00
+154,Pre- ModificationSubsequent InterestRate Cap,,,511,100.00
+155,Pre- ModificationNext Interest RateChange Date,,,511,100.00
+156,Pre- Modification I/OTerm,,,511,100.00
+157,Forgiven PrincipalAmount,,,511,100.00
+158,Forgiven InterestAmount,,,511,100.00
+159,Number ofModifications,,,511,100.00
+160,Cash To/From Brrw at Closing,,,511,100.00
+161,Brrw - Yrs at in Industry,1,5,511,1.76,14 (18),15 (36),12 (23),25 (28),33 (6)
+162,CoBrrw - Yrs at in Industry,1,5,511,51.86,0 (15),4 (5),3.8,33 (2),6 (6)
+163,Junior Mortgage Drawn Amount,1,7,511,0.00,0 (468),280000,57500,130389,430000
+164,Maturity Date,8,8,511,0.00,20411101 (2),20410801 (2),20271101 (4),20271001 (14),20420201 (4)
+165,PrimaryBorrower Wage Income (Salary),1,9,511,0.00,6193,8333 (2),6229.17,25781.25,24723
+166,PrimaryBorrower Wage Income (Bonus),1,9,511,0.00,0 (439),27083.34,-1058.08,9611,2468
+167,PrimaryBorrower Wage Income (Commission),1,8,511,0.00,0 (491),37595.06,32485,6328,73769.36
+168,Co-Borrower Wage Income (Salary),1,9,511,0.00,0 (320),7002,7355.79,269436.19,2228.3
+169,Co-Borrower Wage Income (Bonus),1,7,511,0.00,0 (504),1060,66104,1976.55,634
+170,Co-Borrower Wage Income (Commission),1,8,511,0.39,0 (505),53020,10857.84,4022.71,4426.09
+171,Originator Doc Code,4,4,511,0.00,Full (511)
+172,Income Verification,9,9,511,0.00,Two Years (511)
+173,Asset Verification,9,10,511,0.00,One Month (2),Two Months (509)
