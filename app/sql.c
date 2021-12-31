@@ -12,6 +12,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/string.h>
+#include <zsv/utils/arg.h>
 
 #include <unistd.h> // unlink
 
@@ -113,18 +114,20 @@ static int create_virtual_csv_table(const char *fname, sqlite3 *db,
 #endif
 
 int MAIN(int argc, const char *argv[]) {
+  INIT_CMD_DEFAULT_ARGS();
+
   if(argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
     zsv_sql_usage();
   else {
     struct zsv_sql_data data;
     zsv_sql_data_init(&data);
-    int err = 0;
     int max_cols = 0;
     const char *input_filename = NULL;
     const char *my_sql = NULL;
     struct string_list **next_input_filename = &data.more_input_filenames;
 
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
+    int err = 0;
     for(int arg_i = 1; !err && arg_i < argc; arg_i++) {
       const char *arg = argv[arg_i];
       if(!my_sql && strlen(arg) > strlen("select ")

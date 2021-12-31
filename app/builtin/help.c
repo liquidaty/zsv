@@ -29,6 +29,7 @@ static int main_help(int argc, const char *argv[]) {
     "  -t,--tab-delim: set column delimiter to tab",
     "  -O,--other-delim: set column delimiter to other column",
     "  -q,--no-quote: turn off quote handling",
+    "  -v,--verbose: verbose output",
     "",
     "Commands:",
     "  select: extract rows/columns by name or position and perform other basic and 'cleanup' operations",

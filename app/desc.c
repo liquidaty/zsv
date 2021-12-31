@@ -10,6 +10,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/signal.h>
+#include <zsv/utils/arg.h>
 #include <zsv/utils/mem.h>
 
 #ifndef STRING_LIB_INCLUDE
@@ -301,16 +302,6 @@ static void zsv_desc_print(struct zsv_desc_data *data) {
   }
 }
 
-static void zsv_desc_data_init(struct zsv_desc_data *data) {
-  memset(data, 0, sizeof(*data));
-#ifdef ZSV_EXTRAS
-  data->opts = zsv_get_default_opts();
-#endif
-  data->max_cols = ZSV_DESC_MAX_COLS_DEFAULT; // default
-  data->column_names_tail = &data->column_names;
-  data->malformed_utf8_replace = "?";
-}
-
 static void zsv_desc_set_err(struct zsv_desc_data *data, enum zsv_desc_status err, char *msg) {
   data->err = err;
   if(msg) {
@@ -554,8 +545,14 @@ int MAIN(int argc, const char *argv[]) {
   else if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
     zsv_desc_usage();
   else {
-    struct zsv_desc_data data;
-    zsv_desc_data_init(&data);
+    struct zsv_desc_data data = { 0 };
+    INIT_CMD_DEFAULT_ARGS();
+    data.opts = zsv_get_default_opts();
+
+    int err = 0;
+    data.max_cols = ZSV_DESC_MAX_COLS_DEFAULT; // default
+    data.column_names_tail = &data.column_names;
+    data.malformed_utf8_replace = "?";
 
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
 

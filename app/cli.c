@@ -165,124 +165,13 @@ static zsv_parser ext_get_parser(zsv_execution_context ctx) {
 }
 
 static void execution_context_free(struct zsv_execution_data *d) {
-  if(d)
-    free(d->argv);
-}
-
-/**
- * str_array_index_of: return index in list, or size of list if not found
- */
-static inline int str_array_index_of(const char *list[], const char *s) {
-  int i;
-  for(i = 0; list[i] && strcmp(list[i], s); i++) ;
-  return i;
-}
-
-/**
- * see cli_cmd_internal.h
- */
-int cli_args_to_opts(int argc, const char *argv[],
-                     int *argc_out, const char ***argv_out,
-                     struct zsv_opts *opts_out
-                     ) {
-#ifdef ZSV_EXTRAS
-  *opts_out = zsv_get_default_opts();
-#endif
-  int options_start = 1; // skip this many args before we start looking for options
-  int err = 0;
-  const char **new_argv = calloc(argc, sizeof(*new_argv)); // maximum number of returned args = argc
-  int new_argc = 0;
-  for(; new_argc < options_start && new_argc < argc; new_argc++)
-    new_argv[new_argc] = argv[new_argc];
-
-  static const char *short_args = "BcrtOqv";
-  static const char *long_args[] = {
-    "buff-size",
-    "max-column-count",
-    "max-row-size",
-    "tab-delim",
-    "other-delim",
-    "no-quote",
-    "verbose",
-    NULL
-  };
-  char arg = 0;
-  for(int i = options_start; !err && i < argc; i++) {
-    if(*argv[i] != '-') {
-      new_argv[new_argc++] = argv[i];
-      continue;
-    }
-    if(argv[i][1] != '-') {
-      if(!argv[i][2] && strchr(short_args, argv[i][1]))
-        arg = argv[i][1];
-    } else
-      arg = short_args[str_array_index_of(long_args, argv[i] + 2)];
-
-    switch(arg) {
-    case 't':
-      opts_out->delimiter = '\t';
-      break;
-    case 'q':
-      opts_out->no_quotes = 1;
-      break;
-    case 'v':
-      opts_out->verbose = 1;
-      break;
-    case 'B':
-    case 'c':
-    case 'r':
-    case 'O':
-      if(++i >= argc)
-        err = fprintf(stderr, "Error: option %s requires a value\n", argv[i-1]);
-      else if(arg == 'O') {
-        if(strlen(argv[i]) != 1 || *argv[i] < 1)
-          err = fprintf(stderr, "Error: delimiter '%s' may only be a single ascii character", argv[i]);
-        else if(strchr("\n\r\"", *argv[i]))
-          err = fprintf(stderr, "Error: column delimiter may not be '\\n', '\\r' or '\"'\n");
-        else
-          opts_out->delimiter = *argv[i];
-      } else {
-        /* arg = 'B', 'c' or 'r' */
-        long n = atol(argv[i]);
-        if(arg == 'B' && n < ZSV_MIN_SCANNER_BUFFSIZE)
-          err = fprintf(stderr, "Error: buff size may not be less than %u (got %s)\n",
-                        ZSV_MIN_SCANNER_BUFFSIZE, argv[i]);
-        else if(arg == 'c' && n < 8)
-          err = fprintf(stderr, "Error: max column count may not be less than 8 (got %s)\n", argv[i]);
-        else if(arg == 'r' && n < ZSV_ROW_MAX_SIZE_MIN)
-          err = fprintf(stderr, "Error: max row size size may not be less than %u (got %s)\n",
-                        ZSV_ROW_MAX_SIZE_MIN, argv[i]);
-        else if(arg == 'B')
-          opts_out->buffsize = n;
-        else if(arg == 'c')
-          opts_out->max_columns = n;
-        else if(arg == 'r')
-          opts_out->max_row_size = n;
-      }
-      break;
-    default:
-      /* pass this option through to the extension */
-      new_argv[new_argc++] = argv[i];
-      break;
-    }
-  }
-
-  *argc_out = new_argc;
-  *argv_out = new_argv;
-  return err;
 }
 
 static enum zsv_ext_status execution_context_init(struct zsv_execution_data *d,
                                                   int argc, const char *argv[]) {
   memset(d, 0, sizeof(*d));
-  int err = cli_args_to_opts(argc - 1, argv + 1, &d->argc, &d->argv, &d->zsv_opts);
-  if(err) {
-    execution_context_free(d);
-    return zsv_ext_status_memory;
-  }
-
-  /* skip the leading 'xx-' where xx = extension id */
-  d->argv[0] += 3;
+  d->argv = argv;
+  d->argc = argc;
   return zsv_ext_status_ok;
 }
 
@@ -295,16 +184,14 @@ static char *zsv_ext_errmsg(enum zsv_ext_status stat, zsv_execution_context ctx)
   case zsv_ext_status_unrecognized_cmd:
     if(!(ctx && ((struct zsv_execution_data *)ctx)->argc > 0))
       return strdup("Unrecognized command");
-
-    {
+    else {
       char *s;
       struct zsv_execution_data *d = ctx;
-      asprintf(&s, "Unrecognized command %s", d->argv[0]);
+      asprintf(&s, "Unrecognized command %s", d->argv[1]);
       return s;
     }
     /* use zsv_ext_status_other for silent errors. will not attempt to call errcode() or errstr() */
   case zsv_ext_status_other:
-
     /* use zsv_ext_status_err for custom errors. will attempt to call errcode() and errstr()
        for custom error code and message (if not errcode or errstr not provided, will be silent) */
   case zsv_ext_status_error:
@@ -342,8 +229,6 @@ static void ext_set_help(zsv_execution_context ctx, const char *help) {
   }
 }
 
-//
-// https://github.com/spdx/license-list-data/blob/master/text/Aladdin.txt
 static void ext_set_license(zsv_execution_context ctx, const char *license) {
   struct zsv_execution_data *data = ctx;
   if(data && data->ext) {
@@ -508,7 +393,7 @@ static enum zsv_ext_status run_extension(int argc, const char *argv[], struct zs
 
     struct zsv_execution_data ctx;
     if((stat = execution_context_init(&ctx, argc, argv)) == zsv_ext_status_ok)
-      stat = cmd->main(&ctx, ctx.argc, ctx.argv);
+      stat = cmd->main(&ctx, ctx.argc - 1, &ctx.argv[1]);
     if(stat != zsv_ext_status_ok)
       stat = handle_ext_err(ext, &ctx, stat);
     execution_context_free(&ctx);
@@ -542,6 +427,7 @@ static const char *extension_cmd_from_arg(const char *arg) {
 
 ZSV_CLI_EXPORT
 int CLI_MAIN(int argc, const char *argv[]) {
+  INIT_DEFAULT_ARGS();
   const char **alt_argv = NULL;
   struct builtin_cmd *builtin = find_builtin(argc > 1 ? argv[1] : "help");
   if(builtin) {

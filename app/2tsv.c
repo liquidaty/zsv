@@ -9,6 +9,7 @@
 #include <zsv.h>
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/signal.h>
+#include <zsv/utils/arg.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -144,24 +145,13 @@ static void zsv_2tsv_row(void *ctx) {
 #define MAIN main
 #endif
 
-#ifdef ZSV_CLI
-#include "cli_cmd_internal.h"
-#endif
-
-int MAIN(int argc, const char *argv1[]) {
+int MAIN(int argc, const char *argv[]) {
   FILE *f_in = NULL;
-  struct zsv_2tsv_data data;
-  memset(&data, 0, sizeof(data));
-  struct zsv_opts opts = zsv_get_default_opts();
+  struct zsv_2tsv_data data = { 0 };
 
-#ifdef ZSV_CLI
-  const char **argv = NULL;
-  int err = cli_args_to_opts(argc, argv1, &argc, &argv, &opts);
-#else
+  INIT_CMD_DEFAULT_ARGS();
+
   int err = 0;
-  const char **argv = argv1;
-#endif
-
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       fprintf(stdout, "Usage: zsv_2tsv [filename]\n");
@@ -203,6 +193,7 @@ int MAIN(int argc, const char *argv1[]) {
   if(!data.out.stream)
     data.out.stream = stdout;
 
+  struct zsv_opts opts = zsv_get_default_opts();
   opts.cell = zsv_2tsv_cell;
   opts.row = zsv_2tsv_row;
   opts.ctx = &data;
@@ -229,8 +220,5 @@ int MAIN(int argc, const char *argv1[]) {
     fclose(data.out.stream);
 
  exit_2tsv:
-#ifdef ZSV_CLI
-  free(argv);
-#endif
   return err;
 }

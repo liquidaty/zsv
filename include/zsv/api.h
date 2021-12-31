@@ -12,6 +12,8 @@
 #define ZSV_ROW_MAX_SIZE_DEFAULT 65536
 #define ZSV_ROW_MAX_SIZE_DEFAULT_S "64k"
 
+#define ZSV_MAX_COLS_DEFAULT 1024
+
 #define ZSV_ROW_MAX_SIZE_MIN 1024
 #define ZSV_ROW_MAX_SIZE_MIN_S "1024"
 
@@ -140,12 +142,6 @@ zsv_opts_new(
 ZSV_EXPORT void zsv_opts_delete(struct zsv_opts *);
 
 #  ifdef ZSV_EXTRAS
-/**
- * set or get default parser options
- */
-void zsv_set_default_opts(struct zsv_opts);
-
-struct zsv_opts zsv_get_default_opts();
 
 /**
  * set the default option progress callback (e.g. from wasm where `struct zsv_opts`
@@ -164,8 +160,6 @@ void zsv_set_default_progress_callback(zsv_progress_callback cb, void *ctx, size
  */
 void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx);
 
-#  else
-#   define zsv_get_default_opts() { 0 }
 #  endif
 
 #endif

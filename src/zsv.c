@@ -13,6 +13,9 @@
 #include "zsv.h"
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/compiler.h>
+#ifdef ZSV_EXTRAS
+#include <zsv/utils/arg.h>
+#endif
 
 #include "zsv_internal.c"
 
@@ -159,6 +162,10 @@ zsv_parser zsv_new(struct zsv_opts *opts) {
     opts = &tmp;
     memset(opts, 0, sizeof(*opts));
   }
+  if(!opts->max_row_size)
+    opts->max_row_size = ZSV_ROW_MAX_SIZE_DEFAULT;
+  if(!opts->max_columns)
+    opts->max_columns = ZSV_MAX_COLS_DEFAULT;
   if(opts->delimiter == '\n' || opts->delimiter == '\r' || opts->delimiter == '"') {
     fprintf(stderr, "Invalid delimiter\n");
     return NULL;
@@ -241,29 +248,22 @@ size_t zsv_cum_scanned_length(zsv_parser parser) {
 
 #ifdef ZSV_EXTRAS
 
-static struct zsv_opts zsv_default_opts = { 0 };
-
-ZSV_EXPORT
-struct zsv_opts zsv_get_default_opts() {
-  return zsv_default_opts;
-}
-
-ZSV_EXPORT void zsv_set_default_opts(struct zsv_opts opts) {
-  zsv_default_opts = opts;
-}
-
 ZSV_EXPORT
 void zsv_set_default_progress_callback(zsv_progress_callback cb, void *ctx, size_t rows_interval, unsigned int seconds_interval) {
-  zsv_default_opts.progress.callback = cb;
-  zsv_default_opts.progress.ctx = ctx;
-  zsv_default_opts.progress.rows_interval = rows_interval;
-  zsv_default_opts.progress.seconds_interval = seconds_interval;
+  struct zsv_opts opts = zsv_get_default_opts();
+  opts.progress.callback = cb;
+  opts.progress.ctx = ctx;
+  opts.progress.rows_interval = rows_interval;
+  opts.progress.seconds_interval = seconds_interval;
+  zsv_set_default_opts(opts);
 }
 
 ZSV_EXPORT
 void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx) {
-  zsv_default_opts.completed.callback = cb;
-  zsv_default_opts.completed.ctx = ctx;
+  struct zsv_opts opts = zsv_get_default_opts();
+  opts.completed.callback = cb;
+  opts.completed.ctx = ctx;
+  zsv_set_default_opts(opts);
 }
 
 #endif

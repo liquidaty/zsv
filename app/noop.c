@@ -8,6 +8,7 @@
 #include <zsv.h>
 #include <zsv/utils/writer.h>
 #include <zsv/utils/signal.h>
+#include <zsv/utils/arg.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -45,20 +46,15 @@ static void row(void *ctx) {
 int main(int argc, const char *argv[]) {
   FILE *f = NULL;
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
-  struct data data;
-  memset(&data, 0, sizeof(data));
-  char tab = 0;
+  struct data data = { 0 };
+  INIT_CMD_DEFAULT_ARGS();
 
   for(int i = 1; i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       fprintf(stdout, "Usage: noop [filename]\n");
       fprintf(stdout, "  Reads CSV input and does nothing. For performance testing\n\n");
-      fprintf(stdout, "Options\n");
-      fprintf(stdout, "    -T: input is tab-delimited, instead of comma-delimited\n");
       return 0;
-    } else if(!strcmp(argv[i], "-T"))
-      tab = 1;
-    else if(!f) {
+    } else if(!f) {
       if(!(f = fopen(argv[i], "rb"))) {
         fprintf(stderr, "Unable to open %s for writing\n", argv[i]);
         return 1;
@@ -80,10 +76,7 @@ int main(int argc, const char *argv[]) {
   opts.ctx = &data;
   opts.overflow = overflow;
   opts.error = error;
-  if(tab)
-    opts.delimiter = '\t';
 
-  int err = 0;
   opts.stream = f;
   if((data.parser = zsv_new(&opts))) {
     zsv_handle_ctrl_c_signal();
@@ -94,7 +87,7 @@ int main(int argc, const char *argv[]) {
     zsv_delete(data.parser);
   }
   fclose(f);
-  return err;
+  return 0;
 }            
 
 

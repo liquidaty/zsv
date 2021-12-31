@@ -9,6 +9,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/signal.h>
 #include <zsv/utils/mem.h>
+#include <zsv/utils/arg.h>
 
 #ifndef STRING_LIB_INCLUDE
 #include <zsv/utils/string.h>
@@ -251,15 +252,15 @@ static void zsv_stack_data_row(void *ctx) {
 #endif
 
 int MAIN(int argc, const char *argv[]) {
+  INIT_CMD_DEFAULT_ARGS();
+
   int err = 0;
   if(argc < 2)
     zsv_stack_usage();
   else if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
     zsv_stack_usage();
   else {
-    struct zsv_stack_data data;
-    memset(&data, 0, sizeof(data));
-
+    struct zsv_stack_data data = { 0 };
     char delimiter = 0; // defaults to csv
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
     writer_opts.stream = stdout;

@@ -5,7 +5,7 @@ THIS_DIR:=$(shell basename "${THIS_MAKEFILE_DIR}")
 THIS_MAKEFILE:=$(lastword $(MAKEFILE_LIST))
 
 CONFIGFILE ?= ../../config.mk
-$(info Using config file ${CONFIGFILE})
+$(info # Using config file ${CONFIGFILE})
 include ${CONFIGFILE}
 
 CONFIGFILEPATH=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
@@ -42,7 +42,11 @@ CCBN=$(shell basename ${CC})
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 TEST_DATA_DIR=${THIS_LIB_BASE}/data
 
-SOURCES=echo select sql 2json serialize flatten pretty desc stack
+SOURCES=
+ifneq ($(CLI1),1)
+SOURCES+=echo
+endif
+SOURCES+= select sql 2json serialize flatten pretty desc stack
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
 TESTS=$(addprefix test-,${SOURCES})
@@ -78,13 +82,17 @@ endif
 help:
 	@echo "To run all tests: make test [LEAKS=1]"
 	@echo "To run individual test: make test-xxx"
+	@echo "To run on cli: make CLI"
 	@echo "  where xxx can be: ${SOURCES}"
+
+CLI:
+	make CLI1=1 test -n | sed 's/\/.*\/bin\/zsv_/zsv /g' | sh
 
 test: ${TESTS}
 
 .PHONY: help test test-% test-stack
 
-test-echo: ${BUILD_DIR}/bin/zsv_echo${EXE}
+test-echo : ${BUILD_DIR}/bin/zsv_echo
 	@${TEST_NAME}
 	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
@@ -92,7 +100,7 @@ test-echo: ${BUILD_DIR}/bin/zsv_echo${EXE}
 worldcitiespop_mil.csv:
 	curl -LOk 'https://burntsushi.net/stuff/worldcitiespop_mil.csv'
 
-test-count: ${BUILD_DIR}/bin/zsv_count worldcitiespop_mil.csv
+test-count: ${BIN} worldcitiespop_mil.csv
 	@${TEST_NAME}
 	@cat worldcitiespop_mil.csv | ${PREFIX} $< ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
@@ -114,7 +122,7 @@ test-select-n: ${BUILD_DIR}/bin/zsv_select${EXE}
 
 test-select-6: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_NAME}
-	@${PREFIX} $<  ${TEST_DATA_DIR}/test/tab.txt -T ${REDIRECT} /tmp/$@.out
+	@${PREFIX} $<  ${TEST_DATA_DIR}/test/tab.txt -t ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-select-7: ${BUILD_DIR}/bin/zsv_select${EXE}

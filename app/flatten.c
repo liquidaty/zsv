@@ -11,6 +11,7 @@
 #include <zsv/utils/file.h>
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/mem.h>
+#include <zsv/utils/arg.h>
 
 #ifndef STRING_LIB_INCLUDE
 #include <zsv/utils/string.h>
@@ -547,6 +548,7 @@ const char *flatten_usage_msg[] =
    "Options:",
    "  -b: output with BOM",
    "  -v, --verbose: display verbose messages",
+   "  -C <max columns to output>: maximum number of columns to output",
    "  -m <max rows per aggregation>: defaults to 1024. If this limit is reached for any aggregation,",
    "     an error will be output",
    "  -i <Row ID column name>: Required. name of column to group by",
@@ -675,8 +677,10 @@ int MAIN(int argc, const char *argv[]) {
     flatten_usage();
     return 0;
   }
-  struct flatten_data data;
-  memset(&data, 0, sizeof(data));
+
+  INIT_CMD_DEFAULT_ARGS();
+
+  struct flatten_data data = { 0 };
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
 
   data.output_columns_by_value_tail = &data.output_columns_by_value_head;
@@ -692,16 +696,14 @@ int MAIN(int argc, const char *argv[]) {
       break;
     } else if(!strcmp(argv[arg_i], "-b"))
       writer_opts.with_bom = 1;
-    else if(!strcmp(argv[arg_i], "--verbose") || !strcmp(argv[arg_i], "-v"))
-      data.verbose = 1;
     else if(!strcmp(argv[arg_i], "-C")) {
       if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) > 9))
-        err = zsv_printerr(1, "-C (max cols) invalid: should be positive integer > 9 (got %s)", argv[arg_i+1]);
+        err = zsv_printerr(1, "%s invalid: should be positive integer > 9 (got %s)", argv[arg_i], argv[arg_i+1]);
       else
         data.max_cols = atoi(argv[++arg_i]);
     } else if(!strcmp(argv[arg_i], "-m")) {
       if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) > 1))
-        err = zsv_printerr(1, "-C (max cols) invalid: should be positive integer > 1 (got %s)", argv[arg_i+1]);
+        err = zsv_printerr(1, "%s invalid: should be positive integer > 1 (got %s)", argv[arg_i], argv[arg_i+1]);
       else
         data.max_rows_per_aggregation = atoi(argv[++arg_i]);
     } else if(!strcmp(argv[arg_i], "-i")) {
@@ -774,6 +776,7 @@ int MAIN(int argc, const char *argv[]) {
 
   int passes = data.column_name_column.name || !data.have_agg ? 2 : 1;
   struct zsv_opts opts = zsv_get_default_opts();
+
   FILE *in = NULL;
   char *tmp_fn = NULL;
   zsv_handle_ctrl_c_signal();

@@ -28,11 +28,18 @@ static inline char UTF8_charLenC_noerr(int c) {
 }
 
 static struct zsv_csv_writer_options zsv_csv_writer_default_opts = { 0 };
+static char zsv_writer_default_opts_initd = 0;
 void zsv_writer_set_default_opts(struct zsv_csv_writer_options opts) {
+  zsv_writer_default_opts_initd = 1;
   zsv_csv_writer_default_opts = opts;
 }
 
 struct zsv_csv_writer_options zsv_writer_get_default_opts() {
+  if(!zsv_writer_default_opts_initd) {
+    zsv_writer_default_opts_initd = 1;
+    zsv_csv_writer_default_opts.write = (size_t (*)(const void * restrict,  size_t,  size_t,  void * restrict))fwrite;
+    zsv_csv_writer_default_opts.stream = stdout;
+  }
   return zsv_csv_writer_default_opts;
 }
 

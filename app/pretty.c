@@ -8,6 +8,7 @@
 #include <zsv.h>
 #include <zsv/utils/writer.h>
 #include <zsv/utils/signal.h>
+#include <zsv/utils/arg.h>
 
 #include <utf8proc.h>
 
@@ -551,12 +552,12 @@ static void zsv_pretty_destroy(struct zsv_pretty_data *data) {
 #endif
 
 static struct zsv_pretty_data * zsv_pretty_init(struct zsv_pretty_opts *opts,
-                                                FILE *in) {
+                                                FILE *in,
+                                                struct zsv_opts *parser_opts) {
   struct zsv_pretty_data *data = calloc(1, sizeof(*data));
   if(!data)
     return NULL;
 
-  struct zsv_opts zsv_opts = zsv_get_default_opts();
   data->ignore_header_lengths = opts->ignore_header_lengths;
   data->markdown = opts->markdown;
   data->markdown_pad = opts->markdown_pad;
@@ -567,10 +568,10 @@ static struct zsv_pretty_data * zsv_pretty_init(struct zsv_pretty_opts *opts,
   else if(!(data->line.max = get_console_width()))
     data->line.max = ZSV_PRETTY_DEFAULT_LINE_MAX_WIDTH;
 
-  zsv_opts.row = zsv_pretty_row;
-  zsv_opts.ctx = data;
-  zsv_opts.stream = in;
-  data->parser = zsv_new(&zsv_opts);
+  parser_opts->row = zsv_pretty_row;
+  parser_opts->ctx = data;
+  parser_opts->stream = in;
+  data->parser = zsv_new(parser_opts);
 
   data->write = (size_t (*)(const void *, size_t, size_t, void *))fwrite;
   data->write_arg = opts->out ? opts->out : stdout;
@@ -604,6 +605,8 @@ int MAIN(int argc, const char *argv[]) {
   }
 
   struct zsv_pretty_opts opts = { 0 };
+  INIT_CMD_DEFAULT_ARGS();
+
   opts.line_width_max = ZSV_PRETTY_DEFAULT_LINE_MAX_WIDTH;
   opts.column_width_min = ZSV_PRETTY_DEFAULT_COLUMN_MIN_WIDTH;
   opts.column_width_max = ZSV_PRETTY_DEFAULT_COLUMN_MAX_WIDTH;
@@ -675,8 +678,9 @@ int MAIN(int argc, const char *argv[]) {
   if(opts.column_width_min > opts.column_width_max || opts.column_width_min > opts.line_width_max)
     rc = zsv_printerr(1, "Min column width cannot exceed max column width or max line width");
 
+  struct zsv_opts parser_opts = zsv_get_default_opts();
   if(!rc) {
-    struct zsv_pretty_data *h = zsv_pretty_init(&opts, in);
+    struct zsv_pretty_data *h = zsv_pretty_init(&opts, in, &parser_opts);
     if(!h)
       rc = 1;
     else {

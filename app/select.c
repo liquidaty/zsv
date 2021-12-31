@@ -9,6 +9,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/signal.h>
 #include <zsv/utils/utf8.h>
+#include <zsv/utils/arg.h>
 
 #include <assert.h>
 
@@ -573,239 +574,200 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
 #define MAIN main
 #endif
 
-#ifdef ZSV_CLI
-#include "cli_cmd_internal.h"
-#endif
+int MAIN(int argc, const char *argv[]) {
+  INIT_CMD_DEFAULT_ARGS();
 
-int MAIN(int argc, const char *argv1[]) {
-  if(argc > 1 && (!strcmp(argv1[1], "-h") || !strcmp(argv1[1], "--help")))
+  if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
     zsv_select_usage();
   else {
     struct zsv_select_data data = { 0 };
-#ifdef ZSV_EXTRAS
-    data.opts = zsv_get_default_opts();
-#endif
-    data.opts.max_row_size = ZSV_ROW_MAX_SIZE_DEFAULT;
-    data.opts.max_columns = ZSV_SELECT_MAX_COLS_DEFAULT;
-
-#ifdef ZSV_CLI
-    const char **argv = NULL;
-    int err = cli_args_to_opts(argc, argv1, &argc, &argv, &data.opts);
-#else
     int err = 0;
-    const char **argv = argv1;
-#endif
-    if(!err) {
-      struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
-      data.header_depth = 1;
+    data.opts = zsv_get_default_opts();
 
-      int col_index_arg_i = 0;
-      const char *insert_header_row = NULL;
-      for(int arg_i = 1; arg_i < argc; arg_i++) {
-        if(!strcmp(argv[arg_i], "--")) {
-          col_index_arg_i = arg_i + 1;
-          break;
-        }
-        if(!strcmp(argv[arg_i], "-b") || !strcmp(argv[arg_i], "--with-bom"))
-          writer_opts.with_bom = 1;
-        else if(!strcmp(argv[arg_i], "--distinct"))
-          data.distinct = 1;
-        else if(!strcmp(argv[arg_i], "-o") || !strcmp(argv[arg_i], "--output")) {
-          if(++arg_i >= argc)
-            err = zsv_printerr(1, "%2 option requires parameter", argv[arg_i-1]);
-          else if(writer_opts.stream)
-            err = zsv_printerr(1, "Output file specified more than once");
-          else if(!(writer_opts.stream = fopen(argv[arg_i], "wb")))
-            err = zsv_printerr(1, "Unable to open for writing: %s", argv[arg_i]);
-        } else if(!strcmp(argv[arg_i], "-u") || !strcmp(argv[arg_i], "--malformed-utf8-replacement")) {
-          if(++arg_i >= argc)
-            err = zsv_printerr(1, "-u option requires parameter");
-          else if(strlen(argv[arg_i]) > 1 || (*argv[arg_i] & 128))
-            err = zsv_printerr(1, "-u value must be a single-byte UTF8 char");
-          else
-            data.malformed_utf8_replace = (const unsigned char*)argv[arg_i];
-#ifndef ZSV_CLI
-        } else if(!strcmp(argv[arg_i], "-L") || !strcmp(argv[arg_i], "--max-row-size")) {
-          if(++arg_i >= argc)
-            err = zsv_printerr(1, "%s option requires parameter", argv[arg_i-1]);
-          else if(atol(argv[arg_i]) < ZSV_ROW_MAX_SIZE_MIN)
-            err = zsv_printerr(1, "%s minimum value is %u (got %s)", argv[arg_i-1], ZSV_ROW_MAX_SIZE_MIN, argv[arg_i]);
-          else
-            data.opts.max_row_size = atol(argv[arg_i]);
-        } else if(!strcmp(argv[arg_i], "-C")) {
-          if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) > 9))
-            err = zsv_printerr(1, "-C (max cols) invalid: should be positive integer > 9 (got %s)", argv[arg_i+1]);
-          else
-            data.opts.max_columns = atoi(argv[++arg_i]);
-#endif
-        } else if(!strcmp(argv[arg_i], "-N") || !strcmp(argv[arg_i], "--line-number")) {
-          data.prepend_line_number = 1;
-        } else if(!strcmp(argv[arg_i], "-n"))
-          data.use_header_indexes = 1;
-        else if(!strcmp(argv[arg_i], "-s") || !strcmp(argv[arg_i], "--search")) {
-          arg_i++;
-          if(arg_i < argc && strlen(argv[arg_i]))
-            zsv_select_add_search(&data, argv[arg_i]);
-          else
-            err = zsv_printerr(1, "%s option requires a value", argv[arg_i-1]);
-        } else if(!strcmp(argv[arg_i], "-v") || !strcmp(argv[arg_i], "--verbose")) {
-          data.verbose = 1;
-#ifndef ZSV_CLI
-        } else if(!strcmp(argv[arg_i], "-T"))
-          data.opts.delimiter = '\t'; // data.delimiter = '\t';
-        else if(!strcmp(argv[arg_i], "-O") || !strcmp(argv[arg_i], "--other-delim")) {
-          arg_i++;
-          if(arg_i < argc && strlen(argv[arg_i]) == 1 && *argv[arg_i] != '"')
-            data.opts.delimiter = *argv[arg_i];
-          else
-            err = zsv_printerr(1, "--other-delim option requires a value of length 1 and may not be double-quote");
-#endif
-        } else if(!strcmp(argv[arg_i], "-w") || !strcmp(argv[arg_i], "--whitespace-clean"))
-          data.clean_white = 1;
-        else if(!strcmp(argv[arg_i], "--whitespace-clean-no-newline")) {
-          data.clean_white = 1;
-          data.whitspace_clean_flags = 1;
-        } else if(!strcmp(argv[arg_i], "-W") || !strcmp(argv[arg_i], "--no-trim"))
-          data.no_trim_whitespace = 1;
-        /*
-          else if(!strcmp(argv[arg_i], "-r")) {
-          if(!(arg_i + 1 < argc && strlen(argv[arg_i+1]) > 0))
-          err = zsv_printerr(1, "-r option value invalid: should be non-empty string");
-          else
-          data.skip_rows_until_prefix = (const unsigned char *)argv[++arg_i];
-        */
-        else if(!strcmp(argv[arg_i], "-d") || !strcmp(argv[arg_i], "--header-row-span")) {
-          if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) >= 0 && atoi(argv[arg_i+1]) < 256))
-            err = zsv_printerr(1, "%s option value invalid: should be integer between 1 and 255; got %s", argv[arg_i], arg_i + 1 < argc ? argv[arg_i+1] : "");
-          else
-            data.header_depth = (unsigned char)atoi(argv[++arg_i]);
-        } else if(!strcmp(argv[arg_i], "--header-row")) {
-          arg_i++;
-          if(!(arg_i < argc))
-            err = zsv_printerr(1, "%s option requires a header row value such as 'column_name1,\"column name 2\"'", argv[arg_i-1]);
-          else
-            insert_header_row = argv[arg_i];
-        } else if(!strcmp(argv[arg_i], "--sample-every")) {
-          arg_i++;
-          if(!(arg_i < argc))
-            err = zsv_printerr(1, "--sample-every option requires a value");
-          else if(atoi(argv[arg_i]) <= 0)
-            err = zsv_printerr(1, "--sample-every value should be an integer > 0");
-          else
-            data.sample_every_n = atoi(argv[arg_i]);
-        } else if(!strcmp(argv[arg_i], "--sample-pct")) {
-          arg_i++;
-          double d;
-          if(!(arg_i < argc))
-            err = zsv_printerr(1, "--sample-pct option requires a value");
-          else if(!(d = atof(argv[arg_i])) && d > 0 && d < 100)
-            err = zsv_printerr(-1, "--sample-pct value should be a number between 0 and 100 (e.g. 1.5 for a sample of 1.5% of the data");
-          else
-            data.sample_pct = d;
-        } else if(!strcmp(argv[arg_i], "-H") || !strcmp(argv[arg_i], "--head")) {
-          if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) >= 0))
-            err = zsv_printerr(1, "%s option value invalid: should be positive integer; got %s", argv[arg_i], arg_i + 1 < argc ? argv[arg_i+1] : "");
-          else
-            data.data_rows_limit = atoi(argv[++arg_i]) + 1;
-        } else if(!strcmp(argv[arg_i], "-R") || !strcmp(argv[arg_i], "--skip-head")) {
-          ++arg_i;
-          if(!(arg_i < argc && atoi(argv[arg_i]) >= 0 && atoi(argv[arg_i]) < 256))
-            err = zsv_printerr(1, "-R option value invalid: should be positive integer smaller than 256");
-          else
-            data.skip_rows = data.skip_rows_orig = atoi(argv[arg_i]);
-        } else if(!strcmp(argv[arg_i], "-D") || !strcmp(argv[arg_i], "--skip-data")) {
-          ++arg_i;
-          if(!(arg_i < argc && atoi(argv[arg_i]) >= 0))
-            err = zsv_printerr(1, "%s option value invalid: should be positive integer", argv[arg_i-1]);
-          else
-            data.skip_data_rows = atoi(argv[arg_i]);
-        } else if(!strcmp(argv[arg_i], "-e")) {
-          ++arg_i;
-          if(data.embedded_lineend)
-            err = zsv_printerr(1, "-e option specified more than once");
-          else if(strlen(argv[arg_i]) != 1)
-            err = zsv_printerr(1, "-e option value must be a single character");
-          else if(arg_i < argc)
-            data.embedded_lineend = *argv[arg_i];
-          else
-            err = zsv_printerr(1, "-e option requires a value");
-        } else if(!strcmp(argv[arg_i], "-x")) {
-          arg_i++;
-          if(!(arg_i < argc))
-            err = zsv_printerr(1, "%s option requires a value", argv[arg_i-1]);
-          else if(zsv_select_column_index_selection((const unsigned char *)argv[arg_i], NULL, NULL) ==
-                  zsv_select_column_index_selection_type_none)
-            err = zsv_printerr(1, "%s option: invalid value %s (expected number or number range e.g. 8 or 8-12)", argv[arg_i-1], argv[arg_i]);
-          else
-            zsv_select_add_exclusion(&data, argv[arg_i]);
-        } else if(*argv[arg_i] == '-')
-          err = zsv_printerr(1, "Unrecognized argument: %s", argv[arg_i]);
-        else if(data.opts.stream)
-          err = zsv_printerr(1, "Input file was specified, cannot also read: %s", argv[arg_i]);
-        else if(!(data.opts.stream = fopen(argv[arg_i], "rb")))
-          err = zsv_printerr(1, "Could not open for reading: %s", argv[arg_i]);
+    struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
+    data.header_depth = 1;
+
+    int col_index_arg_i = 0;
+    const char *insert_header_row = NULL;
+    for(int arg_i = 1; !err && arg_i < argc; arg_i++) {
+      if(!strcmp(argv[arg_i], "--")) {
+        col_index_arg_i = arg_i + 1;
+        break;
       }
-
-      if(data.sample_pct)
-        srand(time(0));
-
-      if(data.use_header_indexes && !err)
-        err = zsv_select_check_exclusions_are_indexes(&data);
-
-      if(!data.opts.stream) {
-#ifdef NO_STDIN
-        err = zsv_printerr(1, "Please specify an input file");
-#else
-        data.opts.stream = stdin;
-#endif
-      }
-
-      if(!err) {
-        if(!col_index_arg_i)
-          data.col_argc = 0;
-        else {
-          data.col_argv = &argv[col_index_arg_i];
-          data.col_argc = argc - col_index_arg_i;
-        }
-
-        data.header_names = calloc(data.opts.max_columns, sizeof(*data.header_names));
-        data.out2in = calloc(data.opts.max_columns, sizeof(*data.out2in));
-        data.csv_writer = zsv_writer_new(&writer_opts);
-        if(data.header_names && data.out2in && data.csv_writer) {
-          data.opts.row = zsv_select_header_row;
-          data.opts.ctx = &data;
-          data.opts.insert_header_row = insert_header_row;
-
-          zsv_parser handle = data.parser = zsv_new(&data.opts);
-          if(handle) {
-            // all done with
-            data.any_clean = data.malformed_utf8_replace
-              || !data.no_trim_whitespace
-              || data.clean_white
-              || data.embedded_lineend;
-
-            // create a local csv writer buff quoted values
-            unsigned char writer_buff[512];
-            zsv_writer_set_temp_buff(data.csv_writer, writer_buff, sizeof(writer_buff));
-
-            // process the input data
-            zsv_handle_ctrl_c_signal();
-            enum zsv_status status;
-            while(!zsv_signal_interrupted && !data.cancelled && (status = zsv_parse_more(data.parser)) == zsv_status_ok)
-              ;
-
-            zsv_finish(handle);
-            zsv_delete(handle);
-          }
-        }
-      }
-      zsv_select_cleanup(&data);
-      if(writer_opts.stream)
-        fclose(writer_opts.stream);
+      if(!strcmp(argv[arg_i], "-b") || !strcmp(argv[arg_i], "--with-bom"))
+        writer_opts.with_bom = 1;
+      else if(!strcmp(argv[arg_i], "--distinct"))
+        data.distinct = 1;
+      else if(!strcmp(argv[arg_i], "-o") || !strcmp(argv[arg_i], "--output")) {
+        if(++arg_i >= argc)
+          err = zsv_printerr(1, "%2 option requires parameter", argv[arg_i-1]);
+        else if(writer_opts.stream)
+          err = zsv_printerr(1, "Output file specified more than once");
+        else if(!(writer_opts.stream = fopen(argv[arg_i], "wb")))
+          err = zsv_printerr(1, "Unable to open for writing: %s", argv[arg_i]);
+        else if(data.opts.verbose)
+          fprintf(stderr, "Opened %s for write\n", argv[arg_i]);
+      } else if(!strcmp(argv[arg_i], "-u") || !strcmp(argv[arg_i], "--malformed-utf8-replacement")) {
+        if(++arg_i >= argc)
+          err = zsv_printerr(1, "-u option requires parameter");
+        else if(strlen(argv[arg_i]) > 1 || (*argv[arg_i] & 128))
+          err = zsv_printerr(1, "-u value must be a single-byte UTF8 char");
+        else
+          data.malformed_utf8_replace = (const unsigned char*)argv[arg_i];
+      } else if(!strcmp(argv[arg_i], "-N") || !strcmp(argv[arg_i], "--line-number")) {
+        data.prepend_line_number = 1;
+      } else if(!strcmp(argv[arg_i], "-n"))
+        data.use_header_indexes = 1;
+      else if(!strcmp(argv[arg_i], "-s") || !strcmp(argv[arg_i], "--search")) {
+        arg_i++;
+        if(arg_i < argc && strlen(argv[arg_i]))
+          zsv_select_add_search(&data, argv[arg_i]);
+        else
+          err = zsv_printerr(1, "%s option requires a value", argv[arg_i-1]);
+      } else if(!strcmp(argv[arg_i], "-v") || !strcmp(argv[arg_i], "--verbose")) {
+        data.verbose = 1;
+      } else if(!strcmp(argv[arg_i], "-w") || !strcmp(argv[arg_i], "--whitespace-clean"))
+        data.clean_white = 1;
+      else if(!strcmp(argv[arg_i], "--whitespace-clean-no-newline")) {
+        data.clean_white = 1;
+        data.whitspace_clean_flags = 1;
+      } else if(!strcmp(argv[arg_i], "-W") || !strcmp(argv[arg_i], "--no-trim"))
+        data.no_trim_whitespace = 1;
+      /*
+        else if(!strcmp(argv[arg_i], "-r")) {
+        if(!(arg_i + 1 < argc && strlen(argv[arg_i+1]) > 0))
+        err = zsv_printerr(1, "-r option value invalid: should be non-empty string");
+        else
+        data.skip_rows_until_prefix = (const unsigned char *)argv[++arg_i];
+      */
+      else if(!strcmp(argv[arg_i], "-d") || !strcmp(argv[arg_i], "--header-row-span")) {
+        if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) >= 0 && atoi(argv[arg_i+1]) < 256))
+          err = zsv_printerr(1, "%s option value invalid: should be integer between 1 and 255; got %s", argv[arg_i], arg_i + 1 < argc ? argv[arg_i+1] : "");
+        else
+          data.header_depth = (unsigned char)atoi(argv[++arg_i]);
+      } else if(!strcmp(argv[arg_i], "--header-row")) {
+        arg_i++;
+        if(!(arg_i < argc))
+          err = zsv_printerr(1, "%s option requires a header row value such as 'column_name1,\"column name 2\"'", argv[arg_i-1]);
+        else
+          insert_header_row = argv[arg_i];
+      } else if(!strcmp(argv[arg_i], "--sample-every")) {
+        arg_i++;
+        if(!(arg_i < argc))
+          err = zsv_printerr(1, "--sample-every option requires a value");
+        else if(atoi(argv[arg_i]) <= 0)
+          err = zsv_printerr(1, "--sample-every value should be an integer > 0");
+        else
+          data.sample_every_n = atoi(argv[arg_i]);
+      } else if(!strcmp(argv[arg_i], "--sample-pct")) {
+        arg_i++;
+        double d;
+        if(!(arg_i < argc))
+          err = zsv_printerr(1, "--sample-pct option requires a value");
+        else if(!(d = atof(argv[arg_i])) && d > 0 && d < 100)
+          err = zsv_printerr(-1, "--sample-pct value should be a number between 0 and 100 (e.g. 1.5 for a sample of 1.5% of the data");
+        else
+          data.sample_pct = d;
+      } else if(!strcmp(argv[arg_i], "-H") || !strcmp(argv[arg_i], "--head")) {
+        if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) >= 0))
+          err = zsv_printerr(1, "%s option value invalid: should be positive integer; got %s", argv[arg_i], arg_i + 1 < argc ? argv[arg_i+1] : "");
+        else
+          data.data_rows_limit = atoi(argv[++arg_i]) + 1;
+      } else if(!strcmp(argv[arg_i], "-R") || !strcmp(argv[arg_i], "--skip-head")) {
+        ++arg_i;
+        if(!(arg_i < argc && atoi(argv[arg_i]) >= 0 && atoi(argv[arg_i]) < 256))
+          err = zsv_printerr(1, "-R option value invalid: should be positive integer smaller than 256");
+        else
+          data.skip_rows = data.skip_rows_orig = atoi(argv[arg_i]);
+      } else if(!strcmp(argv[arg_i], "-D") || !strcmp(argv[arg_i], "--skip-data")) {
+        ++arg_i;
+        if(!(arg_i < argc && atoi(argv[arg_i]) >= 0))
+          err = zsv_printerr(1, "%s option value invalid: should be positive integer", argv[arg_i-1]);
+        else
+          data.skip_data_rows = atoi(argv[arg_i]);
+      } else if(!strcmp(argv[arg_i], "-e")) {
+        ++arg_i;
+        if(data.embedded_lineend)
+          err = zsv_printerr(1, "-e option specified more than once");
+        else if(strlen(argv[arg_i]) != 1)
+          err = zsv_printerr(1, "-e option value must be a single character");
+        else if(arg_i < argc)
+          data.embedded_lineend = *argv[arg_i];
+        else
+          err = zsv_printerr(1, "-e option requires a value");
+      } else if(!strcmp(argv[arg_i], "-x")) {
+        arg_i++;
+        if(!(arg_i < argc))
+          err = zsv_printerr(1, "%s option requires a value", argv[arg_i-1]);
+        else if(zsv_select_column_index_selection((const unsigned char *)argv[arg_i], NULL, NULL) ==
+                zsv_select_column_index_selection_type_none)
+          err = zsv_printerr(1, "%s option: invalid value %s (expected number or number range e.g. 8 or 8-12)", argv[arg_i-1], argv[arg_i]);
+        else
+          zsv_select_add_exclusion(&data, argv[arg_i]);
+      } else if(*argv[arg_i] == '-')
+        err = zsv_printerr(1, "Unrecognized argument: %s", argv[arg_i]);
+      else if(data.opts.stream)
+        err = zsv_printerr(1, "Input file was specified, cannot also read: %s", argv[arg_i]);
+      else if(!(data.opts.stream = fopen(argv[arg_i], "rb")))
+        err = zsv_printerr(1, "Could not open for reading: %s", argv[arg_i]);
     }
-#ifdef ZSV_CLI
-    free(argv);
+
+    if(data.sample_pct)
+      srand(time(0));
+
+    if(data.use_header_indexes && !err)
+      err = zsv_select_check_exclusions_are_indexes(&data);
+
+    if(!data.opts.stream) {
+#ifdef NO_STDIN
+      err = zsv_printerr(1, "Please specify an input file");
+#else
+      data.opts.stream = stdin;
 #endif
+    }
+
+    if(!err) {
+      if(!col_index_arg_i)
+        data.col_argc = 0;
+      else {
+        data.col_argv = &argv[col_index_arg_i];
+        data.col_argc = argc - col_index_arg_i;
+      }
+
+      data.header_names = calloc(data.opts.max_columns, sizeof(*data.header_names));
+      data.out2in = calloc(data.opts.max_columns, sizeof(*data.out2in));
+      data.csv_writer = zsv_writer_new(&writer_opts);
+      if(data.header_names && data.out2in && data.csv_writer) {
+        data.opts.row = zsv_select_header_row;
+        data.opts.ctx = &data;
+        data.opts.insert_header_row = insert_header_row;
+        zsv_parser handle = data.parser = zsv_new(&data.opts);
+        if(handle) {
+          // all done with
+          data.any_clean = data.malformed_utf8_replace
+            || !data.no_trim_whitespace
+            || data.clean_white
+            || data.embedded_lineend;
+
+          // create a local csv writer buff quoted values
+          unsigned char writer_buff[512];
+          zsv_writer_set_temp_buff(data.csv_writer, writer_buff, sizeof(writer_buff));
+
+          // process the input data
+          zsv_handle_ctrl_c_signal();
+          enum zsv_status status;
+          while(!zsv_signal_interrupted && !data.cancelled && (status = zsv_parse_more(data.parser)) == zsv_status_ok)
+            ;
+
+          zsv_finish(handle);
+          zsv_delete(handle);
+        }
+      }
+    }
+    zsv_select_cleanup(&data);
+    if(writer_opts.stream)
+      fclose(writer_opts.stream);
+
     return err;
   }
 

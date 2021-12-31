@@ -42,6 +42,7 @@ SQLITE_EXTENSION_INIT1
 #include <stdio.h>
 #include <zsv.h>
 #include <zsv/utils/string.h>
+#include <zsv/utils/arg.h>
 
 #ifndef SQLITE_OMIT_VIRTUALTABLE
 
@@ -111,9 +112,7 @@ struct zsvTable *zsvTable_new() {
   struct zsvTable *z = sqlite3_malloc(sizeof(*z));
   if(z) {
     memset(z, 0, sizeof(*z));
-#ifdef ZSV_EXTRAS
     z->parser_opts = zsv_get_default_opts();
-#endif
     z->header.last = &z->header.rows;
     z->data.last = &z->data.rows;
   }

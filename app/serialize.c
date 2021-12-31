@@ -8,6 +8,7 @@
 #include <zsv.h>
 #include <zsv/utils/writer.h>
 #include <zsv/utils/signal.h>
+#include <zsv/utils/arg.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -280,11 +281,12 @@ int MAIN(int argc, const char *argv[]) {
     serialize_usage();
     return 0;
   } else {
+    INIT_CMD_DEFAULT_ARGS();
+    struct zsv_opts opts = zsv_get_default_opts();
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
-    struct serialize_data data;
-    memset(&data, 0, sizeof(data));
+    struct serialize_data data = { 0 };
     int err = 0;
-    for(int arg_i = 1; arg_i < argc; arg_i++) {
+    for(int arg_i = 1; !err && arg_i < argc; arg_i++) {
       const char *arg = argv[arg_i];
       if(!strcmp(arg, "-f") || !strcmp(arg, "--filter")) {
         if(arg_i + 1 < argc)
@@ -330,7 +332,6 @@ int MAIN(int argc, const char *argv[]) {
       return 1;
     }
 
-    struct zsv_opts opts = zsv_get_default_opts();
     opts.cell = serialize_cell;
     opts.row = serialize_row;
     opts.overflow = serialize_overflow;

@@ -8,6 +8,7 @@
 
 #include <zsv.h>
 #include <zsv/utils/signal.h>
+#include <zsv/utils/arg.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -25,10 +26,6 @@ static void row(void *ctx) {
 #define MAIN main
 #endif
 
-#ifdef ZSV_CLI
-#include "cli_cmd_internal.h"
-#endif
-
 static int count_usage() {
   static const char *usage =
     "Usage: count [options]\n"
@@ -39,19 +36,13 @@ static int count_usage() {
   return 0;
 }
 
-int MAIN(int argc, const char *argv1[]) {
-  struct data data;
-  memset(&data, 0, sizeof(data));
+int MAIN(int argc, const char *argv[]) {
+  struct data data = { 0 };
+  INIT_CMD_DEFAULT_ARGS();
 
   struct zsv_opts opts = zsv_get_default_opts();
-#ifdef ZSV_CLI
-  const char **argv = NULL;
-  int err = cli_args_to_opts(argc, argv1, &argc, &argv, &opts);
-#else
-  int err = 0;
-  const char **argv = argv1;
-#endif
 
+  int err = 0;
   for(int i = 1; !err && i < argc; i++) {
     const char *arg = argv[i];
     if(!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
@@ -102,8 +93,5 @@ int MAIN(int argc, const char *argv1[]) {
   if(opts.stream && opts.stream != stdin)
     fclose(opts.stream);
 
-#ifdef ZSV_CLI
-  free(argv);
-#endif
   return err;
 }            

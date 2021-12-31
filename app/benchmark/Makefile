@@ -1,7 +1,7 @@
 # Makefile for use with GNU make
 
 CONFIGFILE ?= ../../config.mk
-$(info Using config file ${CONFIGFILE})
+$(info # Using config file ${CONFIGFILE})
 include ${CONFIGFILE}
 
 CC ?= cc
@@ -22,9 +22,15 @@ endif
 CCBN=$(shell basename ${CC})
 ZSVBIN=../../build/${BUILD_SUBDIR}/${CCBN}/bin/zsv_
 
+QUICK=
+
 help:
 	@echo "To run all tests (set QUICK to skip mlr and csvcut):"
 	@echo "    make all [QUICK=1]"
+	@echo "    make CLI"
+
+CLI:
+	make all QUICK=${QUICK} -n | sed 's/[.]*\/.*\/bin\/zsv_/zsv /g' | sh
 
 all: count select
 

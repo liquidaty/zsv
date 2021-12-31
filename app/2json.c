@@ -7,6 +7,7 @@
 #include <zsv.h>
 #include <zsv/utils/writer.h>
 #include <zsv/utils/signal.h>
+#include <zsv/utils/arg.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -126,24 +127,12 @@ static void zsv_2json_row(void *ctx) {
 #define MAIN main
 #endif
 
-#ifdef ZSV_CLI
-#include "cli_cmd_internal.h"
-#endif
-
-int MAIN(int argc, const char *argv1[]) {
+int MAIN(int argc, const char *argv[]) {
   FILE *f_in = NULL;
-  struct zsv_2json_data data;
-  memset(&data, 0, sizeof(data));
+  struct zsv_2json_data data = { 0 };
   data.headers_next = &data.headers;
 
-  struct zsv_opts opts = zsv_get_default_opts();
-#ifdef ZSV_CLI
-  const char **argv = NULL;
-  int err = cli_args_to_opts(argc, argv1, &argc, &argv, &opts);
-#else
-  int err = 0;
-  const char **argv = argv1;
-#endif
+  INIT_CMD_DEFAULT_ARGS();
 
   const char *usage[] =
     {
@@ -158,6 +147,7 @@ int MAIN(int argc, const char *argv1[]) {
     };
 
   FILE *out = NULL;
+  int err = 0;
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       for(int j = 0; usage[j]; j++)
@@ -199,6 +189,7 @@ int MAIN(int argc, const char *argv1[]) {
   if(!out)
     out = stdout;
 
+  struct zsv_opts opts = zsv_get_default_opts();
   opts.cell = zsv_2json_cell;
   opts.row = zsv_2json_row;
   opts.ctx = &data;
@@ -228,9 +219,6 @@ int MAIN(int argc, const char *argv1[]) {
   err = data.err;
 
  exit_2json:
-#ifdef ZSV_CLI
-  free(argv);
-#endif
   return err;
 }
 
