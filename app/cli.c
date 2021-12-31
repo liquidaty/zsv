@@ -90,32 +90,11 @@ struct zsv_execution_data {
   const char **argv;
 
   void *custom_context; // user-defined
-  struct zsv_opts zsv_opts;
 };
 
 static struct zsv_opts ext_parser_opts(zsv_execution_context ctx) {
-  struct zsv_execution_data *d = ctx;
-  return d->zsv_opts;
-}
-
-static zsv_parser new_with_context(zsv_execution_context ctx, struct zsv_opts *opts) {
-  struct zsv_execution_data *d = ctx;
-  if(!opts)
-    return zsv_new(&d->zsv_opts);
-
-  struct zsv_opts tmp = *opts;
-  if(!tmp.buffsize && d->zsv_opts.buffsize)
-    tmp.buffsize = d->zsv_opts.buffsize;
-  if(!tmp.max_columns && d->zsv_opts.max_columns)
-    tmp.max_columns = d->zsv_opts.max_columns;
-  if(!tmp.max_row_size && d->zsv_opts.max_row_size)
-    tmp.max_row_size = d->zsv_opts.max_row_size;
-  if(!tmp.delimiter && d->zsv_opts.delimiter)
-    tmp.delimiter = d->zsv_opts.delimiter;
-  if(!tmp.no_quotes && d->zsv_opts.no_quotes)
-    tmp.no_quotes = d->zsv_opts.no_quotes;
-  
-  return zsv_new(&tmp);
+  (void)(ctx);
+  return zsv_get_default_opts();
 }
 
 char **custom_cmd_names = NULL;
@@ -216,7 +195,7 @@ static int handle_ext_err(struct zsv_ext *ext, zsv_execution_context ctx,
       if(ext->module.errfree)
         ext->module.errfree(errstr);
     }
-  } else if(((struct zsv_execution_data *)ctx)->zsv_opts.verbose)
+  } else
     fprintf(stderr, "An unknown error occurred in extension %s\n", ext->id);
   return rc;
 }
@@ -287,10 +266,11 @@ static enum zsv_ext_status ext_parse_all(zsv_execution_context ctx,
                                          void (*row_handler)(void *ctx),
                                          struct zsv_opts *const custom
                                          ) {
+  struct zsv_execution_data *d = ctx;
   struct zsv_opts opts = custom ? *custom : ext_parser_opts(ctx);
   if(row_handler)
     opts.row = row_handler;
-  zsv_parser parser = new_with_context(ctx, &opts);
+  zsv_parser parser = zsv_new(&opts);
   if(!parser)
     return zsv_ext_status_memory;
 
@@ -313,7 +293,6 @@ static enum zsv_ext_status ext_parse_all(zsv_execution_context ctx,
 static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks *e) {
   if(e) {
     memset(e, 0, sizeof(*e));
-    e->new_with_context = new_with_context;
     e->set_row_handler = zsv_set_row_handler;
     e->set_context = zsv_set_context;
     e->parse_more = zsv_parse_more;
@@ -401,6 +380,32 @@ static enum zsv_ext_status run_extension(int argc, const char *argv[], struct zs
   return stat;
 }
 
+/* havearg(): case-insensitive partial arg matching */
+char havearg(const char *arg,
+             const char *form1, size_t min_len1,
+             const char *form2, size_t min_len2) {
+  size_t len = strlen(arg);
+  if(!min_len1)
+    min_len1 = strlen(form1);
+  if(len > min_len1)
+    min_len1 = len;
+
+  if(!zsv_strincmp((const unsigned char *)arg, min_len1,
+                     (const unsigned char *)form1, min_len1))
+    return 1;
+
+  if(form2) {
+    if(!min_len2)
+      min_len2 = strlen(form2);
+    if(len > min_len2)
+      min_len2 = len;
+    if(!zsv_strincmp((const unsigned char *)arg, min_len2,
+                       (const unsigned char *)form2, min_len2))
+      return 1;
+  }
+  return 0;
+}
+
 static struct builtin_cmd *find_builtin(const char *cmd_name) {
   int builtin_cmd_count = sizeof(builtin_cmds)/sizeof(*builtin_cmds);
   for(int i = 0; i < builtin_cmd_count; i++)
@@ -428,6 +433,7 @@ static const char *extension_cmd_from_arg(const char *arg) {
 ZSV_CLI_EXPORT
 int CLI_MAIN(int argc, const char *argv[]) {
   INIT_DEFAULT_ARGS();
+
   const char **alt_argv = NULL;
   struct builtin_cmd *builtin = find_builtin(argc > 1 ? argv[1] : "help");
   if(builtin) {
@@ -622,8 +628,7 @@ static struct zsv_ext *zsv_ext_new(const char *dl_name, const char *id, char ver
   if(!h)
     fprintf(stderr, "Library %s not found\n", dl_name);
 
-  /* we still run zsv_ext_init to add this to our extension list,
-     even if it is invalid */
+  /* run zsv_ext_init to add to our extension list, even if it's invalid */
   tmp.ok = !zsv_ext_init(h, dl_name, &tmp);
   const char *m_id = tmp.ok && tmp.module.id ? tmp.module.id() : NULL;
   if(h && (!m_id || strcmp(m_id, (const char *)id))) {

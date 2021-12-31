@@ -100,7 +100,7 @@ ${BUILD_DIR}/bin/cli:
 ${BUILD_DIR}/objs/utils/%.o:
 	(cd .. && make CONFIGFILE=${CONFIGFILEPATH} CC=${CC} DEBUG=${DEBUG} $@ )
 
-test: test-1 test-2 test-3 test-4 test-thirdparty
+test: test-1 test-2 test-3 test-4 test-5 test-thirdparty
 
 test-1: test-%:  ${BUILD_DIR}/bin/cli ${TARGET}
 	@${BUILD_DIR}/bin/cli my-echo < ${THIS_LIB_BASE}/data/quoted.csv > /tmp/zsvext-$@.out
@@ -128,6 +128,11 @@ test-4: test-%:  ${BUILD_DIR}/bin/cli ${TARGET}
 	@${BUILD_DIR}/bin/cli license >> /tmp/zsvext-$@.out 2> /tmp/zsvext-$@.err
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 	@cmp /tmp/zsvext-$@.err test/expected/zsvext-$@.err && ${TEST_PASS} || ${TEST_FAIL}
+
+test-5: test-%: ${BUILD_DIR}/bin/cli ${TARGET}
+	@${BUILD_DIR}/bin/cli my-count newline.csv 2>/dev/null > /tmp/zsvext-$@.out
+	@${BUILD_DIR}/bin/cli my-count -q newline.csv 2>/dev/null >> /tmp/zsvext-$@.out
+	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-thirdparty: test-%: ${BUILD_DIR}/bin/cli ${TARGET}
 	@${BUILD_DIR}/bin/cli unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]

@@ -243,11 +243,9 @@ static enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const
   }
 
   /* initialize private data. see above for details */
-  struct my_data data;
-  memset(&data, 0, sizeof(data));
+  struct my_data data = { 0 };
+  struct zsv_opts opts = zsv_cb.ext_parser_opts(ctx);
 
-  struct zsv_opts opts;
-  memset(&opts, 0, sizeof(opts));
   if(argc > 1 && !(opts.stream = fopen(argv[1], "rb"))) {
     fprintf(stderr, "Unable to open for reading: %s\n", argv[1]);
     return 1;

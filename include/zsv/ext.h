@@ -49,7 +49,6 @@ enum zsv_ext_status {
 
 /**
  * The context in which any call to your extension is made, used with:
- *   `new_with_context()`
  *   `set_ext_context()`
  *   `get_ext_context()`
  */
@@ -73,7 +72,6 @@ typedef enum zsv_ext_status (*zsv_ext_main)(zsv_execution_context ctx, int argc,
  * function in zsv.h
  */
 struct zsv_ext_callbacks {
-  zsv_parser (*new_with_context)(zsv_execution_context, struct zsv_opts *opts);
   void (*set_row_handler)(zsv_parser handle, void (*row)(void *ctx));
   void (*set_context)(zsv_parser handle, void *ctx);
   enum zsv_status (*parse_more)(struct zsv_scanner *scanner);
@@ -126,26 +124,22 @@ struct zsv_ext_callbacks {
   enum zsv_ext_status (*ext_parse_all)(zsv_execution_context ctx,
                                        void *user_context,
                                        void (*row_handler)(void *ctx),
-                                       struct zsv_opts *const opts);
+                                       struct zsv_opts *const custom);
   /**
    * As an alternative to `ext_parse_all()`, for more granular control:
    * ```
-   * struct zsv_opts opts;
-   * memset(&opts, 0, sizeof(opts));
-   * enum zsv_ext_status stat = zsv_cb.ext_parser_opts(ctx, &opts);
-   * if(stat == zsv_ext_status_ok) {
-   *   zsv_parser parser = new_with_context(ctx, &opts);
-   *   if(!parser)
-   *     stat = zsv_ext_status_memory;
-   *   else {
-   *     opts.row = YOUR_COMMAND_rowhandler;
-   *     // ... set other options ...
-   *     zsv_parser p = new_with_context(ctx, &opts);
-   *     while((stat = zsv_parse_more(parser)) == zsv_status_ok) ;
-   *     if(stat == zsv_status_no_more_input)
-   *       stat = zsv_finish(p);
-   *     zsv_delete(p);
-   *   }
+   * struct zsv_opts opts = custom ? *custom : zsv_get_default_opts();
+   * zsv_parser parser = zsv_new(&opts);
+   * if(!parser)
+   *   stat = zsv_ext_status_memory;
+   * else {
+   *   opts.row = YOUR_COMMAND_rowhandler;
+   *   // ... set other options ...
+   *   zsv_parser p = new_with_context(ctx, &opts);
+   *   while((stat = zsv_parse_more(parser)) == zsv_status_ok) ;
+   *   if(stat == zsv_status_no_more_input)
+   *     stat = zsv_finish(p);
+   *   zsv_delete(p);
    * }
    * ```
    */

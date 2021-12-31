@@ -100,7 +100,7 @@ test-echo : ${BUILD_DIR}/bin/zsv_echo
 worldcitiespop_mil.csv:
 	curl -LOk 'https://burntsushi.net/stuff/worldcitiespop_mil.csv'
 
-test-count: ${BIN} worldcitiespop_mil.csv
+test-count: ${BUILD_DIR}/bin/zsv_count worldcitiespop_mil.csv
 	@${TEST_NAME}
 	@cat worldcitiespop_mil.csv | ${PREFIX} $< ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
