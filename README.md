@@ -1,8 +1,8 @@
 Please note: this code is still alpha / pre-production. Everything here should be considered preliminary.
 
-If you like ZSVlib, please give it a star!
+If you like zsv+lib, please give it a star!
 
-## zsv+lib: the fastest CSV parser on the planet
+## zsv+lib: the world's fastest CSV parser, with an extensible CLI
 
 zsv+lib is a fast CSV parser library and extensible command-line utility.
 It achieves high performance using SIMD operations,
