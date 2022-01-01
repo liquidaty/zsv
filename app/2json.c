@@ -30,8 +30,9 @@ struct zsv_2json_data {
 
   unsigned char overflowed:1;
   unsigned char as_objects:1;
+  unsigned char no_header:1;
   unsigned char err:1;
-  unsigned char _:5;
+  unsigned char _:4;
 };
 
 static void zsv_2json_cleanup(struct zsv_2json_data *data) {
@@ -91,7 +92,7 @@ static void zsv_2json_cell(void *ctx, unsigned char *utf8_value, size_t len) {
   }
 
   // output this cell
-  if(!data->rows_written) // this must be header row
+  if(!data->rows_written && !data->no_header) // this must be header row
     write_header_cell(data, utf8_value, len);
   else
     write_data_cell(data, utf8_value, len);
@@ -142,7 +143,8 @@ int MAIN(int argc, const char *argv[]) {
      "Options:",
      "  -h, --help",
      "  -o, --output <filename>: output to specified filename",
-     "  --object : output as array of objects",
+     "  --object               : output as array of objects",
+     "  --no-header            : treat the header row as a data row",
      NULL
     };
 
@@ -162,6 +164,8 @@ int MAIN(int argc, const char *argv[]) {
         fprintf(stderr, "Unable to open for writing: %s\n", argv[i]), err = 1;
     } else if(!strcmp(argv[i], "--object"))
       data.as_objects = 1;
+    else if(!strcmp(argv[i], "--no-header"))
+      data.no_header = 1;
     else {
       if(f_in)
         fprintf(stderr, "Input file specified more than once\n"), err = 1;
@@ -170,7 +174,10 @@ int MAIN(int argc, const char *argv[]) {
     }
   }
 
-  if(!f_in) {
+  if(data.no_header && data.as_objects) {
+    fprintf(stderr, "--object and --no-header options cannot be used together");
+    err = 1;
+  } else if(!f_in) {
 #ifdef NO_STDIN
     fprintf(stderr, "Please specify an input file\n"), err = 1;
 #else

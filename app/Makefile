@@ -312,7 +312,7 @@ ${BUILD_DIR}/external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}/external/%.o 
 test: ${TESTS}
 
 test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
-	cd test && make $@ LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} ZSV_EXTRAS=${ZSV_EXTRAS}
+	@cd test && make $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} ZSV_EXTRAS=${ZSV_EXTRAS}
 
 clean: clean-obj clean-lib
 	rm -rf ${BUILD_DIR}

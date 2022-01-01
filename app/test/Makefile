@@ -5,7 +5,9 @@ THIS_DIR:=$(shell basename "${THIS_MAKEFILE_DIR}")
 THIS_MAKEFILE:=$(lastword $(MAKEFILE_LIST))
 
 CONFIGFILE ?= ../../config.mk
-$(info # Using config file ${CONFIGFILE})
+ifneq ($(QUIET),1)
+  $(info # Using config file ${CONFIGFILE})
+endif
 include ${CONFIGFILE}
 
 CONFIGFILEPATH=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
@@ -86,7 +88,8 @@ help:
 	@echo "  where xxx can be: ${SOURCES}"
 
 CLI:
-	make CLI1=1 test -n | sed 's/\/.*\/bin\/zsv_/zsv /g' | sh
+	@echo "Testing CLI..."
+	@make CLI1=1 test -n | sed 's/\/.*\/bin\/zsv_/zsv /g' | sh
 
 test: ${TESTS}
 
@@ -156,11 +159,22 @@ test-stack2: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${PREFIX} $< ${TEST_DATA_DIR}/stack2-[12].csv ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-2tsv test-sql test-2json test-serialize test-flatten test-pretty : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+test-2tsv test-sql test-serialize test-flatten test-pretty : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_NAME}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out && \
 	${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+	@${TEST_NAME}
+	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
+	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out && \
+	${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+	@(${PREFIX} $< --object < ${TEST_DATA_DIR}/quoted2.csv ${REDIRECT1} /tmp/$@.out2 && \
+	${CMP} /tmp/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL})
+	@(${PREFIX} $< --no-header < ${TEST_DATA_DIR}/quoted2.csv ${REDIRECT1} /tmp/$@.out3 && \
+	${CMP} /tmp/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL})
+
 
 test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_NAME}
