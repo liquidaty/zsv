@@ -60,7 +60,7 @@ https://github.com/liquidaty/zsv/blob/main/include/zsv/ext/implementation_privat
   - create, train and share re-usable data domains using github-like features
 
 ## Binary downloads
-Pre-built binaries for OSX, Windows and Linux are available at https://zsvhub.com/download
+Pre-built binaries for OSX, Windows, Linux and BSD are available at https://zsvhub.com/download
 
 ## Demo
 `zsv` runs best (and by far, fastest) as a desktop CLI. But, you can also try out an extended
@@ -174,4 +174,4 @@ helping, please post an issue.
 * optimize search; add search with hyperscan or re2 regex matching, possibly parallelize?
 * auto-generated documentation, and better documentation in general
 * Additional benchmarking. Would be great to use https://bitbucket.org/ewanhiggs/csv-game/src/master/ as a springboard to benchmarking a number of various tasks
-* encoding conversion e.g. UTF18 to UTF8
+* encoding conversion e.g. UTF16 to UTF8
