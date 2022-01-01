@@ -49,10 +49,10 @@ int zsv_args_to_opts(int argc, const char *argv[],
                      );
 
 #define INIT_DEFAULT_ARGS() do {                                \
-    struct zsv_opts opts;                                       \
-    int err = zsv_args_to_opts(argc, argv, &argc, argv, &opts); \
+    struct zsv_opts otmp;                                       \
+    int err = zsv_args_to_opts(argc, argv, &argc, argv, &otmp); \
     if(err) return err;                                         \
-    else zsv_set_default_opts(opts);                            \
+    else zsv_set_default_opts(otmp);                            \
   } while(0)
 
 #ifdef ZSV_CLI

@@ -588,7 +588,6 @@ int MAIN(int argc, const char *argv[]) {
           data.max_cols = atoi(argv[arg_i]);
       }
       else {
-        int err = 0;
         if(data.opts.stream) {
           err = 1;
           fprintf(stderr, "Input file specified twice, or unrecognized argument: %s\n", argv[arg_i]);

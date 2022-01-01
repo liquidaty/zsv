@@ -4,7 +4,7 @@ THIS_MAKEFILE_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 THIS_DIR:=$(shell basename "${THIS_MAKEFILE_DIR}")
 THIS_MAKEFILE:=$(lastword $(MAKEFILE_LIST))
 
-CONFIGFILE=config.mk
+CONFIGFILE ?= config.mk
 include ${CONFIGFILE}
 
 CONFIGFILEPATH=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
