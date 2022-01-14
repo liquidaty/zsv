@@ -369,8 +369,8 @@ static double demo_random_bw_1_and_100() {
 #else
   double max = 100.0;
   unsigned int n;
-  unsigned int tries = 0;
 # ifdef HAVE_RAND_S
+  unsigned int tries = 0;
   while(rand_s(&n) && tries++ < 10);
   return (double) n / ((double) UINT_MAX + 1) * max;
 # else
