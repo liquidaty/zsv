@@ -160,4 +160,4 @@ clean:
 
 ${BUILD_DIR}/objs/zsv.o: zsv.c zsv_internal.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -DINCLUDE_SRC -o $@ -c $<
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -o $@ -c $<
