@@ -103,9 +103,16 @@ test-echo : ${BUILD_DIR}/bin/zsv_echo
 worldcitiespop_mil.csv:
 	curl -LOk 'https://burntsushi.net/stuff/worldcitiespop_mil.csv'
 
-test-count: ${BUILD_DIR}/bin/zsv_count worldcitiespop_mil.csv
+test-count: test-count-1 test-count-2
+
+test-count-1: ${BUILD_DIR}/bin/zsv_count worldcitiespop_mil.csv
 	@${TEST_NAME}
 	@cat worldcitiespop_mil.csv | ${PREFIX} $< ${REDIRECT} /tmp/$@.out
+	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-count-2: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR}/test/buffsplit_quote.csv
+	@${TEST_NAME}
+	@for x in 5000 5002 5004 5006 5008 5010 5013 5015 5017 5019 5021 5101 5105 5111 5113 5115 5117 5119 5121 5123 5125 5127 5129 5131 5211 5213 5215 5217 5311 5313 5315 5317 5413 5431 5433 5455 6133 ; do $< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv ; done > /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-select: test-select-n test-select-6 test-select-7 test-select-8
@@ -145,7 +152,6 @@ test-select-8: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${CMP} /tmp/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< --whitespace-clean-no-newline ${TEST_DATA_DIR}/test/white_utf8.csv ${REDIRECT} /tmp/$@.out3
 	@${CMP} /tmp/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
-
 
 test-stack: test-stack1 test-stack2
 

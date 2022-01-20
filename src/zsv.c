@@ -36,6 +36,7 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   if(scanner->old_bytes_read) {
     if(scanner->row_start < scanner->old_bytes_read) {
       size_t len = scanner->old_bytes_read - scanner->row_start;
+
       if(len < scanner->row_start)
         memcpy(scanner->buff.buff, scanner->buff.buff + scanner->row_start, len);
       else
@@ -69,7 +70,7 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
 
     scanner->opts.row = zsv_throwaway_row;
     scanner->opts.ctx = scanner;
-    
+
     scanner->partial_row_length = 0;
     capacity = scanner->buff.size;
   }

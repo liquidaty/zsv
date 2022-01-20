@@ -150,6 +150,7 @@ int MAIN(int argc, const char *argv[]) {
 
   FILE *out = NULL;
   int err = 0;
+  struct zsv_opts opts = zsv_get_default_opts(); // leave up here so that below goto stmts do not cross initialization
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       for(int j = 0; usage[j]; j++)
@@ -196,7 +197,6 @@ int MAIN(int argc, const char *argv[]) {
   if(!out)
     out = stdout;
 
-  struct zsv_opts opts = zsv_get_default_opts();
   opts.cell = zsv_2json_cell;
   opts.row = zsv_2json_row;
   opts.ctx = &data;
@@ -228,7 +228,3 @@ int MAIN(int argc, const char *argv[]) {
  exit_2json:
   return err;
 }
-
-
-
-

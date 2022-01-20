@@ -5,6 +5,10 @@
  * https://opensource.org/licenses/MIT
  */
 
+#ifdef _WIN32
+#define _CRT_RAND_S
+#endif
+
 #include <zsv.h>
 #include <zsv/utils/writer.h>
 #include <zsv/utils/signal.h>
@@ -15,9 +19,6 @@
 
 #include <stdio.h>
 
-#ifdef _WIN32
-#define _CRT_RAND_S
-#endif
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -183,9 +184,14 @@ static void zsv_select_add_output_col(struct zsv_select_data *data, unsigned in_
 static inline unsigned int str_array_ifind(const unsigned char *needle,
                                            unsigned char *haystack[],
                                            unsigned hay_count) {
-  for(unsigned int i = 0; i < hay_count; i++)
+  for(unsigned int i = 0; i < hay_count; i++) {
+    if(!(needle && *needle) && !(haystack[i] && *haystack[i]))
+      return i + 1;
+    if(!(needle && *needle && haystack[i] && *haystack[i]))
+      continue;
     if(!zsv_stricmp(needle, haystack[i]))
       return i + 1;
+  }
   return 0;
 }
 

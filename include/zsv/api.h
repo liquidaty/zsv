@@ -119,7 +119,7 @@ zsv_opts_new(
                void *ctx,             /* pointer passed to row / cell handler(s) */
                zsv_generic_read read, /* defaults to fread */
                void *stream,          /* defaults to stdin */
-               
+
                unsigned char *buff,   /* user-provided buff */
                size_t buffsize,       /* size of user-provided buff */
 
@@ -131,7 +131,7 @@ zsv_opts_new(
                 * buffsize = 2 * max_row_size
                 */
                unsigned max_row_size,
-               
+
                char delimiter, /* defaults to comma */
                char no_quotes  /* defaults to false */
                );

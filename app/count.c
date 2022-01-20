@@ -94,4 +94,4 @@ int MAIN(int argc, const char *argv[]) {
     fclose(opts.stream);
 
   return err;
-}            
+}

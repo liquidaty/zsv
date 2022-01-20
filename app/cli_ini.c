@@ -32,7 +32,7 @@ static void write_extension_config(struct zsv_ext *ext, FILE *f) {
   fprintf(f, "[%s]\n\n", ext->id);
 }
 
-// config_save: return error 
+// config_save: return error
 static int config_save(struct cli_config *config) {
   int err = 1;
   char *tmp;
@@ -124,7 +124,7 @@ static int add_extension(const char *id, struct zsv_ext **exts, char ignore_err,
       } else {
         ext->next = *exts;
         *exts = ext;
-      }        
+      }
     }
     free(extension_id);
   }
@@ -207,4 +207,3 @@ static void ext_command_delete(struct zsv_ext_command *cmd) {
     free(cmd);
   }
 }
-

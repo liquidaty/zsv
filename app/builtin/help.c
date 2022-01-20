@@ -24,7 +24,7 @@ static int main_help(int argc, const char *argv[]) {
     "",
     "Options common to all commands:",
     "  -c,--max-column-count: set the maximum number of columns parsed per row. defaults to 1024",
-    "  -r,--max-row-size: set the minimum supported maximum row size. defaults to 128k",
+    "  -r,--max-row-size: set the minimum supported maximum row size. defaults to 64k",
     "  -B,--buff-size: set internal buffer size. defaults to 256k",
     "  -t,--tab-delim: set column delimiter to tab",
     "  -O,--other-delim: set column delimiter to other column",

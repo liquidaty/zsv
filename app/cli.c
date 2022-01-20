@@ -327,7 +327,7 @@ static enum zsv_ext_status ext_init(struct zsv_ext *ext) {
     struct zsv_ext_callbacks cb;
     zsv_ext_callbacks_init(&cb);
     ext->commands_next = &ext->commands;
-    
+
     struct zsv_execution_data d;
     memset(&d, 0, sizeof(d));
     d.ext = ext;

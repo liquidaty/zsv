@@ -123,7 +123,7 @@ __attribute__((always_inline)) static inline void cell1(struct zsv_scanner * sca
       scanner->quoted = ZSV_PARSER_QUOTE_NEEDED;
   }
   // end quote handling
-  
+
   if(VERY_UNLIKELY(scanner->waiting_for_end != 0)) { // overflow: cell size exceeds allocated memory
     if(scanner->opts.overflow)
       scanner->opts.overflow(scanner->opts.ctx, s, n);
@@ -136,7 +136,7 @@ __attribute__((always_inline)) static inline void cell1(struct zsv_scanner * sca
       row->cells[row->used++] = c;
     } else
       scanner->row.overflow++;
-  }  
+  }
   scanner->waiting_for_end = !is_end;
   scanner->have_cell = 1;
 
@@ -239,11 +239,11 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
     memset(&qt_v, 0, sizeof(qt_v));
   }
 
-  // check if we have an embedded dbl-quote past the initial opening quote, which was
+  // case "hel"|"o": check if we have an embedded dbl-quote past the initial opening quote, which was
   // split between the last buffer and this one e.g. "hel""o" where the last buffer ended
   // with "hel" and this one starts with "o"
   if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED)
-     && i > scanner->cell_start
+     && i > scanner->cell_start + 1 // case "|hello": need the + 1 in case split after first char of quoted value e.g. "hello" => " and hello"
      && scanner->last == quote) {
     if(buff[i] != quote) {
       scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
