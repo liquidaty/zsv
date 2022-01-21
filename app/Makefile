@@ -266,7 +266,7 @@ ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 	${CC} ${CFLAGS} -I${INIH_INCLUDE} -DINI_HANDLER_LINENO=1 -DINI_CALL_HANDLER_ON_NEW_SECTION=1 -c $< -o $@
 
 ${CLI_APP_OBJECT} : cli_ini.c builtin/*.c ${JSONWRITER_OBJECT}
-${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${BUILD_DIR}/objs/cli_%.o: %.c
+${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${BUILD_DIR}/objs/cli_%.o: %.c ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI -DMAIN=main_$* -I${JSONWRITER_INCLUDE} ${CLI_INCLUDE} -Iexternal/sglib -I${INCLUDE_DIR} -c $< -o $@ ${SQLITE_EXT_INCLUDE}
 
