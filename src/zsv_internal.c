@@ -169,9 +169,12 @@ __attribute__((always_inline)) static inline char row1(struct zsv_scanner *scann
       } else
         ok = 0;
     }
-    if(ok && scanner->opts.progress.callback) {
+    if(ok && scanner->opts.progress.callback)
       scanner->abort = scanner->opts.progress.callback(scanner->opts.progress.ctx, scanner->progress.cum_row_count);
-    }
+#ifndef NDEBUG
+    if(scanner->abort)
+      fprintf(stderr, "ZSV parsing aborted at %zu\n", scanner->progress.cum_row_count);
+#endif
   }
 # endif
   if(VERY_UNLIKELY(scanner->abort))
