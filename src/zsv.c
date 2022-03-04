@@ -102,7 +102,6 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
                                  scanner->buff.buff + scanner->partial_row_length, bytes_read);
   if(LIKELY(bytes_read))
     return zsv_scan(scanner, scanner->buff.buff, bytes_read);
-
   scanner->scanned_length = scanner->partial_row_length;
   return zsv_status_no_more_input;
 }
@@ -184,6 +183,21 @@ zsv_parser zsv_new(struct zsv_opts *opts) {
 ZSV_EXPORT
 enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
   enum zsv_status stat = zsv_status_ok;
+  if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED)
+     && scanner->partial_row_length > scanner->cell_start + 1) {
+    // && scanner->last == quote) {
+    //    if(buff[i] != quote) {
+    int quote = '"';
+    scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
+    scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
+    if(scanner->last == quote)
+      scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start;
+    else {
+      scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start + 1;
+      scanner->scanned_length++;
+    }
+  }
+
   if(!scanner->finished) {
     scanner->finished = 1;
     if(scanner->scanned_length > scanner->cell_start)
