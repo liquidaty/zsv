@@ -522,7 +522,7 @@ static void zsv_desc_execute(struct zsv_desc_data *data) {
   data->parser = zsv_new(&data->opts);
 
   FILE *input_temp_file = NULL;
-  
+
   enum zsv_status status;
   if(input_temp_file)
     zsv_set_scan_filter(data->parser, zsv_filter_write, input_temp_file);

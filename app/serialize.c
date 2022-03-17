@@ -180,9 +180,9 @@ static void serialize_row(void *hook) {
       unsigned int i = 0, j = data->col_count;
       for(struct serialize_header_name *hn = data->temp_header_names; hn; hn = hn->next, i++, j--) {
         if((data->header_names[j-1].str = hn->str)) {
-          if((data->header_names[j-1].output_str = 
+          if((data->header_names[j-1].output_str =
             zsv_writer_str_to_csv(hn->str, strlen((char *)hn->str))))
-            data->header_names[j-1].output_len = 
+            data->header_names[j-1].output_len =
               strlen((char *)data->header_names[j-1].output_str);
         }
         hn->str = NULL;

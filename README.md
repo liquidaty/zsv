@@ -1,5 +1,3 @@
-Please note: this code is still alpha / pre-production. Everything here should be considered preliminary.
-
 If you like zsv+lib, please give it a star!
 
 ## zsv+lib: the world's fastest CSV parser, with an extensible CLI
@@ -162,9 +160,9 @@ You can build and run a sample extension by running `make test` from app/ext_exa
 The easiest way to implement your own extension is to
 copy and customize the template files in [app/ext_template](app/ext_template/README.md)
 
-## Alpha release limitations
+## Current release limitations
 
-This alpha release does not yet implement the full range of core features
+This release does not yet implement the full range of core features
 that are planned for implementation prior to beta release. If you are interested in
 helping, please post an issue.
 

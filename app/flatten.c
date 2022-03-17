@@ -551,8 +551,8 @@ const char *flatten_usage_msg[] =
    "  -C <max columns to output>: maximum number of columns to output",
    "  -m <max rows per aggregation>: defaults to 1024. If this limit is reached for any aggregation,",
    "     an error will be output",
-   "  -i <Row ID column name>: Required. name of column to group by",
-   "  -c <Column ID column name>: name of column specifying the output column name",
+   "  --row-id <Row ID column name>: Required. name of column to group by",
+   "  --col-name <Column ID column name>: name of column specifying the output column name",
    "  -V <Value column name>: name of column specifying the output value",
    "  (future: -a <Aggregation method>: aggregation method to use for the select-all placeholder)",
    "  -o <output filename>: name of file to save output to",
@@ -706,16 +706,16 @@ int MAIN(int argc, const char *argv[]) {
         err = zsv_printerr(1, "%s invalid: should be positive integer > 1 (got %s)", argv[arg_i], argv[arg_i+1]);
       else
         data.max_rows_per_aggregation = atoi(argv[++arg_i]);
-    } else if(!strcmp(argv[arg_i], "-i")) {
+    } else if(!strcmp(argv[arg_i], "--row-id")) { // used to be -i
       if(!(arg_i + 1 < argc && *argv[arg_i + 1]))
-        err = zsv_printerr(1, "-i option: missing column name");
+        err = zsv_printerr(1, "%s option: missing column name", argv[arg_i]);
       else {
         data.row_id_column.name = (unsigned char *)argv[++arg_i];
         data.row_id_column.name_len = strlen((char *)data.row_id_column.name);
       }
-    } else if(!strcmp(argv[arg_i], "-c")) {
+    } else if(!strcmp(argv[arg_i], "--col-name")) { // used to be -c
       if(!(arg_i + 1 < argc && *argv[arg_i + 1]))
-        err = zsv_printerr(1, "-c option: missing column name");
+        err = zsv_printerr(1, "%s option: missing column name", argv[arg_i]);
       else {
         data.column_name_column.name = (unsigned char *)argv[++arg_i];
         data.column_name_column.name_len = strlen((char *)data.column_name_column.name);
@@ -792,7 +792,7 @@ int MAIN(int argc, const char *argv[]) {
       opts.error = flatten_error;
       opts.stream = data.in;
       opts.ctx = &data;
-      
+
       zsv_parser handle = zsv_new(&opts);
       if(!handle)
         err = data.cancelled = zsv_printerr(1, "Unable to create csv parser");

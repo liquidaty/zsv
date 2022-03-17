@@ -29,8 +29,10 @@ help:
 	@echo "    make all [QUICK=1]"
 	@echo "    make CLI"
 
+CLI: ZSVBIN="zsv "
+
 CLI:
-	make all QUICK=${QUICK} -n | sed 's/[.]*\/.*\/bin\/zsv_/zsv /g' | sh
+	make all QUICK=${QUICK} ZSVBIN=${ZSVBIN} -n | sed 's/[.]*\/.*\/bin\/zsv_/zsv /g' | sh
 
 all: count select
 

@@ -137,7 +137,7 @@ void zsv_set_context(zsv_parser parser, void *ctx) {
 
 ZSV_EXPORT
 char zsv_quoted(zsv_parser parser) {
-  return parser->quoted;
+  return parser->quoted || parser->opts.no_quotes;
 }
 
 ZSV_EXPORT

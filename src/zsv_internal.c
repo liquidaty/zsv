@@ -132,7 +132,7 @@ __attribute__((always_inline)) static inline void cell1(struct zsv_scanner * sca
       scanner->opts.cell(scanner->opts.ctx, s, n);
     if(VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
       struct zsv_row *row = &scanner->row;
-      struct zsv_cell c = { s, n, scanner->quoted };
+      struct zsv_cell c = { s, n, scanner->opts.no_quotes ? 1 : scanner->quoted };
       row->cells[row->used++] = c;
     } else
       scanner->row.overflow++;
