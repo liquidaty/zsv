@@ -254,8 +254,8 @@ static void zsv_desc_print(struct zsv_desc_data *data) {
   if(data->header_only) {
     for(unsigned int i = 0; i < data->col_count; i++) {
       struct zsv_desc_column_data *c = &data->columns[i];
-      zsv_writer_cell(data->csv_writer, !i, (const unsigned char *)c->name,
-                        c->name ? strlen(c->name) : 0, 1);
+      zsv_writer_cell(data->csv_writer, 1, (const unsigned char *)c->name,
+                      c->name ? strlen(c->name) : 0, 1);
     }
   } else {
     write_headers(data);

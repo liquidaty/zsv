@@ -194,3 +194,5 @@ test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 	@(${PREFIX} $< < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT2} /tmp/$@.out2 && \
 	${CMP} /tmp/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL})
+	@(${PREFIX} $< -H < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT2} /tmp/$@.out3 && \
+	${CMP} /tmp/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL})

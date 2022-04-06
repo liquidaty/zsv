@@ -1,0 +1,173 @@
+Loan Number
+useful data --> useful data -->
+Primary Servicer
+ServicingFee %
+ServicingFee? Flatdollar
+ServicingAdvance Methodology
+Originator
+Loan Group
+Amortization Type
+Lien Position
+HELOC Indicator
+Loan Purpose
+Cash Out Amount
+Total Origination and Discount Points
+Covered/High Cost Loan Indicator
+Relocation Loan Indicator
+Broker Indicator
+Channel
+Escrow Indicator
+Senior Loan Amount(s)
+Loan Type of Most Senior Lien
+Hybrid PeriodofMost Senior Lien (inmonths)
+Neg Am Limit ofMost Senior Lien
+Junior MortgageBalance
+Origination Date ofMost Senior Lien
+Origination Date
+Original LoanAmount
+Original InterestRate
+OriginalAmortization Term
+Original Term toMaturity
+First Payment Dateof Loan
+Interest Type Indicator
+Original Interest Only Term
+Buy Down Period
+HELOC Draw Period
+Current Loan Amount
+Current Interest Rate
+Current Payment Amount Due
+Interest Paid Through Date
+Current Payment Status
+Index Type
+ARM Look-backDays
+Gross Margin
+ARM Round Flag
+ARM Round Factor
+Initial Fixed RatePeriod
+Initial Interest RateCap (Change Up)
+Initial Interest RateCap (Change Down)
+Subsequent InterestRate Reset Period
+Subsequent InterestRate Cap (Change Down)
+Subsequent InterestRate Cap (ChangeUp)
+Lifetime MaximumRate (Ceiling)
+Lifetime MinimumRate (Floor)
+NegativeAmortization Limit
+Initial NegativeAmortization RecastPeriod
+SubsequentNegativeAmortization RecastPeriod
+Initial FixedPayment Period
+SubsequentPayment ResetPeriod
+Initial PeriodicPayment Cap
+SubsequentPeriodic PaymentCap
+Initial MinimumPayment ResetPeriod
+SubsequentMinimum PaymentReset Period
+Option ARMIndicator
+Options at Recast
+Initial MinimumPayment
+Current MinimumPayment
+Prepayment PenaltyCalculation
+Prepayment PenaltyType
+Prepayment PenaltyTotal Term
+Prepayment PenaltyHard Term
+Primary Borrower ID
+Number ofMortgagedProperties
+Total Number ofBorrowers
+Self-employmentFlag
+Current ?Other?Monthly Payment
+Length ofEmployment:Borrower
+Length ofEmployment: Co-Borrower
+Years in Home
+FICO Model Used
+Most Recent FICODate
+Primary WageEarner OriginalFICO: Equifax
+Primary WageEarner OriginalFICO: Experian
+Primary WageEarner OriginalFICO: TransUnion
+Secondary WageEarner OriginalFICO: Equifax
+Secondary WageEarner OriginalFICO: Experian
+Secondary WageEarner OriginalFICO: TransUnion
+OriginalPrimary BorrowerFICO
+Most RecentPrimary BorrowerFICO
+Most Recent Co-Borrower FICO
+Most Recent FICOMethod
+VantageScore:Primary Borrower
+VantageScore: Co-Borrower
+Most RecentVantageScoreMethod
+VantageScore Date
+Credit Report:Longest Trade Line
+Credit Report:Maximum TradeLine
+Credit Report:Number of TradeLines
+Credit Line UsageRatio
+Most Recent 12-month Pay History
+Months Bankruptcy
+Months Foreclosure
+Primary BorrowerWage Income
+Co-Borrower WageIncome
+Primary BorrowerOther Income
+Co-Borrower OtherIncome
+All Borrower WageIncome
+All Borrower TotalIncome
+4506-T Indicator
+Borrower IncomeVerification Level
+Co-BorrowerIncome Verification
+BorrowerEmploymentVerification
+Co-BorrowerEmploymentVerification
+Borrower AssetVerification
+Co-Borrower AssetVerification
+Liquid / CashReserves
+Monthly Debt AllBorrowers
+Originator DTI
+Fully Indexed Rate
+QualificationMethod
+Percentage of DownPayment fromBorrower OwnFunds
+City
+State
+Postal Code
+Property Type
+Occupancy
+Sales Price
+Original AppraisedProperty Value
+Original PropertyValuation Type
+Original PropertyValuation Date
+OriginalAutomated Valuation Model (AVM) Model Name
+OriginalAVM Confidence Score
+MostRecent Property Value2
+MostRecent Property Valuation Type
+MostRecent Property Valuation Date
+MostRecent AVM ModelName
+MostRecent AVM Confidence Score
+OriginalCLTV
+OriginalLTV
+OriginalPledged Assets
+MortgageInsurance CompanyName
+Mortgage Insurance Percent
+MI: Lender orBorrower Paid?
+Pool Insurance Co.Name
+Pool Insurance StopLoss %
+MI CertificateNumber
+Updated DTI(Front-end)
+Updated DTI(Back-end)
+ModificationEffective PaymentDate
+Total CapitalizedAmount
+Total DeferredAmount
+Pre- ModificationInterest (Note) Rate
+Pre- Modification P&IPayment
+Pre- ModificationInitial Interest RateChange DownwardCap
+Pre- ModificationSubsequent InterestRate Cap
+Pre- ModificationNext Interest RateChange Date
+Pre- Modification I/OTerm
+Forgiven PrincipalAmount
+Forgiven InterestAmount
+Number ofModifications
+Cash To/From Brrw at Closing
+Brrw - Yrs at in Industry
+CoBrrw - Yrs at in Industry
+Junior Mortgage Drawn Amount
+Maturity Date
+PrimaryBorrower Wage Income (Salary)
+PrimaryBorrower Wage Income (Bonus)
+PrimaryBorrower Wage Income (Commission)
+Co-Borrower Wage Income (Salary)
+Co-Borrower Wage Income (Bonus)
+Co-Borrower Wage Income (Commission)
+Originator Doc Code
+Income Verification
+Asset Verification
