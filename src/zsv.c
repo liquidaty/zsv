@@ -33,7 +33,9 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   }
   // if this is not the first parse call, we might have a partial
   // row at the end of our buffer that must be moved
+  scanner->last = '\0';
   if(scanner->old_bytes_read) {
+    scanner->last = scanner->buff.buff[scanner->old_bytes_read-1];
     if(scanner->row_start < scanner->old_bytes_read) {
       size_t len = scanner->old_bytes_read - scanner->row_start;
 
@@ -48,7 +50,6 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
       zsv_clear_cell(scanner);
     }
 
-    scanner->last = scanner->buff.buff[scanner->old_bytes_read-1];
     scanner->cell_start -= scanner->row_start;
     for(size_t i2 = 0; i2 < scanner->row.used; i2++)
       scanner->row.cells[i2].str -= scanner->row_start;
@@ -185,8 +186,6 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
   enum zsv_status stat = zsv_status_ok;
   if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED)
      && scanner->partial_row_length > scanner->cell_start + 1) {
-    // && scanner->last == quote) {
-    //    if(buff[i] != quote) {
     int quote = '"';
     scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
     scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;

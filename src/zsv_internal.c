@@ -251,12 +251,12 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
     if(buff[i] != quote) {
       scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
       scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
-      scanner->quote_close_position = i - scanner->cell_start;
+      scanner->quote_close_position = i - scanner->cell_start - 1;
     } else {
       scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
       scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
+      i++;
     }
-    i++;
   }
 
 #define scanner_last (i ? buff[i-1] : scanner->last)

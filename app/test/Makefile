@@ -115,7 +115,11 @@ test-count-2: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR}/test/buffsplit_q
 	@for x in 5000 5002 5004 5006 5008 5010 5013 5015 5017 5019 5021 5101 5105 5111 5113 5115 5117 5119 5121 5123 5125 5127 5129 5131 5211 5213 5215 5217 5311 5313 5315 5317 5413 5431 5433 5455 6133 ; do $< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv ; done > /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select: test-select-n test-select-6 test-select-7 test-select-8 test-select-9
+test-select: test-select-n test-select-6 test-select-7 test-select-8 test-select-9 test-select-quotebuff
+
+test-select-quotebuff: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_NAME}
+	@${THIS_MAKEFILE_DIR}/select-quotebuff-gen.sh  | ${PREFIX} $< -B 4096 | sed 's/"/Q/g' | grep QQ >/dev/null && ${TEST_FAIL} || ${TEST_PASS}
 
 test-select-n: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_NAME}
