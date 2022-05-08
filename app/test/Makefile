@@ -115,7 +115,7 @@ test-count-2: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR}/test/buffsplit_q
 	@for x in 5000 5002 5004 5006 5008 5010 5013 5015 5017 5019 5021 5101 5105 5111 5113 5115 5117 5119 5121 5123 5125 5127 5129 5131 5211 5213 5215 5217 5311 5313 5315 5317 5413 5431 5433 5455 6133 ; do $< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv ; done > /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select: test-select-n test-select-6 test-select-7 test-select-8 test-select-9 test-select-quotebuff
+test-select: test-select-n test-select-6 test-select-7 test-select-8 test-select-9 test-select-quotebuff test-select-fixed-1
 
 test-select-quotebuff: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_NAME}
@@ -162,6 +162,12 @@ test-select-9: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${PREFIX} $< ${TEST_DATA_DIR}/test/quoted3.csv -q ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
+test-select-fixed-1: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_NAME}
+	@${PREFIX} $< ${TEST_DATA_DIR}/fixed.csv --fixed 3,7,12,18,20,21,22 ${REDIRECT} /tmp/$@.out
+	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+
 test-stack: test-stack1 test-stack2
 
 test-stack1: ${BUILD_DIR}/bin/zsv_stack${EXE}
@@ -189,6 +195,8 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	${CMP} /tmp/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL})
 	@(${PREFIX} $< --no-header < ${TEST_DATA_DIR}/quoted2.csv ${REDIRECT1} /tmp/$@.out3 && \
 	${CMP} /tmp/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL})
+	@(${PREFIX} $< --database < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out4 && \
+	${CMP} /tmp/$@.out4 expected/$@.out4 && ${TEST_PASS} || ${TEST_FAIL})
 
 
 test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}

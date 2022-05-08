@@ -58,27 +58,36 @@ void zsv_set_input(zsv_parser, void *in);
 ZSV_EXPORT
 zsv_parser zsv_new(struct zsv_opts *opts);
 
-ZSV_EXPORT enum zsv_status zsv_parse_more(struct zsv_scanner *scanner);
+ZSV_EXPORT enum zsv_status zsv_parse_more(zsv_parser parser);
 
-ZSV_EXPORT enum zsv_status zsv_next_input(struct zsv_scanner *scanner, void *f_next_input);
+ZSV_EXPORT enum zsv_status zsv_next_input(zsv_parser parser, void *f_next_input);
 
 ZSV_EXPORT enum zsv_status zsv_set_malformed_utf8_replace(zsv_parser parser, unsigned char value);
-ZSV_EXPORT enum zsv_status zsv_set_scan_filter(struct zsv_scanner *scanner,
-                                                     size_t (*filter)(void *ctx,
-                                                                      unsigned char *buff,
-                                                                      size_t bytes_read),
-                                                     void *ctx);
+ZSV_EXPORT enum zsv_status zsv_set_scan_filter(zsv_parser parser,
+                                               size_t (*filter)(void *ctx,
+                                                                unsigned char *buff,
+                                                                size_t bytes_read),
+                                               void *ctx);
+
+/**
+ * Set parsing mode to fixed-width. Once set to fixed mode, a parser may not be
+ *   set back to CSV mode
+ * @return status code
+ * @param parser parser handle
+ * @param count number of elements in offsets
+ * @param offsets array of cell-end offsets. offsets[0] should be the length of the first cell
+ */
+ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count, size_t *offsets);
 
 ZSV_EXPORT size_t zsv_filter_write(void *FILEp, unsigned char *buff, size_t bytes_read);
 
-// zsv_parse_string(): *utf8 may not overlap w scanner buffer!
-ZSV_EXPORT enum zsv_status zsv_parse_string(struct zsv_scanner *scanner,
+// zsv_parse_string(): *utf8 may not overlap w parser buffer!
+ZSV_EXPORT enum zsv_status zsv_parse_string(zsv_parser parser,
                                             const unsigned char *restrict utf8,
                                             size_t len);
 
 // return a ptr to remaining (unparsed) buffer and length remaining
-ZSV_EXPORT unsigned char *zsv_remaining_buffer(struct zsv_scanner *scanner,
-                                             size_t *len);
+ZSV_EXPORT unsigned char *zsv_remaining_buffer(zsv_parser parser, size_t *len);
 
 ZSV_EXPORT void zsv_set_row_handler(zsv_parser handle,
                                         void (*row)(void *ctx));
@@ -159,6 +168,7 @@ void zsv_set_default_progress_callback(zsv_progress_callback cb, void *ctx, size
  * @param ctx pointer passed to callback
  */
 void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx);
+
 
 #  endif
 

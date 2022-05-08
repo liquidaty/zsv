@@ -109,6 +109,12 @@ struct zsv_select_data {
   zsv_csv_writer csv_writer;
 
   size_t overflow_size;
+
+  struct {
+    size_t *offsets;
+    size_t count;
+  } fixed;
+
   unsigned char whitspace_clean_flags;
 
   unsigned char print_all_cols:1;
@@ -515,6 +521,7 @@ const char *zsv_select_usage_msg[] =
    "",
    "Options:",
    "  -b, --with-bom : output with BOM",
+   "  --fixed <offset1,offset2,offset3>: parse as fixed-width text; use given comma-separated list of positive integers for cell end indexes",
 #ifndef ZSV_CLI
    "  -v, --verbose: verbose output",
 #endif
@@ -574,6 +581,8 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
   for(unsigned int i = 0; i < data->header_name_count; i++)
     free(data->header_names[i]);
   free(data->header_names);
+
+  free(data->fixed.offsets);
 }
 
 #ifndef MAIN
@@ -588,6 +597,7 @@ int MAIN(int argc, const char *argv[]) {
   else {
     struct zsv_select_data data = { 0 };
     int err = 0;
+
     data.opts = zsv_get_default_opts();
 
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
@@ -602,11 +612,38 @@ int MAIN(int argc, const char *argv[]) {
       }
       if(!strcmp(argv[arg_i], "-b") || !strcmp(argv[arg_i], "--with-bom"))
         writer_opts.with_bom = 1;
-      else if(!strcmp(argv[arg_i], "--distinct"))
+      else if(!strcmp(argv[arg_i], "--fixed")) {
+        if(++arg_i >= argc)
+          err = zsv_printerr(1, "%s option requires parameter", argv[arg_i-1]);
+        else { // parse offsets
+          data.fixed.count = 1;
+          for(const char *s = argv[arg_i]; *s; s++)
+            if(*s == ',')
+              data.fixed.count++;
+          free(data.fixed.offsets);
+          data.fixed.offsets = malloc(data.fixed.count * sizeof(*data.fixed.offsets));
+          size_t count = 0;
+          const char *start = argv[arg_i];
+          for(const char *end = argv[arg_i]; ; end++) {
+            if(*end == ',' || *end == '\0') {
+              if(!sscanf(start, "%zu,", &data.fixed.offsets[count++])) {
+                err = zsv_printerr(1, "Invalid offset: %s.*\n", end - start, start);
+                break;
+              } else if(*end == '\0')
+                break;
+              else {
+                start = end + 1;
+                if(*start == '\0')
+                  break;
+              }
+            }
+          }
+        }
+      } else if(!strcmp(argv[arg_i], "--distinct"))
         data.distinct = 1;
       else if(!strcmp(argv[arg_i], "-o") || !strcmp(argv[arg_i], "--output")) {
         if(++arg_i >= argc)
-          err = zsv_printerr(1, "%2 option requires parameter", argv[arg_i-1]);
+          err = zsv_printerr(1, "%s option requires parameter", argv[arg_i-1]);
         else if(writer_opts.stream)
           err = zsv_printerr(1, "Output file specified more than once");
         else if(!(writer_opts.stream = fopen(argv[arg_i], "wb")))
@@ -754,6 +791,12 @@ int MAIN(int argc, const char *argv[]) {
             || !data.no_trim_whitespace
             || data.clean_white
             || data.embedded_lineend;
+
+          // set to fixed if applicable
+          if(data.fixed.count && zsv_set_fixed_offsets(handle, data.fixed.count,
+                                                       data.fixed.offsets)
+             != zsv_status_ok)
+            data.cancelled = 1;
 
           // create a local csv writer buff quoted values
           unsigned char writer_buff[512];

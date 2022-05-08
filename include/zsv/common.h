@@ -20,7 +20,9 @@
 enum zsv_status {
   zsv_status_ok = 0,
   zsv_status_cancelled,
-  zsv_status_no_more_input
+  zsv_status_no_more_input,
+  zsv_status_invalid_option,
+  zsv_status_memory
 };
 
 typedef struct zsv_scanner * zsv_parser;

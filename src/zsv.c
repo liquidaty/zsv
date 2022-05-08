@@ -24,7 +24,7 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   if(scanner->insert_string) {
     size_t len = strlen(scanner->insert_string);
     if(len > scanner->buff.size)
-      len = scanner->buff.size - 1;
+      len = scanner->buff.size - 1; // to do: throw an error instead
     memcpy(scanner->buff.buff + scanner->partial_row_length, scanner->insert_string, len);
     if(scanner->buff.buff[len] != '\n')
       scanner->buff.buff[len] = '\n';
@@ -62,7 +62,10 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
 
   if(VERY_UNLIKELY(capacity == 0)) { // our row size was too small to fit a single row of data
     fprintf(stderr, "Warning: row truncated\n");
-    if(VERY_UNLIKELY(row1(scanner)))
+    if(scanner->mode == ZSV_MODE_FIXED) {
+      if(VERY_UNLIKELY(row_fx(scanner, scanner->buff.buff, 0, scanner->buff.size)))
+        return zsv_status_cancelled;
+    } else if(VERY_UNLIKELY(row_dl(scanner)))
       return zsv_status_cancelled;
 
     // throw away the next row end
@@ -114,6 +117,7 @@ void zsv_abort(zsv_parser parser) {
 
 ZSV_EXPORT
 char zsv_row_is_blank(zsv_parser parser) {
+
   for(unsigned int i = 0; i < parser->row.used; i++)
     if(parser->row.cells[i].len)
       return 0;
@@ -155,6 +159,49 @@ void zsv_set_input(zsv_parser parser, void *in) {
   parser->in = in;
 }
 
+ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count, size_t *offsets) {
+  if(!count) {
+    fprintf(stderr, "Fixed offset count must be greater than zero\n");
+    return zsv_status_invalid_option;
+  }
+  if(offsets[0] == 0)
+    fprintf(stderr, "Warning: first cell width is zero\n");
+  for(size_t i = 1; i < count; i++) {
+    if(offsets[i-1] > offsets[i]) {
+      fprintf(stderr, "Invalid offset %zu may not exceed prior offset %zu\n",
+              offsets[i], offsets[i-1]);
+      return zsv_status_invalid_option;
+    } else if(offsets[i-1] == offsets[i])
+      fprintf(stderr, "Warning: offset %zu repeated, will always yield empty cell\n",
+              offsets[i-1]);
+  }
+
+  if(offsets[count-1] > parser->buff.size) {
+    fprintf(stderr, "Offset %zu exceeds total buffer size %zu\n", offsets[count-1], parser->buff.size);
+    return zsv_status_invalid_option;
+  }
+  if(parser->cum_scanned_length) {
+    fprintf(stderr, "Scanner mode cannot be changed after parsing has begun\n");
+    return zsv_status_invalid_option;
+  }
+
+  free(parser->fixed.offsets);
+  parser->fixed.offsets = calloc(count, sizeof(*parser->fixed.offsets));
+  if(!parser->fixed.offsets) {
+    fprintf(stderr, "Out of memory!\n");
+    return zsv_status_memory;
+  }
+  parser->fixed.count = count;
+  for(unsigned i = 0; i < count; i++)
+    parser->fixed.offsets[i] = offsets[i];
+
+  parser->mode = ZSV_MODE_FIXED;
+
+  parser->checked_bom = 1;
+
+  return zsv_status_ok;
+}
+
 // to do: simplify. do not require buff or buffsize
 ZSV_EXPORT
 zsv_parser zsv_new(struct zsv_opts *opts) {
@@ -184,6 +231,12 @@ zsv_parser zsv_new(struct zsv_opts *opts) {
 ZSV_EXPORT
 enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
   enum zsv_status stat = zsv_status_ok;
+  if(scanner->mode == ZSV_MODE_FIXED) {
+    if(scanner->partial_row_length)
+      return row_fx(scanner, scanner->buff.buff, 0, scanner->partial_row_length);
+    return zsv_status_ok;
+  }
+
   if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED)
      && scanner->partial_row_length > scanner->cell_start + 1) {
     int quote = '"';
@@ -200,10 +253,10 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
   if(!scanner->finished) {
     scanner->finished = 1;
     if(scanner->scanned_length > scanner->cell_start)
-      cell1(scanner, scanner->buff.buff + scanner->cell_start,
+      cell_dl(scanner, scanner->buff.buff + scanner->cell_start,
             scanner->scanned_length - scanner->cell_start, 1);
     if(scanner->have_cell)
-      if(row1(scanner))
+      if(row_dl(scanner))
         stat = zsv_status_cancelled;
 #ifdef ZSV_EXTRAS
     if(scanner->opts.completed.callback)
@@ -221,6 +274,9 @@ enum zsv_status zsv_delete(zsv_parser parser) {
 
     if(parser->row.cells)
       free(parser->row.cells);
+
+    free(parser->fixed.offsets);
+
     free(parser);
   }
   return zsv_status_ok;
@@ -235,6 +291,10 @@ const unsigned char *zsv_parse_status_desc(enum zsv_status status) {
     return (unsigned char *)"User cancelled";
   case zsv_status_no_more_input:
     return (unsigned char *)"No more input";
+  case zsv_status_invalid_option:
+    return (unsigned char *)"Invalid option";
+  case zsv_status_memory:
+    return (unsigned char *)"Out of memory";
   }
   return (unsigned char *)"Unknown";
 }

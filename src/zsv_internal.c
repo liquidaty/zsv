@@ -63,6 +63,14 @@ struct zsv_scanner {
   } progress;
 #endif
 
+#define ZSV_MODE_DELIM 0
+#define ZSV_MODE_FIXED 1
+  unsigned char mode;
+  struct {
+    unsigned *offsets; // 0-based position of each cell end. offset[0] = end of first cell
+    unsigned count; // number of offsets
+  } fixed;
+
   unsigned char checked_bom:1;
   unsigned char free_buff:1;
   unsigned char finished:1;
@@ -75,7 +83,7 @@ __attribute__((always_inline)) static inline void zsv_clear_cell(struct zsv_scan
   scanner->quoted = 0;
 }
 
-__attribute__((always_inline)) static inline void cell1(struct zsv_scanner * scanner, unsigned char * s, size_t n, char is_end) {
+__attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner * scanner, unsigned char * s, size_t n, char is_end) {
   // handle quoting
   if(UNLIKELY(scanner->quoted > 0)) {
     if(LIKELY(scanner->quote_close_position + 1 == n)) {
@@ -143,7 +151,7 @@ __attribute__((always_inline)) static inline void cell1(struct zsv_scanner * sca
   zsv_clear_cell(scanner);
 }
 
-__attribute__((always_inline)) static inline char row1(struct zsv_scanner *scanner) {
+__attribute__((always_inline)) static inline char row_dl(struct zsv_scanner *scanner) {
   if(VERY_UNLIKELY(scanner->row.overflow)) {
     fprintf(stderr, "Warning: number of columns (%zu) exceeds row max (%zu)\n",
             scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
@@ -185,12 +193,13 @@ __attribute__((always_inline)) static inline char row1(struct zsv_scanner *scann
   return 0;
 }
 
-static inline char cell_and_row(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
-  cell1(scanner, s, n, 1);
-  return row1(scanner);
+static inline char cell_and_row_dl(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+  cell_dl(scanner, s, n, 1);
+  return row_dl(scanner);
 }
 
 # define VECTOR_BYTES 32
+
 typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (32)));
 
 #if defined(HAVE__MM256_MOVEMASK_EPI8)
@@ -219,10 +228,10 @@ static inline unsigned int movemask_pseudo(zsv_uc_vector v) {
 
 # include "vector_delim.c"
 
-static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
-                                unsigned char *buff,
-                                size_t bytes_read
-                                ) {
+static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
+                                      unsigned char *buff,
+                                      size_t bytes_read
+                                      ) {
   bytes_read += scanner->partial_row_length;
   size_t i = scanner->partial_row_length;
   unsigned char c;
@@ -236,11 +245,12 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
   zsv_uc_vector dl_v; memset(&dl_v, delimiter, VECTOR_BYTES);
   zsv_uc_vector nl_v; memset(&nl_v, '\n', VECTOR_BYTES);
   zsv_uc_vector cr_v; memset(&cr_v, '\r', VECTOR_BYTES);
-  zsv_uc_vector qt_v; memset(&qt_v, '"', VECTOR_BYTES);
+  zsv_uc_vector qt_v;
   if(scanner->opts.no_quotes > 0) {
     quote = -1;
     memset(&qt_v, 0, sizeof(qt_v));
-  }
+  } else
+    memset(&qt_v, '"', VECTOR_BYTES);
 
   // case "hel"|"o": check if we have an embedded dbl-quote past the initial opening quote, which was
   // split between the last buffer and this one e.g. "hel""o" where the last buffer ended
@@ -299,7 +309,7 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
     if(LIKELY(c == delimiter)) { // case ',':
       if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
-        cell1(scanner, buff + scanner->cell_start, i - scanner->cell_start, 1);
+        cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start, 1);
         scanner->cell_start = i + 1;
         c = 0;
         continue; // this char is not part of the cell content
@@ -309,7 +319,7 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
     } else if(UNLIKELY(c == '\r')) {
       if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
-        if(VERY_UNLIKELY(cell_and_row(scanner, buff + scanner->cell_start, i - scanner->cell_start)))
+        if(VERY_UNLIKELY(cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start)))
           return zsv_status_cancelled;
         scanner->cell_start = i + 1;
         scanner->row_start = i + 1;
@@ -325,7 +335,7 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
         } else {
           // this is a row end
           scanner->scanned_length = i;
-          if(VERY_UNLIKELY(cell_and_row(scanner, buff + scanner->cell_start, i - scanner->cell_start)))
+          if(VERY_UNLIKELY(cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start)))
             return zsv_status_cancelled; // abort
           scanner->cell_start = i + 1;
           scanner->row_start = i + 1;
@@ -379,6 +389,20 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
   // of all rows parsed thus far are still available until that next call
   scanner->old_bytes_read = bytes_read;
   return zsv_status_ok;
+}
+
+#include "zsv_scan_fixed.c"
+
+static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
+                                unsigned char *buff,
+                                size_t bytes_read
+                                ) {
+  switch(scanner->mode) {
+  case ZSV_MODE_FIXED:
+    return zsv_scan_fixed(scanner, buff, bytes_read);
+  default:
+    return zsv_scan_delim(scanner, buff, bytes_read);
+  }
 }
 
 #define ZSV_BOM "\xef\xbb\xbf"
