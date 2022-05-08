@@ -22,17 +22,18 @@ struct zsv_2json_data {
   zsv_parser parser;
   jsonwriter_handle jsw;
 
-  unsigned output_column_ix;
-  size_t rows_written;
+  size_t rows_processed; // includes header row
 
   struct zsv_2json_header *headers, *current_header;
   struct zsv_2json_header **headers_next;
 
   unsigned char overflowed:1;
-  unsigned char as_objects:1;
+#define ZSV_JSON_SCHEMA_OBJECT 1
+#define ZSV_JSON_SCHEMA_DATABASE 2
+  unsigned char schema:2;
   unsigned char no_header:1;
   unsigned char err:1;
-  unsigned char _:4;
+  unsigned char _:3;
 };
 
 static void zsv_2json_cleanup(struct zsv_2json_data *data) {
@@ -45,7 +46,7 @@ static void zsv_2json_cleanup(struct zsv_2json_data *data) {
 }
 
 static void write_header_cell(struct zsv_2json_data *data, const unsigned char *utf8_value, size_t len) {
-  if(data->as_objects) {
+  if(data->schema == ZSV_JSON_SCHEMA_OBJECT) {
     struct zsv_2json_header *h;
     if(!(h = calloc(1, sizeof(*h)))) {
       fprintf(stderr, "Out of memory!\n");
@@ -68,7 +69,7 @@ static void write_header_cell(struct zsv_2json_data *data, const unsigned char *
 }
 
 static void write_data_cell(struct zsv_2json_data *data, const unsigned char *utf8_value, size_t len) {
-  if(data->as_objects) {
+  if(data->schema == ZSV_JSON_SCHEMA_OBJECT) {
     if(!data->current_header)
       return;
     jsonwriter_object_key(data->jsw, data->current_header->name);
@@ -77,26 +78,8 @@ static void write_data_cell(struct zsv_2json_data *data, const unsigned char *ut
   jsonwriter_strn(data->jsw, utf8_value, len);
 }
 
-static void zsv_2json_cell(void *ctx, unsigned char *utf8_value, size_t len) {
-  struct zsv_2json_data *data = ctx;
-  if(!data->output_column_ix++) {
-    // begin this row
-    if(!data->rows_written)
-      jsonwriter_start_array(data->jsw); // start the array of rows
-
-    if(data->as_objects) { // start this row
-      if(data->rows_written)
-        jsonwriter_start_object(data->jsw);
-    } else
-      jsonwriter_start_array(data->jsw);
-  }
-
-  // output this cell
-  if(!data->rows_written && !data->no_header) // this must be header row
-    write_header_cell(data, utf8_value, len);
-  else
-    write_data_cell(data, utf8_value, len);
-}
+//static void zsv_2json_cell(struct zsv_2json_data *data, unsigned char *utf8_value, size_t len) {
+//}
 
 void zsv_2json_overflow(void *ctx, unsigned char *utf8_value, size_t len) {
   struct zsv_2json_data *data = ctx;
@@ -112,14 +95,47 @@ void zsv_2json_overflow(void *ctx, unsigned char *utf8_value, size_t len) {
 
 static void zsv_2json_row(void *ctx) {
   struct zsv_2json_data *data = ctx;
-  if(data->output_column_ix) {
-    if(data->as_objects) {
-      if(data->rows_written)
-        jsonwriter_end_object(data->jsw); // end last row (object)
-    } else
-      jsonwriter_end_array(data->jsw); // end last row (array)
-    data->output_column_ix = 0;
-    data->rows_written++;
+  unsigned int cols = zsv_column_count(data->parser);
+  if(cols) {
+    char obj = 0;
+    char arr = 0;
+    if(!data->rows_processed) { // header row
+      jsonwriter_start_array(data->jsw); // start array of rows
+      if(data->schema == ZSV_JSON_SCHEMA_DATABASE) {
+        jsonwriter_start_object(data->jsw); // start this row
+        obj = 1;
+        // to do: add indexes here
+        jsonwriter_object_array(data->jsw, "columns");
+        arr = 1;
+      } else if(data->schema != ZSV_JSON_SCHEMA_OBJECT) {
+        jsonwriter_start_array(data->jsw); // start this row
+        arr = 1;
+      }
+    } else { // processing a data row, not header row
+      if(data->schema == ZSV_JSON_SCHEMA_OBJECT) {
+        jsonwriter_start_object(data->jsw); // start this row
+        obj = 1;
+      } else {
+        jsonwriter_start_array(data->jsw); // start this row
+        arr = 1;
+      }
+    }
+
+    for(unsigned int i = 0; i < cols; i++) {
+      struct zsv_cell cell = zsv_get_cell(data->parser, i);
+      // output this cell
+      if(!data->rows_processed && !data->no_header) // this is header row
+        write_header_cell(data, cell.str, cell.len);
+      else
+        write_data_cell(data, cell.str, cell.len);
+    }
+
+    // end this row
+    if(arr)
+      jsonwriter_end_array(data->jsw);
+    if(obj)
+      jsonwriter_end_object(data->jsw);
+    data->rows_processed++;
   }
   data->current_header = data->headers;
 }
@@ -144,6 +160,7 @@ int MAIN(int argc, const char *argv[]) {
      "  -h, --help",
      "  -o, --output <filename>: output to specified filename",
      "  --object               : output as array of objects",
+     "  --database             : output in database schema",
      "  --no-header            : treat the header row as a data row",
      NULL
     };
@@ -163,9 +180,14 @@ int MAIN(int argc, const char *argv[]) {
         fprintf(stderr, "Output file specified more than once\n"), err = 1;
       else if(!(out = fopen(argv[i], "wb")))
         fprintf(stderr, "Unable to open for writing: %s\n", argv[i]), err = 1;
-    } else if(!strcmp(argv[i], "--object"))
-      data.as_objects = 1;
-    else if(!strcmp(argv[i], "--no-header"))
+    } else if(!strcmp(argv[i], "--database") || !strcmp(argv[i], "--object")) {
+      if(data.schema)
+        fprintf(stderr, "Output schema specified more than once\n"), err = 1;
+      else if(!strcmp(argv[i], "--database"))
+        data.schema = ZSV_JSON_SCHEMA_DATABASE;
+      else
+        data.schema = ZSV_JSON_SCHEMA_OBJECT;
+    } else if(!strcmp(argv[i], "--no-header"))
       data.no_header = 1;
     else {
       if(f_in)
@@ -175,8 +197,8 @@ int MAIN(int argc, const char *argv[]) {
     }
   }
 
-  if(data.no_header && data.as_objects) {
-    fprintf(stderr, "--object and --no-header options cannot be used together");
+  if(data.no_header && data.schema) {
+    fprintf(stderr, "--no-header cannot be used together with --object or --database");
     err = 1;
   } else if(!f_in) {
 #ifdef NO_STDIN
@@ -197,7 +219,6 @@ int MAIN(int argc, const char *argv[]) {
   if(!out)
     out = stdout;
 
-  opts.cell = zsv_2json_cell;
   opts.row = zsv_2json_row;
   opts.ctx = &data;
   opts.overflow = zsv_2json_overflow;
