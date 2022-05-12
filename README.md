@@ -58,6 +58,8 @@ https://github.com/liquidaty/zsv/blob/main/include/zsv/ext/implementation_privat
   - create, train and share re-usable data domains using github-like features
 
 ## Binary downloads
+NOTE: these are a little outdated. Best to build your own. Updated binaries coming soon.
+
 Pre-built binaries for OSX, Windows, Linux and BSD are available at https://hub.liquidaty.com/download
 
 ## Why another CSV parser / utility?
