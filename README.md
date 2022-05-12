@@ -9,7 +9,7 @@ It achieves high performance using SIMD operations,
 ### Performance
 Preliminary performance results compare favorably vs other CSV utilities (`xsv`, `tsv-utils`, `csvkit`, `mlr` (miller) etc).
 Below were results on a pre-M1 OSX MBA; on most platforms zsvlib was 2x faster, though in some cases the advantage was as small as
-20% (see also M1 update note below):
+20% (see also M1 update note below) (mlr not shown as it was about 25x slower):
 
 <img src="https://user-images.githubusercontent.com/26302468/146497899-48174114-3b18-49b0-97da-35754ab56e48.png" alt="count speed" height="150px"><img src="https://user-images.githubusercontent.com/26302468/146498211-afc77ce6-4229-4599-bf33-81bf00c725a8.png" alt="select speed" height="150px">
 
