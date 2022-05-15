@@ -34,7 +34,7 @@ CLI: ZSVBIN="zsv "
 CLI:
 	make all QUICK=${QUICK} ZSVBIN=${ZSVBIN} -n | sed 's/[.]*\/.*\/bin\/zsv_/zsv /g' | sh
 
-all: count select
+all: count select tsv
 
 worldcitiespop_mil.csv:
 	curl -LO 'https://burntsushi.net/stuff/worldcitiespop_mil.csv'
@@ -56,6 +56,18 @@ count: worldcitiespop_mil.csv worldcitiespop_mil.tsv
 
 	@printf "tsv-utils (tsv input): "
 	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/number-lines < $(word 2,$^) > /dev/null) 2>&1 | xargs
+
+tsv: worldcitiespop_mil.csv
+	@echo "${ZSVBIN}"2tsv
+
+	@printf "zsv                  : "
+	@(time ${ZSVBIN}2tsv < $< > /dev/null) 2>&1 | xargs
+
+	@printf "tsv-utils (csv2tsv)  : "
+	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/csv2tsv < $< > /dev/null) 2>&1 | xargs
+
+	@printf "c-blake/nio/c2tsv    : " # from https://github.com/c-blake/nio
+	@(time c2tsv < $< > /dev/null)  2>&1 | xargs
 
 
 select: worldcitiespop_mil.csv worldcitiespop_mil.tsv

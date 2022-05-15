@@ -10,6 +10,7 @@
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/signal.h>
 #include <zsv/utils/arg.h>
+#include <zsv/utils/compiler.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -30,21 +31,20 @@ struct static_buff {
 struct zsv_2tsv_data {
   zsv_parser parser;
   struct static_buff out;
-  unsigned output_column_ix;
   unsigned char overflowed:1;
   unsigned char _:7;
 };
 
-static inline void zsv_2tsv_flush(struct static_buff *b) {
+__attribute__((always_inline)) static inline void zsv_2tsv_flush(struct static_buff *b) {
   fwrite(b->buff, b->used, 1, b->stream);
   b->used = 0;
 }
 
 static inline void zsv_2tsv_write(struct static_buff *b, const unsigned char *s, size_t n) {
   if(n) {
-    if(n + b->used > ZSV_2TSV_BUFF_SIZE) {
+    if(VERY_UNLIKELY(n + b->used > ZSV_2TSV_BUFF_SIZE)) {
       zsv_2tsv_flush(b);
-      if(n > ZSV_2TSV_BUFF_SIZE) { // n too big, so write directly
+      if(VERY_UNLIKELY(n > ZSV_2TSV_BUFF_SIZE)) { // n too big, so write directly
         fwrite(s, n, 1, b->stream);
         return;
       }
@@ -59,66 +59,52 @@ static inline void zsv_2tsv_write(struct static_buff *b, const unsigned char *s,
 // - return NULL if nothing to convert
 // - else, return allocated char * of converted tsv (caller must free), and update *lenp
 // - on error, set *err
-static unsigned char *zsv_to_tsv(const unsigned char *utf8, size_t len, enum zsv_2tsv_status *err) { // replace tab and newline with space
-  size_t i;
-  unsigned char charLen;
-  const char replacement_char = ' '; // replacement
-  char do_convert = 0;
-  for(i = 0; i < len; i += charLen) {
-    charLen = ZSV_UTF8_CHARLEN_NOERR((int)utf8[i]);
-    if(charLen == 1)
-      switch(utf8[i]) {
-      case '\t':
-      case '\n':
-      case '\r':
-        do_convert = 1;
-        break;
-      }
-    if(do_convert)
-      break;
+__attribute__((always_inline)) static inline
+unsigned char *zsv_to_tsv(const unsigned char *utf8, size_t *len, enum zsv_2tsv_status *err) {
+  // replace tab, newline and lf with \t, \n or \r or backslash
+  size_t do_convert = 0;
+  for(size_t i = 0; i < *len; i++) {
+    if(VERY_UNLIKELY(utf8[i] == '\t') || VERY_UNLIKELY(utf8[i] == '\n') || VERY_UNLIKELY(utf8[i] == '\r') || VERY_UNLIKELY(utf8[i] == '\\'))
+      do_convert++;
   }
 
-  if(!do_convert)
+  if(LIKELY(do_convert == 0))
     return NULL;
 
-  unsigned char *converted = malloc(len + 1);
+  unsigned char *converted = malloc(*len + do_convert + 1);
   if(!converted)
     *err = zsv_2tsv_status_out_of_memory;
   else {
-    memcpy(converted, utf8, len);
-    for(; i < len; i += charLen) {
-      charLen = ZSV_UTF8_CHARLEN_NOERR(converted[i]);
-      if(charLen == 1)
-        switch(converted[i]) {
-        case '\t':
-        case '\n':
-        case '\r':
-          converted[i] = replacement_char;
-          break;
-        }
+    size_t j = 0;
+    for(size_t i = 0; i < *len; i++) {
+      if(UNLIKELY(utf8[i] == '\t' || utf8[i] == '\n' || utf8[i] == '\r' || utf8[i] == '\\')) {
+        converted[j++] = '\\';
+        converted[j++] = utf8[i] == '\t' ? 't' : utf8[i] == '\n' ? 'n' : utf8[i] == '\r' ? 'r' : '\\';
+      } else
+        converted[j++] = utf8[i];
     }
-    converted[len] = '\0';
+    converted[j] = '\0';
+    *len = j;
   }
   return converted;
 }
 
-static void zsv_2tsv_cell(void *ctx, unsigned char *utf8_value, size_t len) {
-  struct zsv_2tsv_data *data = ctx;
-
-  // output delimiter, if this is not the first column in the row
-  if(data->output_column_ix++)
-    zsv_2tsv_write(&data->out, (const unsigned char *)"\t", 1);
-
+__attribute__((always_inline)) static inline
+void zsv_2tsv_cell(struct zsv_2tsv_data *data, unsigned char *utf8_value, size_t len, char no_escape) {
   // output cell contents (converted if necessary)
   if(len) {
     enum zsv_2tsv_status err = zsv_2tsv_status_ok;
-    unsigned char *converted = zsv_to_tsv(utf8_value, len, &err);
-    if(err != zsv_2tsv_status_ok)
-      ; // handle out-of-memory error!
-    else if(converted) {
+    if(LIKELY(no_escape)) {
+      zsv_2tsv_write(&data->out, utf8_value, len);
+      return;
+    }
+    unsigned char *converted = zsv_to_tsv(utf8_value, &len, &err);
+    if(UNLIKELY(converted != NULL)) {
       zsv_2tsv_write(&data->out, converted, len);
       free(converted);
-    } else
+    } else if(VERY_UNLIKELY(err != zsv_2tsv_status_ok))
+      ; // handle out-of-memory error!
+    else
       zsv_2tsv_write(&data->out, utf8_value, len);
   }
 }
@@ -137,7 +123,25 @@ void zsv_2tsv_overflow(void *ctx, unsigned char *utf8_value, size_t len) {
 
 static void zsv_2tsv_row(void *ctx) {
   struct zsv_2tsv_data *data = ctx;
-  data->output_column_ix = 0;
+  unsigned int cols = zsv_column_count(data->parser);
+  if(cols) {
+    struct zsv_cell cell = zsv_get_cell(data->parser, 0);
+    char no_escape = 0;
+    if(cols > 1) {
+      struct zsv_cell end = zsv_get_cell(data->parser, cols-1);
+      unsigned char *start = cell.str;
+      size_t row_len = end.str + end.len - start;
+      if(!(memchr(start, '\t', row_len) || memchr(start, '\n', row_len) || memchr(start, '\r', row_len) || memchr(start, '\\', row_len)))
+        no_escape = 1;
+    }
+    zsv_2tsv_cell(ctx, cell.str, cell.len, no_escape);
+
+    for(unsigned int i = 1; i < cols; i++) {
+      zsv_2tsv_write(&data->out, (const unsigned char *)"\t", 1);
+      cell = zsv_get_cell(data->parser, i);
+      zsv_2tsv_cell(ctx, cell.str, cell.len, no_escape);
+    }
+  }
   zsv_2tsv_write(&data->out, (const unsigned char *) "\n", 1);
 }
 
@@ -194,7 +198,6 @@ int MAIN(int argc, const char *argv[]) {
     data.out.stream = stdout;
 
   struct zsv_opts opts = zsv_get_default_opts();
-  opts.cell = zsv_2tsv_cell;
   opts.row = zsv_2tsv_row;
   opts.ctx = &data;
   opts.overflow = zsv_2tsv_overflow;

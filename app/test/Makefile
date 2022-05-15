@@ -185,6 +185,8 @@ test-2tsv test-sql test-serialize test-flatten test-pretty : test-%: ${BUILD_DIR
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out && \
 	${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+	@if [ "$@" == "test-2tsv" ] ; then echo "TO DO: update 2tsv to output Excel format-- see data/Excel.tsv"; fi
+
 
 test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_NAME}
