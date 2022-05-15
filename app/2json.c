@@ -116,6 +116,8 @@ static void zsv_2json_row(void *ctx) {
         jsonwriter_start_object(data->jsw); // start this row
         obj = 1;
       } else {
+        if(data->rows_processed == 1 && data->schema == ZSV_JSON_SCHEMA_DATABASE)
+          jsonwriter_start_array(data->jsw); // start the table-data element
         jsonwriter_start_array(data->jsw); // start this row
         arr = 1;
       }
