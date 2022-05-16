@@ -58,14 +58,9 @@ https://github.com/liquidaty/zsv/blob/main/include/zsv/ext/implementation_privat
   - create, train and share re-usable data domains using github-like features
 
 ## Binary downloads
-Pre-built binaries for OSX, Windows, Linux and BSD are available at https://zsvhub.com/download
+NOTE: these are a little outdated. Best to build your own. Updated binaries coming soon.
 
-## Demo
-`zsv` runs best (and by far, fastest) as a desktop CLI. But, you can also try out an extended
-version in the browser (though it runs *much* slower), at
-https://zsvhub.com/playground/. A tutorial that demonstrates a small subset of the
-capabilities of ZSV and the ZSVHub extension is available at
-https://github.com/liquidaty/zsvhub-cli/blob/main/demos/covid_vaccine/README.md
+Pre-built binaries for OSX, Windows, Linux and BSD are available at https://hub.liquidaty.com/download
 
 ## Why another CSV parser / utility?
 
@@ -168,7 +163,7 @@ helping, please post an issue.
 
 ### Possible enhancements and related developments
 
-* <strike>online "playground"</strike> See https://zsvhub.com/playground/
+* online "playground" (soon to be released)
 * optimize search; add search with hyperscan or re2 regex matching, possibly parallelize?
 * auto-generated documentation, and better documentation in general
 * Additional benchmarking. Would be great to use https://bitbucket.org/ewanhiggs/csv-game/src/master/ as a springboard to benchmarking a number of various tasks
