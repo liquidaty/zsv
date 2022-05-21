@@ -32,8 +32,9 @@ struct zsv_2json_data {
 #define ZSV_JSON_SCHEMA_DATABASE 2
   unsigned char schema:2;
   unsigned char no_header:1;
+  unsigned char no_empty:1;
   unsigned char err:1;
-  unsigned char _:3;
+  unsigned char _:2;
 };
 
 static void zsv_2json_cleanup(struct zsv_2json_data *data) {
@@ -72,8 +73,13 @@ static void write_data_cell(struct zsv_2json_data *data, const unsigned char *ut
   if(data->schema == ZSV_JSON_SCHEMA_OBJECT) {
     if(!data->current_header)
       return;
-    jsonwriter_object_key(data->jsw, data->current_header->name);
+    char *current_header_name = data->current_header->name;
     data->current_header = data->current_header->next;
+
+    if(len || !data->no_empty)
+      jsonwriter_object_key(data->jsw, current_header_name);
+    else
+      return;
   }
   jsonwriter_strn(data->jsw, utf8_value, len);
 }
@@ -162,6 +168,7 @@ int MAIN(int argc, const char *argv[]) {
      "  -h, --help",
      "  -o, --output <filename>: output to specified filename",
      "  --object               : output as array of objects",
+     "  --no-empty             : do not output empty properties (only with --object)",
      "  --database             : output in database schema",
      "  --no-header            : treat the header row as a data row",
      NULL
@@ -182,6 +189,8 @@ int MAIN(int argc, const char *argv[]) {
         fprintf(stderr, "Output file specified more than once\n"), err = 1;
       else if(!(out = fopen(argv[i], "wb")))
         fprintf(stderr, "Unable to open for writing: %s\n", argv[i]), err = 1;
+    } else if(!strcmp(argv[i], "--no-empty")) {
+      data.no_empty = 1;
     } else if(!strcmp(argv[i], "--database") || !strcmp(argv[i], "--object")) {
       if(data.schema)
         fprintf(stderr, "Output schema specified more than once\n"), err = 1;
@@ -199,10 +208,11 @@ int MAIN(int argc, const char *argv[]) {
     }
   }
 
-  if(data.no_header && data.schema) {
-    fprintf(stderr, "--no-header cannot be used together with --object or --database");
-    err = 1;
-  } else if(!f_in) {
+  if(data.no_header && data.schema)
+    fprintf(stderr, "--no-header cannot be used together with --object or --database"), err = 1;
+  else if(data.no_empty && data.schema != ZSV_JSON_SCHEMA_OBJECT)
+    fprintf(stderr, "--no-empty can only be used with --object"), err = 1;
+  else if(!f_in) {
 #ifdef NO_STDIN
     fprintf(stderr, "Please specify an input file\n"), err = 1;
 #else

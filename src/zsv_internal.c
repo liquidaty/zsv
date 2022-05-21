@@ -393,10 +393,10 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
 
 #include "zsv_scan_fixed.c"
 
-static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
-                                unsigned char *buff,
-                                size_t bytes_read
-                                ) {
+enum zsv_status zsv_scan(struct zsv_scanner *scanner,
+                         unsigned char *buff,
+                         size_t bytes_read
+                         ) {
   switch(scanner->mode) {
   case ZSV_MODE_FIXED:
     return zsv_scan_fixed(scanner, buff, bytes_read);

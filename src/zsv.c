@@ -104,7 +104,7 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   if(UNLIKELY(scanner->filter != NULL))
     bytes_read = scanner->filter(scanner->filter_ctx,
                                  scanner->buff.buff + scanner->partial_row_length, bytes_read);
-  if(LIKELY(bytes_read))
+  if(VERY_LIKELY(bytes_read))
     return zsv_scan(scanner, scanner->buff.buff, bytes_read);
   scanner->scanned_length = scanner->partial_row_length;
   return zsv_status_no_more_input;

@@ -511,9 +511,10 @@ const char *zsv_select_usage_msg[] =
   {
    APPNAME ": streaming CSV parser",
    "",
-   "Usage: " APPNAME " [filename] [options] [-- column_name_or_index [... column_name_or_index]]",
-   "  index numbers start at 1",
-   "  e.g. " APPNAME " -n myfile.csv -- 1 50 10",
+   "Usage: " APPNAME " [filename] [options] [-- col_specifier [... col_specifier]]",
+   "  where col_specifier is a column name or, if the -n option is used,",
+   "   a column index (starting at 1) or index range in the form of n-m",
+   "  e.g. " APPNAME " -n myfile.csv -- 1 4-6 50 10",
    "       " APPNAME " myfile.csv -- first_col fiftieth_column \"Tenth Column\"",
    "",
    "Extracts and outputs specified columns. Outputs the input columns that are specified after",

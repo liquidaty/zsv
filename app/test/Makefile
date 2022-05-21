@@ -193,12 +193,19 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out && \
 	${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
 	@(${PREFIX} $< --object < ${TEST_DATA_DIR}/quoted2.csv ${REDIRECT1} /tmp/$@.out2 && \
 	${CMP} /tmp/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL})
+
 	@(${PREFIX} $< --no-header < ${TEST_DATA_DIR}/quoted2.csv ${REDIRECT1} /tmp/$@.out3 && \
 	${CMP} /tmp/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL})
+
 	@(${PREFIX} $< --database < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out4 && \
 	${CMP} /tmp/$@.out4 expected/$@.out4 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< --object --no-empty < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out5 && \
+	${CMP} /tmp/$@.out5 expected/$@.out5 && ${TEST_PASS} || ${TEST_FAIL})
+
 
 
 test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
