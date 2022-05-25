@@ -20,7 +20,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Install macOS Utilities
-      if: matrix.os == 'macOS'
+      if: runner.os == 'macOS'
       run: |
         brew install coreutils
 
