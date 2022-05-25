@@ -33,5 +33,5 @@ jobs:
       shell: bash
       run: |
         make lib
-        cp build/Linux/rel/cc/lib/libzsv.a /usr/local/lib/
+        sudo cp build/Linux/rel/cc/lib/libzsv.a /usr/local/lib/
         make install
