@@ -272,7 +272,7 @@ ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${BUILD_DIR}/objs/cli_%.o: %.c ${UTF8PROC_OBJE
 
 ${CLI}: cli_internal ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${SQLITE_EXT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} ${SQLITE_EXT_INCLUDE} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${JSONWRITER_OBJECT}  ${UTF8PROC_OBJECT} ${TERMCAP_LIB} ${INIH_OBJECT} ${SQLITE_EXT} -lzsv -L${PREFIX}/lib ${LDFLAGS} ${LDFLAGS_OPT}
+	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} ${SQLITE_EXT_INCLUDE} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${JSONWRITER_OBJECT}  ${UTF8PROC_OBJECT} ${TERMCAP_LIB} ${INIH_OBJECT} ${SQLITE_EXT} -L${PREFIX}/lib -lzsv ${LDFLAGS} ${LDFLAGS_OPT}
 	@echo Built $@
 
 cli_internal: cli_internal.c.in cli_internal.h cli_internal.h.in
@@ -302,7 +302,7 @@ ${USE_JSONWRITER_TARGETS}: MORE_SOURCE+= -I${JSONWRITER_INCLUDE}
 
 ${BUILD_DIR}/bin/zsv_%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -lzsv -L${PREFIX}/lib ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT}
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${PREFIX}/lib -lzsv ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT}
 	@echo Built $@
 
 ${BUILD_DIR}/external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}/external/%.o : external/%.c

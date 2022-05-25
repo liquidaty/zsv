@@ -36,6 +36,15 @@ help:
 	@echo "  ./configure --config-file=/path/to/config.custom"
 	@echo "  ./configure && make -C src CONFIGFILE=/path/to/config.custom install"
 	@echo
+	@echo "To clean (remove temporary build objects) (after running configure):"
+	@echo "  make clean"
+	@echo
+	@echo "To uninstall libs and apps:"
+	@echo "  make uninstall"
+	@echo
+	@echo "Additional make options available for the library or the apps by"
+	@echo "  running make from the src or app directory"
+	@echo
 	@echo "For more information, see README.md"
 
 lib:
@@ -52,6 +61,7 @@ all:
 clean:
 	@make -C app clean CONFIGFILE=${CONFIGFILEPATH}
 	@make -C src clean CONFIGFILE=${CONFIGFILEPATH}
+	@rm -rf ${THIS_MAKEFILE_DIR}/build
 
 uninstall: uninstall-lib uninstall-app
 
