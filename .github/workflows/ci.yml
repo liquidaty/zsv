@@ -19,27 +19,32 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
-    - name: Build (Linux - gcc/clang)
+    - name: Build (Linux - gcc and clang)
       if: runner.os == 'Linux'
       run: |
         ./configure --prefix=build
         # gcc
+        echo "Building with gcc"
         export CC=gcc
         make lib
         sudo cp build/Linux/rel/cc/lib/libzsv.a /usr/local/lib/
         make install
         # clang
+        echo "Building with clang"
         export CC=clang
         make lib
         sudo cp build/Linux/rel/cc/lib/libzsv.a /usr/local/lib/
         make install
+        echo "Built successfully!"
 
-    # - name: Build (macOS - clang)
-    #   if: runner.os == 'macOS'
-    #   run: |
-    #     brew install coreutils
-    #     ./configure --prefix=build
-    #     export CC=clang
-    #     make lib
-    #     sudo cp build/Linux/rel/cc/lib/libzsv.a /usr/local/lib/
-    #     make install
+    - name: Build (macOS - clang)
+      if: runner.os == 'macOS'
+      run: |
+        brew install coreutils
+        ./configure --prefix=build
+        echo "Building with clang"
+        export CC=clang
+        make lib
+        sudo cp build/Darwin/rel/cc/lib/libzsv.a /usr/local/lib/
+        make install
+        echo "Built successfully!"
