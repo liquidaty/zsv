@@ -52,7 +52,12 @@ int zsv_args_to_opts(int argc, const char *argv[],
   for(; new_argc < options_start && new_argc < argc; new_argc++)
     argv_out[new_argc] = argv[new_argc];
 
+#ifdef ZSV_EXTRAS
+  static const char *short_args = "BcrtOqvL";
+#else
   static const char *short_args = "BcrtOqv";
+#endif
+
   static const char *long_args[] = {
     "buff-size",
     "max-column-count",
@@ -61,6 +66,9 @@ int zsv_args_to_opts(int argc, const char *argv[],
     "other-delim",
     "no-quote",
     "verbose",
+#ifdef ZSV_EXTRAS
+    "limit-rows",
+#endif
     NULL
   };
   for(int i = options_start; !err && i < argc; i++) {
@@ -85,6 +93,9 @@ int zsv_args_to_opts(int argc, const char *argv[],
     case 'v':
       opts_out->verbose = 1;
       break;
+#ifdef ZSV_EXTRAS
+    case 'L':
+#endif
     case 'B':
     case 'c':
     case 'r':
@@ -101,8 +112,16 @@ int zsv_args_to_opts(int argc, const char *argv[],
           opts_out->delimiter = *val;
       } else {
         const char *val = argv[i];
-        /* arg = 'B', 'c' or 'r' */
+        /* arg = 'B', 'c', 'r' or 'L' (ZSV_EXTRAS only) */
         long n = atol(val);
+#ifdef ZSV_EXTRAS
+        if(arg == 'L') {
+          if(n < 1)
+            err = fprintf(stderr, "Error: max rows may not be less than 1 (got %s)\n", val);
+          else
+            opts_out->max_rows = n;
+        } else
+#endif
         if(arg == 'B' && n < ZSV_MIN_SCANNER_BUFFSIZE)
           err = fprintf(stderr, "Error: buff size may not be less than %u (got %s)\n",
                         ZSV_MIN_SCANNER_BUFFSIZE, val);

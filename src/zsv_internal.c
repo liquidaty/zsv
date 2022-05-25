@@ -60,6 +60,7 @@ struct zsv_scanner {
   struct {
     size_t cum_row_count; /* total number of rows read */
     time_t last_time;     /* last time from which to check seconds_interval */
+    size_t max_rows;      /* max rows to read, including header row(s) */
   } progress;
 #endif
 
@@ -151,7 +152,7 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner * s
   zsv_clear_cell(scanner);
 }
 
-__attribute__((always_inline)) static inline char row_dl(struct zsv_scanner *scanner) {
+__attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_scanner *scanner) {
   if(VERY_UNLIKELY(scanner->row.overflow)) {
     fprintf(stderr, "Warning: number of columns (%zu) exceeds row max (%zu)\n",
             scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
@@ -160,8 +161,9 @@ __attribute__((always_inline)) static inline char row_dl(struct zsv_scanner *sca
   if(scanner->opts.row)
     scanner->opts.row(scanner->opts.ctx);
 # ifdef ZSV_EXTRAS
+  scanner->progress.cum_row_count++;
   if(VERY_UNLIKELY(scanner->opts.progress.rows_interval
-                   && ++scanner->progress.cum_row_count % scanner->opts.progress.rows_interval == 0)) {
+                   && scanner->progress.cum_row_count % scanner->opts.progress.rows_interval == 0)) {
     char ok;
     if(!scanner->opts.progress.seconds_interval)
       ok = 1;
@@ -184,16 +186,24 @@ __attribute__((always_inline)) static inline char row_dl(struct zsv_scanner *sca
       fprintf(stderr, "ZSV parsing aborted at %zu\n", scanner->progress.cum_row_count);
 #endif
   }
+  if(VERY_UNLIKELY(scanner->progress.max_rows > 0)) {
+    if(VERY_UNLIKELY(scanner->progress.cum_row_count == scanner->progress.max_rows)) {
+      scanner->abort = 1;
+      scanner->row.used = 0;
+      return zsv_status_max_rows_read;
+    }
+  }
+
 # endif
   if(VERY_UNLIKELY(scanner->abort))
-    return 1;
+    return zsv_status_cancelled;
   scanner->have_cell = 0;
   if(scanner->row.used)
     scanner->row.used = 0;
-  return 0;
+  return zsv_status_ok;
 }
 
-static inline char cell_and_row_dl(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
   cell_dl(scanner, s, n, 1);
   return row_dl(scanner);
 }
@@ -319,8 +329,10 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
     } else if(UNLIKELY(c == '\r')) {
       if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
-        if(VERY_UNLIKELY(cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start)))
-          return zsv_status_cancelled;
+        enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+        if(VERY_UNLIKELY(stat))
+          return stat;
+
         scanner->cell_start = i + 1;
         scanner->row_start = i + 1;
         continue; // this char is not part of the cell content
@@ -335,8 +347,9 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
         } else {
           // this is a row end
           scanner->scanned_length = i;
-          if(VERY_UNLIKELY(cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start)))
-            return zsv_status_cancelled; // abort
+          enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+          if(VERY_UNLIKELY(stat))
+            return stat;
           scanner->cell_start = i + 1;
           scanner->row_start = i + 1;
         }
@@ -488,6 +501,11 @@ static int zsv_scanner_init(struct zsv_scanner *scanner,
     scanner->buff.buff = malloc(opts->buffsize);
     scanner->free_buff = 1;
   }
+
+# ifdef ZSV_EXTRAS
+  if(opts->max_rows)
+    scanner->progress.max_rows = opts->max_rows;
+# endif
   if(scanner->buff.buff) {
     scanner->opts = *opts;
     if(!scanner->opts.max_columns)
