@@ -19,19 +19,27 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
-    - name: Install macOS Utilities
-      if: runner.os == 'macOS'
-      run: |
-        brew install coreutils
-
-    - name: Configure
-      shell: bash
+    - name: Build (Linux - gcc/clang)
+      if: runner.os == 'Linux'
       run: |
         ./configure --prefix=build
-
-    - name: Make
-      shell: bash
-      run: |
+        # gcc
+        export CC=gcc
         make lib
         sudo cp build/Linux/rel/cc/lib/libzsv.a /usr/local/lib/
         make install
+        # clang
+        export CC=clang
+        make lib
+        sudo cp build/Linux/rel/cc/lib/libzsv.a /usr/local/lib/
+        make install
+
+    # - name: Build (macOS - clang)
+    #   if: runner.os == 'macOS'
+    #   run: |
+    #     brew install coreutils
+    #     ./configure --prefix=build
+    #     export CC=clang
+    #     make lib
+    #     sudo cp build/Linux/rel/cc/lib/libzsv.a /usr/local/lib/
+    #     make install
