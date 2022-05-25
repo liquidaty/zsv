@@ -32,5 +32,6 @@ jobs:
     - name: Make
       shell: bash
       run: |
+        make lib
+        cp build/Linux/rel/cc/lib/libzsv.a /usr/local/lib/
         make install
-        tree build
