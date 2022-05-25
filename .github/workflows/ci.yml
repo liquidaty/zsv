@@ -1,0 +1,36 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    name: ci
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, macos-10.15]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Install macOS Utilities
+      if: matrix.os == 'macOS'
+      run: |
+        brew install coreutils
+
+    - name: Configure
+      shell: bash
+      run: |
+        ./configure --prefix=build
+
+    - name: Make
+      shell: bash
+      run: |
+        make install
+        tree build
