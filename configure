@@ -214,10 +214,20 @@ CONFIGFILE=$CONFIGFILE
 if [ "$CONFIGFILE" == "" ]; then
     CONFIGFILE=config.mk
 fi
+
+# check prefix arg first, since others may be derived from it unless overridden
 PREFIX=$PREFIX
+for arg ; do
+    case "$arg" in
+        --prefix=*) PREFIX=${arg#*=} ;;
+    esac
+done
 if [ "$PREFIX" == "" ]; then
     PREFIX=/usr/local
+elif ! [[ $PREFIX == /* ]]; then
+    PREFIX="`pwd`/$PREFIX"
 fi
+
 EXEC_PREFIX='$(PREFIX)'
 BINDIR='$(EXEC_PREFIX)/bin'
 SHAREDIR='$(PREFIX)/share'
@@ -236,7 +246,7 @@ case "$arg" in
 --host=*) host=${arg#*=} ;;
 --config-file=*) CONFIGFILE=${arg#*=} ;;
 CONFIGFILE=*) CONFIGFILE=${arg#*=} ;;
---prefix=*) PREFIX=${arg#*=} ;;
+--prefix=*) ;; # already handled
 --exec-prefix=*) EXEC_PREFIX=${arg#*=} ;;
 --bindir=*) BINDIR=${arg#*=} ;;
 --sharedir=*) SHAREDIR=${arg#*=} ;;
@@ -266,7 +276,7 @@ done
 echo "config will be saved to $CONFIGFILE"
 
 for i in PREFIX EXEC_PREFIX BINDIR SHAREDIR DOCDIR MANDIR ; do
-stripdir $i
+    stripdir $i
 done
 
 #
