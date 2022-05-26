@@ -67,12 +67,10 @@ jobs:
         usesh: true
         prepare: pkg install -y tree lang/gcc
         run: |
-          pwd
-          ls -lah
-          whoami
-          env
           freebsd-version
           gcc --version
+          pwd
+          ls -lah
           echo "Building with gcc"
           ./configure --prefix=$PREFIX
           CC=gcc make install
