@@ -144,6 +144,7 @@ static zsv_parser ext_get_parser(zsv_execution_context ctx) {
 }
 
 static void execution_context_free(struct zsv_execution_data *d) {
+  (void)(d);
 }
 
 static enum zsv_ext_status execution_context_init(struct zsv_execution_data *d,
@@ -266,7 +267,6 @@ static enum zsv_ext_status ext_parse_all(zsv_execution_context ctx,
                                          void (*row_handler)(void *ctx),
                                          struct zsv_opts *const custom
                                          ) {
-  struct zsv_execution_data *d = ctx;
   struct zsv_opts opts = custom ? *custom : ext_parser_opts(ctx);
   if(row_handler)
     opts.row = row_handler;

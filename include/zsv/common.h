@@ -23,6 +23,9 @@ enum zsv_status {
   zsv_status_no_more_input,
   zsv_status_invalid_option,
   zsv_status_memory
+#ifdef ZSV_EXTRAS
+  ,zsv_status_max_rows_read
+#endif
 };
 
 typedef struct zsv_scanner * zsv_parser;
@@ -160,7 +163,7 @@ struct zsv_opts {
    */
   const char *insert_header_row;
 
-#  ifdef ZSV_EXTRAS
+# ifdef ZSV_EXTRAS
   struct {
     size_t rows_interval; // min number of rows between progress callback calls
     unsigned int seconds_interval; // min number of seconds b/w callback calls
@@ -171,6 +174,11 @@ struct zsv_opts {
     zsv_completed_callback callback;
     void *ctx;
   } completed;
+
+  /**
+   * maximum number of rows to parse (including any header rows)
+   */
+  size_t max_rows;
 # endif
 };
 

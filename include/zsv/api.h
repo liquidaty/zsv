@@ -143,7 +143,14 @@ zsv_opts_new(
 
                char delimiter, /* defaults to comma */
                char no_quotes  /* defaults to false */
-               );
+
+#ifdef ZSV_EXTRAS
+               /**
+                * maximum number of rows to parse (including any header rows)
+                */
+               , size_t max_rows
+#endif
+             );
 
 /**
  * Destroy an option structure that was created by zsv_opts_new()

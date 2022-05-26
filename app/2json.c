@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Liquidaty and zsv contributors. All rights reserved.
+ * Copyright (C) 2021-2022 Liquidaty and zsv contributors. All rights reserved.
  * This file is part of zsv/lib, distributed under the license defined at
  * https://opensource.org/licenses/MIT
  */
@@ -8,6 +8,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/signal.h>
 #include <zsv/utils/arg.h>
+#include <zsv/utils/mem.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -18,11 +19,19 @@ struct zsv_2json_header {
   char *name;
 };
 
+#define LQ_2JSON_MAX_INDEXES 32
+
 struct zsv_2json_data {
   zsv_parser parser;
   jsonwriter_handle jsw;
 
   size_t rows_processed; // includes header row
+
+  struct {
+    const char *clauses[LQ_2JSON_MAX_INDEXES];
+    char unique[LQ_2JSON_MAX_INDEXES];
+    unsigned count;
+  } indexes;
 
   struct zsv_2json_header *headers, *current_header;
   struct zsv_2json_header **headers_next;
@@ -84,9 +93,6 @@ static void write_data_cell(struct zsv_2json_data *data, const unsigned char *ut
   jsonwriter_strn(data->jsw, utf8_value, len);
 }
 
-//static void zsv_2json_cell(struct zsv_2json_data *data, unsigned char *utf8_value, size_t len) {
-//}
-
 void zsv_2json_overflow(void *ctx, unsigned char *utf8_value, size_t len) {
   struct zsv_2json_data *data = ctx;
   if(len) {
@@ -110,7 +116,41 @@ static void zsv_2json_row(void *ctx) {
       if(data->schema == ZSV_JSON_SCHEMA_DATABASE) {
         jsonwriter_start_object(data->jsw); // start this row
         obj = 1;
-        // to do: add indexes here
+
+        // to do: check index syntax (as of now, we just take argument value
+        // as-is and assume it will translate into a valid SQLITE3 command)
+        char have_index = 0;
+        for(unsigned i = 0; i < data->indexes.count; i++) {
+          const char *name_start = data->indexes.clauses[i];
+          const char *on = strstr(name_start, " on ");
+          if(on) {
+            on += 4;
+            while(*on == ' ')
+              on++;
+          }
+          if(!on || !*on)
+            continue;
+
+          const char *name_end = name_start;
+          while(name_end && *name_end && *name_end != ' ')
+            name_end++;
+          if(name_end > name_start) {
+            if(!have_index) {
+              have_index = 1;
+              jsonwriter_object_object(data->jsw, "indexes");
+            }
+            char *tmp = zsv_memdup(name_start, name_end - name_start);
+            jsonwriter_object_object(data->jsw, tmp); // this index
+            free(tmp);
+            jsonwriter_object_cstr(data->jsw, "on", on);
+            if(data->indexes.unique[i])
+              jsonwriter_object_bool(data->jsw, "unique", 1);
+            jsonwriter_end_object(data->jsw); // end this index
+          }
+        }
+        if(have_index)
+          jsonwriter_end_object(data->jsw); // indexes
+
         jsonwriter_object_array(data->jsw, "columns");
         arr = 1;
       } else if(data->schema != ZSV_JSON_SCHEMA_OBJECT) {
@@ -166,11 +206,13 @@ int MAIN(int argc, const char *argv[]) {
      "",
      "Options:",
      "  -h, --help",
-     "  -o, --output <filename>: output to specified filename",
-     "  --object               : output as array of objects",
-     "  --no-empty             : do not output empty properties (only with --object)",
-     "  --database             : output in database schema",
-     "  --no-header            : treat the header row as a data row",
+     "  -o, --output <filename>       : output to specified filename",
+     "  --object                      : output as array of objects",
+     "  --no-empty                    : omit empty properties (only with --object)",
+     "  --database                    : output in database schema",
+     "  --no-header                   : treat the header row as a data row",
+     "  --index <name on expr>        : add index to database schema",
+     "  --unique-index <name on expr> : add unique index to database schema",
      NULL
     };
 
@@ -189,6 +231,18 @@ int MAIN(int argc, const char *argv[]) {
         fprintf(stderr, "Output file specified more than once\n"), err = 1;
       else if(!(out = fopen(argv[i], "wb")))
         fprintf(stderr, "Unable to open for writing: %s\n", argv[i]), err = 1;
+    } else if(!strcmp(argv[i], "--index") || !strcmp(argv[i], "--unique-index")) {
+      if(++i >= argc)
+        fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;
+      else if(data.indexes.count > LQ_2JSON_MAX_INDEXES)
+        fprintf(stderr, "Max index count exceeded; ignoring %s\n", argv[i]), err = 1;
+      else if(!strstr(argv[i], " on "))
+        fprintf(stderr, "Index value should be in the form of 'index_name on expr'; got %s\n", argv[i]), err = 1;
+      else {
+        if(!strcmp(argv[i-1], "--unique-index"))
+          data.indexes.unique[data.indexes.count] = 1;
+        data.indexes.clauses[data.indexes.count++] = argv[i];
+      }
     } else if(!strcmp(argv[i], "--no-empty")) {
       data.no_empty = 1;
     } else if(!strcmp(argv[i], "--database") || !strcmp(argv[i], "--object")) {
@@ -208,7 +262,9 @@ int MAIN(int argc, const char *argv[]) {
     }
   }
 
-  if(data.no_header && data.schema)
+  if(data.indexes.count && data.schema != ZSV_JSON_SCHEMA_DATABASE)
+    fprintf(stderr, "--index/--unique-index can only be used with --database"), err = 1;
+  else if(data.no_header && data.schema)
     fprintf(stderr, "--no-header cannot be used together with --object or --database"), err = 1;
   else if(data.no_empty && data.schema != ZSV_JSON_SCHEMA_OBJECT)
     fprintf(stderr, "--no-empty can only be used with --object"), err = 1;

@@ -231,33 +231,38 @@ zsv_parser zsv_new(struct zsv_opts *opts) {
 ZSV_EXPORT
 enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
   enum zsv_status stat = zsv_status_ok;
-  if(scanner->mode == ZSV_MODE_FIXED) {
-    if(scanner->partial_row_length)
-      return row_fx(scanner, scanner->buff.buff, 0, scanner->partial_row_length);
-    return zsv_status_ok;
-  }
+  if(!scanner->abort) {
+    if(scanner->mode == ZSV_MODE_FIXED) {
+      if(scanner->partial_row_length)
+        return row_fx(scanner, scanner->buff.buff, 0, scanner->partial_row_length);
+      return zsv_status_ok;
+    }
 
-  if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED)
-     && scanner->partial_row_length > scanner->cell_start + 1) {
-    int quote = '"';
-    scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
-    scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
-    if(scanner->last == quote)
-      scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start;
-    else {
-      scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start + 1;
-      scanner->scanned_length++;
+    if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED)
+       && scanner->partial_row_length > scanner->cell_start + 1) {
+      int quote = '"';
+      scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
+      scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
+      if(scanner->last == quote)
+        scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start;
+      else {
+        scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start + 1;
+        scanner->scanned_length++;
+      }
     }
   }
 
   if(!scanner->finished) {
     scanner->finished = 1;
-    if(scanner->scanned_length > scanner->cell_start)
-      cell_dl(scanner, scanner->buff.buff + scanner->cell_start,
-            scanner->scanned_length - scanner->cell_start, 1);
-    if(scanner->have_cell)
-      if(row_dl(scanner))
-        stat = zsv_status_cancelled;
+    if(!scanner->abort) {
+      if(scanner->scanned_length > scanner->cell_start)
+        cell_dl(scanner, scanner->buff.buff + scanner->cell_start,
+                scanner->scanned_length - scanner->cell_start, 1);
+      if(scanner->have_cell)
+        if(row_dl(scanner))
+          stat = zsv_status_cancelled;
+    } else
+      stat = zsv_status_cancelled;
 #ifdef ZSV_EXTRAS
     if(scanner->opts.completed.callback)
       scanner->opts.completed.callback(scanner->opts.completed.ctx, stat);
@@ -295,6 +300,10 @@ const unsigned char *zsv_parse_status_desc(enum zsv_status status) {
     return (unsigned char *)"Invalid option";
   case zsv_status_memory:
     return (unsigned char *)"Out of memory";
+#ifdef ZSV_EXTRAS
+  case zsv_status_max_rows_read:
+    return (unsigned char *)"Maximum specified rows have been parsed";
+#endif
   }
   return (unsigned char *)"Unknown";
 }
