@@ -63,6 +63,7 @@ jobs:
       shell: bash
       run: |
         echo "Building with mingw"
+        make lib
         make install
         tree -h $PREFIX/{bin,include,lib}
         echo "Built with mingw successfully!"
