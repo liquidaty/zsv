@@ -35,6 +35,7 @@
 .vscode
 
 # Generated Files and Directories
+*.log
 *.mk
 *.mk.log
 *.c.in
