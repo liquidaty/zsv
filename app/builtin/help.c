@@ -16,7 +16,7 @@ static int main_help(int argc, const char *argv[]) {
     "",
     "Usage:",
     "  zsv version: display version info (and if applicable, extension info)",
-    "  zsv register [<extension_id>]: register an extension",
+    "  zsv (un)register [<extension_id>]: (un)register an extension",
     "  zsv help [<command>]",
     "  zsv license [<extension_id>]",
     "  zsv <command> <options> <arguments>: run a command on data (see below for details)",
