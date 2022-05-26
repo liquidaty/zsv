@@ -222,9 +222,9 @@ for arg ; do
         --prefix=*) PREFIX=${arg#*=} ;;
     esac
 done
-if [ "$PREFIX" == "" ]; then
+if [ "$PREFIX" = "" ]; then
     PREFIX=/usr/local
-elif ! [[ $PREFIX == /* ]]; then
+elif [ "$PREFIX" = "${PREFIX#/}" ]; then
     PREFIX="`pwd`/$PREFIX"
 fi
 
