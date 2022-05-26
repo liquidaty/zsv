@@ -4,9 +4,9 @@ THIS_MAKEFILE_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
 CONFIGFILE ?= ../config.mk
 ifneq ($(CONFIGFILE),)
-  ifeq ($(shell realpath `dirname ${CONFIGFILE}`),`realpath .`)
-    $(error howdydy)
-  endif
+	ifeq ($(shell realpath `dirname ${CONFIGFILE}`),`realpath .`)
+		$(error howdydy)
+	endif
 endif
 
 $(info Using config file ${CONFIGFILE})
@@ -14,7 +14,7 @@ include ${CONFIGFILE}
 
 CONFIGFILEPATH=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
 ifeq ($(CONFIGFILEPATH),)
-  $(error Config file ${CONFIGFILE} not found)
+	$(error Config file ${CONFIGFILE} not found)
 endif
 
 CC ?= cc
@@ -28,7 +28,7 @@ LIBZSV_INSTALL=$(PREFIX)/lib/${LIBZSV_A}
 STRING_LIB_INCLUDE=
 STRINGLIB_INCLUDE_FLAG=
 ifneq ($(STRING_LIB_INCLUDE),)
-  CFLAGS+= -DSTRING_LIB_INCLUDE='${STRING_LIB_INCLUDE}'
+	CFLAGS+= -DSTRING_LIB_INCLUDE='${STRING_LIB_INCLUDE}'
 endif
 
 STRING_LIB_OBJ=
@@ -36,63 +36,63 @@ STRING_LIB_OBJ=
 DEBUG=0
 WIN=
 ifeq ($(WIN),)
-  WIN=0
-  ifneq ($(findstring w64,$(CC)),) # e.g. mingw64
-    WIN=1
-  endif
+	WIN=0
+	ifneq ($(findstring w64,$(CC)),) # e.g. mingw64
+		WIN=1
+	endif
 endif
 
 MORE_OBJECTS=
 NO_LTO=0
 
 ifeq ($(DEBUG),1)
-  DBG_SUBDIR+=dbg
+	DBG_SUBDIR+=dbg
 else
-  DBG_SUBDIR+=rel
+	DBG_SUBDIR+=rel
 endif
 
 NO_STDIN=
 ifeq ($(NO_STDIN),1)
-  CFLAGS+= -DNO_STDIN
+	CFLAGS+= -DNO_STDIN
 endif
 
 CFLAGS+= ${CFLAGS_PIC}
 ifeq ($(WIN),0)
-  BUILD_SUBDIR=$(shell uname)/${DBG_SUBDIR}
-  EXE=
+	BUILD_SUBDIR=$(shell uname)/${DBG_SUBDIR}
+	EXE=
 
-  ifneq ($(findstring emcc,$(CC)),) # emcc
-    NO_THREADING ?= 1
-    EXE=.em.js
-    EXPORTED_FUNCTIONS='_free','_malloc'
-    CFLAGS+= -s EXPORTED_FUNCTIONS="[${EXPORTED_FUNCTIONS}]" -s EXPORTED_RUNTIME_METHODS="['setValue','allocateUTF8','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory']" -s RESERVED_FUNCTION_POINTERS=4 -s ALLOW_MEMORY_GROWTH=1
-    CFLAGS_EXE+= -s FORCE_FILESYSTEM=1 -lidbfs.js -s MAIN_MODULE
-    ifeq ($(NO_THREADING),0)
-      CFLAGS_EXE+= -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2 -s PTHREAD_POOL_SIZE=8
-    endif
-  endif
+	ifneq ($(findstring emcc,$(CC)),) # emcc
+		NO_THREADING ?= 1
+		EXE=.em.js
+		EXPORTED_FUNCTIONS='_free','_malloc'
+		CFLAGS+= -s EXPORTED_FUNCTIONS="[${EXPORTED_FUNCTIONS}]" -s EXPORTED_RUNTIME_METHODS="['setValue','allocateUTF8','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory']" -s RESERVED_FUNCTION_POINTERS=4 -s ALLOW_MEMORY_GROWTH=1
+		CFLAGS_EXE+= -s FORCE_FILESYSTEM=1 -lidbfs.js -s MAIN_MODULE
+		ifeq ($(NO_THREADING),0)
+			CFLAGS_EXE+= -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2 -s PTHREAD_POOL_SIZE=8
+		endif
+	endif
 else
-  BUILD_SUBDIR=win/${DBG_SUBDIR}
-  EXE=.exe
-  CFLAGS+= -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE
-  CFLAGS+= -Wl,--strip-all
+	BUILD_SUBDIR=win/${DBG_SUBDIR}
+	EXE=.exe
+	CFLAGS+= -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE
+	CFLAGS+= -Wl,--strip-all
 endif
 
 ifeq ($(DEBUG),0)
-  CFLAGS+= -O3 -DNDEBUG -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -ftree-vectorize ${CFLAGS_OPT}
+	CFLAGS+= -O3 -DNDEBUG -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -ftree-vectorize ${CFLAGS_OPT}
 
-  ifeq ($(PGO),1)
-    CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4
-  else
-    ifeq ($(PGO),2)
-      CFLAGS+= -fprofile-use=/tmp/p4
-    else
-      $(echo "No profiling set. To use PGO, compile with PGO=1, then run with data, then compile again with PGO=2")
-    endif
-  endif
+	ifeq ($(PGO),1)
+		CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4
+	else
+		ifeq ($(PGO),2)
+			CFLAGS+= -fprofile-use=/tmp/p4
+		else
+			$(echo "No profiling set. To use PGO, compile with PGO=1, then run with data, then compile again with PGO=2")
+		endif
+	endif
 
 else
-  CFLAGS += -g
+	CFLAGS += -g
 endif
 
 CCBN=$(shell basename ${CC})
@@ -109,26 +109,26 @@ ifneq ($(WIN),0)
 endif
 
 ifneq ($(findstring emcc,$(CC)),) # emcc
-  ZSV_EXTRAS=1
-  UTILS1+=emcc/fs_api
-  ifeq ($(NO_THREADING),0)
-    LDFLAGS+=-pthread
-  endif
+	ZSV_EXTRAS=1
+	UTILS1+=emcc/fs_api
+	ifeq ($(NO_THREADING),0)
+		LDFLAGS+=-pthread
+	endif
 else # not emcc
-  CFLAGS+= ${CFLAGS_AVX2}
-  LDFLAGS+=-lpthread # Linux explicitly requires
+	CFLAGS+= ${CFLAGS_AVX2}
+	LDFLAGS+=-lpthread # Linux explicitly requires
 endif
 UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
 
 ifeq ($(ZSV_EXTRAS),1)
-  CFLAGS+= -DZSV_EXTRAS
+	CFLAGS+= -DZSV_EXTRAS
 endif
 
 OBJECTS=${UTILS}
 
 ifeq ($(NO_MEMMEM),1)
-  OBJECTS+= ${BUILD_DIR}/objs/utils/memmem.o
-  CFLAGS+=-DNO_MEMMEM
+	OBJECTS+= ${BUILD_DIR}/objs/utils/memmem.o
+	CFLAGS+=-DNO_MEMMEM
 endif
 
 ZSV=$(BINDIR)/zsv${EXE}
@@ -147,7 +147,7 @@ VERSION = $(shell git describe --always --dirty 2>/dev/null || echo "v0.0-zsv")
 CLI_APP_OBJECT=${BUILD_DIR}/objs/cli_cli.o
 CLI=${BUILD_DIR}/bin/cli${EXE}
 ifneq ($(findstring emcc,$(CC)),) # emcc
-    CLI_ADDITIONAL=${BUILD_DIR}/bin/cli.em.wasm
+		CLI_ADDITIONAL=${BUILD_DIR}/bin/cli.em.wasm
 endif
 CLI_OBJECTS=$(addprefix ${BUILD_DIR}/objs/cli_,$(addsuffix .o,${CLI_SOURCES}))
 
@@ -159,21 +159,21 @@ USE_JSONWRITER_TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${US
 
 CFLAGS+=${CFLAGS_AUTO}
 ifeq ($(NO_LTO),1)
-  CFLAGS+= -fno-lto
+	CFLAGS+= -fno-lto
 else
-  CFLAGS+=${CFLAGS_LTO}
-  LDFLAGS_OPT+= ${LDFLAGS_OPT_LTO}
+	CFLAGS+=${CFLAGS_LTO}
+	LDFLAGS_OPT+= ${LDFLAGS_OPT_LTO}
 endif
 
 ifeq ($(VERBOSE),1)
-  CFLAGS+= ${CFLAGS_VECTORIZE_OPTIMIZED} ${CFLAGS_VECTORIZE_MISSED} ${CFLAGS_VECTORIZE_ALL}
+	CFLAGS+= ${CFLAGS_VECTORIZE_OPTIMIZED} ${CFLAGS_VECTORIZE_MISSED} ${CFLAGS_VECTORIZE_ALL}
 endif
 
 USE_TERMCAP=pretty
 USE_TERMCAP_TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${USE_TERMCAP}))
 
 ifeq ($(USE_LIB_TERMCAP),1)
-  TERMCAP_LIB=-ltermcap
+	TERMCAP_LIB=-ltermcap
 endif
 
 INIH_SRC=external/inih
