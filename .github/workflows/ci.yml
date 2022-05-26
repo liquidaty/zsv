@@ -82,7 +82,7 @@ jobs:
       with:
         envs: 'PREFIX'
         usesh: true
-        prepare: pkg install -y tree make lang/gcc
+        prepare: pkg install -y tree lang/gcc
         run: |
           freebsd-version
           pwd
