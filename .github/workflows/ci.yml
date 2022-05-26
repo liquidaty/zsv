@@ -47,7 +47,7 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         # coreutils required for realpath
-        brew install coreutils
+        brew install coreutils tree
         echo "Building with clang"
         clang --version
         CC=clang make install
