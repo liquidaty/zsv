@@ -70,7 +70,7 @@ jobs:
           freebsd-version
           gcc --version
           pwd
-          ls -lah
+          ls -lah ./configure
           echo "Building with gcc"
           ./configure --prefix=$PREFIX
           CC=gcc make install

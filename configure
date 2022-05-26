@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Based on the configure script from musl libc, MIT licensed; vis, ISC licensed
 
 usage () {
