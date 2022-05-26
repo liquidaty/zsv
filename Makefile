@@ -9,7 +9,7 @@ include ${CONFIGFILE}
 
 CONFIGFILEPATH=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
 ifeq ($(CONFIGFILEPATH),)
-	$(error Config file ${CONFIGFILE} not found)
+  $(error Config file ${CONFIGFILE} not found)
 endif
 
 help:
