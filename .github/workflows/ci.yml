@@ -64,7 +64,7 @@ jobs:
       with:
         envs: 'PREFIX'
         usesh: true
-        prepare: pkg install -y curl
+        prepare: pkg install -y lang/gcc49
         run: |
           freebsd-version
           echo "Building with gcc"
