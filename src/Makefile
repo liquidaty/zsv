@@ -139,19 +139,19 @@ ${LIBZSV}: ${ZSV_OBJ}
 
 
 install: ${LIBZSV_INSTALL}
-	@mkdir -p  $(PREFIX)/include
-	@cp -pR ../include/* $(PREFIX)/include
-	@echo "include files copied to $(PREFIX)/include"
+	@mkdir -p  ${PREFIX}/include
+	@cp -pR ../include/* ${PREFIX}/include
+	@echo "include files copied to ${PREFIX}/include"
 
 
 ${LIBZSV_INSTALL}: ${LIBZSV}
 	@mkdir -p `dirname "$@"`
-	@cp -p ${LIBZSV} $(PREFIX)/lib
+	@cp -p ${LIBZSV} ${PREFIX}/lib
 	@echo "libzsv installed to $@"
 
 uninstall:
-	@rm -rf $(PREFIX)/include/zsv*
-	 rm  -f $(PREFIX)/lib/libzsv*
+	@rm -rf ${PREFIX}/include/zsv*
+	 rm  -f ${PREFIX}/lib/libzsv*
 
 clean:
 	rm -rf ${BUILD_DIR}/objs ${LIBZSV}
