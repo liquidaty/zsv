@@ -74,7 +74,6 @@ jobs:
         make install
         tree -h $PREFIX/{bin,include,lib}
         echo "Built with clang successfully!"
-        rm -rf $PREFIX
         echo "--- [DONE] ---"
 
     - name: Build (macOS - FreeBSD/gcc)
@@ -87,6 +86,7 @@ jobs:
         run: |
           freebsd-version
           pwd
+          rm -rf $PREFIX
           echo "Building with gcc"
           gcc --version
           CC=gcc ./configure --prefix=$PREFIX
