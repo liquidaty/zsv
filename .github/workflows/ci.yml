@@ -74,6 +74,7 @@ jobs:
         make install
         tree -h $PREFIX/{bin,include,lib}
         echo "Built with clang successfully!"
+        rm -rf $PREFIX
         echo "--- [DONE] ---"
 
     - name: Build (macOS - FreeBSD/gcc)
