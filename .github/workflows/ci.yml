@@ -12,9 +12,8 @@ jobs:
     strategy:
       matrix:
         os:
-          # - ubuntu-18.04
+          - ubuntu-18.04
           - macos-10.15
-          # - windows-2019
 
     runs-on: ${{ matrix.os }}
     
@@ -25,41 +24,59 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
-    # - name: Build (Linux - gcc and clang)
-    #   if: runner.os == 'Linux'
-    #   shell: bash
-    #   run: |
-    #     ./configure --prefix=$PREFIX
-    #     # gcc
-    #     echo "Building with gcc"
-    #     gcc --version
-    #     CC=gcc make install
-    #     tree -h $PREFIX/{bin,include,lib}
-    #     echo "Built with gcc successfully!"
-    #     # clang
-    #     rm -rf $PREFIX
-    #     echo "Building with clang"
-    #     clang --version
-    #     CC=clang make install
-    #     tree -h $PREFIX/{bin,include,lib}
-    #     echo "Built with clang successfully!"
-    #     echo "--- [DONE] ---"
+    - name: Build (Linux/gcc)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        echo "Building with gcc"
+        gcc --version
+        CC=gcc ./configure --prefix=$PREFIX
+        make install
+        tree -h $PREFIX/{bin,include,lib}
+        echo "Built with gcc successfully!"
 
-    # - name: Build (macOS - clang)
-    #   if: runner.os == 'macOS'
-    #   shell: bash
-    #   run: |
-    #     # coreutils required for realpath
-    #     brew install coreutils tree
-    #     ./configure --prefix=$PREFIX
-    #     echo "Building with clang"
-    #     clang --version
-    #     CC=clang make install
-    #     tree -h $PREFIX/{bin,include,lib}
-    #     echo "Built with clang successfully!"
-    #     echo "--- [DONE] ---"
+    - name: Build (Linux/clang)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        rm -rf $PREFIX
+        echo "Building with clang"
+        clang --version
+        CC=clang ./configure --prefix=$PREFIX
+        make install
+        tree -h $PREFIX/{bin,include,lib}
+        echo "Built with clang successfully!"
+        echo "--- [DONE] ---"
 
-    - name: Build (FreeBSD - gcc)
+    - name: Build (Linux/mingw)
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        rm -rf $PREFIX
+        sudo apt install -y mingw-w64
+        echo "Building with mingw"
+        x86_64-w64-mingw32-gcc --version
+        CC=x86_64-w64-mingw32-gcc ./configure --prefix=$PREFIX
+        make install
+        tree -h $PREFIX/{bin,include,lib}
+        echo "Built with mingw successfully!"
+        echo "--- [DONE] ---"
+
+    - name: Build (macOS - clang)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        # coreutils required for realpath
+        brew install coreutils tree
+        echo "Building with clang"
+        clang --version
+        CC=clang ./configure --prefix=$PREFIX
+        make install
+        tree -h $PREFIX/{bin,include,lib}
+        echo "Built with clang successfully!"
+        echo "--- [DONE] ---"
+
+    - name: Build (macOS - FreeBSD/gcc)
       if: runner.os == 'macOS'
       uses: vmactions/freebsd-vm@v0.1.5
       with:
@@ -68,21 +85,10 @@ jobs:
         prepare: pkg install -y tree lang/gcc
         run: |
           freebsd-version
-          gcc --version
           pwd
-          ls -lah ./configure
           echo "Building with gcc"
-          ./configure --prefix=$PREFIX
-          CC=gcc make install
+          gcc --version
+          CC=gcc ./configure --prefix=$PREFIX
+          gmake install
           tree -h $PREFIX/{bin,include,lib}
           echo "Built with gcc successfully!"
-
-    # - name: Build (Windows - mingw)
-    #   if: runner.os == 'Windows'
-    #   shell: bash
-    #   run: |
-    #     echo "Building with mingw"
-    #     make install
-    #     tree -h $PREFIX/{bin,include,lib}
-    #     echo "Built with mingw successfully!"
-    #     echo "--- [DONE] ---"
