@@ -11,7 +11,10 @@ jobs:
     name: ci
     strategy:
       matrix:
-        os: [ubuntu-18.04, macos-10.15, windows-2019]
+        os:
+          # - ubuntu-18.04
+          - macos-10.15
+          # - windows-2019
 
     runs-on: ${{ matrix.os }}
     
@@ -22,39 +25,39 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
-    - name: Build (Linux - gcc and clang)
-      if: runner.os == 'Linux'
-      shell: bash
-      run: |
-        ./configure --prefix=$PREFIX
-        # gcc
-        echo "Building with gcc"
-        gcc --version
-        CC=gcc make install
-        tree -h $PREFIX/{bin,include,lib}
-        echo "Built with gcc successfully!"
-        # clang
-        rm -rf $PREFIX
-        echo "Building with clang"
-        clang --version
-        CC=clang make install
-        tree -h $PREFIX/{bin,include,lib}
-        echo "Built with clang successfully!"
-        echo "--- [DONE] ---"
+    # - name: Build (Linux - gcc and clang)
+    #   if: runner.os == 'Linux'
+    #   shell: bash
+    #   run: |
+    #     ./configure --prefix=$PREFIX
+    #     # gcc
+    #     echo "Building with gcc"
+    #     gcc --version
+    #     CC=gcc make install
+    #     tree -h $PREFIX/{bin,include,lib}
+    #     echo "Built with gcc successfully!"
+    #     # clang
+    #     rm -rf $PREFIX
+    #     echo "Building with clang"
+    #     clang --version
+    #     CC=clang make install
+    #     tree -h $PREFIX/{bin,include,lib}
+    #     echo "Built with clang successfully!"
+    #     echo "--- [DONE] ---"
 
-    - name: Build (macOS - clang)
-      if: runner.os == 'macOS'
-      shell: bash
-      run: |
-        # coreutils required for realpath
-        brew install coreutils tree
-        ./configure --prefix=$PREFIX
-        echo "Building with clang"
-        clang --version
-        CC=clang make install
-        tree -h $PREFIX/{bin,include,lib}
-        echo "Built with clang successfully!"
-        echo "--- [DONE] ---"
+    # - name: Build (macOS - clang)
+    #   if: runner.os == 'macOS'
+    #   shell: bash
+    #   run: |
+    #     # coreutils required for realpath
+    #     brew install coreutils tree
+    #     ./configure --prefix=$PREFIX
+    #     echo "Building with clang"
+    #     clang --version
+    #     CC=clang make install
+    #     tree -h $PREFIX/{bin,include,lib}
+    #     echo "Built with clang successfully!"
+    #     echo "--- [DONE] ---"
 
     - name: Build (FreeBSD - gcc)
       if: runner.os == 'macOS'
@@ -64,6 +67,10 @@ jobs:
         usesh: true
         prepare: pkg install -y tree lang/gcc
         run: |
+          pwd
+          ls -lah
+          whoami
+          env
           freebsd-version
           gcc --version
           echo "Building with gcc"
