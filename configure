@@ -224,7 +224,7 @@ for arg ; do
 done
 if [ "$PREFIX" == "" ]; then
     PREFIX=/usr/local
-elif ! [[ $PREFIX == /* ]]; then
+elif [ "$PREFIX" == "${PREFIX#/}" ]; then
     PREFIX="`pwd`/$PREFIX"
 fi
 
