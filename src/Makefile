@@ -124,7 +124,7 @@ endif
 # CFLAGS+= -Dfwrite=zsv_fwrite_clock -Dfflush=zsv_fflush_clock -Dfread=zsv_fread_clock
 
 help:
-	@echo "make [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VECTOR_SIZE=128|256|NONE] [VERBOSE=1]"
+	@echo "${MAKE} [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VECTOR_SIZE=128|256|NONE] [VERBOSE=1]"
 
 lib: ${LIBZSV}
 

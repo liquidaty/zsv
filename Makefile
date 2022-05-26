@@ -23,52 +23,52 @@ help:
 	@echo "build and run as described in docs/extension.md"
 	@echo
 	@echo "To build and install zsvlib and zsv:"
-	@echo "  ./configure && make install"
+	@echo "  ./configure && ${MAKE} install"
 	@echo
 	@echo "To build and install only zsvlib:"
-	@echo "  ./configure && make lib"
+	@echo "  ./configure && ${MAKE} lib"
 	@echo
 	@echo "To build and install only zsv (i.e. install both, remove zsvlib):"
-	@echo "  ./configure && make install && make uninstall-lib"
+	@echo "  ./configure && ${MAKE} install && ${MAKE} uninstall-lib"
 	@echo
 	@echo "To save and build from a configuration without losing the current one,"
 	@echo "use the configuration option CONFIGFILE e.g.:"
 	@echo "  ./configure --config-file=/path/to/config.custom"
-	@echo "  ./configure && make -C src CONFIGFILE=/path/to/config.custom install"
+	@echo "  ./configure && ${MAKE} -C src CONFIGFILE=/path/to/config.custom install"
 	@echo
 	@echo "To clean (remove temporary build objects) (after running configure):"
-	@echo "  make clean"
+	@echo "  ${MAKE} clean"
 	@echo
 	@echo "To uninstall libs and apps:"
-	@echo "  make uninstall"
+	@echo "  ${MAKE} uninstall"
 	@echo
 	@echo "Additional make options available for the library or the apps by"
-	@echo "  running make from the src or app directory"
+	@echo "  running ${MAKE} from the src or app directory"
 	@echo
 	@echo "For more information, see README.md"
 
 lib:
-	@make -C src install CONFIGFILE=${CONFIGFILEPATH}
+	@${MAKE} -C src install CONFIGFILE=${CONFIGFILEPATH}
 
 install:
-	@make -C src install CONFIGFILE=${CONFIGFILEPATH}
-	@make -C app install CONFIGFILE=${CONFIGFILEPATH}
+	@${MAKE} -C src install CONFIGFILE=${CONFIGFILEPATH}
+	@${MAKE} -C app install CONFIGFILE=${CONFIGFILEPATH}
 
 all:
-	@make -C src install CONFIGFILE=${CONFIGFILEPATH}
-	@make -C app all CONFIGFILE=${CONFIGFILEPATH}
+	@${MAKE} -C src install CONFIGFILE=${CONFIGFILEPATH}
+	@${MAKE} -C app all CONFIGFILE=${CONFIGFILEPATH}
 
 clean:
-	@make -C app clean CONFIGFILE=${CONFIGFILEPATH}
-	@make -C src clean CONFIGFILE=${CONFIGFILEPATH}
+	@${MAKE} -C app clean CONFIGFILE=${CONFIGFILEPATH}
+	@${MAKE} -C src clean CONFIGFILE=${CONFIGFILEPATH}
 	@rm -rf ${THIS_MAKEFILE_DIR}/build
 
 uninstall: uninstall-lib uninstall-app
 
 uninstall-app:
-	make -C app uninstall CONFIGFILE=${CONFIGFILEPATH}
+	${MAKE} -C app uninstall CONFIGFILE=${CONFIGFILEPATH}
 
 uninstall-lib:
-	make -C src uninstall CONFIGFILE=${CONFIGFILEPATH}
+	${MAKE} -C src uninstall CONFIGFILE=${CONFIGFILEPATH}
 
 .PHONY: help install uninstall uninstall-app uninstall-lib
