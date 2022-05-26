@@ -25,16 +25,10 @@ jobs:
         ./configure --prefix=build
         # gcc
         echo "Building with gcc"
-        export CC=gcc
-        make lib
-        sudo cp build/Linux/rel/cc/lib/libzsv.a /usr/local/lib/
-        make install
+        CC=gcc make install
         # clang
         echo "Building with clang"
-        export CC=clang
-        make lib
-        sudo cp build/Linux/rel/cc/lib/libzsv.a /usr/local/lib/
-        make install
+        CC=clang make install
         echo "Built successfully!"
 
     - name: Build (macOS - clang)
@@ -43,8 +37,5 @@ jobs:
         brew install coreutils
         ./configure --prefix=build
         echo "Building with clang"
-        export CC=clang
-        make lib
-        sudo cp build/Darwin/rel/cc/lib/libzsv.a /usr/local/lib/
-        make install
+        CC=clang make install
         echo "Built successfully!"
