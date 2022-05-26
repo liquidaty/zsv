@@ -22,14 +22,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
-    - name: Configure
-      shell: bash
-      run: ./configure --prefix=$PREFIX
-
     - name: Build (Linux - gcc and clang)
       if: runner.os == 'Linux'
       shell: bash
       run: |
+        ./configure --prefix=$PREFIX
         # gcc
         echo "Building with gcc"
         gcc --version
@@ -51,6 +48,7 @@ jobs:
       run: |
         # coreutils required for realpath
         brew install coreutils tree
+        ./configure --prefix=$PREFIX
         echo "Building with clang"
         clang --version
         CC=clang make install
@@ -64,11 +62,12 @@ jobs:
       with:
         envs: 'PREFIX'
         usesh: true
-        prepare: pkg install -y lang/gcc
+        prepare: pkg install -y tree lang/gcc
         run: |
           freebsd-version
-          echo "Building with gcc"
           gcc --version
+          echo "Building with gcc"
+          ./configure --prefix=$PREFIX
           CC=gcc make install
           tree -h $PREFIX/{bin,include,lib}
           echo "Built with gcc successfully!"
