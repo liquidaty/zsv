@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  release:
+    branches: [main]
+    types: [created]
 
 jobs:
   ci:
@@ -15,6 +18,14 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    env:
+      AMD64_LINUX_GCC: amd64-linux-gcc
+      AMD64_LINUX_CLANG: amd64-linux-clang
+      AMD64_WINDOWS_MINGW: amd64-windows-mingw
+      AMD64_MACOSX_CLANG: amd64-macosx-clang
+      AMD64_FREEBSD_GCC: amd64-freebsd-gcc
+      ARTIFACT_RETENTION_DAYS: 5
+
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -23,37 +34,39 @@ jobs:
       if: runner.os == 'Linux'
       run: sudo apt update && sudo apt install -y mingw-w64
 
-    - name: Build on Linux (amd64-linux-gcc)
+    # --- Build ---
+
+    - name: Build on Linux (${{ env.AMD64_LINUX_GCC }})
       if: runner.os == 'Linux'
       env:
-        PREFIX: amd64-linux-gcc
+        PREFIX: ${{ env.AMD64_LINUX_GCC }}
         CC: gcc
         MAKE: make
       shell: bash
       run: ./bin/ci-build.sh
 
-    - name: Build on Linux (amd64-linux-clang)
+    - name: Build on Linux (${{ env.AMD64_LINUX_CLANG }})
       if: runner.os == 'Linux'
       env:
-        PREFIX: amd64-linux-clang
+        PREFIX: ${{ env.AMD64_LINUX_CLANG }}
         CC: clang
         MAKE: make
       shell: bash
       run: ./bin/ci-build.sh
 
-    - name: Build on Linux (amd64-windows-mingw)
+    - name: Build on Linux (${{ env.AMD64_WINDOWS_MINGW }})
       if: runner.os == 'Linux'
       env:
-        PREFIX: amd64-windows-mingw
+        PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
       shell: bash
       run: ./bin/ci-build.sh
 
-    - name: Build on macOS (amd64-macosx-clang)
+    - name: Build on macOS (${{ env.AMD64_MACOSX_CLANG }})
       if: runner.os == 'macOS'
       env:
-        PREFIX: amd64-macosx
+        PREFIX: ${{ env.AMD64_MACOSX_CLANG }}
         CC: clang
         MAKE: make
       shell: bash
@@ -62,10 +75,10 @@ jobs:
         brew install coreutils tree
         ./bin/ci-build.sh
 
-    - name: Build on macOS (amd64-freebsd-gcc)
+    - name: Build on macOS (${{ env.AMD64_FREEBSD_GCC }})
       if: runner.os == 'macOS'
       env:
-        PREFIX: amd64-freebsd-gcc
+        PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc
         MAKE: gmake
       uses: vmactions/freebsd-vm@v0.1.5
@@ -75,12 +88,52 @@ jobs:
         prepare: pkg install -y tree zip gmake lang/gcc
         run: ./bin/ci-build.sh
 
-    - name: Upload artifacts built on Linux
+    # --- Upload ---
+
+    - name: Upload (${{ env.PREFIX_LINUX_GCC }})
+      if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       with:
-        path: ./*.zip
+        name: zsv-${{ env.PREFIX_LINUX_GCC }}.zip
+        path: zsv-${{ env.PREFIX_LINUX_GCC }}.zip
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
-        retention-days: 5
+
+    - name: Upload (${{ env.PREFIX_LINUX_CLANG }})
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.PREFIX_LINUX_CLANG }}.zip
+        path: zsv-${{ env.PREFIX_LINUX_CLANG }}.zip
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (${{ env.AMD64_WINDOWS_MINGW }})
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.AMD64_WINDOWS_MINGW }}.zip
+        path: zsv-${{ env.AMD64_WINDOWS_MINGW }}.zip
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (${{ env.AMD64_MACOSX_CLANG }})
+      if: runner.os == 'macOS'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.AMD64_MACOSX_CLANG }}.zip
+        path: zsv-${{ env.AMD64_MACOSX_CLANG }}.zip
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (${{ env.AMD64_FREEBSD_GCC }})
+      if: runner.os == 'macOS'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.AMD64_FREEBSD_GCC }}.zip
+        path: zsv-${{ env.AMD64_FREEBSD_GCC }}.zip
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
 
     # - name: Release (publish build artifacts)
     #   uses: softprops/action-gh-release@v1
