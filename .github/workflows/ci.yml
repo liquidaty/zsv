@@ -84,12 +84,11 @@ jobs:
         usesh: true
         prepare: pkg install -y tree gmake lang/gcc
         run: |
-          freebsd-version
-          pwd
+          set -e
           rm -rf $PREFIX
           echo "Building with gcc"
           gcc --version
           CC=gcc ./configure --prefix=$PREFIX
-          make install
+          gmake install
           tree -h $PREFIX/{bin,include,lib}
           echo "Built with gcc successfully!"
