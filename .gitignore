@@ -40,5 +40,6 @@
 *.mk.log
 *.c.in
 *.h.in
+*.zip
 build
 app/external
