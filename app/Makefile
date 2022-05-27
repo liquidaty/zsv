@@ -198,12 +198,12 @@ SQLITE_SRC=${THIS_MAKEFILE_DIR}/external/sqlite3/sqlite3*.c
 SQLITE_EXT_INCLUDE=-Iexternal/sqlite3
 
 help:
-	@echo "To build: make [DEBUG=1] [clean] <all|test>"
+	@echo "To build: ${MAKE} [DEBUG=1] [clean] <all|test>"
 	@echo
 	@echo "To build and test individual apps, run:"
-	@echo "  make test"
+	@echo "  ${MAKE} test"
 	@echo "which will build and test all apps, or to build/test a single app:"
-	@echo "  make test-xx"
+	@echo "  ${MAKE} test-xx"
 	@echo "where xx is any of:"
 	@echo "  echo count select 2json serialize flatten pretty stack desc 2tsv sql"
 	@echo ""
@@ -218,7 +218,7 @@ build: all
 all: ${TARGETS}
 
 ${LIBZSV_INSTALL}:
-	make -C ../src CONFIGFILE=${CONFIGFILEPATH} install
+	${MAKE} -C ../src CONFIGFILE=${CONFIGFILEPATH} install
 
 ${ZSV}: ${CLI}
 	@mkdir -p `dirname "$@"`
@@ -312,7 +312,7 @@ ${BUILD_DIR}/external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}/external/%.o 
 test: ${TESTS}
 
 test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
-	@cd test && make $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} ZSV_EXTRAS=${ZSV_EXTRAS}
+	@cd test && ${MAKE} $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} ZSV_EXTRAS=${ZSV_EXTRAS}
 
 clean: clean-obj clean-lib
 	rm -rf ${BUILD_DIR}
@@ -321,7 +321,7 @@ clean-obj:
 	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT}
 
 clean-lib:
-	make -C ../src clean CONFIGFILE=${CONFIGFILEPATH}
+	${MAKE} -C ../src clean CONFIGFILE=${CONFIGFILEPATH}
 
 external/json_writer-1.0/jsonwriter.c: external/json_writer-1.0.tar.gz
 	@cd external && tar xf ../$<
