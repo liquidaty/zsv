@@ -19,7 +19,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
-    - name: Build (amd64-linux-gcc)
+    - name: Install MinGW cross-compiler on Linux
+      if: runner.os == 'Linux'
+      run: sudo apt update && sudo apt install -y mingw-w64
+
+    - name: Build on Linux (amd64-linux-gcc)
       if: runner.os == 'Linux'
       env:
         PREFIX: amd64-linux-gcc
@@ -28,7 +32,7 @@ jobs:
       shell: bash
       run: ./bin/ci-build.sh
 
-    - name: Build (amd64-linux-clang)
+    - name: Build on Linux (amd64-linux-clang)
       if: runner.os == 'Linux'
       env:
         PREFIX: amd64-linux-clang
@@ -37,18 +41,16 @@ jobs:
       shell: bash
       run: ./bin/ci-build.sh
 
-    - name: Build (amd64-windows)
+    - name: Build on Linux (amd64-windows-mingw)
       if: runner.os == 'Linux'
       env:
-        PREFIX: amd64-windows
+        PREFIX: amd64-windows-mingw
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
       shell: bash
-      run: |
-        sudo apt install -y mingw-w64
-        ./bin/ci-build.sh
+      run: ./bin/ci-build.sh
 
-    - name: Build (amd64-macosx-clang)
+    - name: Build on macOS (amd64-macosx-clang)
       if: runner.os == 'macOS'
       env:
         PREFIX: amd64-macosx
@@ -60,7 +62,7 @@ jobs:
         brew install coreutils tree
         ./bin/ci-build.sh
 
-    - name: Build (amd64-freebsd-gcc)
+    - name: Build on macOS (amd64-freebsd-gcc)
       if: runner.os == 'macOS'
       env:
         PREFIX: amd64-freebsd-gcc
@@ -72,3 +74,17 @@ jobs:
         usesh: true
         prepare: pkg install -y tree zip gmake lang/gcc
         run: ./bin/ci-build.sh
+
+    - name: Upload artifacts built on Linux
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        path: *.zip
+        if-no-files-found: error
+        retention-days: 5
+
+    # - name: Release (publish build artifacts)
+    #   uses: softprops/action-gh-release@v1
+    #   if: startsWith(github.ref, 'refs/tags/')
+    #   with:
+    #     files: *.zip
