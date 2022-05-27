@@ -3,7 +3,7 @@
 set -e
 
 if [ "$PREFIX" = "" ] || [ "$CC" = "" ] || [ "$MAKE" = "" ]; then
-  echo "[ERR] Environment variables are not set!"
+  echo "[ERR] One or more environment variable(s) are not set!"
   echo "[ERR] Set PREFIX, CC, and MAKE before running $0 script."
   exit 1
 fi
@@ -14,7 +14,7 @@ echo "MAKE:   $MAKE"
 
 echo "Building [$PREFIX]"
 
-rm -rf build $PREFIX
+rm -rf ./build ./$PREFIX
 
 "$CC" --version
 ./configure --prefix="$PREFIX"
