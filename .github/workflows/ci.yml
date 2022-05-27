@@ -76,10 +76,9 @@ jobs:
         run: ./bin/ci-build.sh
 
     - name: Upload artifacts built on Linux
-      if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       with:
-        path: *.zip
+        path: ./*.zip
         if-no-files-found: error
         retention-days: 5
 
