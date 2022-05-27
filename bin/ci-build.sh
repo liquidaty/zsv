@@ -14,6 +14,8 @@ echo "MAKE:   $MAKE"
 
 echo "Building [$PREFIX]"
 
+rm -rf build $PREFIX
+
 "$CC" --version
 ./configure --prefix="$PREFIX"
 "$MAKE" install
@@ -22,8 +24,6 @@ echo "Compressing"
 cd "$PREFIX"
 zip -r "$PREFIX.zip" .
 cd ..
-
-rm -rf build "$PREFIX"
 
 echo "Listing"
 tree -h "$PREFIX"
