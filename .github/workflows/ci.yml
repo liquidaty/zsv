@@ -19,11 +19,11 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      AMD64_LINUX_GCC: zsv-${{ github.ref_name }}-amd64-linux-gcc
-      AMD64_LINUX_CLANG: zsv-${{ github.ref_name }}-amd64-linux-clang
-      AMD64_WINDOWS_MINGW: zsv-${{ github.ref_name }}-amd64-windows-mingw
-      AMD64_MACOSX_CLANG: zsv-${{ github.ref_name }}-amd64-macosx-clang
-      AMD64_FREEBSD_GCC: zsv-${{ github.ref_name }}-amd64-freebsd-gcc
+      AMD64_LINUX_GCC: zsv-amd64-linux-gcc
+      AMD64_LINUX_CLANG: zsv-amd64-linux-clang
+      AMD64_WINDOWS_MINGW: zsv-amd64-windows-mingw
+      AMD64_MACOSX_CLANG: zsv-amd64-macosx-clang
+      AMD64_FREEBSD_GCC: zsv-amd64-freebsd-gcc
       ARTIFACT_RETENTION_DAYS: 5
 
     steps:
