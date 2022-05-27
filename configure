@@ -330,7 +330,7 @@ test -n "$MAKE" || fail "$0: cannot find a MAKE tool"
 # Find a C compiler to use
 #
 printf "checking for C compiler... "
-for c in cc gcc clang; do trycc "$c"; done
+for c in gcc cc clang; do trycc "$c"; done
 printf "%s\n" "$CC"
 test -n "$CC" || fail "$0: cannot find a C compiler"
 
@@ -582,5 +582,14 @@ if ! [ "$MAKE" = "" ]; then
     echo "  $MAKE clean               # remove build artifacts"
     echo ""
 fi
+
+if uname | grep BSD >/dev/null && "$CC" --version | grep clang >/dev/null ; then
+    echo "********************* WARNING!!! ****************************"
+    echo "* clang + BSD might fail; consider using gcc. Once installed:"
+    echo "*    ./configure CC=gcc"
+    echo "*************************************************************"
+    echo ""
+fi
+
 
 exit 0
