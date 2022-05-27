@@ -11,9 +11,7 @@ jobs:
     name: ci
     strategy:
       matrix:
-        os:
-          - ubuntu-18.04
-          - macos-10.15
+        os: [ubuntu-18.04, macos-10.15]
 
     runs-on: ${{ matrix.os }}
     
@@ -90,5 +88,6 @@ jobs:
           gcc --version
           CC=gcc ./configure --prefix=$PREFIX
           gmake install
-          tree -h $PREFIX/{bin,include,lib}
+          ls -ahl
+          tree -h $PREFIX
           echo "Built with gcc successfully!"
