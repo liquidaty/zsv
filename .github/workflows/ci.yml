@@ -19,11 +19,11 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      AMD64_LINUX_GCC: amd64-linux-gcc
-      AMD64_LINUX_CLANG: amd64-linux-clang
-      AMD64_WINDOWS_MINGW: amd64-windows-mingw
-      AMD64_MACOSX_CLANG: amd64-macosx-clang
-      AMD64_FREEBSD_GCC: amd64-freebsd-gcc
+      AMD64_LINUX_GCC: zsv-${{ github.ref_name }}-amd64-linux-gcc
+      AMD64_LINUX_CLANG: zsv-${{ github.ref_name }}-amd64-linux-clang
+      AMD64_WINDOWS_MINGW: zsv-${{ github.ref_name }}-amd64-windows-mingw
+      AMD64_MACOSX_CLANG: zsv-${{ github.ref_name }}-amd64-macosx-clang
+      AMD64_FREEBSD_GCC: zsv-${{ github.ref_name }}-amd64-freebsd-gcc
       ARTIFACT_RETENTION_DAYS: 5
 
     steps:
@@ -90,53 +90,59 @@ jobs:
 
     # --- Upload ---
 
-    - name: Upload (${{ env.AMD64_LINUX_GCC }})
+    - name: Upload (${{ env.AMD64_LINUX_GCC }}.zip)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       with:
-        name: zsv-${{ env.AMD64_LINUX_GCC }}.zip
-        path: zsv-${{ env.AMD64_LINUX_GCC }}.zip
+        name: ${{ env.AMD64_LINUX_GCC }}.zip
+        path: ${{ env.AMD64_LINUX_GCC }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (${{ env.AMD64_LINUX_CLANG }})
+    - name: Upload (${{ env.AMD64_LINUX_CLANG }}.zip)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       with:
-        name: zsv-${{ env.AMD64_LINUX_CLANG }}.zip
-        path: zsv-${{ env.AMD64_LINUX_CLANG }}.zip
+        name: ${{ env.AMD64_LINUX_CLANG }}.zip
+        path: ${{ env.AMD64_LINUX_CLANG }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (${{ env.AMD64_WINDOWS_MINGW }})
+    - name: Upload (${{ env.AMD64_WINDOWS_MINGW }}.zip)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       with:
-        name: zsv-${{ env.AMD64_WINDOWS_MINGW }}.zip
-        path: zsv-${{ env.AMD64_WINDOWS_MINGW }}.zip
+        name: ${{ env.AMD64_WINDOWS_MINGW }}.zip
+        path: ${{ env.AMD64_WINDOWS_MINGW }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (${{ env.AMD64_MACOSX_CLANG }})
+    - name: Upload (${{ env.AMD64_MACOSX_CLANG }}.zip)
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
       with:
-        name: zsv-${{ env.AMD64_MACOSX_CLANG }}.zip
-        path: zsv-${{ env.AMD64_MACOSX_CLANG }}.zip
+        name: ${{ env.AMD64_MACOSX_CLANG }}.zip
+        path: ${{ env.AMD64_MACOSX_CLANG }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (${{ env.AMD64_FREEBSD_GCC }})
+    - name: Upload (${{ env.AMD64_FREEBSD_GCC }}.zip)
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
       with:
-        name: zsv-${{ env.AMD64_FREEBSD_GCC }}.zip
-        path: zsv-${{ env.AMD64_FREEBSD_GCC }}.zip
+        name: ${{ env.AMD64_FREEBSD_GCC }}.zip
+        path: ${{ env.AMD64_FREEBSD_GCC }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    # - name: Release (publish build artifacts)
-    #   uses: softprops/action-gh-release@v1
-    #   if: startsWith(github.ref, 'refs/tags/')
-    #   with:
-    #     files: *.zip
+    - name: Upload release artifacts
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          ${{ env.AMD64_LINUX_GCC }}.zip
+          ${{ env.AMD64_LINUX_CLANG }}.zip
+          ${{ env.AMD64_WINDOWS_MINGW }}.zip
+          ${{ env.AMD64_MACOSX_CLANG }}.zip
+          ${{ env.AMD64_FREEBSD_GCC }}.zip
+
