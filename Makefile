@@ -22,6 +22,9 @@ help:
 	@echo "\`zsv\` also supports dynamic extensions, a sample of which you can"
 	@echo "build and run as described in docs/extension.md"
 	@echo
+	@echo "To build, test and install zsvlib and zsv:"
+	@echo "  ./configure && ${MAKE} test"
+	@echo
 	@echo "To build and install zsvlib and zsv:"
 	@echo "  ./configure && ${MAKE} install"
 	@echo
@@ -49,6 +52,9 @@ help:
 
 lib:
 	@${MAKE} -C src install CONFIGFILE=${CONFIGFILEPATH}
+
+test:
+	@${MAKE} -C app test CONFIGFILE=${CONFIGFILEPATH}
 
 install:
 	@${MAKE} -C src install CONFIGFILE=${CONFIGFILEPATH}
