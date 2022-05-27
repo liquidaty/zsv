@@ -14,80 +14,61 @@ jobs:
         os: [ubuntu-18.04, macos-10.15]
 
     runs-on: ${{ matrix.os }}
-    
-    env:
-      PREFIX: build
 
     steps:
     - name: Checkout
       uses: actions/checkout@v2
 
-    - name: Build (Linux/gcc)
+    - name: Build (amd64-linux-gcc)
       if: runner.os == 'Linux'
+      env:
+        PREFIX: amd64-linux-gcc
+        CC: gcc
+        MAKE: make
       shell: bash
-      run: |
-        echo "Building with gcc"
-        gcc --version
-        CC=gcc ./configure --prefix=$PREFIX
-        make install
-        tree -h $PREFIX/{bin,include,lib}
-        echo "Built with gcc successfully!"
+      run: ./bin/ci-build.sh
 
-    - name: Build (Linux/clang)
+    - name: Build (amd64-linux-clang)
       if: runner.os == 'Linux'
+      env:
+        PREFIX: amd64-linux-clang
+        CC: clang
+        MAKE: make
       shell: bash
-      run: |
-        rm -rf $PREFIX
-        echo "Building with clang"
-        clang --version
-        CC=clang ./configure --prefix=$PREFIX
-        make install
-        tree -h $PREFIX/{bin,include,lib}
-        echo "Built with clang successfully!"
-        echo "--- [DONE] ---"
+      run: ./bin/ci-build.sh
 
-    - name: Build (Linux/mingw)
+    - name: Build (amd64-windows)
       if: runner.os == 'Linux'
+      env:
+        PREFIX: amd64-windows
+        CC: x86_64-w64-mingw32-gcc
+        MAKE: make
       shell: bash
       run: |
-        rm -rf $PREFIX
         sudo apt install -y mingw-w64
-        echo "Building with mingw"
-        x86_64-w64-mingw32-gcc --version
-        CC=x86_64-w64-mingw32-gcc ./configure --prefix=$PREFIX
-        make install
-        tree -h $PREFIX/{bin,include,lib}
-        echo "Built with mingw successfully!"
-        echo "--- [DONE] ---"
+        ./bin/ci-build.sh
 
-    - name: Build (macOS - clang)
+    - name: Build (amd64-macosx-clang)
       if: runner.os == 'macOS'
+      env:
+        PREFIX: amd64-macosx
+        CC: clang
+        MAKE: make
       shell: bash
       run: |
         # coreutils required for realpath
         brew install coreutils tree
-        echo "Building with clang"
-        clang --version
-        CC=clang ./configure --prefix=$PREFIX
-        make install
-        tree -h $PREFIX/{bin,include,lib}
-        echo "Built with clang successfully!"
-        echo "--- [DONE] ---"
+        ./bin/ci-build.sh
 
-    - name: Build (macOS - FreeBSD/gcc)
+    - name: Build (amd64-freebsd-gcc)
       if: runner.os == 'macOS'
+      env:
+        PREFIX: amd64-freebsd-gcc
+        CC: gcc
+        MAKE: gmake
       uses: vmactions/freebsd-vm@v0.1.5
       with:
-        envs: 'PREFIX'
+        envs: 'PREFIX CC MAKE'
         usesh: true
-        prepare: pkg install -y tree gmake lang/gcc
-        run: |
-          set -e
-          rm -rf $PREFIX
-          echo "Building with gcc"
-          gcc --version
-          CC=gcc ./configure --prefix=$PREFIX
-          gmake install
-          ls -ahl
-          tree -h $PREFIX
-          echo "Built with gcc successfully!"
+        prepare: pkg install -y tree zip gmake lang/gcc
+        run: ./bin/ci-build.sh
