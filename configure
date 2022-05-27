@@ -591,5 +591,4 @@ if uname | grep BSD >/dev/null && "$CC" --version | grep clang >/dev/null ; then
     echo ""
 fi
 
-
 exit 0
