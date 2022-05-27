@@ -90,21 +90,21 @@ jobs:
 
     # --- Upload ---
 
-    - name: Upload (${{ env.PREFIX_LINUX_GCC }})
+    - name: Upload (${{ env.AMD64_LINUX_GCC }})
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       with:
-        name: zsv-${{ env.PREFIX_LINUX_GCC }}.zip
-        path: zsv-${{ env.PREFIX_LINUX_GCC }}.zip
+        name: zsv-${{ env.AMD64_LINUX_GCC }}.zip
+        path: zsv-${{ env.AMD64_LINUX_GCC }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (${{ env.PREFIX_LINUX_CLANG }})
+    - name: Upload (${{ env.AMD64_LINUX_CLANG }})
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       with:
-        name: zsv-${{ env.PREFIX_LINUX_CLANG }}.zip
-        path: zsv-${{ env.PREFIX_LINUX_CLANG }}.zip
+        name: zsv-${{ env.AMD64_LINUX_CLANG }}.zip
+        path: zsv-${{ env.AMD64_LINUX_CLANG }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
