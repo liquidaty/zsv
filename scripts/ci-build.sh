@@ -8,25 +8,41 @@ if [ "$PREFIX" = "" ] || [ "$CC" = "" ] || [ "$MAKE" = "" ]; then
   exit 1
 fi
 
-echo "PREFIX: $PREFIX"
-echo "CC:     $CC"
-echo "MAKE:   $MAKE"
+if [ "$TESTS" != true ]; then
+  TESTS=false
+fi
 
-echo "Building [$PREFIX]"
+echo "[INF] PREFIX: $PREFIX"
+echo "[INF] CC:     $CC"
+echo "[INF] MAKE:   $MAKE"
+echo "[INF] TESTS:  $TESTS"
 
-rm -rf ./build ./$PREFIX
-
+echo "[INF] $CC version"
 "$CC" --version
-./configure --prefix="$PREFIX"
-"$MAKE" clean uninstall test
 
-echo "Compressing"
+echo "[INF] Configuring"
+./configure --prefix="$PREFIX"
+
+if [ "$TESTS" = true ]; then
+  echo "[INF] Running tests"
+  rm -rf ./build ./"$PREFIX"
+  "$MAKE" test
+  echo "[INF] Tests completed successfully!"
+fi
+
+echo "[INF] Building"
+rm -rf ./build ./"$PREFIX"
+"$MAKE" install
+echo "[INF] Built successfully!"
+
+echo "[INF] Compressing"
 cd "$PREFIX"
 zip -r "$PREFIX.zip" .
 cd ..
+echo "[INF] Compressed! [$PREFIX.zip]"
 
-echo "Listing"
+echo "[INF] Listing"
 tree -h "$PREFIX"
 mv "$PREFIX/$PREFIX.zip" .
 
-echo "--- [DONE] ---"
+echo "[INF] --- [DONE] ---"

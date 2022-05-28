@@ -42,6 +42,7 @@ jobs:
         PREFIX: ${{ env.AMD64_LINUX_GCC }}
         CC: gcc
         MAKE: make
+        TESTS: true
       shell: bash
       run: ./scripts/ci-build.sh
 
@@ -51,6 +52,7 @@ jobs:
         PREFIX: ${{ env.AMD64_LINUX_CLANG }}
         CC: clang
         MAKE: make
+        TESTS: true
       shell: bash
       run: ./scripts/ci-build.sh
 
@@ -60,6 +62,7 @@ jobs:
         PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
+        TESTS: false
       shell: bash
       run: ./scripts/ci-build.sh
 
@@ -69,6 +72,8 @@ jobs:
         PREFIX: ${{ env.AMD64_MACOSX_CLANG }}
         CC: clang
         MAKE: make
+        TESTS: true
+        MACOSX_DEPLOYMENT_TARGET: 10.15
       shell: bash
       run: |
         # coreutils required for realpath
@@ -81,9 +86,10 @@ jobs:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc
         MAKE: gmake
+        TESTS: true
       uses: vmactions/freebsd-vm@v0.1.5
       with:
-        envs: 'PREFIX CC MAKE'
+        envs: 'PREFIX CC MAKE TESTS'
         usesh: true
         prepare: pkg install -y tree zip gmake lang/gcc
         run: ./scripts/ci-build.sh
