@@ -35,9 +35,6 @@ rm -rf ./build ./"$PREFIX"
 "$MAKE" install
 echo "[INF] Built successfully!"
 
-ZSV="./$PREFIX/bin/zsv"
-echo "[INF] zsv version: $($ZSV version)"
-
 echo "[INF] Compressing"
 cd "$PREFIX"
 zip -r "$PREFIX.zip" .
