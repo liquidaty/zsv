@@ -2,7 +2,7 @@
 
 set -e
 
-if [ "$ARTIFACT_DIR" = "" ] || [ "$PREFIX" = "" ] || [ "$CC" = "" ] || [ "$MAKE" = "" ]; then
+if [ "$PREFIX" = "" ] || [ "$CC" = "" ] || [ "$MAKE" = "" ] || [ "$ARTIFACT_DIR" = "" ]; then
   echo "[ERR] One or more environment variable(s) are not set!"
   echo "[ERR] Set PREFIX, CC, and MAKE before running $0 script."
   exit 1
