@@ -112,8 +112,8 @@ jobs:
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       with:
-        name: zsv-${{ env.AMD64_LINUX_GCC }}.zip
-        path: zsv-${{ env.AMD64_LINUX_GCC }}.zip
+        name: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_LINUX_GCC }}.zip
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_LINUX_GCC }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
@@ -121,8 +121,8 @@ jobs:
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       with:
-        name: zsv-${{ env.AMD64_LINUX_CLANG }}.zip
-        path: zsv-${{ env.AMD64_LINUX_CLANG }}.zip
+        name: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_LINUX_CLANG }}.zip
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_LINUX_CLANG }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
@@ -130,8 +130,8 @@ jobs:
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       with:
-        name: zsv-${{ env.AMD64_WINDOWS_MINGW }}.zip
-        path: zsv-${{ env.AMD64_WINDOWS_MINGW }}.zip
+        name: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_WINDOWS_MINGW }}.zip
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_WINDOWS_MINGW }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
@@ -139,8 +139,8 @@ jobs:
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
       with:
-        name: zsv-${{ env.AMD64_MACOSX_CLANG }}.zip
-        path: zsv-${{ env.AMD64_MACOSX_CLANG }}.zip
+        name: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_MACOSX_CLANG }}.zip
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_MACOSX_CLANG }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
@@ -148,8 +148,8 @@ jobs:
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
       with:
-        name: zsv-${{ env.AMD64_FREEBSD_GCC }}.zip
-        path: zsv-${{ env.AMD64_FREEBSD_GCC }}.zip
+        name: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_FREEBSD_GCC }}.zip
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_FREEBSD_GCC }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
