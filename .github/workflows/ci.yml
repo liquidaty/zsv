@@ -86,7 +86,7 @@ jobs:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc
         MAKE: gmake
-        TESTS: true
+        TESTS: false
       uses: vmactions/freebsd-vm@v0.1.5
       with:
         envs: 'PREFIX CC MAKE TESTS'
