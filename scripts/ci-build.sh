@@ -18,7 +18,7 @@ rm -rf ./build ./$PREFIX
 
 "$CC" --version
 ./configure --prefix="$PREFIX"
-"$MAKE" install
+"$MAKE" clean uninstall test
 
 echo "Compressing"
 cd "$PREFIX"

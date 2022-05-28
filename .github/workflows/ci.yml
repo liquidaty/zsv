@@ -43,7 +43,7 @@ jobs:
         CC: gcc
         MAKE: make
       shell: bash
-      run: ./bin/ci-build.sh
+      run: ./scripts/ci-build.sh
 
     - name: Build on Linux (${{ env.AMD64_LINUX_CLANG }})
       if: runner.os == 'Linux'
@@ -52,7 +52,7 @@ jobs:
         CC: clang
         MAKE: make
       shell: bash
-      run: ./bin/ci-build.sh
+      run: ./scripts/ci-build.sh
 
     - name: Build on Linux (${{ env.AMD64_WINDOWS_MINGW }})
       if: runner.os == 'Linux'
@@ -61,7 +61,7 @@ jobs:
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
       shell: bash
-      run: ./bin/ci-build.sh
+      run: ./scripts/ci-build.sh
 
     - name: Build on macOS (${{ env.AMD64_MACOSX_CLANG }})
       if: runner.os == 'macOS'
@@ -73,7 +73,7 @@ jobs:
       run: |
         # coreutils required for realpath
         brew install coreutils tree
-        ./bin/ci-build.sh
+        ./scripts/ci-build.sh
 
     - name: Build on macOS (${{ env.AMD64_FREEBSD_GCC }})
       if: runner.os == 'macOS'
@@ -86,7 +86,7 @@ jobs:
         envs: 'PREFIX CC MAKE'
         usesh: true
         prepare: pkg install -y tree zip gmake lang/gcc
-        run: ./bin/ci-build.sh
+        run: ./scripts/ci-build.sh
 
     # --- Upload ---
 
@@ -145,4 +145,3 @@ jobs:
           ${{ env.AMD64_WINDOWS_MINGW }}.zip
           ${{ env.AMD64_MACOSX_CLANG }}.zip
           ${{ env.AMD64_FREEBSD_GCC }}.zip
-
