@@ -52,7 +52,7 @@ jobs:
         PREFIX: ${{ env.AMD64_LINUX_CLANG }}
         CC: clang
         MAKE: make
-        TESTS: true
+        TESTS: false
       shell: bash
       run: ./scripts/ci-build.sh
 
