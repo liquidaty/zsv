@@ -119,7 +119,7 @@ Each of these can also be built as an independent executable.
 
 Basically: `./configure && sudo make install`
 
-See [INSTALL.md](INSTALL.md) for more details.
+GCC is the recommended compiler. See [INSTALL.md](INSTALL.md) for more details.
 
 ### Running the CLI
 

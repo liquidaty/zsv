@@ -12,6 +12,11 @@ sudo make uninstall
 To build the independent executables in a local build folder, substitute `make install`
 for `make all`
 
+#### A note on compilers
+GCC 11+ is the recommended compiler. Compared with clang,
+on OSX (Intel), it produces faster code, and on some platforms
+clang fails (e.g. FreeBSD-- see below)
+
 ### FreeBSD
 
 Using clang on FreeBSD, compilation may appear to succeed but result in an executable
