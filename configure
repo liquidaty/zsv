@@ -425,6 +425,7 @@ tryflag CFLAGS_VECTORIZE -ftree-vectorize
 tryflag CFLAGS_VECTORIZE_OPTIMIZED -fopt-info-vec-optimized
 tryflag CFLAGS_VECTORIZE_MISSED -fopt-info-vec-missed
 tryflag CFLAGS_VECTORIZE_ALL -fopt-info-vec-all
+tryflag CFLAGS_OPENMP -fopenmp
 
 if test "$usepie" = "yes" ; then
 tryflag CFLAGS_PIE -fpie || tryflag CFLAGS_PIE -fPIE
@@ -554,6 +555,7 @@ CFLAGS_VECTORIZE = $CFLAGS_VECTORIZE
 CFLAGS_VECTORIZE_OPTIMIZED = $CFLAGS_VECTORIZE_OPTIMIZED
 CFLAGS_VECTORIZE_MISSED = $CFLAGS_VECTORIZE_MISSED
 CFLAGS_VECTORIZE_ALL = $CFLAGS_VECTORIZE_ALL
+CFLAGS_OPENMP = $CFLAGS_OPENMP
 
 $NO_HAVE
 $USE_LIBS
@@ -590,6 +592,5 @@ if uname | grep BSD >/dev/null && "$CC" --version | grep clang >/dev/null ; then
     echo "*************************************************************"
     echo ""
 fi
-
 
 exit 0

@@ -47,10 +47,8 @@ endif
 
 ifeq ($(DEBUG),0)
   CFLAGS+= -DNDEBUG -O3
+  CFLAGS+= ${CFLAGS_OPENMP}
 
-  ifneq ($(findstring gcc,$(CC)),) # to do: use configure
-    CFLAGS+= -fopenmp
-  endif
   ifeq ($(PGO),1)
     CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4
   else

@@ -127,7 +127,7 @@ unsigned char *zsv_strtrim(char unsigned * restrict s, size_t *lenp) {
  * @param flags bitfield of ZSV_STRWHITE_FLAG_XXX values
  */
 size_t zsv_strwhite(unsigned char *s, size_t len, unsigned int flags) {
-  char this_is_space, last_was_space = 0;
+  int this_is_space, last_was_space = 0;
   size_t new_len = 0;
   char replacement = ' ';
   int clen;
@@ -195,12 +195,12 @@ size_t zsv_strwhite(unsigned char *s, size_t len, unsigned int flags) {
 // returns the length of the valid string
 size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace) {
   size_t new_len = 0;
-  char clen;
+  int clen;
   for(size_t i2 = 0; i2 < n; i2 += clen) {
     clen = ZSV_UTF8_CHARLEN(s[i2]);
     if(LIKELY(clen == 1))
       s[new_len++] = s[i2];
-    else if(UNLIKELY(clen == -1) || UNLIKELY(i2 + clen >= n)) {
+    else if(UNLIKELY(clen < 0) || UNLIKELY(i2 + clen >= n)) {
       if(replace)
         s[new_len++] = replace;
       clen = 1;

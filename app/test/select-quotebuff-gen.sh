@@ -1,3 +1,5 @@
+#!/bin/sh
+
 i=0;
 while [ $i -lt 2000 ] ; do
     j=0
