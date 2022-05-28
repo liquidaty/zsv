@@ -12,6 +12,7 @@ Defaults for the options are specified in brackets.
 
 Configuration:
   --config-file=FILE      save config to FILE [config.mk]
+  --minimal=yes           do not include extra features (default=no)
 
 Installation directories:
   --prefix=PREFIX         main installation prefix [\$PREFIX or /usr/local]
@@ -250,6 +251,8 @@ SHAREDIR='$(PREFIX)/share'
 DOCDIR='$(PREFIX)/share/doc'
 MANDIR='$(PREFIX)/share/man'
 
+MINIMAL=no
+
 help=yes
 usesmalllut=no
 usedebugstderr=no
@@ -268,6 +271,7 @@ CONFIGFILE=*) CONFIGFILE=${arg#*=} ;;
 --sharedir=*) SHAREDIR=${arg#*=} ;;
 --docdir=*) DOCDIR=${arg#*=} ;;
 --mandir=*) MANDIR=${arg#*=} ;;
+--minimal|--minimal=yes) MINIMAL=yes;;
 --enable-small-lut|--enable-small-lut=yes) usesmalllut=yes ;;
 --disable-small-lut|--enable-small-lut=no) usesmalllut=no ;;
 --enable-debug-stderr|--enable-debug-stderr=yes) usedebugstderr=yes ;;
@@ -509,6 +513,11 @@ else
 	USE_DEBUG_STDERR=0
 fi
 
+ZSV_EXTRAS=
+if test "$MINIMAL" = "no" ; then
+    ZSV_EXTRAS=1
+fi
+
 printf "creating $CONFIGFILE... "
 
 cmdline=$(quote "$0")
@@ -556,6 +565,8 @@ CFLAGS_VECTORIZE_OPTIMIZED = $CFLAGS_VECTORIZE_OPTIMIZED
 CFLAGS_VECTORIZE_MISSED = $CFLAGS_VECTORIZE_MISSED
 CFLAGS_VECTORIZE_ALL = $CFLAGS_VECTORIZE_ALL
 CFLAGS_OPENMP = $CFLAGS_OPENMP
+
+ZSV_EXTRAS = $ZSV_EXTRAS
 
 $NO_HAVE
 $USE_LIBS
