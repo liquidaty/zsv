@@ -72,7 +72,7 @@ jobs:
         PREFIX: ${{ env.AMD64_MACOSX_CLANG }}
         CC: clang
         MAKE: make
-        TESTS: true
+        TESTS: false
         MACOSX_DEPLOYMENT_TARGET: 10.15
       shell: bash
       run: |
