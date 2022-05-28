@@ -23,6 +23,9 @@ static int main_help(int argc, const char *argv[]) {
     "  zsv <id>-<cmd> <options> <arguments>: invoke command 'cmd' of extension 'id'",
     "",
     "Options common to all commands:",
+#ifdef ZSV_EXTRAS
+    "  -L,--limit-rows <n>: limit processing to the given number of rows (including any header row(s))",
+#endif
     "  -c,--max-column-count: set the maximum number of columns parsed per row. defaults to 1024",
     "  -r,--max-row-size: set the minimum supported maximum row size. defaults to 64k",
     "  -B,--buff-size: set internal buffer size. defaults to 256k",
@@ -43,7 +46,6 @@ static int main_help(int argc, const char *argv[]) {
     "  2tsv : convert to tab-delimited text",
     "  serialize: convert into 3-column format (id, column name, cell value)",
     "  stack: stack tables vertically, aligning columns with common names",
-    // to do: "  2csv: convert to CSV from fixed, delim, html, xml, parquet..."
     NULL
   };
 

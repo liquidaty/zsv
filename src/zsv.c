@@ -328,25 +328,3 @@ ZSV_EXPORT
 size_t zsv_cum_scanned_length(zsv_parser parser) {
   return parser->cum_scanned_length + parser->scanned_length + (parser->had_bom ? strlen(ZSV_BOM) : 0);
 }
-
-#ifdef ZSV_EXTRAS
-
-ZSV_EXPORT
-void zsv_set_default_progress_callback(zsv_progress_callback cb, void *ctx, size_t rows_interval, unsigned int seconds_interval) {
-  struct zsv_opts opts = zsv_get_default_opts();
-  opts.progress.callback = cb;
-  opts.progress.ctx = ctx;
-  opts.progress.rows_interval = rows_interval;
-  opts.progress.seconds_interval = seconds_interval;
-  zsv_set_default_opts(opts);
-}
-
-ZSV_EXPORT
-void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx) {
-  struct zsv_opts opts = zsv_get_default_opts();
-  opts.completed.callback = cb;
-  opts.completed.ctx = ctx;
-  zsv_set_default_opts(opts);
-}
-
-#endif
