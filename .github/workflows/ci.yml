@@ -87,15 +87,7 @@ jobs:
 
     - name: Rename build artifacts
       if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-      run: |
-        cd "$ARTIFACT_DIR"
-        for ARTIFACT_NAME in $(ls *.zip); do
-          UPDATED_ARTIFACT_NAME="zsv-$ARTIFACT_NAME"
-          echo "$ARTIFACT_NAME => "$UPDATED_ARTIFACT_NAME""
-          cp "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
-        done
-        cd ..
-        ls -Gghl "$ARTIFACT_DIR"
+      run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
     - name: Upload (${{ env.AMD64_LINUX_GCC }}.zip)
       if: runner.os == 'Linux'
@@ -146,16 +138,7 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       env:
         TAG: ${{ steps.tag.outputs.tag }}
-      run: |
-        echo "TAG: $TAG"
-        cd "$ARTIFACT_DIR"
-        for ARTIFACT_NAME in $(ls *.zip); do
-          UPDATED_ARTIFACT_NAME="zsv-$TAG-$ARTIFACT_NAME"
-          echo "$ARTIFACT_NAME => "$UPDATED_ARTIFACT_NAME""
-          cp "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
-        done
-        cd ..
-        ls -Gghl "$ARTIFACT_DIR"
+      run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
     - name: Upload release artifacts
       uses: softprops/action-gh-release@v1
