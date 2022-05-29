@@ -19,10 +19,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      AMD64_LINUX_GCC: amd64-linux-gcc
-      AMD64_WINDOWS_MINGW: amd64-windows-mingw
-      AMD64_MACOSX_CLANG: amd64-macosx-clang
-      AMD64_FREEBSD_GCC: amd64-freebsd-gcc
+      AMD64_LINUX_GCC: amd64-linux
+      AMD64_WINDOWS_MINGW: amd64-windows
+      AMD64_MACOSX_CLANG: amd64-macosx
+      AMD64_FREEBSD_GCC: amd64-freebsd
       ARTIFACT_DIR: .artifacts
       ARTIFACT_RETENTION_DAYS: 5
 
