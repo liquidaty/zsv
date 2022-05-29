@@ -20,7 +20,6 @@ jobs:
 
     env:
       AMD64_LINUX_GCC: amd64-linux-gcc
-      AMD64_LINUX_CLANG: amd64-linux-clang
       AMD64_WINDOWS_MINGW: amd64-windows-mingw
       AMD64_MACOSX_CLANG: amd64-macosx-clang
       AMD64_FREEBSD_GCC: amd64-freebsd-gcc
@@ -44,16 +43,6 @@ jobs:
         CC: gcc
         MAKE: make
         RUN_TESTS: true
-      shell: bash
-      run: ./scripts/ci-build.sh
-
-    - name: Build on Linux (${{ env.AMD64_LINUX_CLANG }})
-      if: runner.os == 'Linux'
-      env:
-        PREFIX: ${{ env.AMD64_LINUX_CLANG }}
-        CC: clang
-        MAKE: make
-        RUN_TESTS: false
       shell: bash
       run: ./scripts/ci-build.sh
 
@@ -103,7 +92,7 @@ jobs:
         for ARTIFACT_NAME in $(ls *.zip); do
           UPDATED_ARTIFACT_NAME="zsv-$ARTIFACT_NAME"
           echo "$ARTIFACT_NAME => "$UPDATED_ARTIFACT_NAME""
-          mv "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
+          cp "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
         done
         cd ..
         ls -Gghl "$ARTIFACT_DIR"
@@ -114,15 +103,6 @@ jobs:
       with:
         name: zsv-${{ env.AMD64_LINUX_GCC }}.zip
         path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_LINUX_GCC }}.zip
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
-    - name: Upload (${{ env.AMD64_LINUX_CLANG }}.zip)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v3
-      with:
-        name: zsv-${{ env.AMD64_LINUX_CLANG }}.zip
-        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_LINUX_CLANG }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
@@ -172,7 +152,7 @@ jobs:
         for ARTIFACT_NAME in $(ls *.zip); do
           UPDATED_ARTIFACT_NAME="zsv-$TAG-$ARTIFACT_NAME"
           echo "$ARTIFACT_NAME => "$UPDATED_ARTIFACT_NAME""
-          mv "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
+          cp "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
         done
         cd ..
         ls -Gghl "$ARTIFACT_DIR"
