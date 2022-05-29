@@ -103,7 +103,7 @@ BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 UTILS1=writer file err signal mem clock arg dl string dirs
 LDFLAGS=
 
-ZSV_EXTRAS=
+ZSV_EXTRAS ?=
 ifneq ($(WIN),0)
  UTILS1+= os
 endif
@@ -240,6 +240,7 @@ ${BUILDS}: build-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 
 ${CLEANS}: clean-%:
 	rm -f ${BUILD_DIR}/bin/zsv_$*${EXE}
+	rm -f ${BUILD_DIR}/*/*$*.o
 
 .PHONY: all install cli build build-% clean clean-% test test-%
 
@@ -312,7 +313,7 @@ ${BUILD_DIR}/external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}/external/%.o 
 test: ${TESTS}
 
 test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
-	@cd test && ${MAKE} $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} ZSV_EXTRAS=${ZSV_EXTRAS}
+	@cd test && ${MAKE} $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH}
 
 clean: clean-obj clean-lib
 	rm -rf ${BUILD_DIR}

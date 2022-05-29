@@ -60,7 +60,7 @@ COLOR_BLUE=\033[1;34m
 COLOR_PINK=\033[1;35m
 
 TEST_PASS=echo "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
-TEST_FAIL=echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}"
+TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
 TEST_NAME=echo "${COLOR_PINK}$@: ${COLOR_NONE}"
 
 ARGS-sql='select [Loan Number] from data'
