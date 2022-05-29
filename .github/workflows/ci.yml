@@ -20,6 +20,7 @@ jobs:
 
     env:
       AMD64_LINUX_GCC: amd64-linux
+      ARM64_LINUX_GCC: arm64-linux
       AMD64_WINDOWS_MINGW: amd64-windows
       AMD64_MACOSX_CLANG: amd64-macosx
       AMD64_FREEBSD_GCC: amd64-freebsd
@@ -30,9 +31,11 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
-    - name: Install MinGW cross-compiler on Linux
+    - name: Install ARM64 and MinGW cross-compilers on Linux
       if: runner.os == 'Linux'
-      run: sudo apt update && sudo apt install -y mingw-w64
+      run: |
+        sudo apt update
+        sudo apt install -y gcc-aarch64-linux-gnu mingw-w64
 
     # --- Build ---
 
@@ -43,6 +46,16 @@ jobs:
         CC: gcc
         MAKE: make
         RUN_TESTS: true
+      shell: bash
+      run: ./scripts/ci-build.sh
+
+    - name: Build on Linux (${{ env.ARM64_LINUX_GCC }})
+      if: runner.os == 'Linux'
+      env:
+        PREFIX: ${{ env.ARM64_LINUX_GCC }}
+        CC: aarch64-linux-gnu-gcc
+        MAKE: make
+        RUN_TESTS: false
       shell: bash
       run: ./scripts/ci-build.sh
 
@@ -95,6 +108,15 @@ jobs:
       with:
         name: zsv-${{ env.AMD64_LINUX_GCC }}.zip
         path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_LINUX_GCC }}.zip
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (${{ env.ARM64_LINUX_GCC }}.zip)
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.ARM64_LINUX_GCC }}.zip
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.ARM64_LINUX_GCC }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
