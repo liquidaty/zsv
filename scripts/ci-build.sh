@@ -4,7 +4,7 @@ set -e
 
 if [ "$PREFIX" = "" ] || [ "$CC" = "" ] || [ "$MAKE" = "" ] || [ "$ARTIFACT_DIR" = "" ]; then
   echo "[ERR] One or more environment variable(s) are not set!"
-  echo "[ERR] Set PREFIX, CC, and MAKE before running $0 script."
+  echo "[ERR] Set PREFIX, CC, MAKE, and ARTIFACT_DIR before running $0 script."
   exit 1
 fi
 
@@ -36,16 +36,18 @@ rm -rf ./build ./"$PREFIX"
 "$MAKE" install
 echo "[INF] Built successfully!"
 
+ZIP="$PREFIX.zip"
+
 echo "[INF] Compressing"
 cd "$PREFIX"
-zip -r "$PREFIX.zip" .
+zip -r "$ZIP" .
 cd ..
-echo "[INF] Compressed! [$PREFIX.zip]"
+echo "[INF] Compressed! [$ZIP]"
 
 echo "[INF] Listing"
 tree -h "$PREFIX"
 
 mkdir -p "$ARTIFACT_DIR"
-mv "$PREFIX/$PREFIX.zip" "$ARTIFACT_DIR"/
+mv "$PREFIX/$ZIP" "$ARTIFACT_DIR"/
 
 echo "[INF] --- [DONE] ---"
