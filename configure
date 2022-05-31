@@ -598,10 +598,10 @@ if ! [ "$MAKE" = "" ]; then
     echo ""
 fi
 
-if ! "$CC" --version | grep -i gcc >/dev/null ; then
+if ! "$CC" --version | grep -i gcc >/dev/null && ! "$CC" --version | grep -i clang >/dev/null ; then
     echo "*********************** WARNING!! ***********************"
-    echo "* non-gcc compilers not supported; use at your own risk *"
-    echo "* consider using gcc instead e.g.:                      *"
+    echo "* Non-gcc/clang compiler untested; use at your own risk *"
+    echo "* consider using gcc or clang instead e.g.:             *"
     echo "*       ./configure CC=gcc-11                           *"
     echo "*********************************************************"
     echo ""
