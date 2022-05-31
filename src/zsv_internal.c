@@ -210,7 +210,7 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
 
 # define VECTOR_BYTES 32
 
-typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (32)));
+typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (VECTOR_BYTES)));
 
 #if defined(HAVE__MM256_MOVEMASK_EPI8)
 # if defined(HAVE_IMMINTRIN_H)
@@ -228,7 +228,7 @@ typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (32)));
 */
 static inline unsigned int movemask_pseudo(zsv_uc_vector v) {
   unsigned int mask = 0, tmp = 1;
-  for(int i = 0; i < VECTOR_BYTES; i++) {
+  for(int i = 0; i < sizeof(zsv_uc_vector); i++) {
     mask += (v[i] ? tmp : 0);
     tmp <<= 1;
   }
@@ -246,21 +246,21 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
   size_t i = scanner->partial_row_length;
   unsigned char c;
   char skip_next_delim = 0;
-  size_t bytes_chunk_end = bytes_read >= VECTOR_BYTES ? bytes_read - VECTOR_BYTES + 1 : 0;
+  size_t bytes_chunk_end = bytes_read >= sizeof(zsv_uc_vector) ? bytes_read - sizeof(zsv_uc_vector) + 1 : 0;
   const char delimiter = scanner->opts.delimiter;
 
   scanner->partial_row_length = 0;
 
   int quote = '"';
-  zsv_uc_vector dl_v; memset(&dl_v, delimiter, VECTOR_BYTES);
-  zsv_uc_vector nl_v; memset(&nl_v, '\n', VECTOR_BYTES);
-  zsv_uc_vector cr_v; memset(&cr_v, '\r', VECTOR_BYTES);
+  zsv_uc_vector dl_v; memset(&dl_v, delimiter, sizeof(zsv_uc_vector));
+  zsv_uc_vector nl_v; memset(&nl_v, '\n', sizeof(zsv_uc_vector));
+  zsv_uc_vector cr_v; memset(&cr_v, '\r', sizeof(zsv_uc_vector));
   zsv_uc_vector qt_v;
   if(scanner->opts.no_quotes > 0) {
     quote = -1;
     memset(&qt_v, 0, sizeof(qt_v));
   } else
-    memset(&qt_v, '"', VECTOR_BYTES);
+    memset(&qt_v, '"', sizeof(zsv_uc_vector));
 
   // case "hel"|"o": check if we have an embedded dbl-quote past the initial opening quote, which was
   // split between the last buffer and this one e.g. "hel""o" where the last buffer ended

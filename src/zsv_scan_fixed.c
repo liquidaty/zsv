@@ -27,15 +27,15 @@ static enum zsv_status zsv_scan_fixed(struct zsv_scanner *scanner,
                                       ) {
   bytes_read += scanner->partial_row_length;
   unsigned char c;
-  size_t bytes_chunk_end = bytes_read >= VECTOR_BYTES ? bytes_read - VECTOR_BYTES + 1 : 0;
+  size_t bytes_chunk_end = bytes_read >= sizeof(zsv_uc_vector) ? bytes_read - sizeof(zsv_uc_vector) + 1 : 0;
 
   scanner->partial_row_length = 0;
 
   // dl_v and qt_v are unused, we just leave them to reuse vec_delims()
-  zsv_uc_vector dl_v; memset(&dl_v, 0, VECTOR_BYTES);
-  zsv_uc_vector nl_v; memset(&nl_v, '\n', VECTOR_BYTES);
-  zsv_uc_vector cr_v; memset(&cr_v, '\r', VECTOR_BYTES);
-  zsv_uc_vector qt_v; memset(&qt_v, 0, VECTOR_BYTES);
+  zsv_uc_vector dl_v; memset(&dl_v, 0, sizeof(zsv_uc_vector));
+  zsv_uc_vector nl_v; memset(&nl_v, '\n', sizeof(zsv_uc_vector));
+  zsv_uc_vector cr_v; memset(&cr_v, '\r', sizeof(zsv_uc_vector));
+  zsv_uc_vector qt_v; memset(&qt_v, 0, sizeof(zsv_uc_vector));
   size_t mask_total_offset = 0;
   unsigned int mask = 0;
   int mask_last_start;

@@ -25,12 +25,13 @@ static inline int vec_delims(const unsigned char *s, size_t n,
   zsv_uc_vector* pSrc1 = (zsv_uc_vector *)s;
   zsv_uc_vector str_simd;
 
-  unsigned j = n / VECTOR_BYTES;
+  unsigned j = n / sizeof(str_simd); // VECTOR_BYTES;
   unsigned int mask = 0;
   unsigned total_bytes = 0;
 
   for(unsigned i = 0; i < j; i++) {
-    memcpy(&str_simd, pSrc1 + i, VECTOR_BYTES);
+    // memcpy(&str_simd, pSrc1 + i, VECTOR_BYTES); -- will bus error on clang+BSD
+    memcpy(&str_simd, s + i*sizeof(str_simd), sizeof(str_simd));
     zsv_uc_vector vtmp = str_simd == *char_match1;
     vtmp += (str_simd == *char_match2);
     vtmp += (str_simd == *char_match3);
@@ -40,7 +41,7 @@ static inline int vec_delims(const unsigned char *s, size_t n,
       *maskp = mask;
       return total_bytes;
     } else {
-      // not found, moving to next chunk. first, check if this chunk has multichar bytes
+      // not found, moving to next chunk
       total_bytes += sizeof(*pSrc1);
     }
   }
