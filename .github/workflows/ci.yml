@@ -19,10 +19,11 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      AMD64_LINUX_GCC: amd64-linux
-      AMD64_WINDOWS_MINGW: amd64-windows
-      AMD64_MACOSX_CLANG: amd64-macosx
-      AMD64_FREEBSD_GCC: amd64-freebsd
+      AMD64_LINUX_GCC: amd64-linux-gcc
+      AMD64_LINUX_CLANG: amd64-linux-clang
+      AMD64_WINDOWS_MINGW: amd64-windows-mingw
+      AMD64_MACOSX_CLANG: amd64-macosx-clang
+      AMD64_FREEBSD_GCC: amd64-freebsd-gcc
       ARTIFACT_DIR: .artifacts
       ARTIFACT_RETENTION_DAYS: 5
 
@@ -41,6 +42,16 @@ jobs:
       env:
         PREFIX: ${{ env.AMD64_LINUX_GCC }}
         CC: gcc
+        MAKE: make
+        RUN_TESTS: true
+      shell: bash
+      run: ./scripts/ci-build.sh
+
+    - name: Build on Linux (${{ env.AMD64_LINUX_CLANG }})
+      if: runner.os == 'Linux'
+      env:
+        PREFIX: ${{ env.AMD64_LINUX_CLANG }}
+        CC: clang
         MAKE: make
         RUN_TESTS: true
       shell: bash
@@ -95,6 +106,15 @@ jobs:
       with:
         name: zsv-${{ env.AMD64_LINUX_GCC }}.zip
         path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_LINUX_GCC }}.zip
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (${{ env.AMD64_LINUX_CLANG }}.zip)
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.AMD64_LINUX_CLANG }}.zip
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_LINUX_CLANG }}.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
