@@ -74,6 +74,7 @@ jobs:
         CC: clang
         MAKE: make
         RUN_TESTS: true
+        LDFLAGS: -mmacosx-version-min=10.5
       shell: bash
       run: |
         # coreutils required for realpath
