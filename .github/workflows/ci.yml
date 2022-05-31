@@ -14,7 +14,7 @@ jobs:
     name: ci
     strategy:
       matrix:
-        os: [ubuntu-18.04, macos-10.15]
+        os: [ubuntu-18.04, macos-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -74,7 +74,7 @@ jobs:
         CC: clang
         MAKE: make
         RUN_TESTS: true
-        LDFLAGS: -mmacosx-version-min=10.5
+        # LDFLAGS: -mmacosx-version-min=10.5
       shell: bash
       run: |
         # coreutils required for realpath
