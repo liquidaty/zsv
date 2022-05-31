@@ -73,7 +73,7 @@ jobs:
         PREFIX: ${{ env.AMD64_MACOSX_CLANG }}
         CC: clang
         MAKE: make
-        RUN_TESTS: false
+        RUN_TESTS: true
       shell: bash
       run: |
         # coreutils required for realpath
