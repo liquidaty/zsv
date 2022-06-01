@@ -46,6 +46,7 @@ echo "[INF] Compressed! [$ZIP]"
 TAR="$PREFIX.tar.gz"
 echo "[INF] Compressing [$TAR]"
 tar -czvf "$TAR" "$PREFIX"
+mv "$TAR" "$PREFIX"
 echo "[INF] Compressed! [$TAR]"
 
 echo "[INF] Listing"
