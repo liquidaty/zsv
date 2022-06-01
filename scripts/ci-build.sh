@@ -34,25 +34,25 @@ fi
 echo "[INF] Building"
 rm -rf ./build ./"$PREFIX"
 "$MAKE" install
+tree -h "$PREFIX"
 echo "[INF] Built successfully!"
+
+mkdir -p "$ARTIFACT_DIR"
 
 ZIP="$PREFIX.zip"
 echo "[INF] Compressing [$ZIP]"
 cd "$PREFIX"
 zip -r "$ZIP" .
+ls -hl "$ZIP"
 cd ..
+mv "$PREFIX/$ZIP" "$ARTIFACT_DIR"
 echo "[INF] Compressed! [$ZIP]"
 
 TAR="$PREFIX.tar.gz"
 echo "[INF] Compressing [$TAR]"
 tar -czvf "$TAR" "$PREFIX"
-mv "$TAR" "$PREFIX"
+ls -hl "$TAR"
+mv "$TAR" "$ARTIFACT_DIR"
 echo "[INF] Compressed! [$TAR]"
-
-echo "[INF] Listing"
-tree -h "$PREFIX"
-
-mkdir -p "$ARTIFACT_DIR"
-mv "$PREFIX/$ZIP" "$PREFIX/$TAR" "$ARTIFACT_DIR"
 
 echo "[INF] --- [DONE] ---"
