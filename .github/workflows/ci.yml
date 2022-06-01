@@ -123,6 +123,24 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
+    - name: Upload (${{ env.AMD64_LINUX_GCC }}.deb)
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.AMD64_LINUX_GCC }}.deb
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_LINUX_GCC }}.deb
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (${{ env.AMD64_LINUX_CLANG }}.deb)
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.AMD64_LINUX_CLANG }}.deb
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_LINUX_CLANG }}.deb
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
     - name: Upload (${{ env.AMD64_WINDOWS_MINGW }}.zip)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
@@ -217,3 +235,4 @@ jobs:
         files: |
           ${{ env.ARTIFACT_DIR }}/*.zip
           ${{ env.ARTIFACT_DIR }}/*.tar.gz
+          ${{ env.ARTIFACT_DIR }}/*.deb
