@@ -91,7 +91,7 @@ jobs:
       uses: vmactions/freebsd-vm@v0.1.5
       with:
         envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
-        usesh: true
+        # usesh: true
         prepare: pkg install -y tree zip gmake lang/gcc
         run: ./scripts/ci-build.sh
 
