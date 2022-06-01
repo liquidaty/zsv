@@ -10,7 +10,7 @@ fi
 
 ARTIFACT_PREFIX='zsv'
 if [ "$TAG" != "" ]; then
-  VERSION="$(zsv version | cut -d ' ' -f3 | cut -c2-)"
+  VERSION="$("$PREFIX/bin/zsv" version | cut -d ' ' -f3 | cut -c2-)"
   ARTIFACT_PREFIX="zsv-$VERSION"
 fi
 

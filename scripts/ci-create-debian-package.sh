@@ -13,7 +13,7 @@ if [ ! -d "$ARTIFACT_DIR" ]; then
   exit 1
 fi
 
-VERSION="$(zsv version | cut -d ' ' -f3 | cut -c2-)"
+VERSION="$("$PREFIX/bin/zsv" version | cut -d ' ' -f3 | cut -c2-)"
 
 echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
 echo "[INF] PREFIX:       $PREFIX"
