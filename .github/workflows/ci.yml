@@ -146,6 +146,51 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
+    - name: Upload (${{ env.AMD64_LINUX_GCC }}.tar.gz)
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.AMD64_LINUX_GCC }}.tar.gz
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_LINUX_GCC }}.tar.gz
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (${{ env.AMD64_LINUX_CLANG }}.tar.gz)
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.AMD64_LINUX_CLANG }}.tar.gz
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_LINUX_CLANG }}.tar.gz
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (${{ env.AMD64_WINDOWS_MINGW }}.tar.gz)
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (${{ env.AMD64_MACOSX_CLANG }}.tar.gz)
+      if: runner.os == 'macOS'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.AMD64_MACOSX_CLANG }}.tar.gz
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_MACOSX_CLANG }}.tar.gz
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (${{ env.AMD64_FREEBSD_GCC }}.tar.gz)
+      if: runner.os == 'macOS'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.AMD64_FREEBSD_GCC }}.tar.gz
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_FREEBSD_GCC }}.tar.gz
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
     # --- Upload release artifacts ---
 
     - name: Get release tag
@@ -165,4 +210,6 @@ jobs:
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/v')
       with:
-        files: ${{ env.ARTIFACT_DIR }}/*.zip
+        files: |
+          ${{ env.ARTIFACT_DIR }}/*.zip
+          ${{ env.ARTIFACT_DIR }}/*.tar.gz

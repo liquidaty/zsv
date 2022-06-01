@@ -1,14 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e
 
-if [ "$PREFIX" = "" ] || [ "$CC" = "" ] || [ "$MAKE" = "" ] || [ "$ARTIFACT_DIR" = "" ]; then
+if [[ -z $PREFIX || -z $CC || -z $MAKE || -z $ARTIFACT_DIR ]]; then
   echo "[ERR] One or more environment variable(s) are not set!"
   echo "[ERR] Set PREFIX, CC, MAKE, and ARTIFACT_DIR before running $0 script."
   exit 1
 fi
 
-if [ "$RUN_TESTS" != true ]; then
+if [[ $RUN_TESTS != true ]]; then
   RUN_TESTS=false
 fi
 
@@ -24,7 +24,7 @@ echo "[INF] $CC version"
 echo "[INF] Configuring"
 ./configure --prefix="$PREFIX"
 
-if [ "$RUN_TESTS" = true ]; then
+if [[ $RUN_TESTS = true ]]; then
   echo "[INF] Running tests"
   rm -rf ./build ./"$PREFIX"
   "$MAKE" test
@@ -37,17 +37,21 @@ rm -rf ./build ./"$PREFIX"
 echo "[INF] Built successfully!"
 
 ZIP="$PREFIX.zip"
-
-echo "[INF] Compressing"
+echo "[INF] Compressing [$ZIP]"
 cd "$PREFIX"
 zip -r "$ZIP" .
 cd ..
 echo "[INF] Compressed! [$ZIP]"
 
+TAR="$PREFIX.tar.gz"
+echo "[INF] Compressing [$TAR]"
+tar -czvf "$TAR" "$PREFIX"
+echo "[INF] Compressed! [$TAR]"
+
 echo "[INF] Listing"
 tree -h "$PREFIX"
 
 mkdir -p "$ARTIFACT_DIR"
-mv "$PREFIX/$ZIP" "$ARTIFACT_DIR"/
+mv "$PREFIX/$ZIP" "$PREFIX/$TAR" "$ARTIFACT_DIR"
 
 echo "[INF] --- [DONE] ---"
