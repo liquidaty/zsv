@@ -41,5 +41,7 @@
 *.c.in
 *.h.in
 *.zip
+*.deb
+*.rpm
 build
 app/external
