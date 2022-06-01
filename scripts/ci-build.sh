@@ -1,14 +1,14 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
-if [[ -z $PREFIX || -z $CC || -z $MAKE || -z $ARTIFACT_DIR ]]; then
+if [ "$PREFIX" = "" ] || [ "$CC" = "" ] || [ "$MAKE" = "" ] || [ "$ARTIFACT_DIR" = "" ]; then
   echo "[ERR] One or more environment variable(s) are not set!"
   echo "[ERR] Set PREFIX, CC, MAKE, and ARTIFACT_DIR before running $0 script."
   exit 1
 fi
 
-if [[ $RUN_TESTS != true ]]; then
+if [ "$RUN_TESTS" != true ]; then
   RUN_TESTS=false
 fi
 
@@ -24,7 +24,7 @@ echo "[INF] $CC version"
 echo "[INF] Configuring"
 ./configure --prefix="$PREFIX"
 
-if [[ $RUN_TESTS = true ]]; then
+if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
   rm -rf ./build ./"$PREFIX"
   "$MAKE" test
