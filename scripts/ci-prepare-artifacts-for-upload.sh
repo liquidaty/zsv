@@ -9,7 +9,7 @@ if [[ -z $ARTIFACT_DIR ]]; then
 fi
 
 ARTIFACT_PREFIX='zsv'
-if [[ -z $TAG ]]; then
+if [[ -n $TAG ]]; then
   ARTIFACT_PREFIX="zsv-$TAG"
 fi
 
