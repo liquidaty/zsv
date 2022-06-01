@@ -95,7 +95,7 @@ NO_UTF8_CHECK=1
 ZSV_OBJ=${BUILD_DIR}/objs/zsv.o
 LIBZSV_A=libzsv.a
 LIBZSV=${BUILD_DIR}/lib/${LIBZSV_A}
-LIBZSV_INSTALL=$(PREFIX)/lib/${LIBZSV_A}
+LIBZSV_INSTALL=${PREFIX}/lib/${LIBZSV_A}
 
 ZSV_OBJ_OPTS=
 ifeq ($(NO_UTF8_CHECK),1)
@@ -144,12 +144,12 @@ install: ${LIBZSV_INSTALL}
 
 ${LIBZSV_INSTALL}: ${LIBZSV}
 	@mkdir -p `dirname "$@"`
-	@cp -p ${LIBZSV} $(PREFIX)/lib
+	@cp -p ${LIBZSV} ${PREFIX}/lib
 	@echo "libzsv installed to $@"
 
 uninstall:
-	@rm -rf $(PREFIX)/include/zsv*
-	 rm  -f $(PREFIX)/lib/libzsv*
+	@rm -rf ${PREFIX}/include/zsv*
+	 rm  -f ${PREFIX}/lib/libzsv*
 
 clean:
 	rm -rf ${BUILD_DIR}/objs ${LIBZSV}
