@@ -10,7 +10,8 @@ fi
 
 ARTIFACT_PREFIX='zsv'
 if [ "$TAG" != "" ]; then
-  ARTIFACT_PREFIX="zsv-$TAG"
+  VERSION="$(zsv version | cut -d ' ' -f3 | cut -c2-)"
+  ARTIFACT_PREFIX="zsv-$VERSION"
 fi
 
 echo "[INF] TAG:              $TAG"
@@ -25,6 +26,12 @@ for ARTIFACT_NAME in *.zip; do
   cp "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
 done
 for ARTIFACT_NAME in *.tar.gz; do
+  [ -e "$ARTIFACT_NAME" ] || break
+  UPDATED_ARTIFACT_NAME="$ARTIFACT_PREFIX-$ARTIFACT_NAME"
+  echo "[$ARTIFACT_NAME] => [$UPDATED_ARTIFACT_NAME]"
+  cp "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
+done
+for ARTIFACT_NAME in *.deb; do
   [ -e "$ARTIFACT_NAME" ] || break
   UPDATED_ARTIFACT_NAME="$ARTIFACT_PREFIX-$ARTIFACT_NAME"
   echo "[$ARTIFACT_NAME] => [$UPDATED_ARTIFACT_NAME]"
