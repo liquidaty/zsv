@@ -22,7 +22,7 @@ if [ ! -d "$ARTIFACT_DIR" ]; then
 fi
 
 ARCH="$(echo "$PREFIX" | cut -d '-' -f1)"
-VERSION="$(date "+%d.%m.%y")-debug"
+VERSION="$(date "+%d.%m.%y").$(date "+%s")"
 if [ "$TAG" != "" ]; then
   VERSION="$("$PREFIX/bin/zsv" version | cut -d ' ' -f3 | cut -c2-)"
 fi
@@ -34,6 +34,7 @@ DEBIAN_PREINST_SCRIPT="$DEBIAN_DIR/preinst"
 
 echo "[INF] Creating debian package [$DEBIAN_PKG]"
 
+echo "[INF] PWD:          $PWD"
 echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
 echo "[INF] PREFIX:       $PREFIX"
 echo "[INF] ARCH:         $ARCH"
@@ -58,9 +59,10 @@ Installed-Size: $INSTALLED_SIZE
 Depends: libtinfo5
 EOF
 
+ls -Gghl "$DEBIAN_CONTROL_FILE"
+
 echo "[INF] Dumping [$DEBIAN_CONTROL_FILE]"
 echo "[INF] --- [$DEBIAN_CONTROL_FILE] ---"
-ls -Gghl "$DEBIAN_CONTROL_FILE"
 cat "$DEBIAN_CONTROL_FILE"
 echo "[INF] --- [$DEBIAN_CONTROL_FILE] ---"
 
@@ -73,17 +75,21 @@ rm -rf '/usr/bin/zsv' '/usr/lib/libzsv.a' '/usr/include/zsv.h' '/usr/include/zsv
 EOF
 
 chmod +x "$DEBIAN_PREINST_SCRIPT"
+ls -Gghl "$DEBIAN_PREINST_SCRIPT"
 
 echo "[INF] Dumping [$DEBIAN_PREINST_SCRIPT]"
 echo "[INF] --- [$DEBIAN_PREINST_SCRIPT] ---"
-ls -Gghl "$DEBIAN_PREINST_SCRIPT"
 cat "$DEBIAN_PREINST_SCRIPT"
 echo "[INF] --- [$DEBIAN_PREINST_SCRIPT] ---"
 
+echo "[INF] Building debian package"
 dpkg-deb --root-owner-group --build "$PREFIX"
 dpkg --contents "$DEBIAN_PKG"
 ls -hl "$DEBIAN_PKG"
 mv "$DEBIAN_PKG" "$ARTIFACT_DIR/"
+
+mv -f "$PREFIX/usr/*" "$PREFIX/"
+rm -rf "./$PREFIX/DEBIAN" "./$PREFIX/usr"
 
 echo "[INF] Verifying debian package [$ARTIFACT_DIR/$DEBIAN_PKG]"
 sudo apt install -y "./$ARTIFACT_DIR/$DEBIAN_PKG"
