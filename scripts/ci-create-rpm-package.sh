@@ -53,7 +53,6 @@ cp -rf "$PREFIX/bin" "$PREFIX/include" "$PREFIX/lib" "$RPM_DIR/SOURCES/usr/"
 RPM_SPEC_PATH="$RPM_DIR/SPECS/$RPM_SPEC"
 echo "[INF] Generating spec file [$RPM_SPEC_PATH]"
 cat << EOF > "$RPM_SPEC_PATH"
-%define _topdir $PWD/$RPM_DIR
 %define _rpmfilename $RPM_PKG
 
 Name: zsv
@@ -85,7 +84,7 @@ cat "$RPM_SPEC_PATH"
 echo "[INF] --- [$RPM_SPEC_PATH] ---"
 
 echo "[INF] Building"
-rpmbuild -ba "./$RPM_SPEC_PATH"
+rpmbuild -ba --define "_topdir $PWD/$RPM_DIR" "./$RPM_SPEC_PATH"
 mv "$RPM_DIR/RPMS/$RPM_PKG" "$ARTIFACT_DIR/"
 
 rm -rf "$RPM_DIR"
