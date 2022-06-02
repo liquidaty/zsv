@@ -41,7 +41,7 @@ echo "[INF] ARCH:         $ARCH"
 echo "[INF] VERSION:      $VERSION"
 
 mkdir -p "$DEBIAN_DIR" "$PREFIX/usr"
-mv -f "$PREFIX/bin" "$PREFIX/include" "$PREFIX/lib" "$PREFIX/usr"
+mv -f "$PREFIX/bin" "$PREFIX/include" "$PREFIX/lib" "$PREFIX/usr/"
 
 echo "[INF] Creating control file [$DEBIAN_CONTROL_FILE]"
 
@@ -85,10 +85,10 @@ echo "[INF] --- [$DEBIAN_PREINST_SCRIPT] ---"
 echo "[INF] Building debian package"
 dpkg-deb --root-owner-group --build "$PREFIX"
 dpkg --contents "$DEBIAN_PKG"
-ls -hl "$DEBIAN_PKG"
-mv "$DEBIAN_PKG" "$ARTIFACT_DIR/"
+ls -Gghl "$DEBIAN_PKG"
+mv -f "$DEBIAN_PKG" "$ARTIFACT_DIR/"
 
-mv -f "$PREFIX/usr/*" "$PREFIX/"
+mv -f "$PREFIX/usr/bin" "$PREFIX/usr/lib" "$PREFIX/usr/include" "$PREFIX/"
 rm -rf "./$PREFIX/DEBIAN" "./$PREFIX/usr"
 
 echo "[INF] Verifying debian package [$ARTIFACT_DIR/$DEBIAN_PKG]"
