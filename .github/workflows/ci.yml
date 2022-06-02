@@ -101,7 +101,7 @@ jobs:
 
     # --- Upload build artifacts ---
 
-    - name: Rename build artifacts
+    - name: Prepare build artifacts for upload
       if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
@@ -222,7 +222,7 @@ jobs:
       with:
         strip_v: true
 
-    - name: Rename release artifacts with tag
+    - name: Prepare release artifacts for upload with tag
       if: startsWith(github.ref, 'refs/tags/v')
       env:
         TAG: ${{ steps.tag.outputs.tag }}
