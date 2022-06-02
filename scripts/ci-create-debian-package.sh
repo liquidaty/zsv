@@ -30,6 +30,7 @@ fi
 DEBIAN_PKG="$PREFIX.deb"
 DEBIAN_DIR="$PREFIX/DEBIAN"
 DEBIAN_CONTROL_FILE="$DEBIAN_DIR/control"
+DEBIAN_PREINST_SCRIPT="$DEBIAN_DIR/preinst"
 
 echo "[INF] Creating debian package [$DEBIAN_PKG]"
 
@@ -38,10 +39,12 @@ echo "[INF] PREFIX:       $PREFIX"
 echo "[INF] ARCH:         $ARCH"
 echo "[INF] VERSION:      $VERSION"
 
-mkdir -p "$PREFIX/usr"
+mkdir -p "$DEBIAN_DIR" "$PREFIX/usr"
 mv -f "$PREFIX/bin" "$PREFIX/include" "$PREFIX/lib" "$PREFIX/usr"
 
-mkdir -p "$DEBIAN_DIR"
+echo "[INF] Creating control file [$DEBIAN_CONTROL_FILE]"
+
+INSTALLED_SIZE="$(echo $(du -s -c $PREFIX/usr/* | grep 'total') | cut -d ' ' -f1)"
 cat << EOF > "$DEBIAN_CONTROL_FILE"
 Package: zsv
 Version: $VERSION
@@ -51,11 +54,31 @@ Maintainer: Liquidaty <liquidaty@users.noreply.github.com>
 Architecture: $ARCH
 Description: zsv+lib: world's fastest CSV parser, with an extensible CLI
 Homepage: https://github.com/liquidaty/zsv
+Installed-Size: $INSTALLED_SIZE
 Depends: libtinfo5
 EOF
 
-echo "[INF] Dumping $DEBIAN_CONTROL_FILE"
+echo "[INF] Dumping [$DEBIAN_CONTROL_FILE]"
+echo "[INF] --- [$DEBIAN_CONTROL_FILE] ---"
+ls -Gghl "$DEBIAN_CONTROL_FILE"
 cat "$DEBIAN_CONTROL_FILE"
+echo "[INF] --- [$DEBIAN_CONTROL_FILE] ---"
+
+echo "[INF] Creating preinst script [$DEBIAN_CONTROL_FILE]"
+
+cat << EOF > "$DEBIAN_PREINST_SCRIPT"
+#!/bin/sh
+
+rm -rf '/usr/bin/zsv' '/usr/lib/libzsv.a' '/usr/include/zsv.h' '/usr/include/zsv'
+EOF
+
+chmod +x "$DEBIAN_PREINST_SCRIPT"
+
+echo "[INF] Dumping [$DEBIAN_PREINST_SCRIPT]"
+echo "[INF] --- [$DEBIAN_PREINST_SCRIPT] ---"
+ls -Gghl "$DEBIAN_PREINST_SCRIPT"
+cat "$DEBIAN_PREINST_SCRIPT"
+echo "[INF] --- [$DEBIAN_PREINST_SCRIPT] ---"
 
 dpkg-deb --root-owner-group --build "$PREFIX"
 dpkg --contents "$DEBIAN_PKG"
