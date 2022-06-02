@@ -67,7 +67,9 @@ Vendor: Liquidaty <liquidaty@users.noreply.github.com>
 zsv+lib: world's fastest CSV parser, with an extensible CLI
 
 %install
-cp -rf %{_sourcedir}/usr %{buildroot}
+tree %{_sourcedir}
+cp -rf %{_sourcedir}/usr %{buildroot}/
+tree %{buildroot}
 
 %files
 /usr/bin/zsv
@@ -76,12 +78,12 @@ cp -rf %{_sourcedir}/usr %{buildroot}
 /usr/include/zsv/*
 EOF
 
-tree -h "$RPM_DIR"
-
 echo "[INF] Dumping [$RPM_SPEC_PATH]"
 echo "[INF] --- [$RPM_SPEC_PATH] ---"
 cat "$RPM_SPEC_PATH"
 echo "[INF] --- [$RPM_SPEC_PATH] ---"
+
+tree "$RPM_DIR"
 
 echo "[INF] Building"
 rpmbuild -ba --define "_topdir $PWD/$RPM_DIR" "./$RPM_SPEC_PATH"
