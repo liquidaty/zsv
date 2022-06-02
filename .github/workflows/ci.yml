@@ -33,7 +33,7 @@ jobs:
 
     - name: Install MinGW cross-compiler on Linux
       if: runner.os == 'Linux'
-      run: sudo apt update && sudo apt install -y mingw-w64 rpmbuild
+      run: sudo apt update && sudo apt install -y mingw-w64 rpm
 
     # --- Build ---
 
