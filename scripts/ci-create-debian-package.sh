@@ -20,7 +20,10 @@ if [ ! -d "$ARTIFACT_DIR" ]; then
 fi
 
 ARCH="$(echo "$PREFIX" | cut -d '-' -f1)"
-VERSION="$("$PREFIX/bin/zsv" version | cut -d ' ' -f3 | cut -c2-)"
+VERSION="$(date "+%d.%m.%y")-debug"
+if [ "$TAG" != "" ]; then
+  VERSION="$("$PREFIX/bin/zsv" version | cut -d ' ' -f3 | cut -c2-)"
+fi
 
 echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
 echo "[INF] PREFIX:       $PREFIX"

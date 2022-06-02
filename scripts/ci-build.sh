@@ -43,7 +43,7 @@ ZIP="$PREFIX.zip"
 echo "[INF] Compressing [$ZIP]"
 cd "$PREFIX"
 zip -r "$ZIP" .
-ls -hl "$ZIP"
+ls -Gghl "$ZIP"
 cd ..
 mv "$PREFIX/$ZIP" "$ARTIFACT_DIR"
 echo "[INF] Compressed! [$ZIP]"
@@ -51,7 +51,7 @@ echo "[INF] Compressed! [$ZIP]"
 TAR="$PREFIX.tar.gz"
 echo "[INF] Compressing [$TAR]"
 tar -czvf "$TAR" "$PREFIX"
-ls -hl "$TAR"
+ls -Gghl "$TAR"
 mv "$TAR" "$ARTIFACT_DIR"
 echo "[INF] Compressed! [$TAR]"
 
