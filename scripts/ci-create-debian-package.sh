@@ -63,9 +63,9 @@ ls -hl "$DEBIAN_PKG"
 mv "$DEBIAN_PKG" "$ARTIFACT_DIR/"
 
 echo "[INF] Verifying debian package [$ARTIFACT_DIR/$DEBIAN_PKG]"
-sudo apt install -y "$ARTIFACT_DIR/$DEBIAN_PKG"
+sudo apt install -y "./$ARTIFACT_DIR/$DEBIAN_PKG"
 whereis zsv
 zsv version
-sudo apt remove -y "$ARTIFACT_DIR/$DEBIAN_PKG"
+sudo apt remove -y zsv
 
 echo "[INF] --- [DONE] ---"
