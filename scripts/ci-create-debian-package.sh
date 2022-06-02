@@ -2,6 +2,8 @@
 
 set -e
 
+echo "[INF] Running $0"
+
 if [ "$PREFIX" = "" ] || [ "$ARTIFACT_DIR" = "" ]; then
   echo "[ERR] One or more environment variable(s) are not set!"
   echo "[ERR] Set PREFIX and ARTIFACT_DIR before running $0 script."
@@ -25,16 +27,17 @@ if [ "$TAG" != "" ]; then
   VERSION="$("$PREFIX/bin/zsv" version | cut -d ' ' -f3 | cut -c2-)"
 fi
 
-echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
-echo "[INF] PREFIX:       $PREFIX"
-echo "[INF] ARCH:         $ARCH"
-echo "[INF] VERSION:      $VERSION"
-
 DEBIAN_PKG="$PREFIX.deb"
 DEBIAN_DIR="$PREFIX/DEBIAN"
 DEBIAN_CONTROL_FILE="$DEBIAN_DIR/control"
 
 echo "[INF] Creating debian package [$DEBIAN_PKG]"
+
+echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
+echo "[INF] PREFIX:       $PREFIX"
+echo "[INF] ARCH:         $ARCH"
+echo "[INF] VERSION:      $VERSION"
+
 mkdir -p "$PREFIX/usr"
 mv -f "$PREFIX/bin" "$PREFIX/include" "$PREFIX/lib" "$PREFIX/usr"
 
@@ -58,5 +61,11 @@ dpkg-deb --root-owner-group --build "$PREFIX"
 dpkg --contents "$DEBIAN_PKG"
 ls -hl "$DEBIAN_PKG"
 mv "$DEBIAN_PKG" "$ARTIFACT_DIR/"
+
+echo "[INF] Verifying debian package [$ARTIFACT_DIR/$DEBIAN_PKG]"
+sudo apt install -y "$ARTIFACT_DIR/$DEBIAN_PKG"
+whereis zsv
+zsv version
+sudo apt remove -y "$ARTIFACT_DIR/$DEBIAN_PKG"
 
 echo "[INF] --- [DONE] ---"

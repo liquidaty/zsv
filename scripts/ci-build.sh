@@ -2,6 +2,8 @@
 
 set -e
 
+echo "[INF] Running $0"
+
 if [ "$PREFIX" = "" ] || [ "$CC" = "" ] || [ "$MAKE" = "" ] || [ "$ARTIFACT_DIR" = "" ]; then
   echo "[ERR] One or more environment variable(s) are not set!"
   echo "[ERR] Set PREFIX, CC, MAKE, and ARTIFACT_DIR before running $0 script."
@@ -11,6 +13,8 @@ fi
 if [ "$RUN_TESTS" != true ]; then
   RUN_TESTS=false
 fi
+
+echo "[INF] Building and generating artifacts"
 
 echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
 echo "[INF] PREFIX:       $PREFIX"
