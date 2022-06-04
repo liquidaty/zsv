@@ -29,6 +29,7 @@ fi
 
 RPM_DIR="$HOME/rpmbuild"
 RPM_PKG="$PREFIX.rpm"
+RPM_PKG_PATH="$RPM_DIR/RPMS/$RPM_PKG"
 RPM_SPEC='zsv.spec'
 RPM_SPEC_PATH="$RPM_DIR/SPECS/$RPM_SPEC"
 
@@ -87,8 +88,9 @@ tree "$RPM_DIR"
 
 echo "[INF] Building"
 rpmbuild -v --clean -bb "$RPM_SPEC_PATH"
+rpm -qlp "$RPM_PKG_PATH"
 
-mv "$RPM_DIR/RPMS/$RPM_PKG" "$ARTIFACT_DIR/"
+mv "$RPM_PKG_PATH" "$ARTIFACT_DIR/"
 rm -rf "$RPM_DIR"
 
 ls -Gghl "$ARTIFACT_DIR/$RPM_PKG"
