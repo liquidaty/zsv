@@ -27,9 +27,10 @@ if [ "$TAG" != "" ]; then
   VERSION="$("$PREFIX/bin/zsv" version | cut -d ' ' -f3 | cut -c2-)"
 fi
 
-RPM_DIR='.rpmbuild'
+RPM_DIR="$HOME/rpmbuild"
 RPM_PKG="$PREFIX.rpm"
 RPM_SPEC='zsv.spec'
+RPM_SPEC_PATH="$RPM_DIR/SPECS/$RPM_SPEC"
 
 echo "[INF] Creating rpm package [$RPM_PKG]"
 
@@ -39,25 +40,20 @@ echo "[INF] PREFIX:       $PREFIX"
 echo "[INF] ARCH:         $ARCH"
 echo "[INF] VERSION:      $VERSION"
 
-
 echo "[INF] Set up RPM build tree [$RPM_DIR]"
 rm -rf "$RPM_DIR"
-mkdir "$RPM_DIR"
-cd "$RPM_DIR"
-mkdir -p BUILD BUILDROOT RPMS SOURCES/usr SPECS SRPMS
-cd ..
+mkdir -p "$RPM_DIR/BUILD/usr" "$RPM_DIR/SPECS"
 
 echo "[INF] Copying build artifacts"
-cp -rf "$PREFIX/bin" "$PREFIX/include" "$PREFIX/lib" "$RPM_DIR/SOURCES/usr/"
+cp -rfa "$PREFIX/bin" "$PREFIX/include" "$PREFIX/lib" "$RPM_DIR/BUILD/usr/"
 
-RPM_SPEC_PATH="$RPM_DIR/SPECS/$RPM_SPEC"
 echo "[INF] Generating spec file [$RPM_SPEC_PATH]"
 cat << EOF > "$RPM_SPEC_PATH"
 %define _rpmfilename $RPM_PKG
 
 Name: zsv
 Version: $VERSION
-Release: alpha
+Release: 1%{?dist}
 Summary: zsv+lib: world's fastest CSV parser, with an extensible CLI
 License: MIT
 URL: https://github.com/liquidaty/zsv
@@ -67,9 +63,12 @@ Vendor: Liquidaty <liquidaty@users.noreply.github.com>
 zsv+lib: world's fastest CSV parser, with an extensible CLI
 
 %install
-tree %{_sourcedir}
-cp -rf %{_sourcedir}/usr %{buildroot}/
+rm -rf %{buildroot}
+cp -rfa %{_builddir} %{buildroot}
 tree %{buildroot}
+
+%clean
+rm -rf %{buildroot}
 
 %files
 /usr/bin/zsv
@@ -80,15 +79,17 @@ EOF
 
 echo "[INF] Dumping [$RPM_SPEC_PATH]"
 echo "[INF] --- [$RPM_SPEC_PATH] ---"
-cat "$RPM_SPEC_PATH"
+cat -n "$RPM_SPEC_PATH"
 echo "[INF] --- [$RPM_SPEC_PATH] ---"
 
 tree "$RPM_DIR"
 
 echo "[INF] Building"
-rpmbuild -ba --define "_topdir $PWD/$RPM_DIR" "./$RPM_SPEC_PATH"
-mv "$RPM_DIR/RPMS/$RPM_PKG" "$ARTIFACT_DIR/"
+rpmbuild -bb "$RPM_SPEC_PATH"
 
+mv "$RPM_DIR/RPMS/$RPM_PKG" "$ARTIFACT_DIR/"
 rm -rf "$RPM_DIR"
+
+ls -Gghl "$ARTIFACT_DIR/$RPM_PKG"
 
 echo "[INF] --- [DONE] ---"
