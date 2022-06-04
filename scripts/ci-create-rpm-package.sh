@@ -49,6 +49,7 @@ cp -rfa "$PREFIX/bin" "$PREFIX/include" "$PREFIX/lib" "$RPM_DIR/BUILD/usr/"
 
 echo "[INF] Generating spec file [$RPM_SPEC_PATH]"
 cat << EOF > "$RPM_SPEC_PATH"
+%define _build_id_links none
 %define _rpmfilename $RPM_PKG
 
 Name: zsv
@@ -85,7 +86,7 @@ echo "[INF] --- [$RPM_SPEC_PATH] ---"
 tree "$RPM_DIR"
 
 echo "[INF] Building"
-rpmbuild -bb "$RPM_SPEC_PATH"
+rpmbuild -v --clean -bb "$RPM_SPEC_PATH"
 
 mv "$RPM_DIR/RPMS/$RPM_PKG" "$ARTIFACT_DIR/"
 rm -rf "$RPM_DIR"
