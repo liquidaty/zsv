@@ -145,6 +145,11 @@ static void zsv_2tsv_row(void *ctx) {
   zsv_2tsv_write(&data->out, (const unsigned char *) "\n", 1);
 }
 
+#ifndef APPNAME
+#define APPNAME "zsv_2tsv"
+#endif
+
+
 #ifndef MAIN
 #define MAIN main
 #endif
@@ -158,7 +163,7 @@ int MAIN(int argc, const char *argv[]) {
   int err = 0;
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-      fprintf(stdout, "Usage: zsv_2tsv [filename]\n");
+      fprintf(stdout, "Usage: " APPNAME " [filename] [-o <output_filename>]\n");
       fprintf(stdout, "  Reads CSV input and converts to tsv");
       err = 1;
     } else if(!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {

@@ -201,8 +201,9 @@ int MAIN(int argc, const char *argv[]) {
 
   const char *usage[] =
     {
-     "Usage: zsv_2json [input.csv]\n",
-     "  Reads CSV input and converts to json",
+     APPNAME ": streaming CSV to json converter",
+     "",
+     "Usage: " APPNAME " [input.csv]\n",
      "",
      "Options:",
      "  -h, --help",

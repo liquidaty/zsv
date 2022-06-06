@@ -324,10 +324,6 @@ clean-obj:
 clean-lib:
 	${MAKE} -C ../src clean CONFIGFILE=${CONFIGFILEPATH}
 
-external/json_writer-1.0/jsonwriter.c: external/json_writer-1.0.tar.gz
-	@cd external && tar xf ../$<
-	@touch $@
-
 external/utf8proc-2.6.1/utf8proc.c: external/utf8proc-2.6.1.tar.gz
 	@cd external && tar xf ../$<
 	@touch $@

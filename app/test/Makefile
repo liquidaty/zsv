@@ -206,6 +206,9 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@(${PREFIX} $< --object --no-empty < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out5 && \
 	${CMP} /tmp/$@.out5 expected/$@.out5 && ${TEST_PASS} || ${TEST_FAIL})
 
+	@(${PREFIX} $< --object --no-empty < ${TEST_DATA_DIR}/quoted4.csv ${REDIRECT1} /tmp/$@.out6 && \
+	${CMP} /tmp/$@.out6 expected/$@.out6 && ${TEST_PASS} || ${TEST_FAIL})
+
 
 
 test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
