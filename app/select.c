@@ -41,7 +41,11 @@
 #include <zsv/utils/compiler.h>
 
 #ifndef APPNAME
-#define APPNAME "zsv_select"
+# ifdef ZSV_CLI
+#  define APPNAME "zsv select"
+# else
+#  define APPNAME "zsv_select"
+# endif
 #endif
 
 #ifdef STATIC_BUILD

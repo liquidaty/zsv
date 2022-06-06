@@ -172,9 +172,9 @@ endif
 USE_TERMCAP=pretty
 USE_TERMCAP_TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${USE_TERMCAP}))
 
-ifeq ($(USE_LIB_TERMCAP),1)
-  TERMCAP_LIB=-ltermcap
-endif
+#ifeq ($(USE_LIB_TERMCAP),1)
+#  TERMCAP_LIB=-ltermcap
+#endif
 
 INIH_SRC=external/inih
 INIH_INCLUDE=external/inih

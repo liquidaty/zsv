@@ -188,6 +188,14 @@ static void zsv_2json_row(void *ctx) {
   data->current_header = data->headers;
 }
 
+#ifndef APPNAME
+# ifdef ZSV_CLI
+#  define APPNAME "zsv 2json"
+# else
+#  define APPNAME "zsv_2json"
+# endif
+#endif
+
 #ifndef MAIN
 #define MAIN main
 #endif

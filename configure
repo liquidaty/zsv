@@ -29,6 +29,7 @@ Optional features:
   --enable-debug-stderr   build with debug msgs in stderr [no]
   --enable-pie            build with position independent executables [auto]
   --enable-pic            build with position independent shared libraries [auto]
+  --enable-termcap        build with ncurses / termcap (used by `pretty` to get console width) [auto]
 
 Some influential environment variables:
   CC                      C compiler command [detected]
@@ -259,6 +260,7 @@ usesmalllut=no
 usedebugstderr=no
 usepie=auto
 usepic=auto
+usetermcap=auto
 
 for arg ; do
 case "$arg" in
@@ -281,6 +283,9 @@ CONFIGFILE=*) CONFIGFILE=${arg#*=} ;;
 --enable-pie=auto) usepie=auto ;;
 --disable-pie|--enable-pie=no) usepie=no ;;
 --enable-pic|enable-pic=yes) usepic=yes ;;
+--enable-termcap|--enable-termcap=yes) usetermcap=yes ;;
+--enable-termcap=auto) usetermcap=auto ;;
+--disable-termcap|--enable-termcap=no) usetermcap=no ;;
 --enable-pic=auto) usepic=auto ;;
 --disable-pic|--enable-pic=no) usepic=no ;;
 --enable-*|--disable-*|--with-*|--without-*|--*dir=*|--build=*) ;;
@@ -426,6 +431,10 @@ if test "$usepic" = "auto" ; then
 usepic=yes
 fi
 
+if test "$usetermcap" = "auto" ; then
+usetermcap=yes
+fi
+
 tryflag CFLAGS_VECTORIZE -fvectorize
 tryflag CFLAGS_VECTORIZE -ftree-vectorize
 tryflag CFLAGS_VECTORIZE_OPTIMIZED -fopt-info-vec-optimized
@@ -496,7 +505,9 @@ fi
 # Check function availability
 tryccfn CFLAGS_AUTO "_mm256_movemask_epi8" "immintrin.h" && trycchdr CFLAGS_AUTO "immintrin.h"
 tryccfn CFLAGS_AUTO "memmem" "string.h"
-tryccfn TERMCAP_H "tgetent" "termcap.h" && tryldflag LDFLAGS_OPT -ltermcap && tryccfn CFLAGS_AUTO "tgetent" "termcap.h" termcap
+if test "$usetermcap" = "yes" ; then
+    tryccfn TERMCAP_H "tgetent" "termcap.h" && tryldflag LDFLAGS_OPT -ltermcap && tryccfn CFLAGS_AUTO "tgetent" "termcap.h" termcap
+fi
 
 tryccfn CFLAGS_AUTO "arc4random_uniform" "stdlib.h" || tryccfn CFLAGS_AUTO "rand_s" "stdlib.h" "" "#define _CRT_RAND_S"
 tryccfn1 CFLAGS_AUTO "__builtin_expect" "0,0"
