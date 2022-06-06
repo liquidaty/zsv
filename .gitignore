@@ -41,7 +41,11 @@
 *.c.in
 *.h.in
 *.zip
+*.tar.gz
 *.deb
 *.rpm
 build
 app/external
+install.sh
+.artifacts
+.rpmbuild

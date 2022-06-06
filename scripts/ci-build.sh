@@ -2,6 +2,8 @@
 
 set -e
 
+echo "[INF] Running $0"
+
 if [ "$PREFIX" = "" ] || [ "$CC" = "" ] || [ "$MAKE" = "" ] || [ "$ARTIFACT_DIR" = "" ]; then
   echo "[ERR] One or more environment variable(s) are not set!"
   echo "[ERR] Set PREFIX, CC, MAKE, and ARTIFACT_DIR before running $0 script."
@@ -11,6 +13,8 @@ fi
 if [ "$RUN_TESTS" != true ]; then
   RUN_TESTS=false
 fi
+
+echo "[INF] Building and generating artifacts"
 
 echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
 echo "[INF] PREFIX:       $PREFIX"
@@ -43,7 +47,7 @@ ZIP="$PREFIX.zip"
 echo "[INF] Compressing [$ZIP]"
 cd "$PREFIX"
 zip -r "$ZIP" .
-ls -hl "$ZIP"
+ls -Gghl "$ZIP"
 cd ..
 mv "$PREFIX/$ZIP" "$ARTIFACT_DIR"
 echo "[INF] Compressed! [$ZIP]"
@@ -51,7 +55,7 @@ echo "[INF] Compressed! [$ZIP]"
 TAR="$PREFIX.tar.gz"
 echo "[INF] Compressing [$TAR]"
 tar -czvf "$TAR" "$PREFIX"
-ls -hl "$TAR"
+ls -Gghl "$TAR"
 mv "$TAR" "$ARTIFACT_DIR"
 echo "[INF] Compressed! [$TAR]"
 
