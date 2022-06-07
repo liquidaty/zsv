@@ -187,16 +187,15 @@ test-2tsv test-sql test-serialize test-flatten test-pretty : test-%: ${BUILD_DIR
 	${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 	@if [ "$@" = "test-2tsv" ] ; then echo "TO DO: update 2tsv to output Excel format-- see data/Excel.tsv"; fi
 
-test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE}
+test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select
 	@${TEST_NAME}
 	@${BUILD_DIR}/bin/zsv_select -L 25000 -N worldcitiespop_mil.csv | ${BUILD_DIR}/bin/zsv_2json --database --index "country_ix on country" --unique-index "ux on [#]" > /tmp/test-2db.json
-	(${PREFIX} $< ${ARGS-$*} -o /tmp/$@.db --table data --overwrite < /tmp/test-2db.json ${REDIRECT1} /tmp/$@.out)
+	@(${PREFIX} $< ${ARGS-$*} -o /tmp/$@.db --table data --overwrite < /tmp/test-2db.json ${REDIRECT1} /tmp/$@.out)
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 	@sqlite3 /tmp/$@.db .schema > /tmp/$@.out2
 	@${CMP} /tmp/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
-
-	sqlite3 /tmp/$@.db "select count(*) from data" > /tmp/$@.out3
-	${CMP} /tmp/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
+	@sqlite3 /tmp/$@.db "select count(*) from data" > /tmp/$@.out3
+	@${CMP} /tmp/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
 
 test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_NAME}
