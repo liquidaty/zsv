@@ -619,6 +619,10 @@ static zsv_2db_handle zsv_2db_new(struct zsv_2db_options *opts) {
     else {
       err = 0;
 
+      // performance tweaks
+      sqlite3_exec(data->db, "PRAGMA synchronous = OFF", NULL, NULL, NULL);
+      sqlite3_exec(data->db, "PRAGMA journal_mode = OFF", NULL, NULL, NULL);
+
       // parse the input and create & populate the database table
       yajl_helper_parse_state_init(&data->json_parser.st, 32,
                                    json_start_map, json_end_map, json_map_key,
