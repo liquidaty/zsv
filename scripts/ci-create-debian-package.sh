@@ -35,12 +35,18 @@ DEBIAN_PREINST_SCRIPT="$DEBIAN_DIR/preinst"
 echo "[INF] Creating debian package [$DEBIAN_PKG]"
 
 echo "[INF] PWD:          $PWD"
-echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
 echo "[INF] PREFIX:       $PREFIX"
+echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
 echo "[INF] ARCH:         $ARCH"
 echo "[INF] VERSION:      $VERSION"
 
+echo "[INF] Listing linked libraries"
+ldd "$PREFIX/bin/zsv"
+
+echo "[INF] Setting up debian package buildtree"
 mkdir -p "$DEBIAN_DIR" "$PREFIX/usr"
+
+echo "[INF] Copying build artifacts"
 mv -f "$PREFIX/bin" "$PREFIX/include" "$PREFIX/lib" "$PREFIX/usr/"
 
 echo "[INF] Creating control file [$DEBIAN_CONTROL_FILE]"
@@ -56,7 +62,6 @@ Architecture: $ARCH
 Description: zsv+lib: world's fastest CSV parser, with an extensible CLI
 Homepage: https://github.com/liquidaty/zsv
 Installed-Size: $INSTALLED_SIZE
-Depends: libtinfo5
 EOF
 
 ls -Gghl "$DEBIAN_CONTROL_FILE"
@@ -92,9 +97,15 @@ mv -f "$PREFIX/usr/bin" "$PREFIX/usr/lib" "$PREFIX/usr/include" "$PREFIX/"
 rm -rf "./$PREFIX/DEBIAN" "./$PREFIX/usr"
 
 echo "[INF] Verifying debian package [$ARTIFACT_DIR/$DEBIAN_PKG]"
+
+echo "[INF] Installing"
 sudo apt install -y "./$ARTIFACT_DIR/$DEBIAN_PKG"
+
+echo "[INF] Verifying installed package"
 whereis zsv
 zsv version
+
+echo "[INF] Uninstalling"
 sudo apt remove -y zsv
 
 echo "[INF] --- [DONE] ---"
