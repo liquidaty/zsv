@@ -49,3 +49,5 @@ app/external
 install.sh
 .artifacts
 .rpmbuild
+amd64-linux-gcc
+amd64-linux-clang
