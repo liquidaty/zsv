@@ -21,7 +21,7 @@ static int main_thirdparty(int argc, const char *argv[]) {
   (void)(argv);
 
   printf("Third-party licenses and acknowldgements");
-  print_str_array("ZSV/lib", "", zsv_thirdparty);
+  print_str_array("ZSV/lib third-party dependencies", "", zsv_thirdparty);
 
   struct cli_config config;
   const char *ss[2];

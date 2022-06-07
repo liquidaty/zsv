@@ -133,8 +133,8 @@ endif
 
 ZSV=$(BINDIR)/zsv${EXE}
 
-SOURCES= echo count select 2json serialize flatten pretty stack desc 2tsv sql # noop
-CLI_SOURCES=select desc count pretty sql flatten 2json 2tsv serialize stack
+SOURCES= echo count select 2json serialize flatten pretty stack desc 2tsv sql 2db # noop
+CLI_SOURCES=select desc count pretty sql flatten 2json 2tsv serialize stack 2db
 
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES})) ${CLI}
 
@@ -156,6 +156,12 @@ USE_SGLIB_TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${USE_SGL
 
 USE_JSONWRITER=2json desc
 USE_JSONWRITER_TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${USE_JSONWRITER}))
+
+USE_YAJL=2db
+USE_YAJL_TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${USE_YAJL}))
+
+USE_SQLITE_EXT=2db
+USE_SQLITE_EXT_TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${USE_SQLITE_EXT}))
 
 CFLAGS+=${CFLAGS_AUTO}
 ifeq ($(NO_LTO),1)
@@ -181,6 +187,16 @@ INIH_INCLUDE=external/inih
 INIH_OBJECT=${BUILD_DIR}/external/inih/inih.o
 CLI_INCLUDE+= -I${INIH_INCLUDE}
 
+YAJL_SRC=external/yajl/yajl.c
+YAJL_OBJ1=yajl yajl_alloc yajl_buf yajl_encode yajl_gen yajl_lex yajl_parser yajl_tree yajl_version
+YAJL_OBJ=$(addprefix ${BUILD_DIR}/external/yajl/,$(addsuffix .o,${YAJL_OBJ1}))
+YAJL_INCLUDE=external/yajl/build/yajl-2.1.1/include
+
+YAJL_HELPER_OBJ=${BUILD_DIR}/external/yajl_helper/yajl_helper.o
+YAJL_HELPER_INCLUDE=-Iexternal/yajl_helper
+
+# ./configure --prefix=~/src/zsv/app/external/yajl/build && make install
+
 ## json writer
 JSONWRITER_SRC=external/json_writer-1.0
 JSONWRITER_INCLUDE=external/json_writer-1.0
@@ -205,7 +221,7 @@ help:
 	@echo "which will build and test all apps, or to build/test a single app:"
 	@echo "  ${MAKE} test-xx"
 	@echo "where xx is any of:"
-	@echo "  echo count select 2json serialize flatten pretty stack desc 2tsv sql"
+	@echo "  echo count select 2json serialize flatten pretty stack desc 2tsv sql 2db"
 	@echo ""
 
 install: ${ZSV}
@@ -237,6 +253,7 @@ clean-cli:
 	@rm -f  ${CLI_APP_OBJECT} ${CLI_OBJECTS}
 
 ${BUILDS}: build-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+	@echo Built ${BUILD_DIR}/bin/zsv_$*${EXE}
 
 ${CLEANS}: clean-%:
 	rm -f ${BUILD_DIR}/bin/zsv_$*${EXE}
@@ -301,14 +318,31 @@ ${USE_JSONWRITER_TARGETS}: ${JSONWRITER_OBJECT}
 ${USE_JSONWRITER_TARGETS}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
 ${USE_JSONWRITER_TARGETS}: MORE_SOURCE+= -I${JSONWRITER_INCLUDE}
 
+${USE_YAJL_TARGETS}: ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${YAJL_INCLUDE}
+${USE_YAJL_TARGETS}: MORE_OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
+${USE_YAJL_TARGETS}: MORE_SOURCE+= -I${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
+
+${USE_SQLITE_EXT_TARGETS}: MORE_OBJECTS+= ${SQLITE_EXT}
+
 ${BUILD_DIR}/bin/zsv_%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${PREFIX}/lib -lzsv ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT}
-	@echo Built $@
 
 ${BUILD_DIR}/external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}/external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ -c $<
+
+${YAJL_INCLUDE}:
+	(cd external/yajl && ./configure && make)
+
+${YAJL_OBJ}: ${BUILD_DIR}/external/yajl/%.o : external/yajl/src/%.c
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -I${YAJL_INCLUDE} -c external/yajl/src/$*.c -o $@
+
+${YAJL_HELPER_OBJ}: external/yajl_helper/yajl_helper.c
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -I${BASEDIR}/yajl_helper -I${YAJL_INCLUDE} -I${YAJL_HELPER_INCLUDE} -c $< -o $@
+
 
 test: ${TESTS}
 

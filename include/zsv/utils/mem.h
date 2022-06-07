@@ -11,4 +11,9 @@
 
 /* zsv_memdup(): return copy with double-NULL terminator. caller must free() */
 void *zsv_memdup(const void *src, size_t n);
+
+#ifndef MEMDUP
+#define MEMDUP zsv_memdup
+#endif
+
 #endif

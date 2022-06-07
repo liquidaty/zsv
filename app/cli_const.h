@@ -9,7 +9,7 @@
 #ifndef CLI_LICENSE_H
 #define CLI_LICENSE_H
 
-const char *zsv_license_text_MIT = 
+const char *zsv_license_text_MIT =
   "Permission is hereby granted, free of charge, to any person obtaining a copy of\n"
   "this software and associated documentation files (the \"Software\"), to deal in\n"
   "the Software without restriction, including without limitation the rights to\n"
@@ -28,7 +28,7 @@ const char *zsv_license_text_MIT =
   "OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n"
   "SOFTWARE.\n"
   ;
-                                                                                     
+
 const char *zsv_thirdparty[] = {
   "See https://github.com/liquidaty/zsv/blob/main/misc/THIRDPARTY.md",
   NULL
