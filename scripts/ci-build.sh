@@ -26,7 +26,7 @@ echo "[INF] $CC version"
 "$CC" --version
 
 echo "[INF] Configuring"
-./configure --prefix="$PREFIX"
+./configure --prefix="$PREFIX" --disable-termcap
 
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"

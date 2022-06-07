@@ -36,19 +36,22 @@ RPM_SPEC_PATH="$RPM_DIR/SPECS/$RPM_SPEC"
 echo "[INF] Creating rpm package [$RPM_PKG]"
 
 echo "[INF] PWD:          $PWD"
-echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
 echo "[INF] PREFIX:       $PREFIX"
+echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
 echo "[INF] ARCH:         $ARCH"
 echo "[INF] VERSION:      $VERSION"
 
-echo "[INF] Set up RPM build tree [$RPM_DIR]"
+echo "[INF] Listing linked libraries"
+ldd "$PREFIX/bin/zsv"
+
+echo "[INF] Setting up RPM buildtree [$RPM_DIR]"
 rm -rf "$RPM_DIR"
 mkdir -p "$RPM_DIR/BUILD/usr" "$RPM_DIR/SPECS"
 
 echo "[INF] Copying build artifacts"
 cp -rfa "$PREFIX/bin" "$PREFIX/include" "$PREFIX/lib" "$RPM_DIR/BUILD/usr/"
 
-echo "[INF] Generating spec file [$RPM_SPEC_PATH]"
+echo "[INF] Creating spec file [$RPM_SPEC_PATH]"
 cat << EOF > "$RPM_SPEC_PATH"
 %define _build_id_links none
 %define _rpmfilename $RPM_PKG
@@ -94,5 +97,17 @@ mv "$RPM_PKG_PATH" "$ARTIFACT_DIR/"
 rm -rf "$RPM_DIR"
 
 ls -Gghl "$ARTIFACT_DIR/$RPM_PKG"
+
+echo "[INF] Verifying RPM package [$ARTIFACT_DIR/$RPM_PKG]"
+
+echo "[INF] Installing"
+sudo alien -i "./$ARTIFACT_DIR/$RPM_PKG"
+
+echo "[INF] Verifying installed package"
+whereis zsv
+zsv version
+
+echo "[INF] Uninstalling"
+sudo apt remove -y zsv
 
 echo "[INF] --- [DONE] ---"
