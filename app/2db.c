@@ -115,6 +115,24 @@ static void zsv_2db_ixes_delete(struct zsv_2db_ix **p) {
   }
 }
 
+static void zsv_2db_column_free(struct zsv_2db_column *e) {
+  free(e->name);
+  free(e->datatype);
+  free(e->collate);
+}
+
+static void zsv_2db_columns_delete(struct zsv_2db_column **p) {
+  struct zsv_2db_column *next;
+  if(p && *p) {
+    for(struct zsv_2db_column *e = *p; e; e = next) {
+      next = e->next;
+      zsv_2db_column_free(e);
+      free(e);
+    }
+    *p = NULL;
+  }
+}
+
 static void zsv_2db_delete(zsv_2db_handle data) {
   if(!data) return;
 
@@ -123,8 +141,14 @@ static void zsv_2db_delete(zsv_2db_handle data) {
   if(data->db)
     sqlite3_close(data->db);
 
+  zsv_2db_columns_delete(&data->json_parser.columns);
+  zsv_2db_column_free(&data->json_parser.current_column);
+
   zsv_2db_ixes_delete(&data->json_parser.indexes);
   zsv_2db_ix_free(&data->json_parser.current_index);
+
+  free(data->json_parser.row_values);
+
 
   yajl_helper_parse_state_free(&data->json_parser.st);
   if(data->json_parser.handle)
@@ -176,7 +200,7 @@ static int zsv_2db_add_indexes(struct zsv_2db_data *data) {
     err = zsv_2db_sqlite3_exec_2db(data->db, sqlite3_str_value(pStr));
     if(!err)
       data->json_parser.index_sequence_num_max++;
-    sqlite3_str_finish(pStr);
+    sqlite3_free(sqlite3_str_finish(pStr));
   }
   return err;
 }
@@ -227,7 +251,7 @@ static sqlite3_str *build_create_table_statement(sqlite3 *db, const char *tname,
   }
   if(err) {
     if(pStr)
-      sqlite3_str_finish(pStr);
+      sqlite3_free(sqlite3_str_finish(pStr));
     pStr = NULL;
   } else
     sqlite3_str_appendf(pStr, ")\n");
@@ -259,17 +283,19 @@ static sqlite3_stmt *create_insert_statement(sqlite3 *db, const char *tname,
                                              unsigned int col_count) {
   sqlite3_stmt *insert_stmt = NULL;
   sqlite3_str *insert_sql = sqlite3_str_new(db);
-  sqlite3_str_appendf(insert_sql, "insert into \"%w\" values(?", tname);
-  for(unsigned int i = 1; i < col_count; i++)
-    sqlite3_str_appendf(insert_sql, ", ?");
-  sqlite3_str_appendf(insert_sql, ")");
-  int status = sqlite3_prepare_v2(db, sqlite3_str_value(insert_sql),
-                                  -1, &insert_stmt, NULL);
-  if(status != SQLITE_OK) {
-    fprintf(stderr, "Unable to prep (%s): %s\n", sqlite3_str_value(insert_sql),
-            sqlite3_errmsg(db));
+  if(insert_sql) {
+    sqlite3_str_appendf(insert_sql, "insert into \"%w\" values(?", tname);
+    for(unsigned int i = 1; i < col_count; i++)
+      sqlite3_str_appendf(insert_sql, ", ?");
+    sqlite3_str_appendf(insert_sql, ")");
+    int status = sqlite3_prepare_v2(db, sqlite3_str_value(insert_sql),
+                                    -1, &insert_stmt, NULL);
+    if(status != SQLITE_OK) {
+      fprintf(stderr, "Unable to prep (%s): %s\n", sqlite3_str_value(insert_sql),
+              sqlite3_errmsg(db));
+    }
+    sqlite3_free(sqlite3_str_finish(insert_sql));
   }
-  sqlite3_str_finish(insert_sql);
   return insert_stmt;
 }
 
@@ -297,14 +323,17 @@ static int zsv_2db_set_insert_stmt(struct zsv_2db_data *data) {
                                    );
     if(!create_sql)
       err = 1;
-    else if(!(err = zsv_2db_sqlite3_exec_2db(data->db, sqlite3_str_value(create_sql)))
+    else {
+      if(!(err = zsv_2db_sqlite3_exec_2db(data->db, sqlite3_str_value(create_sql)))
             && !(data->json_parser.insert_stmt =
                  create_insert_statement(data->db, data->opts.table_name,
                                          data->json_parser.col_count))) {
-      err = 1;
-      zsv_2db_start_transaction(data);
-    } else
-      data->json_parser.stmt_colcount = data->json_parser.col_count;
+        err = 1;
+        zsv_2db_start_transaction(data);
+      } else
+        data->json_parser.stmt_colcount = data->json_parser.col_count;
+      sqlite3_free(sqlite3_str_finish(create_sql));
+    }
 
     free(colnames);
     free(datatypes);
@@ -627,6 +656,9 @@ static int zsv_2db_finish(zsv_2db_handle data) {
   if(!err) {
     if(data->db) {
       zsv_2db_end_transaction(data);
+      if(data->json_parser.insert_stmt)
+        sqlite3_finalize(data->json_parser.insert_stmt);
+
       sqlite3_close(data->db);
       data->db = NULL;
 
@@ -757,5 +789,6 @@ int MAIN(int argc, const char *argv[]) {
  exit_2db:
   if(f_in && f_in != stdin)
     fclose(f_in);
+
   return err;
 }
