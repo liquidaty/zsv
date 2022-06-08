@@ -35,7 +35,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt update
-        sudo apt install -y mingw-w64 rpm alien
+        sudo apt install -y mingw-w64 rpm alien nuget
 
     # --- Build ---
 
@@ -51,6 +51,7 @@ jobs:
         ./scripts/ci-build.sh
         ./scripts/ci-create-debian-package.sh
         ./scripts/ci-create-rpm-package.sh
+        ./scripts/ci-create-nuget-package.sh
 
     - name: Build on Linux (${{ env.AMD64_LINUX_CLANG }})
       if: runner.os == 'Linux'
@@ -172,6 +173,15 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
+    - name: Upload (${{ env.AMD64_WINDOWS_MINGW }}.nupkg)
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
     - name: Upload (${{ env.AMD64_MACOSX_CLANG }}.zip)
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
@@ -259,3 +269,4 @@ jobs:
           ${{ env.ARTIFACT_DIR }}/*.tar.gz
           ${{ env.ARTIFACT_DIR }}/*.deb
           ${{ env.ARTIFACT_DIR }}/*.rpm
+          ${{ env.ARTIFACT_DIR }}/*.nupkg
