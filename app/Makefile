@@ -78,8 +78,9 @@ else
   CFLAGS+= -Wl,--strip-all
 endif
 
+CFLAGS+= -std=gnu11
 ifeq ($(DEBUG),0)
-  CFLAGS+= -O3 -DNDEBUG -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -ftree-vectorize ${CFLAGS_OPT}
+  CFLAGS+= -O3 -DNDEBUG -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -ftree-vectorize ${CFLAGS_OPT}
 
   ifeq ($(PGO),1)
     CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4
@@ -133,10 +134,12 @@ endif
 
 ZSV=$(BINDIR)/zsv${EXE}
 
-SOURCES= echo count select 2json serialize flatten pretty stack desc 2tsv sql # noop
-CLI_SOURCES=select desc count pretty sql flatten 2json 2tsv serialize stack
+SOURCES= echo count select 2json serialize flatten pretty stack desc 2tsv sql 2db # noop
+CLI_SOURCES=select desc count pretty sql flatten 2json 2tsv serialize stack 2db
 
-TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES})) ${CLI}
+STANDALONE_PFX=${BUILD_DIR}/bin/zsv_
+
+TARGETS=$(addprefix ${STANDALONE_PFX},$(addsuffix ${EXE},${SOURCES})) ${CLI}
 
 BUILDS=$(addprefix build-,${SOURCES})
 CLEANS=$(addprefix clean-,${SOURCES})
@@ -144,18 +147,13 @@ TESTS=$(addprefix test-,${SOURCES})
 
 ## cli
 VERSION = $(shell git describe --always --dirty 2>/dev/null || echo "v0.0-zsv")
-CLI_APP_OBJECT=${BUILD_DIR}/objs/cli_cli.o
+CLI_OBJ_PFX=${BUILD_DIR}/objs/cli_
+CLI_APP_OBJECT=${CLI_OBJ_PFX}cli.o
 CLI=${BUILD_DIR}/bin/cli${EXE}
 ifneq ($(findstring emcc,$(CC)),) # emcc
     CLI_ADDITIONAL=${BUILD_DIR}/bin/cli.em.wasm
 endif
-CLI_OBJECTS=$(addprefix ${BUILD_DIR}/objs/cli_,$(addsuffix .o,${CLI_SOURCES}))
-
-USE_SGLIB=flatten stack desc
-USE_SGLIB_TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${USE_SGLIB}))
-
-USE_JSONWRITER=2json desc
-USE_JSONWRITER_TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${USE_JSONWRITER}))
+CLI_OBJECTS=$(addprefix ${CLI_OBJ_PFX},$(addsuffix .o,${CLI_SOURCES}))
 
 CFLAGS+=${CFLAGS_AUTO}
 ifeq ($(NO_LTO),1)
@@ -169,21 +167,22 @@ ifeq ($(VERBOSE),1)
   CFLAGS+= ${CFLAGS_VECTORIZE_OPTIMIZED} ${CFLAGS_VECTORIZE_MISSED} ${CFLAGS_VECTORIZE_ALL}
 endif
 
-USE_TERMCAP=pretty
-USE_TERMCAP_TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${USE_TERMCAP}))
-
-#ifeq ($(USE_LIB_TERMCAP),1)
-#  TERMCAP_LIB=-ltermcap
-#endif
-
 INIH_SRC=external/inih
 INIH_INCLUDE=external/inih
 INIH_OBJECT=${BUILD_DIR}/external/inih/inih.o
 CLI_INCLUDE+= -I${INIH_INCLUDE}
 
+YAJL_SRC=external/yajl/yajl.c
+YAJL_OBJ1=yajl yajl_alloc yajl_buf yajl_encode yajl_gen yajl_lex yajl_parser yajl_tree yajl_version
+YAJL_OBJ=$(addprefix ${BUILD_DIR}/external/yajl/,$(addsuffix .o,${YAJL_OBJ1}))
+YAJL_INCLUDE=-Iexternal/yajl/build/yajl-2.1.1/include
+
+YAJL_HELPER_OBJ=${BUILD_DIR}/external/yajl_helper/yajl_helper.o
+YAJL_HELPER_INCLUDE=-Iexternal/yajl_helper
+
 ## json writer
 JSONWRITER_SRC=external/json_writer-1.0
-JSONWRITER_INCLUDE=external/json_writer-1.0
+JSONWRITER_INCLUDE=-Iexternal/json_writer-1.0
 JSONWRITER_OBJECT=${BUILD_DIR}/external/json_writer-1.0/jsonwriter.o
 
 ## utf8proc
@@ -205,7 +204,7 @@ help:
 	@echo "which will build and test all apps, or to build/test a single app:"
 	@echo "  ${MAKE} test-xx"
 	@echo "where xx is any of:"
-	@echo "  echo count select 2json serialize flatten pretty stack desc 2tsv sql"
+	@echo "  echo count select 2json serialize flatten pretty stack desc 2tsv sql 2db"
 	@echo ""
 
 install: ${ZSV}
@@ -218,7 +217,7 @@ build: all
 all: ${TARGETS}
 
 ${LIBZSV_INSTALL}:
-	${MAKE} -C ../src CONFIGFILE=${CONFIGFILEPATH} install
+	${MAKE} -C ../src CONFIGFILE=${CONFIGFILEPATH} install DEBUG=${DEBUG}
 
 ${ZSV}: ${CLI}
 	@mkdir -p `dirname "$@"`
@@ -236,10 +235,11 @@ build-cli: ${CLI}
 clean-cli:
 	@rm -f  ${CLI_APP_OBJECT} ${CLI_OBJECTS}
 
-${BUILDS}: build-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+${BUILDS}: build-%: ${STANDALONE_PFX}%${EXE}
+	@echo Built ${STANDALONE_PFX}$*${EXE}
 
 ${CLEANS}: clean-%:
-	rm -f ${BUILD_DIR}/bin/zsv_$*${EXE}
+	rm -f ${STANDALONE_PFX}$*${EXE}
 	rm -f ${BUILD_DIR}/*/*$*.o
 
 .PHONY: all install cli build build-% clean clean-% test test-%
@@ -266,14 +266,14 @@ ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INIH_INCLUDE} -DINI_HANDLER_LINENO=1 -DINI_CALL_HANDLER_ON_NEW_SECTION=1 -c $< -o $@
 
-${CLI_APP_OBJECT} : cli_ini.c builtin/*.c ${JSONWRITER_OBJECT}
-${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${BUILD_DIR}/objs/cli_%.o: %.c ${UTF8PROC_OBJECT}
+${CLI_APP_OBJECT} : cli_ini.c builtin/*.c
+${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c # ${UTF8PROC_OBJECT} ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI -DMAIN=main_$* -I${JSONWRITER_INCLUDE} ${CLI_INCLUDE} -Iexternal/sglib -I${INCLUDE_DIR} -c $< -o $@ ${SQLITE_EXT_INCLUDE}
+	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI -DMAIN=main_$* ${CLI_INCLUDE} -Iexternal/sglib -I${INCLUDE_DIR} -c $< -o $@ ${MORE_SOURCE}
 
-${CLI}: cli_internal ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${SQLITE_EXT}
+${CLI}: cli_internal ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} ${SQLITE_EXT_INCLUDE} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${JSONWRITER_OBJECT}  ${UTF8PROC_OBJECT} ${TERMCAP_LIB} ${INIH_OBJECT} ${SQLITE_EXT} -L${PREFIX}/lib -lzsv ${LDFLAGS} ${LDFLAGS_OPT}
+	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${PREFIX}/lib -lzsv ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS}
 	@echo Built $@
 
 cli_internal: cli_internal.c.in cli_internal.h cli_internal.h.in
@@ -284,36 +284,53 @@ cli_internal.h.in: ${THIS_MAKEFILE_DIR}/../include/zsv/ext/implementation_privat
 cli_internal.c.in: cli_internal.h.in
 	cat cli_internal.h.in | sed 's/\(.*(\*\)\([^)]*\)\(.*\);/zsv_ext_func_assign((\1\3), \2);/' > $@
 
-${USE_SGLIB_TARGETS}: MORE_SOURCE=-Iexternal/sglib
-
-${USE_TERMCAP_TARGETS}: MORE_OBJECTS+=${TERMCAP_LIB}
-
 ${SQLITE_EXT}: ${SQLITE_SRC}
-${BUILD_DIR}/bin/zsv_sql${EXE}: ${SQLITE_EXT} $@ # circular dependency intentional
-${BUILD_DIR}/bin/zsv_sql${EXE}: MORE_OBJECTS+=${BUILD_DIR}/external/sqlite3/sqlite3_and_csv_vtab.o
-${BUILD_DIR}/bin/zsv_sql${EXE}: MORE_SOURCE+=-Iexternal/sqlite3
 
 ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${JSONWRITER_INCLUDE} -DINCLUDE_UTILS $< -c -o $@
+	${CC} ${CFLAGS} ${JSONWRITER_INCLUDE} -DINCLUDE_UTILS $< -c -o $@
 
-${USE_JSONWRITER_TARGETS}: ${JSONWRITER_OBJECT}
-${USE_JSONWRITER_TARGETS}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
-${USE_JSONWRITER_TARGETS}: MORE_SOURCE+= -I${JSONWRITER_INCLUDE}
+# flatten stack desc use sglib
+${STANDALONE_PFX}flatten${EXE} ${STANDALONE_PFX}stack${EXE} ${STANDALONE_PFX}desc${EXE}: MORE_SOURCE+=-Iexternal/sglib
 
-${BUILD_DIR}/bin/zsv_%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
+# 2db uses yajl
+${CLI} ${STANDALONE_PFX}2db${EXE}: ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
+${CLI} ${STANDALONE_PFX}2db${EXE}: MORE_OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
+${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o: MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
+
+# sql, 2db, 2json use sqlite3
+${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE}: ${SQLITE_EXT}
+${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+=${SQLITE_EXT}
+${STANDALONE_PFX}sql${EXE} ${CLI_OBJ_PFX}sql.o ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o: MORE_SOURCE+=${SQLITE_EXT_INCLUDE}
+
+# 2json and desc use jsonwriter
+${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE}: ${JSONWRITER_OBJECT} $@
+${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
+${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o: MORE_SOURCE+= ${JSONWRITER_INCLUDE}
+
+# pretty uses termcap
+${CLI} ${STANDALONE_PFX}pretty${EXE}: MORE_LIBS+=${LDFLAGS_TERMCAP}
+
+${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${PREFIX}/lib -lzsv ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT}
-	@echo Built $@
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${PREFIX}/lib -lzsv ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS}
 
 ${BUILD_DIR}/external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}/external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ -c $<
 
+${YAJL_OBJ}: ${BUILD_DIR}/external/yajl/%.o : external/yajl/src/%.c
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} ${YAJL_INCLUDE} -c external/yajl/src/$*.c -o $@
+
+${YAJL_HELPER_OBJ}: external/yajl_helper/yajl_helper.c
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -I${BASEDIR}/yajl_helper ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -c $< -o $@
+
 test: ${TESTS}
 
-test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
-	@cd test && ${MAKE} $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH}
+test-%: ${STANDALONE_PFX}%${EXE}
+	@cd test && ${MAKE} $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 clean: clean-obj clean-lib
 	rm -rf ${BUILD_DIR}
@@ -322,7 +339,7 @@ clean-obj:
 	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT}
 
 clean-lib:
-	${MAKE} -C ../src clean CONFIGFILE=${CONFIGFILEPATH}
+	${MAKE} -C ../src clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 external/utf8proc-2.6.1/utf8proc.c: external/utf8proc-2.6.1.tar.gz
 	@cd external && tar xf ../$<

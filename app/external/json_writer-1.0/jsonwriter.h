@@ -47,7 +47,7 @@ extern "C" {
                                           void *write_arg);
 
   void jsonwriter_set_option(jsonwriter_handle h, enum jsonwriter_option opt);
-  void jsonwriter_flush(jsonwriter_handle data);
+  void jsonwriter_flush(jsonwriter_handle h);
   void jsonwriter_delete(jsonwriter_handle h);
 
   int jsonwriter_start_object(jsonwriter_handle h);
@@ -61,6 +61,7 @@ extern "C" {
   // return an error if no matching open array/obj
   int jsonwriter_end_all(jsonwriter_handle h);
 
+  int jsonwriter_object_keyn(jsonwriter_handle data, const char *key, size_t len_or_zero);
   int jsonwriter_object_key(jsonwriter_handle h, const char *key);
   #define jsonwriter_object_str(h, key, v) jsonwriter_object_key(h, key), jsonwriter_str(h, v)
   #define jsonwriter_object_strn(h, key, v, len) jsonwriter_object_key(h, key), jsonwriter_strn(h, v, len)

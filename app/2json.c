@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <jsonwriter.h>
 
+#include <sqlite3.h>
+
 struct zsv_2json_header {
   struct zsv_2json_header *next;
   char *name;
@@ -43,7 +45,8 @@ struct zsv_2json_data {
   unsigned char no_header:1;
   unsigned char no_empty:1;
   unsigned char err:1;
-  unsigned char _:2;
+  unsigned char from_db:1;
+  unsigned char _:1;
 };
 
 static void zsv_2json_cleanup(struct zsv_2json_data *data) {
@@ -103,6 +106,24 @@ void zsv_2json_overflow(void *ctx, unsigned char *utf8_value, size_t len) {
       data->overflowed = 1;
     }
   }
+}
+
+static char *zsv_2json_db_first_tname(sqlite3 *db) {
+  char *tname = NULL;
+  sqlite3_stmt *stmt = NULL;
+  const char *sql = "select name from sqlite_master where type = 'table'";
+  if(sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK)
+    fprintf(stderr, "Unable to prepare %s: %s", sql, sqlite3_errmsg(db));
+  else if(sqlite3_step(stmt) == SQLITE_ROW) {
+    const unsigned char *text = sqlite3_column_text(stmt, 0);
+    if(text) {
+      int len = sqlite3_column_bytes(stmt, 0);
+      tname = zsv_memdup(text, len);
+    }
+  }
+  if(stmt)
+    sqlite3_finalize(stmt);
+  return tname;
 }
 
 static void zsv_2json_row(void *ctx) {
@@ -188,6 +209,134 @@ static void zsv_2json_row(void *ctx) {
   data->current_header = data->headers;
 }
 
+static int zsv_db2json(const char *input_filename, char **tname, jsonwriter_handle jsw) {
+  sqlite3 *db;
+  int rc = sqlite3_open_v2(input_filename, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX | SQLITE_OPEN_SHAREDCACHE, NULL);
+  int err = 0;
+  if(!db)
+    fprintf(stderr, "Unable to open db at %s\n", input_filename), err = 1;
+  else if(rc != SQLITE_OK )
+    fprintf(stderr, "Unable to open db at %s: %s\n", input_filename,
+            sqlite3_errmsg(db)), err = 1;
+  else if(!*tname)
+    *tname = zsv_2json_db_first_tname(db);
+
+  if(!*tname)
+    fprintf(stderr, "No table name provided, and none found in %s\n", input_filename), err = 1;
+  else {
+    const char *index_sql = "select name, sql from sqlite_master where type = 'index' and tbl_name = :tbl_name";
+    const char *unique_sql = "select 1 from PRAGMA_index_list(?) where name = ? and [unique] <> 0";
+
+    sqlite3_str *data_sql = sqlite3_str_new(db);
+    sqlite3_str_appendf(data_sql, "select * from \"%w\"", *tname);
+    sqlite3_stmt *data_stmt = NULL;
+    sqlite3_stmt *index_stmt = NULL;
+    sqlite3_stmt *unique_stmt = NULL;
+    int colcount = 0;
+
+    if(sqlite3_prepare_v2(db, sqlite3_str_value(data_sql), -1, &data_stmt, NULL) != SQLITE_OK)
+      fprintf(stderr, "Unable to prepare %s: %s", sqlite3_str_value(data_sql), sqlite3_errmsg(db));
+    else if(!(colcount = sqlite3_column_count(data_stmt)))
+      fprintf(stderr, "No columns found in table %s\n", *tname);
+    else if(sqlite3_prepare_v2(db, index_sql, -1, &index_stmt, NULL) != SQLITE_OK)
+      fprintf(stderr, "Unable to prepare %s: %s", index_sql, sqlite3_errmsg(db));
+    else if(sqlite3_prepare_v2(db, unique_sql, -1, &unique_stmt, NULL) != SQLITE_OK)
+      fprintf(stderr, "Unable to prepare %s: %s", unique_sql, sqlite3_errmsg(db));
+    else {
+      jsonwriter_start_array(jsw); // output is an array with 2 items: meta and data
+
+      // ----- meta: columns and index info
+      jsonwriter_start_object(jsw);
+
+      jsonwriter_object_cstr(jsw, "name", *tname);
+
+      jsonwriter_object_array(jsw, "columns"); // columns
+      for(int i = 0; i < colcount; i++) {
+        const char *colname = sqlite3_column_name(data_stmt, i);
+        jsonwriter_start_object(jsw);
+        jsonwriter_object_cstr(jsw, "name", colname);
+        const char *dtype = sqlite3_column_decltype(data_stmt, i);
+        if(dtype)
+          jsonwriter_object_cstr(jsw, "datatype", dtype);
+
+        // to do: collate nocase etc
+        jsonwriter_end_object(jsw);
+      }
+      jsonwriter_end_array(jsw); // end columns
+
+      // indexes
+      jsonwriter_object_array(jsw, "indexes"); // indexes
+      sqlite3_bind_text(index_stmt, 1, *tname, (int)strlen(*tname), SQLITE_STATIC);
+      while(sqlite3_step(index_stmt) == SQLITE_ROW) {
+        const unsigned char *text = sqlite3_column_text(index_stmt, 0);
+        const unsigned char *ix_sql = sqlite3_column_text(index_stmt, 1);
+        int len = text ? sqlite3_column_bytes(index_stmt, 0) : 0;
+        int ix_sql_len = ix_sql ? sqlite3_column_bytes(index_stmt, 1) : 0;
+
+        if(text && ix_sql && len && ix_sql_len) {
+          // on: for now we just look for the first and last parens
+          const unsigned char *first_paren = memchr(ix_sql, '(', ix_sql_len);
+          const unsigned char *last_paren = ix_sql + ix_sql_len;
+          while(first_paren && last_paren > first_paren + 1 && *last_paren != ')')
+            last_paren--;
+          if(first_paren && last_paren > first_paren) {
+            // name
+            jsonwriter_object_keyn(jsw, text, len);
+
+            // ix obj
+            jsonwriter_start_object(jsw);
+
+            // unique
+            sqlite3_bind_text(unique_stmt, 1, *tname, (int)strlen(*tname), SQLITE_STATIC);
+            sqlite3_bind_text(unique_stmt, 2, text, len, SQLITE_STATIC);
+            if(sqlite3_step(unique_stmt) == SQLITE_ROW)
+              jsonwriter_object_bool(jsw, "unique", 1);
+            sqlite3_reset(unique_stmt);
+
+            // on
+            jsonwriter_object_cstrn(jsw, "on", first_paren + 1, last_paren - first_paren - 1);
+
+            // end ix obj
+            jsonwriter_end_object(jsw);
+          }
+        }
+      }
+      jsonwriter_end_array(jsw); // end indexes
+
+      jsonwriter_end_object(jsw); // end meta obj
+
+      // ------ data: array of rows
+      jsonwriter_start_array(jsw);
+      // for each row
+      while(sqlite3_step(data_stmt) == SQLITE_ROW) {
+        jsonwriter_start_array(jsw); // start row
+        for(int i = 0; i < colcount; i++) {
+          const unsigned char *text = sqlite3_column_text(data_stmt, i);
+          if(text) {
+            int len = sqlite3_column_bytes(data_stmt, i);
+            jsonwriter_strn(jsw, text, len);
+          } else
+            jsonwriter_null(jsw);
+        }
+        jsonwriter_end_array(jsw); // end row
+        //        sqlite3_reset(data_stmt);
+      }
+      jsonwriter_end_array(jsw);
+
+      jsonwriter_end_array(jsw); // end of output
+    }
+    if(data_stmt)
+      sqlite3_finalize(data_stmt);
+    if(index_stmt)
+      sqlite3_finalize(index_stmt);
+    if(unique_stmt)
+      sqlite3_finalize(unique_stmt);
+
+    sqlite3_free(sqlite3_str_finish(data_sql));
+  }
+  return err;
+}
+
 #ifndef APPNAME
 # ifdef ZSV_CLI
 #  define APPNAME "zsv 2json"
@@ -209,13 +358,17 @@ int MAIN(int argc, const char *argv[]) {
 
   const char *usage[] =
     {
-     APPNAME ": streaming CSV to json converter",
+     APPNAME ": streaming CSV to json converter, or sqlite3 db to JSON converter",
      "",
-     "Usage: " APPNAME " [input.csv]\n",
+     "Usage: ",
+     "   " APPNAME " [input.csv] [options]",
+     "   " APPNAME " --from-db <sqlite3_filename> [options]",
      "",
      "Options:",
      "  -h, --help",
      "  -o, --output <filename>       : output to specified filename",
+     "  --from-db                     : input is sqlite3 database",
+     "  --db-table <table_name>       : name of table in input database to convert",
      "  --object                      : output as array of objects",
      "  --no-empty                    : omit empty properties (only with --object)",
      "  --database                    : output in database schema",
@@ -227,12 +380,14 @@ int MAIN(int argc, const char *argv[]) {
 
   FILE *out = NULL;
   int err = 0;
+  const char *input_filename = NULL;
+  char *tname = NULL;
   struct zsv_opts opts = zsv_get_default_opts(); // leave up here so that below goto stmts do not cross initialization
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       for(int j = 0; usage[j]; j++)
         fprintf(stderr, "%s\n", usage[j]);
-      goto exit_2json;
+      err = 1;
     } else if(!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if(++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;
@@ -254,6 +409,22 @@ int MAIN(int argc, const char *argv[]) {
       }
     } else if(!strcmp(argv[i], "--no-empty")) {
       data.no_empty = 1;
+    } else if(!strcmp(argv[i], "--db-table")) {
+      if(++i >= argc)
+        fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;
+      else
+        tname = strdup(argv[i]);
+    } else if(!strcmp(argv[i], "--from-db")) {
+      if(++i >= argc)
+        fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;
+      else if(f_in)
+        fprintf(stderr, "Input file specified more than once\n"), err = 1;
+      else if(!(f_in = fopen(argv[i], "rb")))
+        fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
+      else {
+        data.from_db = 1;
+        input_filename = argv[i];
+      }
     } else if(!strcmp(argv[i], "--database") || !strcmp(argv[i], "--object")) {
       if(data.schema)
         fprintf(stderr, "Output schema specified more than once\n"), err = 1;
@@ -268,61 +439,68 @@ int MAIN(int argc, const char *argv[]) {
         fprintf(stderr, "Input file specified more than once\n"), err = 1;
       else if(!(f_in = fopen(argv[i], "rb")))
         fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
+      else
+        input_filename = argv[i];
     }
   }
 
-  if(data.indexes.count && data.schema != ZSV_JSON_SCHEMA_DATABASE)
+  if(err)
+    ;
+  else if(data.indexes.count && data.schema != ZSV_JSON_SCHEMA_DATABASE)
     fprintf(stderr, "--index/--unique-index can only be used with --database"), err = 1;
   else if(data.no_header && data.schema)
     fprintf(stderr, "--no-header cannot be used together with --object or --database"), err = 1;
   else if(data.no_empty && data.schema != ZSV_JSON_SCHEMA_OBJECT)
     fprintf(stderr, "--no-empty can only be used with --object"), err = 1;
   else if(!f_in) {
+    if(data.from_db)
+      fprintf(stderr, "Database input specified, but no input file provided\n"), err = 1;
+    else {
 #ifdef NO_STDIN
-    fprintf(stderr, "Please specify an input file\n"), err = 1;
+      fprintf(stderr, "Please specify an input file\n"), err = 1;
 #else
-    f_in = stdin;
+      f_in = stdin;
 #endif
+    }
   }
 
-  if(err) {
-    if(f_in && f_in != stdin)
-      fclose(f_in);
-    if(out)
-      fclose(out);
-    goto exit_2json;
-  }
-
-  if(!out)
-    out = stdout;
-
-  opts.row = zsv_2json_row;
-  opts.ctx = &data;
-  opts.overflow = zsv_2json_overflow;
-
-  if((data.jsw = jsonwriter_new(out))) {
-    opts.stream = f_in;
-    if((data.parser = zsv_new(&opts))) {
-      zsv_handle_ctrl_c_signal();
-      enum zsv_status status;
-      while(!data.err
-            && !zsv_signal_interrupted
-            && (status = zsv_parse_more(data.parser)) == zsv_status_ok)
-        ;
-      zsv_finish(data.parser);
-      zsv_delete(data.parser);
-      jsonwriter_end_all(data.jsw);
+  if(!err) {
+    if(!out)
+      out = stdout;
+    if(!(data.jsw = jsonwriter_new(out)))
+      err = 1;
+    else if(data.from_db) {
+      if(f_in != stdin) {
+        fclose(f_in);
+        f_in = NULL;
+      }
+      err = zsv_db2json(input_filename, &tname, data.jsw);
+    } else {
+      opts.row = zsv_2json_row;
+      opts.ctx = &data;
+      opts.overflow = zsv_2json_overflow;
+      opts.stream = f_in;
+      if((data.parser = zsv_new(&opts))) {
+        zsv_handle_ctrl_c_signal();
+        enum zsv_status status;
+        while(!data.err
+              && !zsv_signal_interrupted
+              && (status = zsv_parse_more(data.parser)) == zsv_status_ok)
+          ;
+        zsv_finish(data.parser);
+        zsv_delete(data.parser);
+        jsonwriter_end_all(data.jsw);
+      }
+      err = data.err;
     }
     jsonwriter_delete(data.jsw);
+    zsv_2json_cleanup(&data);
   }
-  zsv_2json_cleanup(&data);
-  if(out && out != stdout)
-    fclose(out);
+
+  free(tname);
   if(f_in && f_in != stdin)
     fclose(f_in);
-
-  err = data.err;
-
- exit_2json:
+  if(out && out != stdout)
+    fclose(out);
   return err;
 }

@@ -48,7 +48,7 @@ SOURCES=
 ifneq ($(CLI1),1)
 SOURCES+=echo
 endif
-SOURCES+= select sql 2json serialize flatten pretty desc stack
+SOURCES+= select sql 2json serialize flatten pretty desc stack 2db
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
 TESTS=$(addprefix test-,${SOURCES})
@@ -187,8 +187,20 @@ test-2tsv test-sql test-serialize test-flatten test-pretty : test-%: ${BUILD_DIR
 	${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 	@if [ "$@" = "test-2tsv" ] ; then echo "TO DO: update 2tsv to output Excel format-- see data/Excel.tsv"; fi
 
+${BUILD_DIR}/bin/zsv_%${EXE}:
+	make -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
-test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select
+	@${TEST_NAME}
+	@${BUILD_DIR}/bin/zsv_select -L 25000 -N worldcitiespop_mil.csv | ${BUILD_DIR}/bin/zsv_2json --database --index "country_ix on country" --unique-index "ux on [#]" > /tmp/$@.json
+	@(${PREFIX} $< ${ARGS-$*} -o /tmp/$@.db --table data --overwrite < /tmp/test-2db.json ${REDIRECT1} /tmp/$@.out)
+	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@sqlite3 /tmp/$@.db .schema > /tmp/$@.out2
+	@${CMP} /tmp/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+	@sqlite3 /tmp/$@.db "select count(*) from data" > /tmp/$@.out3
+	@${CMP} /tmp/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
+
+test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_NAME}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out && \
@@ -208,6 +220,8 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 
 	@(${PREFIX} $< --object --no-empty < ${TEST_DATA_DIR}/quoted4.csv ${REDIRECT1} /tmp/$@.out6 && \
 	${CMP} /tmp/$@.out6 expected/$@.out6 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@${BUILD_DIR}/bin/zsv_select -L 2000 -N worldcitiespop_mil.csv | ${BUILD_DIR}/bin/zsv_2json --database --index "country_ix on country" --unique-index "ux on [#]" | ${BUILD_DIR}/bin/zsv_2db${EXE} -o /tmp/$@.db --table data --overwrite && (${PREFIX} $< --from-db /tmp/$@.db ${REDIRECT1} /tmp/$@.out7 && ${CMP} /tmp/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
 
 
 
