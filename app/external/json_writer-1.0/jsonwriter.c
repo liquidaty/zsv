@@ -279,7 +279,7 @@ int jsonwriter_strn(jsonwriter_handle data, const unsigned char *s, size_t len) 
   return 1;
 }
 
-static int jsonwriter_object_keyn(jsonwriter_handle data, const char *key, size_t len_or_zero) {
+int jsonwriter_object_keyn(jsonwriter_handle data, const char *key, size_t len_or_zero) {
   if(data->depth < JSONWRITER_MAX_NESTING) {
     jsonwriter_indent(data, 0);
     jsonwriter_str1(data, (const unsigned char *)key, len_or_zero == 0 ? JSW_STRLEN(key) : len_or_zero);

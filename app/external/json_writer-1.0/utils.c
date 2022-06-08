@@ -34,7 +34,6 @@ static unsigned int json_esc1(const unsigned char *s, unsigned int slen,
 
   if(!max_output_size) {
     *new_s = s + slen;
-    *replacelen = 0;
     return 0;
   }
 
@@ -105,6 +104,7 @@ static unsigned int json_esc1(const unsigned char *s, unsigned int slen,
     s++, slen--;
   }
 
+  *replacelen = 0;
   *new_s = s;
   return (unsigned int)(s - orig_s);
 }

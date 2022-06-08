@@ -78,8 +78,9 @@ else
   CFLAGS+= -Wl,--strip-all
 endif
 
+CFLAGS+= -std=gnu11
 ifeq ($(DEBUG),0)
-  CFLAGS+= -O3 -DNDEBUG -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -ftree-vectorize ${CFLAGS_OPT}
+  CFLAGS+= -O3 -DNDEBUG -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -ftree-vectorize ${CFLAGS_OPT}
 
   ifeq ($(PGO),1)
     CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4
@@ -216,7 +217,7 @@ build: all
 all: ${TARGETS}
 
 ${LIBZSV_INSTALL}:
-	${MAKE} -C ../src CONFIGFILE=${CONFIGFILEPATH} install
+	${MAKE} -C ../src CONFIGFILE=${CONFIGFILEPATH} install DEBUG=${DEBUG}
 
 ${ZSV}: ${CLI}
 	@mkdir -p `dirname "$@"`
@@ -292,15 +293,15 @@ ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 # flatten stack desc use sglib
 ${STANDALONE_PFX}flatten${EXE} ${STANDALONE_PFX}stack${EXE} ${STANDALONE_PFX}desc${EXE}: MORE_SOURCE+=-Iexternal/sglib
 
-# 2db uses yajl and sqlite3
+# 2db uses yajl
 ${CLI} ${STANDALONE_PFX}2db${EXE}: ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
 ${CLI} ${STANDALONE_PFX}2db${EXE}: MORE_OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
 ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o: MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
 
-# sql and 2db use sqlite3
-${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE}: ${SQLITE_EXT}
-${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE}: MORE_OBJECTS+=${SQLITE_EXT}
-${STANDALONE_PFX}sql${EXE} ${CLI_OBJ_PFX}sql.o ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o: MORE_SOURCE+=${SQLITE_EXT_INCLUDE}
+# sql, 2db, 2json use sqlite3
+${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE}: ${SQLITE_EXT}
+${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+=${SQLITE_EXT}
+${STANDALONE_PFX}sql${EXE} ${CLI_OBJ_PFX}sql.o ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o: MORE_SOURCE+=${SQLITE_EXT_INCLUDE}
 
 # 2json and desc use jsonwriter
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE}: ${JSONWRITER_OBJECT} $@
@@ -329,7 +330,7 @@ ${YAJL_HELPER_OBJ}: external/yajl_helper/yajl_helper.c
 test: ${TESTS}
 
 test-%: ${STANDALONE_PFX}%${EXE}
-	@cd test && ${MAKE} $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH}
+	@cd test && ${MAKE} $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 clean: clean-obj clean-lib
 	rm -rf ${BUILD_DIR}
@@ -338,7 +339,7 @@ clean-obj:
 	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT}
 
 clean-lib:
-	${MAKE} -C ../src clean CONFIGFILE=${CONFIGFILEPATH}
+	${MAKE} -C ../src clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 external/utf8proc-2.6.1/utf8proc.c: external/utf8proc-2.6.1.tar.gz
 	@cd external && tar xf ../$<

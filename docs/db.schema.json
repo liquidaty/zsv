@@ -3,7 +3,12 @@
   "items": [
     {
       "type": "object",
+      "required": ["columns"],
       "properties": {
+        "name": {
+          "description": "table name",
+          "type": "string"
+        },
         "columns": {
           "type": "array",
           "description": "ordered array of column specifications",
@@ -25,8 +30,8 @@
             }
           },
           "indexes": {
-            "type": "array",
-            "description": "table indexes; property name is the index name",
+            "type": "object",
+            "description": "map of table indexes; property name is the index name",
             "additionalProperties": {
               "type": "object",
               "properties": {
