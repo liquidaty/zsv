@@ -64,10 +64,10 @@ that implements the expected
 
 ### Packages
 
-zsv is available from a number of package managers:
-OSX: `brew install zsv`
-Windows: `nuget install zsv`
-Linux: `yum install zsv`
+zsv is available from a number of package managers (IN PROGRESS):
+- OSX: `brew install zsv`
+- Windows: `nuget install zsv`
+- Linux: `yum install zsv`
 
 Pre-built binaries for OSX, Windows, Linux and BSD are available at XXXXXX
 
