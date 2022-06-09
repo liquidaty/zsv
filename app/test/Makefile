@@ -48,7 +48,7 @@ SOURCES=
 ifneq ($(CLI1),1)
 SOURCES+=echo
 endif
-SOURCES+= select sql 2json serialize flatten pretty desc stack 2db
+SOURCES+= select sql 2json serialize flatten pretty desc stack 2db jq
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
 TESTS=$(addprefix test-,${SOURCES})
@@ -200,11 +200,17 @@ test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DI
 	@sqlite3 /tmp/$@.db "select count(*) from data" > /tmp/$@.out3
 	@${CMP} /tmp/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
 
+test-jq: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+	@(${PREFIX} $< keys ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json ${REDIRECT1} /tmp/$@.out)
+	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
 test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_NAME}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out && \
 	${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+#	ajv validate --strict-tuples=false -s ${THIS_MAKEFILE_DIR}/../../docs/csv.schema.json -d expected/$@.out.json [suffix must be json]
 
 	@(${PREFIX} $< --object < ${TEST_DATA_DIR}/quoted2.csv ${REDIRECT1} /tmp/$@.out2 && \
 	${CMP} /tmp/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL})
@@ -215,6 +221,8 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} 
 	@(${PREFIX} $< --database < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out4 && \
 	${CMP} /tmp/$@.out4 expected/$@.out4 && ${TEST_PASS} || ${TEST_FAIL})
 
+#	ajv validate --strict-tuples=false -s ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json -d expected/$@.out4.json [suffix must be json]
+
 	@(${PREFIX} $< --object --no-empty < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out5 && \
 	${CMP} /tmp/$@.out5 expected/$@.out5 && ${TEST_PASS} || ${TEST_FAIL})
 
@@ -223,6 +231,7 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} 
 
 	@${BUILD_DIR}/bin/zsv_select -L 2000 -N worldcitiespop_mil.csv | ${BUILD_DIR}/bin/zsv_2json --database --index "country_ix on country" --unique-index "ux on [#]" | ${BUILD_DIR}/bin/zsv_2db${EXE} -o /tmp/$@.db --table data --overwrite && (${PREFIX} $< --from-db /tmp/$@.db ${REDIRECT1} /tmp/$@.out7 && ${CMP} /tmp/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
 
+#	ajv validate --strict-tuples=false -s ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json -d expected/$@.out7.json [suffix must be json]
 
 
 test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}

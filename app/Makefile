@@ -137,6 +137,12 @@ ZSV=$(BINDIR)/zsv${EXE}
 SOURCES= echo count select 2json serialize flatten pretty stack desc 2tsv sql 2db # noop
 CLI_SOURCES=select desc count pretty sql flatten 2json 2tsv serialize stack 2db
 
+ifneq ($(LDFLAGS_JQ),)
+  SOURCES+= jq
+  CLI_SOURCES+= jq
+  CFLAGS+= -DUSE_JQ
+endif
+
 STANDALONE_PFX=${BUILD_DIR}/bin/zsv_
 
 TARGETS=$(addprefix ${STANDALONE_PFX},$(addsuffix ${EXE},${SOURCES})) ${CLI}
@@ -310,6 +316,8 @@ ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} $
 
 # pretty uses termcap
 ${CLI} ${STANDALONE_PFX}pretty${EXE}: MORE_LIBS+=${LDFLAGS_TERMCAP}
+
+${CLI} ${STANDALONE_PFX}jq${EXE}: MORE_LIBS+=${LDFLAGS_JQ}
 
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
