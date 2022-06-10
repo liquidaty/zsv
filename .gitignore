@@ -44,6 +44,7 @@
 *.tar.gz
 *.deb
 *.rpm
+*.nupkg
 build
 app/external
 install.sh
@@ -51,3 +52,6 @@ install.sh
 .rpmbuild
 amd64-linux-gcc
 amd64-linux-clang
+amd64-windows-mingw
+amd64-macosx-clang
+amd64-freebsd-gcc

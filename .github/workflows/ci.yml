@@ -3,8 +3,12 @@ name: ci
 on:
   push:
     branches: [main]
+    paths-ignore:
+    - "**.md"
   pull_request:
     branches: [main]
+    paths-ignore:
+    - "**.md"
   release:
     branches: [main]
     types: [created]
@@ -35,7 +39,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt update
-        sudo apt install -y mingw-w64 rpm alien
+        sudo apt install -y mingw-w64 rpm alien nuget
 
     # --- Build ---
 
@@ -73,7 +77,9 @@ jobs:
         MAKE: make
         RUN_TESTS: false
       shell: bash
-      run: ./scripts/ci-build.sh
+      run: |
+        ./scripts/ci-build.sh
+        ./scripts/ci-create-nuget-package.sh
 
     - name: Build on macOS (${{ env.AMD64_MACOSX_CLANG }})
       if: runner.os == 'macOS'
@@ -172,6 +178,15 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
+    - name: Upload (${{ env.AMD64_WINDOWS_MINGW }}.nupkg)
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: zsv-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
+        path: ${{ env.ARTIFACT_DIR }}/zsv-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
     - name: Upload (${{ env.AMD64_MACOSX_CLANG }}.zip)
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
@@ -259,3 +274,4 @@ jobs:
           ${{ env.ARTIFACT_DIR }}/*.tar.gz
           ${{ env.ARTIFACT_DIR }}/*.deb
           ${{ env.ARTIFACT_DIR }}/*.rpm
+          ${{ env.ARTIFACT_DIR }}/*.nupkg

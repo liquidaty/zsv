@@ -1,6 +1,4 @@
-If you like zsv+lib, please give it a star!
-
-## zsv+lib: the world's fastest CSV parser, with an extensible CLI
+# zsv+lib: the world's fastest CSV parser, with an extensible CLI
 
 [![ci](https://github.com/liquidaty/zsv/actions/workflows/ci.yml/badge.svg)](https://github.com/liquidaty/zsv/actions/workflows/ci.yml)
 
@@ -8,7 +6,9 @@ zsv+lib is a fast CSV parser library and extensible command-line utility.
 It achieves high performance using SIMD operations,
 [efficient memory use](docs/memory.md) and other optimization techniques.
 
-### Performance
+If you like zsv+lib, do not forget to give it a star! 🌟
+
+## Performance
 
 Preliminary performance results compare favorably vs other CSV utilities (`xsv`,
 `tsv-utils`, `csvkit`, `mlr` (miller) etc). Below were results on a pre-M1 OSX
@@ -21,7 +21,7 @@ about 25x slower):
 ** See 12/19 update re M1 processor at
 https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md.
 
-### Built-in and extensible features
+## Built-in and extensible features
 
 `zsv` is an extensible CSV utility, which uses zsvlib, for tasks such as slicing
 and dicing, querying with SQL, combining, serializing, flattening,
@@ -53,7 +53,8 @@ that implements the expected
 * Low memory usage (regardless of how big your data is)
 * Easy to use as a library in a few lines of code
 * Includes `zsv` CLI with built-in commands:
-  * `select`, `count`, `sql` query, `describe`, `flatten`, `serialize`, `2json`, `2db`, `stack`, `pretty`, `2tsv`, `jq`
+  * `select`, `count`, `sql` query, `describe`, `flatten`, `serialize`, `2json`,
+    `2db`, `stack`, `pretty`, `2tsv`, `jq`
   * easily [convert between CSV/JSON/sqlite3](docs/csv_json_sqlite.md)
 * CLI is easy to extend/customize with a few lines of code via modular plug-in framework.
   Just write a few custom functions and compile into a distributable DLL that any existing zsv
@@ -65,11 +66,17 @@ that implements the expected
 ### Packages
 
 zsv is available from a number of package managers (IN PROGRESS):
+
 - OSX: `brew install zsv`
 - Windows: `nuget install zsv`
 - Linux: `yum install zsv`
 
-Pre-built binaries for OSX, Windows, Linux and BSD are available at XXXXXX
+Download pre-built binaries and packages for OSX, Windows, Linux and BSD from
+the [Releases](https://github.com/liquidaty/zsv/releases) page.
+
+You can also download pre-built binaries and packages from
+[Actions](https://github.com/liquidaty/zsv/actions) for the latest commits and
+PRs but these are retained only for limited days.
 
 ### From source
 
@@ -135,9 +142,10 @@ for speed and ease of development for extending and/or customizing to your needs
 * `jq`: run a jq filter
 * `2db`: [convert from JSON to sqlite3 db](docs/csv_json_sqlite.md)
 
-Each of these can also be built as an independent executable named zsv_xxx where xxx is the command name.
+Each of these can also be built as an independent executable named `zsv_xxx`
+where `xxx` is the command name.
 
-### Running the CLI
+## Running the CLI
 
 After installing, run `zsv help` to see usage details. The typical syntax is
 `zsv <command> <parameters>` e.g.
@@ -146,7 +154,7 @@ After installing, run `zsv help` to see usage details. The typical syntax is
 zsv sql my_population_data.csv "select * from data where population > 100000"
 ```
 
-### Third-party extensions
+## Third-party extensions
 
 In addition to the above extensions, at least one third-party extensions will be
 made available. If you would like to add your extensions to this list, please

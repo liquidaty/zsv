@@ -22,7 +22,7 @@ if [ ! -d "$ARTIFACT_DIR" ]; then
 fi
 
 ARCH="$(echo "$PREFIX" | cut -d '-' -f1)"
-VERSION="$(date "+%d.%m.%y").$(date "+%s")"
+VERSION="$(date "+%-d.%-m.%y").$(date "+%s")"
 if [ "$TAG" != "" ]; then
   VERSION="$("$PREFIX/bin/zsv" version | cut -d ' ' -f3 | cut -c2-)"
 fi
