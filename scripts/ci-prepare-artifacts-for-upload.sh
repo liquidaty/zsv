@@ -23,6 +23,7 @@ fi
 
 echo "[INF] Preparing build artifacts for upload"
 
+echo "[INF] PWD:              $PWD"
 echo "[INF] TAG:              $TAG"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 echo "[INF] ARTIFACT_PREFIX:  $ARTIFACT_PREFIX"
@@ -31,9 +32,9 @@ prepare() {
   [ "$1" = "" ] && return
   for ARTIFACT_NAME in *."$1"; do
     [ -e "$ARTIFACT_NAME" ] || break
-    UPDATED_ARTIFACT_NAME="$ARTIFACT_PREFIX-$ARTIFACT_NAME"
     FILE_PREFIX="$(echo "$ARTIFACT_NAME" | cut -c -${#ARTIFACT_PREFIX})"
     [ "$FILE_PREFIX" = "$ARTIFACT_PREFIX" ] && continue
+    UPDATED_ARTIFACT_NAME="$ARTIFACT_PREFIX-$ARTIFACT_NAME"
     echo "[INF] [$ARTIFACT_NAME] => [$UPDATED_ARTIFACT_NAME]"
     cp "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
   done
