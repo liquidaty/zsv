@@ -35,11 +35,11 @@ NUGET_SPEC_PATH="$PREFIX/$NUGET_SPEC"
 
 echo "[INF] Creating nuget package [$NUGET_PKG]"
 
-echo "[INF] PWD:          $PWD"
-echo "[INF] PREFIX:       $PREFIX"
-echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
-echo "[INF] ARCH:         $ARCH"
-echo "[INF] VERSION:      $VERSION"
+echo "[INF] PWD:              $PWD"
+echo "[INF] PREFIX:           $PREFIX"
+echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
+echo "[INF] ARCH:             $ARCH"
+echo "[INF] VERSION:          $VERSION"
 
 echo "[INF] Creating spec file [$NUGET_SPEC_PATH]"
 cat << EOF > "$NUGET_SPEC_PATH"
@@ -57,9 +57,7 @@ cat << EOF > "$NUGET_SPEC_PATH"
   </metadata>
 
   <files>
-    <file src="bin/*" target="native/bin" />
-    <file src="lib/*" target="native/lib" />
-    <file src="include/**/*.*" target="native/include" />
+    <file src="bin/zsv.exe" target="native/bin" />
   </files>
 </package>
 EOF
