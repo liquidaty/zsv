@@ -34,11 +34,11 @@ DEBIAN_PREINST_SCRIPT="$DEBIAN_DIR/preinst"
 
 echo "[INF] Creating debian package [$DEBIAN_PKG]"
 
-echo "[INF] PWD:          $PWD"
-echo "[INF] PREFIX:       $PREFIX"
-echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
-echo "[INF] ARCH:         $ARCH"
-echo "[INF] VERSION:      $VERSION"
+echo "[INF] PWD:              $PWD"
+echo "[INF] PREFIX:           $PREFIX"
+echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
+echo "[INF] ARCH:             $ARCH"
+echo "[INF] VERSION:          $VERSION"
 
 echo "[INF] Listing linked libraries"
 ldd "$PREFIX/bin/zsv"
@@ -47,7 +47,8 @@ echo "[INF] Setting up debian package buildtree"
 mkdir -p "$DEBIAN_DIR" "$PREFIX/usr"
 
 echo "[INF] Copying build artifacts"
-mv -f "$PREFIX/bin" "$PREFIX/include" "$PREFIX/lib" "$PREFIX/usr/"
+rm -rf "./$PREFIX/lib" "./$PREFIX/include"
+mv -f "./$PREFIX/bin" "./$PREFIX/usr/"
 
 echo "[INF] Creating control file [$DEBIAN_CONTROL_FILE]"
 
@@ -76,7 +77,7 @@ echo "[INF] Creating preinst script [$DEBIAN_CONTROL_FILE]"
 cat << EOF > "$DEBIAN_PREINST_SCRIPT"
 #!/bin/sh
 
-rm -rf '/usr/bin/zsv' '/usr/lib/libzsv.a' '/usr/include/zsv.h' '/usr/include/zsv'
+rm -rf /usr/bin/zsv
 EOF
 
 chmod +x "$DEBIAN_PREINST_SCRIPT"
@@ -93,7 +94,7 @@ dpkg --contents "$DEBIAN_PKG"
 ls -Gghl "$DEBIAN_PKG"
 mv -f "$DEBIAN_PKG" "$ARTIFACT_DIR/"
 
-mv -f "$PREFIX/usr/bin" "$PREFIX/usr/lib" "$PREFIX/usr/include" "$PREFIX/"
+mv -f "./$PREFIX/usr/bin" "./$PREFIX/"
 rm -rf "./$PREFIX/DEBIAN" "./$PREFIX/usr"
 
 echo "[INF] Verifying debian package [$ARTIFACT_DIR/$DEBIAN_PKG]"
