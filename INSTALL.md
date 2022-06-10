@@ -1,8 +1,21 @@
-# Building and installing the CLI
+# Building and installing the library and/or CLI
 
-(In each case below, change `make` to `gmake` if applicable)
+## Packages
 
-To build and install:
+zsv is available from a number of package managers:
+
+- OSX: `brew install zsv`
+- Windows: `nuget install zsv`
+- Linux: `yum install zsv`
+
+Pre-built binaries for OSX, Windows, Linux and BSD are available at
+[Releases](https://github.com/liquidaty/zsv/releases).
+
+## From source
+
+GCC is the recommended compiler, but clang is also supported.
+
+To build from source, you'll need a basic unix toolchain with `sh` and `make`/`gmake`:
 
 ```shell
 ./configure && sudo ./install.sh
@@ -21,7 +34,13 @@ sudo make uninstall
 ```
 
 To build the independent executables in a local build folder,
-use `make install` instead of `make all`
+use `make install` instead of `make all`.
+
+### Building and installing only the library
+
+```shell
+./configure && cd src && sudo make install
+```
 
 ## A note on compilers
 

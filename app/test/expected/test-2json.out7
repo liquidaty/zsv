@@ -27,7 +27,7 @@
         "name": "Longitude"
       }
     ],
-    "indexes": [
+    "indexes": {
       "data_ix_0": {
         "on": "country"
       },
@@ -35,7 +35,7 @@
         "unique": true,
         "on": "[#]"
       }
-    ]
+    }
   },
   [
     [

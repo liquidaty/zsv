@@ -60,6 +60,12 @@ CLI_BUILTIN_DECL(2json);
 CLI_BUILTIN_DECL(2tsv);
 CLI_BUILTIN_DECL(serialize);
 CLI_BUILTIN_DECL(stack);
+CLI_BUILTIN_DECL(2db);
+
+#ifdef USE_JQ
+CLI_BUILTIN_DECL(jq);
+#endif
+
 
 #define CLI_BUILTIN_CMD(x) { .name = #x, .main = main_ ## x }
 struct builtin_cmd builtin_cmds[] = {
@@ -79,7 +85,11 @@ struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_CMD(2json),
   CLI_BUILTIN_CMD(2tsv),
   CLI_BUILTIN_CMD(serialize),
-  CLI_BUILTIN_CMD(stack)
+  CLI_BUILTIN_CMD(stack),
+  CLI_BUILTIN_CMD(2db)
+#ifdef USE_JQ
+  , CLI_BUILTIN_CMD(jq)
+#endif
 };
 
 struct zsv_execution_data {

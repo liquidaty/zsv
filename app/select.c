@@ -543,7 +543,6 @@ const char *zsv_select_usage_msg[] =
    // --rename: like distinct, but instead of removing cols with dupe names, renames them, trying _<n> for n up to max cols
    "  -R, --skip-head <n>: skip specified number of rows",
    "  -D, --skip-data <n>: skip the specified number of data rows",
-   "  -r <prefix>: skip rows until the contents of the first cell in a row matches the specified prefix",
    "  -e <embedded lineend char>: char to replace embedded lineend. if none provided, embedded lineends are preserved",
    "      If the provided string begins with 0x, it will be interpreted as the hex representation of a string",
    "  -x <column>: exclude the indicated column. can be specified more than once",
@@ -681,13 +680,6 @@ int MAIN(int argc, const char *argv[]) {
         data.whitspace_clean_flags = 1;
       } else if(!strcmp(argv[arg_i], "-W") || !strcmp(argv[arg_i], "--no-trim"))
         data.no_trim_whitespace = 1;
-      /*
-        else if(!strcmp(argv[arg_i], "-r")) {
-        if(!(arg_i + 1 < argc && strlen(argv[arg_i+1]) > 0))
-        err = zsv_printerr(1, "-r option value invalid: should be non-empty string");
-        else
-        data.skip_rows_until_prefix = (const unsigned char *)argv[++arg_i];
-      */
       else if(!strcmp(argv[arg_i], "-d") || !strcmp(argv[arg_i], "--header-row-span")) {
         if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) >= 0 && atoi(argv[arg_i+1]) < 256))
           err = zsv_printerr(1, "%s option value invalid: should be integer between 1 and 255; got %s", argv[arg_i], arg_i + 1 < argc ? argv[arg_i+1] : "");

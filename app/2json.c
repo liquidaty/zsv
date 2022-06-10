@@ -102,7 +102,7 @@ void zsv_2json_overflow(void *ctx, unsigned char *utf8_value, size_t len) {
     if(!data->overflowed) {
       fwrite("overflow! ", 1, strlen("overflow! "), stderr);
       fwrite(utf8_value, 1 ,len, stderr);
-      fprintf(stderr, "(subsequent overflows will be suppressed)");
+      fprintf(stderr, "(subsequent overflows will be suppressed)\n");
       data->overflowed = 1;
     }
   }
@@ -113,7 +113,7 @@ static char *zsv_2json_db_first_tname(sqlite3 *db) {
   sqlite3_stmt *stmt = NULL;
   const char *sql = "select name from sqlite_master where type = 'table'";
   if(sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) != SQLITE_OK)
-    fprintf(stderr, "Unable to prepare %s: %s", sql, sqlite3_errmsg(db));
+    fprintf(stderr, "Unable to prepare %s: %s\n", sql, sqlite3_errmsg(db));
   else if(sqlite3_step(stmt) == SQLITE_ROW) {
     const unsigned char *text = sqlite3_column_text(stmt, 0);
     if(text) {
@@ -235,13 +235,13 @@ static int zsv_db2json(const char *input_filename, char **tname, jsonwriter_hand
     int colcount = 0;
 
     if(sqlite3_prepare_v2(db, sqlite3_str_value(data_sql), -1, &data_stmt, NULL) != SQLITE_OK)
-      fprintf(stderr, "Unable to prepare %s: %s", sqlite3_str_value(data_sql), sqlite3_errmsg(db));
+      fprintf(stderr, "Unable to prepare %s: %s\n", sqlite3_str_value(data_sql), sqlite3_errmsg(db));
     else if(!(colcount = sqlite3_column_count(data_stmt)))
       fprintf(stderr, "No columns found in table %s\n", *tname);
     else if(sqlite3_prepare_v2(db, index_sql, -1, &index_stmt, NULL) != SQLITE_OK)
-      fprintf(stderr, "Unable to prepare %s: %s", index_sql, sqlite3_errmsg(db));
+      fprintf(stderr, "Unable to prepare %s: %s\n", index_sql, sqlite3_errmsg(db));
     else if(sqlite3_prepare_v2(db, unique_sql, -1, &unique_stmt, NULL) != SQLITE_OK)
-      fprintf(stderr, "Unable to prepare %s: %s", unique_sql, sqlite3_errmsg(db));
+      fprintf(stderr, "Unable to prepare %s: %s\n", unique_sql, sqlite3_errmsg(db));
     else {
       jsonwriter_start_array(jsw); // output is an array with 2 items: meta and data
 
@@ -265,7 +265,7 @@ static int zsv_db2json(const char *input_filename, char **tname, jsonwriter_hand
       jsonwriter_end_array(jsw); // end columns
 
       // indexes
-      jsonwriter_object_array(jsw, "indexes"); // indexes
+      jsonwriter_object_object(jsw, "indexes"); // indexes
       sqlite3_bind_text(index_stmt, 1, *tname, (int)strlen(*tname), SQLITE_STATIC);
       while(sqlite3_step(index_stmt) == SQLITE_ROW) {
         const unsigned char *text = sqlite3_column_text(index_stmt, 0);
@@ -281,27 +281,27 @@ static int zsv_db2json(const char *input_filename, char **tname, jsonwriter_hand
             last_paren--;
           if(first_paren && last_paren > first_paren) {
             // name
-            jsonwriter_object_keyn(jsw, text, len);
+            jsonwriter_object_keyn(jsw, (const char *)text, len);
 
             // ix obj
             jsonwriter_start_object(jsw);
 
             // unique
             sqlite3_bind_text(unique_stmt, 1, *tname, (int)strlen(*tname), SQLITE_STATIC);
-            sqlite3_bind_text(unique_stmt, 2, text, len, SQLITE_STATIC);
+            sqlite3_bind_text(unique_stmt, 2, (const char *)text, len, SQLITE_STATIC);
             if(sqlite3_step(unique_stmt) == SQLITE_ROW)
               jsonwriter_object_bool(jsw, "unique", 1);
             sqlite3_reset(unique_stmt);
 
             // on
-            jsonwriter_object_cstrn(jsw, "on", first_paren + 1, last_paren - first_paren - 1);
+            jsonwriter_object_strn(jsw, "on", first_paren + 1, last_paren - first_paren - 1);
 
             // end ix obj
             jsonwriter_end_object(jsw);
           }
         }
       }
-      jsonwriter_end_array(jsw); // end indexes
+      jsonwriter_end_object(jsw); // end indexes
 
       jsonwriter_end_object(jsw); // end meta obj
 
@@ -447,11 +447,11 @@ int MAIN(int argc, const char *argv[]) {
   if(err)
     ;
   else if(data.indexes.count && data.schema != ZSV_JSON_SCHEMA_DATABASE)
-    fprintf(stderr, "--index/--unique-index can only be used with --database"), err = 1;
+    fprintf(stderr, "--index/--unique-index can only be used with --database\n"), err = 1;
   else if(data.no_header && data.schema)
-    fprintf(stderr, "--no-header cannot be used together with --object or --database"), err = 1;
+    fprintf(stderr, "--no-header cannot be used together with --object or --database\n"), err = 1;
   else if(data.no_empty && data.schema != ZSV_JSON_SCHEMA_OBJECT)
-    fprintf(stderr, "--no-empty can only be used with --object"), err = 1;
+    fprintf(stderr, "--no-empty can only be used with --object\n"), err = 1;
   else if(!f_in) {
     if(data.from_db)
       fprintf(stderr, "Database input specified, but no input file provided\n"), err = 1;
