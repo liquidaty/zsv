@@ -3,10 +3,12 @@ name: ci
 on:
   push:
     branches: [main]
-    paths-ignore: ["*.md"]
+    paths-ignore:
+    - "**.md"
   pull_request:
     branches: [main]
-    paths-ignore: ["*.md"]
+    paths-ignore:
+    - "**.md"
   release:
     branches: [main]
     types: [created]
