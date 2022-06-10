@@ -10,6 +10,11 @@ if [ "$PREFIX" = "" ] || [ "$CC" = "" ] || [ "$MAKE" = "" ] || [ "$ARTIFACT_DIR"
   exit 1
 fi
 
+if [ ! -d "$ARTIFACT_DIR" ]; then
+  echo "[WRN] Artifact directory not found! [$ARTIFACT_DIR]"
+  echo "[WRN] Artifact directory will be created!"
+fi
+
 if [ "$RUN_TESTS" != true ]; then
   RUN_TESTS=false
 fi
@@ -30,13 +35,13 @@ echo "[INF] Configuring"
 
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
-  rm -rf ./build ./"$PREFIX"
+  rm -rf build "$PREFIX"
   "$MAKE" test
   echo "[INF] Tests completed successfully!"
 fi
 
 echo "[INF] Building"
-rm -rf ./build ./"$PREFIX"
+rm -rf build "$PREFIX"
 "$MAKE" install
 tree -h "$PREFIX"
 echo "[INF] Built successfully!"
