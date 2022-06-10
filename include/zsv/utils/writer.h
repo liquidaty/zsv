@@ -47,6 +47,15 @@ enum zsv_writer_status zsv_writer_cell(zsv_csv_writer, char new_row,
 
 unsigned char *zsv_writer_str_to_csv(const unsigned char *s, size_t len);
 
+/*
+ * quote a CSV string, if needed
+ * @return NULL if no quoting required, `buff` if quoted value written to buff,
+ * or newly-allocated memory if buff not large enough (caller must free)
+ */
+unsigned char *zsv_csv_quote(const unsigned char *utf8_value, size_t len,
+                             unsigned char *buff, size_t buffsize);
+
+
 // zsv_writer_cell convenience funcs: zsv_writer_cell_XX where XX = printf specifier
 enum zsv_writer_status zsv_writer_cell_zu(zsv_csv_writer w, char new_row, size_t zu);
 

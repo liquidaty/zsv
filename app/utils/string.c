@@ -118,7 +118,6 @@ unsigned char *zsv_strtrim(char unsigned * restrict s, size_t *lenp) {
   return s;
 }
 
-
 /**
  * zsv_strwhite(): convert consecutive white to single space
  *
@@ -220,4 +219,14 @@ size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace) {
     }
   }
   return new_len; // new length
+}
+
+size_t zsv_strip_trailing_zeros(const char *s, size_t len) {
+  if(len && memchr(s, '.', len)) {
+    while(len && s[len-1] == '0')
+      len--;
+    if(len && s[len-1] == '.')
+      len--;
+  }
+  return len;
 }

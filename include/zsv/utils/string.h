@@ -33,4 +33,6 @@ size_t zsv_strwhite(unsigned char *s, size_t len, unsigned int flags);
 
 size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace);
 
+size_t zsv_strip_trailing_zeros(const char *s, size_t len);
+
 #endif

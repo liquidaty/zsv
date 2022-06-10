@@ -43,14 +43,14 @@ struct zsv_csv_writer_options zsv_writer_get_default_opts() {
   return zsv_csv_writer_default_opts;
 }
 
-// zsv_util_to_csv_quote() returns:
+// zsv_csv_quote() returns:
 //   NULL if no quoting needed
 //   buff if buff size was large enough to hold result
 //   newly-allocated char * if buff not large enough, and was able to get from heap
 // in last case, caller must free
-static unsigned char *zsv_util_csv_quote(const unsigned char *utf8_value,
-                                           size_t len,
-                                           unsigned char *buff, size_t buffsize) {
+unsigned char *zsv_csv_quote(const unsigned char *utf8_value,
+                             size_t len,
+                             unsigned char *buff, size_t buffsize) {
   char need = 0;
   unsigned quotes = 0;
   char clen;
@@ -214,7 +214,7 @@ enum zsv_writer_status zsv_writer_cell(zsv_csv_writer w, char new_row,
 
   if(len) {
     if(check_if_needs_quoting) {
-      unsigned char *quoted_s = zsv_util_csv_quote(s, len, w->buff, w->buffsize);
+      unsigned char *quoted_s = zsv_csv_quote(s, len, w->buff, w->buffsize);
       if(!quoted_s)
         zsv_output_buff_write(&w->out, s, len);
       else {
@@ -263,7 +263,7 @@ enum zsv_writer_status zsv_writer_cell_s(zsv_csv_writer w, char new_row,
 
 unsigned char *zsv_writer_str_to_csv(const unsigned char *s, size_t len) {
   if(len) {
-    unsigned char *csv_s = zsv_util_csv_quote(s, len, NULL, 0);
+    unsigned char *csv_s = zsv_csv_quote(s, len, NULL, 0);
     if(csv_s)
       return csv_s;
     csv_s = malloc(len + 1);
