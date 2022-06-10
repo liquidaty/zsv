@@ -28,16 +28,18 @@ if [ "$TAG" != "" ]; then
 fi
 
 NUGET_PKG="zsv.$VERSION.nupkg"
+NUGET_PKG_PATH="$ARTIFACT_DIR/zsv-$PREFIX.nupkg"
+NUGET_PKG_FEED="$PWD/nuget-feed"
 NUGET_SPEC='zsv.nuspec'
 NUGET_SPEC_PATH="$PREFIX/$NUGET_SPEC"
 
 echo "[INF] Creating nuget package [$NUGET_PKG]"
 
-echo "[INF] PWD:          $PWD"
-echo "[INF] PREFIX:       $PREFIX"
-echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
-echo "[INF] ARCH:         $ARCH"
-echo "[INF] VERSION:      $VERSION"
+echo "[INF] PWD:              $PWD"
+echo "[INF] PREFIX:           $PREFIX"
+echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
+echo "[INF] ARCH:             $ARCH"
+echo "[INF] VERSION:          $VERSION"
 
 echo "[INF] Creating spec file [$NUGET_SPEC_PATH]"
 cat << EOF > "$NUGET_SPEC_PATH"
@@ -55,9 +57,7 @@ cat << EOF > "$NUGET_SPEC_PATH"
   </metadata>
 
   <files>
-    <file src="bin/*" target="native/bin" />
-    <file src="lib/*" target="native/lib" />
-    <file src="include/**/*.*" target="native/include" />
+    <file src="bin/zsv.exe" target="native/bin" />
   </files>
 </package>
 EOF
@@ -73,7 +73,21 @@ echo "[INF] Building [$NUGET_PKG]"
 nuget pack "$NUGET_SPEC_PATH"
 rm -f "$NUGET_SPEC"
 
-echo "[INF] Renaming [$NUGET_PKG => zsv-$PREFIX.nupkg]"
-mv "$NUGET_PKG" "$ARTIFACT_DIR/zsv-$PREFIX.nupkg"
+echo "[INF] Renaming [$NUGET_PKG => $NUGET_PKG_PATH]"
+mv "$NUGET_PKG" "$NUGET_PKG_PATH"
+
+echo "[INF] Verifying nuget package [$NUGET_PKG_PATH]"
+
+echo "[INF] Installing"
+mkdir "$NUGET_PKG_FEED"
+nuget add "$NUGET_PKG_PATH" -source "$NUGET_PKG_FEED"
+nuget install zsv -source "$NUGET_PKG_FEED"
+
+echo "[INF] Verifying installed package"
+NUGET_PKG_INSTALLED_DIR="zsv.$VERSION"
+tree "$NUGET_PKG_INSTALLED_DIR"
+
+echo "[INF] Uninstalling"
+rm -rf "$NUGET_PKG_INSTALLED_DIR" "$NUGET_PKG_FEED"
 
 echo "[INF] --- [DONE] ---"

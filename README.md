@@ -1,6 +1,8 @@
 # zsv+lib: the world's fastest CSV parser, with an extensible CLI
 
 [![ci](https://github.com/liquidaty/zsv/actions/workflows/ci.yml/badge.svg)](https://github.com/liquidaty/zsv/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/liquidaty/zsv/blob/master/LICENSE)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/liquidaty/zsv?style=flat-square)
 
 zsv+lib is a fast CSV parser library and extensible command-line utility.
 It achieves high performance using SIMD operations,
@@ -197,3 +199,15 @@ helping, please post an issue.
   https://bitbucket.org/ewanhiggs/csv-game/src/master/ as a springboard to
   benchmarking a number of various tasks
 * encoding conversion e.g. UTF16 to UTF8
+
+## Contribute
+
+* Fork the project.
+* Check out the latest `main` branch.
+* Create a feature or bugfix branch from `main`.
+* Commit and push your changes.
+* Submit the PR.
+
+## License
+
+[MIT](https://github.com/liquidaty/zsv/blob/master/LICENSE)

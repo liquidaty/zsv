@@ -35,11 +35,11 @@ RPM_SPEC_PATH="$RPM_DIR/SPECS/$RPM_SPEC"
 
 echo "[INF] Creating rpm package [$RPM_PKG]"
 
-echo "[INF] PWD:          $PWD"
-echo "[INF] PREFIX:       $PREFIX"
-echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
-echo "[INF] ARCH:         $ARCH"
-echo "[INF] VERSION:      $VERSION"
+echo "[INF] PWD:              $PWD"
+echo "[INF] PREFIX:           $PREFIX"
+echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
+echo "[INF] ARCH:             $ARCH"
+echo "[INF] VERSION:          $VERSION"
 
 echo "[INF] Listing linked libraries"
 ldd "$PREFIX/bin/zsv"
@@ -49,7 +49,8 @@ rm -rf "$RPM_DIR"
 mkdir -p "$RPM_DIR/BUILD/usr" "$RPM_DIR/SPECS"
 
 echo "[INF] Copying build artifacts"
-cp -rfa "$PREFIX/bin" "$PREFIX/include" "$PREFIX/lib" "$RPM_DIR/BUILD/usr/"
+rm -rf "./$PREFIX/lib" "./$PREFIX/include"
+cp -rfa "$PREFIX/bin" "$RPM_DIR/BUILD/usr/"
 
 echo "[INF] Creating spec file [$RPM_SPEC_PATH]"
 cat << EOF > "$RPM_SPEC_PATH"
@@ -77,9 +78,6 @@ rm -rf %{buildroot}
 
 %files
 /usr/bin/zsv
-/usr/lib/libzsv.a
-/usr/include/zsv.h
-/usr/include/zsv/*
 EOF
 
 echo "[INF] Dumping [$RPM_SPEC_PATH]"

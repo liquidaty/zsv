@@ -10,6 +10,11 @@ if [ "$ARTIFACT_DIR" = "" ]; then
   exit 1
 fi
 
+if [ ! -d "$ARTIFACT_DIR" ]; then
+  echo "[ERR] Artifact directory not found! [$ARTIFACT_DIR]"
+  exit 1
+fi
+
 ARTIFACT_PREFIX='zsv'
 if [ "$TAG" != "" ]; then
   VERSION="$("$PREFIX/bin/zsv" version | cut -d ' ' -f3 | cut -c2-)"
@@ -18,36 +23,34 @@ fi
 
 echo "[INF] Preparing build artifacts for upload"
 
+echo "[INF] PWD:              $PWD"
 echo "[INF] TAG:              $TAG"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 echo "[INF] ARTIFACT_PREFIX:  $ARTIFACT_PREFIX"
 
+prepare() {
+  [ "$1" = "" ] && return
+  for ARTIFACT_NAME in *."$1"; do
+    [ -e "$ARTIFACT_NAME" ] || break
+    FILE_PREFIX="$(echo "$ARTIFACT_NAME" | cut -c -${#ARTIFACT_PREFIX})"
+    [ "$FILE_PREFIX" = "$ARTIFACT_PREFIX" ] && continue
+    UPDATED_ARTIFACT_NAME="$ARTIFACT_PREFIX-$ARTIFACT_NAME"
+    echo "[INF] [$ARTIFACT_NAME] => [$UPDATED_ARTIFACT_NAME]"
+    cp "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
+  done
+}
+
 cd "$ARTIFACT_DIR"
-for ARTIFACT_NAME in *.zip; do
-  [ -e "$ARTIFACT_NAME" ] || break
-  UPDATED_ARTIFACT_NAME="$ARTIFACT_PREFIX-$ARTIFACT_NAME"
-  echo "[$ARTIFACT_NAME] => [$UPDATED_ARTIFACT_NAME]"
-  cp "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
-done
-for ARTIFACT_NAME in *.tar.gz; do
-  [ -e "$ARTIFACT_NAME" ] || break
-  UPDATED_ARTIFACT_NAME="$ARTIFACT_PREFIX-$ARTIFACT_NAME"
-  echo "[$ARTIFACT_NAME] => [$UPDATED_ARTIFACT_NAME]"
-  cp "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
-done
-for ARTIFACT_NAME in *.deb; do
-  [ -e "$ARTIFACT_NAME" ] || break
-  UPDATED_ARTIFACT_NAME="$ARTIFACT_PREFIX-$ARTIFACT_NAME"
-  echo "[$ARTIFACT_NAME] => [$UPDATED_ARTIFACT_NAME]"
-  cp "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
-done
-for ARTIFACT_NAME in *.rpm; do
-  [ -e "$ARTIFACT_NAME" ] || break
-  UPDATED_ARTIFACT_NAME="$ARTIFACT_PREFIX-$ARTIFACT_NAME"
-  echo "[$ARTIFACT_NAME] => [$UPDATED_ARTIFACT_NAME]"
-  cp "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
-done
+
+prepare 'zip'
+prepare 'tar.gz'
+prepare 'deb'
+prepare 'rpm'
+prepare 'nupkg'
+
 cd ..
+
+echo "[INF] Listing"
 ls -Gghl "$ARTIFACT_DIR"
 
 echo "[INF] --- [DONE] ---"
