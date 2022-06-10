@@ -21,11 +21,12 @@ fi
 
 echo "[INF] Building and generating artifacts"
 
-echo "[INF] ARTIFACT_DIR: $ARTIFACT_DIR"
-echo "[INF] PREFIX:       $PREFIX"
-echo "[INF] CC:           $CC"
-echo "[INF] MAKE:         $MAKE"
-echo "[INF] RUN_TESTS:    $RUN_TESTS"
+echo "[INF] PWD:              $PWD"
+echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
+echo "[INF] PREFIX:           $PREFIX"
+echo "[INF] CC:               $CC"
+echo "[INF] MAKE:             $MAKE"
+echo "[INF] RUN_TESTS:        $RUN_TESTS"
 
 echo "[INF] $CC version"
 "$CC" --version
