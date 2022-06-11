@@ -20,7 +20,6 @@ echo "[INF] JQ_DIR:           $JQ_DIR"
 echo "[INF] JQ_PREFIX:        $JQ_PREFIX"
 echo "[INF] JQ_INCLUDE_DIR:   $JQ_INCLUDE_DIR"
 echo "[INF] JQ_LIB_DIR:       $JQ_LIB_DIR"
-echo "[INF] JQ_ENV_FILE:      $JQ_ENV_FILE"
 
 rm -rf "$JQ_DIR"
 
@@ -31,6 +30,7 @@ git checkout "$JQ_GIT_COMMIT"
 echo "[INF] Configuring"
 autoreconf -fi
 CFLAGS='-O3' ./configure \
+  --prefix=/usr/local/ \
   --disable-maintainer-mode \
   --without-oniguruma \
   --disable-docs \
