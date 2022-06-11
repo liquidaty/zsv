@@ -45,6 +45,7 @@ jobs:
     - name: Install MinGW cross-compiler on Linux
       if: runner.os == 'macOS'
       run: |
+        brew install autoconf automake libtool
         ./scripts/ci-install-libjq.sh
 
     # --- Build ---
