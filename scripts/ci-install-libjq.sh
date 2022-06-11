@@ -8,7 +8,7 @@ echo "[INF] Building and installing jq (libjq)"
 
 echo "[INF] PWD:              $PWD"
 
-git clone git@github.com:stedolan/jq.git
+git clone https://github.com/stedolan/jq.git
 cd jq
 git checkout cff5336
 
