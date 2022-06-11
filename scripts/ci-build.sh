@@ -32,7 +32,7 @@ echo "[INF] $CC version"
 "$CC" --version
 
 echo "[INF] Configuring"
-./configure --prefix="$PREFIX" --disable-termcap
+./configure --prefix="$PREFIX" --disable-termcap --enable-jq
 
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"

@@ -40,6 +40,12 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y mingw-w64 rpm alien nuget
+        ./scripts/ci-install-libjq.sh
+
+    - name: Install MinGW cross-compiler on Linux
+      if: runner.os == 'macOS'
+      run: |
+        ./scripts/ci-install-libjq.sh
 
     # --- Build ---
 
@@ -106,8 +112,10 @@ jobs:
       with:
         envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
         usesh: true
-        prepare: pkg install -y tree zip gmake lang/gcc
-        run: ./scripts/ci-build.sh
+        prepare: pkg install -y tree zip wget gmake lang/gcc
+        run: |
+          ./scripts/ci-install-libjq.sh
+          ./scripts/ci-build.sh
 
     # --- Upload build artifacts ---
 
