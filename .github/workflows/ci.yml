@@ -113,7 +113,7 @@ jobs:
       with:
         envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
         usesh: true
-        prepare: pkg install -y tree zip wget gmake lang/gcc
+        prepare: pkg install -y tree zip git autotools gmake lang/gcc
         run: |
           ./scripts/ci-install-libjq.sh
           ./scripts/ci-build.sh

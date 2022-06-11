@@ -19,17 +19,28 @@ if [ "$RUN_TESTS" != true ]; then
   RUN_TESTS=false
 fi
 
+JQ_ENV_FILE="$PWD/jq/env"
+if [ ! -f "$JQ_ENV_FILE" ]; then
+  echo "[ERR] jq env file not found! [$JQ_ENV_FILE]"
+  exit 1
+fi
+
 echo "[INF] Building and generating artifacts"
 
 echo "[INF] PWD:              $PWD"
-echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
+echo "[INF] JQ_ENV_FILE:      $JQ_ENV_FILE"
 echo "[INF] PREFIX:           $PREFIX"
 echo "[INF] CC:               $CC"
 echo "[INF] MAKE:             $MAKE"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
+echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 
 echo "[INF] $CC version"
 "$CC" --version
+
+echo "[INF] Sourcing jq environment variables"
+cat "$JQ_ENV_FILE"
+. "$JQ_ENV_FILE"
 
 echo "[INF] Configuring"
 ./configure --prefix="$PREFIX" --disable-termcap --enable-jq
