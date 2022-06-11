@@ -12,7 +12,6 @@ JQ_DIR="$PWD/jq"
 JQ_PREFIX="$JQ_DIR/build"
 JQ_INCLUDE_DIR="$JQ_PREFIX/include"
 JQ_LIB_DIR="$JQ_PREFIX/lib"
-JQ_ENV_FILE="$JQ_DIR/env"
 
 echo "[INF] PWD:              $PWD"
 echo "[INF] JQ_GIT_URL:       $JQ_GIT_URL"
@@ -32,7 +31,6 @@ git checkout "$JQ_GIT_COMMIT"
 echo "[INF] Configuring"
 autoreconf -fi
 CFLAGS='-O3' ./configure \
-  --prefix="$JQ_PREFIX" \
   --disable-maintainer-mode \
   --without-oniguruma \
   --disable-docs \
@@ -40,14 +38,7 @@ CFLAGS='-O3' ./configure \
   --enable-static
 
 echo "[INF] Building and installing"
-make install
-tree build
-
-echo "[INF] Generating env file [$JQ_ENV_FILE]"
-cat > "$JQ_ENV_FILE" << EOF
-CFLAGS="-I$JQ_INCLUDE_DIR"
-LDFLAGS="-L$JQ_LIB_DIR"
-EOF
+sudo make install
 
 cd ..
 
