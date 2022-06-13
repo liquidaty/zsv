@@ -705,7 +705,7 @@ int MAIN(int argc, const char *argv[]) {
     {
      APPNAME ":  streaming JSON to sqlite3 converter",
      "",
-     "Usage: " APPNAME " -o <output path> [-t <table name>] [input.csv]\n",
+     "Usage: " APPNAME " -o <output path> [-t <table name>] [input.json]\n",
      "",
      "Options:",
      "  -h,--help",
@@ -747,6 +747,8 @@ int MAIN(int argc, const char *argv[]) {
       fprintf(stderr, "Input file specified more than once\n"), err = 1;
     else if(!(f_in = fopen(argv[i], "rb")))
       fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
+    else if(!(strlen(argv[i]) > 5 && !zsv_stricmp(argv[i] + strlen(argv[i]) - 5, ".json")))
+      fprintf(stderr, "Warning: input filename does not end with .json (%s)\n", argv[i]);
   }
 
   if(!f_in) {

@@ -29,7 +29,7 @@ Optional features:
   --enable-debug-stderr   build with debug msgs in stderr [no]
   --enable-pie            build with position independent executables [auto]
   --enable-pic            build with position independent shared libraries [auto]
-  --enable-termcap        build with ncurses / termcap (used by `pretty` to get console width) [auto]
+  --enable-termcap        build with ncurses / termcap (used by \`pretty\` to get console width) [auto]
   --enable-jq             build with jq (requires installed jq lib) [auto]
 
 Some influential environment variables:
@@ -521,6 +521,9 @@ if [ "$usejq" = "yes" ] || [ "$usejq" = "auto" ] ; then
             echo "Error: --enable-jq specified, but not found"
             exit 1
         fi
+    if ! [ "$LDFLAGS_JQ" = "" ] ; then
+        tryldflag LDFLAGS_JQ -lm
+    fi
 fi
 
 tryccfn CFLAGS_AUTO "arc4random_uniform" "stdlib.h" || tryccfn CFLAGS_AUTO "rand_s" "stdlib.h" "" "#define _CRT_RAND_S"
