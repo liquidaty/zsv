@@ -26,7 +26,7 @@ if [ -d "$JQ_DIR" ]; then
   cd "$JQ_DIR"
   sudo make uninstall
   cd ..
-  sudo rm -rf "./$JQ_DIR"
+  sudo rm -rf "$JQ_DIR"
 fi
 
 git clone "$JQ_GIT_URL"
