@@ -14,6 +14,7 @@ JQ_INCLUDE_DIR="$JQ_PREFIX/include"
 JQ_LIB_DIR="$JQ_PREFIX/lib"
 
 echo "[INF] PWD:              $PWD"
+echo "[INF] CC:               $CC"
 echo "[INF] JQ_GIT_URL:       $JQ_GIT_URL"
 echo "[INF] JQ_GIT_COMMIT:    $JQ_GIT_COMMIT"
 echo "[INF] JQ_DIR:           $JQ_DIR"
@@ -21,7 +22,12 @@ echo "[INF] JQ_PREFIX:        $JQ_PREFIX"
 echo "[INF] JQ_INCLUDE_DIR:   $JQ_INCLUDE_DIR"
 echo "[INF] JQ_LIB_DIR:       $JQ_LIB_DIR"
 
-rm -rf "$JQ_DIR"
+if [ -d "$JQ_DIR" ]; then
+  cd "$JQ_DIR"
+  sudo make uninstall
+  cd ..
+  sudo rm -rf "./$JQ_DIR"
+fi
 
 git clone "$JQ_GIT_URL"
 cd jq
