@@ -10,6 +10,12 @@
 #include <zsv/utils/signal.h>
 #include <zsv/utils/arg.h>
 #include <zsv/utils/mem.h>
+#ifndef STRING_LIB_INCLUDE
+#include <zsv/utils/string.h>
+#else
+#include STRING_LIB_INCLUDE
+#endif
+
 #include <unistd.h> // unlink
 #include <stdio.h>
 #include <string.h>
