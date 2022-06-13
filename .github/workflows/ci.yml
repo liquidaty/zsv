@@ -41,14 +41,12 @@ jobs:
         sudo apt update
         sudo apt install -y mingw-w64 rpm alien nuget
         sudo apt remove -y jq
-        ./scripts/ci-install-libjq.sh
 
     - name: Set up macOS
       if: runner.os == 'macOS'
       run: |
         brew install coreutils tree autoconf automake libtool
         brew uninstall jq
-        ./scripts/ci-install-libjq.sh
 
     # --- Build ---
 
@@ -61,6 +59,7 @@ jobs:
         RUN_TESTS: true
       shell: bash
       run: |
+        ./scripts/ci-install-libjq.sh
         ./scripts/ci-build.sh
         ./scripts/ci-create-debian-package.sh
         ./scripts/ci-create-rpm-package.sh
@@ -74,6 +73,7 @@ jobs:
         RUN_TESTS: true
       shell: bash
       run: |
+        ./scripts/ci-install-libjq.sh
         ./scripts/ci-build.sh
         ./scripts/ci-create-debian-package.sh
         ./scripts/ci-create-rpm-package.sh
@@ -87,6 +87,7 @@ jobs:
         RUN_TESTS: false
       shell: bash
       run: |
+        ./scripts/ci-install-libjq.sh
         ./scripts/ci-build.sh
         ./scripts/ci-create-nuget-package.sh
 
@@ -99,6 +100,7 @@ jobs:
         RUN_TESTS: false
       shell: bash
       run: |
+        ./scripts/ci-install-libjq.sh
         ./scripts/ci-build.sh
         ./$PREFIX/bin/zsv version
 

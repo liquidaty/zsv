@@ -28,7 +28,7 @@ echo "[INF] MAKE:             $MAKE"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 
-echo "[INF] $CC version"
+echo "[INF] Listing compiler version [$CC]"
 "$CC" --version
 
 echo "[INF] Configuring"
