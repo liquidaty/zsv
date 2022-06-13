@@ -1,51 +1,48 @@
-## Building and installing the library and/or CLI
+# Building and installing the library and/or CLI
 
-### Packages
+## Packages
 
 zsv is available from a number of package managers:
-OSX: `brew install zsv`
-Windows: `nuget install zsv`
-Linux: `yum install zsv`
 
-Pre-built binaries for OSX, Windows, Linux and BSD are available at XXXXXX
+- OSX: `brew install zsv`
+- Windows: `nuget install zsv`
+- Linux: `yum install zsv`
 
-### From source
+Pre-built binaries for OSX, Windows, Linux and BSD are available at
+[Releases](https://github.com/liquidaty/zsv/releases).
 
-To build from source, you'll need a basic unix toolchain with `sh` and `make` or `gmake`:
-  `./configure && sudo ./install.sh`
+## From source
 
-GCC is the recommended compiler, but clang is also supported. 
+GCC is the recommended compiler, but clang is also supported.
 
-### Building and installing the CLI
+To build from source, you'll need a basic unix toolchain with `sh` and `make`/`gmake`:
 
-(In each case below, change `make` to `gmake` if applicable)
-
-To build and install:
-```
+```shell
 ./configure && sudo ./install.sh
 ```
 
 or:
-```
+
+```shell
 ./configure && sudo make install
 ```
 
 To uninstall:
-```
+
+```shell
 sudo make uninstall
 ```
 
 To build the independent executables in a local build folder,
-use `make install` instead of `make all`
-
+use `make install` instead of `make all`.
 
 ### Building and installing only the library
-```
-./configure && (cd src && sudo make install)
+
+```shell
+./configure && cd src && sudo make install
 ```
 
+## A note on compilers
 
-#### A note on compilers
-GCC 11+ is the recommended compiler. Compared with clang,
-gcc in some cases it seems to produce faster code for reasons
-we have not yet determined.
+GCC 11+ is the recommended compiler. Compared with clang, gcc in some cases
+seems to produce faster code for reasons we have not yet determined.
