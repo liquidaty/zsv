@@ -22,17 +22,21 @@ fi
 echo "[INF] Building and generating artifacts"
 
 echo "[INF] PWD:              $PWD"
-echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 echo "[INF] PREFIX:           $PREFIX"
 echo "[INF] CC:               $CC"
 echo "[INF] MAKE:             $MAKE"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
+echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 
-echo "[INF] $CC version"
+echo "[INF] Listing compiler version [$CC]"
 "$CC" --version
 
-echo "[INF] Configuring"
-./configure --prefix="$PREFIX" --disable-termcap
+echo "[INF] Installing jq (libjq)"
+./scripts/ci-install-libjq.sh
+echo "[INF] jq (libjq) installed successfully!"
+
+echo "[INF] Configuring zsv"
+./configure --prefix="$PREFIX" --disable-termcap --enable-jq
 
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"

@@ -35,11 +35,18 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
-    - name: Install MinGW cross-compiler on Linux
+    - name: Set up Linux
       if: runner.os == 'Linux'
       run: |
         sudo apt update
         sudo apt install -y mingw-w64 rpm alien nuget
+        sudo apt remove -y jq
+
+    - name: Set up macOS
+      if: runner.os == 'macOS'
+      run: |
+        brew install coreutils tree autoconf automake libtool
+        brew uninstall jq
 
     # --- Build ---
 
@@ -90,8 +97,6 @@ jobs:
         RUN_TESTS: false
       shell: bash
       run: |
-        # coreutils required for realpath
-        brew install coreutils tree
         ./scripts/ci-build.sh
         ./$PREFIX/bin/zsv version
 
@@ -106,8 +111,9 @@ jobs:
       with:
         envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
         usesh: true
-        prepare: pkg install -y tree zip gmake lang/gcc
-        run: ./scripts/ci-build.sh
+        prepare: pkg install -y tree zip git autotools gmake lang/gcc
+        run: |
+          ./scripts/ci-build.sh
 
     # --- Upload build artifacts ---
 
