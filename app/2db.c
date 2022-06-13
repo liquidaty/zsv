@@ -10,6 +10,12 @@
 #include <zsv/utils/signal.h>
 #include <zsv/utils/arg.h>
 #include <zsv/utils/mem.h>
+#ifndef STRING_LIB_INCLUDE
+#include <zsv/utils/string.h>
+#else
+#include STRING_LIB_INCLUDE
+#endif
+
 #include <unistd.h> // unlink
 #include <stdio.h>
 #include <string.h>
@@ -705,7 +711,7 @@ int MAIN(int argc, const char *argv[]) {
     {
      APPNAME ":  streaming JSON to sqlite3 converter",
      "",
-     "Usage: " APPNAME " -o <output path> [-t <table name>] [input.csv]\n",
+     "Usage: " APPNAME " -o <output path> [-t <table name>] [input.json]\n",
      "",
      "Options:",
      "  -h,--help",
@@ -747,6 +753,8 @@ int MAIN(int argc, const char *argv[]) {
       fprintf(stderr, "Input file specified more than once\n"), err = 1;
     else if(!(f_in = fopen(argv[i], "rb")))
       fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
+    else if(!(strlen(argv[i]) > 5 && !zsv_stricmp(argv[i] + strlen(argv[i]) - 5, ".json")))
+      fprintf(stderr, "Warning: input filename does not end with .json (%s)\n", argv[i]);
   }
 
   if(!f_in) {

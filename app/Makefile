@@ -134,7 +134,7 @@ endif
 
 ZSV=$(BINDIR)/zsv${EXE}
 
-SOURCES= echo count select 2json serialize flatten pretty stack desc 2tsv sql 2db # noop
+SOURCES= echo count select 2json serialize flatten pretty stack desc 2tsv sql 2db
 CLI_SOURCES=select desc count pretty sql flatten 2json 2tsv serialize stack 2db
 
 ifneq ($(LDFLAGS_JQ),)
@@ -258,7 +258,7 @@ ${CLEANS}: clean-%:
 
 ${BUILD_DIR}/objs/utils/%.o : utils/%.c ${INCLUDE_DIR}/zsv/utils/%.h
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/$*.c
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/$*.c ${MORE_SOURCE}
 
 ${BUILD_DIR}/objs/zsv_%.o: %.c
 	@mkdir -p `dirname "$@"`
@@ -310,9 +310,16 @@ ${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2j
 ${STANDALONE_PFX}sql${EXE} ${CLI_OBJ_PFX}sql.o ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o: MORE_SOURCE+=${SQLITE_EXT_INCLUDE}
 
 # 2json and desc use jsonwriter
-${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE}: ${JSONWRITER_OBJECT} $@
+${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE}: ${JSONWRITER_OBJECT}
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o: MORE_SOURCE+= ${JSONWRITER_INCLUDE}
+
+# utils/db uses jsonwriter
+${BUILD_DIR}/objs/utils/db.o : MORE_SOURCE+= ${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
+
+# 2json uses utils/db
+${CLI} ${STANDALONE_PFX}2json${EXE}: ${BUILD_DIR}/objs/utils/db.o
+${CLI} ${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/db.o
 
 # pretty uses termcap
 ${CLI} ${STANDALONE_PFX}pretty${EXE}: MORE_LIBS+=${LDFLAGS_TERMCAP}
