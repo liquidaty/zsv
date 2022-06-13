@@ -31,12 +31,10 @@ echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 echo "[INF] Listing compiler version [$CC]"
 "$CC" --version
 
-echo "[INF] Installing jq (libjq)"
 ./scripts/ci-install-libjq.sh
-echo "[INF] jq (libjq) installed successfully!"
 
 echo "[INF] Configuring zsv"
-./configure --prefix="$PREFIX" --disable-termcap --enable-jq
+CFLAGS="-I$PWD/jq/build/include" LDFLAGS="-L$PWD/jq/build/lib" ./configure --prefix="$PREFIX" --disable-termcap --enable-jq
 
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"

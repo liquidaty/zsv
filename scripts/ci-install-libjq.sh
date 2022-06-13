@@ -23,10 +23,8 @@ echo "[INF] JQ_INCLUDE_DIR:   $JQ_INCLUDE_DIR"
 echo "[INF] JQ_LIB_DIR:       $JQ_LIB_DIR"
 
 if [ -d "$JQ_DIR" ]; then
-  cd "$JQ_DIR"
-  sudo make uninstall
-  cd ..
-  sudo rm -rf "$JQ_DIR"
+  echo "[INF] jq already installed! [$JQ_DIR]"
+  return
 fi
 
 git clone "$JQ_GIT_URL"
@@ -35,13 +33,26 @@ git checkout "$JQ_GIT_COMMIT"
 
 echo "[INF] Configuring"
 autoreconf -fi
-CFLAGS='-O3' ./configure \
-  --prefix=/usr/local/ \
-  --disable-maintainer-mode \
-  --without-oniguruma \
-  --disable-docs \
-  --disable-shared \
-  --enable-static
+
+if [ "$CC" = 'x86_64-w64-mingw32-gcc' ]; then
+  CFLAGS='-O3' ./configure \
+    --prefix="$JQ_PREFIX" \
+    --disable-maintainer-mode \
+    --without-oniguruma \
+    --disable-docs \
+    --disable-shared \
+    --enable-static \
+    --target=win64-x86_64 \
+    --host=x86_64-w64-mingw32
+else
+  CFLAGS='-O3' ./configure \
+    --prefix="$JQ_PREFIX" \
+    --disable-maintainer-mode \
+    --without-oniguruma \
+    --disable-docs \
+    --disable-shared \
+    --enable-static
+fi
 
 echo "[INF] Building and installing"
 sudo make install
