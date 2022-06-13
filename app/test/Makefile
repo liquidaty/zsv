@@ -95,7 +95,7 @@ test: ${TESTS}
 
 .PHONY: help test test-% test-stack
 
-test-echo : ${BUILD_DIR}/bin/zsv_echo
+test-echo : ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_NAME}
 	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
@@ -105,7 +105,7 @@ worldcitiespop_mil.csv:
 
 test-count: test-count-1 test-count-2
 
-test-count-1: ${BUILD_DIR}/bin/zsv_count worldcitiespop_mil.csv
+test-count-1: ${BUILD_DIR}/bin/zsv_count${EXE} worldcitiespop_mil.csv
 	@${TEST_NAME}
 	@cat worldcitiespop_mil.csv | ${PREFIX} $< ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
@@ -190,9 +190,9 @@ test-2tsv test-sql test-serialize test-flatten test-pretty : test-%: ${BUILD_DIR
 ${BUILD_DIR}/bin/zsv_%${EXE}:
 	make -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
-test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select
+test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_NAME}
-	@${BUILD_DIR}/bin/zsv_select -L 25000 -N worldcitiespop_mil.csv | ${BUILD_DIR}/bin/zsv_2json --database --index "country_ix on country" --unique-index "ux on [#]" > /tmp/$@.json
+	@${BUILD_DIR}/bin/zsv_select${EXE} -L 25000 -N worldcitiespop_mil.csv | ${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" > /tmp/$@.json
 	@(${PREFIX} $< ${ARGS-$*} -o /tmp/$@.db --table data --overwrite < /tmp/test-2db.json ${REDIRECT1} /tmp/$@.out)
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 	@sqlite3 /tmp/$@.db .schema > /tmp/$@.out2
@@ -229,7 +229,7 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} 
 	@(${PREFIX} $< --object --no-empty < ${TEST_DATA_DIR}/quoted4.csv ${REDIRECT1} /tmp/$@.out6 && \
 	${CMP} /tmp/$@.out6 expected/$@.out6 && ${TEST_PASS} || ${TEST_FAIL})
 
-	@${BUILD_DIR}/bin/zsv_select -L 2000 -N worldcitiespop_mil.csv | ${BUILD_DIR}/bin/zsv_2json --database --index "country_ix on country" --unique-index "ux on [#]" | ${BUILD_DIR}/bin/zsv_2db${EXE} -o /tmp/$@.db --table data --overwrite && (${PREFIX} $< --from-db /tmp/$@.db ${REDIRECT1} /tmp/$@.out7 && ${CMP} /tmp/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
+	@${BUILD_DIR}/bin/zsv_select${EXE} -L 2000 -N worldcitiespop_mil.csv | ${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" | ${BUILD_DIR}/bin/zsv_2db${EXE} -o /tmp/$@.db --table data --overwrite && (${PREFIX} $< --from-db /tmp/$@.db ${REDIRECT1} /tmp/$@.out7 && ${CMP} /tmp/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
 
 #	ajv validate --strict-tuples=false -s ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json -d expected/$@.out7.json [suffix must be json]
 
