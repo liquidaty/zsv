@@ -199,7 +199,7 @@ tryflag () {
 tryldflag () { # var, flag, other_arguments (optional)
     printf "checking whether linker accepts %s... " "$2"
     echo "int main(){return 0;}" > "$tmpc"
-    if $CC $LDFLAGS_TRY "$2" $3 -o "$tmpo" "$tmpc" >/dev/null 2>&1 ; then
+    if $CC $LDFLAGS "$2" $3 -o "$tmpo" "$tmpc" >/dev/null 2>&1 ; then
         printf "yes\n"
         eval "$1=\"\${$1} \$2\""
         eval "$1=\${$1# }"
@@ -213,7 +213,7 @@ tryldflag () { # var, flag, other_arguments (optional)
 trysharedldflag () {
     printf "checking whether linker accepts %s... " "$2"
     echo "typedef int x;" > "$tmpc"
-    if $CC $LDFLAGS_TRY -shared "$2" -o "$tmpo" "$tmpc" >/dev/null 2>&1 ; then
+    if $CC $LDFLAGS -shared "$2" -o "$tmpo" "$tmpc" >/dev/null 2>&1 ; then
         printf "yes\n"
         eval "$1=\"\${$1} \$2\""
         eval "$1=\${$1# }"
@@ -524,6 +524,7 @@ if [ "$usejq" = "yes" ] || [ "$usejq" = "auto" ] ; then
     if ! [ "$LDFLAGS_JQ" = "" ] ; then
         tryldflag LDFLAGS_JQ -lm
         tryldflag LDFLAGS_JQ -lshlwapi
+        tryldflag LDFLAGS_JQ -pthread
     fi
 fi
 
