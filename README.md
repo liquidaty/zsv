@@ -119,6 +119,10 @@ choco.exe install zsv -source .\zsv-amd64-windows-mingw.nupkg
 choco.exe uninstall zsv
 ```
 
+**NOTE**: Windows build has a runtime dependency on `libwinpthread-1.dll`.
+Please download it from here (https://wikidll.com/mingw-w64/libwinpthread-1-dll)
+according to your Windows version and place it with `zsv` executable.
+
 ### From source
 
 See [BUILD.md](BUILD.md) for more details.
