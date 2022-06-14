@@ -69,9 +69,9 @@ that implements the expected
 
 zsv is available from a number of package managers (IN PROGRESS):
 
-- OSX: `brew install zsv`
-- Windows: `nuget install zsv`
-- Linux: `yum install zsv`
+* OSX: `brew install zsv`
+* Windows: `nuget install zsv`
+* Linux: `yum install zsv`
 
 Download pre-built binaries and packages for OSX, Windows, Linux and BSD from
 the [Releases](https://github.com/liquidaty/zsv/releases) page.
@@ -79,6 +79,45 @@ the [Releases](https://github.com/liquidaty/zsv/releases) page.
 You can also download pre-built binaries and packages from
 [Actions](https://github.com/liquidaty/zsv/actions) for the latest commits and
 PRs but these are retained only for limited days.
+
+For Linux (Debian/Ubuntu - `*.deb`):
+
+```shell
+# Install
+sudo apt install ./zsv-amd64-linux-gcc.deb
+
+# Uninstall
+sudo apt remove zsv
+```
+
+For Linux (RHEL/CentOS - `*.rpm`):
+
+```shell
+# Install
+sudo yum install ./zsv-amd64-linux-gcc.rpm
+
+# Uninstall
+sudo yum remove zsv
+```
+
+For Windows (`*.nupkg`), install with `nuget.exe`:
+
+```shell
+# Install via nuget custom feed
+md nuget-feed
+nuget.exe add zsv .\zsv-amd64-windows-mingw.nupkg -source <path>/nuget-feed
+nuget.exe install zsv -source <path>/nuget-feed
+```
+
+For Windows (`*.nupkg`), install with `choco.exe`:
+
+```shell
+# Install
+choco.exe install zsv -source .\zsv-amd64-windows-mingw.nupkg
+
+# Uninstall
+choco.exe uninstall zsv
+```
 
 ### From source
 
