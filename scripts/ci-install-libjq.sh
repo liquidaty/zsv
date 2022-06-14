@@ -55,7 +55,7 @@ else
 fi
 
 echo "[INF] Building and installing"
-sudo make install
+make install
 
 cd ..
 
