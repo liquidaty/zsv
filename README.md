@@ -82,7 +82,7 @@ PRs but these are retained only for limited days.
 
 ### From source
 
-See [INSTALL.md](INSTALL.md) for more details.
+See [BUILD.md](BUILD.md) for more details.
 
 ## Why another CSV parser / utility?
 

@@ -523,6 +523,7 @@ if [ "$usejq" = "yes" ] || [ "$usejq" = "auto" ] ; then
         fi
     if ! [ "$LDFLAGS_JQ" = "" ] ; then
         tryldflag LDFLAGS_JQ -lm
+        tryldflag LDFLAGS_JQ -lshlwapi
     fi
 fi
 
