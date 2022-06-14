@@ -22,10 +22,7 @@ echo "[INF] JQ_PREFIX:        $JQ_PREFIX"
 echo "[INF] JQ_INCLUDE_DIR:   $JQ_INCLUDE_DIR"
 echo "[INF] JQ_LIB_DIR:       $JQ_LIB_DIR"
 
-if [ -d "$JQ_DIR" ]; then
-  echo "[INF] jq already installed! [$JQ_DIR]"
-  return
-fi
+rm -rf "$JQ_DIR"
 
 git clone "$JQ_GIT_URL"
 cd jq
