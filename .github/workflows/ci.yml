@@ -133,7 +133,7 @@ jobs:
     # --- Upload build artifacts ---
 
     - name: Prepare build artifacts for upload
-      run: ./scripts/ci-prepare-artifacts-for-upload.sh "${{ github.run_id }}"
+      run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.zip)
       if: runner.os == 'Linux'
