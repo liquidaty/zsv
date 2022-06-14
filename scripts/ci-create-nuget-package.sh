@@ -4,9 +4,9 @@ set -e
 
 echo "[INF] Running $0"
 
-if [ "$PREFIX" = "" ] || [ "$ARTIFACT_DIR" = "" ]; then
+if [ "$TAG" = "" ] || [ "$PREFIX" = "" ] || [ "$ARTIFACT_DIR" = "" ]; then
   echo "[ERR] One or more environment variable(s) are not set!"
-  echo "[ERR] Set PREFIX and ARTIFACT_DIR before running $0 script."
+  echo "[ERR] Set TAG, PREFIX and ARTIFACT_DIR before running $0 script."
   exit 1
 fi
 
@@ -22,13 +22,10 @@ if [ ! -d "$ARTIFACT_DIR" ]; then
 fi
 
 ARCH="$(echo "$PREFIX" | cut -d '-' -f1)"
-VERSION="$(date "+%-d.%-m.%y").$(date "+%s")"
-if [ "$TAG" != "" ]; then
-  VERSION="$("$PREFIX/bin/zsv" version | cut -d ' ' -f3 | cut -c2-)"
-fi
+VERSION="$TAG"
 
 NUGET_PKG="zsv.$VERSION.nupkg"
-NUGET_PKG_PATH="$ARTIFACT_DIR/zsv-$PREFIX.nupkg"
+NUGET_PKG_PATH="$ARTIFACT_DIR/$PREFIX.nupkg"
 NUGET_PKG_FEED="$PWD/nuget-feed"
 NUGET_SPEC='zsv.nuspec'
 NUGET_SPEC_PATH="$PREFIX/$NUGET_SPEC"
@@ -36,6 +33,7 @@ NUGET_SPEC_PATH="$PREFIX/$NUGET_SPEC"
 echo "[INF] Creating nuget package [$NUGET_PKG]"
 
 echo "[INF] PWD:              $PWD"
+echo "[INF] TAG:              $TAG"
 echo "[INF] PREFIX:           $PREFIX"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 echo "[INF] ARCH:             $ARCH"
