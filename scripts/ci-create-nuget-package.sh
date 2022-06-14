@@ -25,7 +25,7 @@ ARCH="$(echo "$PREFIX" | cut -d '-' -f1)"
 VERSION="$TAG"
 
 NUGET_PKG="zsv.$VERSION.nupkg"
-NUGET_PKG_PATH="$ARTIFACT_DIR/zsv-$PREFIX.nupkg"
+NUGET_PKG_PATH="$ARTIFACT_DIR/$PREFIX.nupkg"
 NUGET_PKG_FEED="$PWD/nuget-feed"
 NUGET_SPEC='zsv.nuspec'
 NUGET_SPEC_PATH="$PREFIX/$NUGET_SPEC"
