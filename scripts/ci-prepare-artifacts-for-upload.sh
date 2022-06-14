@@ -15,10 +15,7 @@ if [ ! -d "$ARTIFACT_DIR" ]; then
   exit 1
 fi
 
-ARTIFACT_PREFIX='zsv'
-if [ "$TAG" != '0.0.0' ]; then
-  ARTIFACT_PREFIX="zsv-$TAG"
-fi
+ARTIFACT_PREFIX="zsv-$TAG"
 
 echo "[INF] Preparing build artifacts for upload"
 
