@@ -79,13 +79,15 @@ echo "[INF] Verifying nuget package [$NUGET_PKG_PATH]"
 echo "[INF] Installing"
 mkdir "$NUGET_PKG_FEED"
 nuget add "$NUGET_PKG_PATH" -source "$NUGET_PKG_FEED"
-nuget install zsv -source "$NUGET_PKG_FEED"
+nuget install zsv -version "$VERSION" -source "$NUGET_PKG_FEED"
 
 echo "[INF] Verifying installed package"
 NUGET_PKG_INSTALLED_DIR="zsv.$VERSION"
 tree "$NUGET_PKG_INSTALLED_DIR"
 
 echo "[INF] Uninstalling"
+nuget delete zsv "$VERSION" -source "$NUGET_PKG_FEED" -NonInteractive
+
 rm -rf "$NUGET_PKG_INSTALLED_DIR" "$NUGET_PKG_FEED"
 
 echo "[INF] --- [DONE] ---"
