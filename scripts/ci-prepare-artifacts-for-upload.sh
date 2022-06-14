@@ -18,7 +18,7 @@ fi
 GITHUB_RUN_ID="$1"
 
 ARTIFACT_PREFIX='zsv'
-if [ "$TAG" != "0.0.$GITHUB_RUN_ID" ]; then
+if [ "$TAG" != '0.0.0' ]; then
   ARTIFACT_PREFIX="zsv-$TAG"
 fi
 
