@@ -11,7 +11,7 @@ on:
     - "**.md"
   release:
     branches: [main]
-    types: [created]
+    types: [published]
 
 jobs:
   ci:
