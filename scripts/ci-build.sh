@@ -43,17 +43,10 @@ echo "[INF] Listing compiler version [$CC]"
 ./scripts/ci-install-libjq.sh
 
 echo "[INF] Configuring zsv"
-if [ "$CC" = 'x86_64-w64-mingw32-gcc' ]; then
-  CFLAGS="-I$JQ_INCLUDE_DIR" LDFLAGS="-L$JQ_LIB_DIR" ./configure \
-    --prefix="$PREFIX" \
-    --disable-termcap \
-    --enable-jq
-else
-  ./configure \
-    --prefix="$PREFIX" \
-    --disable-termcap \
-    --enable-jq
-fi
+CFLAGS="-I$JQ_INCLUDE_DIR" LDFLAGS="-L$JQ_LIB_DIR" ./configure \
+  --prefix="$PREFIX" \
+  --disable-termcap \
+  --enable-jq
 
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
