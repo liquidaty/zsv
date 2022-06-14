@@ -32,7 +32,7 @@ echo "[INF] Configuring"
 autoreconf -fi
 
 if [ "$CC" = 'x86_64-w64-mingw32-gcc' ]; then
-  CFLAGS='-O3' ./configure \
+  CFLAGS='-O3' LDFLAGS='-Wl,-Bstatic -lpthread -Wl,-Bdynamic' ./configure \
     --prefix="$JQ_PREFIX" \
     --disable-maintainer-mode \
     --without-oniguruma \
@@ -40,7 +40,8 @@ if [ "$CC" = 'x86_64-w64-mingw32-gcc' ]; then
     --disable-shared \
     --enable-static \
     --target=win64-x86_64 \
-    --host=x86_64-w64-mingw32
+    --host=x86_64-w64-mingw32 \
+    --enable-all-static
 else
   CFLAGS='-O3' ./configure \
     --prefix="$JQ_PREFIX" \
