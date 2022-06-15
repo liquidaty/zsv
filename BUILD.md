@@ -1,15 +1,11 @@
-# Binaries
-
-Pre-built binaries for OSX, Windows, Linux and BSD are available at
-[Releases](https://github.com/liquidaty/zsv/releases).
-
 # Building and installing the library and/or CLI
 
 ## From source
 
 GCC is the recommended compiler, but clang is also supported.
 
-To build from source, you'll need a basic unix toolchain with `sh` and `make`/`gmake`:
+To build from source, you'll need a basic unix toolchain with `sh` and
+`make`/`gmake`:
 
 ```shell
 ./configure && sudo ./install.sh
@@ -48,5 +44,3 @@ zsv will soon be available from a number of package managers:
 - OSX: `brew install zsv`
 - Windows: `nuget install zsv`
 - Linux: `yum install zsv`
-
-

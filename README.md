@@ -49,7 +49,8 @@ that implements the expected
 * Fast (maybe the fastest ever, at least on all platforms we've benchmarked where
   256 SIMD operations are available). See
   [app/benchmark/README.md](app/benchmark/README.md)
-* Low memory usage (regardless of how big your data is) and size footprint for both lib (~20k) and CLI executable (< 1MB)
+* Low memory usage (regardless of how big your data is) and size footprint for
+  both lib (~20k) and CLI executable (< 1MB)
 * Easy to use as a library in a few lines of code
 * Includes `zsv` CLI with built-in commands:
   * `select`, `count`, `sql` query, `describe`, `flatten`, `serialize`, `2json`,
@@ -100,10 +101,13 @@ sudo yum remove zsv
 For Windows (`*.nupkg`), install with `nuget.exe`:
 
 ```shell
-# Install via nuget custom feed
+# Install via nuget custom feed (requires absolutes paths)
 md nuget-feed
-nuget.exe add zsv .\zsv-amd64-windows-mingw.nupkg -source <path>/nuget-feed
-nuget.exe install zsv -source <path>/nuget-feed
+nuget.exe add zsv .\<path>\zsv-amd64-windows-mingw.nupkg -source <path>/nuget-feed
+nuget.exe install zsv -version <version> -source <path>/nuget-feed
+
+# Uninstall
+nuget.exe delete zsv <version> -source <path>/nuget-feed
 ```
 
 For Windows (`*.nupkg`), install with `choco.exe`:
@@ -124,7 +128,7 @@ according to your Windows version and place it with `zsv` executable.
 
 See [BUILD.md](BUILD.md) for more details.
 
-## Why another CSV parser / utility?
+## Why another CSV parser/utility?
 
 Our objectives, which we were unable to find in a pre-existing project, are:
 
@@ -145,16 +149,16 @@ Our objectives, which we were unable to find in a pre-existing project, are:
 There are several excellent tools that achieve high performance. Among those we
 considered were xsv and tsv-utils. While they met our performance objective,
 both were designed primarily as a utility and not a library, and were not easy
-enough, for our needs, to customize and/or to support
-modular customizations that could be maintained (or licensed) independently of
-the related project (in addition to the fact that they were written in Rust and
-D, respectively, which happen to be languages with which we lacked deep
-experience, especially for web assembly targeting).
+enough, for our needs, to customize and/or to support modular customizations
+that could be maintained (or licensed) independently of the related project (in
+addition to the fact that they were written in Rust and D, respectively, which
+happen to be languages with which we lacked deep experience, especially for web
+assembly targeting).
 
-Others we considered were Miller (mlr), csvkit and Go (csv module),
-which did not meet our performance objective. We also considered various
-other libraries using SIMD for CSV parsing, but none that we tried met the
-"real-world CSV" objective.
+Others we considered were Miller (mlr), csvkit and Go (csv module), which did
+not meet our performance objective. We also considered various other libraries
+using SIMD for CSV parsing, but none that we tried met the "real-world CSV"
+objective.
 
 Hence zsv was created as a library and a versatile application, both optimized
 for speed and ease of development for extending and/or customizing to your needs
