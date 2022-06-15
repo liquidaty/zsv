@@ -97,9 +97,9 @@ test: ${TESTS}
 
 test-echo : ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_NAME}
-	@echo "PREFIX: ${PREFIX}"
-	@file "${PREFIX}"
-	@ls -Gghl "${PREFIX}"
+	@echo $<
+	@file $<
+	@ls -Gghl $<
 	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv ${REDIRECT} /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
