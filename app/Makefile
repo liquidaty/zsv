@@ -264,7 +264,7 @@ ${BUILD_DIR}/objs/zsv_%.o: %.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -c $< -o $@
 
-${UTF8PROC_OBJECT}: ${UTF8PROC_SRC}/utf8proc.h
+${UTF8PROC_OBJECT}: ${UTF8PROC_SRC}/utf8proc.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${UTF8PROC_INCLUDE} -c $< -o $@
 
@@ -273,7 +273,7 @@ ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 	${CC} ${CFLAGS} -I${INIH_INCLUDE} -DINI_HANDLER_LINENO=1 -DINI_CALL_HANDLER_ON_NEW_SECTION=1 -c $< -o $@
 
 ${CLI_APP_OBJECT} : cli_ini.c builtin/*.c
-${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8proc.h # ${MORE_OBJECTS}
+${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8proc.c # ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI -DMAIN=main_$* ${CLI_INCLUDE} -Iexternal/sglib -I${INCLUDE_DIR} -c $< -o $@ ${MORE_SOURCE}
 
@@ -356,6 +356,6 @@ clean-obj:
 clean-lib:
 	${MAKE} -C ../src clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
-external/utf8proc-2.6.1/utf8proc.h: external/utf8proc-2.6.1.tar.gz
+external/utf8proc-2.6.1/utf8proc.c: external/utf8proc-2.6.1.tar.gz
 	@cd external && tar xf ../$<
 	@touch $@
