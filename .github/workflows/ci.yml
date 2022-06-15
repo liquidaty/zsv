@@ -27,7 +27,7 @@ jobs:
       AMD64_LINUX_GCC: amd64-linux-gcc
       AMD64_LINUX_CLANG: amd64-linux-clang
       AMD64_WINDOWS_MINGW: amd64-windows-mingw
-      AMD64_MACOSX_CLANG: amd64-macosx-clang
+      AMD64_MACOSX_GCC: amd64-macosx-gcc
       AMD64_FREEBSD_GCC: amd64-freebsd-gcc
       ARTIFACT_DIR: .artifacts
       ARTIFACT_RETENTION_DAYS: 5
@@ -103,11 +103,11 @@ jobs:
         ./scripts/ci-build.sh
         ./scripts/ci-create-nuget-package.sh
 
-    - name: Build on macOS (${{ env.AMD64_MACOSX_CLANG }})
+    - name: Build on macOS (${{ env.AMD64_MACOSX_GCC }})
       if: runner.os == 'macOS'
       env:
-        PREFIX: ${{ env.AMD64_MACOSX_CLANG }}
-        CC: clang
+        PREFIX: ${{ env.AMD64_MACOSX_GCC }}
+        CC: gcc-11
         MAKE: make
         RUN_TESTS: false
       shell: bash
@@ -223,11 +223,11 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_CLANG }}.zip)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.zip)
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_CLANG }}.zip
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.zip
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
@@ -278,11 +278,11 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_CLANG }}.tar.gz)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.tar.gz)
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_CLANG }}.tar.gz
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.tar.gz
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
