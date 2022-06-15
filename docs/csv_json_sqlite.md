@@ -1,10 +1,10 @@
 ## CSV, JSON and SQLITE3
 
-`zsv` provides high-performance conversion to and from various formats including:
-
-- CSV (or TSV or pipe- or other- delimited)
-- JSON (as arrays, objects, or [database-friendly table schema](db.schema.json))
-- sqlite3
+Summary:
+- Yes, CSV sucks. But it, and its xxx-delimited brethren, are still around a lot, and let's face it, delimited format does have certain advantages (such as being at least somewhat readable directly by human eyes), which is probably why they've been around so long
+- sqlite3 is the most widely deployed database engine in the world
+- JSON is useful as an intermediate format between CSV and sqlite3 because it is more API-friendly than CSV, is more git- and diff-friendly than the binary sqlite3 format, can be used to hold both metadata as well as data, and can be devised for performant stream-based consumption
+- the same could be said of other binary table formats (parquet etc), though that is out of scope for the discussion here
 
 ### Background
 
@@ -34,7 +34,13 @@ Each of these formats, commonly used for tabular data, has different strengths a
 
 ## Using `zsv` to work with data in your format of choice
 
-To install `zsv`, see https://github.com/liquidaty/zsv/blob/main/INSTALL.md
+`zsv` provides high-performance conversion to and from various formats including:
+
+- CSV (or TSV or pipe- or other- delimited)
+- JSON (as arrays, objects, or [database-friendly table schema](db.schema.json))
+- sqlite3
+
+To install `zsv`, see https://github.com/liquidaty/zsv/blob/main/BUILD.md
 
 `zsv`'s `2json`, `2db` and `jq` commands provide conversion between delimited, json and sqlite3
 formats. A streamlined JSON schema is used to retain metadata when converting between JSON

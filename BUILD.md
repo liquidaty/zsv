@@ -1,15 +1,9 @@
-# Building and installing the library and/or CLI
-
-## Packages
-
-zsv is available from a number of package managers:
-
-- OSX: `brew install zsv`
-- Windows: `nuget install zsv`
-- Linux: `yum install zsv`
+# Binaries
 
 Pre-built binaries for OSX, Windows, Linux and BSD are available at
 [Releases](https://github.com/liquidaty/zsv/releases).
+
+# Building and installing the library and/or CLI
 
 ## From source
 
@@ -46,3 +40,13 @@ use `make install` instead of `make all`.
 
 GCC 11+ is the recommended compiler. Compared with clang, gcc in some cases
 seems to produce faster code for reasons we have not yet determined.
+
+## COMING SOON! Packages
+
+zsv will soon be available from a number of package managers:
+
+- OSX: `brew install zsv`
+- Windows: `nuget install zsv`
+- Linux: `yum install zsv`
+
+
