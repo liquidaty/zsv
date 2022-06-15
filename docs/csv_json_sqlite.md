@@ -1,7 +1,7 @@
 ## CSV, JSON and SQLITE3
 
 Summary:
-- Yes, CSV sucks. But it's still around a lot, and let's face it, it does have some advantages (such as being at least somewhat readable to anyone with a brain), which is probably why it's been around so long
+- Yes, CSV sucks. But it, and its xxx-delimited brethren, are still around a lot, and let's face it, delimited format does have certain advantages (such as being at least somewhat readable directly by human eyes), which is probably why they've been around so long
 - sqlite3 is the most widely deployed database engine in the world
 - JSON is useful as an intermediate format between CSV and sqlite3 because it is more API-friendly than CSV, is more git- and diff-friendly than the binary sqlite3 format, can be used to hold both metadata as well as data, and can be devised for performant stream-based consumption
 - the same could be said of other binary table formats (parquet etc), though that is out of scope for the discussion here
