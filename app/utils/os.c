@@ -49,12 +49,16 @@ void to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len) {
 }
 
 #include <stdio.h>
+#include <wchar.h>
 int zsv_replace_file(const void *src, const void *dest) {
   wchar_t wdest[PATH_MAX], wsrc[PATH_MAX];
   to_unicode(dest, wdest, ARRAY_SIZE(wdest));
   to_unicode(src, wsrc, ARRAY_SIZE(wsrc));
-  if(ReplaceFileW(wdest, wsrc, NULL, 0, 0, 0)) // success
+
+  if(ReplaceFileW(wdest, wsrc, NULL, REPLACEFILE_IGNORE_MERGE_ERRORS | REPLACEFILE_IGNORE_ACL_ERRORS, 0, 0)) // success
     return 0;
+  else if(GetLastError() == 2) // file not found, could be target. use simple rename
+    return _wrename(wsrc, wdest); // returns 0 on success
   return 1; // fail
 }
 #endif
