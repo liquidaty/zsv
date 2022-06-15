@@ -4,9 +4,9 @@ set -e
 
 echo "[INF] Running $0"
 
-if [ "$ARTIFACT_DIR" = "" ]; then
+if [ "$TAG" = "" ] || [ "$ARTIFACT_DIR" = "" ]; then
   echo "[ERR] One or more environment variable(s) are not set!"
-  echo "[ERR] Set ARTIFACT_DIR before running $0 script."
+  echo "[ERR] Set TAG and ARTIFACT_DIR before running $0 script."
   exit 1
 fi
 
@@ -15,11 +15,7 @@ if [ ! -d "$ARTIFACT_DIR" ]; then
   exit 1
 fi
 
-ARTIFACT_PREFIX='zsv'
-if [ "$TAG" != "" ]; then
-  VERSION="$("$PREFIX/bin/zsv" version | cut -d ' ' -f3 | cut -c2-)"
-  ARTIFACT_PREFIX="zsv-$VERSION"
-fi
+ARTIFACT_PREFIX="zsv-$TAG"
 
 echo "[INF] Preparing build artifacts for upload"
 
@@ -36,7 +32,7 @@ prepare() {
     [ "$FILE_PREFIX" = "$ARTIFACT_PREFIX" ] && continue
     UPDATED_ARTIFACT_NAME="$ARTIFACT_PREFIX-$ARTIFACT_NAME"
     echo "[INF] [$ARTIFACT_NAME] => [$UPDATED_ARTIFACT_NAME]"
-    cp "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
+    mv -f "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"
   done
 }
 

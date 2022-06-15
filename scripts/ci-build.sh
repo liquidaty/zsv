@@ -19,20 +19,34 @@ if [ "$RUN_TESTS" != true ]; then
   RUN_TESTS=false
 fi
 
+JQ_DIR="$PWD/jq"
+JQ_PREFIX="$JQ_DIR/build"
+JQ_INCLUDE_DIR="$JQ_PREFIX/include"
+JQ_LIB_DIR="$JQ_PREFIX/lib"
+
 echo "[INF] Building and generating artifacts"
 
 echo "[INF] PWD:              $PWD"
-echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 echo "[INF] PREFIX:           $PREFIX"
 echo "[INF] CC:               $CC"
 echo "[INF] MAKE:             $MAKE"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
+echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
+echo "[INF] JQ_DIR:           $JQ_DIR"
+echo "[INF] JQ_PREFIX:        $JQ_PREFIX"
+echo "[INF] JQ_INCLUDE_DIR:   $JQ_INCLUDE_DIR"
+echo "[INF] JQ_LIB_DIR:       $JQ_LIB_DIR"
 
-echo "[INF] $CC version"
+echo "[INF] Listing compiler version [$CC]"
 "$CC" --version
 
-echo "[INF] Configuring"
-./configure --prefix="$PREFIX" --disable-termcap
+./scripts/ci-install-libjq.sh
+
+echo "[INF] Configuring zsv"
+CFLAGS="-I$JQ_INCLUDE_DIR" LDFLAGS="-L$JQ_LIB_DIR" ./configure \
+  --prefix="$PREFIX" \
+  --disable-termcap \
+  --enable-jq
 
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"

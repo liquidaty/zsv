@@ -55,3 +55,5 @@ amd64-linux-clang
 amd64-windows-mingw
 amd64-macosx-clang
 amd64-freebsd-gcc
+jq
+nuget-feed
