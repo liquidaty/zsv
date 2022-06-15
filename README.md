@@ -29,10 +29,7 @@ https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md.
 and dicing, querying with SQL, combining, serializing, flattening,
 [converting between CSV/JSON/sqlite3](docs/csv_json_sqlite.md) and more.
 
-`zsv` is streamlined for easy development of custom dynamic extensions, one of
-which is available here and offers added features such as statification and
-validation reporting, automated column mapping and transformation, and
-github-like capabilities for sharing and collaboration.
+`zsv` is streamlined for easy development of custom dynamic extensions.
 
 zsvlib and `zsv` are written in C, but since zsvlib is a library, and `zsv`
 extensions are just shared libraries, you can extend `zsv` with your own code in
@@ -52,7 +49,7 @@ that implements the expected
 * Fast (maybe the fastest ever, at least on all platforms we've benchmarked where
   256 SIMD operations are available). See
   [app/benchmark/README.md](app/benchmark/README.md)
-* Low memory usage (regardless of how big your data is)
+* Low memory usage (regardless of how big your data is) and size footprint for both lib (~20k) and CLI executable (< 1MB)
 * Easy to use as a library in a few lines of code
 * Includes `zsv` CLI with built-in commands:
   * `select`, `count`, `sql` query, `describe`, `flatten`, `serialize`, `2json`,
