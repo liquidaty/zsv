@@ -121,7 +121,7 @@ jobs:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc
         MAKE: gmake
-        RUN_TESTS: false
+        RUN_TESTS: true
       uses: vmactions/freebsd-vm@v0.1.5
       with:
         envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
