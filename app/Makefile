@@ -265,6 +265,7 @@ ${BUILD_DIR}/objs/zsv_%.o: %.c
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -c $< -o $@
 
 ${UTF8PROC_OBJECT}: ${UTF8PROC_SRC}/utf8proc.c
+	@echo ">> Compiling ${UTF8PROC_OBJECT}"
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${UTF8PROC_INCLUDE} -c $< -o $@
 
@@ -357,5 +358,6 @@ clean-lib:
 	${MAKE} -C ../src clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 external/utf8proc-2.6.1/utf8proc.c: external/utf8proc-2.6.1.tar.gz
+	@echo ">> Extracting utf8proc-2.6.1.tar.gz"
 	@cd external && tar xf ../$<
 	@touch $@
