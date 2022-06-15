@@ -185,7 +185,14 @@ test-2tsv test-sql test-serialize test-flatten test-pretty : test-%: ${BUILD_DIR
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} /tmp/$@.out && \
 	${CMP} /tmp/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
-	@if [ "$@" = "test-2tsv" ] ; then echo "TO DO: update 2tsv to output Excel format-- see data/Excel.tsv"; fi
+#	@if [ "$@" = "test-2tsv" ] ; then echo "TO DO: update 2tsv to output Excel format-- see data/Excel.tsv"; fi
+
+test-sql: test-sql2
+test-sql2: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_NAME}
+	@echo ${ARGS-sql} > /tmp/$@.sql
+	@${PREFIX} $< '@'/tmp/$@.sql ${TEST_DATA_DIR}/test/sql.csv ${REDIRECT1} /tmp/$@.out && \
+	${CMP} /tmp/$@.out expected/test-sql.out && ${TEST_PASS} || ${TEST_FAIL}
 
 ${BUILD_DIR}/bin/zsv_%${EXE}:
 	make -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}

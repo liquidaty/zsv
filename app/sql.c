@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sqlite3.h>
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
@@ -35,15 +36,16 @@ const char *zsv_sql_usage_msg[] =
    APPNAME ": run ad hoc sql on a CSV file",
    "",
 #ifdef NO_STDIN
-   "Usage: " APPNAME " <filename> [filename ...] <sql>",
+   "Usage: " APPNAME " <filename> [filename ...] <sql | @file.sql>",
 #else
-   "Usage: " APPNAME " [filename, or - for stdin] [filename ...] <sql>",
+   "Usage: " APPNAME " [filename, or - for stdin] [filename ...] <sql | @file.sql>",
 #endif
    "  e.g. " APPNAME " myfile.csv 'select * from data'",
    "  e.g. " APPNAME " myfile.csv myfile2.csv 'select * from data inner join data2'",
    "",
    "Loads your CSV file into a table named 'data', then runs your sql, which must start with 'select '.",
    "If multiple files are specified, tables will be named data, data2, data3, ...",
+   "To",
    "",
    "Options:",
    "  -b: output with BOM",
@@ -61,11 +63,8 @@ struct zsv_sql_data {
   FILE *in;
   int dummy;
   struct string_list *more_input_filenames;
+  char *sql_file_contents; // will hold contents of sql file, if any
 };
-
-static void zsv_sql_data_init(struct zsv_sql_data *data) {
-  memset(data, 0, sizeof(*data));
-}
 
 static void zsv_sql_finalize(struct zsv_sql_data *data) {
   (void)data;
@@ -74,6 +73,7 @@ static void zsv_sql_finalize(struct zsv_sql_data *data) {
 static void zsv_sql_cleanup(struct zsv_sql_data *data) {
   if(data->in && data->in != stdin)
     fclose(data->in);
+  free(data->sql_file_contents);
   if(data->more_input_filenames) {
     struct string_list *next;
     for(struct string_list *tmp = data->more_input_filenames; tmp; tmp = next) {
@@ -113,14 +113,20 @@ static int create_virtual_csv_table(const char *fname, sqlite3 *db,
 #define MAIN main
 #endif
 
+static char is_select_sql(const char *s) {
+  return strlen(s) > strlen("select ")
+    && !zsv_strincmp((const unsigned char *)"select ", strlen("select "),
+                     (const unsigned char *)s, strlen("select ")
+                     );
+}
+
 int MAIN(int argc, const char *argv[]) {
   INIT_CMD_DEFAULT_ARGS();
 
   if(argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
     zsv_sql_usage();
   else {
-    struct zsv_sql_data data;
-    zsv_sql_data_init(&data);
+    struct zsv_sql_data data = { 0 };
     int max_cols = 0;
     const char *input_filename = NULL;
     const char *my_sql = NULL;
@@ -130,13 +136,36 @@ int MAIN(int argc, const char *argv[]) {
     int err = 0;
     for(int arg_i = 1; !err && arg_i < argc; arg_i++) {
       const char *arg = argv[arg_i];
-      if(!my_sql && strlen(arg) > strlen("select ")
-         && !zsv_strincmp(
-                          (const unsigned char *)"select ", strlen("select "),
-                          (const unsigned char *)arg, strlen("select "))
-         )
-        my_sql = arg;
-      else if(!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
+      if(!my_sql
+         && ((*arg == '@' && arg[1]) || is_select_sql(arg))) {
+        if(is_select_sql(arg))
+          my_sql = arg;
+        else {
+          struct stat st;
+          off_t size;
+          if(stat(arg+1, &st) == 0 && st.st_size > 0) {
+            FILE *f = fopen(arg+1, "rb");
+            if(f) {
+              data.sql_file_contents = malloc(st.st_size + 1);
+              if(data.sql_file_contents) {
+                fread(data.sql_file_contents, 1, st.st_size, f);
+                data.sql_file_contents[st.st_size] = '\0';
+                if(is_select_sql(data.sql_file_contents))
+                  my_sql = (const char *)data.sql_file_contents;
+                else {
+                  fprintf(stderr, "File %s contents must be a sql SELECT statement\n", arg+1);
+                  err = 1;
+                }
+              }
+              fclose(f);
+            }
+          }
+          if(!data.sql_file_contents && !err) {
+            fprintf(stderr, "File %s empty or not readable\n", arg+1);
+            err = 1;
+          }
+        }
+      } else if(!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
         if(!(++arg_i < argc)) {
           fprintf(stderr, "option %s requires a filename\n", arg);
           err = 1;
