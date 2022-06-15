@@ -103,10 +103,13 @@ sudo yum remove zsv
 For Windows (`*.nupkg`), install with `nuget.exe`:
 
 ```shell
-# Install via nuget custom feed
+# Install via nuget custom feed (requires absolutes paths)
 md nuget-feed
-nuget.exe add zsv .\zsv-amd64-windows-mingw.nupkg -source <path>/nuget-feed
+nuget.exe add zsv .\<path>\zsv-amd64-windows-mingw.nupkg -source <path>/nuget-feed
 nuget.exe install zsv -source <path>/nuget-feed
+
+# Uninstall
+nuget.exe delete zsv <version> -source <path>/nuget-feed
 ```
 
 For Windows (`*.nupkg`), install with `choco.exe`:
