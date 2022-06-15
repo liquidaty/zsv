@@ -266,7 +266,7 @@ ${BUILD_DIR}/objs/zsv_%.o: %.c
 
 ${UTF8PROC_OBJECT}: ${UTF8PROC_SRC}/utf8proc.h
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${UTF8PROC_INCLUDE} -c $< -o $@
+	${CC} ${CFLAGS} -I${UTF8PROC_INCLUDE} -c ${UTF8PROC_SRC}/utf8proc.c -o $@
 
 ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 	@mkdir -p `dirname "$@"`
