@@ -107,7 +107,7 @@ jobs:
       if: runner.os == 'macOS'
       env:
         PREFIX: ${{ env.AMD64_MACOSX_GCC }}
-        CC: gcc-11
+        CC: gcc
         MAKE: make
         RUN_TESTS: false
       shell: bash
