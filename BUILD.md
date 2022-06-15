@@ -1,3 +1,8 @@
+# Binaries
+
+Pre-built binaries for OSX, Windows, Linux and BSD are available at
+[Releases](https://github.com/liquidaty/zsv/releases).
+
 # Building and installing the library and/or CLI
 
 ## From source
@@ -44,6 +49,4 @@ zsv will soon be available from a number of package managers:
 - Windows: `nuget install zsv`
 - Linux: `yum install zsv`
 
-Pre-built binaries for OSX, Windows, Linux and BSD are available at
-[Releases](https://github.com/liquidaty/zsv/releases).
 
