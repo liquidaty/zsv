@@ -199,12 +199,6 @@ After installing, run `zsv help` to see usage details. The typical syntax is
 zsv sql my_population_data.csv "select * from data where population > 100000"
 ```
 
-## Third-party extensions
-
-In addition to the above extensions, at least one third-party extensions will be
-made available. If you would like to add your extensions to this list, please
-contact the project maintainers.
-
 ### Creating your own extension
 
 You can extend `zsv` by providing a pre-compiled shared or static library that
