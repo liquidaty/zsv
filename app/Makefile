@@ -23,7 +23,7 @@ CFLAGS_EXE ?=
 
 LIBZSV_A=libzsv.a
 LIBZSV=${BUILD_DIR}/lib/${LIBZSV_A}
-LIBZSV_INSTALL=$(PREFIX)/lib/${LIBZSV_A}
+LIBZSV_INSTALL=${LIBDIR}/${LIBZSV_A}
 
 STRING_LIB_INCLUDE=
 STRINGLIB_INCLUDE_FLAG=
@@ -279,7 +279,7 @@ ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8pro
 
 ${CLI}: cli_internal ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${PREFIX}/lib -lzsv ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS}
+	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBDIR} -lzsv ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS}
 	@echo Built $@
 
 cli_internal: cli_internal.c.in cli_internal.h cli_internal.h.in
@@ -328,7 +328,7 @@ ${CLI} ${STANDALONE_PFX}jq${EXE}: MORE_LIBS+=${LDFLAGS_JQ}
 
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${PREFIX}/lib -lzsv ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS}
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${LIBDIR} -lzsv ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS}
 
 ${BUILD_DIR}/external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}/external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`
@@ -347,15 +347,17 @@ test: ${TESTS}
 test-%: ${STANDALONE_PFX}%${EXE}
 	@cd test && ${MAKE} $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
-clean: clean-obj clean-lib
+clean: clean-obj
 	rm -rf ${BUILD_DIR}
+	make -C test clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 clean-obj:
 	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT}
+	rm -rf external/utf8proc-2.6.1
 
-clean-lib:
-	${MAKE} -C ../src clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+#clean-lib:
+#	${MAKE} -C ../src clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
-external/utf8proc-2.6.1/utf8proc.c: external/utf8proc-2.6.1.tar.gz
+${UTF8PROC_SRC}/utf8proc.c: external/utf8proc-2.6.1.tar.gz
 	@cd external && tar xf ../$<
 	@touch $@

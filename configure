@@ -16,10 +16,9 @@ Configuration:
 
 Installation directories:
   --prefix=PREFIX         main installation prefix [\$PREFIX or /usr/local]
-  --exec-prefix=EPREFIX   installation prefix for executable files [PREFIX]
+  --exec-prefix=EPREFIX   installation prefix for bin, lib, include [PREFIX]
 
 Fine tuning of the installation directories:
-  --bindir=DIR            user executables [EPREFIX/bin]
   --sharedir=DIR          share directories [PREFIX/share]
   --docdir=DIR            misc. documentation [PREFIX/share/doc]
   --mandir=DIR            man pages [PREFIX/share/man]
@@ -235,7 +234,7 @@ if [ "$CONFIGFILE" = "" ]; then
     CONFIGFILE=config.mk
 fi
 
-# check prefix arg first, since others may be derived from it unless overridden
+# check prefixes first, since others may be derived from it unless overridden
 PREFIX=$PREFIX
 for arg ; do
     case "$arg" in
@@ -248,9 +247,18 @@ elif [ "$PREFIX" = "${PREFIX#/}" ]; then
     PREFIX="`pwd`/$PREFIX"
 fi
 
-EXEC_PREFIX='$(PREFIX)'
-BINDIR='$(EXEC_PREFIX)/bin'
-SHAREDIR='$(PREFIX)/share'
+EXEC_PREFIX=$EXEC_PREFIX
+for arg ; do
+    case "$arg" in
+        --exec-prefix=*) EXEC_PREFIX=${arg#*=} ;;
+    esac
+done
+if [ "$EXEC_PREFIX" = "" ]; then
+    EXEC_PREFIX=$PREFIX
+elif [ "$EXEC_PREFIX" = "${EXEC_PREFIX#/}" ]; then
+    EXEC_PREFIX="`pwd`/$EXEC_PREFIX"
+fi
+
 DOCDIR='$(PREFIX)/share/doc'
 MANDIR='$(PREFIX)/share/man'
 
@@ -271,9 +279,7 @@ for arg ; do
         --config-file=*) CONFIGFILE=${arg#*=} ;;
         CONFIGFILE=*) CONFIGFILE=${arg#*=} ;;
         --prefix=*) ;; # already handled
-        --exec-prefix=*) EXEC_PREFIX=${arg#*=} ;;
-        --bindir=*) BINDIR=${arg#*=} ;;
-        --sharedir=*) SHAREDIR=${arg#*=} ;;
+        --exec-prefix=*) ;; # already handled EXEC_PREFIX=${arg#*=} ;;
         --docdir=*) DOCDIR=${arg#*=} ;;
         --mandir=*) MANDIR=${arg#*=} ;;
         --minimal|--minimal=yes) MINIMAL=yes;;
@@ -306,7 +312,7 @@ done
 
 echo "config will be saved to $CONFIGFILE"
 
-for i in PREFIX EXEC_PREFIX BINDIR SHAREDIR DOCDIR MANDIR ; do
+for i in PREFIX EXEC_PREFIX DOCDIR MANDIR ; do
     stripdir $i
 done
 
@@ -562,10 +568,12 @@ cat << EOF
 # Any changes made here will be lost if configure is re-run
 PREFIX = $PREFIX
 EXEC_PREFIX = $EXEC_PREFIX
-BINDIR = $BINDIR
+BINDIR = $EXEC_PREFIX/bin
+LIBDIR = $EXEC_PREFIX/lib
+INCLUDEDIR = $EXEC_PREFIX/include
+
 DOCPREFIX = $DOCDIR
 MANPREFIX = $MANDIR
-SHAREPREFIX = $SHAREDIR
 CC = $CC
 AWK = $AWK
 MAKE = $MAKE
