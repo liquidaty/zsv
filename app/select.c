@@ -85,7 +85,7 @@ struct zsv_select_data {
   int col_argc;
   char *cols_to_print; // better: bitfield
   struct {
-    unsigned int *ix; // index of the input column to be output
+    unsigned int ix; // index of the input column to be output
     struct { // merge data: only used with --merge
       unsigned int count;
       unsigned int *indexes;
@@ -435,17 +435,20 @@ static void zsv_select_output_data_row(struct zsv_select_data *data) {
   }
 
   /* print data row */
-  for(unsigned int i = 0; i < cnt; i++) {
+  for(unsigned int i = 0; i < cnt; i++) { // for each output column
     unsigned int in_ix = data->out2in[i].ix;
     struct zsv_cell cell = zsv_get_cell(data->parser, in_ix);
     cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
-    if(VERY_UNLIKELY(data->distinct)) {
+    if(VERY_UNLIKELY(data->distinct == ZSV_SELECT_DISTINCT_MERGE)) {
       if(UNLIKELY(cell.len == 0)) {
-        for(int j = 0; j < data->out2in[i].merge.count; j++) {
-          cell = zsv_get_cell(data->parser, data->out2in[i].merge.indexes[j]);
-          cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
-          if(cell.len)
-            break;
+        for(unsigned int j = 0; j < data->out2in[i].merge.count; j++) {
+          unsigned int m_ix = data->out2in[i].merge.indexes[j];
+          cell = zsv_get_cell(data->parser, m_ix);
+          if(cell.len) {
+            cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
+            if(cell.len)
+              break;
+          }
         }
       }
     }
@@ -620,7 +623,7 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
   zsv_select_search_str_delete(data->search_strings);
 
   if(data->distinct == ZSV_SELECT_DISTINCT_MERGE) {
-    for(int i = 0; i < data->output_cols_count; i++)
+    for(unsigned int i = 0; i < data->output_cols_count; i++)
       free(data->out2in[i].merge.indexes);
   }
   free(data->out2in);
