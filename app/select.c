@@ -84,7 +84,14 @@ struct zsv_select_data {
   const char **col_argv;
   int col_argc;
   char *cols_to_print; // better: bitfield
-  unsigned int *out2in; // array of .output_cols_count length; out2in[x] = y where x = output ix, y = input ix
+  struct {
+    unsigned int *ix; // index of the input column to be output
+    struct { // merge data: only used with --merge
+      unsigned int count;
+      unsigned int *indexes;
+    } merge;
+  } *out2in; // array of .output_cols_count length; out2in[x] = y where x = output ix, y = input info
+
   unsigned int output_cols_count; // total count of output columns
   char distinct;
 

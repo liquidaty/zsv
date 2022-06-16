@@ -192,7 +192,7 @@ JSONWRITER_INCLUDE=-Iexternal/json_writer-1.0
 JSONWRITER_OBJECT=${BUILD_DIR}/external/json_writer-1.0/jsonwriter.o
 
 ## utf8proc
-UTF8PROC_SRC=external/utf8proc-2.6.1
+UTF8PROC_SRC=${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1
 UTF8PROC_INCLUDE=external/utf8proc-2.6.1
 UTF8PROC_OBJECT=${BUILD_DIR}/external/utf8proc-2.6.1/utf8proc.o
 CFLAGS+= -I${UTF8PROC_INCLUDE} -DUTF8PROC -DUTF8PROC_STATIC

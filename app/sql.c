@@ -48,6 +48,10 @@ const char *zsv_sql_usage_msg[] =
    "To",
    "",
    "Options:",
+   "  --join-indexes <n1...>: specify one or more column names to join multiple files by",
+   "     each n is treated as an index in the first input file that determines a column"
+   "     of the join. For example, if joining two files that, respectively, have columns",
+   "     A,B,C,D and X,B,C,A,Y then `--join-indexes 1,3` will join on columns A and C",
    "  -b: output with BOM",
    "  -C, --max-cols <n>: change the maximum allowable columns. must be > 0 and < 2000",
    "  -o <output filename>: name of file to save output to",
@@ -63,7 +67,9 @@ struct zsv_sql_data {
   FILE *in;
   int dummy;
   struct string_list *more_input_filenames;
-  char *sql_file_contents; // will hold contents of sql file, if any
+  char *sql_dynamic; // will hold contents of sql file, if any
+  char *join_indexes; // will hold contents of join_indexes arg, prefixed and suffixed with a comma
+  struct string_list *join_column_names;
 };
 
 static void zsv_sql_finalize(struct zsv_sql_data *data) {
@@ -73,7 +79,17 @@ static void zsv_sql_finalize(struct zsv_sql_data *data) {
 static void zsv_sql_cleanup(struct zsv_sql_data *data) {
   if(data->in && data->in != stdin)
     fclose(data->in);
-  free(data->sql_file_contents);
+  free(data->sql_dynamic);
+  free(data->join_indexes);
+  if(data->join_column_names) {
+    struct string_list *next;
+    for(struct string_list *tmp = data->join_column_names; tmp; tmp = next) {
+      next = tmp->next;
+      free(tmp->value);
+      free(tmp);
+    }
+  }
+
   if(data->more_input_filenames) {
     struct string_list *next;
     for(struct string_list *tmp = data->more_input_filenames; tmp; tmp = next) {
@@ -122,6 +138,7 @@ static char is_select_sql(const char *s) {
 
 int MAIN(int argc, const char *argv[]) {
   INIT_CMD_DEFAULT_ARGS();
+  struct zsv_opts opts = zsv_get_default_opts();
 
   if(argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
     zsv_sql_usage();
@@ -136,7 +153,34 @@ int MAIN(int argc, const char *argv[]) {
     int err = 0;
     for(int arg_i = 1; !err && arg_i < argc; arg_i++) {
       const char *arg = argv[arg_i];
-      if(!my_sql
+      if(!strcmp(arg, "--join-indexes")) {
+        if(data.join_indexes) {
+          fprintf(stderr, "%s specified more than once\n", arg);
+          err = 1;
+        } else if(!(++arg_i < argc)) {
+          fprintf(stderr, "%s option requires a value\n", arg);
+          err = 1;
+        } else {
+          arg = argv[arg_i];
+          int have = 0;
+          for(const char *s = arg; *s; s++) {
+            if(*s == ',')
+              ;
+            else if((*s >= '0' && *s <= '9'))
+              have = 1;
+            else
+              err = 1;
+          }
+          if(!have || err)
+            fprintf(stderr, "Invalid --join-indexes value (%s): must be a comma-separated"
+                    " list of indexes with no spaces or other characters\n", arg), err = 1;
+          else {
+            asprintf(&data.join_indexes, ",%s,", arg);
+            if(data.join_indexes && strstr(data.join_indexes, ",0,"))
+              fprintf(stderr, "--join-indexes index values must be greater than zero\n"), err = 1;
+          }
+        }
+      } else if(!my_sql
          && ((*arg == '@' && arg[1]) || is_select_sql(arg))) {
         if(is_select_sql(arg))
           my_sql = arg;
@@ -146,12 +190,12 @@ int MAIN(int argc, const char *argv[]) {
           if(stat(arg+1, &st) == 0 && st.st_size > 0) {
             FILE *f = fopen(arg+1, "rb");
             if(f) {
-              data.sql_file_contents = malloc(st.st_size + 1);
-              if(data.sql_file_contents) {
-                fread(data.sql_file_contents, 1, st.st_size, f);
-                data.sql_file_contents[st.st_size] = '\0';
-                if(is_select_sql(data.sql_file_contents))
-                  my_sql = (const char *)data.sql_file_contents;
+              data.sql_dynamic = malloc(st.st_size + 1);
+              if(data.sql_dynamic) {
+                fread(data.sql_dynamic, 1, st.st_size, f);
+                data.sql_dynamic[st.st_size] = '\0';
+                if(is_select_sql(data.sql_dynamic))
+                  my_sql = (const char *)data.sql_dynamic;
                 else {
                   fprintf(stderr, "File %s contents must be a sql SELECT statement\n", arg+1);
                   err = 1;
@@ -160,7 +204,7 @@ int MAIN(int argc, const char *argv[]) {
               fclose(f);
             }
           }
-          if(!data.sql_file_contents && !err) {
+          if(!data.sql_dynamic && !err) {
             fprintf(stderr, "File %s empty or not readable\n", arg+1);
             err = 1;
           }
@@ -175,7 +219,6 @@ int MAIN(int argc, const char *argv[]) {
         }
       } else if(!strcmp(arg, "-b"))
         writer_opts.with_bom = 1;
-
       else if(!strcmp(arg, "-C") || !strcmp(arg, "--max-cols")) {
         if(arg_i+1 < argc && atoi(argv[arg_i+1]) > 0 && atoi(argv[arg_i+1]) <= 2000)
           max_cols = atoi(argv[++arg_i]);
@@ -222,7 +265,7 @@ int MAIN(int argc, const char *argv[]) {
 #endif
     }
 
-    if(!my_sql) {
+    if(!my_sql && !data.join_indexes) {
       fprintf(stderr, "No sql command specified\n");
       err = 1;
     }
@@ -287,7 +330,77 @@ int MAIN(int argc, const char *argv[]) {
             rc = SQLITE_ERROR;
       }
 
-      if(rc == SQLITE_OK) {
+      if(data.join_indexes) { // get column names, and construct the sql
+        // sql template:
+        // select t1.*, t2.*, t3.* from t1 left join (select * from t2 group by a) t2 left join (select * from t3 group by a) t3 using(a);
+        sqlite3_stmt *stmt = NULL;
+        rc = sqlite3_prepare_v2(db, "select * from data", -1, &stmt, NULL);
+        if(rc != SQLITE_OK)
+          fprintf(stderr, "%s:\n  %s\n (or bad CSV/utf8 input)\n\n", sqlite3_errstr(err), "select * from data");
+        else {
+          struct string_list **next_joined_column_name = &data.join_column_names;
+          int col_count = sqlite3_column_count(stmt);
+          for(char *ix_str = data.join_indexes; !err && ix_str && *ix_str && *(++ix_str); ix_str = strchr(ix_str + 1, ',')) {
+            unsigned int next_ix;
+            if(sscanf(ix_str, "%u,", &next_ix)) {
+              if(next_ix == 0)
+                fprintf(stderr, "--join-indexes index must be greater than zero\n");
+              else if(next_ix > col_count)
+                fprintf(stderr, "Column %u out of range; input has only %i columns\n", next_ix, col_count), err = 1;
+              else if(!sqlite3_column_name(stmt, next_ix - 1))
+                fprintf(stderr, "Column %u unexpectedly missing name\n", next_ix);
+              else {
+                struct string_list *tmp = calloc(1, sizeof(**next_joined_column_name));
+                if(!tmp)
+                  fprintf(stderr, "Out of memory!\n"), err = 1;
+                else {
+                  tmp->value = strdup(sqlite3_column_name(stmt, next_ix - 1));
+                  *next_joined_column_name = tmp;
+                  next_joined_column_name = &tmp->next;
+                }
+              }
+            }
+          }
+
+          if(!data.more_input_filenames)
+            fprintf(stderr, "--join-indexes requires more than one input\n"), err = 1;
+          else if(!err) { // now build the join select
+            sqlite3_str *select_clause = sqlite3_str_new(db);
+            sqlite3_str *from_clause = sqlite3_str_new(db);
+            sqlite3_str *group_by_clause = sqlite3_str_new(db);
+
+            sqlite3_str_appendf(select_clause, "data.*");
+            sqlite3_str_appendf(from_clause, "data");
+
+            for(struct string_list *sl = data.join_column_names; sl; sl = sl->next) {
+              if(sl != data.join_column_names)
+                sqlite3_str_appendf(group_by_clause, ",");
+              sqlite3_str_appendf(group_by_clause, "\"%w\"", sl->value);
+            }
+
+            int i = 2;
+            for(struct string_list *sl = data.more_input_filenames; sl; sl = sl->next, i++) {
+              sqlite3_str_appendf(select_clause, ", data%i.*", i);
+              // left join (select * from t2 group by a) t2
+              sqlite3_str_appendf(from_clause, " left join (select * from data%i group by %s) data%i", i,
+                                  sqlite3_str_value(group_by_clause), i);
+            }
+            asprintf(&data.sql_dynamic, "select %s from %s using (%s)",
+                     sqlite3_str_value(select_clause), sqlite3_str_value(from_clause),
+                     sqlite3_str_value(group_by_clause));
+            my_sql = data.sql_dynamic;
+            if(opts.verbose)
+              fprintf(stderr, "Join sql:\n%s\n", my_sql);
+            sqlite3_free(sqlite3_str_finish(select_clause));
+            sqlite3_free(sqlite3_str_finish(from_clause));
+            sqlite3_free(sqlite3_str_finish(group_by_clause));
+          }
+        }
+        if(stmt)
+          sqlite3_finalize(stmt);
+      }
+
+      if(rc == SQLITE_OK && !err && my_sql) {
         sqlite3_stmt *stmt;
         err = sqlite3_prepare_v2(db, my_sql, -1, &stmt, NULL);
         if(err != SQLITE_OK)
