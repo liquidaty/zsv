@@ -100,6 +100,8 @@ test: ${TMP_DIR} ${TESTS}
 ${TMP_DIR}:
 	@mkdir -p ${TMP_DIR}
 
+.SECONDARY: worldcitiespop_mil.csv
+
 .PHONY: help test test-% test-stack clean
 
 test-echo : ${BUILD_DIR}/bin/zsv_echo${EXE}
@@ -229,7 +231,7 @@ test-jq: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@(${PREFIX} $< keys ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json ${REDIRECT1} ${TMP_DIR}/$@.out)
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} ${BUILD_DIR}/bin/zsv_select${EXE}
+test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} ${BUILD_DIR}/bin/zsv_select${EXE} worldcitiespop_mil.csv
 	@${TEST_NAME}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
