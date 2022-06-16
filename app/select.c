@@ -93,7 +93,6 @@ struct zsv_select_data {
   } *out2in; // array of .output_cols_count length; out2in[x] = y where x = output ix, y = input info
 
   unsigned int output_cols_count; // total count of output columns
-  char distinct;
 
   const unsigned char *exclusions[MAX_EXCLUSIONS];
   unsigned int exclusion_count;
@@ -138,9 +137,10 @@ struct zsv_select_data {
   unsigned char prepend_line_number:1;
 
   unsigned char any_clean:1;
-  unsigned char _:7;
+#define ZSV_SELECT_DISTINCT_MERGE 2
+  unsigned char distinct:2; // 1 = ignore subsequent cols, ZSV_SELECT_DISTINCT_MERGE = merge subsequent cols (first non-null value)
+  unsigned char _:5;
 };
-
 
 enum zsv_select_column_index_selection_type {
   zsv_select_column_index_selection_type_none = 0,
@@ -175,13 +175,13 @@ static inline char zsv_select_excluded_current_header_name(struct zsv_select_dat
   return 0;
 }
 
-static char zsv_select_already_have_header(struct zsv_select_data *data, unsigned in_ix) {
-  unsigned char *header_name = zsv_select_get_header_name(data, in_ix);
+// zsv_select_find_header(): return 1-based index, or 0 if not found
+static int zsv_select_find_header(struct zsv_select_data *data, const unsigned char *header_name) {
   if(header_name) {
     for(unsigned int i = 0; i < data->output_cols_count; i++) {
-      unsigned char *prior_header_name = zsv_select_get_header_name(data, data->out2in[i]);
+      unsigned char *prior_header_name = zsv_select_get_header_name(data, data->out2in[i].ix);
       if(prior_header_name && !zsv_stricmp(header_name, prior_header_name))
-        return 1;
+        return i + 1;
     }
   }
   return 0;
@@ -189,11 +189,32 @@ static char zsv_select_already_have_header(struct zsv_select_data *data, unsigne
 
 static void zsv_select_add_output_col(struct zsv_select_data *data, unsigned in_ix) {
   if(data->output_cols_count < data->opts.max_columns) {
-    if(data->distinct && zsv_select_already_have_header(data, in_ix))
+    int found = zsv_select_find_header(data, zsv_select_get_header_name(data, in_ix));
+    if(data->distinct && found) {
+      if(data->distinct == ZSV_SELECT_DISTINCT_MERGE) {
+        // add this index
+        data->out2in[found-1].merge.count++;
+        data->out2in[found-1].merge.indexes = realloc(data->out2in[found-1].merge.indexes,
+                                                      data->out2in[found-1].merge.count * sizeof(*data->out2in[found-1].merge.indexes));
+        data->out2in[found-1].merge.indexes[data->out2in[found-1].merge.count-1] = in_ix;
+      }
       return;
+    }
     if(zsv_select_excluded_current_header_name(data, in_ix))
       return;
-    data->out2in[data->output_cols_count++] = in_ix;
+
+#define ZSV_SELECT_OUT2IN_BLOCK_SIZE 512
+    if(data->output_cols_count % ZSV_SELECT_OUT2IN_BLOCK_SIZE == 0) {
+      size_t blocks = data->output_cols_count/ZSV_SELECT_OUT2IN_BLOCK_SIZE+1;
+      void *tmp = realloc(data->out2in, blocks*ZSV_SELECT_OUT2IN_BLOCK_SIZE*sizeof(*data->out2in));
+      if(tmp)
+        data->out2in = tmp;
+      else {
+        fprintf(stderr, "Out of memory!\n");
+        return;
+      }
+    }
+    data->out2in[data->output_cols_count++].ix = in_ix;
   }
 }
 
@@ -415,9 +436,19 @@ static void zsv_select_output_data_row(struct zsv_select_data *data) {
 
   /* print data row */
   for(unsigned int i = 0; i < cnt; i++) {
-    unsigned int in_ix = data->out2in[i];
+    unsigned int in_ix = data->out2in[i].ix;
     struct zsv_cell cell = zsv_get_cell(data->parser, in_ix);
     cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
+    if(VERY_UNLIKELY(data->distinct)) {
+      if(UNLIKELY(cell.len == 0)) {
+        for(int j = 0; j < data->out2in[i].merge.count; j++) {
+          cell = zsv_get_cell(data->parser, data->out2in[i].merge.indexes[j]);
+          cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
+          if(cell.len)
+            break;
+        }
+      }
+    }
     zsv_writer_cell(data->csv_writer, first, cell.str, cell.len, cell.quoted);
     first = 0;
   }
@@ -464,7 +495,7 @@ static void zsv_select_print_header_row(struct zsv_select_data *data) {
   if(data->prepend_line_number)
     zsv_writer_cell_s(data->csv_writer, 1, (const unsigned char *)"#", 0);
   for(unsigned int i = 0; i < data->output_cols_count; i++) {
-    unsigned char *header_name = zsv_select_get_header_name(data, data->out2in[i]);
+    unsigned char *header_name = zsv_select_get_header_name(data, data->out2in[i].ix);
     zsv_writer_cell_s(data->csv_writer, i == 0 && !data->prepend_line_number, header_name, 1);
   }
 }
@@ -547,6 +578,7 @@ const char *zsv_select_usage_msg[] =
    "  --sample-pct   <percentage>: output a randomly-selected sample (32 bits of randomness) of n percent of the input rows",
    "  -d, --header-row-span <n>: apply header depth (rowspan) of n",
    "  --distinct: skip subsequent occurrences of columns with the same name",
+   "  --merge: merge subsequent occurrences of columns with the same name, outputting first non-null value",
    // --rename: like distinct, but instead of removing cols with dupe names, renames them, trying _<n> for n up to max cols
    "  -R, --skip-head <n>: skip specified number of rows",
    "  -D, --skip-data <n>: skip the specified number of data rows",
@@ -587,6 +619,10 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
 
   zsv_select_search_str_delete(data->search_strings);
 
+  if(data->distinct == ZSV_SELECT_DISTINCT_MERGE) {
+    for(int i = 0; i < data->output_cols_count; i++)
+      free(data->out2in[i].merge.indexes);
+  }
   free(data->out2in);
 
   for(unsigned int i = 0; i < data->header_name_count; i++)
@@ -652,6 +688,8 @@ int MAIN(int argc, const char *argv[]) {
         }
       } else if(!strcmp(argv[arg_i], "--distinct"))
         data.distinct = 1;
+      else if(!strcmp(argv[arg_i], "--merge"))
+        data.distinct = ZSV_SELECT_DISTINCT_MERGE;
       else if(!strcmp(argv[arg_i], "-o") || !strcmp(argv[arg_i], "--output")) {
         if(++arg_i >= argc)
           err = zsv_printerr(1, "%s option requires parameter", argv[arg_i-1]);
@@ -782,9 +820,8 @@ int MAIN(int argc, const char *argv[]) {
       }
 
       data.header_names = calloc(data.opts.max_columns, sizeof(*data.header_names));
-      data.out2in = calloc(data.opts.max_columns, sizeof(*data.out2in));
       data.csv_writer = zsv_writer_new(&writer_opts);
-      if(data.header_names && data.out2in && data.csv_writer) {
+      if(data.header_names && data.csv_writer) {
         data.opts.row = zsv_select_header_row;
         data.opts.ctx = &data;
         data.opts.insert_header_row = insert_header_row;
