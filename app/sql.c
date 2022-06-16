@@ -186,7 +186,6 @@ int MAIN(int argc, const char *argv[]) {
           my_sql = arg;
         else {
           struct stat st;
-          off_t size;
           if(stat(arg+1, &st) == 0 && st.st_size > 0) {
             FILE *f = fopen(arg+1, "rb");
             if(f) {

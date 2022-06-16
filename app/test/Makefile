@@ -119,7 +119,12 @@ test-count-2: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR}/test/buffsplit_q
 	@for x in 5000 5002 5004 5006 5008 5010 5013 5015 5017 5019 5021 5101 5105 5111 5113 5115 5117 5119 5121 5123 5125 5127 5129 5131 5211 5213 5215 5217 5311 5313 5315 5317 5413 5431 5433 5455 6133 ; do $< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv ; done > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select: test-select-n test-select-6 test-select-7 test-select-8 test-select-9 test-select-quotebuff test-select-fixed-1
+test-select: test-select-n test-select-6 test-select-7 test-select-8 test-select-9 test-select-quotebuff test-select-fixed-1 test-select-merge
+
+test-select-merge: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_NAME}
+	@${PREFIX} $< --merge ${TEST_DATA_DIR}/test/select-merge.csv ${REDIRECT} ${TMP_DIR}/test-select-merge.out
+	@${CMP} ${TMP_DIR}/test-select-merge.out expected/test-select-merge.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-select-quotebuff: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_NAME}
@@ -198,11 +203,10 @@ test-sql2: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${PREFIX} $< '@'${TMP_DIR}/$@.sql ${TEST_DATA_DIR}/test/sql.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/test-sql.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-sql2: ${BUILD_DIR}/bin/zsv_sql${EXE}
+test-sql3: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_NAME}
-	@echo ${ARGS-sql} > ${TMP_DIR}/$@.sql
-	@${PREFIX} $< '@'${TMP_DIR}/$@.sql ${TEST_DATA_DIR}/test/sql.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
-	${CMP} ${TMP_DIR}/$@.out expected/test-sql.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --join-indexes 8 ${TEST_DATA_DIR}/test/sql.csv ${TEST_DATA_DIR}/test/sql.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 
 ${BUILD_DIR}/bin/zsv_%${EXE}:
