@@ -95,7 +95,10 @@ CLI:
 	@echo "Testing CLI..."
 	@make CLI1=1 test -n | sed 's/\/.*\/bin\/zsv_/zsv /g' | sh
 
-test: ${TESTS}
+test: ${TMP_DIR} ${TESTS}
+
+${TMP_DIR}:
+	@mkdir -p ${TMP_DIR}
 
 .PHONY: help test test-% test-stack clean
 

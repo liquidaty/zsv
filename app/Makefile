@@ -149,7 +149,6 @@ TARGETS=$(addprefix ${STANDALONE_PFX},$(addsuffix ${EXE},${SOURCES})) ${CLI}
 
 BUILDS=$(addprefix build-,${SOURCES})
 CLEANS=$(addprefix clean-,${SOURCES})
-TESTS=$(addprefix test-,${SOURCES})
 
 ## cli
 VERSION = $(shell git describe --always --dirty 2>/dev/null || echo "v0.0-zsv")
@@ -342,9 +341,7 @@ ${YAJL_HELPER_OBJ}: external/yajl_helper/yajl_helper.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${BASEDIR}/yajl_helper ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -c $< -o $@
 
-test: ${TESTS}
-
-test-%:
+test:
 	@${MAKE} -C test $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 clean: clean-obj
