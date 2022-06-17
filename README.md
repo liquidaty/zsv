@@ -1,4 +1,4 @@
-# zsv+lib: the world's fastest CSV parser, with an extensible CLI
+# zsv+lib: the world's fastest (simd) CSV parser, with an extensible CLI
 
 [![ci](https://github.com/liquidaty/zsv/actions/workflows/ci.yml/badge.svg)](https://github.com/liquidaty/zsv/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/liquidaty/zsv/blob/master/LICENSE)
