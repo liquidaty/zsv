@@ -95,7 +95,7 @@ NO_UTF8_CHECK=1
 ZSV_OBJ=${BUILD_DIR}/objs/zsv.o
 LIBZSV_A=libzsv.a
 LIBZSV=${BUILD_DIR}/lib/${LIBZSV_A}
-LIBZSV_INSTALL=${PREFIX}/lib/${LIBZSV_A}
+LIBZSV_INSTALL=${LIBDIR}/${LIBZSV_A}
 
 ZSV_OBJ_OPTS=
 ifeq ($(NO_UTF8_CHECK),1)
@@ -122,7 +122,7 @@ endif
 # CFLAGS+= -Dfwrite=zsv_fwrite_clock -Dfflush=zsv_fflush_clock -Dfread=zsv_fread_clock
 
 help:
-	@echo "${MAKE} [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VECTOR_SIZE=128|256|NONE] [VERBOSE=1]"
+	@echo "${MAKE} [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VECTOR_SIZE=128|256|NONE] [VERBOSE=1] [LIBDIR=${LIBDIR}] [INCLUDEDIR=${INCLUDEDIR}]"
 
 lib: ${LIBZSV}
 
@@ -137,19 +137,19 @@ ${LIBZSV}: ${ZSV_OBJ}
 
 
 install: ${LIBZSV_INSTALL}
-	@mkdir -p  $(PREFIX)/include
-	@cp -pR ../include/* $(PREFIX)/include
-	@echo "include files copied to $(PREFIX)/include"
+	@mkdir -p  $(INCLUDEDIR)
+	@cp -pR ../include/* $(INCLUDEDIR)
+	@echo "include files copied to $(INCLUDEDIR)"
 
 
 ${LIBZSV_INSTALL}: ${LIBZSV}
 	@mkdir -p `dirname "$@"`
-	@cp -p ${LIBZSV} ${PREFIX}/lib
+	@cp -p ${LIBZSV} "$@"
 	@echo "libzsv installed to $@"
 
 uninstall:
-	@rm -rf ${PREFIX}/include/zsv*
-	 rm  -f ${PREFIX}/lib/libzsv*
+	@rm -rf ${INCLUDEDIR}/zsv*
+	 rm  -f ${LIBDIR}/libzsv*
 
 clean:
 	rm -rf ${BUILD_DIR}/objs ${LIBZSV}
