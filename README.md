@@ -3,6 +3,7 @@
 [![ci](https://github.com/liquidaty/zsv/actions/workflows/ci.yml/badge.svg)](https://github.com/liquidaty/zsv/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/liquidaty/zsv/blob/master/LICENSE)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/liquidaty/zsv?style=flat-square)
+![GitHub all releases](https://img.shields.io/github/downloads/liquidaty/zsv/total?style=flat-square)
 
 zsv+lib is a fast CSV parser library and extensible command-line utility.
 It achieves high performance using SIMD operations,
@@ -78,6 +79,15 @@ You can also download pre-built binaries and packages from
 [Actions](https://github.com/liquidaty/zsv/actions) for the latest commits and
 PRs but these are retained only for limited days.
 
+#### macOS
+
+```shell
+brew tap liquidaty/zsv
+brew install zsv
+```
+
+#### Linux
+
 For Linux (Debian/Ubuntu - `*.deb`):
 
 ```shell
@@ -97,6 +107,8 @@ sudo yum install ./zsv-amd64-linux-gcc.rpm
 # Uninstall
 sudo yum remove zsv
 ```
+
+#### Windows
 
 For Windows (`*.nupkg`), install with `nuget.exe`:
 
