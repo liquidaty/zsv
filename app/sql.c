@@ -40,12 +40,11 @@ const char *zsv_sql_usage_msg[] =
 #else
    "Usage: " APPNAME " [filename, or - for stdin] [filename ...] <sql | @file.sql>",
 #endif
-   "  e.g. " APPNAME " myfile.csv 'select * from data'",
-   "  e.g. " APPNAME " myfile.csv myfile2.csv 'select * from data inner join data2'",
+   "  e.g. " APPNAME " myfile.csv \"select * from data\"",
+   "  e.g. " APPNAME " myfile.csv myfile2.csv \"select * from data inner join data2\"",
    "",
    "Loads your CSV file into a table named 'data', then runs your sql, which must start with 'select '.",
    "If multiple files are specified, tables will be named data, data2, data3, ...",
-   "To",
    "",
    "Options:",
    "  --join-indexes <n1...>: specify one or more column names to join multiple files by",

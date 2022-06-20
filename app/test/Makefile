@@ -93,7 +93,7 @@ clean:
 
 CLI:
 	@echo "Testing CLI..."
-	@make CLI1=1 test -n | sed 's/\/.*\/bin\/zsv_/zsv /g' | sh
+	@make CLI1=1 test -n | sed 's/\/[^ ]*\/bin\/zsv_/zsv /g' | sh
 
 test: ${TMP_DIR} ${TESTS}
 
