@@ -703,7 +703,7 @@ int MAIN(int argc, const char *argv[]) {
       else if(!strcmp(argv[arg_i], "-o") || !strcmp(argv[arg_i], "--output")) {
         if(++arg_i >= argc)
           err = zsv_printerr(1, "%s option requires parameter", argv[arg_i-1]);
-        else if(writer_opts.stream)
+        else if(writer_opts.stream && writer_opts.stream != stdout)
           err = zsv_printerr(1, "Output file specified more than once");
         else if(!(writer_opts.stream = fopen(argv[arg_i], "wb")))
           err = zsv_printerr(1, "Unable to open for writing: %s", argv[arg_i]);

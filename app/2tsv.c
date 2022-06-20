@@ -169,7 +169,7 @@ int MAIN(int argc, const char *argv[]) {
     } else if(!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if(++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;
-      else if(data.out.stream)
+      else if(data.out.stream && data.out.stream != stdout)
         fprintf(stderr, "Output file specified more than once\n"), err = 1;
       else if(!(data.out.stream = fopen(argv[i], "wb")))
         fprintf(stderr, "Unable to open for writing: %s\n", argv[i]), err = 1;
