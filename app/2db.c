@@ -734,7 +734,7 @@ int MAIN(int argc, const char *argv[]) {
     } else if(!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if(++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;
-      else if(opts.db_fn)
+      else if(opts.db_fn && opts.db_fn != stdout)
         fprintf(stderr, "Output file specified more than once (%s and %s)\n",
                 opts.db_fn, argv[i]), err = 1;
       else
