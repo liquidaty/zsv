@@ -1,9 +1,10 @@
 # zsv+lib: the world's fastest (simd) CSV parser, with an extensible CLI
 
 [![ci](https://github.com/liquidaty/zsv/actions/workflows/ci.yml/badge.svg)](https://github.com/liquidaty/zsv/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/liquidaty/zsv/blob/master/LICENSE)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/liquidaty/zsv?style=flat-square)
-![GitHub all releases](https://img.shields.io/github/downloads/liquidaty/zsv/total?style=flat-square)
+![GitHub pre-release)](https://img.shields.io/github/v/release/liquidaty/zsv?include_prereleases&label=pre-release&logo=github&style=flat-square)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/liquidaty/zsv?logo=github&style=flat-square)
+![GitHub all releases (downloads)](https://img.shields.io/github/downloads/liquidaty/zsv/total?logo=github&style=flat-square)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/liquidaty/zsv/blob/master/LICENSE)
 
 zsv+lib is a fast CSV parser library and extensible command-line utility.
 It achieves high performance using SIMD operations,
@@ -252,8 +253,9 @@ helping, please post an issue.
 
 ## Contribute
 
-* Fork the project.
-* Check out the latest `main` branch.
+* [Fork](https://github.com/liquidaty/zsv/fork) the project.
+* Check out the latest [`main`](https://github.com/liquidaty/zsv/tree/main)
+  branch.
 * Create a feature or bugfix branch from `main`.
 * Commit and push your changes.
 * Submit the PR.
