@@ -20,6 +20,11 @@
 #include "zsv_internal.c"
 
 ZSV_EXPORT
+const char *zsv_lib_version() {
+  return VERSION;
+}
+
+ZSV_EXPORT
 enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   if(scanner->insert_string) {
     size_t len = strlen(scanner->insert_string);
