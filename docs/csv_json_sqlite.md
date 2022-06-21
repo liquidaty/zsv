@@ -2,17 +2,16 @@
 
 Summary:
 
-- Yes, CSV sucks. But it, and its xxx-delimited brethren, are still around a
-  lot, and let's face it, delimited format does have certain advantages (such as
-  being at least somewhat readable directly by human eyes), which is probably
-  why they've been around so long
+- [`zsv`](../README.md) provides high-performance conversion between CSV (or similar), JSON and sqlite3
 - sqlite3 is the most widely deployed database engine in the world
-- JSON is useful as an intermediate format between CSV and sqlite3 because it is
-  more API-friendly than CSV, is more git- and diff-friendly than the binary
-  sqlite3 format, can be used to hold both metadata as well as data, and can be
-  devised for performant stream-based consumption
-- the same could be said of other binary table formats (parquet etc), though
-  that is out of scope for the discussion here
+- JSON is useful as an intermediate format between CSV and sqlite3:
+  - more API-friendly than CSV
+  - more git- and diff-friendly than binary formats (like sqlite3)
+  - can hold metadata as well as data
+  - with an appropriate schema, can be efficiently processed as a stream
+- Many common approaches to converting CSV or sqlite3 to JSON use a JSON Schema
+  with unnecessarily limits to utility, extensibility and/or performance efficiency.
+  With a few tweaks to the target schema, however, you can have your cake and eat it
 
 ## Background
 
@@ -59,6 +58,10 @@ when converting between JSON and sqlite3 formats, using the
 and [sqlite3](https://www.sqlite.org) libraries.
 
 ### CSV to JSON
+
+There are multiple JSON Schemas that can be used to represent CSV data. The most common
+ones, however, have significant drawbacks. `zsv` supports conversion to common / limited
+formats as well as more versatile schemas described below.
 
 #### The common (and not very useful) way
 
@@ -267,7 +270,5 @@ breaking change in order to leverage for extended purposes
 
 ### Can you extend the `zsv 2db` command and/or related JSON schema to support the sqlite3 feature XYZ
 
-For standard sqlite3 features, the answer is generally yes!
-
-Please [open an issue](https://github.com/liquidaty/zsv/issues/new/choose) with
+If it's supported in the sqlite3 library, the answer is generally yes. Please [open an issue](https://github.com/liquidaty/zsv/issues/new/choose) with
 your request.
