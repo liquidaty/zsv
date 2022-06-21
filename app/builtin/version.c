@@ -9,7 +9,6 @@
 static int main_version(int argc, const char *argv[]) {
   (void)(argc);
   (void)(argv);
-  printf("zsv version %s\n", VERSION);
-
+  printf("zsv version %s (lib %s)\n", VERSION, zsv_lib_version());
   return 0;
 }

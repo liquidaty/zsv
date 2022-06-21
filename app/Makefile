@@ -152,7 +152,7 @@ CLEANS=$(addprefix clean-,${SOURCES})
 TESTS=$(addprefix test-,${SOURCES})
 
 ## cli
-VERSION = $(shell git describe --always --dirty 2>/dev/null || echo "v0.0-zsv")
+VERSION= $(shell (git describe --always --dirty --tags 2>/dev/null || echo "v0.0-zsv") | sed 's/^v//')
 CLI_OBJ_PFX=${BUILD_DIR}/objs/cli_
 CLI_APP_OBJECT=${CLI_OBJ_PFX}cli.o
 CLI=${BUILD_DIR}/bin/cli${EXE}
