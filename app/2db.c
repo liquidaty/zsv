@@ -233,7 +233,7 @@ static sqlite3_str *build_create_table_statement(sqlite3 *db, const char *tname,
                                                  ) {
   int err = 0;
   sqlite3_str *pStr = sqlite3_str_new(db);
-  sqlite3_str_appendf(pStr, "CREATE TABLE %s (\n  ", tname ? tname : ZSV_2DB_DEFAULT_TABLE_NAME);
+  sqlite3_str_appendf(pStr, "CREATE TABLE \"%w\" (\n  ", tname ? tname : ZSV_2DB_DEFAULT_TABLE_NAME);
   for(unsigned int i = 0; i < col_count; i++) {
     if(i > 0)
       sqlite3_str_appendf(pStr, ",\n  ");
