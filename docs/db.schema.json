@@ -50,6 +50,7 @@
                       "examples": ["My Column 1", "lower([My Column 2])"]
                     }
                   }
+                ]
               },
               "unique": { "type": "boolean" }
             }
