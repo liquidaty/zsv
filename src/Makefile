@@ -34,7 +34,7 @@ ifeq ($(VERBOSE),1)
   CFLAGS+= ${CFLAGS_VECTORIZE_OPTIMIZED} ${CFLAGS_VECTORIZE_MISSED} ${CFLAGS_VECTORIZE_ALL}
 endif
 
-VERSION= $(shell (git describe --always --dirty --tags 2>/dev/null || echo "v0.0-zsv") | sed 's/^v//')
+VERSION= $(shell (git describe --always --dirty --tags 2>/dev/null || echo "v0.0.0-zsv") | sed 's/^v//')
 
 ZSV_EXTRAS ?=
 ifneq ($(findstring emcc,$(CC)),) # emcc
