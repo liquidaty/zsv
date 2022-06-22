@@ -1,3 +1,8 @@
+/*
+ * Excerpted from https://sqlite.org/src/doc/tip/ext/misc/csv.c
+ */
+
+
 /* Skip leading whitespace.  Return a pointer to the first non-whitespace
 ** character, or to the zero terminator if the string has only whitespace */
 static const char *csv_skip_whitespace(const char *z){
