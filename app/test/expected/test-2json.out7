@@ -1,6 +1,15 @@
 [
   {
     "name": "data",
+    "indexes": {
+      "country_ix": {
+        "on": "country"
+      },
+      "ux": {
+        "on": "[#]",
+        "unique": true
+      }
+    },
     "columns": [
       {
         "name": "#"
@@ -26,16 +35,7 @@
       {
         "name": "Longitude"
       }
-    ],
-    "indexes": {
-      "data_ix_0": {
-        "on": "country"
-      },
-      "data_ix_1": {
-        "unique": true,
-        "on": "[#]"
-      }
-    }
+    ]
   },
   [
     [

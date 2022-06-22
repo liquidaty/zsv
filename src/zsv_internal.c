@@ -228,7 +228,7 @@ typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (VECTOR_BYTES)))
 */
 static inline unsigned int movemask_pseudo(zsv_uc_vector v) {
   unsigned int mask = 0, tmp = 1;
-  for(int i = 0; i < sizeof(zsv_uc_vector); i++) {
+  for(unsigned int i = 0; i < sizeof(zsv_uc_vector); i++) {
     mask += (v[i] ? tmp : 0);
     tmp <<= 1;
   }

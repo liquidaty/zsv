@@ -2,6 +2,22 @@
 #include <string.h>
 #include <sqlite3.h>
 #include <jsonwriter.h>
+#include <zsv/utils/string.h>
+
+// starts_w_str_underscore(): helper function
+// returns 1 if s starts with prefix (case-insensitive), followed by underscore
+static char starts_w_str_underscore(const unsigned char *s, size_t s_len,
+                                    const unsigned char *prefix) {
+  char result = 0;
+  unsigned char *s_lc = zsv_strtolowercase(s, &s_len);
+  size_t pfx_len = strlen(prefix);
+  unsigned char *prefix_lc = zsv_strtolowercase(prefix, &pfx_len);
+  if(pfx_len + 1 < s_len && !memcmp(s_lc, prefix_lc, pfx_len) && s_lc[pfx_len] == '_')
+    result = 1;
+  free(s_lc);
+  free(prefix_lc);
+  return result;
+}
 
 int zsv_dbtable2json(sqlite3 *db, const char *tname, jsonwriter_handle jsw) {
   int err = 0;
@@ -33,7 +49,55 @@ int zsv_dbtable2json(sqlite3 *db, const char *tname, jsonwriter_handle jsw) {
 
       jsonwriter_object_cstr(jsw, "name", tname);
 
-      jsonwriter_object_array(jsw, "columns"); // columns
+      // indexes
+      jsonwriter_object_object(jsw, "indexes"); // indexes
+      sqlite3_bind_text(index_stmt, 1, tname, (int)strlen(tname), SQLITE_STATIC);
+      while(sqlite3_step(index_stmt) == SQLITE_ROW) {
+        const unsigned char *text = sqlite3_column_text(index_stmt, 0);
+        const unsigned char *ix_sql = sqlite3_column_text(index_stmt, 1);
+        size_t len = text ? sqlite3_column_bytes(index_stmt, 0) : 0;
+        size_t ix_sql_len = ix_sql ? sqlite3_column_bytes(index_stmt, 1) : 0;
+
+        if(text && ix_sql && len && ix_sql_len) {
+          // on: for now we just look for the first and last parens
+          const unsigned char *first_paren = memchr(ix_sql, '(', ix_sql_len);
+          const unsigned char *last_paren = ix_sql + ix_sql_len;
+          while(first_paren && last_paren > first_paren + 1 && *last_paren != ')')
+            last_paren--;
+          if(first_paren && last_paren > first_paren) {
+            // name
+
+            // strip the leading "tablename_" from the index name
+            const char *ix_name = (const char *)text;
+            size_t ix_name_len = len;
+            if(ix_name_len > strlen(tname) + 1 && starts_w_str_underscore(ix_name, ix_name_len, tname)) {
+              ix_name += strlen(tname) + 1;
+              ix_name_len -= strlen(tname) + 1;
+            }
+            jsonwriter_object_keyn(jsw, (const char *)ix_name, ix_name_len);
+
+            // ix obj
+            jsonwriter_start_object(jsw);
+
+            // on
+            jsonwriter_object_strn(jsw, "on", first_paren + 1, last_paren - first_paren - 1);
+
+            // unique
+            sqlite3_bind_text(unique_stmt, 1, tname, (int)strlen(tname), SQLITE_STATIC);
+            sqlite3_bind_text(unique_stmt, 2, (const char *)text, len, SQLITE_STATIC);
+            if(sqlite3_step(unique_stmt) == SQLITE_ROW)
+              jsonwriter_object_bool(jsw, "unique", 1);
+            sqlite3_reset(unique_stmt);
+
+            // end ix obj
+            jsonwriter_end_object(jsw);
+          }
+        }
+      }
+      jsonwriter_end_object(jsw); // end indexes
+
+      // columns
+      jsonwriter_object_array(jsw, "columns");
       for(int i = 0; i < colcount; i++) {
         const char *colname = sqlite3_column_name(data_stmt, i);
         jsonwriter_start_object(jsw);
@@ -46,46 +110,6 @@ int zsv_dbtable2json(sqlite3 *db, const char *tname, jsonwriter_handle jsw) {
         jsonwriter_end_object(jsw);
       }
       jsonwriter_end_array(jsw); // end columns
-
-      // indexes
-      jsonwriter_object_object(jsw, "indexes"); // indexes
-      sqlite3_bind_text(index_stmt, 1, tname, (int)strlen(tname), SQLITE_STATIC);
-      while(sqlite3_step(index_stmt) == SQLITE_ROW) {
-        const unsigned char *text = sqlite3_column_text(index_stmt, 0);
-        const unsigned char *ix_sql = sqlite3_column_text(index_stmt, 1);
-        size_t len = text ? sqlite3_column_bytes(index_stmt, 0) : 0;
-        size_t ix_sql_len = ix_sql ? sqlite3_column_bytes(index_stmt, 1) : 0;
-
-
-        if(text && ix_sql && len && ix_sql_len) {
-          // on: for now we just look for the first and last parens
-          const unsigned char *first_paren = memchr(ix_sql, '(', ix_sql_len);
-          const unsigned char *last_paren = ix_sql + ix_sql_len;
-          while(first_paren && last_paren > first_paren + 1 && *last_paren != ')')
-            last_paren--;
-          if(first_paren && last_paren > first_paren) {
-            // name
-            jsonwriter_object_keyn(jsw, (const char *)text, len);
-
-            // ix obj
-            jsonwriter_start_object(jsw);
-
-            // unique
-            sqlite3_bind_text(unique_stmt, 1, tname, (int)strlen(tname), SQLITE_STATIC);
-            sqlite3_bind_text(unique_stmt, 2, (const char *)text, len, SQLITE_STATIC);
-            if(sqlite3_step(unique_stmt) == SQLITE_ROW)
-              jsonwriter_object_bool(jsw, "unique", 1);
-            sqlite3_reset(unique_stmt);
-
-            // on
-            jsonwriter_object_strn(jsw, "on", first_paren + 1, last_paren - first_paren - 1);
-
-            // end ix obj
-            jsonwriter_end_object(jsw);
-          }
-        }
-      }
-      jsonwriter_end_object(jsw); // end indexes
 
       jsonwriter_end_object(jsw); // end meta obj
 
