@@ -25,6 +25,8 @@
 
 #include <yajl_helper.h>
 
+#define ZSV_2DB_DEFAULT_TABLE_NAME "mytable"
+
 enum zsv_2db_action {
   zsv_2db_action_create = 1,
   zsv_2db_action_append,
@@ -197,10 +199,10 @@ static int zsv_2db_add_indexes(struct zsv_2db_data *data) {
   int err = 0;
   for(struct zsv_2db_ix *ix = data->json_parser.indexes; !err && ix; ix = ix->next) {
     sqlite3_str *pStr = sqlite3_str_new(data->db);
-    sqlite3_str_appendf(pStr, "create%s index \"%w_ix_%lli\" on \"%w\"(%s)",
+    sqlite3_str_appendf(pStr, "create%s index \"%w_%w\" on \"%w\"(%s)",
                         ix->unique ? " unique" : "",
                         data->opts.table_name,
-                        data->json_parser.index_sequence_num_max,
+                        ix->name,
                         data->opts.table_name,
                         ix->on);
     err = zsv_2db_sqlite3_exec_2db(data->db, sqlite3_str_value(pStr));
@@ -231,7 +233,7 @@ static sqlite3_str *build_create_table_statement(sqlite3 *db, const char *tname,
                                                  ) {
   int err = 0;
   sqlite3_str *pStr = sqlite3_str_new(db);
-  sqlite3_str_appendf(pStr, "CREATE TABLE %s (\n  ", tname);
+  sqlite3_str_appendf(pStr, "CREATE TABLE \"%w\" (\n  ", tname ? tname : ZSV_2DB_DEFAULT_TABLE_NAME);
   for(unsigned int i = 0; i < col_count; i++) {
     if(i > 0)
       sqlite3_str_appendf(pStr, ",\n  ");
@@ -519,60 +521,61 @@ static int json_end_array(struct yajl_helper_parse_state *st) {
 
 static int json_process_value(struct yajl_helper_parse_state *st,
                               struct json_value *value) {
+  const unsigned char *jsstr;
+  size_t len;
   struct zsv_2db_data *data = yajl_helper_data(st);
   if(data->json_parser.state == zsv_2db_state_data) {
     if(yajl_helper_got_path(st, 3, "[[[")) {
-      const unsigned char *src;
-      size_t len;
-      json_value_default_string(value, &src, &len);
-      if(src && len) {
+      json_value_default_string(value, &jsstr, &len);
+      if(jsstr && len) {
         unsigned int j = yajl_helper_array_index_plus_1(st, 0);
         if(j && j-1 < data->json_parser.col_count) {
-          data->json_parser.row_values[j-1] = zsv_memdup(src, len);
+          data->json_parser.row_values[j-1] = zsv_memdup(jsstr, len);
           data->json_parser.have_row_data = 1;
         }
       }
     }
+  } else if(yajl_helper_got_path(st, 2, "[{name")) {
+    json_value_default_string(value, &jsstr, &len);
+    if(len) {
+      if(data->opts.table_name)
+        fprintf(stderr, "Table name specified twice; keeping %s, ignoring %.*s\n",
+                data->opts.table_name, len, jsstr);
+      else
+        data->opts.table_name = zsv_memdup(jsstr, len);
+    }
   } else if(yajl_helper_got_path(st, 4, "[{columns[{name")) {
     free(data->json_parser.current_column.name);
     data->json_parser.current_column.name = NULL;
-    const unsigned char *src;
-    size_t len;
-    json_value_default_string(value, &src, &len);
-    if(src && len)
-      data->json_parser.current_column.name = zsv_memdup(src, len);
+    json_value_default_string(value, &jsstr, &len);
+    if(jsstr && len)
+      data->json_parser.current_column.name = zsv_memdup(jsstr, len);
   } else if(yajl_helper_got_path(st, 4, "[{columns[{datatype")) {
     free(data->json_parser.current_column.datatype);
     data->json_parser.current_column.datatype = NULL;
-    const unsigned char *src;
-    size_t len;
-    json_value_default_string(value, &src, &len);
-    if(src && len)
-      data->json_parser.current_column.datatype = zsv_memdup(src, len);
+    json_value_default_string(value, &jsstr, &len);
+    if(jsstr && len)
+      data->json_parser.current_column.datatype = zsv_memdup(jsstr, len);
   } else if(yajl_helper_got_path(st, 4, "[{columns[{collate")) {
     free(data->json_parser.current_column.collate);
     data->json_parser.current_column.collate = NULL;
-    const unsigned char *src;
-    size_t len;
-    json_value_default_string(value, &src, &len);
-    if(src && len)
-      data->json_parser.current_column.collate = zsv_memdup(src, len);
+    json_value_default_string(value, &jsstr, &len);
+    if(jsstr && len)
+      data->json_parser.current_column.collate = zsv_memdup(jsstr, len);
   } else if(yajl_helper_got_path(st, 4, "[{indexes{*{delete")) {
     data->json_parser.current_index.delete = json_value_truthy(value);
   } else if(yajl_helper_got_path(st, 4, "[{indexes{*{unique")) {
     data->json_parser.current_index.unique = json_value_truthy(value);
   } else if(yajl_helper_got_path(st, 4, "[{indexes{*{on")
             || yajl_helper_got_path(st, 5, "[{indexes{*{on[")) {
-    const unsigned char *src;
-    size_t len;
-    json_value_default_string(value, &src, &len);
+    json_value_default_string(value, &jsstr, &len);
     if(len) {
       if(yajl_helper_level(st) == 4 || !data->json_parser.current_index.on) {
         free(data->json_parser.current_index.on);
-        data->json_parser.current_index.on = zsv_memdup(src, len);
+        data->json_parser.current_index.on = zsv_memdup(jsstr, len);
       } else {
         char *defn;
-        asprintf(&defn, "%s,%.*s", data->json_parser.current_index.on, (int)len, src);
+        asprintf(&defn, "%s,%.*s", data->json_parser.current_index.on, (int)len, jsstr);
         free(data->json_parser.current_index.on);
         data->json_parser.current_index.on = defn;
       }
@@ -605,9 +608,10 @@ static zsv_2db_handle zsv_2db_new(struct zsv_2db_options *opts) {
   data->json_parser.last_column = &data->json_parser.columns;
   data->json_parser.last_index = &data->json_parser.indexes;
   data->json_parser.state = zsv_2db_state_header;
-  data->opts.table_name = strdup(opts->table_name ? opts->table_name : "mytable");
+  if(opts->table_name)
+    data->opts.table_name = strdup(opts->table_name);
   asprintf(&data->db_fn_tmp, "%s.tmp", data->opts.db_fn);
-  if(!data->db_fn_tmp || !data->opts.table_name)
+  if(!data->db_fn_tmp)
     err = 1;
   else {
     int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX;
@@ -734,7 +738,7 @@ int MAIN(int argc, const char *argv[]) {
     } else if(!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if(++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;
-      else if(opts.db_fn && opts.db_fn != stdout)
+      else if(opts.db_fn)
         fprintf(stderr, "Output file specified more than once (%s and %s)\n",
                 opts.db_fn, argv[i]), err = 1;
       else

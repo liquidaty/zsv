@@ -23,6 +23,8 @@ void zsv_set_default_opts(struct zsv_opts);
 
 struct zsv_opts zsv_get_default_opts();
 
+void zsv_clear_default_opts();
+
 #  ifdef ZSV_EXTRAS
 
 /**

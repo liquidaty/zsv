@@ -39,6 +39,8 @@ struct zsv_2json_data {
   struct zsv_2json_header *headers, *current_header;
   struct zsv_2json_header **headers_next;
 
+  char *db_tablename;
+
   unsigned char overflowed:1;
 #define ZSV_JSON_SCHEMA_OBJECT 1
 #define ZSV_JSON_SCHEMA_DATABASE 2
@@ -57,6 +59,7 @@ static void zsv_2json_cleanup(struct zsv_2json_data *data) {
       free(h->name);
     free(h);
   }
+  free(data->db_tablename);
 }
 
 static void write_header_cell(struct zsv_2json_data *data, const unsigned char *utf8_value, size_t len) {
@@ -139,6 +142,9 @@ static void zsv_2json_row(void *ctx) {
         jsonwriter_start_object(data->jsw); // start this row
         obj = 1;
 
+        if(data->db_tablename)
+          jsonwriter_object_cstr(data->jsw, "name", data->db_tablename);
+
         // to do: check index syntax (as of now, we just take argument value
         // as-is and assume it will translate into a valid SQLITE3 command)
         char have_index = 0;
@@ -156,6 +162,7 @@ static void zsv_2json_row(void *ctx) {
           const char *name_end = name_start;
           while(name_end && *name_end && *name_end != ' ')
             name_end++;
+
           if(name_end > name_start) {
             if(!have_index) {
               have_index = 1;
@@ -273,7 +280,6 @@ int MAIN(int argc, const char *argv[]) {
   FILE *out = NULL;
   int err = 0;
   const char *input_filename = NULL;
-  char *tname = NULL;
   struct zsv_opts opts = zsv_get_default_opts(); // leave up here so that below goto stmts do not cross initialization
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
@@ -303,9 +309,11 @@ int MAIN(int argc, const char *argv[]) {
       data.no_empty = 1;
     } else if(!strcmp(argv[i], "--db-table")) {
       if(++i >= argc)
-        fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;
+        fprintf(stderr, "%s option requires a table name value\n", argv[i-1]), err = 1;
+      else if(data.db_tablename)
+        fprintf(stderr, "%s option specified more than once\n", argv[i-1]), err = 1;
       else
-        tname = strdup(argv[i]);
+        data.db_tablename = strdup(argv[i]);
     } else if(!strcmp(argv[i], "--from-db")) {
       if(++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;
@@ -366,7 +374,7 @@ int MAIN(int argc, const char *argv[]) {
         fclose(f_in);
         f_in = NULL;
       }
-      err = zsv_db2json(input_filename, &tname, data.jsw);
+      err = zsv_db2json(input_filename, &data.db_tablename, data.jsw);
     } else {
       opts.row = zsv_2json_row;
       opts.ctx = &data;
@@ -389,7 +397,6 @@ int MAIN(int argc, const char *argv[]) {
     zsv_2json_cleanup(&data);
   }
 
-  free(tname);
   if(f_in && f_in != stdin)
     fclose(f_in);
   if(out && out != stdout)

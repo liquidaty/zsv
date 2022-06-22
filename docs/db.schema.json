@@ -31,13 +31,26 @@
         },
         "indexes": {
           "type": "object",
+          "required": ["on"],
           "description": "map of table indexes; property name is the index name",
           "additionalProperties": {
             "type": "object",
             "properties": {
               "on": {
-                "type": "string",
-                "examples": ["[My Column 1], lower([My Column 2])"]
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "examples": ["[My Column 1], lower([My Column 2])"]
+                  },
+                  {
+                    "description": "array of indexed expressions (not yet supported by `zsv 2db`)",
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "examples": ["My Column 1", "lower([My Column 2])"]
+                    }
+                  }
+                ]
               },
               "unique": { "type": "boolean" }
             }
