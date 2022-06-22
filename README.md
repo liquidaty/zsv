@@ -15,7 +15,7 @@ If you like zsv+lib, do not forget to give it a star! 🌟
 ## Performance
 
 Preliminary performance results compare favorably vs other CSV utilities (`xsv`,
-`tsv-utils`, `csvkit`, `mlr` (miller) etc). Below were results on a pre-M1 OSX
+`tsv-utils`, `csvkit`, `mlr` (miller) etc). Below were results on a pre-M1 macOS
 MBA; on most platforms zsvlib was 2x faster, though in some cases the advantage
 was as small as 20% (see also M1 update note below) (mlr not shown as it was
 about 25x slower):
@@ -46,7 +46,7 @@ that implements the expected
 * Handles real-world CSV the same way that spreadsheet programs do (*including
   edge cases*). Gracefully handles (and can "clean") real-world data that may be
   "dirty"
-* Runs on OSX (tested on clang/gcc), Linux (gcc), Windows (mingw),
+* Runs on macOS (tested on clang/gcc), Linux (gcc), Windows (mingw),
   BSD (gcc-only) and in-browser (emscripten/wasm)
 * Fast (maybe the fastest ever, at least on all platforms we've benchmarked where
   256 SIMD operations are available). See
@@ -69,11 +69,13 @@ that implements the expected
 
 zsv is available from a number of package managers (IN PROGRESS):
 
-* OSX: `brew install zsv`
+* macOS: 
+  * `brew install zsv`
+  * `sudo port install zsv`
 * Windows: `nuget install zsv`
 * Linux: `yum install zsv`
 
-Download pre-built binaries and packages for OSX, Windows, Linux and BSD from
+Download pre-built binaries and packages for macOS, Windows, Linux and BSD from
 the [Releases](https://github.com/liquidaty/zsv/releases) page.
 
 You can also download pre-built binaries and packages from
@@ -82,9 +84,17 @@ PRs but these are retained only for limited days.
 
 #### macOS
 
+...via Homebrew:
+
 ```shell
 brew tap liquidaty/zsv
 brew install zsv
+```
+
+...via MacPorts:
+
+```shell
+sudo port install zsv
 ```
 
 #### Linux
