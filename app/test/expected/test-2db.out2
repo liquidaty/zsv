@@ -7,5 +7,5 @@ CREATE TABLE data (
   "Population",
   "Latitude",
   "Longitude");
-CREATE INDEX "data_country_ix" on "data"(country);
-CREATE UNIQUE INDEX "data_ux" on "data"([#]);
+CREATE INDEX "data_country_ix" on data(country);
+CREATE UNIQUE INDEX "data_ux" on data([#]);
