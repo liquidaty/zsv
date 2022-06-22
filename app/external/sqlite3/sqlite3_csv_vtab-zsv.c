@@ -1,4 +1,11 @@
 /*
+ * This file has been modified from its original form, in order to use the ZSV csv parser
+ * The preamble / disclaimer to the original file is included below
+ * The modifications to this file are subject to the same license (MIT) as the ZSV parser
+ * as described at https://github.com/liquidaty/zsv/blob/main/LICENSE
+ */
+
+/*
 ** 2016-05-28
 **
 ** The author disclaims copyright to this source code.  In place of
@@ -11,7 +18,7 @@
 ******************************************************************************
 **
 ** This file contains the implementation of an SQLite virtual table for
-** reading CSV files, modified to use the ZSV csv parser
+** reading CSV files
 **
 ** Usage:
 **
