@@ -67,14 +67,6 @@ that implements the expected
 
 ### Packages
 
-zsv is available from a number of package managers (IN PROGRESS):
-
-* macOS: 
-  * `brew install zsv`
-  * `sudo port install zsv`
-* Windows: `nuget install zsv`
-* Linux: `yum install zsv`
-
 Download pre-built binaries and packages for macOS, Windows, Linux and BSD from
 the [Releases](https://github.com/liquidaty/zsv/releases) page.
 
