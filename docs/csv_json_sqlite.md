@@ -128,11 +128,18 @@ To support both table and column metadata, `zsv` uses a
 [database-friendly approach](db.schema.json) this supports table metadata
 (such as table name and indexes) through a tuple (ordered list)
 containing two elements (metadata followed by data).
-
-Future enhancements could support table-level validations/constraints and other
-features, and this approach could be merged with the aforementioned [row-based
+At the table level, this approach could also be merged with the aforementioned [row-based
 schema](csv.schema.json) to support row-level or cell-level metadata, to
 represent spreadsheet data such as cell-level formatting.
+
+The `zsv` conversion implementations as of this writing are limited; future improvements under consideration include:
+* automatic determination / suggestion of column data type
+* conversion/coercion of text to the specified data type for the corresponding column
+* load to other database back-end e.g. mssql or redshift
+
+Future enhancements to both the schema and the conversion implementation under consideration
+include support for other table-level features such as validations/constraints, other database object types
+such as views, and whole-database conversion.
 
 ```shell
 # Convert CSV to JSON
