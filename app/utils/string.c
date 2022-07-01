@@ -33,7 +33,7 @@ static unsigned char *utf8proc_tolower_str(const unsigned char *str, size_t *len
 
   // utf8proc_map_custom allocates new mem
   options = UTF8PROC_STRIPNA;
-  *len = (size_t) utf8proc_map_custom((const utf8proc_uint8_t *)str, *len, &output,
+  *len = (size_t) utf8proc_map_custom((const utf8proc_uint8_t *)str, (utf8proc_ssize_t)*len, &output,
                                       options, utf8proc_tolower1, NULL);
   return (unsigned char *)output;
 }
@@ -73,38 +73,45 @@ const unsigned char *zsv_strstr(const unsigned char *hay, const unsigned char *n
                                        (const char *)needle);
 }
 
-// zsv_stricmp(). to do: utf8 support
+/*
+ * zsv_stricmp, zsv_strincmp(): case-insensitive comparison
+ *
+ * @param s1     string to convert
+ * @param len1   length of s1
+ * @param s2     string to convert
+ * @param len2   length of s2
+ */
 int zsv_stricmp(const unsigned char *s1, const unsigned char *s2) {
-  while(1) {
-    char c1 = tolower(*s1);
-    char c2 = tolower(*s2);
-    if(c1 == c2) {
-      if(!c1)
-        return 0;
-      s1++, s2++;
-    } else
-      return c1 < c2 ? -1 : 1;
-  }
+  return zsv_strincmp(s1, strlen((const char *)s1), s2, strlen((const char *)s2));
 }
 
-// zsv_strincmp(). to do: utf8 support
 int zsv_strincmp(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2) {
-  // this is just a placeholder for demonstration purposes
-  // this function will NOT work properly on multi-byte utf8 chars, but will work fine on ascii
-  if(len1 != len2)
-    return len1 < len2 ? -1 : 1;
-
+#ifndef NO_UTF8PROC
+  unsigned char *lc1 = zsv_strtolowercase(s1, &len1);
+  unsigned char *lc2 = zsv_strtolowercase(s2, &len2);
+  int result;
+  if(VERY_UNLIKELY(!lc1 || !lc2))
+    fprintf(stderr, "Out of memory!\n"), result = -2;
+  else
+    result = strcmp((char *)lc1, (char *)lc2);
+  free(lc1);
+  free(lc2);
+  return result;
+#else
   while(len1) {
-    char c1 = tolower(*s1);
-    char c2 = tolower(*s2);
+    if(!*s1)
+      return *s2 == 0 ? 0 : -1;
+    if(!*s2)
+      return 1;
+    int c1 = tolower(*s1);
+    int c2 = tolower(*s2);
     if(c1 == c2) {
-      if(!c1)
-        return 0;
       s1++, s2++, len1--;
     } else
       return c1 < c2 ? -1 : 1;
   }
   return 0;
+#endif
 }
 
 // zsv_trim(): trim leading and trailing white space. to do: utf8 support
@@ -171,7 +178,7 @@ size_t zsv_strwhite(unsigned char *s, size_t len, unsigned int flags) {
 #endif // ndef NO_UTF8PROC
 
     if(this_is_space) {
-      if(UNLIKELY(s[i] == '\n' || s[i] == '\r') && !(flags & ZSV_STRWHITE_FLAG_NO_EMBEDDED_NEWLINE))
+      if(UNLIKELY((s[i] == '\n' || s[i] == '\r')) && !(flags & ZSV_STRWHITE_FLAG_NO_EMBEDDED_NEWLINE))
         replacement = '\n';
       else if(!last_was_space)
         replacement = ' ';

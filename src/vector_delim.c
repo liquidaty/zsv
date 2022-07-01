@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define clear_lowest_bit(n) (n & (n - 1)) // _blsr_u64(n) // seems to be same speed as x = x & (x - 1)
+#define clear_lowest_bit(n) (n & (n - 1)) // _blsr_u64(n) seems to be slower than (n & (n - 1))
 
 // vec_delims: return bitfield of next 32 bytes that contain at least 1 token
 static inline int vec_delims(const unsigned char *s, size_t n,

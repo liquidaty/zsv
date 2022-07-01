@@ -64,10 +64,9 @@ unsigned char *zsv_to_tsv(const unsigned char *utf8, size_t *len, enum zsv_2tsv_
   // replace tab, newline and lf with \t, \n or \r or backslash
   size_t do_convert = 0;
   for(size_t i = 0; i < *len; i++) {
-    if(VERY_UNLIKELY(utf8[i] == '\t') || VERY_UNLIKELY(utf8[i] == '\n') || VERY_UNLIKELY(utf8[i] == '\r') || VERY_UNLIKELY(utf8[i] == '\\'))
+    if(UNLIKELY(utf8[i] == '\t' || utf8[i] == '\n' || utf8[i] == '\r' || utf8[i] == '\\'))
       do_convert++;
   }
-
   if(LIKELY(do_convert == 0))
     return NULL;
 
@@ -90,20 +89,23 @@ unsigned char *zsv_to_tsv(const unsigned char *utf8, size_t *len, enum zsv_2tsv_
 }
 
 __attribute__((always_inline)) static inline
-void zsv_2tsv_cell(struct zsv_2tsv_data *data, unsigned char *utf8_value, size_t len, char no_escape) {
+void zsv_2tsv_cell(struct zsv_2tsv_data *data, unsigned char *utf8_value, size_t len,
+                   char no_newline_or_slash) {
   // output cell contents (converted if necessary)
   if(len) {
     enum zsv_2tsv_status err = zsv_2tsv_status_ok;
-    if(LIKELY(no_escape)) {
+    if(VERY_LIKELY(no_newline_or_slash && !memchr(utf8_value, '\t', len))) {
       zsv_2tsv_write(&data->out, utf8_value, len);
       return;
     }
+
+    // if we're here, there either definitely an embedded tab, or maybe an embedded \n or \r
     unsigned char *converted = zsv_to_tsv(utf8_value, &len, &err);
-    if(UNLIKELY(converted != NULL)) {
+    if(converted != NULL) {
       zsv_2tsv_write(&data->out, converted, len);
       free(converted);
-    } else if(VERY_UNLIKELY(err != zsv_2tsv_status_ok))
-      ; // handle out-of-memory error!
+    } else if(UNLIKELY(err))
+      fprintf(stderr, "Out of memory!\n");
     else
       zsv_2tsv_write(&data->out, utf8_value, len);
   }
@@ -126,20 +128,22 @@ static void zsv_2tsv_row(void *ctx) {
   unsigned int cols = zsv_column_count(data->parser);
   if(cols) {
     struct zsv_cell cell = zsv_get_cell(data->parser, 0);
-    char no_escape = 0;
-    if(cols > 1) {
-      struct zsv_cell end = zsv_get_cell(data->parser, cols-1);
-      unsigned char *start = cell.str;
-      size_t row_len = end.str + end.len - start;
-      if(!(memchr(start, '\t', row_len) || memchr(start, '\n', row_len) || memchr(start, '\r', row_len) || memchr(start, '\\', row_len)))
-        no_escape = 1;
-    }
-    zsv_2tsv_cell(ctx, cell.str, cell.len, no_escape);
+    struct zsv_cell end = zsv_get_cell(data->parser, cols-1);
+    unsigned char *start = cell.str;
+    size_t row_len = end.str + end.len - start;
+    char no_newline_or_slash = 0;
+    if(LIKELY(!(
+                memchr(start, '\n', row_len) ||
+                memchr(start, '\r', row_len) ||
+                memchr(start, '\\', row_len)
+                )))
+      no_newline_or_slash = 1;
 
+    zsv_2tsv_cell(ctx, cell.str, cell.len, no_newline_or_slash);
     for(unsigned int i = 1; i < cols; i++) {
       zsv_2tsv_write(&data->out, (const unsigned char *)"\t", 1);
       cell = zsv_get_cell(data->parser, i);
-      zsv_2tsv_cell(ctx, cell.str, cell.len, no_escape);
+      zsv_2tsv_cell(ctx, cell.str, cell.len, no_newline_or_slash);
     }
   }
   zsv_2tsv_write(&data->out, (const unsigned char *) "\n", 1);

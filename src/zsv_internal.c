@@ -251,10 +251,10 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
 
   scanner->partial_row_length = 0;
 
-  int quote = '"';
-  zsv_uc_vector dl_v; memset(&dl_v, delimiter, sizeof(zsv_uc_vector));
-  zsv_uc_vector nl_v; memset(&nl_v, '\n', sizeof(zsv_uc_vector));
-  zsv_uc_vector cr_v; memset(&cr_v, '\r', sizeof(zsv_uc_vector));
+  int quote = '"'; // ascii code 34
+  zsv_uc_vector dl_v; memset(&dl_v, delimiter, sizeof(zsv_uc_vector)); // ascii 44
+  zsv_uc_vector nl_v; memset(&nl_v, '\n', sizeof(zsv_uc_vector)); // ascii code 10
+  zsv_uc_vector cr_v; memset(&cr_v, '\r', sizeof(zsv_uc_vector)); // ascii code 13
   zsv_uc_vector qt_v;
   if(scanner->opts.no_quotes > 0) {
     quote = -1;
@@ -469,8 +469,9 @@ static void zsv_throwaway_row(void *ctx) {
 
 static int zsv_scanner_init(struct zsv_scanner *scanner,
                               struct zsv_opts *opts) {
+  size_t need_buff_size = 0; // opts->buffsize
   if(opts->buffsize < opts->max_row_size * 2)
-    opts->buffsize = opts->max_row_size * 2;
+    need_buff_size = opts->max_row_size * 2;
   opts->delimiter = opts->delimiter ? opts->delimiter : ',';
   if(opts->delimiter == '\n' || opts->delimiter == '\r' || opts->delimiter == '"') {
     fprintf(stderr, "warning: ignoring illegal delimiter\n");
@@ -484,6 +485,11 @@ static int zsv_scanner_init(struct zsv_scanner *scanner,
     opts->buffsize = ZSV_DEFAULT_SCANNER_BUFFSIZE;
   else if(opts->buffsize < ZSV_MIN_SCANNER_BUFFSIZE)
     opts->buffsize = ZSV_MIN_SCANNER_BUFFSIZE;
+
+  if(opts->buffsize < need_buff_size) {
+    opts->max_row_size = opts->buffsize / 2;
+    fprintf(stderr, "Warning: max row size set to %zu due to buffer size %zu\n", opts->max_row_size, opts->buffsize);
+  }
 
   scanner->in = opts->stream;
   if(!opts->read) {

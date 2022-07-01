@@ -11,12 +11,29 @@
 
 #include <stddef.h>
 
+/*
+ * zsv_strtolowercase(): convert to lower case. if built with utf8proc, converts unicode points
+ *
+ * @param s     string to convert
+ * @param lenp  pointer to length of input string; will be set to length of output string
+ *
+ * @returns     newly-allocated string; caller must free()
+ */
 unsigned char *zsv_strtolowercase(const unsigned char *s, size_t *lenp);
 
 const unsigned char *zsv_strstr(const unsigned char *hay, const unsigned char *needle);
 
+/*
+ * zsv_stricmp, zsv_strincmp(): case-insensitive comparison (unicode-compatible if built with utf8proc)
+ *
+ * @param   s1     string to convert
+ * @param   len1   length of s1
+ * @param   s2     string to convert
+ * @param   len2   length of s2
+ *
+ * @returns 0 if the strings are equal, -1 if s1 < s2, else 1
+ */
 int zsv_stricmp(const unsigned char *s1, const unsigned char *s2);
-
 int zsv_strincmp(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2);
 
 unsigned char *zsv_strtrim(unsigned char * restrict s, size_t *lenp);
