@@ -2,7 +2,6 @@
 
 Summary:
 
-- [`zsv`](../README.md) provides high-performance conversion between CSV (or similar), JSON and sqlite3 (and for running SQL queries against CSV)
 - sqlite3 is the most widely deployed database engine in the world
 - JSON is useful as an intermediate format between CSV and sqlite3:
   - more API-friendly than CSV
@@ -13,6 +12,7 @@ Summary:
 - Many common approaches to converting CSV or sqlite3 to JSON use a JSON Schema
   with unnecessarily limits to utility, extensibility and/or performance efficiency.
   With a few tweaks to the target schema, however, you can have your cake and eat it
+- [`zsv`](../README.md) provides high-performance conversion between CSV (or similar), JSON and sqlite3 (and for running SQL queries against CSV)
 
 ## Background
 
