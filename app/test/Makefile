@@ -49,7 +49,7 @@ SOURCES=
 ifneq ($(CLI1),1)
 SOURCES+=echo
 endif
-SOURCES+= select sql 2json serialize flatten pretty desc stack 2db jq
+SOURCES+= count select sql 2json serialize flatten pretty desc stack 2db jq 2tsv
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
 TESTS=$(addprefix test-,${SOURCES})
