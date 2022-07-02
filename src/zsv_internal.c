@@ -208,26 +208,36 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
   return row_dl(scanner);
 }
 
+#if defined(HAVE_SIMD512)
+# define VECTOR_BYTES 64
+# define VECTOR_SIZE 512
+# define zsv_mask_t uint64_t
+# define movemask_pseudo(x) _mm512_movepi8_mask((__m512i)x)
+# define NEXT_BIT __builtin_ffsl
+#elif defined(HAVE_SIMD256)
 # define VECTOR_BYTES 32
+# define VECTOR_SIZE 256
+# define zsv_mask_t uint32_t
+# define movemask_pseudo(x) _mm256_movemask_epi8((__m256i)x)
+# define NEXT_BIT __builtin_ffs
+#else
+# define ZSV_NO_VECTOR
+# define VECTOR_BYTES 16
+# define NEXT_BIT __builtin_ffs
+#endif
 
 typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (VECTOR_BYTES)));
 
-#if defined(HAVE__MM256_MOVEMASK_EPI8)
-# if defined(HAVE_IMMINTRIN_H)
-#  include <immintrin.h>
-# else
-#  error MM256_MOVEMASK_EPI8 include unhandled
-# endif
-# define movemask_pseudo(x) _mm256_movemask_epi8((__m256i)x)
-
+#ifndef ZSV_NO_VECTOR
+# include <immintrin.h>
 #else
 /*
   provide our own pseudo-movemask, which sets the 1 bit for each corresponding
   non-zero value in the vector (as opposed to real movemask which sets the bit
   only for each corresponding non-zero highest-bit value in the vector)
 */
-static inline unsigned int movemask_pseudo(zsv_uc_vector v) {
-  unsigned int mask = 0, tmp = 1;
+static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
+  zsv_mask_t mask = 0, tmp = 1;
   for(size_t i = 0; i < sizeof(zsv_uc_vector); i++) {
     mask += (v[i] ? tmp : 0);
     tmp <<= 1;
@@ -281,7 +291,7 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
 
 #define scanner_last (i ? buff[i-1] : scanner->last)
   size_t mask_total_offset = 0;
-  unsigned int mask = 0;
+  zsv_mask_t mask = 0;
   int mask_last_start;
 
   scanner->buffer_end = bytes_read;
@@ -305,7 +315,7 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
       }
     }
     if(VERY_LIKELY(mask)) {
-      size_t next_offset = __builtin_ffs(mask);
+      size_t next_offset = NEXT_BIT(mask);
       i = mask_last_start + next_offset - 1;
       mask = clear_lowest_bit(mask);
       if(skip_next_delim) {
@@ -488,7 +498,7 @@ static int zsv_scanner_init(struct zsv_scanner *scanner,
 
   if(opts->buffsize < need_buff_size) {
     opts->max_row_size = opts->buffsize / 2;
-    fprintf(stderr, "Warning: max row size set to %zu due to buffer size %zu\n", opts->max_row_size, opts->buffsize);
+    fprintf(stderr, "Warning: max row size set to %u due to buffer size %zu\n", opts->max_row_size, opts->buffsize);
   }
 
   scanner->in = opts->stream;

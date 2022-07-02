@@ -37,7 +37,7 @@ static enum zsv_status zsv_scan_fixed(struct zsv_scanner *scanner,
   zsv_uc_vector cr_v; memset(&cr_v, '\r', sizeof(zsv_uc_vector));
   zsv_uc_vector qt_v; memset(&qt_v, 0, sizeof(zsv_uc_vector));
   size_t mask_total_offset = 0;
-  unsigned int mask = 0;
+  zsv_mask_t mask = 0;
   int mask_last_start;
 
   scanner->buffer_end = bytes_read;

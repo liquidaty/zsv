@@ -36,6 +36,14 @@ endif
 
 VERSION= $(shell (git describe --always --dirty --tags 2>/dev/null || echo "v0.0.0-zsv") | sed 's/^v//')
 
+ifeq ($(HAVE_SIMD512),1)
+  CFLAGS+= ${CFLAGS_512}
+else
+  ifeq ($(HAVE_SIMD256),1)
+    CFLAGS+= ${CFLAGS_256}
+  endif
+endif
+
 ZSV_EXTRAS ?=
 ifneq ($(findstring emcc,$(CC)),) # emcc
   ZSV_EXTRAS=1
@@ -104,27 +112,11 @@ ifeq ($(NO_UTF8_CHECK),1)
   ZSV_OBJ_OPTS+= -DNO_UTF8_CHECK
 endif
 
-ifneq ($(VECTOR_SIZE),NONE)
-  ifeq ($(VECTOR_SIZE),128)
-    ZSV_OBJ_OPTS+= -DVECTOR_SIZE_128
-  else
-    ifeq ($(VECTOR_SIZE),256)
-      ZSV_OBJ_OPTS+= -DVECTOR_SIZE_256
-    else
-      ifeq ($(VECTOR_SIZE),)
-        ZSV_OBJ_OPTS+= -DVECTOR_SIZE_256
-        $(info No VECTOR_SIZE set, using 256)
-      else
-        $(error Invalid vector size ${VECTOR_SIZE}; use blank (256), 128, 256, or NONE)
-      endif
-    endif
-  endif
-endif
 
 # CFLAGS+= -Dfwrite=zsv_fwrite_clock -Dfflush=zsv_fflush_clock -Dfread=zsv_fread_clock
 
 help:
-	@echo "${MAKE} [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VECTOR_SIZE=128|256|NONE] [VERBOSE=1] [LIBDIR=${LIBDIR}] [INCLUDEDIR=${INCLUDEDIR}]"
+	@echo "${MAKE} [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VERBOSE=1] [LIBDIR=${LIBDIR}] [INCLUDEDIR=${INCLUDEDIR}]"
 
 lib: ${LIBZSV}
 
