@@ -514,7 +514,7 @@ fi
 if [ "$TRY_AVX512" = "yes" ]; then
     printf "checking whether avx512 instructions are available..."
     HAVE_SIMD512=
-    tryccfn CFLAGS_512 "_mm512_movepi8_mask" "immintrin.h" && trycchdr CFLAGS_512 "immintrin.h" && tryccfn CFLAGS_512 "_blsr_u64" "immintrin.h" && tryflag CFLAGS_512 "-mbmi" && tryflag CFLAGS_512 "-mavx512bw" && CFLAGS_512="-mbmi -mavx512bw -DHAVE_SIMD512=1" && HAVE_SIMD512=1
+    tryccfn CFLAGS_512 "_mm512_movepi8_mask" "immintrin.h" && trycchdr CFLAGS_512 "immintrin.h" && ( tryccfn CFLAGS_512 "_blsr_u64" "immintrin.h" || tryccfn CFLAGS_512 "__blsr_u64" "immintrin.h" ) && tryflag CFLAGS_512 "-mbmi" && tryflag CFLAGS_512 "-mavx512bw" && CFLAGS_512="-mbmi -mavx512bw -DHAVE_SIMD512=1" && HAVE_SIMD512=1
     if [ "$HAVE_SIMD512" = "1" ]; then
 	echo "yes"
     else
@@ -523,7 +523,7 @@ if [ "$TRY_AVX512" = "yes" ]; then
     fi
 fi
 
-tryccfn CFLAGS_256 "_mm256_movemask_epi8" "immintrin.h" && trycchdr CFLAGS_256 "immintrin.h" && tryccfn CFLAGS_256 "_blsr_u32" "immintrin.h" && CFLAGS_256="-DHAVE_SIMD256=1" && HAVE_SIMD256=1
+tryccfn CFLAGS_256 "_mm256_movemask_epi8" "immintrin.h" && trycchdr CFLAGS_256 "immintrin.h" && ( tryccfn CFLAGS_256 "_blsr_u32" "immintrin.h" || tryccfn CFLAGS_256 "__blsr_u32" "immintrin.h" ) && CFLAGS_256="-DHAVE_SIMD256=1" && HAVE_SIMD256=1
 
 tryccfn CFLAGS_AUTO "memmem" "string.h"
 

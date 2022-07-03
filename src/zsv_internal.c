@@ -222,6 +222,7 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
 # define NEXT_BIT __builtin_ffs
 #else
 # define ZSV_NO_VECTOR
+# define zsv_mask_t uint16_t
 # define VECTOR_BYTES 16
 # define NEXT_BIT __builtin_ffs
 #endif

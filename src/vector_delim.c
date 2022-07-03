@@ -12,10 +12,18 @@
 #include <stdbool.h>
 #include <string.h>
 
-#if VECTOR_BYTES == 64 && HAVE__BLSR_U64
-# define clear_lowest_bit(n) _blsr_u64(n)
-#elif VECTOR_BYTES == 32 && HAVE__BLSR_U32
-# define clear_lowest_bit(n) _blsr_u32(n)
+#if VECTOR_BYTES == 64 && (defined(HAVE__BLSR_U64) || defined(HAVE___BLSR_U64))
+# if defined(HAVE__BLSR_U64)
+#  define clear_lowest_bit(n) _blsr_u64(n)
+# else
+#  define clear_lowest_bit(n) __blsr_u64(n)
+# endif
+#elif VECTOR_BYTES == 32 && (defined(HAVE__BLSR_U32) || defined(HAVE___BLSR_U32))
+# if defined(HAVE__BLSR_U32)
+#  define clear_lowest_bit(n) _blsr_u32(n)
+# else
+#  define clear_lowest_bit(n) __blsr_u32(n)
+# endif
 #else
 # define clear_lowest_bit(n) (n & (n - 1))
 #endif
