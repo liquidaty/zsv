@@ -13,10 +13,16 @@ ifeq ($(WIN),)
     WIN=1
   endif
 endif
-ifeq ($(WIN),0)
-  BUILD_SUBDIR=$(shell uname)/rel
+ifeq ($(DEBUG),1)
+  REL=dbg
 else
-  BUILD_SUBDIR=win/rel
+  REL=rel
+endif
+
+ifeq ($(WIN),0)
+  BUILD_SUBDIR=$(shell uname)/${REL}
+else
+  BUILD_SUBDIR=win/${REL}
 endif
 
 CCBN=$(shell basename ${CC})
