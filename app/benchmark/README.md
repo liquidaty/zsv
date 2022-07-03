@@ -7,17 +7,17 @@
   (in each case we tested, by at least 20%) on other operating systems
 * Four utilities were tested: zsv, xsv, tsv-utils and mlr
 * The below figured were based on results from runs on OSX (Intel). Similar results were observed on other operating systems, but in some cases the difference was significantly smaller (for example, zsv
-* In our test environment (OSX non-M1), zsv performed about 2x as fast as xsv, 1.5-2x as fast as tsv-utils and over 25x faster than mlr
+* On most platforms, zsv performed about 2x as fast as xsv, 1.5-2x as fast as tsv-utils, and 25x+ faster than mlr or the python csv-utils family
 
 ![image](https://user-images.githubusercontent.com/26302468/146497899-48174114-3b18-49b0-97da-35754ab56e48.png)
 ![image](https://user-images.githubusercontent.com/26302468/146498211-afc77ce6-4229-4599-bf33-81bf00c725a8.png)
 
-12/19 update: today we ran our first tests with the Apple M1 chip, between xsv and zsv, and the
-results were mixed: zsv's count was about 7% slower, but select was about 20% faster.
-Probably, pure CSV parsing (count) was getting hit harder in zsv than xsv due to the
-smaller 128bit vector size of M1 (see e.g. https://lemire.me/blog/2020/12/13/arm-macbook-vs-intel-macbook-a-simd-benchmark/),
-while zsv's select is still benefitting
-from [memory operation efficiencies](../../docs/memory.md) (which has nothing to do with vectorization).
+Apple M1 chip (updated 7/3/2022)
+
+`zsv`'s performance advantage when running on the M1 chip is still noticeable, but is narrower:
+`count` is about 15-20% faster; `select` is about 25-30% faster. Other operations and comparisons were not tested on this platform.
+
+The main difference in the instructions generated for M1 is the smaller 128bit vector size (see e.g. https://lemire.me/blog/2020/12/13/arm-macbook-vs-intel-macbook-a-simd-benchmark/) and the lack of an M1 `movemask` intrinsic.
 
 ### Choice of tests and input data
 
@@ -53,7 +53,7 @@ various factors.
 ### Test environment
 
 Below are reported from tests run on OSX (Intel). Similar results were achieved on Windows, Linux and
-FreeBSD.
+FreeBSD. See above note for results on M1.
 
 In some cases, especially on Windows, compiler settings had a significant impact.
 If you observe results that materially differ, in terms of zsv vs other utility performance,
@@ -66,9 +66,9 @@ The following utilities were compared:
 
 * `xsv`: version 0.13.0, installed via brew
 * `tsv-utils` (v2.2.1): installed via download of pre-built PGO-optimized binaries
-* `mlr` (5.10.2): installed via brew (not shown in graph)
+* `mlr` (5.10.2): installed via brew (not shown in graph-- very slow compared to others)
 * `zsv` (alpha): built from source using the default `configure` settings
-* `csvcut` (1.0.6)
+* `csvcut` (1.0.6) (not shown in graph-- very slow compared to others)
 
 ### Further notes:
 
@@ -84,14 +84,12 @@ The following utilities were compared:
   tsv-utils, xsv and zsv are all written in different languages, and `csvcut` was
   included since csvcut/csvkit seem to be fairly commonly used for CSV processing
 
-* Our test system was a pre-M1 OSX MBA. We performed limited testing on other
-  operating systems including Linux, BSD
+* Our test system shown in the above graph was a pre-M1 OSX MBA.
+  We also tested on Linux, BSD
   and Windows. In each case, zsv was the fastest, but in some cases the margin
-  was considerably smaller (e.g. 20% instead
-  of 50% vs xsv on Win). We did not find a pre-built tsv-utils binary for Win,
-  so did not compare against tsv-utils on Win
+  was smaller (e.g. 20%+ instead of 50% vs xsv on Win). 
 
-### Results (pre-M1 OSX MBA)
+### Results in above graph (pre-M1 OSX MBA)
 
 #### count (5 runs, excluding first run)
 
