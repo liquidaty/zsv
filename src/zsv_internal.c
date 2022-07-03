@@ -208,20 +208,20 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
   return row_dl(scanner);
 }
 
-#if defined(HAVE_SIMD512)
+#if defined(HAVE_AVX512)
 # define VECTOR_BYTES 64
 # define VECTOR_SIZE 512
 # define zsv_mask_t uint64_t
 # define movemask_pseudo(x) _mm512_movepi8_mask((__m512i)x)
 # define NEXT_BIT __builtin_ffsl
-#elif defined(HAVE_SIMD256)
+#elif defined(HAVE_AVX256)
 # define VECTOR_BYTES 32
 # define VECTOR_SIZE 256
 # define zsv_mask_t uint32_t
 # define movemask_pseudo(x) _mm256_movemask_epi8((__m256i)x)
 # define NEXT_BIT __builtin_ffs
 #else
-# define ZSV_NO_VECTOR
+# define ZSV_NO_AVX
 # define zsv_mask_t uint16_t
 # define VECTOR_BYTES 16
 # define NEXT_BIT __builtin_ffs
@@ -229,23 +229,46 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
 
 typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (VECTOR_BYTES)));
 
-#ifndef ZSV_NO_VECTOR
+#ifndef ZSV_NO_AVX
 # include <immintrin.h>
 #else
+
+# if defined(__ARM_NEON) || defined(__ARM_NEON__)
+# include <arm_neon.h>
+# endif
 /*
   provide our own pseudo-movemask, which sets the 1 bit for each corresponding
   non-zero value in the vector (as opposed to real movemask which sets the bit
   only for each corresponding non-zero highest-bit value in the vector)
 */
 static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
+
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+  // see https://stackoverflow.com/questions/11870910/
+  static const uint8_t __attribute__ ((aligned (16))) _powers[16]=
+    { 1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128 };
+  uint8x16_t mm_powers = vld1q_u8(_powers);
+
+  // compute the mask from the input
+  uint64x2_t imask= vpaddlq_u32(vpaddlq_u16(vpaddlq_u8(vandq_u8(v, mm_powers))));
+
+  // Get the resulting bytes
+  uint16_t mask;
+  vst1q_lane_u8((uint8_t*)&mask + 0, (uint8x16_t)imask, 0);
+  vst1q_lane_u8((uint8_t*)&mask + 1, (uint8x16_t)imask, 8);
+  return mask;
+#else
+
   zsv_mask_t mask = 0, tmp = 1;
   for(size_t i = 0; i < sizeof(zsv_uc_vector); i++) {
     mask += (v[i] ? tmp : 0);
     tmp <<= 1;
   }
   return mask;
-}
 #endif
+
+}
+#endif // ZSV_NO_AVX
 
 # include "vector_delim.c"
 
