@@ -513,9 +513,9 @@ fi
 # Check function availability
 if [ "$TRY_AVX512" = "yes" ]; then
     printf "checking whether avx512 instructions are available..."
-    HAVE_SIMD512=
-    tryccfn CFLAGS_512 "_mm512_movepi8_mask" "immintrin.h" && trycchdr CFLAGS_512 "immintrin.h" && ( tryccfn CFLAGS_512 "_blsr_u64" "immintrin.h" || tryccfn CFLAGS_512 "__blsr_u64" "immintrin.h" ) && tryflag CFLAGS_512 "-mbmi" && tryflag CFLAGS_512 "-mavx512bw" && CFLAGS_512="-mbmi -mavx512bw -DHAVE_SIMD512=1" && HAVE_SIMD512=1
-    if [ "$HAVE_SIMD512" = "1" ]; then
+    HAVE_AVX512=
+    tryccfn CFLAGS_AVX_512 "_mm512_movepi8_mask" "immintrin.h" && trycchdr CFLAGS_AVX_512 "immintrin.h" && ( tryccfn CFLAGS_AVX_512 "_blsr_u64" "immintrin.h" || tryccfn CFLAGS_AVX_512 "__blsr_u64" "immintrin.h" ) && tryflag CFLAGS_AVX_512 "-mbmi" && tryflag CFLAGS_AVX_512 "-mavx512bw" && CFLAGS_AVX_512="-mbmi -mavx512bw -DHAVE_AVX512=1" && HAVE_AVX512=1
+    if [ "$HAVE_AVX512" = "1" ]; then
 	echo "yes"
     else
 	echo "no"
@@ -523,7 +523,7 @@ if [ "$TRY_AVX512" = "yes" ]; then
     fi
 fi
 
-tryccfn CFLAGS_256 "_mm256_movemask_epi8" "immintrin.h" && trycchdr CFLAGS_256 "immintrin.h" && ( tryccfn CFLAGS_256 "_blsr_u32" "immintrin.h" || tryccfn CFLAGS_256 "__blsr_u32" "immintrin.h" ) && CFLAGS_256="-DHAVE_SIMD256=1" && HAVE_SIMD256=1
+tryccfn CFLAGS_AVX_256 "_mm256_movemask_epi8" "immintrin.h" && trycchdr CFLAGS_AVX_256 "immintrin.h" && ( tryccfn CFLAGS_AVX_256 "_blsr_u32" "immintrin.h" || tryccfn CFLAGS_AVX_256 "__blsr_u32" "immintrin.h" ) && CFLAGS_AVX_256="-DHAVE_AVX256=1" && HAVE_AVX256=1
 
 tryccfn CFLAGS_AUTO "memmem" "string.h"
 
@@ -608,10 +608,10 @@ CFLAGS_LTO = $CFLAGS_LTO
 LDFLAGS_AUTO = $LDFLAGS_AUTO
 CFLAGS_AVX2 = $CFLAGS_AVX2
 
-HAVE_SIMD512=$HAVE_SIMD512
-CFLAGS_512=$CFLAGS_512
-HAVE_SIMD256=$HAVE_SIMD256
-CFLAGS_256=$CFLAGS_256
+HAVE_AVX512=$HAVE_AVX512
+CFLAGS_AVX_512=$CFLAGS_AVX_512
+HAVE_AVX256=$HAVE_AVX256
+CFLAGS_AVX_256=$CFLAGS_AVX_256
 
 CFLAGS_CLMUL = $CFLAGS_CLMUL
 CFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g3 -ggdb -Wall -Wextra -Wno-missing-field-initializers -Wno-unused-parameter
@@ -654,12 +654,12 @@ else
     echo "*  - termcap: yes                                              *"
 fi
 
-if [ "$HAVE_SIMD512" = "1" ]; then
+if [ "$HAVE_AVX512" = "1" ]; then
     echo "*  - using 512-bit AVX instruction set"
-elif [ "$HAVE_SIMD256" = "1" ]; then
-    echo "*  - using 256-bit vector instructions"
+elif [ "$HAVE_AVX256" = "1" ]; then
+    echo "*  - using 256-bit AVX instruction set"
 else
-    echo "*  - no vector support found"
+    echo "*  - using 128-bit vector size"
 fi
 
 echo "****************************************************************"

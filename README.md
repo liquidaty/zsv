@@ -17,13 +17,16 @@ If you like zsv+lib, do not forget to give it a star! 🌟
 Preliminary performance results compare favorably vs other CSV utilities (`xsv`,
 `tsv-utils`, `csvkit`, `mlr` (miller) etc). Below were results on a pre-M1 macOS
 MBA; on most platforms zsvlib was 2x faster, though in some cases the advantage
-was as small as 20% (see also M1 update note below) (mlr not shown as it was
-about 25x slower):
+was smaller e.g. 15-25%) (below, mlr not shown as it was about 25x slower):
 
 <img src="https://user-images.githubusercontent.com/26302468/146497899-48174114-3b18-49b0-97da-35754ab56e48.png" alt="count speed" height="150px"><img src="https://user-images.githubusercontent.com/26302468/146498211-afc77ce6-4229-4599-bf33-81bf00c725a8.png" alt="select speed" height="150px">
 
 ** See 12/19 update re M1 processor at
-https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md.
+https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md
+
+#### Which "CSV"
+
+"CSV" is an ambiguous term. This library uses the same definition as Excel. In addition, it provides a *row-level* (as well as cell-level) API and provides "normalized" CSV output (e.g. input of `this"iscell1,"thisis,"cell2` becomes `"this""iscell1","thisis,cell2"`). Each of these three objectives (Excel compatibility, row-level API and normalized output) has a measurable performance impact; conversely, it is possible to achieve-- which a number of other CSV parsers do-- much faster parsing speeds if any of these requirements (especially Excel compatibility) are dropped.
 
 ## Built-in and extensible features
 

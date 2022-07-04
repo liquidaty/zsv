@@ -36,11 +36,11 @@ endif
 
 VERSION= $(shell (git describe --always --dirty --tags 2>/dev/null || echo "v0.0.0-zsv") | sed 's/^v//')
 
-ifeq ($(HAVE_SIMD512),1)
-  CFLAGS+= ${CFLAGS_512}
+ifeq ($(HAVE_AVX512),1)
+  CFLAGS+= ${CFLAGS_AVX_512}
 else
-  ifeq ($(HAVE_SIMD256),1)
-    CFLAGS+= ${CFLAGS_256}
+  ifeq ($(HAVE_AVX256),1)
+    CFLAGS+= ${CFLAGS_AVX_256}
   endif
 endif
 
