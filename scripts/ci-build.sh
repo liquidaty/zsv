@@ -52,6 +52,7 @@ if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
   rm -rf build "$PREFIX"
   "$MAKE" test
+  cd app/ext_example && "$MAKE" test
   echo "[INF] Tests completed successfully!"
 fi
 
