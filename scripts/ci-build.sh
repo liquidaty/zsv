@@ -52,7 +52,10 @@ if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
   rm -rf build "$PREFIX"
   "$MAKE" test
-  cd app/ext_example && "$MAKE" test
+  echo "[INF] Tests completed successfully!"
+
+  echo "[INF] Configuring example extension and running example extension tests"
+  cd app/ext_example && ./configure --prefix="$PREFIX" && "$MAKE" test
   echo "[INF] Tests completed successfully!"
 fi
 
