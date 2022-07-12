@@ -158,7 +158,7 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
             scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
     scanner->row.overflow = 0;
   }
-  if(scanner->opts.row)
+  if(LIKELY(scanner->opts.row))
     scanner->opts.row(scanner->opts.ctx);
 # ifdef ZSV_EXTRAS
   scanner->progress.cum_row_count++;
@@ -198,8 +198,8 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
   if(VERY_UNLIKELY(scanner->abort))
     return zsv_status_cancelled;
   scanner->have_cell = 0;
-  if(scanner->row.used)
-    scanner->row.used = 0;
+//  if(scanner->row.used)
+  scanner->row.used = 0;
   return zsv_status_ok;
 }
 
@@ -208,20 +208,29 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
   return row_dl(scanner);
 }
 
-#if defined(HAVE_AVX512)
-# define VECTOR_BYTES 64
-# define VECTOR_SIZE 512
-# define zsv_mask_t uint64_t
-# define movemask_pseudo(x) _mm512_movepi8_mask((__m512i)x)
-# define NEXT_BIT __builtin_ffsl
-#elif defined(HAVE_AVX256)
-# define VECTOR_BYTES 32
-# define VECTOR_SIZE 256
-# define zsv_mask_t uint32_t
-# define movemask_pseudo(x) _mm256_movemask_epi8((__m256i)x)
-# define NEXT_BIT __builtin_ffs
-#else
-# define ZSV_NO_AVX
+#ifndef ZSV_NO_AVX
+# if !defined(__AVX2__)
+#  define ZSV_NO_AVX
+# elif defined(HAVE_AVX512)
+#  ifndef __AVX512BW__
+#   error AVX512 requested, but __AVX512BW__ macro not defined
+#  else
+#   define VECTOR_BYTES 64
+#   define zsv_mask_t uint64_t
+#   define movemask_pseudo(x) _mm512_movepi8_mask((__m512i)x)
+#   define NEXT_BIT __builtin_ffsl
+#  endif
+# elif defined(HAVE_AVX256)
+#  define VECTOR_BYTES 32
+#  define zsv_mask_t uint32_t
+#  define movemask_pseudo(x) _mm256_movemask_epi8((__m256i)x)
+#  define NEXT_BIT __builtin_ffs
+# else
+#  define ZSV_NO_AVX
+# endif
+#endif // ndef ZSV_NO_AVX
+
+#if defined(ZSV_NO_AVX)
 # define zsv_mask_t uint16_t
 # define VECTOR_BYTES 16
 # define NEXT_BIT __builtin_ffs
@@ -258,7 +267,7 @@ static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
   vst1q_lane_u8((uint8_t*)&mask + 1, (uint8x16_t)imask, 8);
   return mask;
 #else
-
+  // to do: see https://github.com/WebAssembly/simd/issues/131 for wasm
   zsv_mask_t mask = 0, tmp = 1;
   for(size_t i = 0; i < sizeof(zsv_uc_vector); i++) {
     mask += (v[i] ? tmp : 0);
@@ -285,16 +294,18 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
 
   scanner->partial_row_length = 0;
 
-  int quote = '"'; // ascii code 34
+  int quote = scanner->opts.no_quotes > 0 ? -1 : '"'; // ascii code 34
   zsv_uc_vector dl_v; memset(&dl_v, delimiter, sizeof(zsv_uc_vector)); // ascii 44
   zsv_uc_vector nl_v; memset(&nl_v, '\n', sizeof(zsv_uc_vector)); // ascii code 10
   zsv_uc_vector cr_v; memset(&cr_v, '\r', sizeof(zsv_uc_vector)); // ascii code 13
-  zsv_uc_vector qt_v;
+  zsv_uc_vector qt_v; memset(&qt_v, scanner->opts.no_quotes > 0 ? 0 : '"', sizeof(qt_v));
+  /*
   if(scanner->opts.no_quotes > 0) {
     quote = -1;
     memset(&qt_v, 0, sizeof(qt_v));
   } else
     memset(&qt_v, '"', sizeof(zsv_uc_vector));
+  */
 
   // case "hel"|"o": check if we have an embedded dbl-quote past the initial opening quote, which was
   // split between the last buffer and this one e.g. "hel""o" where the last buffer ended
@@ -320,7 +331,7 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
 
   scanner->buffer_end = bytes_read;
   for(; i < bytes_read; i++) {
-    if(mask == 0) {
+    if(UNLIKELY(mask == 0)) {
       mask_last_start = i;
       if(VERY_LIKELY(i < bytes_chunk_end)) {
         // keep going until we get a delim or we are at the eof
@@ -340,7 +351,7 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
       size_t next_offset = NEXT_BIT(mask);
       i = mask_last_start + next_offset - 1;
       mask = clear_lowest_bit(mask);
-      if(skip_next_delim) {
+      if(VERY_UNLIKELY(skip_next_delim)) {
         skip_next_delim = 0;
         continue;
       }
