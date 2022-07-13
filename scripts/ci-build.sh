@@ -50,17 +50,17 @@ CFLAGS="-I$JQ_INCLUDE_DIR" LDFLAGS="-L$JQ_LIB_DIR" ./configure \
 
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
-  rm -rf build "$PREFIX"
+  sudo rm -rf build "$PREFIX"
   "$MAKE" test
   echo "[INF] Tests completed successfully!"
 
   echo "[INF] Configuring example extension and running example extension tests"
-  cd app/ext_example && sudo "$MAKE" CONFIGFILE=../../config.mk test
+  (cd app/ext_example && sudo "$MAKE" CONFIGFILE=../../config.mk test)
   echo "[INF] Tests completed successfully!"
 fi
 
 echo "[INF] Building"
-rm -rf build "$PREFIX"
+sudo rm -rf build "$PREFIX" /usr/local/etc/zsv.ini
 "$MAKE" install
 tree -h "$PREFIX"
 echo "[INF] Built successfully!"
