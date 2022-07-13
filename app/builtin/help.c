@@ -58,7 +58,7 @@ static int main_help(int argc, const char *argv[]) {
     fprintf(f, "%s\n", usage[i]);
 
   char printed_init = 0;
-  struct cli_config config;
+  struct cli_config config = { 0 };
   if(!config_init(&config, 1, 1, 0)) {
     for(struct zsv_ext *ext = config.extensions; ext; ext = ext->next) {
       if(ext->inited == zsv_init_ok) {
@@ -72,8 +72,8 @@ static int main_help(int argc, const char *argv[]) {
         for(struct zsv_ext_command *cmd = ext->commands; cmd; cmd = cmd->next)
           fprintf(f, "    %s-%s%s%s\n", ext->id, cmd->id, cmd->help ? ": " : "", cmd->help ? cmd->help : "");
       }
-      config_free(&config);
     }
+    config_free(&config);
   }
   if(!printed_init)
     fprintf(f, "\n(No extended commands)\n");
