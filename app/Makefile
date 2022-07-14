@@ -46,9 +46,17 @@ MORE_OBJECTS=
 NO_LTO=0
 
 ifeq ($(DEBUG),1)
+  NO_LTO=1
   DBG_SUBDIR+=dbg
 else
   DBG_SUBDIR+=rel
+endif
+
+ifeq ($(NO_LTO),1)
+  CFLAGS+= -fno-lto
+else
+  CFLAGS+=${CFLAGS_LTO}
+  LDFLAGS_OPT+= ${LDFLAGS_OPT_LTO}
 endif
 
 NO_STDIN=
@@ -91,7 +99,6 @@ ifeq ($(DEBUG),0)
       $(echo "No profiling set. To use PGO, compile with PGO=1, then run with data, then compile again with PGO=2")
     endif
   endif
-
 else
   CFLAGS += -g
 endif
@@ -161,12 +168,6 @@ endif
 CLI_OBJECTS=$(addprefix ${CLI_OBJ_PFX},$(addsuffix .o,${CLI_SOURCES}))
 
 CFLAGS+=${CFLAGS_AUTO}
-ifeq ($(NO_LTO),1)
-  CFLAGS+= -fno-lto
-else
-  CFLAGS+=${CFLAGS_LTO}
-  LDFLAGS_OPT+= ${LDFLAGS_OPT_LTO}
-endif
 
 ifeq ($(VERBOSE),1)
   CFLAGS+= ${CFLAGS_VECTORIZE_OPTIMIZED} ${CFLAGS_VECTORIZE_MISSED} ${CFLAGS_VECTORIZE_ALL}

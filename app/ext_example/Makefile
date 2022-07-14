@@ -46,6 +46,9 @@ else
 endif
 CFLAGS+= ${CFLAGS_PIC}
 
+ifeq ($(ZSV_EXTRAS),1)
+  CFLAGS+= -DZSV_EXTRAS
+endif
 
 DEBUG=0
 ifeq ($(DEBUG),0)
@@ -94,6 +97,10 @@ ${INSTALLED_EXTENSION}: ${TARGET}
 	cp -p $< $@
 endif
 
+CLI=${BUILD_DIR}/bin/cli
+
+RUN_CLI=ZSV_CONFIG_DIR=/tmp ${CLI}
+
 ${BUILD_DIR}/bin/cli:
 	(cd .. && make CC=${CC} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} ${BUILD_DIR}/bin/cli)
 
@@ -102,43 +109,43 @@ ${BUILD_DIR}/objs/utils/%.o:
 
 test: test-1 test-2 test-3 test-4 test-5 test-thirdparty
 
-test-1: test-%:  ${BUILD_DIR}/bin/cli ${TARGET}
-	@${BUILD_DIR}/bin/cli my-echo < ${THIS_LIB_BASE}/data/quoted.csv > /tmp/zsvext-$@.out
+test-1: test-%: ${CLI} ${TARGET}
+	@${RUN_CLI} my-echo < ${THIS_LIB_BASE}/data/quoted.csv > /tmp/zsvext-$@.out
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-2: test-%:  ${BUILD_DIR}/bin/cli ${TARGET}
-	@${BUILD_DIR}/bin/cli my-echo -t < ${THIS_LIB_BASE}/data/hi.txt > /tmp/zsvext-$@.out
+test-2: test-%: ${CLI} ${TARGET}
+	@${RUN_CLI} my-echo -t < ${THIS_LIB_BASE}/data/hi.txt > /tmp/zsvext-$@.out
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-3: test-%:  ${BUILD_DIR}/bin/cli ${TARGET}
+test-3: test-%: ${CLI} ${TARGET}
 	@rm -f /tmp/zsvext-$@.out
-	@${BUILD_DIR}/bin/cli unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${BUILD_DIR}/bin/cli register my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
-	@${BUILD_DIR}/bin/cli unregister my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
-	@${BUILD_DIR}/bin/cli unregister my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
-	@${BUILD_DIR}/bin/cli help 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
-	@${BUILD_DIR}/bin/cli register my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
-	@${BUILD_DIR}/bin/cli help 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
+	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
+	@${RUN_CLI} register my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
+	@${RUN_CLI} unregister my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
+	@${RUN_CLI} unregister my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
+	@${RUN_CLI} help 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
+	@${RUN_CLI} register my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
+	@${RUN_CLI} help 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
 	@cmp /tmp/zsvext-$@.out 2>&1 test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-4: test-%:  ${BUILD_DIR}/bin/cli ${TARGET}
-	@${BUILD_DIR}/bin/cli unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${BUILD_DIR}/bin/cli license > /tmp/zsvext-$@.out 2>> /tmp/zsvext-$@.err
-	@${BUILD_DIR}/bin/cli register my 2>/dev/null 1>/dev/null
-	@${BUILD_DIR}/bin/cli license >> /tmp/zsvext-$@.out 2> /tmp/zsvext-$@.err
+test-4: test-%: ${CLI} ${TARGET}
+	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
+	@${RUN_CLI} license > /tmp/zsvext-$@.out 2>> /tmp/zsvext-$@.err
+	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
+	@${RUN_CLI} license >> /tmp/zsvext-$@.out 2> /tmp/zsvext-$@.err
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 	@cmp /tmp/zsvext-$@.err test/expected/zsvext-$@.err && ${TEST_PASS} || ${TEST_FAIL}
 
-test-5: test-%: ${BUILD_DIR}/bin/cli ${TARGET}
-	@${BUILD_DIR}/bin/cli my-count newline.csv 2>/dev/null > /tmp/zsvext-$@.out
-	@${BUILD_DIR}/bin/cli my-count -q newline.csv 2>/dev/null >> /tmp/zsvext-$@.out
+test-5: test-%:${TARGET}
+	@${RUN_CLI} my-count newline.csv 2>/dev/null > /tmp/zsvext-$@.out
+	@${RUN_CLI} my-count -q newline.csv 2>/dev/null >> /tmp/zsvext-$@.out
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-thirdparty: test-%: ${BUILD_DIR}/bin/cli ${TARGET}
-	@${BUILD_DIR}/bin/cli unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${BUILD_DIR}/bin/cli thirdparty > /tmp/zsvext-$@.out
-	@${BUILD_DIR}/bin/cli register my 2>/dev/null 1>/dev/null
-	@${BUILD_DIR}/bin/cli thirdparty >> /tmp/zsvext-$@.out
+test-thirdparty: test-%: ${CLI} ${TARGET}
+	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
+	@${RUN_CLI} thirdparty > /tmp/zsvext-$@.out
+	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
+	@${RUN_CLI} thirdparty >> /tmp/zsvext-$@.out
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:

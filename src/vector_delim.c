@@ -45,7 +45,6 @@ static inline int vec_delims(const unsigned char *s, size_t n,
   unsigned total_bytes = 0;
 
   for(unsigned i = 0; i < j; i++) {
-    // memcpy(&str_simd, pSrc1 + i, VECTOR_BYTES); -- will bus error on clang+BSD
     memcpy(&str_simd, s + i*sizeof(str_simd), sizeof(str_simd));
     zsv_uc_vector vtmp = str_simd == *char_match1;
     vtmp += (str_simd == *char_match2);
