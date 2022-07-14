@@ -37,15 +37,23 @@ static size_t chop_slash(char* buff, size_t len) {
  */
 size_t get_config_dir(char* buff, size_t buffsize, const char *prefix) {
 #if defined(_WIN32)
-  const char *env = prefix;
-  const char *env_val = getenv(env);
+  const char *env_val = getenv("ZSV_CONFIG_DIR");
+  //  if(!(env_val && *env_val))
+  //    env_val = getenv(prefix);
   if(!(env_val && *env_val))
     env_val = getenv("LOCALAPPDATA");
+  if(!(env_val && *env_val))
+    env_val = "C:\\temp";
   int written = snprintf(buff, buffsize, "%s", env_val);
 #elif defined(__EMSCRIPTEN__)
   int written = snprintf(buff, buffsize, "/tmp");
 #else
-  int written = snprintf(buff, buffsize, "%s/etc", prefix ? prefix : "");
+  int written;
+  const char *env_val = getenv("ZSV_CONFIG_DIR");
+  if(env_val && *env_val)
+    written = snprintf(buff, buffsize, "%s", env_val);
+  else
+    written = snprintf(buff, buffsize, "%s/etc", prefix ? prefix : "");
 #endif
   if(written > 0 && ((size_t)written) < buffsize)
     return chop_slash(buff, written);

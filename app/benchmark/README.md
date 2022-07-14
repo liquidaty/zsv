@@ -87,7 +87,7 @@ The following utilities were compared:
 * Our test system shown in the above graph was a pre-M1 OSX MBA.
   We also tested on Linux, BSD
   and Windows. In each case, zsv was the fastest, but in some cases the margin
-  was smaller (e.g. 20%+ instead of 50% vs xsv on Win). 
+  was smaller (e.g. 20%+ instead of 50% vs xsv on Win).
 
 ### Results in above graph (pre-M1 OSX MBA)
 

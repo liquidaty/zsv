@@ -16,7 +16,17 @@ static int main_help(int argc, const char *argv[]) {
     "",
     "Usage:",
     "  zsv version: display version info (and if applicable, extension info)",
+#ifndef __EMSCRIPTEN__
     "  zsv (un)register [<extension_id>]: (un)register an extension",
+    "      Registration info is saved in zsv.ini located in a directory determined as:",
+    "        ZSV_CONFIG_DIR environment variable value, if set",
+# if defined(_WIN32)
+    "        LOCALAPPDATA environment variable value, if set",
+    "        otherwise, C:\\temp",
+#else
+    "        otherwise, " PREFIX "/etc",
+# endif
+#endif
     "  zsv help [<command>]",
     "  zsv <command> <options> <arguments>: run a command on data (see below for details)",
     "  zsv <id>-<cmd> <options> <arguments>: invoke command 'cmd' of extension 'id'",
@@ -58,7 +68,7 @@ static int main_help(int argc, const char *argv[]) {
     fprintf(f, "%s\n", usage[i]);
 
   char printed_init = 0;
-  struct cli_config config = { 0 };
+  struct cli_config config;
   if(!config_init(&config, 1, 1, 0)) {
     for(struct zsv_ext *ext = config.extensions; ext; ext = ext->next) {
       if(ext->inited == zsv_init_ok) {
