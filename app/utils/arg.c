@@ -13,8 +13,18 @@
 #include <zsv/utils/string.h>
 #include <zsv/utils/arg.h>
 
-static struct zsv_opts zsv_default_opts = { 0 };
+/*
+ * global zsv_default_opts for convenience funcs zsv_get_default_opts() and zsv_set_default_opts()
+ *  for the cli to pass global opts to the standalone modules
+ */
+struct zsv_opts zsv_default_opts = { 0 };
 char zsv_default_opts_initd = 0;
+
+ZSV_EXPORT
+void zsv_clear_default_opts() {
+  memset(&zsv_default_opts, 0, sizeof(zsv_default_opts));
+  zsv_default_opts_initd = 0;
+}
 
 ZSV_EXPORT
 struct zsv_opts zsv_get_default_opts() {

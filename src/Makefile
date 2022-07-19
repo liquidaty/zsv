@@ -34,6 +34,16 @@ ifeq ($(VERBOSE),1)
   CFLAGS+= ${CFLAGS_VECTORIZE_OPTIMIZED} ${CFLAGS_VECTORIZE_MISSED} ${CFLAGS_VECTORIZE_ALL}
 endif
 
+VERSION= $(shell (git describe --always --dirty --tags 2>/dev/null || echo "v0.0.0-zsv") | sed 's/^v//')
+
+ifeq ($(HAVE_AVX512),1)
+  CFLAGS+= ${CFLAGS_AVX_512}
+else
+  ifeq ($(HAVE_AVX256),1)
+    CFLAGS+= ${CFLAGS_AVX_256}
+  endif
+endif
+
 ZSV_EXTRAS ?=
 ifneq ($(findstring emcc,$(CC)),) # emcc
   ZSV_EXTRAS=1
@@ -95,34 +105,18 @@ NO_UTF8_CHECK=1
 ZSV_OBJ=${BUILD_DIR}/objs/zsv.o
 LIBZSV_A=libzsv.a
 LIBZSV=${BUILD_DIR}/lib/${LIBZSV_A}
-LIBZSV_INSTALL=${PREFIX}/lib/${LIBZSV_A}
+LIBZSV_INSTALL=${LIBDIR}/${LIBZSV_A}
 
 ZSV_OBJ_OPTS=
 ifeq ($(NO_UTF8_CHECK),1)
   ZSV_OBJ_OPTS+= -DNO_UTF8_CHECK
 endif
 
-ifneq ($(VECTOR_SIZE),NONE)
-  ifeq ($(VECTOR_SIZE),128)
-    ZSV_OBJ_OPTS+= -DVECTOR_SIZE_128
-  else
-    ifeq ($(VECTOR_SIZE),256)
-      ZSV_OBJ_OPTS+= -DVECTOR_SIZE_256
-    else
-      ifeq ($(VECTOR_SIZE),)
-        ZSV_OBJ_OPTS+= -DVECTOR_SIZE_256
-        $(info No VECTOR_SIZE set, using 256)
-      else
-        $(error Invalid vector size ${VECTOR_SIZE}; use blank (256), 128, 256, or NONE)
-      endif
-    endif
-  endif
-endif
 
 # CFLAGS+= -Dfwrite=zsv_fwrite_clock -Dfflush=zsv_fflush_clock -Dfread=zsv_fread_clock
 
 help:
-	@echo "${MAKE} [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VECTOR_SIZE=128|256|NONE] [VERBOSE=1]"
+	@echo "${MAKE} [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VERBOSE=1] [LIBDIR=${LIBDIR}] [INCLUDEDIR=${INCLUDEDIR}]"
 
 lib: ${LIBZSV}
 
@@ -137,19 +131,19 @@ ${LIBZSV}: ${ZSV_OBJ}
 
 
 install: ${LIBZSV_INSTALL}
-	@mkdir -p  $(PREFIX)/include
-	@cp -pR ../include/* $(PREFIX)/include
-	@echo "include files copied to $(PREFIX)/include"
+	@mkdir -p  $(INCLUDEDIR)
+	@cp -pR ../include/* $(INCLUDEDIR)
+	@echo "include files copied to $(INCLUDEDIR)"
 
 
 ${LIBZSV_INSTALL}: ${LIBZSV}
 	@mkdir -p `dirname "$@"`
-	@cp -p ${LIBZSV} ${PREFIX}/lib
+	@cp -p ${LIBZSV} "$@"
 	@echo "libzsv installed to $@"
 
 uninstall:
-	@rm -rf ${PREFIX}/include/zsv*
-	 rm  -f ${PREFIX}/lib/libzsv*
+	@rm -rf ${INCLUDEDIR}/zsv*
+	 rm  -f ${LIBDIR}/libzsv*
 
 clean:
 	rm -rf ${BUILD_DIR}/objs ${LIBZSV}
@@ -158,4 +152,4 @@ clean:
 
 ${BUILD_DIR}/objs/zsv.o: zsv.c zsv_internal.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -o $@ -c $<
+	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -o $@ -c $<

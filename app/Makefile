@@ -23,7 +23,7 @@ CFLAGS_EXE ?=
 
 LIBZSV_A=libzsv.a
 LIBZSV=${BUILD_DIR}/lib/${LIBZSV_A}
-LIBZSV_INSTALL=$(PREFIX)/lib/${LIBZSV_A}
+LIBZSV_INSTALL=${LIBDIR}/${LIBZSV_A}
 
 STRING_LIB_INCLUDE=
 STRINGLIB_INCLUDE_FLAG=
@@ -46,9 +46,17 @@ MORE_OBJECTS=
 NO_LTO=0
 
 ifeq ($(DEBUG),1)
+  NO_LTO=1
   DBG_SUBDIR+=dbg
 else
   DBG_SUBDIR+=rel
+endif
+
+ifeq ($(NO_LTO),1)
+  CFLAGS+= -fno-lto
+else
+  CFLAGS+=${CFLAGS_LTO}
+  LDFLAGS_OPT+= ${LDFLAGS_OPT_LTO}
 endif
 
 NO_STDIN=
@@ -91,7 +99,6 @@ ifeq ($(DEBUG),0)
       $(echo "No profiling set. To use PGO, compile with PGO=1, then run with data, then compile again with PGO=2")
     endif
   endif
-
 else
   CFLAGS += -g
 endif
@@ -149,10 +156,9 @@ TARGETS=$(addprefix ${STANDALONE_PFX},$(addsuffix ${EXE},${SOURCES})) ${CLI}
 
 BUILDS=$(addprefix build-,${SOURCES})
 CLEANS=$(addprefix clean-,${SOURCES})
-TESTS=$(addprefix test-,${SOURCES})
 
 ## cli
-VERSION = $(shell git describe --always --dirty 2>/dev/null || echo "v0.0-zsv")
+VERSION= $(shell (git describe --always --dirty --tags 2>/dev/null || echo "v0.0.0-zsv") | sed 's/^v//')
 CLI_OBJ_PFX=${BUILD_DIR}/objs/cli_
 CLI_APP_OBJECT=${CLI_OBJ_PFX}cli.o
 CLI=${BUILD_DIR}/bin/cli${EXE}
@@ -162,12 +168,6 @@ endif
 CLI_OBJECTS=$(addprefix ${CLI_OBJ_PFX},$(addsuffix .o,${CLI_SOURCES}))
 
 CFLAGS+=${CFLAGS_AUTO}
-ifeq ($(NO_LTO),1)
-  CFLAGS+= -fno-lto
-else
-  CFLAGS+=${CFLAGS_LTO}
-  LDFLAGS_OPT+= ${LDFLAGS_OPT_LTO}
-endif
 
 ifeq ($(VERBOSE),1)
   CFLAGS+= ${CFLAGS_VECTORIZE_OPTIMIZED} ${CFLAGS_VECTORIZE_MISSED} ${CFLAGS_VECTORIZE_ALL}
@@ -192,7 +192,7 @@ JSONWRITER_INCLUDE=-Iexternal/json_writer-1.0
 JSONWRITER_OBJECT=${BUILD_DIR}/external/json_writer-1.0/jsonwriter.o
 
 ## utf8proc
-UTF8PROC_SRC=external/utf8proc-2.6.1
+UTF8PROC_SRC=${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1
 UTF8PROC_INCLUDE=external/utf8proc-2.6.1
 UTF8PROC_OBJECT=${BUILD_DIR}/external/utf8proc-2.6.1/utf8proc.o
 CFLAGS+= -I${UTF8PROC_INCLUDE} -DUTF8PROC -DUTF8PROC_STATIC
@@ -203,7 +203,7 @@ SQLITE_SRC=${THIS_MAKEFILE_DIR}/external/sqlite3/sqlite3*.c
 SQLITE_EXT_INCLUDE=-Iexternal/sqlite3
 
 help:
-	@echo "To build: ${MAKE} [DEBUG=1] [clean] <all|test>"
+	@echo "To build: ${MAKE} [DEBUG=1] [clean] [BINDIR=${BINDIR}] <install|all|test>"
 	@echo
 	@echo "To build and test individual apps, run:"
 	@echo "  ${MAKE} test"
@@ -266,7 +266,7 @@ ${BUILD_DIR}/objs/zsv_%.o: %.c
 
 ${UTF8PROC_OBJECT}: ${UTF8PROC_SRC}/utf8proc.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${UTF8PROC_INCLUDE} -c $< -o $@
+	${CC} ${CFLAGS} -I${UTF8PROC_INCLUDE} -c ${UTF8PROC_SRC}/utf8proc.c -o $@
 
 ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 	@mkdir -p `dirname "$@"`
@@ -277,12 +277,12 @@ ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8pro
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI -DMAIN=main_$* ${CLI_INCLUDE} -Iexternal/sglib -I${INCLUDE_DIR} -c $< -o $@ ${MORE_SOURCE}
 
-${CLI}: cli_internal ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS}
+${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${PREFIX}/lib -lzsv ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS}
+	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBDIR} -lzsv ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS}
 	@echo Built $@
 
-cli_internal: cli_internal.c.in cli_internal.h cli_internal.h.in
+# cli_internal: cli_internal.c.in cli_internal.h cli_internal.h.in
 
 cli_internal.h.in: ${THIS_MAKEFILE_DIR}/../include/zsv/ext/implementation_private.h
 	cat $< | perl -ne 'print if /ZSV_EXT_EXPORT/ .. /;/' | sed 's/ZSV_EXT_EXPORT *//g' | sed $$'s/ *;.*/;\\\n/' | sed 's/(/)(/' | sed 's/zsv_ext_\([a-z]*\))/(*\1)/' | grep -v '^$$' > $@
@@ -328,7 +328,7 @@ ${CLI} ${STANDALONE_PFX}jq${EXE}: MORE_LIBS+=${LDFLAGS_JQ}
 
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${PREFIX}/lib -lzsv ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS}
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${LIBDIR} -lzsv ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS}
 
 ${BUILD_DIR}/external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}/external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`
@@ -342,20 +342,17 @@ ${YAJL_HELPER_OBJ}: external/yajl_helper/yajl_helper.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${BASEDIR}/yajl_helper ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -c $< -o $@
 
-test: ${TESTS}
+test:
+	@${MAKE} -C test $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
-test-%: ${STANDALONE_PFX}%${EXE}
-	@cd test && ${MAKE} $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
-
-clean: clean-obj clean-lib
+clean: clean-obj
 	rm -rf ${BUILD_DIR}
+	make -C test clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 clean-obj:
 	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT}
+	rm -rf external/utf8proc-2.6.1
 
-clean-lib:
-	${MAKE} -C ../src clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
-
-external/utf8proc-2.6.1/utf8proc.c: external/utf8proc-2.6.1.tar.gz
+${UTF8PROC_SRC}/utf8proc.c: external/utf8proc-2.6.1.tar.gz
 	@cd external && tar xf ../$<
 	@touch $@

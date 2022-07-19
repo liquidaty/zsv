@@ -61,7 +61,7 @@ static struct zsv_ext_callbacks zsv_cb;
  * but with an additional preceding zsv_execution_context parameter.
  * Here, we just declare the functions; we fully define them further below
  */
-static enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *argv[]);
+enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *argv[]);
 static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const char *argv[]);
 
 /**
@@ -235,7 +235,7 @@ static const char *count_help =
   "usage: count [-h,--help] [filename]\n"
   ;
 
-static enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *argv[]) {
+enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *argv[]) {
   /* help */
   if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     printf("%s", count_help);

@@ -16,15 +16,15 @@ Configuration:
 
 Installation directories:
   --prefix=PREFIX         main installation prefix [\$PREFIX or /usr/local]
-  --exec-prefix=EPREFIX   installation prefix for executable files [PREFIX]
+  --exec-prefix=EPREFIX   installation prefix for bin, lib, include [PREFIX]
 
 Fine tuning of the installation directories:
-  --bindir=DIR            user executables [EPREFIX/bin]
   --sharedir=DIR          share directories [PREFIX/share]
   --docdir=DIR            misc. documentation [PREFIX/share/doc]
   --mandir=DIR            man pages [PREFIX/share/man]
 
 Optional features:
+  --try-avx512            use avx512 instructions, if available (not recommended)
   --enable-small-lut      build with smaller lookup tables [no]
   --enable-debug-stderr   build with debug msgs in stderr [no]
   --enable-pie            build with position independent executables [auto]
@@ -235,7 +235,7 @@ if [ "$CONFIGFILE" = "" ]; then
     CONFIGFILE=config.mk
 fi
 
-# check prefix arg first, since others may be derived from it unless overridden
+# check prefixes first, since others may be derived from it unless overridden
 PREFIX=$PREFIX
 for arg ; do
     case "$arg" in
@@ -248,9 +248,18 @@ elif [ "$PREFIX" = "${PREFIX#/}" ]; then
     PREFIX="`pwd`/$PREFIX"
 fi
 
-EXEC_PREFIX='$(PREFIX)'
-BINDIR='$(EXEC_PREFIX)/bin'
-SHAREDIR='$(PREFIX)/share'
+EXEC_PREFIX=$EXEC_PREFIX
+for arg ; do
+    case "$arg" in
+        --exec-prefix=*) EXEC_PREFIX=${arg#*=} ;;
+    esac
+done
+if [ "$EXEC_PREFIX" = "" ]; then
+    EXEC_PREFIX=$PREFIX
+elif [ "$EXEC_PREFIX" = "${EXEC_PREFIX#/}" ]; then
+    EXEC_PREFIX="`pwd`/$EXEC_PREFIX"
+fi
+
 DOCDIR='$(PREFIX)/share/doc'
 MANDIR='$(PREFIX)/share/man'
 
@@ -271,12 +280,11 @@ for arg ; do
         --config-file=*) CONFIGFILE=${arg#*=} ;;
         CONFIGFILE=*) CONFIGFILE=${arg#*=} ;;
         --prefix=*) ;; # already handled
-        --exec-prefix=*) EXEC_PREFIX=${arg#*=} ;;
-        --bindir=*) BINDIR=${arg#*=} ;;
-        --sharedir=*) SHAREDIR=${arg#*=} ;;
+        --exec-prefix=*) ;; # already handled EXEC_PREFIX=${arg#*=} ;;
         --docdir=*) DOCDIR=${arg#*=} ;;
         --mandir=*) MANDIR=${arg#*=} ;;
         --minimal|--minimal=yes) MINIMAL=yes;;
+        --try-avx512|--try-avx512=yes) TRY_AVX512=yes;;
         --enable-small-lut|--enable-small-lut=yes) usesmalllut=yes ;;
         --disable-small-lut|--enable-small-lut=no) usesmalllut=no ;;
         --enable-debug-stderr|--enable-debug-stderr=yes) usedebugstderr=yes ;;
@@ -306,7 +314,7 @@ done
 
 echo "config will be saved to $CONFIGFILE"
 
-for i in PREFIX EXEC_PREFIX BINDIR SHAREDIR DOCDIR MANDIR ; do
+for i in PREFIX EXEC_PREFIX DOCDIR MANDIR ; do
     stripdir $i
 done
 
@@ -503,7 +511,20 @@ if test "$usepic" = "yes" ; then
 fi
 
 # Check function availability
-tryccfn CFLAGS_AUTO "_mm256_movemask_epi8" "immintrin.h" && trycchdr CFLAGS_AUTO "immintrin.h"
+if [ "$TRY_AVX512" = "yes" ]; then
+    printf "checking whether avx512 instructions are available..."
+    HAVE_AVX512=
+    tryccfn CFLAGS_AVX_512 "_mm512_movepi8_mask" "immintrin.h" && trycchdr CFLAGS_AVX_512 "immintrin.h" && ( tryccfn CFLAGS_AVX_512 "_blsr_u64" "immintrin.h" || tryccfn CFLAGS_AVX_512 "__blsr_u64" "immintrin.h" ) && tryflag CFLAGS_AVX_512 "-mbmi" && tryflag CFLAGS_AVX_512 "-mavx512bw" && CFLAGS_AVX_512="-mbmi -mavx512bw -DHAVE_AVX512=1" && HAVE_AVX512=1
+    if [ "$HAVE_AVX512" = "1" ]; then
+	echo "yes"
+    else
+	echo "no"
+	echo "WARNING: --try-avx512 option enabled, but no avx512 instruction set available"
+    fi
+fi
+
+tryccfn CFLAGS_AVX_256 "_mm256_movemask_epi8" "immintrin.h" && trycchdr CFLAGS_AVX_256 "immintrin.h" && ( tryccfn CFLAGS_AVX_256 "_blsr_u32" "immintrin.h" || tryccfn CFLAGS_AVX_256 "__blsr_u32" "immintrin.h" ) && CFLAGS_AVX_256="-DHAVE_AVX256=1" && HAVE_AVX256=1
+
 tryccfn CFLAGS_AUTO "memmem" "string.h"
 
 if [ "$usetermcap" = "yes" ] || [ "$usetermcap" = "auto" ] ; then
@@ -562,10 +583,12 @@ cat << EOF
 # Any changes made here will be lost if configure is re-run
 PREFIX = $PREFIX
 EXEC_PREFIX = $EXEC_PREFIX
-BINDIR = $BINDIR
+BINDIR = $EXEC_PREFIX/bin
+LIBDIR = $EXEC_PREFIX/lib
+INCLUDEDIR = $EXEC_PREFIX/include
+
 DOCPREFIX = $DOCDIR
 MANPREFIX = $MANDIR
-SHAREPREFIX = $SHAREDIR
 CC = $CC
 AWK = $AWK
 MAKE = $MAKE
@@ -584,6 +607,12 @@ CFLAGS_AUTO = $CFLAGS_AUTO
 CFLAGS_LTO = $CFLAGS_LTO
 LDFLAGS_AUTO = $LDFLAGS_AUTO
 CFLAGS_AVX2 = $CFLAGS_AVX2
+
+HAVE_AVX512=$HAVE_AVX512
+CFLAGS_AVX_512=$CFLAGS_AVX_512
+HAVE_AVX256=$HAVE_AVX256
+CFLAGS_AVX_256=$CFLAGS_AVX_256
+
 CFLAGS_CLMUL = $CFLAGS_CLMUL
 CFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g3 -ggdb -Wall -Wextra -Wno-missing-field-initializers -Wno-unused-parameter
 LDFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g3 -ggdb
@@ -623,6 +652,14 @@ if [ "$LDFLAGS_TERMCAP" = "" ]; then
     echo "*  - termcap: no. \`pretty\` will use default width assumption   *"
 else
     echo "*  - termcap: yes                                              *"
+fi
+
+if [ "$HAVE_AVX512" = "1" ]; then
+    echo "*  - using 512-bit AVX instruction set"
+elif [ "$HAVE_AVX256" = "1" ]; then
+    echo "*  - using 256-bit AVX instruction set"
+else
+    echo "*  - using 128-bit vector size"
 fi
 
 echo "****************************************************************"

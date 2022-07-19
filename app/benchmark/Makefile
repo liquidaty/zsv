@@ -13,10 +13,16 @@ ifeq ($(WIN),)
     WIN=1
   endif
 endif
-ifeq ($(WIN),0)
-  BUILD_SUBDIR=$(shell uname)/rel
+ifeq ($(DEBUG),1)
+  REL=dbg
 else
-  BUILD_SUBDIR=win/rel
+  REL=rel
+endif
+
+ifeq ($(WIN),0)
+  BUILD_SUBDIR=$(shell uname)/${REL}
+else
+  BUILD_SUBDIR=win/${REL}
 endif
 
 CCBN=$(shell basename ${CC})
@@ -47,42 +53,97 @@ count: worldcitiespop_mil.csv worldcitiespop_mil.tsv
 
 	@printf "zsv                  : "
 	@(time ${ZSVBIN}count < $< > /dev/null) 2>&1 | xargs
+	@printf "zsv                  : "
+	@(time ${ZSVBIN}count < $< > /dev/null) 2>&1 | xargs
+	@printf "zsv                  : "
+	@(time ${ZSVBIN}count < $< > /dev/null) 2>&1 | xargs
+	@echo ""
 
 	@printf "xsv                  : "
 	@(time xsv count < $< > /dev/null) 2>&1 | xargs
+	@printf "xsv                  : "
+	@(time xsv count < $< > /dev/null) 2>&1 | xargs
+	@printf "xsv                  : "
+	@(time xsv count < $< > /dev/null) 2>&1 | xargs
+	@echo ""
 
 	@printf "tsv-utils            : "
 	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/number-lines -d, < $< > /dev/null) 2>&1 | xargs
+	@printf "tsv-utils            : "
+	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/number-lines -d, < $< > /dev/null) 2>&1 | xargs
+	@printf "tsv-utils            : "
+	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/number-lines -d, < $< > /dev/null) 2>&1 | xargs
+	@echo ""
 
 	@printf "tsv-utils (tsv input): "
 	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/number-lines < $(word 2,$^) > /dev/null) 2>&1 | xargs
+	@printf "tsv-utils (tsv input): "
+	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/number-lines < $(word 2,$^) > /dev/null) 2>&1 | xargs
+	@printf "tsv-utils (tsv input): "
+	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/number-lines < $(word 2,$^) > /dev/null) 2>&1 | xargs
+	@echo ""
 
 tsv: worldcitiespop_mil.csv
 	@echo "${ZSVBIN}"2tsv
 
 	@printf "zsv                  : "
 	@(time ${ZSVBIN}2tsv < $< > /dev/null) 2>&1 | xargs
+	@printf "zsv                  : "
+	@(time ${ZSVBIN}2tsv < $< > /dev/null) 2>&1 | xargs
+	@printf "zsv                  : "
+	@(time ${ZSVBIN}2tsv < $< > /dev/null) 2>&1 | xargs
+	@echo ""
 
 	@printf "tsv-utils (csv2tsv)  : "
 	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/csv2tsv < $< > /dev/null) 2>&1 | xargs
+	@printf "tsv-utils (csv2tsv)  : "
+	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/csv2tsv < $< > /dev/null) 2>&1 | xargs
+	@printf "tsv-utils (csv2tsv)  : "
+	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/csv2tsv < $< > /dev/null) 2>&1 | xargs
+	@echo ""
 
 	@printf "c-blake/nio/c2tsv    : " # from https://github.com/c-blake/nio
 	@(time c2tsv < $< > /dev/null)  2>&1 | xargs
+	@printf "c-blake/nio/c2tsv    : "
+	@(time c2tsv < $< > /dev/null)  2>&1 | xargs
+	@printf "c-blake/nio/c2tsv    : "
+	@(time c2tsv < $< > /dev/null)  2>&1 | xargs
+	@echo ""
 
 
 select: worldcitiespop_mil.csv worldcitiespop_mil.tsv
 	@echo "${ZSVBIN}"select
 	@printf "zsv                  : "
 	@(time ${ZSVBIN}select -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
+	@printf "zsv                  : "
+	@(time ${ZSVBIN}select -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
+	@printf "zsv                  : "
+	@(time ${ZSVBIN}select -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
+	@echo ""
 
 	@printf "xsv                  : "
 	@(time xsv select 2,1,3-7 < $< > /dev/null) 2>&1 | xargs
+	@printf "xsv                  : "
+	@(time xsv select 2,1,3-7 < $< > /dev/null) 2>&1 | xargs
+	@printf "xsv                  : "
+	@(time xsv select 2,1,3-7 < $< > /dev/null) 2>&1 | xargs
+	@echo ""
 
 	@printf "tsv-utils            : "
 	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/tsv-select -d, -f 1-7 < $< > /dev/null) 2>&1 | xargs
+	@printf "tsv-utils            : "
+	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/tsv-select -d, -f 1-7 < $< > /dev/null) 2>&1 | xargs
+	@printf "tsv-utils            : "
+	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/tsv-select -d, -f 1-7 < $< > /dev/null) 2>&1 | xargs
+	@echo ""
 
 	@printf "tsv-utils (tsv input): "
 	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/tsv-select -f 1-7 < $(word 2,$^) > /dev/null) 2>&1 | xargs
+	@printf "tsv-utils (tsv input): "
+	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/tsv-select -f 1-7 < $(word 2,$^) > /dev/null) 2>&1 | xargs
+	@printf "tsv-utils (tsv input): "
+	@(time ~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/tsv-select -f 1-7 < $(word 2,$^) > /dev/null) 2>&1 | xargs
+	@echo ""
 
 ifneq ($(QUICK),1)
 	@printf "csvcut               : "

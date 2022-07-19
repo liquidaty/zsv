@@ -1,8 +1,10 @@
-# zsv+lib: the world's fastest CSV parser, with an extensible CLI
+# zsv+lib: the world's fastest (simd) CSV parser, with an extensible CLI
 
 [![ci](https://github.com/liquidaty/zsv/actions/workflows/ci.yml/badge.svg)](https://github.com/liquidaty/zsv/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/liquidaty/zsv/blob/master/LICENSE)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/liquidaty/zsv?style=flat-square)
+![GitHub pre-release)](https://img.shields.io/github/v/release/liquidaty/zsv?include_prereleases&label=pre-release&logo=github&style=flat-square)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/liquidaty/zsv?logo=github&style=flat-square)
+![GitHub all releases (downloads)](https://img.shields.io/github/downloads/liquidaty/zsv/total?logo=github&style=flat-square)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/liquidaty/zsv/blob/master/LICENSE)
 
 zsv+lib is a fast CSV parser library and extensible command-line utility.
 It achieves high performance using SIMD operations,
@@ -13,15 +15,18 @@ If you like zsv+lib, do not forget to give it a star! 🌟
 ## Performance
 
 Preliminary performance results compare favorably vs other CSV utilities (`xsv`,
-`tsv-utils`, `csvkit`, `mlr` (miller) etc). Below were results on a pre-M1 OSX
+`tsv-utils`, `csvkit`, `mlr` (miller) etc). Below were results on a pre-M1 macOS
 MBA; on most platforms zsvlib was 2x faster, though in some cases the advantage
-was as small as 20% (see also M1 update note below) (mlr not shown as it was
-about 25x slower):
+was smaller e.g. 15-25%) (below, mlr not shown as it was about 25x slower):
 
 <img src="https://user-images.githubusercontent.com/26302468/146497899-48174114-3b18-49b0-97da-35754ab56e48.png" alt="count speed" height="150px"><img src="https://user-images.githubusercontent.com/26302468/146498211-afc77ce6-4229-4599-bf33-81bf00c725a8.png" alt="select speed" height="150px">
 
 ** See 12/19 update re M1 processor at
-https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md.
+https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md
+
+#### Which "CSV"
+
+"CSV" is an ambiguous term. This library uses the same definition as Excel. In addition, it provides a *row-level* (as well as cell-level) API and provides "normalized" CSV output (e.g. input of `this"iscell1,"thisis,"cell2` becomes `"this""iscell1","thisis,cell2"`). Each of these three objectives (Excel compatibility, row-level API and normalized output) has a measurable performance impact; conversely, it is possible to achieve-- which a number of other CSV parsers do-- much faster parsing speeds if any of these requirements (especially Excel compatibility) are dropped.
 
 ## Built-in and extensible features
 
@@ -44,7 +49,7 @@ that implements the expected
 * Handles real-world CSV the same way that spreadsheet programs do (*including
   edge cases*). Gracefully handles (and can "clean") real-world data that may be
   "dirty"
-* Runs on OSX (tested on clang/gcc), Linux (gcc), Windows (mingw),
+* Runs on macOS (tested on clang/gcc), Linux (gcc), Windows (mingw),
   BSD (gcc-only) and in-browser (emscripten/wasm)
 * Fast (maybe the fastest ever, at least on all platforms we've benchmarked where
   256 SIMD operations are available). See
@@ -65,18 +70,29 @@ that implements the expected
 
 ### Packages
 
-zsv is available from a number of package managers (IN PROGRESS):
-
-* OSX: `brew install zsv`
-* Windows: `nuget install zsv`
-* Linux: `yum install zsv`
-
-Download pre-built binaries and packages for OSX, Windows, Linux and BSD from
+Download pre-built binaries and packages for macOS, Windows, Linux and BSD from
 the [Releases](https://github.com/liquidaty/zsv/releases) page.
 
 You can also download pre-built binaries and packages from
 [Actions](https://github.com/liquidaty/zsv/actions) for the latest commits and
 PRs but these are retained only for limited days.
+
+#### macOS
+
+...via Homebrew:
+
+```shell
+brew tap liquidaty/zsv
+brew install zsv
+```
+
+...via MacPorts:
+
+```shell
+sudo port install zsv
+```
+
+#### Linux
 
 For Linux (Debian/Ubuntu - `*.deb`):
 
@@ -97,6 +113,8 @@ sudo yum install ./zsv-amd64-linux-gcc.rpm
 # Uninstall
 sudo yum remove zsv
 ```
+
+#### Windows
 
 For Windows (`*.nupkg`), install with `nuget.exe`:
 
@@ -240,8 +258,9 @@ helping, please post an issue.
 
 ## Contribute
 
-* Fork the project.
-* Check out the latest `main` branch.
+* [Fork](https://github.com/liquidaty/zsv/fork) the project.
+* Check out the latest [`main`](https://github.com/liquidaty/zsv/tree/main)
+  branch.
 * Create a feature or bugfix branch from `main`.
 * Commit and push your changes.
 * Submit the PR.

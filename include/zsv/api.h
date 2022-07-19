@@ -27,6 +27,8 @@
 #define ZSV_EXPORT
 #endif
 
+const char *zsv_lib_version();
+
 ZSV_EXPORT
 const unsigned char *zsv_parse_status_desc(enum zsv_status status);
 

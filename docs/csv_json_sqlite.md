@@ -2,17 +2,17 @@
 
 Summary:
 
-- Yes, CSV sucks. But it, and its xxx-delimited brethren, are still around a
-  lot, and let's face it, delimited format does have certain advantages (such as
-  being at least somewhat readable directly by human eyes), which is probably
-  why they've been around so long
 - sqlite3 is the most widely deployed database engine in the world
-- JSON is useful as an intermediate format between CSV and sqlite3 because it is
-  more API-friendly than CSV, is more git- and diff-friendly than the binary
-  sqlite3 format, can be used to hold both metadata as well as data, and can be
-  devised for performant stream-based consumption
-- the same could be said of other binary table formats (parquet etc), though
-  that is out of scope for the discussion here
+- JSON is useful as an intermediate format between CSV and sqlite3:
+  - more API-friendly than CSV
+  - more git- and diff-friendly than binary formats (like sqlite3)
+  - can hold metadata as well as data
+  - can be converted to other formats (e.g. parquet) with other existing utilities
+  - with an appropriate schema, can be efficiently processed as a stream
+- Many common approaches to converting CSV or sqlite3 to JSON use a JSON Schema
+  with unnecessarily limits to utility, extensibility and/or performance efficiency.
+  With a few tweaks to the target schema, however, you can have your cake and eat it
+- [`zsv`](../README.md) provides high-performance conversion between CSV (or similar), JSON and sqlite3 (and for running SQL queries against CSV)
 
 ## Background
 
@@ -58,7 +58,17 @@ when converting between JSON and sqlite3 formats, using the
 [zsv](https://github.com/liquidaty/zsv), [jq](https://github.com/stedolan/jq)
 and [sqlite3](https://www.sqlite.org) libraries.
 
+### Getting some sample data
+Let's get some sample data to work with:
+```
+curl -LO https://raw.githubusercontent.com/datasets/world-cities/master/data/world-cities.csv
+```
+
 ### CSV to JSON
+
+There are multiple JSON Schemas that can be used to represent CSV data. The most common
+ones, however, have significant drawbacks. `zsv` supports conversion to common / limited
+formats as well as more versatile schemas described below.
 
 #### The common (and not very useful) way
 
@@ -66,8 +76,8 @@ The most common CSV to JSON conversion approaches, referred to herein as the
 "plain-array" and "plain-objects" approaches, have limited utility:
 
 ```shell
-zsv 2json data.csv --no-header < data.csv # output as arrays
-zsv 2json data.csv --object < data.csv    # output as objects
+zsv 2json world-cities.csv --no-header < world-cities.csv # output as arrays
+zsv 2json world-cities.csv --object < world-cities.csv    # output as objects
 ```
 
 The problem with the first format is that it treats the header row as a data row
@@ -91,13 +101,13 @@ herein as a [row-based schema](csv.schema.json):
 
 ```shell
 # output as an array of rows, where the first row is a list of column header objects
-zsv 2json < data.csv > data.json
+zsv 2json < world-cities.csv > world-cities.json
 
 # back to CSV
-zsv jq '[.[0]|[.[]|.name]] + .[1:]|.[]' --csv < data.json
+zsv jq '[.[0]|[.[]|.name]] + .[1:]|.[]' --csv < world-cities.json
 
 # or
-zsv jq '.[]|[.[]|(if (.|type) == "object" then .name else . end)]' --csv < data.json
+zsv jq '.[]|[.[]|(if (.|type) == "object" then .name else . end)]' --csv < world-cities.json
 ```
 
 Note that the above `zsv jq` filter is essentially the same as what you would
@@ -110,33 +120,72 @@ extends each cell's schema to allow for an object that can hold metadata. This
 provides significantly more flexibility, but still has a significant drawback:
 it does not allow for table-level metadata.
 
+### (CSV to) JSON to Sqlite
+
 #### Adding table metadata
 
-To support both table and column metadata, `zsv` uses a schema comprised of a
-tuple with two elements: metadata and data.
-
-This [database-friendly approach](db.schema.json) supports table metadata such
-as table name and indexes.
-
-Future enhancements could support table-level validations/constraints and other
-features, and this approach could be merged with the aforementioned [row-based
+To support both table and column metadata, `zsv` uses a 
+[database-friendly approach](db.schema.json) this supports table metadata
+(such as table name and indexes) through a tuple (ordered list)
+containing two elements (metadata followed by data).
+At the table level, this approach could also be merged with the aforementioned [row-based
 schema](csv.schema.json) to support row-level or cell-level metadata, to
 represent spreadsheet data such as cell-level formatting.
+
+The `zsv` conversion implementations as of this writing are limited; future improvements under consideration include:
+* automatic determination / suggestion of column data type
+* conversion/coercion of text to the specified data type for the corresponding column
+* load to other database back-end e.g. mssql or redshift
+
+Future enhancements to both the schema and the conversion implementation under consideration
+include support for other table-level features such as validations/constraints, other database object types
+such as views, and whole-database conversion.
 
 ```shell
 # Convert CSV to JSON
 # Additionally, specify a non-unique index on Population and a unique index on the combination of City, Country and Region
-zsv 2json --database --index "ix1 on state" --unique-index "ix2 on City, Country, Region" < data.csv > database.json
+zsv 2json --database --index "ix1 on name, country" --unique-index "ix2 on geonameid" --db-table "world-cities" < world-cities.csv > world-cities.db.json
 
 # Convert the resulting JSON to a sqlite3 database
-zsv 2db -o my.db --table mytable < database.json
+zsv 2db -o world-cities.db < world-cities.db.json
+
+# or do the above 2 steps in a compound one-liner. use --overwrite to replace the db we just created
+zsv 2json --database --index "ix1 on name, country" --unique-index "ix2 on geonameid" --db-table "world-cities" < world-cities.csv | zsv 2db -o world-cities.db --overwrite
+
+# query with sqlite3
+sqlite3 world-cities.db ".headers on" ".mode csv" "select * from [world-cities] limit 10"
+
+##### output from query #####
+###  name,country,subcountry,geonameid
+###  "les Escaldes",Andorra,Escaldes-Engordany,3040051
+###  "Andorra la Vella",Andorra,"Andorra la Vella",3041563
+###  "Umm al Qaywayn","United Arab Emirates","Umm al Qaywayn",290594
+###  "Ras al-Khaimah","United Arab Emirates","Raʼs al Khaymah",291074
+###  "Khawr Fakkān","United Arab Emirates","Ash Shāriqah",291696
+###  Dubai,"United Arab Emirates",Dubai,292223
+###  "Dibba Al-Fujairah","United Arab Emirates","Al Fujayrah",292231
+###  "Dibba Al-Hisn","United Arab Emirates","Al Fujayrah",292239
+###  Sharjah,"United Arab Emirates","Ash Shāriqah",292672
+###  "Ar Ruways","United Arab Emirates","Abu Dhabi",292688
 
 # JSON back to CSV
-zsv jq '[.[0]|.columns|[.[]|.name]] + .[1]|.[]' --csv < database.json
+zsv jq '[.[0]|.columns|[.[]|.name]] + .[1]|.[]' --csv < world-cities.db.json
 
 ## or
-zsv jq '.[]|if (.|type) == "object" then (.columns|[.[]|.name]) else . end|.[]' --csv < database.json
+zsv jq '.[]|if (.|type) == "object" then (.columns|[.[]|.name]) else . end|.[]' --csv < world-cities.db.json
 ```
+
+### Sqlite to JSON
+
+Now let's go the other way:
+```shell
+# sqlite3 to JSON
+zsv 2json --from-db world-cities.db > world-cities.from-db.json
+
+# verify it's the same as what we generated above
+cmp world-cities.from-db.json world-cities.db.json && echo "It's the same"'!' || echo "Uh oh"
+```
+
 
 ## Questions
 
@@ -199,7 +248,7 @@ that when serialized, metadata would always be written (or read, in the case of
 the recipient) before data. The only way to enforce order in JSON is to use a
 list.
 
-#### For the database-compatible JSON schema, why use a 2-element tuple?
+### For the database-compatible JSON schema, why use a 2-element tuple?
 
 An alternative to the 2-element tuple would be to simply use a list such as is
 used in the [row-based schema](csv.schema.json). The primary reason to prefer
@@ -267,7 +316,5 @@ breaking change in order to leverage for extended purposes
 
 ### Can you extend the `zsv 2db` command and/or related JSON schema to support the sqlite3 feature XYZ
 
-For standard sqlite3 features, the answer is generally yes!
-
-Please [open an issue](https://github.com/liquidaty/zsv/issues/new/choose) with
+If it's supported in the sqlite3 library, the answer is generally yes. Please [open an issue](https://github.com/liquidaty/zsv/issues/new/choose) with
 your request.
