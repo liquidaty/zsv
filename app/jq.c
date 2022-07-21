@@ -2,11 +2,6 @@
 #include <string.h>
 
 #include "jq_internal.h"
-
-size_t fwrite1(void *restrict FILE_ptr, const void *restrict buff, size_t len) {
-  return fwrite(buff, len, 1, FILE_ptr);
-}
-
 #include "jq_internal.c"
 
 #ifndef APPNAME
@@ -82,11 +77,11 @@ int MAIN(int argc, const char *argv[]) {
   if(!err) {
     void (*jqfunc)(jv, void *) = to_csv ? jv_to_csv : jv_to_json_func;
     struct jv_to_json_ctx ctx;
-    ctx.write1 = fwrite1;
+    ctx.write1 = zsv_jq_fwrite1;
     ctx.ctx = f_out;
     ctx.flags = JV_PRINT_PRETTY | JV_PRINT_SPACE1;
 
-    void *jqctx = to_csv ? f_out : &ctx;
+    void *jqctx = to_csv ? (void *)f_out : (void *)&ctx;
     enum zsv_jq_status jqstat;
     zsv_jq_handle zjq = zsv_jq_new(jqfilter, jqfunc, jqctx, &jqstat);
     if(jqstat != zsv_jq_status_ok) {
