@@ -158,7 +158,7 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
             scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
     scanner->row.overflow = 0;
   }
-  if(LIKELY(scanner->opts.row))
+  if(LIKELY(scanner->opts.row != NULL))
     scanner->opts.row(scanner->opts.ctx);
 # ifdef ZSV_EXTRAS
   scanner->progress.cum_row_count++;
