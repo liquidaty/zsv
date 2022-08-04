@@ -543,8 +543,19 @@ if [ "$usejq" = "yes" ] || [ "$usejq" = "auto" ] ; then
         fi
     if ! [ "$LDFLAGS_JQ" = "" ] ; then
         tryldflag LDFLAGS_JQ -lm
-        tryldflag LDFLAGS_JQ -lshlwapi
-        tryldflag LDFLAGS_JQ -pthread
+        if [ "$MINGW" = "1" ] ; then
+            # windows-specific compiler flags
+            tryldflag LDFLAGS_JQ -lshlwapi
+
+            # link pthread statically to prevent "missing libwinpthread-1.dll" issue
+            LDFLAGS_PTHREAD=
+            tryldflag LDFLAGS_PTHREAD -pthread
+            if [ "$LDFLAGS_PTHREAD" != "" ]; then
+                LDFLAGS_JQ="$LDFLAGS_JQ -Wl,-Bstatic -pthread"
+            fi
+        else
+            tryldflag LDFLAGS_JQ -pthread
+        fi
     fi
 fi
 
