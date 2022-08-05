@@ -383,7 +383,7 @@ set -C
 while : ; do i=$(($i+1))
              tmpc="./conf$$-$PPID-$i.c"
              tmpo="./conf$$-$PPID-$i.o"
-             tmpe="./conf$$-$PPID-$i.e"
+             tmpe="./conf$$-$PPID-$i._"
              2>|/dev/null > "$tmpc" && break
              test "$i" -gt 50 && fail "$0: cannot create temporary file $tmpc"
 done
