@@ -217,8 +217,6 @@ EOF
         compiled=1
         cmd="$tmpe 2>/dev/null"
         if [ "`$cmd`" = "OK" ]; then
-            cp -p $tmpc /tmp/tmp.c
-            cp -p $tmpe /tmp/tmpe
             printf "yes\n"
             return 0
         fi
@@ -228,8 +226,10 @@ EOF
     printf "no\n"
     echo "------" >> $CONFIGFILE.log
     if [ "$compiled" != "1" ]; then
+        echo "Failed to compile: $cmd"
         echo "Failed to compile: $cmd" >> $CONFIGFILE.log
     else
+        echo "Failed run: $cmd => '`$cmd`'"
         echo "Failed run: $cmd => '`$cmd`'" >> $CONFIGFILE.log
     fi
     cat "$tmpc" >> $CONFIGFILE.log
@@ -746,12 +746,29 @@ else
     echo "*  - termcap: yes                                              *"
 fi
 
-if [ "$HAVE_AVX512" = "1" ]; then
-    echo "*  - using 512-bit AVX instruction set"
-elif [ "$HAVE_AVX256" = "1" ]; then
-    echo "*  - using 256-bit AVX instruction set"
+if [ "$VECTOR_BYTES" = "64" ]; then
+    printf "*  - using 64-bytes vectors"
+    if [ "$HAVE_AVX_MM128" = "1" ]; then
+        echo " with intrinsic movemask              *"
+    else
+        echo " with MANUAL movemask                 *"
+    fi
+elif [ "$VECTOR_BYTES" = "32" ]; then
+    printf "*  - using 32-byte vectors"
+    if [ "$HAVE_AVX_MM128" = "1" ]; then
+        echo " with intrinsic movemask             *"
+    else
+        echo " with MANUAL movemask                *"
+    fi
+elif [ "$VECTOR_BYTES" = "16" ]; then
+    printf "*  - using 16-byte vectors"
+    if [ "$HAVE_AVX_MM128" = "1" ]; then
+        echo " with intrinsic movemask             *"
+    else
+        echo " with MANUAL movemask                *"
+    fi
 else
-    echo "*  - using 128-bit vector size"
+    echo "* ERROR: no vector support detected"
 fi
 
 echo "****************************************************************"
