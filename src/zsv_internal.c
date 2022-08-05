@@ -228,7 +228,7 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
 # define NEXT_BIT __builtin_ffs
 # ifdef HAVE_AVX_MM128
 #  include <emmintrin.h>
-#  define movemask_pseudo(x) _mm_movemask_epi8
+#  define movemask_pseudo(x) _mm_movemask_epi8((__m128i)x)
 # endif
 #else
 #  error No vector support for any of 16, 32 or 64!
