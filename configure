@@ -32,7 +32,9 @@ Optional features:
   --enable-termcap        build with ncurses / termcap (used by \`pretty\` to get console width) [auto]
   --enable-jq             build with jq (requires installed jq lib) [auto]
 
+
 Some influential environment variables:
+  VECTOR_BYTES            if set, configure will not try to detect. otherwise, will check for 32 and 16
   CC                      C compiler command [detected]
   AWK                     AWK tool command [detected]
   MAKE                    gmake tool command [detected]
@@ -115,7 +117,7 @@ NO_$upper2 = 1"
 tryccfn () {
     rm -f "$tmpc"
     if [ "$5" != "" ] ; then
-        printf "checking whether compiler accepts %s from %s with %s... " "$2" "$3" "$5"
+        printf "checking whether compiler accepts %s from %s with %s... " "$2" "$3" "$5" "$6"
         echo "$5" >> "$tmpc"
     else
         printf "checking whether compiler accepts %s from %s..." "$2" "$3"
@@ -127,7 +129,7 @@ tryccfn () {
 int main() {$2;}
 EOF
     flag=$(echo "$2" | cut -d'(' -f1 | tr a-z A-Z)
-    if $CC -o "$tmpo" "$tmpc" >/dev/null 2>&1 ; then
+    if $CC -o "$tmpo" "$tmpc" $6 >/dev/null 2>&1 ; then
         if [ "$4" != "" ] ; then
             lib=$(echo "$4" | tr a-z A-Z | tr . _)
             USE_LIBS="$USE_LIBS
@@ -180,6 +182,59 @@ EOF
         printf "no\n"
         return 1
     fi
+}
+
+trycode() { # label, code, include(s), cflags, libs
+    rm -f "$tmpc" "$tmpe"
+    printf "checking whether target works using %s..." "$1"
+    if [ "$3" != "" ]; then
+        for x in $3; do
+            printf "#include <$x.h>\n" >> "$tmpc"
+        done
+    fi
+    printf "#include <stdio.h>\n" >> "$tmpc"
+    cat >> "$tmpc" <<EOF
+int main() { $2; printf("OK\n"); return 1; }
+EOF
+
+    cmd="$CC"
+    for x in "$4"; do
+        if [ "$x" != "" ]; then
+            cmd="$cmd $x"
+        fi
+    done
+
+    cmd="$cmd -o $tmpe $tmpc"
+
+    for x in "$5"; do
+        if [ "$x" != "" ]; then
+            cmd="$cmd $x"
+        fi
+    done
+
+    compiled=0
+    if $cmd >/dev/null 2>&1 ; then
+        compiled=1
+        cmd="$tmpe 2>/dev/null"
+        if [ "`$cmd`" = "OK" ]; then
+            cp -p $tmpc /tmp/tmp.c
+            cp -p $tmpe /tmp/tmpe
+            printf "yes\n"
+            return 0
+        fi
+    fi
+
+    # error
+    printf "no\n"
+    echo "------" >> $CONFIGFILE.log
+    if [ "$compiled" != "1" ]; then
+        echo "Failed to compile: $cmd" >> $CONFIGFILE.log
+    else
+        echo "Failed run: $cmd => '`$cmd`'" >> $CONFIGFILE.log
+    fi
+    cat "$tmpc" >> $CONFIGFILE.log
+    echo "------" >> $CONFIGFILE.log
+    return 1
 }
 
 tryflag () {
@@ -326,12 +381,13 @@ set -C
 while : ; do i=$(($i+1))
              tmpc="./conf$$-$PPID-$i.c"
              tmpo="./conf$$-$PPID-$i.o"
+             tmpe="./conf$$-$PPID-$i.e"
              2>|/dev/null > "$tmpc" && break
              test "$i" -gt 50 && fail "$0: cannot create temporary file $tmpc"
 done
 set +C
-trap 'rm -f "$tmpc" "$tmpo"' EXIT QUIT TERM HUP
-trap 'rm -f "$tmpc" "$tmpo" && echo && fail "$0: interrupted"' INT
+trap 'rm -f "$tmpc" "$tmpo" "$tmpe"' EXIT QUIT TERM HUP
+trap 'rm -f "$tmpc" "$tmpo" "$tmp2" && echo && fail "$0: interrupted"' INT
 
 #
 # Find an AWK tool to use
@@ -523,7 +579,26 @@ if [ "$TRY_AVX512" = "yes" ]; then
     fi
 fi
 
-tryccfn CFLAGS_AVX_256 "_mm256_movemask_epi8" "immintrin.h" && trycchdr CFLAGS_AVX_256 "immintrin.h" && ( tryccfn CFLAGS_AVX_256 "_blsr_u32" "immintrin.h" || tryccfn CFLAGS_AVX_256 "__blsr_u32" "immintrin.h" ) && CFLAGS_AVX_256="-DHAVE_AVX256=1" && HAVE_AVX256=1
+if [ "$VECTOR_BYTES" = "" ]; then
+    trycode "VECTOR_BYTES=32" 'unsigned char __attribute__ ((vector_size (VECTOR_BYTES))) v1, v2, v3 = v1 == v2' \
+            "" "-DVECTOR_BYTES=32 -mavx2" && VECTOR_BYTES=32
+    if [ "$VECTOR_BYTES" = "" ]; then
+    trycode "VECTOR_BYTES=16" 'unsigned char __attribute__ ((vector_size (VECTOR_BYTES))) v1, v2, v3 = v1 == v2' \
+            "" "-DVECTOR_BYTES=16 -mavx2" && VECTOR_BYTES=16
+    fi
+fi
+
+if [ "$VECTOR_BYTES" = "32" ]; then
+    tryccfn CFLAGS_AVX_256 "_mm256_movemask_epi8" "immintrin.h" "" "" "-mavx2" && trycchdr CFLAGS_AVX_256 "immintrin.h" && ( tryccfn CFLAGS_AVX_256 "_blsr_u32" "immintrin.h" || tryccfn CFLAGS_AVX_256 "__blsr_u32" "immintrin.h" ) && CFLAGS_AVX_256="-DHAVE_AVX256=1" && HAVE_AVX256=1
+fi
+
+HAVE_MM512=0
+HAVE_MM256=0
+HAVE_MM128=0
+trycode "movemask512" "__m512i v;_mm512_movemask_epi8(v)" "immintrin" "-O0 -mavx2" && HAVE_AVX_MM512=1
+trycode "movemask256" "__m256i v;_mm256_movemask_epi8(v)" "immintrin" "-O0 -mavx2" && HAVE_AVX_MM256=1
+trycode "movemask" "__m128i v;_mm_movemask_epi8(v)" "emmintrin" "-O0 -mavx2" && HAVE_AVX_MM128=1
+
 
 tryccfn CFLAGS_AUTO "memmem" "string.h"
 
@@ -623,6 +698,12 @@ HAVE_AVX512=$HAVE_AVX512
 CFLAGS_AVX_512=$CFLAGS_AVX_512
 HAVE_AVX256=$HAVE_AVX256
 CFLAGS_AVX_256=$CFLAGS_AVX_256
+
+HAVE_AVX_MM512=$HAVE_AVX_MM512
+HAVE_AVX_MM256=$HAVE_AVX_MM256
+HAVE_AVX_MM128=$HAVE_AVX_MM128
+VECTOR_BYTES=$VECTOR_BYTES
+
 
 CFLAGS_CLMUL = $CFLAGS_CLMUL
 CFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g3 -ggdb -Wall -Wextra -Wno-missing-field-initializers -Wno-unused-parameter

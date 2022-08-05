@@ -208,42 +208,37 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
   return row_dl(scanner);
 }
 
-#ifndef ZSV_NO_AVX
-# if !defined(__AVX2__)
-#  define ZSV_NO_AVX
-# elif defined(HAVE_AVX512)
-#  ifndef __AVX512BW__
-#   error AVX512 requested, but __AVX512BW__ macro not defined
-#  else
-#   define VECTOR_BYTES 64
-#   define zsv_mask_t uint64_t
-#   define movemask_pseudo(x) _mm512_movepi8_mask((__m512i)x)
-#   define NEXT_BIT __builtin_ffsl
-#  endif
-# elif defined(HAVE_AVX256)
-#  define VECTOR_BYTES 32
-#  define zsv_mask_t uint32_t
-#  define movemask_pseudo(x) _mm256_movemask_epi8((__m256i)x)
-#  define NEXT_BIT __builtin_ffs
-# else
-#  define ZSV_NO_AVX
+#if VECTOR_BYTES == 64
+# define zsv_mask_t uint64_t
+# define NEXT_BIT __builtin_ffsl
+# ifdef HAVE_AVX_MM512
+#  include <immintrin.h>
+#  define movemask_pseudo(x) _mm512_movepi8_mask((__m512i)x)
 # endif
-#endif // ndef ZSV_NO_AVX
-
-#if defined(ZSV_NO_AVX)
+#elif VECTOR_BYTES == 32
+# define zsv_mask_t uint32_t
+# define NEXT_BIT __builtin_ffs
+# ifdef HAVE_AVX_MM256
+#  include <immintrin.h>
+#  define movemask_pseudo(x) _mm256_movemask_epi8((__m256i)x)
+# endif
+#elif VECTOR_BYTES == 16
 # define zsv_mask_t uint16_t
 # define VECTOR_BYTES 16
 # define NEXT_BIT __builtin_ffs
+# ifdef HAVE_AVX_MM128
+#  include <emmintrin.h>
+#  define movemask_pseudo(x) _mm_movemask_epi8
+# endif
+#else
+#  error No vector support for any of 16, 32 or 64!
 #endif
 
 typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (VECTOR_BYTES)));
 
-#ifndef ZSV_NO_AVX
-# include <immintrin.h>
-#else
-
-# if defined(__ARM_NEON) || defined(__ARM_NEON__)
-# include <arm_neon.h>
+#ifndef movemask_pseudo
+# if VECTOR_BYTES == 16 && ( defined(__ARM_NEON) || defined(__ARM_NEON__) )
+#  include <arm_neon.h>
 # endif
 /*
   provide our own pseudo-movemask, which sets the 1 bit for each corresponding
@@ -252,7 +247,7 @@ typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (VECTOR_BYTES)))
 */
 static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
 
-#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+# if VECTOR_BYTES == 16 && ( defined(__ARM_NEON) || defined(__ARM_NEON__) )
   // see https://stackoverflow.com/questions/11870910/
   static const uint8_t __attribute__ ((aligned (16))) _powers[16]=
     { 1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128 };
@@ -266,7 +261,7 @@ static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
   vst1q_lane_u8((uint8_t*)&mask + 0, (uint8x16_t)imask, 0);
   vst1q_lane_u8((uint8_t*)&mask + 1, (uint8x16_t)imask, 8);
   return mask;
-#else
+# else // manual movemask function (slow)
   // to do: see https://github.com/WebAssembly/simd/issues/131 for wasm
   zsv_mask_t mask = 0, tmp = 1;
   for(size_t i = 0; i < sizeof(zsv_uc_vector); i++) {
@@ -274,10 +269,10 @@ static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
     tmp <<= 1;
   }
   return mask;
-#endif
+# endif
 
 }
-#endif // ZSV_NO_AVX
+#endif // ndef movemask_pseudo
 
 # include "vector_delim.c"
 
