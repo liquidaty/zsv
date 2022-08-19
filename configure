@@ -544,7 +544,11 @@ if [ "$usejq" = "yes" ] || [ "$usejq" = "auto" ] ; then
     if ! [ "$LDFLAGS_JQ" = "" ] ; then
         tryldflag LDFLAGS_JQ -lm
         tryldflag LDFLAGS_JQ -lshlwapi
-        tryldflag LDFLAGS_JQ -pthread
+	if [ "$MINGW" = "1" ]; then
+	    tryldflag LDFLAGS_TMP -pthread && STATIC_LIBS="$STATIC_LIBS -pthread"
+	else
+            tryldflag LDFLAGS_JQ -pthread
+	fi
     fi
 fi
 
@@ -603,6 +607,7 @@ CFLAGS_OPT = $CFLAGS_OPT
 LDFLAGS_OPT = $LDFLAGS_OPT
 LDFLAGS_TERMCAP = $LDFLAGS_TERMCAP
 LDFLAGS_JQ = $LDFLAGS_JQ
+STATIC_LIBS = $STATIC_LIBS
 CFLAGS_AUTO = $CFLAGS_AUTO
 CFLAGS_LTO = $CFLAGS_LTO
 LDFLAGS_AUTO = $LDFLAGS_AUTO
