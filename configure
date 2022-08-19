@@ -553,7 +553,7 @@ if [ "$usejq" = "yes" ] || [ "$usejq" = "auto" ] ; then
             # if [ "$LDFLAGS_PTHREAD" != "" ]; then
             #     LDFLAGS_JQ="$LDFLAGS_JQ -Wl,-Bstatic -pthread"
             # fi
-	    LDFLAGS_JQ="$LDFLAGS_JQ -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive"
+	    # LDFLAGS_JQ="$LDFLAGS_JQ -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive"
         else
             tryldflag LDFLAGS_JQ -pthread
         fi
