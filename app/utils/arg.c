@@ -85,9 +85,9 @@ int zsv_args_to_opts(int argc, const char *argv[],
     argv_out[new_argc] = argv[new_argc];
 
 #ifdef ZSV_EXTRAS
-  static const char *short_args = "BcrtOqvL";
+  static const char *short_args = "BcrtOqvRdL";
 #else
-  static const char *short_args = "BcrtOqv";
+  static const char *short_args = "BcrtOqvRd";
 #endif
 
   static const char *long_args[] = {
@@ -98,6 +98,8 @@ int zsv_args_to_opts(int argc, const char *argv[],
     "other-delim",
     "no-quote",
     "verbose",
+    "skip-head",
+    "header-row-span",
 #ifdef ZSV_EXTRAS
     "limit-rows",
 #endif
@@ -132,6 +134,8 @@ int zsv_args_to_opts(int argc, const char *argv[],
     case 'c':
     case 'r':
     case 'O':
+    case 'R':
+    case 'd':
       if(++i >= argc)
         err = fprintf(stderr, "Error: option %s requires a value\n", argv[i-1]);
       else if(arg == 'O') {
@@ -144,30 +148,46 @@ int zsv_args_to_opts(int argc, const char *argv[],
           opts_out->delimiter = *val;
       } else {
         const char *val = argv[i];
-        /* arg = 'B', 'c', 'r' or 'L' (ZSV_EXTRAS only) */
+        /* arg = 'B', 'c', 'r', 'R', 'd', or 'L' (ZSV_EXTRAS only) */
         long n = atol(val);
+        if(n < 0)
+          err = fprintf(stderr, "Error: option %s value may not be less than zero (got %li\n", val, n);
 #ifdef ZSV_EXTRAS
-        if(arg == 'L') {
+        else if(arg == 'L') {
           if(n < 1)
             err = fprintf(stderr, "Error: max rows may not be less than 1 (got %s)\n", val);
           else
             opts_out->max_rows = n;
         } else
 #endif
-        if(arg == 'B' && n < ZSV_MIN_SCANNER_BUFFSIZE)
-          err = fprintf(stderr, "Error: buff size may not be less than %u (got %s)\n",
-                        ZSV_MIN_SCANNER_BUFFSIZE, val);
-        else if(arg == 'c' && n < 8)
-          err = fprintf(stderr, "Error: max column count may not be less than 8 (got %s)\n", val);
-        else if(arg == 'r' && n < ZSV_ROW_MAX_SIZE_MIN)
-          err = fprintf(stderr, "Error: max row size size may not be less than %u (got %s)\n",
-                        ZSV_ROW_MAX_SIZE_MIN, val);
-        else if(arg == 'B')
-          opts_out->buffsize = n;
-        else if(arg == 'c')
-          opts_out->max_columns = n;
-        else if(arg == 'r')
-          opts_out->max_row_size = n;
+        if(arg == 'B') {
+          if(n < ZSV_MIN_SCANNER_BUFFSIZE)
+            err = fprintf(stderr, "Error: buff size may not be less than %u (got %s)\n",
+                          ZSV_MIN_SCANNER_BUFFSIZE, val);
+          else
+            opts_out->buffsize = n;
+        } else if(arg == 'c') {
+          if(n < 8)
+            err = fprintf(stderr, "Error: max column count may not be less than 8 (got %s)\n", val);
+          else
+            opts_out->max_columns = n;
+        } else if(arg == 'r') {
+          if(n < ZSV_ROW_MAX_SIZE_MIN)
+            err = fprintf(stderr, "Error: max row size size may not be less than %u (got %s)\n",
+                          ZSV_ROW_MAX_SIZE_MIN, val);
+          else
+            opts_out->max_row_size = n;
+        } else if(arg == 'd') {
+          if(n < 8 && n >= 0)
+            opts_out->header_span = n;
+          else
+            err = fprintf(stderr, "Error: header_span must be an integer between 0 and 8\n");
+        } else if(arg == 'R') {
+          if(n >= 0)
+            opts_out->rows_to_skip = n;
+          else
+            err = fprintf(stderr, "Error: rows_to_skip must be >= 0\n");
+        }
       }
       break;
     default: /* pass this option through */

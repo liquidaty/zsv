@@ -43,6 +43,8 @@ static int main_help(int argc, const char *argv[]) {
     "  -t,--tab-delim: set column delimiter to tab",
     "  -O,--other-delim <char>: set column delimiter to specified character",
     "  -q,--no-quote: turn off quote handling",
+    "  -R,--skip-head <n>: skip specified number of initial rows",
+    "  -d,--header-row-span <n>: apply header depth (rowspan) of n",
     "  -v,--verbose: verbose output",
     "",
     "Commands:",

@@ -586,8 +586,8 @@ const char *zsv_select_usage_msg[] =
    "  --distinct: skip subsequent occurrences of columns with the same name",
    "  --merge: merge subsequent occurrences of columns with the same name, outputting first non-null value",
    // --rename: like distinct, but instead of removing cols with dupe names, renames them, trying _<n> for n up to max cols
-   "  -R, --skip-head <n>: skip specified number of rows",
-   "  -D, --skip-data <n>: skip the specified number of data rows",
+//   "  -R, --skip-head <n>: skip specified number of rows",
+//   "  -D, --skip-data <n>: skip the specified number of data rows",
    "  -e <embedded lineend char>: char to replace embedded lineend. if none provided, embedded lineends are preserved",
    "      If the provided string begins with 0x, it will be interpreted as the hex representation of a string",
    "  -x <column>: exclude the indicated column. can be specified more than once",
@@ -733,14 +733,16 @@ int MAIN(int argc, const char *argv[]) {
       else if(!strcmp(argv[arg_i], "--whitespace-clean-no-newline")) {
         data.clean_white = 1;
         data.whitspace_clean_flags = 1;
-      } else if(!strcmp(argv[arg_i], "-W") || !strcmp(argv[arg_i], "--no-trim"))
+      } else if(!strcmp(argv[arg_i], "-W") || !strcmp(argv[arg_i], "--no-trim")) {
         data.no_trim_whitespace = 1;
-      else if(!strcmp(argv[arg_i], "-d") || !strcmp(argv[arg_i], "--header-row-span")) {
+      /*
+      } else if(!strcmp(argv[arg_i], "-d") || !strcmp(argv[arg_i], "--header-row-span")) {
         if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) >= 0 && atoi(argv[arg_i+1]) < 256))
           err = zsv_printerr(1, "%s option value invalid: should be integer between 1 and 255; got %s", argv[arg_i], arg_i + 1 < argc ? argv[arg_i+1] : "");
         else
 //          data.header_depth = (unsigned char)atoi(argv[++arg_i]);
           data.opts.header_span = atoi(argv[++arg_i]);
+      */
       } else if(!strcmp(argv[arg_i], "--header-row")) {
         arg_i++;
         if(!(arg_i < argc))
@@ -769,6 +771,7 @@ int MAIN(int argc, const char *argv[]) {
           err = zsv_printerr(1, "%s option value invalid: should be positive integer; got %s", argv[arg_i], arg_i + 1 < argc ? argv[arg_i+1] : "");
         else
           data.data_rows_limit = atoi(argv[++arg_i]) + 1;
+        /*
       } else if(!strcmp(argv[arg_i], "-R") || !strcmp(argv[arg_i], "--skip-head")) {
         ++arg_i;
         if(!(arg_i < argc && atoi(argv[arg_i]) >= 0 && atoi(argv[arg_i]) < 256))
@@ -776,6 +779,7 @@ int MAIN(int argc, const char *argv[]) {
         else
           // data.skip_rows = data.skip_rows_orig = atoi(argv[arg_i]);
           data.opts.rows_to_skip = atoi(argv[arg_i]);
+        */
       } else if(!strcmp(argv[arg_i], "-D") || !strcmp(argv[arg_i], "--skip-data")) {
         ++arg_i;
         if(!(arg_i < argc && atoi(argv[arg_i]) >= 0))
