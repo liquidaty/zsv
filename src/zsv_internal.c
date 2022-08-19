@@ -284,7 +284,6 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
   if(VERY_UNLIKELY(scanner->abort))
     return zsv_status_cancelled;
   scanner->have_cell = 0;
-//  if(scanner->row.used)
   scanner->row.used = 0;
   return zsv_status_ok;
 }
@@ -630,11 +629,13 @@ static void collate_header_row(void *ctx) {
       }
       if(scanner->opts.cell) {
         // call the user-provided cell() callback on each cell
+        unsigned char saved_quoted = scanner->quoted;
         for(size_t i = 0, j = zsv_column_count(scanner); i < j; i++) {
           struct zsv_cell c = zsv_get_cell(scanner, i);
           scanner->quoted = c.quoted;
           scanner->opts.cell(scanner->opts.ctx, c.str, c.len);
         }
+        scanner->quoted = saved_quoted;
       }
       if(scanner->opts.row)
         // call the user-provided row() callback
