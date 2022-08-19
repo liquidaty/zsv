@@ -118,21 +118,13 @@ static void jv_to_csv_aux(jv value, FILE *f, int inside_string) {
   jv_free(value);
 }
 
-/*
-void jv_to_json_w_ctx(jv value, void *ctx) {
-  struct jv_to_json_ctx *c = ctx;
-  jv_dumpf(value, ctx->out, c->flags);
+size_t zsv_jq_fwrite1(void *restrict FILE_ptr, const void *restrict buff, size_t len) {
+  return fwrite(buff, len, 1, FILE_ptr);
 }
-
-void jv_to_json(jv value, void *file) {
-  FILE *f = file;
-  jv_dumpf(value, f, 0);
-}
-*/
 
 void jv_to_json_func(jv value, void *ctx) {
   struct jv_to_json_ctx *data = ctx;
-  if(data->write1 == fwrite1)
+  if(data->write1 == zsv_jq_fwrite1)
     jv_dumpf(value, data->ctx, data->flags);
   else {
     // jv_dump_string is memory-inefficient
@@ -184,7 +176,6 @@ void jv_to_csv(jv value, void *file) {
   jv_free(value);
 }
 
-///
 static void jv_to_txt_aux(jv value, FILE *f) {
   f = f ? f : stdout;
   if(!jv_print_scalar(jv_copy(value), 0, f, 0)) {
@@ -261,8 +252,6 @@ void jv_to_lqjq(jv value, void *h) {
     zsv_jq_parse(lqjq, p, len);
   jv_free(jv_s);
 }
-
-///
 
 struct zsv_jq_data {
   void *jq;
@@ -398,7 +387,6 @@ static int zsv_jq_process(jq_state *jq,
   return ret;
 }
 
-
 void jv_to_bool(jv value, void *char_result) {
   char *c = char_result;
   switch(jv_get_kind(value)) {
@@ -415,13 +403,4 @@ void jv_to_bool(jv value, void *char_result) {
     break;
   }
   jv_free(value);
-}
-
-static const unsigned char *strrchru(const unsigned char *s, char c) {
-  return (const unsigned char *)strrchr((const char *)s, c);
-}
-
-static size_t zsv_jq_parse1(void *restrict h, const void *restrict s, size_t len) {
-  enum zsv_jq_status stat = zsv_jq_parse(h, s, len);
-  return (size_t) stat;
 }
