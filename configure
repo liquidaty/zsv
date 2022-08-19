@@ -214,8 +214,8 @@ EOF
     compiled=
     if $cmd >/dev/null 2>&1 ; then
         compiled="$cmd"
-        cmd="$tmpe 2>/dev/null"
-        if [ "`$cmd`" = "OK" ]; then
+        cmd="$tmpe"
+        if [ "`$cmd  2>/dev/null`" = "OK" ]; then
             printf "yes\n"
             return 0
         fi
