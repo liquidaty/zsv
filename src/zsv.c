@@ -74,9 +74,6 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
       return zsv_status_cancelled;
 
     // throw away the next row end
-    scanner->row_orig = scanner->opts.row;
-    scanner->row_ctx_orig = scanner->opts.ctx;
-
     scanner->opts.row = zsv_throwaway_row;
     scanner->opts.ctx = scanner;
 
@@ -138,6 +135,7 @@ size_t zsv_column_count(zsv_parser parser) {
 ZSV_EXPORT
 void zsv_set_row_handler(zsv_parser parser, void (*row)(void *ctx)) {
   parser->opts.row = row;
+  parser->row_orig = row;
 }
 
 ZSV_EXPORT
@@ -201,7 +199,6 @@ ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count
     parser->fixed.offsets[i] = offsets[i];
 
   parser->mode = ZSV_MODE_FIXED;
-
   parser->checked_bom = 1;
 
   return zsv_status_ok;
@@ -282,11 +279,9 @@ enum zsv_status zsv_delete(zsv_parser parser) {
     if(parser->free_buff && parser->buff.buff)
       free(parser->buff.buff);
 
-    if(parser->row.cells)
-      free(parser->row.cells);
-
+    free(parser->row.cells);
     free(parser->fixed.offsets);
-
+    collate_header_destroy(&parser->collate_header);
     free(parser);
   }
   return zsv_status_ok;

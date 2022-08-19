@@ -83,7 +83,6 @@ struct zsv_select_data {
 
   unsigned int output_col_index; // num of cols printed in current row
   size_t file_row_count;
-  size_t header_rows_processed;
 
   // output columns:
   const char **col_argv;
@@ -112,10 +111,8 @@ struct zsv_select_data {
 
   double sample_pct;
 
-  unsigned char skip_rows;
-  unsigned char skip_rows_orig;
   unsigned char sample_every_n;
-  unsigned char header_depth;
+
   size_t data_rows_limit;
   size_t skip_data_rows;
 
@@ -522,34 +519,27 @@ static void zsv_select_header_row(void *ctx) {
   if(data->cancelled)
     return;
 
-  if(data->skip_rows > 0)
-    data->skip_rows--;
-  else {
-    data->header_rows_processed++;
-    unsigned int cols = zsv_column_count(data->parser);
-    unsigned int max_header_ix = 0;
-    for(unsigned int i = 0; i < cols; i++) {
-      struct zsv_cell cell = zsv_get_cell(data->parser, i);
-      cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
-      if(i < data->opts.max_columns) {
-        zsv_select_append_spaced_word(&data->header_names[i], cell.str, cell.len);
-        if(cell.len)
-          max_header_ix = i+1;
-      }
+  unsigned int cols = zsv_column_count(data->parser);
+  unsigned int max_header_ix = 0;
+  for(unsigned int i = 0; i < cols; i++) {
+    struct zsv_cell cell = zsv_get_cell(data->parser, i);
+    cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
+    if(i < data->opts.max_columns) {
+      zsv_select_append_spaced_word(&data->header_names[i], cell.str, cell.len);
+      if(cell.len)
+        max_header_ix = i+1;
     }
-
-    // in case we want to make this an option later
-    char trim_trailing_columns = 1;
-    if(!trim_trailing_columns)
-      max_header_ix = cols;
-
-    if(max_header_ix > data->header_name_count)
-      data->header_name_count = max_header_ix;
-
-    // if this was the last row in the header, finish header processing
-    if(data->header_rows_processed >= data->header_depth)
-      zsv_select_header_finish(data);
   }
+
+  // in case we want to make this an option later
+  char trim_trailing_columns = 1;
+  if(!trim_trailing_columns)
+    max_header_ix = cols;
+
+  if(max_header_ix > data->header_name_count)
+    data->header_name_count = max_header_ix;
+
+  zsv_select_header_finish(data);
 }
 
 #define ZSV_SELECT_MAX_COLS_DEFAULT 1024
@@ -586,8 +576,6 @@ const char *zsv_select_usage_msg[] =
    "  --distinct: skip subsequent occurrences of columns with the same name",
    "  --merge: merge subsequent occurrences of columns with the same name, outputting first non-null value",
    // --rename: like distinct, but instead of removing cols with dupe names, renames them, trying _<n> for n up to max cols
-   "  -R, --skip-head <n>: skip specified number of rows",
-   "  -D, --skip-data <n>: skip the specified number of data rows",
    "  -e <embedded lineend char>: char to replace embedded lineend. if none provided, embedded lineends are preserved",
    "      If the provided string begins with 0x, it will be interpreted as the hex representation of a string",
    "  -x <column>: exclude the indicated column. can be specified more than once",
@@ -658,8 +646,6 @@ int MAIN(int argc, const char *argv[]) {
     data.opts = zsv_get_default_opts();
 
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
-    data.header_depth = 1;
-
     int col_index_arg_i = 0;
     const char *insert_header_row = NULL;
     for(int arg_i = 1; !err && arg_i < argc; arg_i++) {
@@ -733,13 +719,8 @@ int MAIN(int argc, const char *argv[]) {
       else if(!strcmp(argv[arg_i], "--whitespace-clean-no-newline")) {
         data.clean_white = 1;
         data.whitspace_clean_flags = 1;
-      } else if(!strcmp(argv[arg_i], "-W") || !strcmp(argv[arg_i], "--no-trim"))
+      } else if(!strcmp(argv[arg_i], "-W") || !strcmp(argv[arg_i], "--no-trim")) {
         data.no_trim_whitespace = 1;
-      else if(!strcmp(argv[arg_i], "-d") || !strcmp(argv[arg_i], "--header-row-span")) {
-        if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) >= 0 && atoi(argv[arg_i+1]) < 256))
-          err = zsv_printerr(1, "%s option value invalid: should be integer between 1 and 255; got %s", argv[arg_i], arg_i + 1 < argc ? argv[arg_i+1] : "");
-        else
-          data.header_depth = (unsigned char)atoi(argv[++arg_i]);
       } else if(!strcmp(argv[arg_i], "--header-row")) {
         arg_i++;
         if(!(arg_i < argc))
@@ -768,12 +749,6 @@ int MAIN(int argc, const char *argv[]) {
           err = zsv_printerr(1, "%s option value invalid: should be positive integer; got %s", argv[arg_i], arg_i + 1 < argc ? argv[arg_i+1] : "");
         else
           data.data_rows_limit = atoi(argv[++arg_i]) + 1;
-      } else if(!strcmp(argv[arg_i], "-R") || !strcmp(argv[arg_i], "--skip-head")) {
-        ++arg_i;
-        if(!(arg_i < argc && atoi(argv[arg_i]) >= 0 && atoi(argv[arg_i]) < 256))
-          err = zsv_printerr(1, "-R option value invalid: should be positive integer smaller than 256");
-        else
-          data.skip_rows = data.skip_rows_orig = atoi(argv[arg_i]);
       } else if(!strcmp(argv[arg_i], "-D") || !strcmp(argv[arg_i], "--skip-data")) {
         ++arg_i;
         if(!(arg_i < argc && atoi(argv[arg_i]) >= 0))

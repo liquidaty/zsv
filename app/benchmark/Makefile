@@ -28,11 +28,11 @@ endif
 CCBN=$(shell basename ${CC})
 ZSVBIN=../../build/${BUILD_SUBDIR}/${CCBN}/bin/zsv_
 
-QUICK=
+QUICK=1
 
 help:
 	@echo "To run all tests (set QUICK to skip mlr and csvcut):"
-	@echo "    make all [QUICK=1]"
+	@echo "    make all [QUICK=0]"
 	@echo "    make CLI"
 
 CLI: ZSVBIN="zsv "

@@ -11,8 +11,10 @@ enum zsv_jq_status {
   zsv_jq_status_error
 };
 
+size_t zsv_jq_fwrite1(void *restrict FILE_ptr, const void *restrict buff, size_t len);
+
 struct jv_to_json_ctx {
-  size_t (*write1)(void *restrict ctx, const void *restrict buff, size_t len); // e.g. common/write1
+  size_t (*write1)(void *restrict ctx, const void *restrict buff, size_t len); // e.g. zsv_jq_fwrite1
   void *ctx; // e.g. FILE *
   int flags; // passed on to jv_dumpf / jv_dump_string
 };

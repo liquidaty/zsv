@@ -202,7 +202,7 @@ size_t zsv_strwhite(unsigned char *s, size_t len, unsigned int flags) {
 size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace) {
   size_t new_len = 0;
   int clen;
-  for(size_t i2 = 0; i2 < n; i2 += clen) {
+  for(size_t i2 = 0; i2 < n; i2 += (size_t)clen) {
     clen = ZSV_UTF8_CHARLEN(s[i2]);
     if(LIKELY(clen == 1))
       s[new_len++] = s[i2];
