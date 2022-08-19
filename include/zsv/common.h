@@ -163,6 +163,17 @@ struct zsv_opts {
    */
   const char *insert_header_row;
 
+  /*
+   * number of rows that the header row spans. If 0 or 1, header is assumed to span 1 row
+   * otherwise, set to number > 1 to span multiple rows
+   */
+  unsigned int header_span;
+
+  /*
+   * number of rows to skip before the initial row is processed
+   */
+  unsigned int rows_to_skip;
+
 # ifdef ZSV_EXTRAS
   struct {
     size_t rows_interval; // min number of rows between progress callback calls
@@ -175,10 +186,11 @@ struct zsv_opts {
     void *ctx;
   } completed;
 
-  /**
+  /*
    * maximum number of rows to parse (including any header rows)
    */
   size_t max_rows;
+
 # endif
 };
 

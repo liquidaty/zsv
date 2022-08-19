@@ -23,6 +23,15 @@ struct zsv_row {
   struct zsv_cell *cells;
 };
 
+struct collate_header {
+  struct {
+    unsigned char *buff;
+    size_t used;
+  } buff;
+  size_t *lengths; // length PLUS 1 of each cell
+  size_t column_count;
+};
+
 struct zsv_scanner {
   char last;
   struct {
@@ -36,7 +45,9 @@ struct zsv_scanner {
   unsigned char waiting_for_end;
   struct zsv_opts opts;
   void (*row_orig)(void *ctx);
-  void *row_ctx_orig;
+  void (*cell_orig)(void *ctx, unsigned char *, size_t);
+  void *ctx_orig;
+
   size_t row_start;
   struct zsv_row row;
 
@@ -72,6 +83,8 @@ struct zsv_scanner {
     unsigned count; // number of offsets
   } fixed;
 
+  struct collate_header *collate_header;
+
   unsigned char checked_bom:1;
   unsigned char free_buff:1;
   unsigned char finished:1;
@@ -79,6 +92,79 @@ struct zsv_scanner {
   unsigned char abort:1;
   unsigned char _:3;
 };
+
+void collate_header_destroy(struct collate_header **chp) {
+  if(*chp) {
+    struct collate_header *ch = *chp;
+    free(ch->buff.buff);
+    free(ch->lengths);
+    free(ch);
+    *chp = NULL;
+  }
+}
+
+/* collate_header_append(): return err */
+static int collate_header_append(struct zsv_scanner *scanner, struct collate_header **chp) {
+  if(!*chp) {
+    if((*chp = calloc(1, sizeof(struct collate_header))))
+      (*chp)->lengths = calloc(scanner->row.allocated, sizeof(*(*chp)->lengths));
+    if(!(*chp) || !(*chp)->lengths) {
+      free(*chp);
+      fprintf(stderr, "Out of memory!\n");
+      return -1;
+    }
+  }
+  struct collate_header *ch = *chp;
+  size_t this_row_size = 0;
+  size_t column_count = zsv_column_count(scanner);
+  for(size_t i = 0, j = column_count; i < j; i++)
+    this_row_size += zsv_get_cell(scanner, i).len + 1; // +1: terminating null or delim
+  size_t new_row_size = ch->buff.used + this_row_size;
+  unsigned char *new_row = realloc(ch->buff.buff, new_row_size);
+  if(!new_row) {
+    fprintf(stderr, "Out of memory!\n");
+    return -1;
+  }
+
+  // now: splice the new row into the old row, starting with the last cell
+  // e.g. prior row = A1.B1.C1.
+  //      this row =  A2.B2.C2.
+  //      new_row =   A1.B1.C1..........
+  // starting with last cell in this row, move the old data, then splice new:
+  //      new_row =   A1.B1.C1.......C2.
+  //      new_row =   A1.B1.C1....C1 C2.
+  //      new_row =   A1.B1.C1.B2.C1 C2.
+  //      new_row =   A1.B1.B1 B2.C1 C2.
+  //      new_row =   A1.A2.B1 B2.C1 C2.
+  //      new_row =   A1 A2.B1 B2.C1 C2.
+
+  size_t new_row_end = ch->buff.used + this_row_size;
+  size_t old_row_end = ch->buff.used;
+  ch->buff.used += this_row_size;
+  ch->buff.buff = new_row;
+  for(size_t i = column_count; i > 0; i--) {
+    struct zsv_cell c = zsv_get_cell(scanner, i-1);
+    // copy new row's cell value to end
+    if(c.len)
+      memcpy(new_row + new_row_end - c.len - 1, c.str, c.len);
+    new_row[new_row_end - 1] = ' ';
+    new_row_end = new_row_end - c.len - 1;
+
+    // move prior cell value
+    size_t old_cell_len = ch->lengths[i-1]; // old_cell_len includes delim
+    if(old_cell_len) {
+      memcpy(new_row + new_row_end - old_cell_len,
+             new_row + old_row_end - old_cell_len,
+             old_cell_len);
+      old_row_end -= old_cell_len;
+      new_row_end -= old_cell_len;
+    }
+    ch->lengths[i-1] += c.len + 1;
+  }
+  if(column_count > ch->column_count)
+    ch->column_count = column_count;
+  return 0;
+}
 
 __attribute__((always_inline)) static inline void zsv_clear_cell(struct zsv_scanner *scanner) {
   scanner->quoted = 0;
@@ -158,7 +244,7 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
             scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
     scanner->row.overflow = 0;
   }
-  if(LIKELY(scanner->opts.row))
+  if(LIKELY(scanner->opts.row != NULL))
     scanner->opts.row(scanner->opts.ctx);
 # ifdef ZSV_EXTRAS
   scanner->progress.cum_row_count++;
@@ -504,10 +590,79 @@ enum zsv_status zsv_parse_string(struct zsv_scanner *scanner,
   return zsv_status_ok;
 }
 
-static void zsv_throwaway_row(void *ctx) {
+static void set_callbacks(struct zsv_scanner *scanner);
+
+static void skip_header_rows(void *ctx) {
   struct zsv_scanner *scanner = ctx;
-  scanner->opts.row = scanner->row_orig;
-  scanner->opts.ctx = scanner->row_ctx_orig;
+  if(scanner->opts.rows_to_skip)
+    --scanner->opts.rows_to_skip;
+  if(!scanner->opts.rows_to_skip)
+    set_callbacks(scanner);
+}
+
+static void collate_header_row(void *ctx) {
+  struct zsv_scanner *scanner = ctx;
+  if(scanner->opts.header_span) {
+    --scanner->opts.header_span;
+
+    // save this row
+    if(collate_header_append(scanner, &scanner->collate_header))
+      scanner->abort = 1;
+  }
+  if(!scanner->opts.header_span) {
+    set_callbacks(scanner);
+    if(scanner->opts.row || scanner->opts.cell) {
+      if(scanner->collate_header) {
+        size_t offset = 0;
+        for(size_t i = 0; i < scanner->collate_header->column_count; i++) {
+          size_t len_plus1 = scanner->collate_header->lengths[i];
+          if(len_plus1) {
+            scanner->row.cells[i].len = len_plus1 - 1;
+            scanner->row.cells[i].str = scanner->collate_header->buff.buff + offset;
+            scanner->row.cells[i].str[len_plus1 - 1] = '\0';
+            scanner->row.cells[i].quoted = 1;
+          } else {
+            scanner->row.cells[i].len = 0;
+            scanner->row.cells[i].str = (unsigned char *)"";
+          }
+          offset += len_plus1;
+        }
+      }
+      if(scanner->opts.cell) {
+        // call the user-provided cell() callback on each cell
+        for(size_t i = 0, j = zsv_column_count(scanner); i < j; i++) {
+          struct zsv_cell c = zsv_get_cell(scanner, i);
+          scanner->quoted = c.quoted;
+          scanner->opts.cell(scanner->opts.ctx, c.str, c.len);
+        }
+      }
+      if(scanner->opts.row)
+        // call the user-provided row() callback
+        scanner->opts.row(scanner->opts.ctx);
+
+      collate_header_destroy(&scanner->collate_header);
+    }
+  }
+}
+
+static void set_callbacks(struct zsv_scanner *scanner) {
+  if(scanner->opts.rows_to_skip) {
+    scanner->opts.row = skip_header_rows;
+    scanner->opts.cell = NULL;
+    scanner->opts.ctx = scanner;
+  } else if(scanner->opts.header_span > 1) {
+    scanner->opts.row = collate_header_row;
+    scanner->opts.cell = NULL;
+    scanner->opts.ctx =	scanner;
+  } else {
+    scanner->opts.row = scanner->row_orig;
+    scanner->opts.cell = scanner->cell_orig;
+    scanner->opts.ctx = scanner->ctx_orig;
+  }
+}
+
+static void zsv_throwaway_row(void *ctx) {
+  set_callbacks(ctx);
 }
 
 static int zsv_scanner_init(struct zsv_scanner *scanner,
@@ -557,11 +712,16 @@ static int zsv_scanner_init(struct zsv_scanner *scanner,
 # endif
   if(scanner->buff.buff) {
     scanner->opts = *opts;
+    scanner->row_orig = scanner->opts.row;
+    scanner->cell_orig = scanner->opts.cell;
+    scanner->ctx_orig = scanner->opts.ctx;
     if(!scanner->opts.max_columns)
       scanner->opts.max_columns = 1024;
+    set_callbacks(scanner);
     if((scanner->row.allocated = scanner->opts.max_columns)
        && (scanner->row.cells = calloc(scanner->row.allocated, sizeof(*scanner->row.cells))))
       return 0;
   }
+
   return 1;
 }

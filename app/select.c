@@ -739,7 +739,8 @@ int MAIN(int argc, const char *argv[]) {
         if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) >= 0 && atoi(argv[arg_i+1]) < 256))
           err = zsv_printerr(1, "%s option value invalid: should be integer between 1 and 255; got %s", argv[arg_i], arg_i + 1 < argc ? argv[arg_i+1] : "");
         else
-          data.header_depth = (unsigned char)atoi(argv[++arg_i]);
+//          data.header_depth = (unsigned char)atoi(argv[++arg_i]);
+          data.opts.header_span = atoi(argv[++arg_i]);
       } else if(!strcmp(argv[arg_i], "--header-row")) {
         arg_i++;
         if(!(arg_i < argc))
@@ -773,7 +774,8 @@ int MAIN(int argc, const char *argv[]) {
         if(!(arg_i < argc && atoi(argv[arg_i]) >= 0 && atoi(argv[arg_i]) < 256))
           err = zsv_printerr(1, "-R option value invalid: should be positive integer smaller than 256");
         else
-          data.skip_rows = data.skip_rows_orig = atoi(argv[arg_i]);
+          // data.skip_rows = data.skip_rows_orig = atoi(argv[arg_i]);
+          data.opts.rows_to_skip = atoi(argv[arg_i]);
       } else if(!strcmp(argv[arg_i], "-D") || !strcmp(argv[arg_i], "--skip-data")) {
         ++arg_i;
         if(!(arg_i < argc && atoi(argv[arg_i]) >= 0))

@@ -141,8 +141,8 @@ endif
 
 ZSV=$(BINDIR)/zsv${EXE}
 
-SOURCES= echo count select 2json serialize flatten pretty stack desc 2tsv sql 2db
-CLI_SOURCES=select desc count pretty sql flatten 2json 2tsv serialize stack 2db
+SOURCES= echo count select 2tsv 2json serialize flatten pretty stack desc sql 2db
+CLI_SOURCES=select desc count 2tsv pretty sql flatten 2json serialize stack 2db
 
 ifneq ($(LDFLAGS_JQ),)
   SOURCES+= jq
@@ -210,7 +210,7 @@ help:
 	@echo "which will build and test all apps, or to build/test a single app:"
 	@echo "  ${MAKE} test-xx"
 	@echo "where xx is any of:"
-	@echo "  echo count select 2json serialize flatten pretty stack desc 2tsv sql 2db"
+	@echo "  echo count select 2tsv 2json serialize flatten pretty stack desc sql 2db"
 	@echo ""
 
 install: ${ZSV}
