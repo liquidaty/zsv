@@ -24,13 +24,13 @@ static utf8proc_int32_t utf8proc_tolower1(utf8proc_int32_t codepoint, void *data
 }
 
 static unsigned char *utf8proc_tolower_str(const unsigned char *str, size_t *len) {
+  // note: for some unknown reason, this func intermittently can fail on win (compiled w mingw64) when called in a tight loop
+  // may be related to realloc()
   utf8proc_uint8_t *output;
-  utf8proc_option_t options;
+  utf8proc_option_t options = { 0 };
   /* options = UTF8PROC_COMPOSE | UTF8PROC_COMPAT
   | UTF8PROC_CASEFOLD | UTF8PROC_IGNORE | UTF8PROC_STRIPMARK | UTF8PROC_STRIPCC | UTF8PROC_STRIPNA;
   */
-  memset(&options, 0, sizeof(options));
-
   // utf8proc_map_custom allocates new mem
   options = UTF8PROC_STRIPNA;
   *len = (size_t) utf8proc_map_custom((const utf8proc_uint8_t *)str, (utf8proc_ssize_t)*len, &output,
@@ -85,19 +85,7 @@ int zsv_stricmp(const unsigned char *s1, const unsigned char *s2) {
   return zsv_strincmp(s1, strlen((const char *)s1), s2, strlen((const char *)s2));
 }
 
-int zsv_strincmp(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2) {
-#ifndef NO_UTF8PROC
-  unsigned char *lc1 = zsv_strtolowercase(s1, &len1);
-  unsigned char *lc2 = zsv_strtolowercase(s2, &len2);
-  int result;
-  if(VERY_UNLIKELY(!lc1 || !lc2))
-    fprintf(stderr, "Out of memory!\n"), result = -2;
-  else
-    result = strcmp((char *)lc1, (char *)lc2);
-  free(lc1);
-  free(lc2);
-  return result;
-#else
+int zsv_strincmp_ascii(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2) {
   while(len1) {
     if(!*s1)
       return *s2 == 0 ? 0 : -1;
@@ -111,6 +99,22 @@ int zsv_strincmp(const unsigned char *s1, size_t len1, const unsigned char *s2, 
       return c1 < c2 ? -1 : 1;
   }
   return 0;
+}
+
+int zsv_strincmp(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2) {
+#ifndef NO_UTF8PROC
+  unsigned char *lc1 = zsv_strtolowercase(s1, &len1);
+  unsigned char *lc2 = zsv_strtolowercase(s2, &len2);
+  int result;
+  if(VERY_UNLIKELY(!lc1 || !lc2))
+    fprintf(stderr, "Out of memory!\n"), result = -2;
+  else
+    result = strcmp((char *)lc1, (char *)lc2);
+  free(lc1);
+  free(lc2);
+  return result;
+#else
+  return zsv_strincmp_ascii(s1, len1, s2, len2);
 #endif
 }
 

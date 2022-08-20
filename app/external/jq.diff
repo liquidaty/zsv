@@ -1,0 +1,35 @@
+diff --git a/src/jv.c b/src/jv.c
+index e1fb209..69c18fc 100644
+--- a/src/jv.c
++++ b/src/jv.c
+@@ -333,6 +333,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL,
+     }
+ }
+ 
++#if !defined(HAVE_PTHREAD_KEY_CREATE)
+ int
+ pthread_key_create(pthread_key_t *key, void (*dtor)(void *))
+ {
+@@ -491,6 +492,9 @@ pthread_getspecific(pthread_key_t key)
+ #else
+ #include <pthread.h>
+ #endif
++#else
++#include <pthread.h>
++#endif
+ 
+ static pthread_key_t dec_ctx_key;
+ static pthread_key_t dec_ctx_dbl_key;
+diff --git a/src/jv_thread.h b/src/jv_thread.h
+index a34cd08..c06ff6b 100644
+--- a/src/jv_thread.h
++++ b/src/jv_thread.h
+@@ -1,7 +1,7 @@
+ #ifndef JV_THREAD_H
+ #define JV_THREAD_H
+ 
+-#ifdef WIN32
++#if defined(WIN32) && !defined(HAVE_PTHREAD_KEY_CREATE)
+ #include <windows.h>
+ #include <winnt.h>
+ #include <errno.h>
