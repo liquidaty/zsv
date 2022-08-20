@@ -133,7 +133,9 @@ test-select-merge: ${BUILD_DIR}/bin/zsv_select${EXE}
 
 test-select-quotebuff: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
-	@${THIS_MAKEFILE_DIR}/select-quotebuff-gen.sh  | ${PREFIX} $< -B 4096 | sed 's/"/Q/g' | grep QQ >/dev/null && ${TEST_FAIL} || ${TEST_PASS}
+	@${THIS_MAKEFILE_DIR}/select-quotebuff-gen.sh  | ${PREFIX} $< -B 4096 ${REDIRECT} /tmp/$@.out
+# use a dummy ${CMP} call so that it works with LEAKS=1
+	@${CMP} /dev/null /dev/null && sed 's/"/Q/g' < /tmp/$@.out | grep QQ >/dev/null && ${TEST_FAIL} || ${TEST_PASS}
 
 test-select-n: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
@@ -205,12 +207,12 @@ test-sql: test-sql2 test-sql3
 test-sql2: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@echo ${ARGS-sql} > ${TMP_DIR}/$@.sql
-	@${PREFIX} $< '@'${TMP_DIR}/$@.sql ${TEST_DATA_DIR}/test/sql.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	@(${PREFIX} $< '@'${TMP_DIR}/$@.sql ${TEST_DATA_DIR}/test/sql.csv ${REDIRECT1} ${TMP_DIR}/$@.out) && \
 	${CMP} ${TMP_DIR}/$@.out expected/test-sql.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-sql3: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
-	@${PREFIX} $< --join-indexes 8 ${TEST_DATA_DIR}/test/sql.csv ${TEST_DATA_DIR}/test/sql.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	@(${PREFIX} $< --join-indexes 8 ${TEST_DATA_DIR}/test/sql.csv ${TEST_DATA_DIR}/test/sql.csv ${REDIRECT1} ${TMP_DIR}/$@.out) && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 
