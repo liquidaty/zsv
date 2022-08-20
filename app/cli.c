@@ -400,8 +400,8 @@ char havearg(const char *arg,
   if(len > min_len1)
     min_len1 = len;
 
-  if(!zsv_strincmp((const unsigned char *)arg, min_len1,
-                     (const unsigned char *)form1, min_len1))
+  if(!zsv_strincmp_ascii((const unsigned char *)arg, min_len1,
+			 (const unsigned char *)form1, min_len1))
     return 1;
 
   if(form2) {
@@ -409,8 +409,8 @@ char havearg(const char *arg,
       min_len2 = strlen(form2);
     if(len > min_len2)
       min_len2 = len;
-    if(!zsv_strincmp((const unsigned char *)arg, min_len2,
-                       (const unsigned char *)form2, min_len2))
+    if(!zsv_strincmp_ascii((const unsigned char *)arg, min_len2,
+			   (const unsigned char *)form2, min_len2))
       return 1;
   }
   return 0;

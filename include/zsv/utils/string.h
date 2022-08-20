@@ -25,6 +25,7 @@ const unsigned char *zsv_strstr(const unsigned char *hay, const unsigned char *n
 
 /*
  * zsv_stricmp, zsv_strincmp(): case-insensitive comparison (unicode-compatible if built with utf8proc)
+ * zsv_strincmp_ascii: ascii case-insensitive comparison
  *
  * @param   s1     string to convert
  * @param   len1   length of s1
@@ -35,6 +36,7 @@ const unsigned char *zsv_strstr(const unsigned char *hay, const unsigned char *n
  */
 int zsv_stricmp(const unsigned char *s1, const unsigned char *s2);
 int zsv_strincmp(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2);
+int zsv_strincmp_ascii(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2);
 
 unsigned char *zsv_strtrim(unsigned char * restrict s, size_t *lenp);
 
