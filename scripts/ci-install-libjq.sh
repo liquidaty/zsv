@@ -12,8 +12,8 @@ echo "[INF] and which in turn prevent mingw64 from statically linking libwinpthr
 echo "[INF] If you are building on your target system, this is not necessary, and the"
 echo "[INF] standard jq distro can be used"
 
-THIS_SCRIPT=$(readlink -f "$0")
-THIS_SCRIPT_PATH=$(dirname "$THIS_SCRIPT")
+THIS_SCRIPT_PATH=$(dirname "$0")
+THIS_SCRIPT_PATH=$(cd "$THIS_SCRIPT_PATH" && pwd)
 JQ_PATCH="$THIS_SCRIPT_PATH/../app/external/jq.diff"
 JQ_GIT_URL='https://github.com/stedolan/jq.git'
 JQ_GIT_COMMIT='cff5336'
