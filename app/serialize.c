@@ -238,35 +238,23 @@ static int serialize_usage() {
 static void serialize_cleanup(struct serialize_data *data) {
   zsv_writer_delete(data->csv_writer);
 
-  if(data->in && data->in != stdin)
-    fclose(data->in);
-
-  if(data->filter.value_lc)
-    free(data->filter.value_lc);
-
-  struct serialize_header_name *next;
-  for(struct serialize_header_name *hn = data->temp_header_names; hn; hn = next) {
+  free(data->filter.value_lc);
+  for(struct serialize_header_name *next, *hn = data->temp_header_names; hn; hn = next) {
     next = hn->next;
-    if(hn->str)
-      free(hn->str);
+    free(hn->str);
     free(hn);
   }
 
   if(data->header_names) {
     for(unsigned int i = 0; i < data->col_count; i++) {
-      if(data->header_names[i].str)
-        free(data->header_names[i].str);
-      if(data->header_names[i].output_str)
-        free(data->header_names[i].output_str);
+      free(data->header_names[i].str);
+      free(data->header_names[i].output_str);
     }
     free(data->header_names);
   }
 
-  if(data->err_msg)
-    free(data->err_msg);
-
-  if(data->row_id)
-    free(data->row_id);
+  free(data->err_msg);
+  free(data->row_id);
 
   if(data->in && data->in != stdin)
     fclose(data->in);

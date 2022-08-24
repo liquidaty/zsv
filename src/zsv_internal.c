@@ -41,12 +41,21 @@ struct zsv_scanner {
 
   size_t cell_start;
   unsigned char quoted; // bitfield of ZSV_PARSER_QUOTE_XXX flags
+
+  unsigned char waiting_for_end:1;
+  unsigned char checked_bom:1;
+  unsigned char free_buff:1;
+  unsigned char finished:1;
+  unsigned char had_bom:1;
+  unsigned char abort:1;
+  unsigned char have_cell:1;
+  unsigned char _:1;
+
   size_t quote_close_position;
-  unsigned char waiting_for_end;
   struct zsv_opts opts;
-  void (*row_orig)(void *ctx);
-  void (*cell_orig)(void *ctx, unsigned char *, size_t);
-  void *ctx_orig;
+//  void (*row_orig)(void *ctx);
+//  void (*cell_orig)(void *ctx, unsigned char *, size_t);
+//  void *ctx_orig;
 
   size_t row_start;
   struct zsv_row row;
@@ -57,7 +66,6 @@ struct zsv_scanner {
 
   size_t (*read)(void *buff, size_t n, size_t size, void *in);
   void *in;
-  char have_cell;
 
   size_t (*filter)(void *ctx, unsigned char *buff, size_t bytes_read);
   void *filter_ctx;
@@ -67,13 +75,9 @@ struct zsv_scanner {
 
   const char *insert_string;
 
-#ifdef ZSV_EXTRAS
-  struct {
-    size_t cum_row_count; /* total number of rows read */
-    time_t last_time;     /* last time from which to check seconds_interval */
-    size_t max_rows;      /* max rows to read, including header row(s) */
-  } progress;
-#endif
+  size_t empty_header_rows;
+
+  struct zsv_opts opts_orig;
 
 #define ZSV_MODE_DELIM 0
 #define ZSV_MODE_FIXED 1
@@ -85,12 +89,13 @@ struct zsv_scanner {
 
   struct collate_header *collate_header;
 
-  unsigned char checked_bom:1;
-  unsigned char free_buff:1;
-  unsigned char finished:1;
-  unsigned char had_bom:1;
-  unsigned char abort:1;
-  unsigned char _:3;
+#ifdef ZSV_EXTRAS
+  struct {
+    size_t cum_row_count; /* total number of rows read */
+    time_t last_time;     /* last time from which to check seconds_interval */
+    size_t max_rows;      /* max rows to read, including header row(s) */
+  } progress;
+#endif
 };
 
 void collate_header_destroy(struct collate_header **chp) {
@@ -384,13 +389,6 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
   zsv_uc_vector nl_v; memset(&nl_v, '\n', sizeof(zsv_uc_vector)); // ascii code 10
   zsv_uc_vector cr_v; memset(&cr_v, '\r', sizeof(zsv_uc_vector)); // ascii code 13
   zsv_uc_vector qt_v; memset(&qt_v, scanner->opts.no_quotes > 0 ? 0 : '"', sizeof(qt_v));
-  /*
-  if(scanner->opts.no_quotes > 0) {
-    quote = -1;
-    memset(&qt_v, 0, sizeof(qt_v));
-  } else
-    memset(&qt_v, '"', sizeof(zsv_uc_vector));
-  */
 
   // case "hel"|"o": check if we have an embedded dbl-quote past the initial opening quote, which was
   // split between the last buffer and this one e.g. "hel""o" where the last buffer ended
@@ -589,12 +587,50 @@ enum zsv_status zsv_parse_string(struct zsv_scanner *scanner,
   return zsv_status_ok;
 }
 
+static void apply_callbacks(struct zsv_scanner *scanner) {
+  if(scanner->opts.cell) {
+    // call the user-provided cell() callback on each cell
+    unsigned char saved_quoted = scanner->quoted;
+    for(size_t i = 0, j = zsv_column_count(scanner); i < j; i++) {
+      struct zsv_cell c = zsv_get_cell(scanner, i);
+      scanner->quoted = c.quoted;
+      scanner->opts.cell(scanner->opts.ctx, c.str, c.len);
+    }
+    scanner->quoted = saved_quoted;
+  }
+  if(scanner->opts.row)
+    // call the user-provided row() callback
+    scanner->opts.row(scanner->opts.ctx);
+}
+
 static void set_callbacks(struct zsv_scanner *scanner);
+
+static char zsv_internal_row_is_blank(zsv_parser parser) {
+  for(unsigned int i = 0; i < parser->row.used; i++)
+    if(parser->row.cells[i].len)
+      return 0;
+  return 1;
+}
+
+static void skip_to_first_row_w_data(void *ctx) {
+  struct zsv_scanner *scanner = ctx;
+  if(LIKELY(zsv_internal_row_is_blank(scanner) == 0)) {
+    scanner->opts.no_skip_empty_header_rows = 1;
+    if(scanner->empty_header_rows) {
+      fprintf(stderr, "Warning: skipped %zu empty header rows; suggest using:\n  --skip-head %zu\n",
+              scanner->empty_header_rows,
+              scanner->empty_header_rows + scanner->opts_orig.rows_to_skip);
+    }
+    set_callbacks(scanner);
+    apply_callbacks(scanner);
+  } else // entire row was empty
+    scanner->empty_header_rows++;
+}
 
 static void skip_header_rows(void *ctx) {
   struct zsv_scanner *scanner = ctx;
   if(scanner->opts.rows_to_skip)
-    --scanner->opts.rows_to_skip;
+    scanner->opts.rows_to_skip--;
   if(!scanner->opts.rows_to_skip)
     set_callbacks(scanner);
 }
@@ -627,20 +663,8 @@ static void collate_header_row(void *ctx) {
           offset += len_plus1;
         }
       }
-      if(scanner->opts.cell) {
-        // call the user-provided cell() callback on each cell
-        unsigned char saved_quoted = scanner->quoted;
-        for(size_t i = 0, j = zsv_column_count(scanner); i < j; i++) {
-          struct zsv_cell c = zsv_get_cell(scanner, i);
-          scanner->quoted = c.quoted;
-          scanner->opts.cell(scanner->opts.ctx, c.str, c.len);
-        }
-        scanner->quoted = saved_quoted;
-      }
-      if(scanner->opts.row)
-        // call the user-provided row() callback
-        scanner->opts.row(scanner->opts.ctx);
 
+      apply_callbacks(scanner);
       collate_header_destroy(&scanner->collate_header);
     }
   }
@@ -655,10 +679,14 @@ static void set_callbacks(struct zsv_scanner *scanner) {
     scanner->opts.row = collate_header_row;
     scanner->opts.cell = NULL;
     scanner->opts.ctx =	scanner;
+  } else if(scanner->mode != ZSV_MODE_FIXED && !scanner->opts.no_skip_empty_header_rows) {
+    scanner->opts.row = skip_to_first_row_w_data;
+    scanner->opts.cell = NULL;
+    scanner->opts.ctx = scanner;
   } else {
-    scanner->opts.row = scanner->row_orig;
-    scanner->opts.cell = scanner->cell_orig;
-    scanner->opts.ctx = scanner->ctx_orig;
+    scanner->opts.row = scanner->opts_orig.row;
+    scanner->opts.cell = scanner->opts_orig.cell;
+    scanner->opts.ctx = scanner->opts_orig.ctx;
   }
 }
 
@@ -713,9 +741,7 @@ static int zsv_scanner_init(struct zsv_scanner *scanner,
 # endif
   if(scanner->buff.buff) {
     scanner->opts = *opts;
-    scanner->row_orig = scanner->opts.row;
-    scanner->cell_orig = scanner->opts.cell;
-    scanner->ctx_orig = scanner->opts.ctx;
+    scanner->opts_orig = *opts;
     if(!scanner->opts.max_columns)
       scanner->opts.max_columns = 1024;
     set_callbacks(scanner);

@@ -27,7 +27,7 @@ static int jv_print_scalar_str(jv value, char inside_string, FILE *f, char as_cs
       if(!as_csv)
         fprintf(f, "%.*s", (int)len, s);
       else {
-        unsigned char *csv = zsv_csv_quote(s, len, NULL, 0);
+        unsigned char *csv = zsv_csv_quote((unsigned char *)s, len, NULL, 0);
         if(!csv)
           fprintf(f, "%.*s", (int)len, s);
         else {
