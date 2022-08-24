@@ -197,6 +197,10 @@ static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const 
    *   -t,--tab-delim
    *   -O,--other-delim <C>
    *   -q,--no-quote
+   *   -R,--skip-head <n>: skip specified number of initial rows
+   *   -d,--header-row-span <n>: apply header depth (rowspan) of n
+   *   -S,--keep-blank-headers: disable default behavior of ignoring leading blank rows
+   *   -v,--verbose: verbose output
    * ```
    *
    * If we wanted our command to support parameters for modifying other

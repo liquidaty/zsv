@@ -119,11 +119,7 @@ void zsv_abort(zsv_parser parser) {
 
 ZSV_EXPORT
 char zsv_row_is_blank(zsv_parser parser) {
-
-  for(unsigned int i = 0; i < parser->row.used; i++)
-    if(parser->row.cells[i].len)
-      return 0;
-  return 1;
+  return zsv_internal_row_is_blank(parser);
 }
 
 // to do: rename to zsv_column_count(). rename all other zsv_hand to just zsv_
@@ -134,13 +130,15 @@ size_t zsv_column_count(zsv_parser parser) {
 
 ZSV_EXPORT
 void zsv_set_row_handler(zsv_parser parser, void (*row)(void *ctx)) {
-  parser->opts.row = row;
+  if(parser->opts.row == parser->opts_orig.row)
+    parser->opts.row = row;
   parser->opts_orig.row = row;
 }
 
 ZSV_EXPORT
 void zsv_set_context(zsv_parser parser, void *ctx) {
-  parser->opts.ctx = ctx;
+  if(parser->opts.ctx == parser->opts_orig.ctx)
+    parser->opts.ctx = ctx;
   parser->opts_orig.ctx = ctx;
 }
 

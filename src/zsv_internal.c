@@ -20,7 +20,6 @@
 
 struct zsv_row {
   size_t used, allocated, overflow;
-  size_t total_data_size;
   struct zsv_cell *cells;
 };
 
@@ -235,7 +234,6 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner * s
       struct zsv_row *row = &scanner->row;
       struct zsv_cell c = { s, n, scanner->opts.no_quotes ? 1 : scanner->quoted };
       row->cells[row->used++] = c;
-      scanner->row.total_data_size += n;
     } else
       scanner->row.overflow++;
   }
@@ -283,7 +281,6 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
     if(VERY_UNLIKELY(scanner->progress.cum_row_count == scanner->progress.max_rows)) {
       scanner->abort = 1;
       scanner->row.used = 0;
-      scanner->row.total_data_size = 0;
       return zsv_status_max_rows_read;
     }
   }
@@ -293,7 +290,6 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
     return zsv_status_cancelled;
   scanner->have_cell = 0;
   scanner->row.used = 0;
-  scanner->row.total_data_size = 0;
   return zsv_status_ok;
 }
 
@@ -609,9 +605,16 @@ static void apply_callbacks(struct zsv_scanner *scanner) {
 
 static void set_callbacks(struct zsv_scanner *scanner);
 
+static char zsv_internal_row_is_blank(zsv_parser parser) {
+  for(unsigned int i = 0; i < parser->row.used; i++)
+    if(parser->row.cells[i].len)
+      return 0;
+  return 1;
+}
+
 static void skip_to_first_row_w_data(void *ctx) {
   struct zsv_scanner *scanner = ctx;
-  if(scanner->row.total_data_size > 0) {
+  if(LIKELY(zsv_internal_row_is_blank(scanner) == 0)) {
     scanner->opts.no_skip_empty_header_rows = 1;
     if(scanner->empty_header_rows) {
       fprintf(stderr, "Warning: skipped %zu empty header rows; suggest using:\n  --skip-head %zu\n",
