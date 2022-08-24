@@ -174,6 +174,13 @@ struct zsv_opts {
    */
   unsigned int rows_to_skip;
 
+  /*
+   * by default, zsv skips empty header rows (the number skipped can be fetched
+   * via `zsv_get_empty_header_rows()`). To disable this behavior, set
+   * `no_skip_empty_header_rows` to 1
+   */
+  unsigned char no_skip_empty_header_rows;
+
 # ifdef ZSV_EXTRAS
   struct {
     size_t rows_interval; // min number of rows between progress callback calls

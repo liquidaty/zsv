@@ -85,9 +85,9 @@ int zsv_args_to_opts(int argc, const char *argv[],
     argv_out[new_argc] = argv[new_argc];
 
 #ifdef ZSV_EXTRAS
-  static const char *short_args = "BcrtOqvRdL";
+  static const char *short_args = "BcrtOqvRdSL";
 #else
-  static const char *short_args = "BcrtOqvRd";
+  static const char *short_args = "BcrtOqvRdS";
 #endif
 
   static const char *long_args[] = {
@@ -100,6 +100,7 @@ int zsv_args_to_opts(int argc, const char *argv[],
     "verbose",
     "skip-head",
     "header-row-span",
+    "keep-blank-headers",
 #ifdef ZSV_EXTRAS
     "limit-rows",
 #endif
@@ -120,6 +121,9 @@ int zsv_args_to_opts(int argc, const char *argv[],
     switch(arg) {
     case 't':
       opts_out->delimiter = '\t';
+      break;
+    case 'S':
+      opts_out->no_skip_empty_header_rows = 1;
       break;
     case 'q':
       opts_out->no_quotes = 1;

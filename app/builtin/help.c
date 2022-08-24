@@ -45,6 +45,7 @@ static int main_help(int argc, const char *argv[]) {
     "  -q,--no-quote: turn off quote handling",
     "  -R,--skip-head <n>: skip specified number of initial rows",
     "  -d,--header-row-span <n>: apply header depth (rowspan) of n",
+    "  -S,--keep-blank-headers: disable default behavior of ignoring leading blank rows",
     "  -v,--verbose: verbose output",
     "",
     "Commands:",

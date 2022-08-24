@@ -49,10 +49,11 @@ SOURCES=
 ifneq ($(CLI1),1)
 SOURCES+=echo
 endif
+
 SOURCES+= count select sql 2json serialize flatten pretty desc stack 2db 2tsv jq
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
-TESTS=$(addprefix test-,${SOURCES})
+TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES})
 
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
@@ -71,7 +72,7 @@ ifneq ($(LEAKS),)
   PREFIX=leaks 2>/dev/null --atExit --
   REDIRECT=>${TMP_DIR}/leaks.txt; grep leak ${TMP_DIR}/leaks.txt | grep bytes \# # stop processing at this step
   REDIRECT1=>${TMP_DIR}/leaks.txt; grep leak ${TMP_DIR}/leaks.txt | grep bytes ) \# # stop processing at this step
-  REDIRECT2=> ${TMP_DIR}/leaks.txt; grep leak ${TMP_DIR}/leaks.txt | grep bytes ) \# # stop processing at this step
+  REDIRECT2=>${TMP_DIR}/leaks.txt; grep leak ${TMP_DIR}/leaks.txt | grep bytes ) \# # stop processing at this step
   CMP=\# # don't run this step
 else
   PREFIX=
@@ -183,6 +184,27 @@ test-select-fixed-1: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${PREFIX} $< ${TEST_DATA_DIR}/fixed.csv --fixed 3,7,12,18,20,21,22 ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
+test-blank-leading-rows: test-blank-leading-rows-1 test-blank-leading-rows-2 test-blank-leading-rows-3 test-blank-leading-rows-4
+
+test-blank-leading-rows-1: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_INIT}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2>&1
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-blank-leading-rows-2: ${BUILD_DIR}/bin/zsv_serialize${EXE}
+	@${TEST_INIT}
+	@${PREFIX} $< -S ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2>&1
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-blank-leading-rows-3: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_INIT}
+	@${PREFIX} $< -R 1 ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2>&1
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-blank-leading-rows-4: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_INIT}
+	@${PREFIX} $< -R 2 ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2>&1
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-stack: test-stack1 test-stack2
 

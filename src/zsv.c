@@ -135,12 +135,13 @@ size_t zsv_column_count(zsv_parser parser) {
 ZSV_EXPORT
 void zsv_set_row_handler(zsv_parser parser, void (*row)(void *ctx)) {
   parser->opts.row = row;
-  parser->row_orig = row;
+  parser->opts_orig.row = row;
 }
 
 ZSV_EXPORT
 void zsv_set_context(zsv_parser parser, void *ctx) {
   parser->opts.ctx = ctx;
+  parser->opts_orig.ctx = ctx;
 }
 
 ZSV_EXPORT
@@ -200,6 +201,8 @@ ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count
 
   parser->mode = ZSV_MODE_FIXED;
   parser->checked_bom = 1;
+
+  set_callbacks(parser);
 
   return zsv_status_ok;
 }

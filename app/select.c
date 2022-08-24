@@ -82,7 +82,6 @@ struct zsv_select_data {
   unsigned int errcount;
 
   unsigned int output_col_index; // num of cols printed in current row
-  size_t file_row_count;
 
   // output columns:
   const char **col_argv;
@@ -514,7 +513,6 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
 
 static void zsv_select_header_row(void *ctx) {
   struct zsv_select_data *data = ctx;
-  data->file_row_count++;
 
   if(data->cancelled)
     return;
