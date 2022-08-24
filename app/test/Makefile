@@ -87,7 +87,7 @@ help:
 	@echo "To run all tests: make test [LEAKS=1]"
 	@echo "To run individual test: make test-xxx"
 	@echo "To run on cli: make CLI"
-	@echo "  where xxx can be: ${SOURCES}"
+	@echo "  where xxx can be: blank-leading-rows ${SOURCES}"
 
 clean:
 	rm -rf ${TMP_DIR}
