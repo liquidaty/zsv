@@ -171,17 +171,33 @@ static int add_row_to_cache(zsv_parser parser, struct zsv_vtab_cache *cache,
   cache->last = &r->next;
 
   r->column_count = count;
-  for(size_t i = 0; i < count; i++)
+  for(size_t i = 0; i < count; i++) {
     r->cells[i] = zsv_get_cell(parser, i);
+    if(r->cells[i].len) {
+      void *copy = sqlite3_malloc(r->cells[i].len);
+      if(!copy) {
+        fprintf(stderr, "Out of memory!\n");
+        r->cells[i].len = 0;
+      } else {
+        memcpy(copy, r->cells[i].str, r->cells[i].len);
+        r->cells[i].str = copy; // zsv_memdup(r->cells[i].str, r->cells[i].len);
+      }
+    }
+  }
   return 0;
 }
 
 /* remove_row_from_cache: return 1 if row was removed */
+/* remove_row_from_cache: return 1 if row was removed */
 static int remove_row_from_cache(struct zsv_vtab_cache *cache) {
   if(cache->rows) {
-    struct zsv_vtab_cache_row *next = cache->rows->next;
-    sqlite3_free(cache->rows->cells);
-    sqlite3_free(cache->rows);
+    struct zsv_vtab_cache_row *r = cache->rows;
+    struct zsv_vtab_cache_row *next = r->next;
+    for(size_t i = 0; i < r->column_count; i++)
+      if(r->cells[i].len)
+        sqlite3_free(r->cells[i].str);
+    sqlite3_free(r->cells);
+    sqlite3_free(r);
     if(!(cache->rows = next))
       cache->last = &cache->rows;
     return 1;
@@ -546,14 +562,6 @@ sqlite3_module CsvModule = {
   0,                       /* xRename */
   0, 0, 0, 0 /* xSavepoint, xRelease, xRollbackTo, xShadowName */
 };
-
-/*
-sqlite3_module *get_csv_module() {
-  sqlite3_module *m = calloc(1, sizeof(*m));
-  *m = CsvModule;
-  return m;
-}
-*/
 
 #endif /* !defined(SQLITE_OMIT_VIRTUALTABLE) */
 

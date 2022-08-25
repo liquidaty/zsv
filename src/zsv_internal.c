@@ -680,12 +680,12 @@ static void set_callbacks(struct zsv_scanner *scanner) {
     scanner->opts.row = skip_header_rows;
     scanner->opts.cell = NULL;
     scanner->opts.ctx = scanner;
-  } else if(scanner->opts.header_span > 1) {
-    scanner->opts.row = collate_header_row;
-    scanner->opts.cell = NULL;
-    scanner->opts.ctx =	scanner;
   } else if(scanner->mode != ZSV_MODE_FIXED && !scanner->opts.no_skip_empty_header_rows) {
     scanner->opts.row = skip_to_first_row_w_data;
+    scanner->opts.cell = NULL;
+    scanner->opts.ctx = scanner;
+  } else if(scanner->opts.header_span > 1) {
+    scanner->opts.row = collate_header_row;
     scanner->opts.cell = NULL;
     scanner->opts.ctx = scanner;
   } else {

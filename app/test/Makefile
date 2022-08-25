@@ -225,7 +225,7 @@ test-2tsv test-sql test-serialize test-flatten test-pretty : test-%: ${BUILD_DIR
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 #	@if [ "$@" = "test-2tsv" ] ; then echo "TO DO: update 2tsv to output Excel format-- see data/Excel.tsv"; fi
 
-test-sql: test-sql2 test-sql3
+test-sql: test-sql2 test-sql3 test-sql4
 test-sql2: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@echo ${ARGS-sql} > ${TMP_DIR}/$@.sql
@@ -236,6 +236,11 @@ test-sql3: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@(${PREFIX} $< --join-indexes 8 ${TEST_DATA_DIR}/test/sql.csv ${TEST_DATA_DIR}/test/sql.csv ${REDIRECT1} ${TMP_DIR}/$@.out) && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-sql4: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@(${PREFIX} $< ${TEST_DATA_DIR}/test/blank-leading-rows.csv -d 2 'select * from data' ${REDIRECT1} ${TMP_DIR}/$@.out)
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 
 ${BUILD_DIR}/bin/zsv_%${EXE}:
