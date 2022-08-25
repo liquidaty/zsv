@@ -122,8 +122,11 @@ static int collate_header_append(struct zsv_scanner *scanner, struct collate_hea
   struct collate_header *ch = *chp;
   size_t this_row_size = 0;
   size_t column_count = zsv_column_count(scanner);
-  for(size_t i = 0, j = column_count; i < j; i++)
-    this_row_size += zsv_get_cell(scanner, i).len + 1; // +1: terminating null or delim
+  for(size_t i = 0, j = column_count; i < j; i++) {
+    struct zsv_cell c = zsv_get_cell(scanner, i);
+    if(c.len)
+      this_row_size += c.len + 1; // +1: terminating null or delim
+  }
   size_t new_row_size = ch->buff.used + this_row_size;
   unsigned char *new_row = realloc(ch->buff.buff, new_row_size);
   if(!new_row) {
@@ -150,10 +153,11 @@ static int collate_header_append(struct zsv_scanner *scanner, struct collate_hea
   for(size_t i = column_count; i > 0; i--) {
     struct zsv_cell c = zsv_get_cell(scanner, i-1);
     // copy new row's cell value to end
-    if(c.len)
+    if(c.len) {
       memcpy(new_row + new_row_end - c.len - 1, c.str, c.len);
-    new_row[new_row_end - 1] = ' ';
-    new_row_end = new_row_end - c.len - 1;
+      new_row[new_row_end-1] = ' ';
+      new_row_end = new_row_end - c.len - 1;
+    }
 
     // move prior cell value
     size_t old_cell_len = ch->lengths[i-1]; // old_cell_len includes delim
@@ -164,7 +168,8 @@ static int collate_header_append(struct zsv_scanner *scanner, struct collate_hea
       old_row_end -= old_cell_len;
       new_row_end -= old_cell_len;
     }
-    ch->lengths[i-1] += c.len + 1;
+    if(c.len)
+      ch->lengths[i-1] += c.len + 1;
   }
   if(column_count > ch->column_count)
     ch->column_count = column_count;
