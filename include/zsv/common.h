@@ -181,6 +181,19 @@ struct zsv_opts {
    */
   unsigned char no_skip_empty_header_rows;
 
+  /**
+   * path to input file, if any. This is not used directly by zsv, but might be
+   * used by a custom option filter
+   */
+  const char *input_path;
+
+  /**
+   * if filter is non-null, it will be called by zsv_new() (and passed a pointer to this
+   * zsv_opts structure, as well as filter_ctx) before any other instructions are executed
+   */
+  void (*filter)(struct zsv_opts *, void *ctx);
+  void *filter_ctx;
+
 # ifdef ZSV_EXTRAS
   struct {
     size_t rows_interval; // min number of rows between progress callback calls

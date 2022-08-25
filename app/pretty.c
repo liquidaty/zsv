@@ -551,9 +551,8 @@ static void zsv_pretty_destroy(struct zsv_pretty_data *data) {
 #define MAIN main
 #endif
 
-static struct zsv_pretty_data * zsv_pretty_init(struct zsv_pretty_opts *opts,
-                                                FILE *in,
-                                                struct zsv_opts *parser_opts) {
+static struct zsv_pretty_data *zsv_pretty_init(struct zsv_pretty_opts *opts,
+                                               struct zsv_opts *parser_opts) {
   struct zsv_pretty_data *data = calloc(1, sizeof(*data));
   if(!data)
     return NULL;
@@ -570,7 +569,6 @@ static struct zsv_pretty_data * zsv_pretty_init(struct zsv_pretty_opts *opts,
 
   parser_opts->row = zsv_pretty_row;
   parser_opts->ctx = data;
-  parser_opts->stream = in;
   data->parser = zsv_new(parser_opts);
 
   data->write = (size_t (*)(const void *, size_t, size_t, void *))fwrite;
@@ -597,12 +595,14 @@ static struct zsv_pretty_data * zsv_pretty_init(struct zsv_pretty_opts *opts,
 }
 
 int MAIN(int argc, const char *argv[]) {
-  int rc = 0;
-  FILE *in = stdin;
   if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     zsv_pretty_usage();
     return 0;
   }
+
+  int rc = 0;
+  FILE *in = stdin;
+  const char *input_path = NULL;
 
   struct zsv_pretty_opts opts = { 0 };
   INIT_CMD_DEFAULT_ARGS();
@@ -669,6 +669,8 @@ int MAIN(int argc, const char *argv[]) {
       }
     } else if(!(in = fopen(argv[i], "rb")))
       rc = zsv_printerr(1, "Unable to open file %s for reading", argv[i]);
+    else
+      input_path = argv[i];
   }
 
 #ifdef NO_STDIN
@@ -680,7 +682,9 @@ int MAIN(int argc, const char *argv[]) {
 
   struct zsv_opts parser_opts = zsv_get_default_opts();
   if(!rc) {
-    struct zsv_pretty_data *h = zsv_pretty_init(&opts, in, &parser_opts);
+    parser_opts.stream = in;
+    parser_opts.input_path = input_path;
+    struct zsv_pretty_data *h = zsv_pretty_init(&opts, &parser_opts);
     if(!h)
       rc = 1;
     else {

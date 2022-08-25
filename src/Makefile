@@ -47,8 +47,13 @@ endif
 ZSV_EXTRAS ?=
 ifneq ($(findstring emcc,$(CC)),) # emcc
   ZSV_EXTRAS=1
+  NO_THREADING=1
 else # not emcc
   CFLAGS+= ${CFLAGS_AVX2}
+endif
+
+ifeq ($(NO_THREADING),1)
+  CFLAGS+= -DNO_THREADING
 endif
 
 ifeq ($(ZSV_EXTRAS),1)

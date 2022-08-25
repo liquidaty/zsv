@@ -128,6 +128,10 @@ else # not emcc
 endif
 UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
 
+ifeq ($(NO_THREADING),1)
+  CFLAGS+= -DNO_THREADING
+endif
+
 ifeq ($(ZSV_EXTRAS),1)
   CFLAGS+= -DZSV_EXTRAS
 endif

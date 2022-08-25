@@ -316,6 +316,7 @@ int MAIN(int argc, const char *argv[]) {
 
        // to do: max_cell_size
       opts.stream = input->f;
+      opts.input_path = input->fname;
       if(!(input->parser = zsv_new(&opts)))
         data.err = 1;
       else {

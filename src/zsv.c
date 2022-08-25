@@ -212,7 +212,9 @@ zsv_parser zsv_new(struct zsv_opts *opts) {
   if(!opts) {
     opts = &tmp;
     memset(opts, 0, sizeof(*opts));
-  }
+  } else if(opts->filter)
+    opts->filter(opts, opts->filter_ctx);
+
   if(!opts->max_row_size)
     opts->max_row_size = ZSV_ROW_MAX_SIZE_DEFAULT;
   if(!opts->max_columns)

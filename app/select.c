@@ -778,6 +778,8 @@ int MAIN(int argc, const char *argv[]) {
         err = zsv_printerr(1, "Input file was specified, cannot also read: %s", argv[arg_i]);
       else if(!(data.opts.stream = fopen(argv[arg_i], "rb")))
         err = zsv_printerr(1, "Could not open for reading: %s", argv[arg_i]);
+      else
+        data.opts.input_path = argv[arg_i];
     }
 
     if(data.sample_pct)

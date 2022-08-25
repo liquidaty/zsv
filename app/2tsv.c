@@ -159,10 +159,10 @@ static void zsv_2tsv_row(void *ctx) {
 #endif
 
 int MAIN(int argc, const char *argv[]) {
-  FILE *f_in = NULL;
   struct zsv_2tsv_data data = { 0 };
 
   INIT_CMD_DEFAULT_ARGS();
+  struct zsv_opts opts = zsv_get_default_opts();
 
   int err = 0;
   for(int i = 1; !err && i < argc; i++) {
@@ -178,40 +178,35 @@ int MAIN(int argc, const char *argv[]) {
       else if(!(data.out.stream = fopen(argv[i], "wb")))
         fprintf(stderr, "Unable to open for writing: %s\n", argv[i]), err = 1;
     } else {
-      if(f_in)
+      if(opts.stream)
         fprintf(stderr, "Input file specified more than once\n"), err = 1;
-      else if(!(f_in = fopen(argv[i], "rb")))
+      else if(!(opts.stream = fopen(argv[i], "rb")))
         fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
+      else
+        opts.input_path = argv[i];
     }
   }
 
   if(err) {
-    if(f_in)
-      fclose(f_in);
-    if(data.out.stream)
-      fclose(data.out.stream);
     goto exit_2tsv;
   }
 
-  if(!f_in) {
+  if(!opts.stream) {
 #ifdef NO_STDIN
     fprintf(stderr, "Please specify an input file\n");
     err = 1;
     goto exit_2tsv;
 #else
-    f_in = stdin;
+    opts.stream = stdin;
 #endif
   }
 
   if(!data.out.stream)
     data.out.stream = stdout;
 
-  struct zsv_opts opts = zsv_get_default_opts();
   opts.row = zsv_2tsv_row;
   opts.ctx = &data;
   opts.overflow = zsv_2tsv_overflow;
-
-  opts.stream = f_in;
   if((data.parser = zsv_new(&opts))) {
     char output[ZSV_2TSV_BUFF_SIZE];
     data.out.buff = output;
@@ -226,11 +221,10 @@ int MAIN(int argc, const char *argv[]) {
     zsv_2tsv_flush(&data.out);
   }
 
-  if(f_in && f_in != stdin)
-    fclose(f_in);
-  if(data.out.stream)
-    fclose(data.out.stream);
-
  exit_2tsv:
+  if(opts.stream && opts.stream != stdin)
+    fclose(opts.stream);
+  if(data.out.stream && data.out.stream != stdout)
+    fclose(data.out.stream);
   return err;
 }

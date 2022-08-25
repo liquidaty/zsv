@@ -58,22 +58,28 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx);
  *     -q,--no-quote
  *     -v,--verbose
  *
- * @param  argc     count of args to process
- * @param  argv     args to process
- * @param  argc_out count of unprocessed args
- * @param  argv_out array of unprocessed arg values. Must be allocated by caller
- *                  with size of at least argc * sizeof(*argv)
- * @param  opts_out options, updated to reflect any processed args
- * @return          zero on success, non-zero on error
+ * @param  argc      count of args to process
+ * @param  argv      args to process
+ * @param  argc_out  count of unprocessed args
+ * @param  argv_out  array of unprocessed arg values. Must be allocated by caller
+ *                   with size of at least argc * sizeof(*argv)
+ * @param  opts_out  options, updated to reflect any processed args
+ * @param  opts_used optional; if provided:
+ *                   - must point to >= 16 bytes of storage
+ *                   - all used options will be returned in this string
+ *                   e.g. if -R and -q are used, then opts_used will be set to:
+ *                     "     q R   "
+ * @return           zero on success, non-zero on error
  */
 int zsv_args_to_opts(int argc, const char *argv[],
                      int *argc_out, const char **argv_out,
-                     struct zsv_opts *opts_out
+                     struct zsv_opts *opts_out,
+                     char *opts_used
                      );
 
 #define INIT_DEFAULT_ARGS() do {                                \
     struct zsv_opts otmp;                                       \
-    int err = zsv_args_to_opts(argc, argv, &argc, argv, &otmp); \
+    int err = zsv_args_to_opts(argc, argv, &argc, argv, &otmp, 0x0); \
     if(err) return err;                                         \
     else zsv_set_default_opts(otmp);                            \
   } while(0)

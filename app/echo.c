@@ -31,9 +31,9 @@ static void row(void *ctx) {
 #endif
 
 int MAIN(int argc, const char *argv[]) {
-  FILE *f = NULL;
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   struct data data = { 0 };
+  struct zsv_opts opts = zsv_get_default_opts();
 
   INIT_CMD_DEFAULT_ARGS();
 
@@ -46,30 +46,29 @@ int MAIN(int argc, const char *argv[]) {
       return 0;
     } else if(!strcmp(argv[i], "-b") || !strcmp(argv[i], "--with-bom"))
       writer_opts.with_bom = 1;
-    else if(!f) {
-      if(!(f = fopen(argv[i], "rb"))) {
+    else if(!opts.stream) {
+      if(!(opts.stream = fopen(argv[i], "rb"))) {
         fprintf(stderr, "Unable to open %s for writing\n", argv[i]);
         return 1;
-      }
+      } else
+        opts.input_path = argv[i];
     } else {
       fprintf(stderr, "Input file specified more than once (second was %s)\n", argv[i]);
-      if(f)
-        fclose(f);
+      if(opts.stream)
+        fclose(opts.stream);
       return 1;
     }
   }
 
-  if(!f)
-    f = stdin;
+  if(!opts.stream)
+    opts.stream = stdin;
 
-  struct zsv_opts opts = zsv_get_default_opts();
   opts.row = row;
   opts.ctx = &data;
 
   if((data.csv_writer = zsv_writer_new(&writer_opts))) {
     unsigned char writer_buff[64];
     zsv_writer_set_temp_buff(data.csv_writer, writer_buff, sizeof(writer_buff));
-    opts.stream = f;
     if((data.parser = zsv_new(&opts))) {
       zsv_handle_ctrl_c_signal();
       enum zsv_status status;
@@ -80,10 +79,7 @@ int MAIN(int argc, const char *argv[]) {
     }
     zsv_writer_delete(data.csv_writer);
   }
-  fclose(f);
+  if(opts.stream != stdin)
+    fclose(opts.stream);
   return 0;
-}            
-
-
-
-
+}
