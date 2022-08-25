@@ -190,6 +190,7 @@ static int add_row_to_cache(zsv_parser parser, struct zsv_vtab_cache *cache,
 }
 
 /* remove_row_from_cache: return 1 if row was removed */
+/* remove_row_from_cache: return 1 if row was removed */
 static int remove_row_from_cache(struct zsv_vtab_cache *cache) {
   if(cache->rows) {
     struct zsv_vtab_cache_row *r = cache->rows;
