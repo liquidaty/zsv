@@ -173,14 +173,16 @@ static int add_row_to_cache(zsv_parser parser, struct zsv_vtab_cache *cache,
   r->column_count = count;
   for(size_t i = 0; i < count; i++) {
     r->cells[i] = zsv_get_cell(parser, i);
-    if(r->cells[i].len) {
-      void *copy = sqlite3_malloc(r->cells[i].len);
-      if(!copy) {
-        fprintf(stderr, "Out of memory!\n");
-        r->cells[i].len = 0;
-      } else {
-        memcpy(copy, r->cells[i].str, r->cells[i].len);
-        r->cells[i].str = copy; // zsv_memdup(r->cells[i].str, r->cells[i].len);
+    if(r->id == 0) {
+      if(r->cells[i].len) {
+        void *copy = sqlite3_malloc(r->cells[i].len);
+        if(!copy) {
+          fprintf(stderr, "Out of memory!\n");
+          r->cells[i].len = 0;
+        } else {
+          memcpy(copy, r->cells[i].str, r->cells[i].len);
+          r->cells[i].str = copy; // zsv_memdup(r->cells[i].str, r->cells[i].len);
+        }
       }
     }
   }
@@ -188,14 +190,15 @@ static int add_row_to_cache(zsv_parser parser, struct zsv_vtab_cache *cache,
 }
 
 /* remove_row_from_cache: return 1 if row was removed */
-/* remove_row_from_cache: return 1 if row was removed */
 static int remove_row_from_cache(struct zsv_vtab_cache *cache) {
   if(cache->rows) {
     struct zsv_vtab_cache_row *r = cache->rows;
     struct zsv_vtab_cache_row *next = r->next;
-    for(size_t i = 0; i < r->column_count; i++)
-      if(r->cells[i].len)
-        sqlite3_free(r->cells[i].str);
+    if(r->id == 0) {
+      for(size_t i = 0; i < r->column_count; i++)
+        if(r->cells[i].len)
+          sqlite3_free(r->cells[i].str);
+    }
     sqlite3_free(r->cells);
     sqlite3_free(r);
     if(!(cache->rows = next))
@@ -457,7 +460,6 @@ static int zsvtabClose(sqlite3_vtab_cursor *cur){
   sqlite3_free(cur);
   return SQLITE_OK;
 }
-
 
 /*
 ** Only a full table scan is supported.  So xFilter simply rewinds to
