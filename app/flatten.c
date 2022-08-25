@@ -197,6 +197,7 @@ struct flatten_data {
   const char *output_filename;
 
   FILE *in;
+  const char *input_path;
   FILE *out;
 
   zsv_csv_writer csv_writer;
@@ -738,6 +739,8 @@ int MAIN(int argc, const char *argv[]) {
       err = zsv_printerr(1, "Input file was specified, cannot also read: %s", argv[arg_i]);
     else if(!(data.in = fopen(argv[arg_i], "rb")))
       err = zsv_printerr(1, "Could not open for reading: %s", argv[arg_i]);
+    else
+      data.input_path = argv[arg_i];
   }
 
   if(!data.in) {
@@ -791,6 +794,7 @@ int MAIN(int argc, const char *argv[]) {
       opts.overflow = flatten_overflow;
       opts.error = flatten_error;
       opts.stream = data.in;
+      opts.input_path = data.input_path;
       opts.ctx = &data;
 
       zsv_parser handle = zsv_new(&opts);

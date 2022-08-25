@@ -594,7 +594,8 @@ int MAIN(int argc, const char *argv[]) {
         } else if(!(data.opts.stream = fopen(argv[arg_i], "rb"))) {
           err = 1;
           fprintf(stderr, "Could not open for reading: %s\n", argv[arg_i]);
-        }
+        } else
+          data.opts.input_path = argv[arg_i];
 
         if(data.opts.stream && data.opts.stream != stdin)
           data.input_filename = argv[arg_i];

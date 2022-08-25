@@ -14,31 +14,59 @@
 #include <zsv/utils/arg.h>
 
 /*
+ * for now we don't really need thread support because this is only being used
+ * by the CLI. However, it's here anyway in case future enhancements or
+ * user customizations need multithreading support
+ */
+#ifndef NO_THREADING
+# define ZSVTLS _Thread_local
+#else
+# define ZSVTLS
+#endif
+
+/*
  * global zsv_default_opts for convenience funcs zsv_get_default_opts() and zsv_set_default_opts()
  *  for the cli to pass global opts to the standalone modules
  */
-struct zsv_opts zsv_default_opts = { 0 };
-char zsv_default_opts_initd = 0;
+
+/*
+ * Use a single function for all default-option operations, so as to be able
+ * to use thread-local storage with static initializer
+ */
+static struct zsv_opts *zsv_with_default_opts(char mode) {
+
+  ZSVTLS static char zsv_default_opts_initd = 0;
+  ZSVTLS static struct zsv_opts zsv_default_opts = { 0 };
+
+  switch(mode) {
+  case 'c': // clear
+    memset(&zsv_default_opts, 0, sizeof(zsv_default_opts));
+    zsv_default_opts_initd = 0;
+    break;
+  case 'g': // get
+    if(!zsv_default_opts_initd) {
+      zsv_default_opts_initd = 1;
+      zsv_default_opts.max_row_size = ZSV_ROW_MAX_SIZE_DEFAULT;
+      zsv_default_opts.max_columns = ZSV_MAX_COLS_DEFAULT;
+    }
+    break;
+  }
+  return &zsv_default_opts;
+}
 
 ZSV_EXPORT
 void zsv_clear_default_opts() {
-  memset(&zsv_default_opts, 0, sizeof(zsv_default_opts));
-  zsv_default_opts_initd = 0;
+  zsv_with_default_opts('c');
 }
 
 ZSV_EXPORT
 struct zsv_opts zsv_get_default_opts() {
-  if(!zsv_default_opts_initd) {
-    zsv_default_opts_initd = 1;
-    zsv_default_opts.max_row_size = ZSV_ROW_MAX_SIZE_DEFAULT;
-    zsv_default_opts.max_columns = ZSV_MAX_COLS_DEFAULT;
-  }
-  return zsv_default_opts;
+  return *zsv_with_default_opts('g');
 }
 
 ZSV_EXPORT
 void zsv_set_default_opts(struct zsv_opts opts) {
-  zsv_default_opts = opts;
+  *zsv_with_default_opts(0) = opts;
 }
 
 /**
@@ -72,10 +100,12 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx) {
 
 #endif
 
+#define ZSV_OPTS_SIZE_MAX 16
 ZSV_EXPORT
 int zsv_args_to_opts(int argc, const char *argv[],
                      int *argc_out, const char **argv_out,
-                     struct zsv_opts *opts_out
+                     struct zsv_opts *opts_out,
+                     char *opts_used // must be ZSV_OPTS_SIZE_MAX in size
                      ) {
   *opts_out = zsv_get_default_opts();
   int options_start = 1; // skip this many args before we start looking for options
@@ -83,6 +113,10 @@ int zsv_args_to_opts(int argc, const char *argv[],
   int new_argc = 0;
   for(; new_argc < options_start && new_argc < argc; new_argc++)
     argv_out[new_argc] = argv[new_argc];
+  if(opts_used) {
+    memset(opts_used, ' ', ZSV_OPTS_SIZE_MAX-1);
+    opts_used[ZSV_OPTS_SIZE_MAX-1] = '\0';
+  }
 
 #ifdef ZSV_EXTRAS
   static const char *short_args = "BcrtOqvRdSL";
@@ -112,12 +146,19 @@ int zsv_args_to_opts(int argc, const char *argv[],
       argv_out[new_argc++] = argv[i];
       continue;
     }
+    unsigned found_ix = 0;
     if(argv[i][1] != '-') {
-      if(!argv[i][2] && strchr(short_args, argv[i][1]))
+      char *strchr_result;
+      if(!argv[i][2] && (strchr_result = strchr(short_args, argv[i][1]))) {
         arg = argv[i][1];
-    } else
-      arg = short_args[str_array_index_of(long_args, argv[i] + 2)];
+        found_ix = strchr_result - short_args;
+      }
+    } else {
+      found_ix = str_array_index_of(long_args, argv[i] + 2);
+      arg = short_args[found_ix];
+    }
 
+    char processed = 1;
     switch(arg) {
     case 't':
       opts_out->delimiter = '\t';
@@ -195,11 +236,16 @@ int zsv_args_to_opts(int argc, const char *argv[],
       }
       break;
     default: /* pass this option through */
+      processed = 0;
       argv_out[new_argc++] = argv[i];
       break;
     }
+    if(processed && opts_used)
+      opts_used[found_ix] = arg;
   }
 
   *argc_out = new_argc;
   return err;
 }
+
+#undef ZSVTLS

@@ -57,8 +57,10 @@ int MAIN(int argc, const char *argv[]) {
           fprintf(stderr, "Input may not be specified more than once\n");
         else if(!(opts.stream = fopen(argv[i], "rb")))
           fprintf(stderr, "Unable to open for reading: %s\n", argv[i]);
-        else
+        else {
+          opts.input_path = argv[i];
           err = 0;
+        }
       }
     } else {
       fprintf(stderr, "Unrecognized option: %s\n", arg);

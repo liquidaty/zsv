@@ -303,7 +303,8 @@ static int zsvtabConnect(
   if(!(pNew->parser_opts.stream = fopen(CSV_FILENAME, "rb"))) {
     asprintf(&errmsg, "Unable to open for reading: %s", CSV_FILENAME);
     goto zsvtab_connect_error;
-  }
+  } else
+    pNew->parser_opts.input_path = CSV_FILENAME;
 
   pNew->parser_opts.row = zsv_row_header;
   pNew->parser_opts.ctx = pNew;

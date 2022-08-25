@@ -39,6 +39,7 @@ struct output_header_name {
 
 struct serialize_data {
   FILE *in;
+  const char *input_path;
   zsv_csv_writer csv_writer;
   zsv_parser parser;
 
@@ -295,7 +296,8 @@ int MAIN(int argc, const char *argv[]) {
       } else if(!(data.in = fopen(argv[arg_i], "rb"))) {
         err = 1;
         fprintf(stderr, "Could not open for reading: %s\n", argv[arg_i]);
-      }
+      } else
+        data.input_path = argv[arg_i];
     }
 
     if(data.filter.value) {
@@ -325,6 +327,7 @@ int MAIN(int argc, const char *argv[]) {
     opts.overflow = serialize_overflow;
     opts.error = serialize_error;
     opts.stream = data.in;
+    opts.input_path = data.input_path;
 
     opts.ctx = &data;
     data.parser = zsv_new(&opts);
