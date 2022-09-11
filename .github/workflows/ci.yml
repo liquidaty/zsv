@@ -30,6 +30,7 @@ jobs:
       AMD64_MACOSX_GCC: amd64-macosx-gcc
       AMD64_FREEBSD_GCC: amd64-freebsd-gcc
       ARTIFACT_DIR: .artifacts
+      IGNORE_OSVERSION: yes
       ARTIFACT_RETENTION_DAYS: 5
 
     steps:
@@ -124,7 +125,7 @@ jobs:
         RUN_TESTS: false
       uses: vmactions/freebsd-vm@v0.1.5
       with:
-        envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
+        envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR IGNORE_OSVERSION'
         usesh: true
         prepare: pkg install -y tree zip git autotools gmake lang/gcc
         run: |
