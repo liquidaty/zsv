@@ -18,7 +18,7 @@ jobs:
     name: ci
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-10.15]
+        os: [ubuntu-20.04, macos-10.15, macos-12]
 
     runs-on: ${{ matrix.os }}
 
@@ -64,6 +64,21 @@ jobs:
         brew uninstall jq
 
     # --- Build ---
+
+    - name: Build on macOS-12 (${{ env.AMD64_FREEBSD_GCC }})
+      if: matrix.os == 'macos-12'
+      env:
+        PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
+        CC: gcc
+        MAKE: gmake
+        RUN_TESTS: false
+      uses: vmactions/freebsd-vm@v0.2.5
+      with:
+        envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
+        usesh: true
+        prepare: pkg install -y tree zip git autotools gmake lang/gcc
+        run: |
+          ./scripts/ci-build.sh
 
     - name: Build on Linux (${{ env.AMD64_LINUX_GCC }})
       if: runner.os == 'Linux'
@@ -114,21 +129,6 @@ jobs:
       run: |
         ./scripts/ci-build.sh
         ./$PREFIX/bin/zsv version
-
-    - name: Build on macOS (${{ env.AMD64_FREEBSD_GCC }})
-      if: runner.os == 'macOS'
-      env:
-        PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
-        CC: gcc
-        MAKE: gmake
-        RUN_TESTS: false
-      uses: vmactions/freebsd-vm@v0.1.5
-      with:
-        envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
-        usesh: true
-        prepare: pkg install -y tree zip git autotools gmake lang/gcc
-        run: |
-          ./scripts/ci-build.sh
 
     # --- Upload build artifacts ---
 
@@ -235,7 +235,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip)
-      if: runner.os == 'macOS'
+      if: matrix.os == 'macos-12'
       uses: actions/upload-artifact@v3
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip
@@ -290,7 +290,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz)
-      if: runner.os == 'macOS'
+      if: matrix.os == 'macos-12'
       uses: actions/upload-artifact@v3
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz
