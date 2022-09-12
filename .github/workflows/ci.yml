@@ -236,7 +236,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip)
-      if: runner.os == 'macOS'
+      if: matrix.os == 'macos-12'
       uses: actions/upload-artifact@v3
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip
@@ -291,7 +291,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz)
-      if: runner.os == 'macOS'
+      if: matrix.os == 'macos-12'
       uses: actions/upload-artifact@v3
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz
