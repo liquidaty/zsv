@@ -75,7 +75,7 @@ jobs:
         IGNORE_OSVERSION: yes
       uses: vmactions/freebsd-vm@v0.1.6
       with:
-        envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
+        envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR IGNORE_OSVERSION'
         usesh: true
         prepare: pkg install -y tree zip git autotools gmake lang/gcc
         run: |
