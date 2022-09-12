@@ -65,6 +65,22 @@ jobs:
 
     # --- Build ---
 
+    - name: Build on macOS (${{ env.AMD64_FREEBSD_GCC }})
+      if: runner.os == 'macOS'
+      env:
+        PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
+        CC: gcc
+        MAKE: gmake
+        RUN_TESTS: false
+        IGNORE_OSVERSION: yes
+      uses: vmactions/freebsd-vm@v0.1.6
+      with:
+        envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
+        usesh: true
+        prepare: pkg install -y tree zip git autotools gmake lang/gcc
+        run: |
+          ./scripts/ci-build.sh
+
     - name: Build on Linux (${{ env.AMD64_LINUX_GCC }})
       if: runner.os == 'Linux'
       env:
@@ -114,21 +130,6 @@ jobs:
       run: |
         ./scripts/ci-build.sh
         ./$PREFIX/bin/zsv version
-
-    - name: Build on macOS (${{ env.AMD64_FREEBSD_GCC }})
-      if: runner.os == 'macOS'
-      env:
-        PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
-        CC: gcc
-        MAKE: gmake
-        RUN_TESTS: false
-      uses: vmactions/freebsd-vm@v0.1.6
-      with:
-        envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
-        usesh: true
-        prepare: pkg install -y tree zip git autotools gmake lang/gcc
-        run: |
-          ./scripts/ci-build.sh
 
     # --- Upload build artifacts ---
 
