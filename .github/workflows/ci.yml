@@ -18,7 +18,7 @@ jobs:
     name: ci
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-10.15]
+        os: [ubuntu-20.04, macos-10.15, macos-12]
 
     runs-on: ${{ matrix.os }}
 
@@ -65,15 +65,15 @@ jobs:
 
     # --- Build ---
 
-    - name: Build on macOS (${{ env.AMD64_FREEBSD_GCC }})
-      if: runner.os == 'macOS'
+    - name: Build on macOS-12 (${{ env.AMD64_FREEBSD_GCC }})
+      if: matrix.os == 'macos-12'
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc
         MAKE: gmake
         RUN_TESTS: false
         IGNORE_OSVERSION: yes
-      uses: vmactions/freebsd-vm@v0.1.6
+      uses: vmactions/freebsd-vm@v0.2.5
       with:
         envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR IGNORE_OSVERSION'
         usesh: true
