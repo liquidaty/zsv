@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <unistd.h> // for close()
 #include <fcntl.h> // open
 
@@ -81,11 +82,44 @@ int zsv_redirect_file_to_temp(FILE *f, const char *tempfile_prefix,
   return bak;
 }
 
-/*
+/**
  * Restore a FILE * that was redirected by zsv_redirect_file_to_temp()
  */
 void zsv_redirect_file_from_temp(FILE *f, int bak, int old_fd) {
   fflush(f);
   dup2(bak, old_fd);
   close(bak);
+}
+
+int zsv_file_readable(const char *filename, int *err, FILE **f_out) {
+  FILE *f;
+  int rc;
+  if(err)
+    *err = 0;
+  // to do: use fstat()
+  if((f = fopen(filename, "rb")) == NULL) {
+    rc = 0;
+    if(err)
+      *err = errno;
+    else switch(errno) {
+      case ENOENT:
+	fprintf(stderr, "File '%s' not found\n", filename);
+	break;
+      case EACCES:
+	fprintf(stderr, "No permissions to read '%s'\n", filename);
+	break;
+      case EISDIR:
+	fprintf(stderr, "File '%s' is a directory\n", filename);
+	break;
+      default:
+	fprintf(stderr, "Unknown error opening '%s'\n", filename);
+      }
+  } else {
+    rc = 1;
+    if(f_out)
+      *f_out = f;
+    else
+      fclose(f);
+  }
+  return rc;
 }

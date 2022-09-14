@@ -18,12 +18,13 @@
  * by the CLI. However, it's here anyway in case future enhancements or
  * user customizations need multithreading support
  */
-#ifndef NO_THREADING
-# define ZSVTLS _Thread_local
-#else
-# define ZSVTLS
+#ifndef ZSVTLS
+# ifndef NO_THREADING
+#  define ZSVTLS _Thread_local
+# else
+#  define ZSVTLS
+# endif
 #endif
-
 /*
  * global zsv_default_opts for convenience funcs zsv_get_default_opts() and zsv_set_default_opts()
  *  for the cli to pass global opts to the standalone modules
@@ -99,14 +100,40 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx) {
 }
 
 #endif
-
-#define ZSV_OPTS_SIZE_MAX 16
+/**
+ * Convert common command-line arguments to zsv_opts
+ * Return new argc/argv values with processed args stripped out
+ * Initializes opts_out with `zsv_get_default_opts()`, then with
+ * the below common options if present:
+ *     -B,--buff-size <N>
+ *     -c,--max-column-count <N>
+ *     -r,--max-row-size <N>
+ *     -t,--tab-delim
+ *     -O,--other-delim <C>
+ *     -q,--no-quote
+ *     -S,--keep-blank-headers: disable default behavior of ignoring leading blank rows
+ *     -d,--header-row-span <n>: apply header depth (rowspan) of n
+ *     -v,--verbose
+ *
+ * @param  argc      count of args to process
+ * @param  argv      args to process
+ * @param  argc_out  count of unprocessed args
+ * @param  argv_out  array of unprocessed arg values. Must be allocated by caller
+ *                   with size of at least argc * sizeof(*argv)
+ * @param  opts_out  options, updated to reflect any processed args
+ * @param  opts_used optional; if provided:
+ *                   - must point to >= ZSV_OPTS_SIZE_MAX bytes of storage
+ *                   - all used options will be returned in this string
+ *                   e.g. if -R and -q are used, then opts_used will be set to:
+ *                     "     q R   "
+ * @return           zero on success, non-zero on error
+ */
 ZSV_EXPORT
-int zsv_args_to_opts(int argc, const char *argv[],
-                     int *argc_out, const char **argv_out,
-                     struct zsv_opts *opts_out,
-                     char *opts_used // must be ZSV_OPTS_SIZE_MAX in size
-                     ) {
+enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
+                                 int *argc_out, const char **argv_out,
+                                 struct zsv_opts *opts_out,
+                                 char *opts_used
+                                 ) {
   *opts_out = zsv_get_default_opts();
   int options_start = 1; // skip this many args before we start looking for options
   int err = 0;
@@ -164,7 +191,7 @@ int zsv_args_to_opts(int argc, const char *argv[],
       opts_out->delimiter = '\t';
       break;
     case 'S':
-      opts_out->no_skip_empty_header_rows = 1;
+      opts_out->keep_empty_header_rows = 1;
       break;
     case 'q':
       opts_out->no_quotes = 1;
@@ -229,7 +256,7 @@ int zsv_args_to_opts(int argc, const char *argv[],
             err = fprintf(stderr, "Error: header_span must be an integer between 0 and 8\n");
         } else if(arg == 'R') {
           if(n >= 0)
-            opts_out->rows_to_skip = n;
+            opts_out->rows_to_ignore = n;
           else
             err = fprintf(stderr, "Error: rows_to_skip must be >= 0\n");
         }
@@ -245,7 +272,23 @@ int zsv_args_to_opts(int argc, const char *argv[],
   }
 
   *argc_out = new_argc;
-  return err;
+  return err ? zsv_status_error : zsv_status_ok;
 }
 
-#undef ZSVTLS
+/**
+ * Finalize zsv parser arguments by merging them with any saved input file
+ * properties such as rows_to_ignore or header_span. In the event that
+ * saved properties conflict with a command-line option, the command-line
+ * option is retained (the property value is ignored), but a warning is printed
+ */
+enum zsv_status zsv_args_finalize(struct zsv_opts *opts,
+                                  const char *input_path,
+                                  const char *opts_used) {
+  enum zsv_status zsv_cache_load_props(const char *data_filepath,
+                                       struct zsv_opts *opts,
+                                       void *fp,
+                                       const char *cmd_opts_used);
+  if(input_path)
+    return zsv_cache_load_props(input_path, opts, NULL, opts_used);
+  return zsv_status_ok;
+}

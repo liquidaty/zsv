@@ -72,6 +72,9 @@ struct yajl_helper_parse_state {
   char **map_keys;
   unsigned int *item_ind;
 
+  yajl_callbacks callbacks;
+  yajl_handle yajl;
+
   void *data; // user-defined
 
   int (*start_map)(struct yajl_helper_parse_state *);
@@ -105,19 +108,19 @@ char yajl_helper_path_is(struct yajl_helper_parse_state *st, const char *path);
 
 const char *yajl_helper_get_map_key(struct yajl_helper_parse_state *st, unsigned int offset);
 
-void yajl_helper_parse_state_init(
-                                  struct yajl_helper_parse_state *st,
-                                  unsigned int max_level,
-                                  int (*start_map)(struct yajl_helper_parse_state *),
-                                  int (*end_map)(struct yajl_helper_parse_state *),
-                                  int (*map_key)(struct yajl_helper_parse_state *,
-                                                 const unsigned char *, size_t),
-                                  int (*start_array)(struct yajl_helper_parse_state *),
-                                  int (*end_array)(struct yajl_helper_parse_state *),
-                                  int (*value)(struct yajl_helper_parse_state *,
-                                               struct json_value *),
-                                  void *data
-                                  );
+yajl_status yajl_helper_parse_state_init(
+                                         struct yajl_helper_parse_state *st,
+                                         unsigned int max_level,
+                                         int (*start_map)(struct yajl_helper_parse_state *),
+                                         int (*end_map)(struct yajl_helper_parse_state *),
+                                         int (*map_key)(struct yajl_helper_parse_state *,
+                                                        const unsigned char *, size_t),
+                                         int (*start_array)(struct yajl_helper_parse_state *),
+                                         int (*end_array)(struct yajl_helper_parse_state *),
+                                         int (*value)(struct yajl_helper_parse_state *,
+                                                      struct json_value *),
+                                         void *data
+                                         );
 
 void yajl_helper_callbacks_init(yajl_callbacks *callbacks, char nums_as_strings);
 
@@ -149,5 +152,10 @@ struct int_list {
 
 void add_int_to_array(struct int_list **head, struct json_value *value);
 void int_list_free(struct int_list *e);
+
+/**
+ * Print the current path for e.g. error reporting
+ */
+void yajl_helper_dump_path(struct yajl_helper_parse_state *st, FILE *out);
 
 #endif // ifdef YAJL_HELPER_H

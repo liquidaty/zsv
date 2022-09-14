@@ -633,15 +633,15 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
 #endif
 
 int MAIN(int argc, const char *argv[]) {
-  INIT_CMD_DEFAULT_ARGS();
-
   if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
     zsv_select_usage();
   else {
     struct zsv_select_data data = { 0 };
-    int err = 0;
-
-    data.opts = zsv_get_default_opts();
+    char opts_used[ZSV_OPTS_SIZE_MAX];
+    const char *input_path = NULL;
+    int err = zsv_args_to_opts(argc, argv, &argc, argv, &data.opts, opts_used);
+    if(err)
+      return err;
 
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
     int col_index_arg_i = 0;
@@ -779,7 +779,7 @@ int MAIN(int argc, const char *argv[]) {
       else if(!(data.opts.stream = fopen(argv[arg_i], "rb")))
         err = zsv_printerr(1, "Could not open for reading: %s", argv[arg_i]);
       else
-        data.opts.input_path = argv[arg_i];
+        input_path = argv[arg_i];
     }
 
     if(data.sample_pct)
@@ -811,32 +811,34 @@ int MAIN(int argc, const char *argv[]) {
         data.opts.row = zsv_select_header_row;
         data.opts.ctx = &data;
         data.opts.insert_header_row = insert_header_row;
-        zsv_parser handle = data.parser = zsv_new(&data.opts);
-        if(handle) {
-          // all done with
-          data.any_clean = data.malformed_utf8_replace
-            || !data.no_trim_whitespace
-            || data.clean_white
-            || data.embedded_lineend;
+        if(zsv_args_finalize(&data.opts, input_path, opts_used) == zsv_status_ok) {
+          zsv_parser handle = data.parser = zsv_new(&data.opts);
+          if(handle) {
+            // all done with
+            data.any_clean = data.malformed_utf8_replace
+              || !data.no_trim_whitespace
+              || data.clean_white
+              || data.embedded_lineend;
 
-          // set to fixed if applicable
-          if(data.fixed.count && zsv_set_fixed_offsets(handle, data.fixed.count,
-                                                       data.fixed.offsets)
-             != zsv_status_ok)
-            data.cancelled = 1;
+            // set to fixed if applicable
+            if(data.fixed.count && zsv_set_fixed_offsets(handle, data.fixed.count,
+                                                         data.fixed.offsets)
+               != zsv_status_ok)
+              data.cancelled = 1;
 
-          // create a local csv writer buff quoted values
-          unsigned char writer_buff[512];
-          zsv_writer_set_temp_buff(data.csv_writer, writer_buff, sizeof(writer_buff));
+            // create a local csv writer buff quoted values
+            unsigned char writer_buff[512];
+            zsv_writer_set_temp_buff(data.csv_writer, writer_buff, sizeof(writer_buff));
 
-          // process the input data
-          zsv_handle_ctrl_c_signal();
-          enum zsv_status status;
-          while(!zsv_signal_interrupted && !data.cancelled && (status = zsv_parse_more(data.parser)) == zsv_status_ok)
-            ;
+            // process the input data
+            zsv_handle_ctrl_c_signal();
+            enum zsv_status status;
+            while(!zsv_signal_interrupted && !data.cancelled && (status = zsv_parse_more(data.parser)) == zsv_status_ok)
+              ;
 
-          zsv_finish(handle);
-          zsv_delete(handle);
+            zsv_finish(handle);
+            zsv_delete(handle);
+          }
         }
       }
     }

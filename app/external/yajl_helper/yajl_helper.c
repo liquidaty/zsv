@@ -27,6 +27,24 @@ void *yajl_helper_data(struct yajl_helper_parse_state *st) {
   return st->data;
 }
 
+/**
+ * Print the current path for e.g. error reporting
+ */
+void yajl_helper_dump_path(struct yajl_helper_parse_state *st, FILE *out) {
+  for(int i = 0; i < st->level; i++) {
+    switch(st->stack[i]) {
+    case '[':
+      fwrite(&st->stack[i],1,1,out);
+      break;
+    case '{':
+      fwrite(&st->stack[i],1,1,out);
+      if(st->map_keys[i])
+        fwrite(st->map_keys[i], 1, strlen(st->map_keys[i]), out);
+      break;
+    }
+  }
+}
+
 // yajl_helper_level_offset(): return error
 int yajl_helper_level_offset(struct yajl_helper_parse_state *st, unsigned int offset) {
   if(offset > st->level) {
@@ -203,6 +221,8 @@ void yajl_helper_parse_state_free(struct yajl_helper_parse_state *st) {
     free(st->stack);
     free(st->map_keys);
     free(st->item_ind);
+    if(st->yajl)
+      yajl_free(st->yajl);
   }
 }
 
@@ -370,25 +390,30 @@ void yajl_helper_callbacks_init(yajl_callbacks *callbacks, char nums_as_strings)
   memcpy(callbacks, &x, sizeof(x));
 }
 
-void yajl_helper_parse_state_init(
-                                  struct yajl_helper_parse_state *st,
-                                  unsigned int max_level,
-                                  int (*start_map)(struct yajl_helper_parse_state *),
-                                  int (*end_map)(struct yajl_helper_parse_state *),
-                                  int (*map_key)(struct yajl_helper_parse_state *,
-                                                 const unsigned char *, size_t),
-                                  int (*start_array)(struct yajl_helper_parse_state *),
-                                  int (*end_array)(struct yajl_helper_parse_state *),
-                                  int (*value)(struct yajl_helper_parse_state *,
-                                               struct json_value *),
-                                  void *data
-                                  ) {
+yajl_status yajl_helper_parse_state_init(
+                                         struct yajl_helper_parse_state *st,
+                                         unsigned int max_level,
+                                         int (*start_map)(struct yajl_helper_parse_state *),
+                                         int (*end_map)(struct yajl_helper_parse_state *),
+                                         int (*map_key)(struct yajl_helper_parse_state *,
+                                                        const unsigned char *, size_t),
+                                         int (*start_array)(struct yajl_helper_parse_state *),
+                                         int (*end_array)(struct yajl_helper_parse_state *),
+                                         int (*value)(struct yajl_helper_parse_state *,
+                                                      struct json_value *),
+                                         void *data
+                                         ) {
   memset(st, 0, sizeof(*st));
   st->max_level = max_level ? max_level : 32;
+
   st->stack = calloc(st->max_level, sizeof(char));
   st->map_keys = calloc(st->max_level, sizeof(char *));
-
   st->item_ind = calloc(st->max_level, sizeof(*st->item_ind));
+  st->yajl = yajl_alloc(&st->callbacks, NULL, st);
+  if(!(st->stack && st->map_keys && st->item_ind && st->yajl))
+    return yajl_status_error;
+
+  yajl_helper_callbacks_init(&st->callbacks, 0);
 
   st->start_map = start_map;
   st->end_map = end_map;
@@ -398,6 +423,7 @@ void yajl_helper_parse_state_init(
   st->end_array = end_array;
   st->value = value;
   st->data = data;
+  return yajl_status_ok;
 }
 
 ///// misc

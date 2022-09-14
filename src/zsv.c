@@ -212,8 +212,7 @@ zsv_parser zsv_new(struct zsv_opts *opts) {
   if(!opts) {
     opts = &tmp;
     memset(opts, 0, sizeof(*opts));
-  } else if(opts->filter)
-    opts->filter(opts, opts->filter_ctx);
+  }
 
   if(!opts->max_row_size)
     opts->max_row_size = ZSV_ROW_MAX_SIZE_DEFAULT;
@@ -303,6 +302,8 @@ const unsigned char *zsv_parse_status_desc(enum zsv_status status) {
     return (unsigned char *)"Invalid option";
   case zsv_status_memory:
     return (unsigned char *)"Out of memory";
+  case zsv_status_error:
+    return (unsigned char *)"Unexpected error";
 #ifdef ZSV_EXTRAS
   case zsv_status_max_rows_read:
     return (unsigned char *)"Maximum specified rows have been parsed";

@@ -10,8 +10,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <dirent.h>
 #include <zsv/utils/os.h>
 #include <zsv/utils/dirs.h>
+#include <unistd.h> // unlink
+#include <sys/stat.h>
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -97,6 +100,75 @@ size_t get_temp_dir(char *buff, size_t buffsize) {
   return 0;
 }
 
+/**
+ * Check if a directory exists
+ * return true (non-zero) or false (zero)
+ */
+int zsv_dir_exists(const char *path) {
+  struct stat path_stat;
+  if(!stat(path, &path_stat))
+    return S_ISDIR(path_stat.st_mode);
+  return 0;
+}
+
+/**
+ * Make a directory, as well as any intermediate dirs
+ * return zero on success
+ */
+int zsv_mkdirs(const char *path, char path_is_filename) {
+  char *p = NULL;
+  int rc = 0;
+
+  size_t len = strlen(path);
+  if(len < 1 || len > FILENAME_MAX)
+    return -1;
+
+  char *tmp = strdup(path);
+  if(len && strchr("/\\", tmp[len - 1]))
+    tmp[--len] = 0;
+
+  int offset = 0;
+#ifdef WIN32
+  if(len > 1) {
+    // starts with two slashes
+    if(strchr("/\\", tmp[0]) && strchr("/\\", tmp[1]))
+      offset = 2;
+
+    // starts with *:
+    else if(tmp[1] == ':')
+      offset = 2;
+  }
+#else
+  offset = 1;
+#endif
+
+  for(p = tmp + offset; !rc && *p; p++)
+    if(strchr("/\\", *p)) {
+      char tmp_c = p[1];
+      p[0] = FILESLASH;
+      p[1] = '\0';
+      if(*tmp && !zsv_dir_exists(tmp) && mkdir(tmp
+#ifndef WIN32
+               , S_IRWXU
+#endif
+               ))
+        rc = -1;
+      else
+        p[1] = tmp_c;
+    }
+
+  if(!rc && path_is_filename == 0 && *tmp && !zsv_dir_exists(tmp)
+     && mkdir(tmp
+#ifndef WIN32
+              , S_IRWXU
+#endif
+              ))
+    rc = -1;
+
+  free(tmp);
+  return rc;
+}
+
 
 #if defined(_WIN32)
 size_t get_executable_path(char* buff, size_t buffsize) {
@@ -145,3 +217,99 @@ to do: add support for this OS!;
 
 #endif /* end of: #if defined(_WIN32) */
 
+struct remove_dir_ctx {
+  int err;
+  struct dir_path *dirs;
+};
+
+struct dir_path {
+  struct dir_path *next;
+  char *path;
+};
+
+/**
+ * remove an empty directory; on error print msg to stderr
+ * return 0 on success
+ */
+static int rmdir_w_msg(const char *path, int *err) {
+#ifdef WIN32
+  if(!RemoveDirectoryA(path)) {
+    printLastError();
+    *err = 1;
+  }
+#else
+  if(remove(path)) {
+    perror(path);
+    *err = 1;
+  }
+#endif
+  return *err;
+}
+
+static void remove_files_collect_dirs(struct remove_dir_ctx *ctx, const char *path) {
+  // delete all files, collect dir names in reverse order
+  DIR *dr;
+  struct dir_path *previous_dir = ctx->dirs;
+  struct dir_path *most_recent_dir = NULL;
+  if((dr = opendir(path))) {
+    struct dirent *de;
+    while((de = readdir(dr)) != NULL) {
+      if(!*de->d_name || !strcmp(de->d_name, ".") || !strcmp(de->d_name, ".."))
+        continue;
+      char *tmp;
+      asprintf(&tmp, "%s%c%s", path, FILESLASH, de->d_name);
+      if(!tmp)
+        fprintf(stderr, "Out of memory!\n"), ctx->err = 1;
+      else {
+        struct stat s;
+        stat(tmp, &s);
+        if (s.st_mode & S_IFDIR) { // it's a dir. save for later
+          struct dir_path *dn = calloc(1, sizeof(*dn));
+          if(!dn)
+            fprintf(stderr, "Out of memory!\n"), ctx->err = 1;
+          else {
+            most_recent_dir = dn;
+            dn->path = tmp;
+            dn->next = ctx->dirs;
+            ctx->dirs = dn;
+          }
+        } else { // not a dir. try to remove
+          if(unlink(tmp)) {
+            perror(tmp); // "Unable to remove file");
+            // fprintf(stderr, "%s\n", tmp);
+            ctx->err = 1;
+          }
+          free(tmp);
+        }
+      }
+    }
+    closedir(dr);
+  }
+
+  // process all sub-dirs that we just collected
+  for(struct dir_path *dn = most_recent_dir; dn && dn != previous_dir; dn = dn->next)
+    remove_files_collect_dirs(ctx, dn->path);
+}
+
+/**
+ * Remove a directory and all of its contents
+ */
+int zsv_remove_dir_recursive(const unsigned char *path) {
+  const char *cpath = (void *)path;
+  struct remove_dir_ctx ctx = { 0 };
+  // we will delete all files first, then
+  // delete directories in the reverse order we received them
+  remove_files_collect_dirs(&ctx, cpath);
+
+  // unlink and free each dir
+  for(struct dir_path *next, *dn = ctx.dirs; dn; dn = next) {
+    next = dn->next;
+    rmdir_w_msg(dn->path, &ctx.err);
+    free(dn->path);
+    free(dn);
+  }
+  if(!ctx.err)
+    rmdir_w_msg(cpath, &ctx.err);
+
+  return ctx.err;
+}

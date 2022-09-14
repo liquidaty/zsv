@@ -61,6 +61,8 @@ CLI_BUILTIN_DECL(2tsv);
 CLI_BUILTIN_DECL(serialize);
 CLI_BUILTIN_DECL(stack);
 CLI_BUILTIN_DECL(2db);
+CLI_BUILTIN_DECL(prop);
+CLI_BUILTIN_DECL(rm);
 
 #ifdef USE_JQ
 CLI_BUILTIN_DECL(jq);
@@ -86,7 +88,9 @@ struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_CMD(2tsv),
   CLI_BUILTIN_CMD(serialize),
   CLI_BUILTIN_CMD(stack),
-  CLI_BUILTIN_CMD(2db)
+  CLI_BUILTIN_CMD(2db),
+  CLI_BUILTIN_CMD(prop),
+  CLI_BUILTIN_CMD(rm)
 #ifdef USE_JQ
   , CLI_BUILTIN_CMD(jq)
 #endif
@@ -436,13 +440,13 @@ static const char *extension_cmd_from_arg(const char *arg) {
   return NULL;
 }
 
-#ifndef CLI_MAIN
-#define CLI_MAIN main
+#ifndef ZSV_CLI_MAIN
+#define ZSV_CLI_MAIN main
 #endif
 
 ZSV_CLI_EXPORT
-int CLI_MAIN(int argc, const char *argv[]) {
-  INIT_DEFAULT_ARGS();
+int ZSV_CLI_MAIN(int argc, const char *argv[]) {
+//  INIT_DEFAULT_ARGS();
 
   const char **alt_argv = NULL;
   struct builtin_cmd *builtin = find_builtin(argc > 1 ? argv[1] : "help");
