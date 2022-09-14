@@ -100,6 +100,7 @@ static void zsv_sql_cleanup(struct zsv_sql_data *data) {
 }
 
 static int create_virtual_csv_table(const char *fname, sqlite3 *db,
+                                    const char *opts_used,
                                     int max_columns, char **err_msg,
                                     int table_ix) {
   // TO DO: set customizable maximum number of columns to prevent
@@ -115,10 +116,12 @@ static int create_virtual_csv_table(const char *fname, sqlite3 *db,
     snprintf(table_name_suffix, sizeof(table_name_suffix), "%i", table_ix + 1);
 
   if(max_columns)
-    asprintf(&sql, "CREATE VIRTUAL TABLE data%s USING csv(filename='%s',max_columns=%i)", table_name_suffix, fname, max_columns);
+    sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%s USING csv(filename=%Q,options_used=%Q,max_columns=%i)", table_name_suffix, fname, opts_used, max_columns);
+//    asprintf(&sql, "CREATE VIRTUAL TABLE data%s USING csv(filename='%s',options_used='%s',max_columns=%i)", table_name_suffix, fname, max_columns);
 
   else
-    asprintf(&sql, "CREATE VIRTUAL TABLE data%s USING csv(filename='%s')", table_name_suffix, fname);
+    sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%s USING csv(filename=%Q,options_used=%Q)", table_name_suffix, fname, opts_used);
+//    asprintf(&sql, "CREATE VIRTUAL TABLE data%s USING csv(filename='%s',options_used='%s')", table_name_suffix, fname);
 
   int rc = sqlite3_exec(db, sql, NULL, NULL, err_msg);
   free(sql);
@@ -136,17 +139,39 @@ static char is_select_sql(const char *s) {
 }
 
 int MAIN(int argc, const char *argv[]) {
-  INIT_CMD_DEFAULT_ARGS();
-  struct zsv_opts opts = zsv_get_default_opts();
+  /**
+   * We need to pass the following data to the sqlite3 virtual table code:
+   * a. zsv parser options indicated in the cmd line
+   * b. input file path
+   * c. cmd-line options used in (a), so that we can print warnings in case of
+   *    conflict between (a) and properties of (b)
+   *
+   * For file path and options_used, we will pass as part of the
+   * CREATE VIRTUAL TABLE
+   * command. For everything else, rather than having to sync all the
+   * CREATE VIRTUAL TABLE options with all the zsv options, we will just use
+   * zsv_set_default_opts() here to effectively pass the options when the sql
+   * module calls zsv_get_default_opts()
+   */
+  char opts_used[ZSV_OPTS_SIZE_MAX];
+  struct zsv_opts old_opts = zsv_get_default_opts();
+  struct zsv_opts opts;
+  if(zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used) != zsv_status_ok) {
+    zsv_set_default_opts(old_opts); // restore default options
+    return zsv_status_error;
+  }
 
   if(argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
     zsv_sql_usage();
   else {
     struct zsv_sql_data data = { 0 };
-    int max_cols = 0;
+    int max_cols = 0; // to do: remove this; use parser_opts.max_columns
     const char *input_filename = NULL;
     const char *my_sql = NULL;
     struct string_list **next_input_filename = &data.more_input_filenames;
+
+    // set parser opts that the sql module will get via zsv_get_default_opts()
+    zsv_set_default_opts(opts);
 
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
     int err = 0;
@@ -180,7 +205,7 @@ int MAIN(int argc, const char *argv[]) {
           }
         }
       } else if(!my_sql
-         && ((*arg == '@' && arg[1]) || is_select_sql(arg))) {
+                && ((*arg == '@' && arg[1]) || is_select_sql(arg))) {
         if(is_select_sql(arg))
           my_sql = arg;
         else {
@@ -270,6 +295,7 @@ int MAIN(int argc, const char *argv[]) {
 
     if(err) {
       zsv_sql_cleanup(&data);
+      zsv_set_default_opts(old_opts); // restore default options
       return 1;
     }
 
@@ -320,11 +346,11 @@ int MAIN(int argc, const char *argv[]) {
       if((rc = sqlite3_open_v2("file::memory:", &db, SQLITE_OPEN_URI | SQLITE_OPEN_READWRITE, NULL)) == SQLITE_OK
          && db
          && (rc = sqlite3_create_module(db, "csv", &CsvModule, 0) == SQLITE_OK)
-         && (rc = create_virtual_csv_table(tmpfn ? tmpfn : input_filename, db, max_cols, &err_msg, 0)) == SQLITE_OK
+         && (rc = create_virtual_csv_table(tmpfn ? tmpfn : input_filename, db, opts_used, max_cols, &err_msg, 0)) == SQLITE_OK
          ) {
         int i = 1;
         for(struct string_list *sl = data.more_input_filenames; sl; sl = sl->next)
-          if(create_virtual_csv_table(sl->value, db, max_cols, &err_msg, i++) != SQLITE_OK)
+          if(create_virtual_csv_table(sl->value, db, opts_used, max_cols, &err_msg, i++) != SQLITE_OK)
             rc = SQLITE_ERROR;
       }
 
@@ -339,7 +365,7 @@ int MAIN(int argc, const char *argv[]) {
           struct string_list **next_joined_column_name = &data.join_column_names;
           int col_count = sqlite3_column_count(stmt);
           for(char *ix_str = data.join_indexes; !err && ix_str && *ix_str && *(++ix_str); ix_str = strchr(ix_str + 1, ',')) {
-            unsigned int next_ix;
+            int next_ix;
             if(sscanf(ix_str, "%u,", &next_ix)) {
               if(next_ix == 0)
                 fprintf(stderr, "--join-indexes index must be greater than zero\n");
@@ -445,5 +471,6 @@ int MAIN(int argc, const char *argv[]) {
       free(tmpfn);
     }
   }
+  zsv_set_default_opts(old_opts); // restore default options
   return 0;
 }

@@ -50,6 +50,7 @@ SQLITE_EXTENSION_INIT1
 #include <zsv.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/arg.h>
+#include <zsv/utils/prop.h>
 
 #ifndef SQLITE_OMIT_VIRTUALTABLE
 
@@ -108,6 +109,7 @@ typedef struct zsvTable {
   sqlite3_vtab base;              /* Base class.  Must be first */
   char *zFilename;                /* Name of the CSV file */
   struct zsv_opts parser_opts;
+  char *opts_used;
   enum zsv_status parser_status;
   zsv_parser parser;
   struct zsv_vtab_cache header;
@@ -213,6 +215,7 @@ static void zsvTable_clear(struct zsvTable *z) {
   while(remove_row_from_cache(&z->data)) ;
   if(z->parser)
     zsv_delete(z->parser);
+  z->parser = NULL;
   z->rowCount = 0;
 }
 
@@ -221,6 +224,7 @@ static void zsvTable_delete(struct zsvTable *z) {
     zsvTable_clear(z);
     while(remove_row_from_cache(&z->header)) ;
     sqlite3_free(z->zFilename);
+    sqlite3_free(z->opts_used);
     sqlite3_free(z);
   }
 }
@@ -257,6 +261,7 @@ unsigned blank_column_name_count = 0;
 /**
  * Parameters:
  *    filename=FILENAME          Name of file containing CSV content
+ *    options_used=OPTIONS_USED  Used options (passed to zsv_new_with_properties())
  *    max_columns=N              Error out if we encounter more cols than this
  *
  * The number of columns in the first row of the input file determines the
@@ -271,13 +276,15 @@ static int zsvtabConnect(
 ){
   zsvTable *pNew = NULL;
   int rc = SQLITE_OK;        /* Result code from this routine */
-  static const char *azParam[] = {
-     "filename", "max_columns"
+  #define ZSVTABCONNECT_PARAM_MAX 3
+  static const char *azParam[ZSVTABCONNECT_PARAM_MAX] = {
+     "filename", "options_used", "max_columns"
   };
-  char *azPValue[1];         /* Parameter values */
+  char *azPValue[ZSVTABCONNECT_PARAM_MAX]; /* Parameter values */
 # define CSV_FILENAME (azPValue[0])
-  char *schema = NULL;
+# define ZSV_OPTS_USED (azPValue[1])
 
+  char *schema = NULL;
   pNew = zsvTable_new();
   if(!pNew)
     return SQLITE_NOMEM;
@@ -285,8 +292,6 @@ static int zsvtabConnect(
   pNew->parser_opts.max_columns = 2000; /* default max columns */
 
   (void)(_pAux);
-
-  assert( sizeof(azPValue)==sizeof(azParam) );
   memset(azPValue, 0, sizeof(azPValue));
 
   char *errmsg = NULL;
@@ -323,13 +328,16 @@ static int zsvtabConnect(
   if(!(pNew->parser_opts.stream = fopen(CSV_FILENAME, "rb"))) {
     asprintf(&errmsg, "Unable to open for reading: %s", CSV_FILENAME);
     goto zsvtab_connect_error;
-  } else
-    pNew->parser_opts.input_path = CSV_FILENAME;
+  }
 
   pNew->parser_opts.row = zsv_row_header;
   pNew->parser_opts.ctx = pNew;
-  if(!(pNew->parser = zsv_new(&pNew->parser_opts)))
-    goto zsvtab_connect_oom;
+  pNew->zFilename = CSV_FILENAME;
+  pNew->opts_used = ZSV_OPTS_USED;
+  CSV_FILENAME = ZSV_OPTS_USED = 0; // in use; don't free
+  if(zsv_new_with_properties(&pNew->parser_opts, pNew->zFilename, pNew->opts_used,
+                             &pNew->parser) != zsv_status_ok)
+    goto zsvtab_connect_error;
 
   pNew->parser_status = zsv_parse_more(pNew->parser);
   if(pNew->parser_status != zsv_status_ok &&
@@ -372,8 +380,7 @@ static int zsvtabConnect(
   if(!schema)
     goto zsvtab_connect_oom;
 
-  pNew->zFilename = CSV_FILENAME;
-  CSV_FILENAME = 0;
+
 #ifdef SQLITE_TEST
   pNew->tstFlags = tstFlags;
 #endif
@@ -482,7 +489,7 @@ static int zsvtabFilter(
 
   pTab->parser_opts.row = zsv_row_header;
   if(!(pTab->parser = zsv_new(&pTab->parser_opts)))
-    return SQLITE_NOMEM;
+    return SQLITE_ERROR;
   pTab->parser_status = zsv_parse_more(pTab->parser);
   return SQLITE_OK;
 }

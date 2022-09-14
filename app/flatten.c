@@ -12,6 +12,7 @@
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/mem.h>
 #include <zsv/utils/arg.h>
+#include <zsv/utils/prop.h>
 
 #ifndef STRING_LIB_INCLUDE
 #include <zsv/utils/string.h>
@@ -679,8 +680,6 @@ int MAIN(int argc, const char *argv[]) {
     return 0;
   }
 
-  INIT_CMD_DEFAULT_ARGS();
-
   struct flatten_data data = { 0 };
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
 
@@ -772,14 +771,15 @@ int MAIN(int argc, const char *argv[]) {
   if(!(data.out = data.output_filename ? fopen(data.output_filename, "wb") : stdout))
     err = zsv_printerr(1, "Unable to open %s for writing", data.output_filename);
 
-  if(err) {
+  int passes = data.column_name_column.name || !data.have_agg ? 2 : 1;
+  struct zsv_opts opts = { 0 };// = zsv_get_default_opts();
+  char opts_used[ZSV_OPTS_SIZE_MAX];
+  if(err || zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used) != zsv_status_ok) {
     flatten_cleanup(&data);
     return 1;
   }
 
-  int passes = data.column_name_column.name || !data.have_agg ? 2 : 1;
-  struct zsv_opts opts = zsv_get_default_opts();
-
+  const char *input_path = NULL;
   FILE *in = NULL;
   char *tmp_fn = NULL;
   zsv_handle_ctrl_c_signal();
@@ -794,11 +794,11 @@ int MAIN(int argc, const char *argv[]) {
       opts.overflow = flatten_overflow;
       opts.error = flatten_error;
       opts.stream = data.in;
-      opts.input_path = data.input_path;
+      input_path = data.input_path;
       opts.ctx = &data;
 
-      zsv_parser handle = zsv_new(&opts);
-      if(!handle)
+      zsv_parser handle; // = zsv_new(&opts);
+      if(zsv_new_with_properties(&opts, input_path, opts_used, &handle) != zsv_status_ok)
         err = data.cancelled = zsv_printerr(1, "Unable to create csv parser");
       else {
         zsv_set_scan_filter(handle, zsv_filter_write, tmp_f);

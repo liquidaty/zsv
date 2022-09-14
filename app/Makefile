@@ -309,8 +309,8 @@ ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 ${STANDALONE_PFX}flatten${EXE} ${STANDALONE_PFX}stack${EXE} ${STANDALONE_PFX}desc${EXE}: MORE_SOURCE+=-Iexternal/sglib
 
 # prop and rm use utils/cache
-${STANDALONE_PFX}prop${EXE} ${STANDALONE_PFX}rm${EXE}: ${BUILD_DIR}/objs/utils/cache.o
-${STANDALONE_PFX}prop${EXE} ${STANDALONE_PFX}rm${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/cache.o
+# ${STANDALONE_PFX}prop${EXE} ${STANDALONE_PFX}rm${EXE}: ${BUILD_DIR}/objs/utils/cache.o
+# ${STANDALONE_PFX}prop${EXE} ${STANDALONE_PFX}rm${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/cache.o
 
 # prop uses utils/json
 ${CLI} ${STANDALONE_PFX}prop${EXE}: ${BUILD_DIR}/objs/utils/json.o

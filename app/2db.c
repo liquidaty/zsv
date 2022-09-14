@@ -540,7 +540,7 @@ static int json_process_value(struct yajl_helper_parse_state *st,
     if(len) {
       if(data->opts.table_name)
         fprintf(stderr, "Table name specified twice; keeping %s, ignoring %.*s\n",
-                data->opts.table_name, len, jsstr);
+                data->opts.table_name, (int)len, jsstr);
       else
         data->opts.table_name = zsv_memdup(jsstr, len);
     }
@@ -703,13 +703,10 @@ static yajl_handle zsv_2db_yajl_handle(zsv_2db_handle data) {
 #endif
 
 int MAIN(int argc, const char *argv[]) {
-  INIT_CMD_DEFAULT_ARGS();
   FILE *f_in = NULL;
   int err = 0;
-  struct zsv_opts default_opts = zsv_get_default_opts();
-
   struct zsv_2db_options opts = { 0 };
-  opts.verbose = default_opts.verbose;
+  opts.verbose = zsv_get_default_opts().verbose;
 
   const char *usage[] =
     {
@@ -757,7 +754,7 @@ int MAIN(int argc, const char *argv[]) {
       fprintf(stderr, "Input file specified more than once\n"), err = 1;
     else if(!(f_in = fopen(argv[i], "rb")))
       fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
-    else if(!(strlen(argv[i]) > 5 && !zsv_stricmp(argv[i] + strlen(argv[i]) - 5, ".json")))
+    else if(!(strlen(argv[i]) > 5 && !zsv_stricmp((const unsigned char *)argv[i] + strlen(argv[i]) - 5, ".json")))
       fprintf(stderr, "Warning: input filename does not end with .json (%s)\n", argv[i]);
   }
 

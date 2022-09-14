@@ -8,6 +8,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/signal.h>
 #include <zsv/utils/arg.h>
+#include <zsv/utils/prop.h>
 #include <zsv/utils/mem.h>
 #include <zsv/utils/db.h>
 #include <stdio.h>
@@ -252,8 +253,6 @@ int MAIN(int argc, const char *argv[]) {
   struct zsv_2json_data data = { 0 };
   data.headers_next = &data.headers;
 
-  INIT_CMD_DEFAULT_ARGS();
-
   const char *usage[] =
     {
      APPNAME ": streaming CSV to json converter, or sqlite3 db to JSON converter",
@@ -277,27 +276,30 @@ int MAIN(int argc, const char *argv[]) {
     };
 
   FILE *out = NULL;
-  int err = 0;
-  struct zsv_opts opts = zsv_get_default_opts(); // leave up here so that below goto stmts do not cross initialization
+  struct zsv_opts opts; // = zsv_get_default_opts(); // leave up here so that below goto stmts do not cross initialization
+  char opts_used[ZSV_OPTS_SIZE_MAX];
+  const char *input_path = NULL;
+  enum zsv_status err = zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used);
+
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       for(int j = 0; usage[j]; j++)
         fprintf(stderr, "%s\n", usage[j]);
-      err = 1;
+      err = zsv_status_error;
     } else if(!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if(++i >= argc)
-        fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;
+        fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = zsv_status_error;
       else if(out && out != stdout)
-        fprintf(stderr, "Output file specified more than once\n"), err = 1;
+        fprintf(stderr, "Output file specified more than once\n"), err = zsv_status_error;
       else if(!(out = fopen(argv[i], "wb")))
-        fprintf(stderr, "Unable to open for writing: %s\n", argv[i]), err = 1;
+        fprintf(stderr, "Unable to open for writing: %s\n", argv[i]), err = zsv_status_error;
     } else if(!strcmp(argv[i], "--index") || !strcmp(argv[i], "--unique-index")) {
       if(++i >= argc)
-        fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;
+        fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = zsv_status_error;
       else if(data.indexes.count > LQ_2JSON_MAX_INDEXES)
-        fprintf(stderr, "Max index count exceeded; ignoring %s\n", argv[i]), err = 1;
+        fprintf(stderr, "Max index count exceeded; ignoring %s\n", argv[i]), err = zsv_status_error;
       else if(!strstr(argv[i], " on "))
-        fprintf(stderr, "Index value should be in the form of 'index_name on expr'; got %s\n", argv[i]), err = 1;
+        fprintf(stderr, "Index value should be in the form of 'index_name on expr'; got %s\n", argv[i]), err = zsv_status_error;
       else {
         if(!strcmp(argv[i-1], "--unique-index"))
           data.indexes.unique[data.indexes.count] = 1;
@@ -307,25 +309,25 @@ int MAIN(int argc, const char *argv[]) {
       data.no_empty = 1;
     } else if(!strcmp(argv[i], "--db-table")) {
       if(++i >= argc)
-        fprintf(stderr, "%s option requires a table name value\n", argv[i-1]), err = 1;
+        fprintf(stderr, "%s option requires a table name value\n", argv[i-1]), err = zsv_status_error;
       else if(data.db_tablename)
-        fprintf(stderr, "%s option specified more than once\n", argv[i-1]), err = 1;
+        fprintf(stderr, "%s option specified more than once\n", argv[i-1]), err = zsv_status_error;
       else
         data.db_tablename = strdup(argv[i]);
     } else if(!strcmp(argv[i], "--from-db")) {
       if(++i >= argc)
-        fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;
+        fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = zsv_status_error;
       else if(opts.stream)
-        fprintf(stderr, "Input file specified more than once\n"), err = 1;
+        fprintf(stderr, "Input file specified more than once\n"), err = zsv_status_error;
       else if(!(opts.stream = fopen(argv[i], "rb")))
-        fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
+        fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = zsv_status_error;
       else {
-        opts.input_path = argv[i];
+        input_path = argv[i];
         data.from_db = 1;
       }
     } else if(!strcmp(argv[i], "--database") || !strcmp(argv[i], "--object")) {
       if(data.schema)
-        fprintf(stderr, "Output schema specified more than once\n"), err = 1;
+        fprintf(stderr, "Output schema specified more than once\n"), err = zsv_status_error;
       else if(!strcmp(argv[i], "--database"))
         data.schema = ZSV_JSON_SCHEMA_DATABASE;
       else
@@ -334,28 +336,28 @@ int MAIN(int argc, const char *argv[]) {
       data.no_header = 1;
     else {
       if(opts.stream)
-        fprintf(stderr, "Input file specified more than once\n"), err = 1;
+        fprintf(stderr, "Input file specified more than once\n"), err = zsv_status_error;
       else if(!(opts.stream = fopen(argv[i], "rb")))
-        fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
+        fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = zsv_status_error;
       else
-        opts.input_path = argv[i];
+        input_path = argv[i];
     }
   }
 
   if(err)
     ;
   else if(data.indexes.count && data.schema != ZSV_JSON_SCHEMA_DATABASE)
-    fprintf(stderr, "--index/--unique-index can only be used with --database\n"), err = 1;
+    fprintf(stderr, "--index/--unique-index can only be used with --database\n"), err = zsv_status_error;
   else if(data.no_header && data.schema)
-    fprintf(stderr, "--no-header cannot be used together with --object or --database\n"), err = 1;
+    fprintf(stderr, "--no-header cannot be used together with --object or --database\n"), err = zsv_status_error;
   else if(data.no_empty && data.schema != ZSV_JSON_SCHEMA_OBJECT)
-    fprintf(stderr, "--no-empty can only be used with --object\n"), err = 1;
+    fprintf(stderr, "--no-empty can only be used with --object\n"), err = zsv_status_error;
   else if(!opts.stream) {
     if(data.from_db)
-      fprintf(stderr, "Database input specified, but no input file provided\n"), err = 1;
+      fprintf(stderr, "Database input specified, but no input file provided\n"), err = zsv_status_error;
     else {
 #ifdef NO_STDIN
-      fprintf(stderr, "Please specify an input file\n"), err = 1;
+      fprintf(stderr, "Please specify an input file\n"), err = zsv_status_error;
 #else
       opts.stream = stdin;
 #endif
@@ -366,18 +368,19 @@ int MAIN(int argc, const char *argv[]) {
     if(!out)
       out = stdout;
     if(!(data.jsw = jsonwriter_new(out)))
-      err = 1;
+      err = zsv_status_error;
     else if(data.from_db) {
       if(opts.stream != stdin) {
         fclose(opts.stream);
         opts.stream = NULL;
       }
-      err = zsv_db2json(opts.input_path, &data.db_tablename, data.jsw);
+      err = zsv_db2json(input_path, &data.db_tablename, data.jsw);
     } else {
       opts.row = zsv_2json_row;
       opts.ctx = &data;
       opts.overflow = zsv_2json_overflow;
-      if((data.parser = zsv_new(&opts))) {
+//      if((data.parser = zsv_new(&opts))) {
+      if(zsv_new_with_properties(&opts, input_path, opts_used, &data.parser) == zsv_status_ok) {
         zsv_handle_ctrl_c_signal();
         enum zsv_status status;
         while(!data.err

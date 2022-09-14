@@ -21,7 +21,8 @@
 #include <zsv/utils/json.h>
 #include <yajl_helper.h>
 #include <zsv/utils/prop.h>
-#include "cache_internal.h"
+#include <zsv/utils/cache.h>
+// #include "cache_internal.h"
 
 #ifndef APPNAME
 #define APPNAME "prop"
@@ -141,8 +142,8 @@ static int unset_all_properties(const unsigned char *filepath) {
 }
 
 static int print_zsv_file_properties(struct zsv_file_properties *gp,
-                                    const unsigned char *filepath,
-                                    struct detect_opts *detect_opts) {
+                                     const unsigned char *filepath,
+                                     struct detect_opts *detect_opts) {
   int err = 0;
   const char *format = "{\n  \"skip-head\": %u,\n  \"header-row-span\": %u\n}%s";
   printf(format, gp->skip, gp->header_span, "\n");
@@ -154,7 +155,7 @@ static int print_zsv_file_properties(struct zsv_file_properties *gp,
       if(!detect_opts->force) {
         struct zsv_opts zsv_opts = { 0 };
         struct zsv_file_properties fp = { 0 };
-        err = zsv_cache_load_props(filepath, &zsv_opts, &fp, NULL);
+        err = zsv_cache_load_props((const char *)filepath, &zsv_opts, &fp, NULL);
         // err = load_properties(filepath, &zsv_opts, &fp);
         if(!err) {
           if(fp.header_span_specified || fp.skip_specified) {
@@ -241,7 +242,7 @@ static int detect_properties(const unsigned char *filepath, struct detect_opts d
     }
   }
 
-  opts.no_skip_empty_header_rows = 1;
+  opts.keep_empty_header_rows = 1;
   // load_properties_init() will not run because opts
   data.parser = zsv_new(&opts);
   while(!zsv_signal_interrupted && zsv_parse_more(data.parser) == zsv_status_ok)
@@ -252,7 +253,7 @@ static int detect_properties(const unsigned char *filepath, struct detect_opts d
   fclose(opts.stream);
   struct zsv_file_properties result = guess_properties(&data);
   result.header_span += opts.header_span;
-  result.skip += opts.rows_to_skip;
+  result.skip += opts.rows_to_ignore;
   return print_zsv_file_properties(&result, filepath, &detect_opts);
 }
 
@@ -291,6 +292,10 @@ static char property_id_is_ok(const char *s) {
 # endif
 #endif
 
+#ifndef MAIN
+#define MAIN main
+#endif
+
 int MAIN(int m_argc, const char *m_argv[]) {
 //  INIT_CMD_DEFAULT_ARGS(); // only for auto-detect
   int err = 0;
@@ -311,7 +316,7 @@ int MAIN(int m_argc, const char *m_argv[]) {
       zsv_property_mode_unset_all,
       zsv_property_mode_set_unset,
       zsv_property_mode_detect
-    } mode;
+    } mode = 0;
 
     if(!strcmp(cmd, "show-all"))
       mode = zsv_property_mode_show_all;

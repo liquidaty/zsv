@@ -1,8 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "jq_internal.h"
-#include "jq_internal.c"
+#include <zsv/utils/jq.h>
+//#include "jq_internal.h"
+//#include "jq_internal.c"
 
 #ifndef APPNAME
 # ifdef ZSV_CLI

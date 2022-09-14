@@ -5,6 +5,7 @@
 #include <zsv.h>
 #include <zsv/utils/prop.h>
 #include <zsv/utils/cache.h>
+#include <zsv/utils/file.h>
 #include <yajl_helper.h>
 
 // to do: import these through a proper header
@@ -40,22 +41,23 @@ struct zsv_properties_parser *zsv_properties_parser_new(struct zsv_file_properti
 /**
  * Finished parsing
  */
-yajl_status zsv_properties_parse_complete(struct zsv_properties_parser *parser) {
+enum zsv_status zsv_properties_parse_complete(struct zsv_properties_parser *parser) {
   if(parser && parser->st.yajl) {
     if(parser->stat == yajl_status_ok)
       parser->stat = yajl_complete_parse(parser->st.yajl);
   }
-  return parser->stat;
+  return parser->stat == yajl_status_ok ? zsv_status_ok : zsv_status_error;
 }
 
 /**
  * Clean up
  */
-yajl_status zsv_properties_parser_destroy(struct zsv_properties_parser *parser) {
+enum zsv_status zsv_properties_parser_destroy(struct zsv_properties_parser *parser) {
   yajl_helper_parse_state_free(&parser->st);
   yajl_status stat = parser->stat;
   free(parser);
-  return stat;
+  return stat == yajl_status_ok ? zsv_status_ok : zsv_status_error;
+
 }
 
 /**
@@ -156,4 +158,27 @@ static int zsv_properties_parse_process_value(struct yajl_helper_parse_state *st
     }
   }
   return 1;
+}
+
+/**
+ * zsv_new_with_properties(): use in lieu of zsv_new() to also merge zsv options
+ * with any saved properties (such as rows_to_ignore or header_span) for the
+ * specified input file. In the event that saved properties conflict with a
+ * command-line option, the command-line option "wins" (the property value is
+ * ignored), but a warning is printed
+ */
+enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
+                                        const char *input_path,
+                                        const char *opts_used,
+                                        zsv_parser *handle_out
+                                        ) {
+  enum zsv_status stat = zsv_status_ok;
+  if(input_path) {
+    stat = zsv_cache_load_props(input_path, opts, NULL, opts_used);
+    if(stat != zsv_status_ok)
+      return stat;
+  }
+  if((*handle_out = zsv_new(opts)))
+    return zsv_status_ok;
+  return zsv_status_memory;
 }

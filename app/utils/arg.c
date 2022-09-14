@@ -274,21 +274,3 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
   *argc_out = new_argc;
   return err ? zsv_status_error : zsv_status_ok;
 }
-
-/**
- * Finalize zsv parser arguments by merging them with any saved input file
- * properties such as rows_to_ignore or header_span. In the event that
- * saved properties conflict with a command-line option, the command-line
- * option is retained (the property value is ignored), but a warning is printed
- */
-enum zsv_status zsv_args_finalize(struct zsv_opts *opts,
-                                  const char *input_path,
-                                  const char *opts_used) {
-  enum zsv_status zsv_cache_load_props(const char *data_filepath,
-                                       struct zsv_opts *opts,
-                                       void *fp,
-                                       const char *cmd_opts_used);
-  if(input_path)
-    return zsv_cache_load_props(input_path, opts, NULL, opts_used);
-  return zsv_status_ok;
-}

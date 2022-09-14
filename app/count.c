@@ -9,6 +9,7 @@
 #include <zsv.h>
 #include <zsv/utils/signal.h>
 #include <zsv/utils/arg.h>
+#include <zsv/utils/prop.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -38,9 +39,13 @@ static int count_usage() {
 
 int MAIN(int argc, const char *argv[]) {
   struct data data = { 0 };
-  INIT_CMD_DEFAULT_ARGS();
+  const char *input_path = NULL;
+  struct zsv_opts opts; // = zsv_get_default_opts();
+  char opts_used[ZSV_OPTS_SIZE_MAX];
+  enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used);
+  if(stat != zsv_status_ok)
+    return stat;
 
-  struct zsv_opts opts = zsv_get_default_opts();
 
   int err = 0;
   for(int i = 1; !err && i < argc; i++) {
@@ -58,7 +63,7 @@ int MAIN(int argc, const char *argv[]) {
         else if(!(opts.stream = fopen(argv[i], "rb")))
           fprintf(stderr, "Unable to open for reading: %s\n", argv[i]);
         else {
-          opts.input_path = argv[i];
+          input_path = argv[i];
           err = 0;
         }
       }
@@ -78,8 +83,8 @@ int MAIN(int argc, const char *argv[]) {
   if(!err) {
     opts.row = row;
     opts.ctx = &data;
-    if(!(data.parser = zsv_new(&opts))) {
-      fprintf(stderr, "Unable to initialize parser");
+    if(zsv_new_with_properties(&opts, input_path, opts_used, &data.parser) != zsv_status_ok) {
+      fprintf(stderr, "Unable to initialize parser\n");
       err = 1;
     } else {
       enum zsv_status status;

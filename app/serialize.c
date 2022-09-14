@@ -270,8 +270,13 @@ int MAIN(int argc, const char *argv[]) {
     serialize_usage();
     return 0;
   } else {
-    INIT_CMD_DEFAULT_ARGS();
-    struct zsv_opts opts = zsv_get_default_opts();
+    //    struct zsv_opts opts = zsv_get_default_opts();
+    struct zsv_opts opts;
+    char opts_used[ZSV_OPTS_SIZE_MAX];
+    enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used);
+    if(stat != zsv_status_ok)
+      return stat;
+
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
     struct serialize_data data = { 0 };
     int err = 0;
@@ -327,13 +332,13 @@ int MAIN(int argc, const char *argv[]) {
     opts.overflow = serialize_overflow;
     opts.error = serialize_error;
     opts.stream = data.in;
-    opts.input_path = data.input_path;
+    const char *input_path = data.input_path;
 
     opts.ctx = &data;
-    data.parser = zsv_new(&opts);
-
+    // data.parser = zsv_new(&opts);
     data.csv_writer = zsv_writer_new(&writer_opts);
-    if(!data.parser || !data.csv_writer) {
+    if(zsv_new_with_properties(&opts, input_path, opts_used, &data.parser) != zsv_status_ok
+       || !data.csv_writer) {
       serialize_cleanup(&data);
       return 1;
     }

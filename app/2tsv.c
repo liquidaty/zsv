@@ -10,6 +10,7 @@
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/signal.h>
 #include <zsv/utils/arg.h>
+#include <zsv/utils/prop.h>
 #include <zsv/utils/compiler.h>
 #include <stdio.h>
 #include <string.h>
@@ -160,9 +161,12 @@ static void zsv_2tsv_row(void *ctx) {
 
 int MAIN(int argc, const char *argv[]) {
   struct zsv_2tsv_data data = { 0 };
-
-  INIT_CMD_DEFAULT_ARGS();
-  struct zsv_opts opts = zsv_get_default_opts();
+  const char *input_path = NULL;
+  struct zsv_opts opts; // = zsv_get_default_opts();
+  char opts_used[ZSV_OPTS_SIZE_MAX];
+  enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used);
+  if(stat != zsv_status_ok)
+    return stat;
 
   int err = 0;
   for(int i = 1; !err && i < argc; i++) {
@@ -183,7 +187,7 @@ int MAIN(int argc, const char *argv[]) {
       else if(!(opts.stream = fopen(argv[i], "rb")))
         fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
       else
-        opts.input_path = argv[i];
+       input_path = argv[i];
     }
   }
 
@@ -207,7 +211,7 @@ int MAIN(int argc, const char *argv[]) {
   opts.row = zsv_2tsv_row;
   opts.ctx = &data;
   opts.overflow = zsv_2tsv_overflow;
-  if((data.parser = zsv_new(&opts))) {
+  if(zsv_new_with_properties(&opts, input_path, opts_used, &data.parser) == zsv_status_ok) {
     char output[ZSV_2TSV_BUFF_SIZE];
     data.out.buff = output;
 

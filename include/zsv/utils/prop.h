@@ -1,8 +1,6 @@
 #ifndef ZSV_PROP_H
 #define ZSV_PROP_H
 
-#include <yajl_helper.h>
-
 struct zsv_file_properties {
   unsigned int skip;
   unsigned int header_span;
@@ -36,12 +34,24 @@ struct zsv_properties_parser *zsv_properties_parser_new(struct zsv_file_properti
 /**
  * Finished parsing
  */
-yajl_status zsv_properties_parse_complete(struct zsv_properties_parser *parser);
+enum zsv_status zsv_properties_parse_complete(struct zsv_properties_parser *parser);
 
 /**
  * Clean up
  */
-yajl_status zsv_properties_parser_destroy(struct zsv_properties_parser *parser);
+enum zsv_status zsv_properties_parser_destroy(struct zsv_properties_parser *parser);
 
+/**
+ * zsv_new_with_properties(): use in lieu of zsv_new() to also merge zsv options
+ * with any saved properties (such as rows_to_ignore or header_span) for the
+ * specified input file. In the event that saved properties conflict with a
+ * command-line option, the command-line option "wins" (the property value is
+ * ignored), but a warning is printed
+ */
+enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
+                                        const char *input_path,
+                                        const char *opts_used,
+                                        zsv_parser *handle_out
+                                        );
 
 #endif
