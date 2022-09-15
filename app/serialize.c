@@ -5,10 +5,6 @@
  * https://opensource.org/licenses/MIT
  */
 
-#include <zsv.h>
-#include <zsv/utils/writer.h>
-#include <zsv/utils/signal.h>
-#include <zsv/utils/arg.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -16,15 +12,11 @@
 #include <string.h>
 #include <ctype.h>
 
-#ifndef HAVE_MEMMEM
-# include <zsv/utils/memmem.h>
-#endif
+#define ZSV_COMMAND serialize
+#include "zsv_command.h"
 
-#ifndef STRING_LIB_INCLUDE
+#include <zsv/utils/writer.h>
 #include <zsv/utils/string.h>
-#else
-#include STRING_LIB_INCLUDE
-#endif
 
 struct serialize_header_name {
   struct serialize_header_name *next;
@@ -211,10 +203,6 @@ static void serialize_error(void *hook, enum zsv_status status,
   fprintf(stderr, "%s (%c) at %zu\n", err_msg, bad_c, cum_scanned_length);
 }
 
-#ifndef APPNAME
-#define APPNAME "serialize"
-#endif
-
 const char *serialize_usage_msg[] =
   {
    APPNAME ": Serialize a CSV file into Row/Colname/Value triplets",
@@ -261,22 +249,11 @@ static void serialize_cleanup(struct serialize_data *data) {
     fclose(data->in);
 }
 
-#ifndef MAIN
-#define MAIN main
-#endif
-
-int MAIN(int argc, const char *argv[]) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
   if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     serialize_usage();
     return 0;
   } else {
-    //    struct zsv_opts opts = zsv_get_default_opts();
-    struct zsv_opts opts;
-    char opts_used[ZSV_OPTS_SIZE_MAX];
-    enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used);
-    if(stat != zsv_status_ok)
-      return stat;
-
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
     struct serialize_data data = { 0 };
     int err = 0;
@@ -327,17 +304,16 @@ int MAIN(int argc, const char *argv[]) {
       return 1;
     }
 
-    opts.cell = serialize_cell;
-    opts.row = serialize_row;
-    opts.overflow = serialize_overflow;
-    opts.error = serialize_error;
-    opts.stream = data.in;
+    opts->cell = serialize_cell;
+    opts->row = serialize_row;
+    opts->overflow = serialize_overflow;
+    opts->error = serialize_error;
+    opts->stream = data.in;
     const char *input_path = data.input_path;
 
-    opts.ctx = &data;
-    // data.parser = zsv_new(&opts);
+    opts->ctx = &data;
     data.csv_writer = zsv_writer_new(&writer_opts);
-    if(zsv_new_with_properties(&opts, input_path, opts_used, &data.parser) != zsv_status_ok
+    if(zsv_new_with_properties(opts, input_path, opts_used, &data.parser) != zsv_status_ok
        || !data.csv_writer) {
       serialize_cleanup(&data);
       return 1;

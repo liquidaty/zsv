@@ -4,19 +4,18 @@
  * https://opensource.org/licenses/MIT
  */
 
-#include <zsv.h>
-#include <zsv/utils/writer.h>
-#include <zsv/utils/signal.h>
-#include <zsv/utils/arg.h>
-#include <zsv/utils/prop.h>
-#include <zsv/utils/mem.h>
-#include <zsv/utils/db.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <jsonwriter.h>
-
 #include <sqlite3.h>
+
+#define ZSV_COMMAND 2json
+#include "zsv_command.h"
+
+#include <zsv/utils/writer.h>
+#include <zsv/utils/mem.h>
+#include <zsv/utils/db.h>
 
 struct zsv_2json_header {
   struct zsv_2json_header *next;
@@ -237,19 +236,7 @@ static int zsv_db2json(const char *input_filename, char **tname, jsonwriter_hand
   return err;
 }
 
-#ifndef APPNAME
-# ifdef ZSV_CLI
-#  define APPNAME "zsv 2json"
-# else
-#  define APPNAME "zsv_2json"
-# endif
-#endif
-
-#ifndef MAIN
-#define MAIN main
-#endif
-
-int MAIN(int argc, const char *argv[]) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
   struct zsv_2json_data data = { 0 };
   data.headers_next = &data.headers;
 
@@ -276,10 +263,8 @@ int MAIN(int argc, const char *argv[]) {
     };
 
   FILE *out = NULL;
-  struct zsv_opts opts; // = zsv_get_default_opts(); // leave up here so that below goto stmts do not cross initialization
-  char opts_used[ZSV_OPTS_SIZE_MAX];
   const char *input_path = NULL;
-  enum zsv_status err = zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used);
+  enum zsv_status err = zsv_status_ok;
 
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
@@ -317,9 +302,9 @@ int MAIN(int argc, const char *argv[]) {
     } else if(!strcmp(argv[i], "--from-db")) {
       if(++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = zsv_status_error;
-      else if(opts.stream)
+      else if(opts->stream)
         fprintf(stderr, "Input file specified more than once\n"), err = zsv_status_error;
-      else if(!(opts.stream = fopen(argv[i], "rb")))
+      else if(!(opts->stream = fopen(argv[i], "rb")))
         fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = zsv_status_error;
       else {
         input_path = argv[i];
@@ -335,9 +320,9 @@ int MAIN(int argc, const char *argv[]) {
     } else if(!strcmp(argv[i], "--no-header"))
       data.no_header = 1;
     else {
-      if(opts.stream)
+      if(opts->stream)
         fprintf(stderr, "Input file specified more than once\n"), err = zsv_status_error;
-      else if(!(opts.stream = fopen(argv[i], "rb")))
+      else if(!(opts->stream = fopen(argv[i], "rb")))
         fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = zsv_status_error;
       else
         input_path = argv[i];
@@ -352,14 +337,14 @@ int MAIN(int argc, const char *argv[]) {
     fprintf(stderr, "--no-header cannot be used together with --object or --database\n"), err = zsv_status_error;
   else if(data.no_empty && data.schema != ZSV_JSON_SCHEMA_OBJECT)
     fprintf(stderr, "--no-empty can only be used with --object\n"), err = zsv_status_error;
-  else if(!opts.stream) {
+  else if(!opts->stream) {
     if(data.from_db)
       fprintf(stderr, "Database input specified, but no input file provided\n"), err = zsv_status_error;
     else {
 #ifdef NO_STDIN
       fprintf(stderr, "Please specify an input file\n"), err = zsv_status_error;
 #else
-      opts.stream = stdin;
+      opts->stream = stdin;
 #endif
     }
   }
@@ -370,22 +355,20 @@ int MAIN(int argc, const char *argv[]) {
     if(!(data.jsw = jsonwriter_new(out)))
       err = zsv_status_error;
     else if(data.from_db) {
-      if(opts.stream != stdin) {
-        fclose(opts.stream);
-        opts.stream = NULL;
+      if(opts->stream != stdin) {
+        fclose(opts->stream);
+        opts->stream = NULL;
       }
       err = zsv_db2json(input_path, &data.db_tablename, data.jsw);
     } else {
-      opts.row = zsv_2json_row;
-      opts.ctx = &data;
-      opts.overflow = zsv_2json_overflow;
-//      if((data.parser = zsv_new(&opts))) {
-      if(zsv_new_with_properties(&opts, input_path, opts_used, &data.parser) == zsv_status_ok) {
+      opts->row = zsv_2json_row;
+      opts->ctx = &data;
+      opts->overflow = zsv_2json_overflow;
+      if(zsv_new_with_properties(opts, input_path, opts_used, &data.parser) == zsv_status_ok) {
         zsv_handle_ctrl_c_signal();
-        enum zsv_status status;
         while(!data.err
               && !zsv_signal_interrupted
-              && (status = zsv_parse_more(data.parser)) == zsv_status_ok)
+              && zsv_parse_more(data.parser) == zsv_status_ok)
           ;
         zsv_finish(data.parser);
         zsv_delete(data.parser);
@@ -397,8 +380,8 @@ int MAIN(int argc, const char *argv[]) {
     zsv_2json_cleanup(&data);
   }
 
-  if(opts.stream && opts.stream != stdin)
-    fclose(opts.stream);
+  if(opts->stream && opts->stream != stdin)
+    fclose(opts->stream);
   if(out && out != stdout)
     fclose(out);
   return err;

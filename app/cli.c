@@ -32,12 +32,16 @@ static struct zsv_ext *zsv_ext_new(const char *dl_name, const char *id, char ver
 #include "cli_ini.c"
 
 typedef int (cmd_main)(int argc, const char *argv[]);
+typedef int (zsv_cmd)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used);
 typedef int (*cmd_reserved)();
 
 struct builtin_cmd {
   const char *name;
   cmd_main *main;
+  zsv_cmd *cmd;
 };
+
+#include "zsv_main.h"
 
 #define CLI_BUILTIN_DECL(x) int main_ ## x(int argc, const char *argv[])
 
@@ -50,26 +54,28 @@ CLI_BUILTIN_DECL_STATIC(version);
 CLI_BUILTIN_DECL_STATIC(register);
 CLI_BUILTIN_DECL_STATIC(unregister);
 
-CLI_BUILTIN_DECL(select);
-CLI_BUILTIN_DECL(desc);
-CLI_BUILTIN_DECL(count);
-CLI_BUILTIN_DECL(pretty);
-CLI_BUILTIN_DECL(sql);
-CLI_BUILTIN_DECL(flatten);
-CLI_BUILTIN_DECL(2json);
-CLI_BUILTIN_DECL(2tsv);
-CLI_BUILTIN_DECL(serialize);
-CLI_BUILTIN_DECL(stack);
-CLI_BUILTIN_DECL(2db);
-CLI_BUILTIN_DECL(prop);
-CLI_BUILTIN_DECL(rm);
+ZSV_MAIN_DECL(select); // CLI_BUILTIN_DECL(select); int zsv_select_cmd(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used);
+
+ZSV_MAIN_DECL(count); // CLI_BUILTIN_DECL(count);
+ZSV_MAIN_DECL(2json);
+ZSV_MAIN_DECL(2tsv);
+ZSV_MAIN_DECL(serialize);
+ZSV_MAIN_DECL(flatten);
+ZSV_MAIN_DECL(pretty);
+ZSV_MAIN_DECL(stack);
+ZSV_MAIN_DECL(desc);
+ZSV_MAIN_DECL(sql);
+ZSV_MAIN_DECL(2db);
+ZSV_MAIN_NO_OPTIONS_DECL(prop);
+ZSV_MAIN_NO_OPTIONS_DECL(rm);
 
 #ifdef USE_JQ
-CLI_BUILTIN_DECL(jq);
+ZSV_MAIN_NO_OPTIONS_DECL(jq);
 #endif
 
-
-#define CLI_BUILTIN_CMD(x) { .name = #x, .main = main_ ## x }
+#define CLI_BUILTIN_CMD(x) { .name = #x, .main = main_ ## x, .cmd = NULL }
+#define CLI_BUILTIN_COMMAND(x) { .name = #x, .main = NULL, .cmd = ZSV_MAIN_FUNC(x) }
+#define CLI_BUILTIN_NO_OPTIONS_COMMAND(x) { .name = #x, .main = ZSV_MAIN_NO_OPTIONS_FUNC(x), .cmd = NULL }
 struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_CMD(license),
   CLI_BUILTIN_CMD(thirdparty),
@@ -78,21 +84,21 @@ struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_CMD(register),
   CLI_BUILTIN_CMD(unregister),
 
-  CLI_BUILTIN_CMD(select),
-  CLI_BUILTIN_CMD(desc),
-  CLI_BUILTIN_CMD(count),
-  CLI_BUILTIN_CMD(pretty),
-  CLI_BUILTIN_CMD(sql),
-  CLI_BUILTIN_CMD(flatten),
-  CLI_BUILTIN_CMD(2json),
-  CLI_BUILTIN_CMD(2tsv),
-  CLI_BUILTIN_CMD(serialize),
-  CLI_BUILTIN_CMD(stack),
-  CLI_BUILTIN_CMD(2db),
-  CLI_BUILTIN_CMD(prop),
-  CLI_BUILTIN_CMD(rm)
+  CLI_BUILTIN_COMMAND(select),
+  CLI_BUILTIN_COMMAND(count),
+  CLI_BUILTIN_COMMAND(2json),
+  CLI_BUILTIN_COMMAND(2tsv),
+  CLI_BUILTIN_COMMAND(serialize),
+  CLI_BUILTIN_COMMAND(flatten),
+  CLI_BUILTIN_COMMAND(pretty),
+  CLI_BUILTIN_COMMAND(stack),
+  CLI_BUILTIN_COMMAND(desc),
+  CLI_BUILTIN_COMMAND(sql),
+  CLI_BUILTIN_COMMAND(2db),
+  CLI_BUILTIN_NO_OPTIONS_COMMAND(prop),
+  CLI_BUILTIN_NO_OPTIONS_COMMAND(rm)
 #ifdef USE_JQ
-  , CLI_BUILTIN_CMD(jq)
+  , CLI_BUILTIN_NO_OPTIONS_COMMAND(jq)
 #endif
 };
 
@@ -385,8 +391,14 @@ static enum zsv_ext_status run_extension(int argc, const char *argv[], struct zs
     }
 
     struct zsv_execution_data ctx;
-    if((stat = execution_context_init(&ctx, argc, argv)) == zsv_ext_status_ok)
+
+    if((stat = execution_context_init(&ctx, argc, argv)) == zsv_ext_status_ok) {
+      struct zsv_opts opts;
+      zsv_args_to_opts(argc, argv, &argc, argv, &opts, NULL);
+      zsv_set_default_opts(opts);
       stat = cmd->main(&ctx, ctx.argc - 1, &ctx.argv[1]);
+    }
+
     if(stat != zsv_ext_status_ok)
       stat = handle_ext_err(ext, &ctx, stat);
     execution_context_free(&ctx);
@@ -477,8 +489,17 @@ int ZSV_CLI_MAIN(int argc, const char *argv[]) {
           return 1;
         }
       }
-    } else
-      return builtin->main(argc - 1, argc > 1 ? &argv[1] : NULL);
+    } else {
+      if(builtin->main)
+        return builtin->main(argc - 1, argc > 1 ? &argv[1] : NULL);
+
+      char opts_used[ZSV_OPTS_SIZE_MAX];
+      struct zsv_opts opts;
+      enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used);
+      if(stat == zsv_status_ok)
+        return builtin->cmd(argc - 1, argc > 1 ? &argv[1] : NULL, &opts, opts_used);
+      return stat;
+    }
   }
 
   int err = 1;

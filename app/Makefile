@@ -25,13 +25,12 @@ LIBZSV_A=libzsv.a
 LIBZSV=${BUILD_DIR}/lib/${LIBZSV_A}
 LIBZSV_INSTALL=${LIBDIR}/${LIBZSV_A}
 
-STRING_LIB_INCLUDE=
-STRINGLIB_INCLUDE_FLAG=
-ifneq ($(STRING_LIB_INCLUDE),)
-  CFLAGS+= -DSTRING_LIB_INCLUDE='${STRING_LIB_INCLUDE}'
-endif
-
-STRING_LIB_OBJ=
+#STRING_LIB_INCLUDE=
+#STRINGLIB_INCLUDE_FLAG=
+#ifneq ($(STRING_LIB_INCLUDE),)
+#  CFLAGS+= -DSTRING_LIB_INCLUDE='${STRING_LIB_INCLUDE}'
+#endif
+#STRING_LIB_OBJ=
 
 DEBUG=0
 WIN=
@@ -308,18 +307,9 @@ ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 # flatten stack desc use sglib
 ${STANDALONE_PFX}flatten${EXE} ${STANDALONE_PFX}stack${EXE} ${STANDALONE_PFX}desc${EXE}: MORE_SOURCE+=-Iexternal/sglib
 
-# prop and rm use utils/cache
-# ${STANDALONE_PFX}prop${EXE} ${STANDALONE_PFX}rm${EXE}: ${BUILD_DIR}/objs/utils/cache.o
-# ${STANDALONE_PFX}prop${EXE} ${STANDALONE_PFX}rm${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/cache.o
-
 # prop uses utils/json
 ${CLI} ${STANDALONE_PFX}prop${EXE}: ${BUILD_DIR}/objs/utils/json.o
 ${CLI} ${STANDALONE_PFX}prop${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/json.o
-
-# 2db and prop use yajl
-# ${CLI} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}prop${EXE}: ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
-# ${CLI} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}prop${EXE}: MORE_OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
-# ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o ${STANDALONE_PFX}prop${EXE} ${CLI_OBJ_PFX}prop.o ${BUILD_DIR}/objs/utils/prop.o: MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
 
 # everything uses prop, which in turn uses yajl and jq
 OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
@@ -345,8 +335,6 @@ ${CLI} ${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/db.o
 
 # pretty uses termcap
 ${CLI} ${STANDALONE_PFX}pretty${EXE}: MORE_LIBS+=${LDFLAGS_TERMCAP}
-
-# ${CLI} ${STANDALONE_PFX}jq${EXE}: MORE_LIBS+=${LDFLAGS_JQ}
 
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`

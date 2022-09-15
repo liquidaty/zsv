@@ -6,15 +6,13 @@
  * https://opensource.org/licenses/MIT
  */
 
-#include <zsv.h>
-#include <zsv/utils/utf8.h>
-#include <zsv/utils/signal.h>
-#include <zsv/utils/arg.h>
-#include <zsv/utils/prop.h>
-#include <zsv/utils/compiler.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#define ZSV_COMMAND 2tsv
+#include "zsv_command.h"
+
+#include <zsv/utils/utf8.h>
 
 enum zsv_2tsv_status {
   zsv_2tsv_status_ok = 0,
@@ -150,24 +148,9 @@ static void zsv_2tsv_row(void *ctx) {
   zsv_2tsv_write(&data->out, (const unsigned char *) "\n", 1);
 }
 
-#ifndef APPNAME
-#define APPNAME "zsv_2tsv"
-#endif
-
-
-#ifndef MAIN
-#define MAIN main
-#endif
-
-int MAIN(int argc, const char *argv[]) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
   struct zsv_2tsv_data data = { 0 };
   const char *input_path = NULL;
-  struct zsv_opts opts; // = zsv_get_default_opts();
-  char opts_used[ZSV_OPTS_SIZE_MAX];
-  enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used);
-  if(stat != zsv_status_ok)
-    return stat;
-
   int err = 0;
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
@@ -182,9 +165,9 @@ int MAIN(int argc, const char *argv[]) {
       else if(!(data.out.stream = fopen(argv[i], "wb")))
         fprintf(stderr, "Unable to open for writing: %s\n", argv[i]), err = 1;
     } else {
-      if(opts.stream)
+      if(opts->stream)
         fprintf(stderr, "Input file specified more than once\n"), err = 1;
-      else if(!(opts.stream = fopen(argv[i], "rb")))
+      else if(!(opts->stream = fopen(argv[i], "rb")))
         fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
       else
        input_path = argv[i];
@@ -195,23 +178,23 @@ int MAIN(int argc, const char *argv[]) {
     goto exit_2tsv;
   }
 
-  if(!opts.stream) {
+  if(!opts->stream) {
 #ifdef NO_STDIN
     fprintf(stderr, "Please specify an input file\n");
     err = 1;
     goto exit_2tsv;
 #else
-    opts.stream = stdin;
+    opts->stream = stdin;
 #endif
   }
 
   if(!data.out.stream)
     data.out.stream = stdout;
 
-  opts.row = zsv_2tsv_row;
-  opts.ctx = &data;
-  opts.overflow = zsv_2tsv_overflow;
-  if(zsv_new_with_properties(&opts, input_path, opts_used, &data.parser) == zsv_status_ok) {
+  opts->row = zsv_2tsv_row;
+  opts->ctx = &data;
+  opts->overflow = zsv_2tsv_overflow;
+  if(zsv_new_with_properties(opts, input_path, opts_used, &data.parser) == zsv_status_ok) {
     char output[ZSV_2TSV_BUFF_SIZE];
     data.out.buff = output;
 
@@ -226,8 +209,8 @@ int MAIN(int argc, const char *argv[]) {
   }
 
  exit_2tsv:
-  if(opts.stream && opts.stream != stdin)
-    fclose(opts.stream);
+  if(opts->stream && opts->stream != stdin)
+    fclose(opts->stream);
   if(data.out.stream && data.out.stream != stdout)
     fclose(data.out.stream);
   return err;

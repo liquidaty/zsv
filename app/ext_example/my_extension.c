@@ -215,7 +215,8 @@ static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const 
   /**
    * use the `ext_parse_all()` convenience function
    */
-  enum zsv_ext_status stat = zsv_cb.ext_parse_all(ctx, &data, echo_rowhandler, NULL);
+  struct zsv_opts opts = zsv_cb.ext_parser_opts(ctx);
+  enum zsv_ext_status stat = zsv_cb.ext_parse_all(ctx, &data, echo_rowhandler, &opts);
 
   /**
    * clean up after we finish parsing

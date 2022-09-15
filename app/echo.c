@@ -4,14 +4,14 @@
  * https://opensource.org/licenses/MIT
  */
 
-#include <zsv.h>
-#include <zsv/utils/writer.h>
-#include <zsv/utils/signal.h>
-#include <zsv/utils/arg.h>
-#include <zsv/utils/prop.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+#define ZSV_COMMAND count
+#include "zsv_command.h"
+
+#include <zsv/utils/writer.h>
 
 struct data {
   zsv_parser parser;
@@ -27,20 +27,10 @@ static void row(void *ctx) {
   }
 }
 
-#ifndef MAIN
-#define MAIN main
-#endif
-
-int MAIN(int argc, const char *argv[]) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   struct data data = { 0 };
   const char *input_path = NULL;
-
-  struct zsv_opts opts; // = zsv_get_default_opts();
-  char opts_used[ZSV_OPTS_SIZE_MAX];
-  enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used);
-  if(stat != zsv_status_ok)
-    return stat;
 
   for(int i = 1; i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
@@ -51,31 +41,30 @@ int MAIN(int argc, const char *argv[]) {
       return 0;
     } else if(!strcmp(argv[i], "-b") || !strcmp(argv[i], "--with-bom"))
       writer_opts.with_bom = 1;
-    else if(!opts.stream) {
-      if(!(opts.stream = fopen(argv[i], "rb"))) {
+    else if(!opts->stream) {
+      if(!(opts->stream = fopen(argv[i], "rb"))) {
         fprintf(stderr, "Unable to open %s for writing\n", argv[i]);
         return 1;
       } else
         input_path = argv[i];
     } else {
       fprintf(stderr, "Input file specified more than once (second was %s)\n", argv[i]);
-      if(opts.stream)
-        fclose(opts.stream);
+      if(opts->stream)
+        fclose(opts->stream);
       return 1;
     }
   }
 
-  if(!opts.stream)
-    opts.stream = stdin;
+  if(!opts->stream)
+    opts->stream = stdin;
 
-  opts.row = row;
-  opts.ctx = &data;
+  opts->row = row;
+  opts->ctx = &data;
 
   if((data.csv_writer = zsv_writer_new(&writer_opts))) {
     unsigned char writer_buff[64];
     zsv_writer_set_temp_buff(data.csv_writer, writer_buff, sizeof(writer_buff));
-    if(zsv_new_with_properties(&opts, input_path, opts_used, &data.parser) == zsv_status_ok) {
-//    if((data.parser = zsv_new(&opts))) {
+    if(zsv_new_with_properties(opts, input_path, opts_used, &data.parser) == zsv_status_ok) {
       zsv_handle_ctrl_c_signal();
       enum zsv_status status;
       while(!zsv_signal_interrupted && (status = zsv_parse_more(data.parser)) == zsv_status_ok)
@@ -85,7 +74,7 @@ int MAIN(int argc, const char *argv[]) {
     }
     zsv_writer_delete(data.csv_writer);
   }
-  if(opts.stream != stdin)
-    fclose(opts.stream);
+  if(opts->stream != stdin)
+    fclose(opts->stream);
   return 0;
 }

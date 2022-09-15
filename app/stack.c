@@ -5,27 +5,17 @@
  * https://opensource.org/licenses/MIT
  */
 
-#include <zsv.h>
-#include <zsv/utils/writer.h>
-#include <zsv/utils/signal.h>
-#include <zsv/utils/mem.h>
-#include <zsv/utils/arg.h>
-#include <zsv/utils/prop.h>
-
-#ifndef STRING_LIB_INCLUDE
-#include <zsv/utils/string.h>
-#else
-#include STRING_LIB_INCLUDE
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sglib.h>
 
-#ifndef APPNAME
-#define APPNAME "stack"
-#endif
+#define ZSV_COMMAND stack
+#include "zsv_command.h"
+
+#include <zsv/utils/writer.h>
+#include <zsv/utils/mem.h>
+#include <zsv/utils/string.h>
 
 const char *zsv_stack_usage_msg[] =
   {
@@ -248,20 +238,14 @@ static void zsv_stack_data_row(void *ctx) {
   }
 }
 
-#ifndef MAIN
-#define MAIN main
-#endif
-
-int MAIN(int argc, const char *argv[]) {
-  char opts_used[ZSV_OPTS_SIZE_MAX];
-  struct zsv_opts opts; // = zsv_get_default_opts();
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
   int err = 0;
   if(argc < 2)
     zsv_stack_usage();
   else if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
     zsv_stack_usage();
-  else if(zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used)
-          == zsv_status_ok) {
+  else {
+    struct zsv_opts saved_opts = *opts;
     struct zsv_stack_data data = { 0 };
     char delimiter = 0; // defaults to csv
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
@@ -310,18 +294,15 @@ int MAIN(int argc, const char *argv[]) {
 
     // collect all header names so we can line them up
     unsigned i = 0;
-    struct zsv_opts saved_opts = opts;
     for(struct zsv_stack_input_file *input = data.inputs; !data.err && input; input = input->next, i++) {
-      opts = saved_opts;
-      opts.row = zsv_stack_header_row;
-      opts.ctx = input;
-      opts.delimiter = delimiter;
+      *opts = saved_opts;
+      opts->row = zsv_stack_header_row;
+      opts->ctx = input;
+      opts->delimiter = delimiter;
 
        // to do: max_cell_size
-      opts.stream = input->f;
-//      input_path = input->fname;
-      // if(!(input->parser = zsv_new(&opts)))
-      if(zsv_new_with_properties(&opts, input->fname, opts_used, &input->parser)
+      opts->stream = input->f;
+      if(zsv_new_with_properties(opts, input->fname, opts_used, &input->parser)
          != zsv_status_ok)
         data.err = 1;
       else {
@@ -388,17 +369,16 @@ int MAIN(int argc, const char *argv[]) {
     // process data
     for(struct zsv_stack_input_file *input = data.inputs; input && !data.err; input = input->next, i++) {
       if(input->headers_done) {
-        struct zsv_opts opts = saved_opts; // zsv_get_default_opts();
-        opts.row = zsv_stack_data_row;
-        opts.ctx = input;
+        *opts = saved_opts;
+        opts->row = zsv_stack_data_row;
+        opts->ctx = input;
         if(delimiter == '\t')
-          opts.delimiter = delimiter;
+          opts->delimiter = delimiter;
 
         rewind(input->f);
         input->headers_done = 0;
-        opts.stream = input->f;
-//        if(!(input->parser = zsv_new(&opts)))
-        if(zsv_new_with_properties(&opts, input->fname, opts_used, &input->parser)
+        opts->stream = input->f;
+        if(zsv_new_with_properties(opts, input->fname, opts_used, &input->parser)
            != zsv_status_ok)
           data.err = 1;
         else {

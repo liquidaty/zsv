@@ -6,22 +6,18 @@
 
 #include <sys/stat.h>
 #include <errno.h>
-#include <zsv.h>
-#include <zsv/utils/signal.h>
-#include <zsv/utils/arg.h>
-#include <zsv/utils/mem.h>
-#ifndef STRING_LIB_INCLUDE
-#include <zsv/utils/string.h>
-#else
-#include STRING_LIB_INCLUDE
-#endif
-
 #include <unistd.h> // unlink
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
 #include <sqlite3.h>
+
+#define ZSV_COMMAND 2db
+#include "zsv_command.h"
+
+#include <zsv/utils/mem.h>
+#include <zsv/utils/string.h>
 
 #include <yajl_helper.h>
 
@@ -164,10 +160,6 @@ static void zsv_2db_delete(zsv_2db_handle data) {
 
   free(data);
 }
-
-#ifndef MAIN
-#define MAIN main
-#endif
 
 static int zsv_2db_json_parse_err(struct zsv_2db_data *data,
                                   unsigned char *last_parsed_buff,
@@ -694,15 +686,8 @@ static yajl_handle zsv_2db_yajl_handle(zsv_2db_handle data) {
   return data->json_parser.handle;
 }
 
-#ifndef APPNAME
-# ifdef ZSV_CLI
-#  define APPNAME "zsv 2db"
-# else
-#  define APPNAME "zsv_2db"
-# endif
-#endif
-
-int MAIN(int argc, const char *argv[]) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zsv_opts, const char *opts_used) {
+  (void)(zsv_opts);
   FILE *f_in = NULL;
   int err = 0;
   struct zsv_2db_options opts = { 0 };
@@ -710,7 +695,7 @@ int MAIN(int argc, const char *argv[]) {
 
   const char *usage[] =
     {
-     APPNAME ":  streaming JSON to sqlite3 converter",
+     APPNAME ": convert JSON to sqlite3",
      "",
      "Usage: " APPNAME " -o <output path> [-t <table name>] [input.json]\n",
      "",

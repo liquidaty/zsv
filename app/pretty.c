@@ -5,30 +5,16 @@
  * https://opensource.org/licenses/MIT
  */
 
-#include <zsv.h>
-#include <zsv/utils/writer.h>
-#include <zsv/utils/signal.h>
-#include <zsv/utils/arg.h>
-#include <zsv/utils/prop.h>
-
 #include <utf8proc.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
 
-#ifndef STRING_LIB_INCLUDE
+#define ZSV_COMMAND pretty
+#include "zsv_command.h"
+#include <zsv/utils/writer.h>
 #include <zsv/utils/string.h>
-#else
-#include STRING_LIB_INCLUDE
-#endif
-
-#ifndef APPNAME
-#define APPNAME "pretty"
-#endif
-
-#include <zsv/utils/err.h>
 
 #define ZSV_PRETTY_DEFAULT_LINE_MAX_WIDTH 160
 #define ZSV_PRETTY_DEFAULT_COLUMN_MAX_WIDTH 35
@@ -548,10 +534,6 @@ static void zsv_pretty_destroy(struct zsv_pretty_data *data) {
   free(data);
 }
 
-#ifndef MAIN
-#define MAIN main
-#endif
-
 static struct zsv_pretty_data *zsv_pretty_init(struct zsv_pretty_opts *opts,
                                                struct zsv_opts *parser_opts,
                                                const char *input_path,
@@ -598,7 +580,7 @@ static struct zsv_pretty_data *zsv_pretty_init(struct zsv_pretty_opts *opts,
   return data;
 }
 
-int MAIN(int argc, const char *argv[]) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *parser_opts, const char *opts_used) {
   if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     zsv_pretty_usage();
     return 0;
@@ -683,29 +665,24 @@ int MAIN(int argc, const char *argv[]) {
   if(opts.column_width_min > opts.column_width_max || opts.column_width_min > opts.line_width_max)
     rc = zsv_printerr(1, "Min column width cannot exceed max column width or max line width");
 
-  struct zsv_opts parser_opts = { 0 }; // = zsv_get_default_opts();
-  char opts_used[ZSV_OPTS_SIZE_MAX];
-  if(!rc && zsv_args_to_opts(argc, argv, &argc, argv, &parser_opts, opts_used) == zsv_status_ok) {
-//  if(!rc) {
-    parser_opts.stream = in;
-    struct zsv_pretty_data *h = zsv_pretty_init(&opts, &parser_opts, input_path, opts_used);
-    if(!h)
-      rc = 1;
-    else {
-      zsv_handle_ctrl_c_signal();
-      rc = 0;
-      enum zsv_status status;
-      while(zsv_parse_more(h->parser) == zsv_status_ok)
-        ;
+  parser_opts->stream = in;
+  struct zsv_pretty_data *h = zsv_pretty_init(&opts, parser_opts, input_path, opts_used);
+  if(!h)
+    rc = 1;
+  else {
+    zsv_handle_ctrl_c_signal();
+    rc = 0;
+    enum zsv_status status;
+    while(zsv_parse_more(h->parser) == zsv_status_ok)
+      ;
 
-      while(!rc && !zsv_signal_interrupted
-            && (status = zsv_parse_more(h->parser)) == zsv_status_ok)
-        ;
-    }
-
-    zsv_pretty_flush(h);
-    zsv_pretty_destroy(h);
+    while(!rc && !zsv_signal_interrupted
+          && (status = zsv_parse_more(h->parser)) == zsv_status_ok)
+      ;
   }
+
+  zsv_pretty_flush(h);
+  zsv_pretty_destroy(h);
 
   if(opts.out)
     fclose(opts.out);

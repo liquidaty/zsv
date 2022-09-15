@@ -10,16 +10,15 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sqlite3.h>
+
+#define ZSV_COMMAND sql
+#include "zsv_command.h"
+
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/string.h>
-#include <zsv/utils/arg.h>
 
 #include <unistd.h> // unlink
-
-#ifndef APPNAME
-#define APPNAME "sql"
-#endif
 
 extern sqlite3_module CsvModule;
 
@@ -127,9 +126,6 @@ static int create_virtual_csv_table(const char *fname, sqlite3 *db,
   free(sql);
   return rc;
 }
-#ifndef MAIN
-#define MAIN main
-#endif
 
 static char is_select_sql(const char *s) {
   return strlen(s) > strlen("select ")
@@ -138,7 +134,7 @@ static char is_select_sql(const char *s) {
                      );
 }
 
-int MAIN(int argc, const char *argv[]) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
   /**
    * We need to pass the following data to the sqlite3 virtual table code:
    * a. zsv parser options indicated in the cmd line
@@ -153,14 +149,6 @@ int MAIN(int argc, const char *argv[]) {
    * zsv_set_default_opts() here to effectively pass the options when the sql
    * module calls zsv_get_default_opts()
    */
-  char opts_used[ZSV_OPTS_SIZE_MAX];
-  struct zsv_opts old_opts = zsv_get_default_opts();
-  struct zsv_opts opts;
-  if(zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used) != zsv_status_ok) {
-    zsv_set_default_opts(old_opts); // restore default options
-    return zsv_status_error;
-  }
-
   if(argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
     zsv_sql_usage();
   else {
@@ -170,8 +158,11 @@ int MAIN(int argc, const char *argv[]) {
     const char *my_sql = NULL;
     struct string_list **next_input_filename = &data.more_input_filenames;
 
+    // save current default opts so that we can restore them later
+    struct zsv_opts original_default_opts = zsv_get_default_opts();
+
     // set parser opts that the sql module will get via zsv_get_default_opts()
-    zsv_set_default_opts(opts);
+    zsv_set_default_opts(*opts);
 
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
     int err = 0;
@@ -295,7 +286,7 @@ int MAIN(int argc, const char *argv[]) {
 
     if(err) {
       zsv_sql_cleanup(&data);
-      zsv_set_default_opts(old_opts); // restore default options
+      zsv_set_default_opts(original_default_opts); // restore default options
       return 1;
     }
 
@@ -413,7 +404,7 @@ int MAIN(int argc, const char *argv[]) {
                      sqlite3_str_value(select_clause), sqlite3_str_value(from_clause),
                      sqlite3_str_value(group_by_clause));
             my_sql = data.sql_dynamic;
-            if(opts.verbose)
+            if(opts->verbose)
               fprintf(stderr, "Join sql:\n%s\n", my_sql);
             sqlite3_free(sqlite3_str_finish(select_clause));
             sqlite3_free(sqlite3_str_finish(from_clause));
@@ -470,7 +461,7 @@ int MAIN(int argc, const char *argv[]) {
       unlink(tmpfn);
       free(tmpfn);
     }
+    zsv_set_default_opts(original_default_opts); // restore default options
   }
-  zsv_set_default_opts(old_opts); // restore default options
   return 0;
 }

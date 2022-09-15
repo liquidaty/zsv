@@ -5,20 +5,10 @@
  * https://opensource.org/licenses/MIT
  */
 
-#ifdef _WIN32
-#define _CRT_RAND_S
-#endif
-
-#include <zsv.h>
-#include <zsv/utils/writer.h>
-#include <zsv/utils/signal.h>
-#include <zsv/utils/utf8.h>
-#include <zsv/utils/arg.h>
-
-#include <assert.h>
-
 #include <stdio.h>
-
+#ifdef _WIN32
+#define _CRT_RAND_S // for random number generator, used when sampling. must come before including stdlib.h
+#endif
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
@@ -26,33 +16,12 @@
 #include <time.h>
 #include <stdarg.h>
 
-#ifndef HAVE_MEMMEM
-# include <zsv/utils/memmem.h>
-#endif
+#define ZSV_COMMAND select
+#include "zsv_command.h"
 
-#define MAX_EXCLUSIONS 1024
-
-#ifndef STRING_LIB_INCLUDE
+#include <zsv/utils/writer.h>
+#include <zsv/utils/utf8.h>
 #include <zsv/utils/string.h>
-#else
-#include STRING_LIB_INCLUDE
-#endif
-
-#include <zsv/utils/compiler.h>
-
-#ifndef APPNAME
-# ifdef ZSV_CLI
-#  define APPNAME "zsv select"
-# else
-#  define APPNAME "zsv_select"
-# endif
-#endif
-
-#ifdef STATIC_BUILD
-#include "../src/zsv_hand.c"
-#endif
-
-#include <zsv/utils/err.h>
 
 struct zsv_select_search_str {
   struct zsv_select_search_str *next;
@@ -77,7 +46,7 @@ struct zsv_select_data {
   unsigned int current_column_ix;
   size_t data_row_count;
 
-  struct zsv_opts opts;
+  struct zsv_opts *opts;
   zsv_parser parser;
   unsigned int errcount;
 
@@ -97,6 +66,7 @@ struct zsv_select_data {
 
   unsigned int output_cols_count; // total count of output columns
 
+#define MAX_EXCLUSIONS 1024
   const unsigned char *exclusions[MAX_EXCLUSIONS];
   unsigned int exclusion_count;
 
@@ -190,7 +160,7 @@ static int zsv_select_find_header(struct zsv_select_data *data, const unsigned c
 
 static int zsv_select_add_output_col(struct zsv_select_data *data, unsigned in_ix) {
   int err = 0;
-  if(data->output_cols_count < data->opts.max_columns) {
+  if(data->output_cols_count < data->opts->max_columns) {
     int found = zsv_select_find_header(data, zsv_select_get_header_name(data, in_ix));
     if(data->distinct && found) {
       if(data->distinct == ZSV_SELECT_DISTINCT_MERGE) {
@@ -251,7 +221,7 @@ static int zsv_select_set_output_columns(struct zsv_select_data *data) {
         err = zsv_select_add_output_col(data, i-1);
         break;
       case zsv_select_column_index_selection_type_range:
-        while(i <= j && i < data->opts.max_columns) {
+        while(i <= j && i < data->opts->max_columns) {
           err = zsv_select_add_output_col(data, i-1);
           i++;
         }
@@ -522,7 +492,7 @@ static void zsv_select_header_row(void *ctx) {
   for(unsigned int i = 0; i < cols; i++) {
     struct zsv_cell cell = zsv_get_cell(data->parser, i);
     cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
-    if(i < data->opts.max_columns) {
+    if(i < data->opts->max_columns) {
       zsv_select_append_spaced_word(&data->header_names[i], cell.str, cell.len);
       if(cell.len)
         max_header_ix = i+1;
@@ -604,8 +574,8 @@ static void zsv_select_usage() {
 }
 
 static void zsv_select_cleanup(struct zsv_select_data *data) {
-  if(data->opts.stream && data->opts.stream != stdin)
-    fclose(data->opts.stream);
+  if(data->opts->stream && data->opts->stream != stdin)
+    fclose(data->opts->stream);
 
   zsv_writer_delete(data->csv_writer);
 
@@ -628,26 +598,19 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
   free(data->fixed.offsets);
 }
 
-#ifndef MAIN
-#define MAIN main
-#endif
-
-int MAIN(int argc, const char *argv[]) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
   if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     zsv_select_usage();
     return zsv_status_ok;
   }
 
   struct zsv_select_data data = { 0 };
-  char opts_used[ZSV_OPTS_SIZE_MAX];
+  data.opts = opts;
   const char *input_path = NULL;
-  enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &data.opts, opts_used);
-  if(stat != zsv_status_ok)
-    return stat;
-
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   int col_index_arg_i = 0;
   const char *insert_header_row = NULL;
+  enum zsv_status stat = zsv_status_ok;
   for(int arg_i = 1; stat == zsv_status_ok && arg_i < argc; arg_i++) {
     if(!strcmp(argv[arg_i], "--")) {
       col_index_arg_i = arg_i + 1;
@@ -693,7 +656,7 @@ int MAIN(int argc, const char *argv[]) {
         stat = zsv_printerr(1, "Output file specified more than once");
       else if(!(writer_opts.stream = fopen(argv[arg_i], "wb")))
         stat = zsv_printerr(1, "Unable to open for writing: %s", argv[arg_i]);
-      else if(data.opts.verbose)
+      else if(data.opts->verbose)
         fprintf(stderr, "Opened %s for write\n", argv[arg_i]);
     } else if(!strcmp(argv[arg_i], "-u") || !strcmp(argv[arg_i], "--malformed-utf8-replacement")) {
       if(++arg_i >= argc)
@@ -776,9 +739,9 @@ int MAIN(int argc, const char *argv[]) {
         zsv_select_add_exclusion(&data, argv[arg_i]);
     } else if(*argv[arg_i] == '-')
       stat = zsv_printerr(1, "Unrecognized argument: %s", argv[arg_i]);
-    else if(data.opts.stream)
+    else if(data.opts->stream)
       stat = zsv_printerr(1, "Input file was specified, cannot also read: %s", argv[arg_i]);
-    else if(!(data.opts.stream = fopen(argv[arg_i], "rb")))
+    else if(!(data.opts->stream = fopen(argv[arg_i], "rb")))
       stat = zsv_printerr(1, "Could not open for reading: %s", argv[arg_i]);
     else
       input_path = argv[arg_i];
@@ -790,11 +753,11 @@ int MAIN(int argc, const char *argv[]) {
   if(data.use_header_indexes && stat == zsv_status_ok)
     stat = zsv_select_check_exclusions_are_indexes(&data);
 
-  if(!data.opts.stream) {
+  if(!data.opts->stream) {
 #ifdef NO_STDIN
     stat = zsv_printerr(1, "Please specify an input file");
 #else
-    data.opts.stream = stdin;
+    data.opts->stream = stdin;
 #endif
   }
 
@@ -806,14 +769,14 @@ int MAIN(int argc, const char *argv[]) {
       data.col_argc = argc - col_index_arg_i;
     }
 
-    data.header_names = calloc(data.opts.max_columns, sizeof(*data.header_names));
-    data.out2in = calloc(data.opts.max_columns, sizeof(*data.out2in));
+    data.header_names = calloc(data.opts->max_columns, sizeof(*data.header_names));
+    data.out2in = calloc(data.opts->max_columns, sizeof(*data.out2in));
     data.csv_writer = zsv_writer_new(&writer_opts);
     if(data.header_names && data.csv_writer) {
-      data.opts.row = zsv_select_header_row;
-      data.opts.ctx = &data;
-      data.opts.insert_header_row = insert_header_row;
-      if(zsv_new_with_properties(&data.opts, input_path, opts_used, &data.parser)
+      data.opts->row = zsv_select_header_row;
+      data.opts->ctx = &data;
+      data.opts->insert_header_row = insert_header_row;
+      if(zsv_new_with_properties(data.opts, input_path, opts_used, &data.parser)
          == zsv_status_ok) {
         // all done with
         data.any_clean = data.malformed_utf8_replace

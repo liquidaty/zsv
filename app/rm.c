@@ -14,28 +14,28 @@
 #include <unistd.h> // unlink()
 #include <errno.h>
 
-#include <zsv.h>
+#define ZSV_COMMAND_NO_OPTIONS
+#define ZSV_COMMAND rm
+#include "zsv_command.h"
 
+#include <zsv/utils/dirs.h>
+#include <zsv/utils/cache.h>
 #include "cache.h"
 
-#ifndef APPNAME
-#define APPNAME "rm"
-#endif
-
-#include <zsv/utils/err.h>
-#include <zsv/utils/arg.h>
-#include <zsv/utils/dirs.h>
-
+/**
+ * TO DO: add --orphaned option to remove all orphaned caches
+ */
 const char *zsv_rm_usage_msg[] = {
   APPNAME ": remove a file and its related cache",
   "",
   "Usage: " APPNAME " <filepath> <options>",
   "  where options may be:",
+  "    -v,--verbose: do not prompt for confirmation",
 #ifndef NO_STDIN
-  "    --force, -f: do not prompt for confirmation",
+  "    -f,--force  : do not prompt for confirmation",
 #endif
-  "    --keep,  -k: do not remove related cache",
-  "    --cache, -C: *only* remove related cache",
+  "    -k,--keep   : do not remove related cache",
+  "    -C,--cache  : only remove related cache (not the file)",
   NULL
 };
 
@@ -45,16 +45,8 @@ static int zsv_rm_usage(FILE *target) {
   return target == stdout ? 0 : 1;
 }
 
-#ifndef MAIN
-#define MAIN main
-#endif
-
-// TO DO: add --orphaned option to remove all orphaned caches
-int MAIN(int argc, const char *argv[]) {
+int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
   int err = 0;
-
- char verbose = zsv_get_default_opts().verbose;
-
   if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
     err = zsv_rm_usage(stdout);
   else if(argc < 2)
@@ -67,10 +59,13 @@ int MAIN(int argc, const char *argv[]) {
 #endif
     char remove_cache = 1;
     char remove_file = 1;
+    char verbose = 0;
     for(int i = 1; !err && i < argc; i++) {
       const char *arg = argv[i];
       if(*arg == '-') {
-        if(!strcmp(arg, "-f") || !strcmp(arg, "--force"))
+        if(!strcmp(arg, "-v") || !strcmp(arg, "--verbose"))
+          verbose = 1;
+        else if(!strcmp(arg, "-f") || !strcmp(arg, "--force"))
           force = 1;
         else if(!strcmp(arg, "-k") || !strcmp(arg, "--keep"))
           remove_cache = 0;

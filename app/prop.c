@@ -13,21 +13,15 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <errno.h>
-
-#include <zsv.h>
-#include <zsv/utils/os.h>
-#include <zsv/utils/signal.h>
-#include <zsv/utils/arg.h>
-#include <zsv/utils/json.h>
 #include <yajl_helper.h>
-#include <zsv/utils/prop.h>
-#include <zsv/utils/cache.h>
-// #include "cache_internal.h"
 
-#ifndef APPNAME
-#define APPNAME "prop"
-#endif
-#include <zsv/utils/err.h>
+#define ZSV_COMMAND_NO_OPTIONS
+#define ZSV_COMMAND prop
+#include "zsv_command.h"
+
+#include <zsv/utils/os.h>
+#include <zsv/utils/json.h>
+#include <zsv/utils/cache.h>
 
 const char *zsv_property_usage_msg[] = {
   APPNAME ": save parsing options associated with a file that are subsequently",
@@ -281,25 +275,8 @@ static char property_id_is_ok(const char *s) {
   return (!strcmp(s, "skip-head") || !strcmp(s, "header-row-span"));
 }
 
-/*
- * main
- */
-#ifndef APPNAME
-# ifdef ZSV_CLI
-#  define APPNAME "zsv prop"
-# else
-#  define APPNAME "zsv_prop"
-# endif
-#endif
-
-#ifndef MAIN
-#define MAIN main
-#endif
-
-int MAIN(int m_argc, const char *m_argv[]) {
-//  INIT_CMD_DEFAULT_ARGS(); // only for auto-detect
+int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
   int err = 0;
-
   if(m_argc > 1 && (!strcmp(m_argv[1], "-h") || !strcmp(m_argv[1], "--help")))
     err = zsv_property_usage(stdout);
   else if(m_argc < 3)
