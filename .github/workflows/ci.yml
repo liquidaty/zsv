@@ -72,7 +72,8 @@ jobs:
         CC: gcc
         MAKE: gmake
         RUN_TESTS: false
-      uses: vmactions/freebsd-vm@v0.2.6
+      uses: vmactions/freebsd-vm@v0.2.8
+      sync: sshfs
       with:
         envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
         usesh: true
