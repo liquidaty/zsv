@@ -10,6 +10,7 @@
 #define ASCII_STRING_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 /*
  * zsv_strtolowercase(): convert to lower case. if built with utf8proc, converts unicode points
