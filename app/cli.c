@@ -1,4 +1,4 @@
-/l*
+/*
  * Copyright (C) 2021 Liquidaty and the zsv/lib contributors
  * All rights reserved
  *
