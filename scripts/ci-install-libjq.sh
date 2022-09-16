@@ -34,7 +34,10 @@ echo "[INF] JQ_LIB_DIR:       $JQ_LIB_DIR"
 
 rm -rf "$JQ_DIR"
 
+echo "[INF] Adding git safe.directory to avoid 'dubious ownership' error"
+git config --global --add safe.directory /Users/runner/work/zsv/zsv/jq
 git clone "$JQ_GIT_URL"
+
 cd jq
 git checkout "$JQ_GIT_COMMIT"
 echo "[INF] Applying patch"
