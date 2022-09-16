@@ -73,11 +73,11 @@ jobs:
         MAKE: gmake
         RUN_TESTS: false
       uses: vmactions/freebsd-vm@v0.2.8
-      sync: sshfs
       with:
         envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
         usesh: true
         prepare: pkg install -y tree zip git autotools gmake lang/gcc
+        sync: sshfs
         run: |
           ./scripts/ci-build.sh
 
