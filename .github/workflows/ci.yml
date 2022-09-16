@@ -74,6 +74,8 @@ jobs:
         RUN_TESTS: false
       uses: vmactions/freebsd-vm@v0.2.8
       with:
+        mem: 2048
+        release: 12.3
         envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
         usesh: true
         prepare: pkg install -y tree zip git autotools gmake lang/gcc
