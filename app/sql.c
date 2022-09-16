@@ -116,14 +116,11 @@ static int create_virtual_csv_table(const char *fname, sqlite3 *db,
 
   if(max_columns)
     sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%s USING csv(filename=%Q,options_used=%Q,max_columns=%i)", table_name_suffix, fname, opts_used, max_columns);
-//    asprintf(&sql, "CREATE VIRTUAL TABLE data%s USING csv(filename='%s',options_used='%s',max_columns=%i)", table_name_suffix, fname, max_columns);
-
   else
     sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%s USING csv(filename=%Q,options_used=%Q)", table_name_suffix, fname, opts_used);
-//    asprintf(&sql, "CREATE VIRTUAL TABLE data%s USING csv(filename='%s',options_used='%s')", table_name_suffix, fname);
 
   int rc = sqlite3_exec(db, sql, NULL, NULL, err_msg);
-  free(sql);
+  sqlite3_free(sql);
   return rc;
 }
 
@@ -356,7 +353,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           struct string_list **next_joined_column_name = &data.join_column_names;
           int col_count = sqlite3_column_count(stmt);
           for(char *ix_str = data.join_indexes; !err && ix_str && *ix_str && *(++ix_str); ix_str = strchr(ix_str + 1, ',')) {
-            int next_ix;
+            unsigned int next_ix;
             if(sscanf(ix_str, "%u,", &next_ix)) {
               if(next_ix == 0)
                 fprintf(stderr, "--join-indexes index must be greater than zero\n");
