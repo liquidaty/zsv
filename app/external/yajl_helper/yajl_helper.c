@@ -31,7 +31,7 @@ void *yajl_helper_data(struct yajl_helper_parse_state *st) {
  * Print the current path for e.g. error reporting
  */
 void yajl_helper_dump_path(struct yajl_helper_parse_state *st, FILE *out) {
-  for(int i = 0; i < st->level; i++) {
+  for(unsigned int i = 0; i < st->level; i++) {
     switch(st->stack[i]) {
     case '[':
       fwrite(&st->stack[i],1,1,out);

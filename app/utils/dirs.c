@@ -41,6 +41,7 @@ static size_t chop_slash(char* buff, size_t len) {
 size_t get_config_dir(char* buff, size_t buffsize, const char *prefix) {
 #if defined(_WIN32)
   const char *env_val = getenv("ZSV_CONFIG_DIR");
+  (void)(prefix);
   //  if(!(env_val && *env_val))
   //    env_val = getenv(prefix);
   if(!(env_val && *env_val))

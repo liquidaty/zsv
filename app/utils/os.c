@@ -9,6 +9,7 @@
 #ifdef _WIN32
 #include <zsv/utils/os.h>
 #include <windows.h>
+#include <strsafe.h>
 
 static void strlcpy(register char *dst, register const char *src, size_t n) {
   for (; *src != '\0' && n > 1; n--) {
@@ -62,4 +63,29 @@ int zsv_replace_file(const void *src, const void *dest) {
     return _wrename(wsrc, wdest); // returns 0 on success
   return 1; // fail
 }
+
+void printLastError() {
+  DWORD dw = GetLastError();
+  LPVOID lpMsgBuf;
+  LPVOID lpDisplayBuf;
+  FormatMessage(
+                FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                FORMAT_MESSAGE_FROM_SYSTEM |
+                FORMAT_MESSAGE_IGNORE_INSERTS,
+                NULL,
+                dw,
+                MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                (LPTSTR) &lpMsgBuf,
+                0, NULL );
+  // Display the error message and exit the process
+  lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT,
+                                    (lstrlen((LPCTSTR)lpMsgBuf) + 40) * sizeof(TCHAR));
+  StringCchPrintf((LPTSTR)lpDisplayBuf,
+                  LocalSize(lpDisplayBuf) / sizeof(TCHAR),
+                  TEXT("%s\r\n"), lpMsgBuf);
+  fprintf(stderr, "%s\r\n", (LPCTSTR)lpDisplayBuf);
+  LocalFree(lpMsgBuf);
+  LocalFree(lpDisplayBuf);
+}
+
 #endif
