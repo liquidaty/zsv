@@ -364,5 +364,5 @@ clean-obj:
 	rm -rf external/utf8proc-2.6.1
 
 ${UTF8PROC_SRC}/utf8proc.c: external/utf8proc-2.6.1.tar.gz
-	@cd external && tar xf ../$<
+	@cd external && tar xf ../$< && chown -R `whoami` utf8proc-2.6.1
 	@touch $@
