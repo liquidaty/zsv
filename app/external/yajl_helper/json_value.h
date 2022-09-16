@@ -28,10 +28,10 @@ struct json_value {
 #define json_value_dup(dest, src) do {                          \
     memcpy(dest, src, sizeof(*dest));                           \
     if((src)->type == json_value_string && (src)->val.s)        \
-      (dest)->val.cs = yh_memdup((src)->val.cs, (src)->strlen); \
+      (dest)->val.cs = memdup((src)->val.cs, (src)->strlen);    \
   } while(0)
 
-#define json_value_to_str(value) do {                   \
+#define json_value_to_str(value) do {                 \
     if((value)->type != json_value_string) {            \
       char *s;                                          \
       if((value)->type == json_value_null) {            \

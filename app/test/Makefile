@@ -257,6 +257,7 @@ test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DI
 	@${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
 
 test-jq: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+	@${TEST_INIT}
 	@(${PREFIX} $< keys ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json ${REDIRECT1} ${TMP_DIR}/$@.out)
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 

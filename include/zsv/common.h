@@ -22,7 +22,8 @@ enum zsv_status {
   zsv_status_cancelled,
   zsv_status_no_more_input,
   zsv_status_invalid_option,
-  zsv_status_memory
+  zsv_status_memory,
+  zsv_status_error
 #ifdef ZSV_EXTRAS
   ,zsv_status_max_rows_read
 #endif
@@ -163,50 +164,59 @@ struct zsv_opts {
    */
   const char *insert_header_row;
 
-  /*
+  /**
    * number of rows that the header row spans. If 0 or 1, header is assumed to span 1 row
    * otherwise, set to number > 1 to span multiple rows
    */
   unsigned int header_span;
 
-  /*
-   * number of rows to skip before the initial row is processed
+  /**
+   * number of rows to ignore before the initial row is processed
    */
-  unsigned int rows_to_skip;
-
-  /*
-   * by default, zsv skips empty header rows (the number skipped can be fetched
-   * via `zsv_get_empty_header_rows()`). To disable this behavior, set
-   * `no_skip_empty_header_rows` to 1
-   */
-  unsigned char no_skip_empty_header_rows;
+  unsigned int rows_to_ignore;
 
   /**
-   * path to input file, if any. This is not used directly by zsv, but might be
-   * used by a custom option filter
+   * by default, zsv ignores empty header rows; the number of ignored rows
+   * can be fetched via `zsv_get_empty_header_rows()`). To disable this
+   * behavior, set `keep_empty_header_rows` to 1
    */
-  const char *input_path;
-
-  /**
-   * if filter is non-null, it will be called by zsv_new() (and passed a pointer to this
-   * zsv_opts structure, as well as filter_ctx) before any other instructions are executed
-   */
-  void (*filter)(struct zsv_opts *, void *ctx);
-  void *filter_ctx;
+  unsigned char keep_empty_header_rows;
 
 # ifdef ZSV_EXTRAS
   struct {
-    size_t rows_interval; // min number of rows between progress callback calls
-    unsigned int seconds_interval; // min number of seconds b/w callback calls
+    /**
+     * min number of rows between progress callback calls
+     */
+    size_t rows_interval;
+
+    /**
+     * min number of seconds b/w callback calls
+     */
+    unsigned int seconds_interval;
+
+    /**
+     * Progress callback, called periodically to provide progress updates
+     */
     zsv_progress_callback callback;
+
+    /**
+     * Context passed to the callback, when the callback is invoked
+     */
     void *ctx;
   } progress;
+
   struct {
+    /**
+     * Optional callback. If set, it is called by zsv_finish()
+     */
     zsv_completed_callback callback;
+    /**
+     * Context passed to the callback, when the callback is invoked
+     */
     void *ctx;
   } completed;
 
-  /*
+  /**
    * maximum number of rows to parse (including any header rows)
    */
   size_t max_rows;

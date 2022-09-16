@@ -10,6 +10,7 @@
 #define ASCII_STRING_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 /*
  * zsv_strtolowercase(): convert to lower case. if built with utf8proc, converts unicode points
@@ -38,20 +39,70 @@ int zsv_stricmp(const unsigned char *s1, const unsigned char *s2);
 int zsv_strincmp(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2);
 int zsv_strincmp_ascii(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2);
 
-unsigned char *zsv_strtrim(unsigned char * restrict s, size_t *lenp);
-
+#define ZSV_STRWHITE_FLAG_NO_EMBEDDED_NEWLINE 1
 /**
  * zsv_strwhite(): convert consecutive white to single space
  *
  * @param s     string to convert
  * @param len   length of input string
- * @param flags bitfield of ZSV_STRWHITE_FLAG_XXX values
+ * @param flags bitfield of any of the following flags:
+ *                ZSV_STRWHITE_FLAG_NO_EMBEDDED_NEWLINE
  */
-#define ZSV_STRWHITE_FLAG_NO_EMBEDDED_NEWLINE 1
 size_t zsv_strwhite(unsigned char *s, size_t len, unsigned int flags);
 
+/**
+ * Force a string to conform to UTF8 encoding. Replaces any non-conforming utf8
+ * with the specified char, or removes from the string (and shortens the string)
+ * if replace = 0
+ * @param  s       input string
+ * @param  n       length (in bytes) of input
+ * @param  replace the character to replace any malformed UTF8 bytes with, or 0
+ *                 to remove and shorten the result
+ * @return the length of the valid string
+ */
 size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace);
 
 size_t zsv_strip_trailing_zeros(const char *s, size_t len);
+
+/**
+ * Trim trailing whitespace
+ * Returns the input string and new length
+ */
+const unsigned char *zsv_strtrim_right(const char unsigned * restrict s, size_t *lenp);
+
+/**
+ * Trim leading whitespace
+ * Returns the pointer to the new string start and new length
+ */
+const unsigned char *zsv_strtrim_left(const char unsigned * restrict s, size_t *lenp);
+
+/**
+ * Trim leading and trailing whitespace
+  Returns the pointer to the new string start and new length
+ */
+const unsigned char *zsv_strtrim(const char unsigned * restrict s, size_t *lenp);
+
+/**
+ * Get the next UTF8 codepoint in a string
+ * Return: length of next character (in bytes), or 0 on error or end of string
+ */
+size_t zsv_strnext(const unsigned char *s, size_t len, int32_t *codepoint);
+
+/**
+ * Get the last UTF8 codepoint in a string
+ * Return: length of last character (in bytes), or 0 on error or end of string
+ */
+size_t zsv_strlast(const unsigned char *s, size_t len, int32_t *codepoint);
+
+/**
+ *  Check if the next char is a plus or minus. If so, return its length, else return 0
+ */
+size_t zsv_strnext_is_sign(const unsigned char *s, size_t len);
+
+/**
+ *  Check if the next char is a currency char. If so, return its length, else return 0
+ */
+size_t zsv_strnext_is_currency(const unsigned char *s, size_t len);
+
 
 #endif

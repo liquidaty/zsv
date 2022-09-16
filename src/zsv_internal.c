@@ -620,11 +620,11 @@ static char zsv_internal_row_is_blank(zsv_parser parser) {
 static void skip_to_first_row_w_data(void *ctx) {
   struct zsv_scanner *scanner = ctx;
   if(LIKELY(zsv_internal_row_is_blank(scanner) == 0)) {
-    scanner->opts.no_skip_empty_header_rows = 1;
+    scanner->opts.keep_empty_header_rows = 1;
     if(scanner->empty_header_rows) {
       fprintf(stderr, "Warning: skipped %zu empty header rows; suggest using:\n  --skip-head %zu\n",
               scanner->empty_header_rows,
-              scanner->empty_header_rows + scanner->opts_orig.rows_to_skip);
+              scanner->empty_header_rows + scanner->opts_orig.rows_to_ignore);
     }
     set_callbacks(scanner);
     apply_callbacks(scanner);
@@ -632,11 +632,11 @@ static void skip_to_first_row_w_data(void *ctx) {
     scanner->empty_header_rows++;
 }
 
-static void skip_header_rows(void *ctx) {
+static void ignore_header_rows(void *ctx) {
   struct zsv_scanner *scanner = ctx;
-  if(scanner->opts.rows_to_skip)
-    scanner->opts.rows_to_skip--;
-  if(!scanner->opts.rows_to_skip)
+  if(scanner->opts.rows_to_ignore)
+    scanner->opts.rows_to_ignore--;
+  if(!scanner->opts.rows_to_ignore)
     set_callbacks(scanner);
 }
 
@@ -676,11 +676,11 @@ static void collate_header_row(void *ctx) {
 }
 
 static void set_callbacks(struct zsv_scanner *scanner) {
-  if(scanner->opts.rows_to_skip) {
-    scanner->opts.row = skip_header_rows;
+  if(scanner->opts.rows_to_ignore) {
+    scanner->opts.row = ignore_header_rows;
     scanner->opts.cell = NULL;
     scanner->opts.ctx = scanner;
-  } else if(scanner->mode != ZSV_MODE_FIXED && !scanner->opts.no_skip_empty_header_rows) {
+  } else if(scanner->mode != ZSV_MODE_FIXED && !scanner->opts.keep_empty_header_rows) {
     scanner->opts.row = skip_to_first_row_w_data;
     scanner->opts.cell = NULL;
     scanner->opts.ctx = scanner;

@@ -9,6 +9,8 @@
 #ifndef ZSV_ARG_H
 #define ZSV_ARG_H
 
+#define ZSV_OPTS_SIZE_MAX 16
+
 #include <zsv/common.h>
 
 /* havearg(): case-insensitive partial arg matching */
@@ -47,15 +49,18 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx);
 #  endif
 
 /**
- * process common argc/argv options and return new argc/argv values
- * with processed args stripped out. Initializes opts_out with
- * `zsv_get_default_opts()`, then with the below common options if present:
+ * Convert common command-line arguments to zsv_opts
+ * Return new argc/argv values with processed args stripped out
+ * Initializes opts_out with `zsv_get_default_opts()`, then with
+ * the below common options if present:
  *     -B,--buff-size <N>
  *     -c,--max-column-count <N>
  *     -r,--max-row-size <N>
  *     -t,--tab-delim
  *     -O,--other-delim <C>
  *     -q,--no-quote
+ *     -S,--keep-blank-headers: disable default behavior of ignoring leading blank rows
+ *     -d,--header-row-span <n>: apply header depth (rowspan) of n
  *     -v,--verbose
  *
  * @param  argc      count of args to process
@@ -65,29 +70,16 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx);
  *                   with size of at least argc * sizeof(*argv)
  * @param  opts_out  options, updated to reflect any processed args
  * @param  opts_used optional; if provided:
- *                   - must point to >= 16 bytes of storage
+ *                   - must point to >= ZSV_OPTS_SIZE_MAX bytes of storage
  *                   - all used options will be returned in this string
  *                   e.g. if -R and -q are used, then opts_used will be set to:
  *                     "     q R   "
  * @return           zero on success, non-zero on error
  */
-int zsv_args_to_opts(int argc, const char *argv[],
-                     int *argc_out, const char **argv_out,
-                     struct zsv_opts *opts_out,
-                     char *opts_used
-                     );
-
-#define INIT_DEFAULT_ARGS() do {                                \
-    struct zsv_opts otmp;                                       \
-    int err = zsv_args_to_opts(argc, argv, &argc, argv, &otmp, 0x0); \
-    if(err) return err;                                         \
-    else zsv_set_default_opts(otmp);                            \
-  } while(0)
-
-#ifdef ZSV_CLI
-# define INIT_CMD_DEFAULT_ARGS()
-#else
-# define INIT_CMD_DEFAULT_ARGS() INIT_DEFAULT_ARGS()
-#endif
+enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
+                                 int *argc_out, const char **argv_out,
+                                 struct zsv_opts *opts_out,
+                                 char *opts_used
+                                 );
 
 #endif

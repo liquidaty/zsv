@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/writer.h>
+#include <zsv/utils/jq.h>
 #include <jq.h>
 #include <jv.h>
-#include "jq_internal.h"
 
 // all jv_ functions defined here consume their jv value
 // consumes:
@@ -32,7 +32,7 @@ static int jv_print_scalar_str(jv value, char inside_string, FILE *f, char as_cs
           fprintf(f, "%.*s", (int)len, s);
         else {
           if(inside_string)
-            fprintf(f, "%s%.*s", inside_string > 1 ? ";" : "", (int)(strlen(csv) - 2), csv + 1);
+            fprintf(f, "%s%.*s", inside_string > 1 ? ";" : "", (int)(strlen((char *)csv) - 2), csv + 1);
           else
             fprintf(f, "%s", csv);
           free(csv);

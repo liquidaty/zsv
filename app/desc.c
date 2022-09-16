@@ -6,19 +6,6 @@
  * https://opensource.org/licenses/MIT
  */
 
-#include <zsv.h>
-#include <zsv/utils/writer.h>
-#include <zsv/utils/file.h>
-#include <zsv/utils/signal.h>
-#include <zsv/utils/arg.h>
-#include <zsv/utils/mem.h>
-
-#ifndef STRING_LIB_INCLUDE
-#include <zsv/utils/string.h>
-#else
-#include STRING_LIB_INCLUDE
-#endif
-
 #include <sglib.h>
 
 #include <stdio.h>
@@ -29,6 +16,13 @@
 #include <time.h>
 #include <unistd.h> // unlink()
 
+#define ZSV_COMMAND desc
+#include "zsv_command.h"
+
+#include <zsv/utils/writer.h>
+#include <zsv/utils/file.h>
+#include <zsv/utils/mem.h>
+#include <zsv/utils/string.h>
 
 #define ZSV_DESC_MAX_COLS_DEFAULT 32768
 #define ZSV_DESC_MAX_COLS_DEFAULT_S "32768"
@@ -166,7 +160,7 @@ enum zsv_desc_status {
 };
 
 struct zsv_desc_data {
-  struct zsv_opts opts;
+  struct zsv_opts *opts;
   const char *input_filename;
   zsv_csv_writer csv_writer;
 
@@ -416,11 +410,6 @@ static void zsv_desc_overflow(void *ctx, unsigned char *restrict utf8_value, siz
   data->overflow_count++;
 }
 
-#ifndef APPNAME
-#define APPNAME "desc"
-#endif
-#include <zsv/utils/err.h>
-
 static void zsv_desc_row(void *ctx) {
   struct zsv_desc_data *data = ctx;
 
@@ -450,7 +439,7 @@ static void zsv_desc_row(void *ctx) {
     if(data->header_only)
       data->done = 1;
   } else {
-    if(data->row_count % 50000 == 0 && data->opts.verbose)
+    if(data->row_count % 50000 == 0 && data->opts->verbose)
       fprintf(stderr, "%zu rows read\n", data->row_count);
   }
 
@@ -497,9 +486,9 @@ static void zsv_desc_cleanup(struct zsv_desc_data *data) {
   free(data->err_msg);
   data->err_msg = NULL;
 
-  if(data->opts.stream && data->opts.stream != stdin) {
-    fclose(data->opts.stream);
-    data->opts.stream = NULL;
+  if(data->opts->stream && data->opts->stream != stdin) {
+    fclose(data->opts->stream);
+    data->opts->stream = NULL;
   }
 
   if(data->overflowed) {
@@ -511,45 +500,42 @@ static void zsv_desc_cleanup(struct zsv_desc_data *data) {
 
 #define ZSV_DESC_TMPFN_TEMPLATE "zsv_desc_XXXXXXXXXXXX"
 
-static void zsv_desc_execute(struct zsv_desc_data *data) {
-  data->opts.cell = zsv_desc_cell;
-  data->opts.row = zsv_desc_row;
-  data->opts.overflow = zsv_desc_overflow;
-  data->opts.ctx = data;
+static void zsv_desc_execute(struct zsv_desc_data *data,
+                             const char *input_path,
+                             const char *opts_used) {
+  data->opts->cell = zsv_desc_cell;
+  data->opts->row = zsv_desc_row;
+  data->opts->overflow = zsv_desc_overflow;
+  data->opts->ctx = data;
 
   if(!data->max_enum)
     data->max_enum = ZSV_DESC_MAX_ENUM_DEFAULT;
-  data->parser = zsv_new(&data->opts);
+  if(zsv_new_with_properties(data->opts, input_path, opts_used, &data->parser)
+     == zsv_status_ok) {
+    FILE *input_temp_file = NULL;
+    enum zsv_status status;
+    if(input_temp_file)
+      zsv_set_scan_filter(data->parser, zsv_filter_write, input_temp_file);
+    while(!zsv_signal_interrupted && (status = zsv_parse_more(data->parser)) == zsv_status_ok)
+      ;
 
-  FILE *input_temp_file = NULL;
-
-  enum zsv_status status;
-  if(input_temp_file)
-    zsv_set_scan_filter(data->parser, zsv_filter_write, input_temp_file);
-  while(!zsv_signal_interrupted && (status = zsv_parse_more(data->parser)) == zsv_status_ok)
-    ;
-
-  if(input_temp_file)
-    fclose(input_temp_file);
-  zsv_finish(data->parser);
-  zsv_delete(data->parser);
+    if(input_temp_file)
+      fclose(input_temp_file);
+    zsv_finish(data->parser);
+    zsv_delete(data->parser);
+  }
 }
 
-#ifndef MAIN
-#define MAIN main
-#endif
-
-int MAIN(int argc, const char *argv[]) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
   if(argc < 1)
     zsv_desc_usage();
   else if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
     zsv_desc_usage();
   else {
     struct zsv_desc_data data = { 0 };
-    INIT_CMD_DEFAULT_ARGS();
-    data.opts = zsv_get_default_opts();
-
+    const char *input_path = NULL;
     int err = 0;
+    data.opts = opts;
     data.max_cols = ZSV_DESC_MAX_COLS_DEFAULT; // default
     data.column_names_tail = &data.column_names;
     data.malformed_utf8_replace = "?";
@@ -588,16 +574,16 @@ int MAIN(int argc, const char *argv[]) {
           data.max_cols = atoi(argv[arg_i]);
       }
       else {
-        if(data.opts.stream) {
+        if(data.opts->stream) {
           err = 1;
           fprintf(stderr, "Input file specified twice, or unrecognized argument: %s\n", argv[arg_i]);
-        } else if(!(data.opts.stream = fopen(argv[arg_i], "rb"))) {
+        } else if(!(data.opts->stream = fopen(argv[arg_i], "rb"))) {
           err = 1;
           fprintf(stderr, "Could not open for reading: %s\n", argv[arg_i]);
         } else
-          data.opts.input_path = argv[arg_i];
+          input_path = argv[arg_i];
 
-        if(data.opts.stream && data.opts.stream != stdin)
+        if(data.opts->stream && data.opts->stream != stdin)
           data.input_filename = argv[arg_i];
         if(err)
           data.err = err;
@@ -609,11 +595,11 @@ int MAIN(int argc, const char *argv[]) {
     if(!data.err && !(data.csv_writer = zsv_writer_new(&writer_opts)))
       data.err = zsv_printerr(zsv_desc_status_error, "Unable to create csv writer");
 
-    if(!data.opts.stream) {
+    if(!data.opts->stream) {
 #ifdef NO_STDIN
       data.err = zsv_printerr(zsv_desc_status_error, "Please specify an input file");
 #else
-      data.opts.stream = stdin;
+      data.opts->stream = stdin;
 #endif
     }
 
@@ -622,7 +608,7 @@ int MAIN(int argc, const char *argv[]) {
       return 1;
     }
 
-    zsv_desc_execute(&data);
+    zsv_desc_execute(&data, input_path, opts_used);
     zsv_desc_finalize(&data);
     zsv_desc_print(&data);
     zsv_desc_cleanup(&data);

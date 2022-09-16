@@ -25,13 +25,12 @@ LIBZSV_A=libzsv.a
 LIBZSV=${BUILD_DIR}/lib/${LIBZSV_A}
 LIBZSV_INSTALL=${LIBDIR}/${LIBZSV_A}
 
-STRING_LIB_INCLUDE=
-STRINGLIB_INCLUDE_FLAG=
-ifneq ($(STRING_LIB_INCLUDE),)
-  CFLAGS+= -DSTRING_LIB_INCLUDE='${STRING_LIB_INCLUDE}'
-endif
-
-STRING_LIB_OBJ=
+#STRING_LIB_INCLUDE=
+#STRINGLIB_INCLUDE_FLAG=
+#ifneq ($(STRING_LIB_INCLUDE),)
+#  CFLAGS+= -DSTRING_LIB_INCLUDE='${STRING_LIB_INCLUDE}'
+#endif
+#STRING_LIB_OBJ=
 
 DEBUG=0
 WIN=
@@ -108,7 +107,7 @@ CFLAGS+= -I${PREFIX}/include
 THIS_LIB_BASE=$(shell cd .. && pwd)
 INCLUDE_DIR=${THIS_LIB_BASE}/include
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
-UTILS1=writer file err signal mem clock arg dl string dirs
+UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq
 # LDFLAGS=
 
 ZSV_EXTRAS ?=
@@ -145,8 +144,8 @@ endif
 
 ZSV=$(BINDIR)/zsv${EXE}
 
-SOURCES= echo count select 2tsv 2json serialize flatten pretty stack desc sql 2db
-CLI_SOURCES=select desc count 2tsv pretty sql flatten 2json serialize stack 2db
+SOURCES= echo count select 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm
+CLI_SOURCES=select desc count 2tsv pretty sql flatten 2json serialize stack 2db prop rm
 
 ifneq ($(LDFLAGS_JQ),)
   SOURCES+= jq
@@ -195,6 +194,11 @@ YAJL_INCLUDE=-Iexternal/yajl/build/yajl-2.1.1/include
 YAJL_HELPER_OBJ=${BUILD_DIR}/external/yajl_helper/yajl_helper.o
 YAJL_HELPER_INCLUDE=-Iexternal/yajl_helper
 
+# everything uses prop, which in turn uses yajl and jq
+OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
+MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
+MORE_LIBS+=${LDFLAGS_JQ}
+
 ## json writer
 JSONWRITER_SRC=external/json_writer-1.0
 JSONWRITER_INCLUDE=-Iexternal/json_writer-1.0
@@ -219,7 +223,7 @@ help:
 	@echo "which will build and test all apps, or to build/test a single app:"
 	@echo "  ${MAKE} test-xx"
 	@echo "where xx is any of:"
-	@echo "  echo count select 2tsv 2json serialize flatten pretty stack desc sql 2db"
+	@echo "  echo count select 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm"
 	@echo ""
 
 install: ${ZSV}
@@ -308,10 +312,9 @@ ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 # flatten stack desc use sglib
 ${STANDALONE_PFX}flatten${EXE} ${STANDALONE_PFX}stack${EXE} ${STANDALONE_PFX}desc${EXE}: MORE_SOURCE+=-Iexternal/sglib
 
-# 2db uses yajl
-${CLI} ${STANDALONE_PFX}2db${EXE}: ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
-${CLI} ${STANDALONE_PFX}2db${EXE}: MORE_OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
-${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o: MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
+# prop uses utils/json
+${CLI} ${STANDALONE_PFX}prop${EXE}: ${BUILD_DIR}/objs/utils/json.o
+${CLI} ${STANDALONE_PFX}prop${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/json.o
 
 # sql, 2db, 2json use sqlite3
 ${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE}: ${SQLITE_EXT}
@@ -332,8 +335,6 @@ ${CLI} ${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/db.o
 
 # pretty uses termcap
 ${CLI} ${STANDALONE_PFX}pretty${EXE}: MORE_LIBS+=${LDFLAGS_TERMCAP}
-
-${CLI} ${STANDALONE_PFX}jq${EXE}: MORE_LIBS+=${LDFLAGS_JQ}
 
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
@@ -363,5 +364,5 @@ clean-obj:
 	rm -rf external/utf8proc-2.6.1
 
 ${UTF8PROC_SRC}/utf8proc.c: external/utf8proc-2.6.1.tar.gz
-	@cd external && tar xf ../$<
+	@cd external && tar xf ../$< && chown -R `whoami` utf8proc-2.6.1
 	@touch $@

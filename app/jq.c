@@ -1,23 +1,20 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "jq_internal.h"
-#include "jq_internal.c"
+#define ZSV_COMMAND_NO_OPTIONS
+#define ZSV_COMMAND jq
+#include "zsv_command.h"
 
-#ifndef APPNAME
-# ifdef ZSV_CLI
-#  define APPNAME "zsv jq"
-# else
-#  define APPNAME "zsv_jq"
-# endif
-#endif
+#include <zsv/utils/jq.h>
 
-#ifndef MAIN
-#define MAIN main
-#endif
-
-// jq filter [filename]
-int MAIN(int argc, const char *argv[]) {
+/**
+ * This implementation is not intended to replicate the full functionality of the `jq`
+ * utility available at https://github.com/stedolan/jq
+ *
+ * This `jq` implementation is included as a convenience so as not to require a
+ * separate `jq` installation for basic JSON parsing and manipulation
+ */
+int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
   if(argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
     printf("Usage: " APPNAME " <filter> filename [-o,--output filename] [--csv]\n");
     return 0;

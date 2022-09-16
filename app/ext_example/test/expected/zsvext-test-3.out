@@ -17,7 +17,7 @@ Usage:
   zsv thirdparty: view third-party licenses & acknowledgements
   zsv license [<extension_id>]
 
-Options common to all commands:
+Options common to all commands except `prop`, `rm` and `jq`:
   -L,--limit-rows <n>: limit processing to the given number of rows (including any header row(s))
   -c,--max-column-count <n>: set the maximum number of columns parsed per row. defaults to 1024
   -r,--max-row-size <n>: set the minimum supported maximum row size. defaults to 64k
@@ -31,19 +31,21 @@ Options common to all commands:
   -v,--verbose: verbose output
 
 Commands:
-  select: extract rows/columns by name or position and perform other basic and 'cleanup' operations
-  sql: run ad-hoc SQL
-  count: print the number of rows
-  desc: describe each column
-  pretty: pretty print for console display
-  flatten: flatten a table consisting of N groups of data, each with 1 or
-           more rows in the table, into a table of N rows
-  2json: convert CSV or sqlite3 db table to json
-  2db:   convert json to sqlite3 db
-  2tsv : convert to tab-delimited text
+  select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations
+  sql      : run ad-hoc SQL
+  count    : print the number of rows
+  desc     : describe each column
+  pretty   : pretty print for console display
+  flatten  : flatten a table consisting of N groups of data, each with 1 or
+             more rows in the table, into a table of N rows
+  2json    : convert CSV or sqlite3 db table to json
+  2db      : convert json to sqlite3 db
+  2tsv     : convert to tab-delimited text
   serialize: convert into 3-column format (id, column name, cell value)
-  stack: stack tables vertically, aligning columns with common names
-  jq:    run a jq filter on json input
+  stack    : stack tables vertically, aligning columns with common names
+  prop     : save parsing options for a given data file, that are automatically applied
+             when other lq commands are run on that file
+  jq       : run a jq filter on json input
 
 (No extended commands)
 Extension my registered
@@ -63,7 +65,7 @@ Usage:
   zsv thirdparty: view third-party licenses & acknowledgements
   zsv license [<extension_id>]
 
-Options common to all commands:
+Options common to all commands except `prop`, `rm` and `jq`:
   -L,--limit-rows <n>: limit processing to the given number of rows (including any header row(s))
   -c,--max-column-count <n>: set the maximum number of columns parsed per row. defaults to 1024
   -r,--max-row-size <n>: set the minimum supported maximum row size. defaults to 64k
@@ -77,19 +79,21 @@ Options common to all commands:
   -v,--verbose: verbose output
 
 Commands:
-  select: extract rows/columns by name or position and perform other basic and 'cleanup' operations
-  sql: run ad-hoc SQL
-  count: print the number of rows
-  desc: describe each column
-  pretty: pretty print for console display
-  flatten: flatten a table consisting of N groups of data, each with 1 or
-           more rows in the table, into a table of N rows
-  2json: convert CSV or sqlite3 db table to json
-  2db:   convert json to sqlite3 db
-  2tsv : convert to tab-delimited text
+  select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations
+  sql      : run ad-hoc SQL
+  count    : print the number of rows
+  desc     : describe each column
+  pretty   : pretty print for console display
+  flatten  : flatten a table consisting of N groups of data, each with 1 or
+             more rows in the table, into a table of N rows
+  2json    : convert CSV or sqlite3 db table to json
+  2db      : convert json to sqlite3 db
+  2tsv     : convert to tab-delimited text
   serialize: convert into 3-column format (id, column name, cell value)
-  stack: stack tables vertically, aligning columns with common names
-  jq:    run a jq filter on json input
+  stack    : stack tables vertically, aligning columns with common names
+  prop     : save parsing options for a given data file, that are automatically applied
+             when other lq commands are run on that file
+  jq       : run a jq filter on json input
 
 Extended commands:
   Extension 'my': Sample zsv extension
