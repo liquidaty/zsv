@@ -22,6 +22,7 @@
 #include <zsv/utils/os.h>
 #include <zsv/utils/json.h>
 #include <zsv/utils/cache.h>
+#include <zsv/utils/string.h>
 
 const char *zsv_property_usage_msg[] = {
   APPNAME ": save parsing options associated with a file that are subsequently",
@@ -38,8 +39,11 @@ const char *zsv_property_usage_msg[] = {
   "  and property_id can be any of:",
   "    skip-head: skip n rows before reading header row(s)",
   "     This option corresponds to -R/--skip-head parsing option",
-  "    header-row-span: set header depth (rowspan) (if < 2, rowspan is assumed to be 1)",
+  "    header-row-span: set header row span; if n < 2, n is assumed to equal 1",
   "     This option corresponds to -d/--header-row-span parsing option",
+  "",
+  "  When running in `detect` mode, a dash (-) can be used instead of a filepath",
+  "    to read from stdin",
   "",
   "  Properties are saved in " ZSV_CACHE_DIR "/<filename>/" ZSV_CACHE_PROPERTIES_NAME,
   "    which is deleted when the file is removed using `rm`",
@@ -64,18 +68,139 @@ static int show_all_properties(const unsigned char *filepath) {
 #define ZSV_PROP_TYPE_CHECK_BOOL 4
 #define ZSV_PROP_TYPE_CHECK_NULL 8
 
-static char zsv_str_is_num(const unsigned char *s, size_t slen, unsigned flags) {
-  return 0;
+/**
+ * Very basic test to check if a string looks like a number:
+ * - ignore leading whitespace and currency
+ * - ignore trailing whitespace
+ * - ignore leading dash or plus
+ * - len < 1 or > 30 => not a number
+ * - scan characters one by one:
+ *     if the char isn't a digit, comma or period, it's not a number
+ *     digits are ignored
+ *     commas are counted (we ignore the requirement for them to be spaced out e.g. every 3 digits)
+ *     periods are counted
+ *     if at any point we have more than 1 comma AND more than 1 digit, it's not a number
+ * @param s     input string
+ * @param len   length of input
+ * @param flags reserved for future use
+ * @return      1 if it looks like a number, else 0
+ */
+static char looks_like_num(const unsigned char *s, size_t len, unsigned flags) {
+  (void)(flags);
+  // trim
+  s = zsv_strtrim(s, &len);
+
+  // strip +/- sign, if any
+  size_t sign = zsv_strnext_is_sign(s, len);
+  if(sign) {
+    s += sign;
+    len -= sign;
+    s = zsv_strtrim_left(s, &len);
+  }
+
+  // strip currency, if any
+  size_t currency = zsv_strnext_is_currency(s, len);
+  if(currency) {
+    s += currency;
+    len -= currency;
+    s = zsv_strtrim_left(s, &len);
+  }
+
+  // strip +/- sign, if we didn't find one earlier
+  if(!sign && (sign = zsv_strnext_is_sign(s, len))) {
+    s += sign;
+    len -= sign;
+    s = zsv_strtrim_left(s, &len);
+  }
+
+  if(len < 1 || len > 30)
+    return 0;
+
+  unsigned digits = 0;
+  unsigned period = 0;
+  for(size_t i = 0; i < len; i++) {
+    unsigned char c = s[i];
+    if(c >= '0' && c <= '9') // to do: allow utf8 digits, commas, periods?
+      digits++;
+    else if(c == ',' && i > 0 && period == 0) { // comma can't be first char, or follow a period
+      // do nothing. to do: check that the last comma was either 3 or 4 numbers away?
+    } else if(c == '.' && period == 0) // only 1 period allowed (to do: relax this as it isn't true in all localities)
+      period++;
+    else
+      return 0;
+  }
+  return digits > 0 && period < 2;
 }
 
-static char zsv_str_is_date(const unsigned char *s, size_t slen, unsigned flags) {
-  return 0;
+/**
+ * Super crude "test" to check if a string looks like a date or timestamp:
+ * we are just going to disqualify if len < 5 or len > 30
+ * or any chars are not digits, slash, dash, colon, space
+ * or in any of the following which is made up of chars from the English months, plus am/pm
+ *   abcdefghijlmnoprstuvy
+ * @param s     input string
+ * @param len   length of input
+ * @param flags reserved for future use
+ * @return      1 if it looks like a date, else 0
+ */
+static char looks_like_date(const unsigned char *s, size_t len, unsigned flags) {
+  (void)(flags);
+  // trim
+  s = zsv_strtrim(s, &len);
+  if(len <= 5 || len > 30)
+    return 0;
+  #define LOOKS_LIKE_DATE_CHARS "0123456789-/:, abcdefghijlmnoprstuvy"
+  for(size_t i = 0; i < len; i++)
+    if(!memchr(LOOKS_LIKE_DATE_CHARS, s[i], strlen(LOOKS_LIKE_DATE_CHARS)))
+      return 0;
+  return 1;
 }
 
-static char zsv_str_is_bool(const unsigned char *s, size_t slen, unsigned flags) {
+/**
+ * Very basic test to check if a string looks like a bool:
+ * - ignore leading and trailing whitespace
+ * - look for true, false, yes, no, T, F, 1, 0, Y, N
+ * - to do: add localization options?
+ * @param s     input string
+ * @param len   length of input
+ * @param flags reserved for future use
+ * @return      1 if it looks like a bool, else 0
+ */
+static char looks_like_bool(const unsigned char *s, size_t len, unsigned flags) {
+  (void)(flags);
+  // trim
+  s = zsv_strtrim(s, &len);
+
+  if(!len)
+    return 0;
+
+  if(len == 1)
+    return strchr("TtFf10YyNn", *s) ? 1 : 0;
+
+  if(len <= 5) {
+    char *lower = (char *)zsv_strtolowercase(s, &len);
+    if(lower) {
+      char result = 0;
+      switch(len) {
+      case 2:
+        result = !strcmp(lower, "no");
+        break;
+      case 3:
+        result = !strcmp(lower, "yes");
+        break;
+      case 4:
+        result = !strcmp(lower, "true");
+        break;
+      case 5:
+        result = !strcmp(lower, "false");
+        break;
+      }
+      free(lower);
+      return result;
+    }
+  }
   return 0;
 }
-
 
 static unsigned int type_detect(const unsigned char *s, size_t slen) {
   unsigned int result = 0;
@@ -83,11 +208,11 @@ static unsigned int type_detect(const unsigned char *s, size_t slen) {
     result += ZSV_PROP_TYPE_CHECK_NULL;
     return result;
   }
-  if(zsv_str_is_num(s, slen, 0))
+  if(looks_like_num(s, slen, 0))
     result += ZSV_PROP_TYPE_CHECK_NUM;
-  if(zsv_str_is_date(s, slen, 0))
+  if(looks_like_date(s, slen, 0))
     result += ZSV_PROP_TYPE_CHECK_DATE;
-  if(zsv_str_is_bool(s, slen, 0))
+  if(looks_like_bool(s, slen, 0))
     result += ZSV_PROP_TYPE_CHECK_BOOL;
   return result;
 }

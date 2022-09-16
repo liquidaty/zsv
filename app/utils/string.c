@@ -7,6 +7,7 @@
  */
 
 #include <string.h>
+#include <stdint.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -86,7 +87,7 @@ int zsv_stricmp(const unsigned char *s1, const unsigned char *s2) {
 }
 
 int zsv_strincmp_ascii(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2) {
-  while(len1) {
+  while(len1 && len2) {
     if(!*s1)
       return *s2 == 0 ? 0 : -1;
     if(!*s2)
@@ -94,11 +95,11 @@ int zsv_strincmp_ascii(const unsigned char *s1, size_t len1, const unsigned char
     int c1 = tolower(*s1);
     int c2 = tolower(*s2);
     if(c1 == c2) {
-      s1++, s2++, len1--;
+      s1++, s2++, len1--, len2--;
     } else
       return c1 < c2 ? -1 : 1;
   }
-  return 0;
+  return len1 > len2 ? 1 : len1 < len2 ? -1 : 0;
 }
 
 int zsv_strincmp(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2) {
@@ -118,16 +119,112 @@ int zsv_strincmp(const unsigned char *s1, size_t len1, const unsigned char *s2, 
 #endif
 }
 
-// zsv_trim(): trim leading and trailing white space. to do: utf8 support
-unsigned char *zsv_strtrim(char unsigned * restrict s, size_t *lenp) {
-  if(UNLIKELY(s == NULL))
-    return s;
-  while(isspace(*s) && *lenp)
-    s++, (*lenp)--;
-  while(*lenp && isspace(s[(*lenp)-1]))
-    (*lenp)--;
+__attribute__((always_inline)) static inline const unsigned char *zsv_strtrim_left_inline(const char unsigned * restrict s, size_t *lenp) {
+  utf8proc_ssize_t bytes_read;
+  utf8proc_int32_t codepoint = 0;
+  size_t len = *lenp;
+  utf8proc_category_t category;
+
+  // trim front
+  while((bytes_read = zsv_strnext(s, len, &codepoint)) > 0
+        && ((category = utf8proc_category(codepoint)) == UTF8PROC_CATEGORY_ZS
+            || category == UTF8PROC_CATEGORY_ZL
+            || category == UTF8PROC_CATEGORY_ZP
+            )) {
+    s += bytes_read;
+    len -= bytes_read;
+  }
+  *lenp = len;
   return s;
 }
+
+__attribute__((always_inline)) static inline const unsigned char *zsv_strtrim_right_inline(const char unsigned * restrict s, size_t *lenp) {
+  utf8proc_ssize_t bytes_read;
+  utf8proc_int32_t codepoint = 0;
+  size_t len = *lenp;
+  utf8proc_category_t category;
+
+  // trim back
+  while((bytes_read = zsv_strlast(s, len, (int32_t *)&codepoint)) > 0
+        && ((category = utf8proc_category(codepoint)) == UTF8PROC_CATEGORY_ZS
+            || category == UTF8PROC_CATEGORY_ZL
+            || category == UTF8PROC_CATEGORY_ZP
+            )) {
+    len -= bytes_read;
+  }
+  *lenp = len;
+  return s;
+}
+
+const unsigned char *zsv_strtrim_right(const char unsigned * restrict s, size_t *lenp) {
+  return zsv_strtrim_right_inline(s, lenp);
+}
+
+const unsigned char *zsv_strtrim_left(const char unsigned * restrict s, size_t *lenp) {
+  return zsv_strtrim_left_inline(s, lenp);
+}
+
+const unsigned char *zsv_strtrim(const char unsigned * restrict s, size_t *lenp) {
+  s = zsv_strtrim_left_inline(s, lenp);
+  return zsv_strtrim_right_inline(s, lenp);
+}
+
+size_t zsv_strnext(const unsigned char *s, size_t len, int32_t *codepoint) {
+  utf8proc_ssize_t bytes_read = utf8proc_iterate(s, len, (utf8proc_int32_t *)codepoint);
+  if(bytes_read < 1)
+    return 0;
+  return (size_t) bytes_read;
+}
+
+/**
+ * Return the 1-based position of the last byte
+ */
+__attribute__((always_inline)) static inline size_t zsv_strlast_position(const unsigned char *s, size_t len) {
+  // from the end, search backwards for the first byte that begins with 0 or 11
+  while(len && !(s[len-1] < 128 || s[len-1] >= 192))
+    len--;
+  return len;
+}
+
+size_t zsv_strlast(const unsigned char *s, size_t len, int32_t *codepoint) {
+  size_t position = zsv_strlast_position(s, len);
+  if(position) {
+    position--;
+    return zsv_strnext(s + position, len - position, codepoint);
+  }
+  return 0;
+}
+
+/**
+ *  Check if the next char is a currency char. If so, return its length, else return 0
+ */
+size_t zsv_strnext_is_currency(const unsigned char *s, size_t len) {
+  utf8proc_int32_t codepoint;
+  utf8proc_ssize_t bytes_read = utf8proc_iterate(s, len, &codepoint);
+  if(VERY_LIKELY(bytes_read > 0)) {
+    utf8proc_category_t category = utf8proc_category(codepoint);
+    if(category == UTF8PROC_CATEGORY_SC)
+      return (size_t)bytes_read;
+  }
+  return 0;
+}
+
+/**
+ *  Check if the next char is a plus or minus. If so, return its length, else return 0
+ */
+size_t zsv_strnext_is_sign(const unsigned char *s, size_t len) {
+  if(len && *s == '+') return 1;
+
+  utf8proc_int32_t codepoint;
+  utf8proc_ssize_t bytes_read = utf8proc_iterate(s, len, &codepoint);
+  if(VERY_LIKELY(bytes_read > 0)) {
+    utf8proc_category_t category = utf8proc_category(codepoint);
+    if(category == UTF8PROC_CATEGORY_PD)
+      return (size_t)bytes_read;
+  }
+  return 0;
+}
+
 
 /**
  * zsv_strwhite(): convert consecutive white to single space
