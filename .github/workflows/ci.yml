@@ -79,6 +79,7 @@ jobs:
         envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
         usesh: true
         prepare: pkg install -y tree zip git autotools gmake lang/gcc
+        copyback: false
         sync: sshfs
         run: |
           ./scripts/ci-build.sh
