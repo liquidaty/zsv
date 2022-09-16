@@ -47,7 +47,6 @@ int main(int argc, const char *argv[]) {
   FILE *f = NULL;
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   struct data data = { 0 };
-  INIT_CMD_DEFAULT_ARGS();
 
   for(int i = 1; i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
@@ -88,8 +87,4 @@ int main(int argc, const char *argv[]) {
   }
   fclose(f);
   return 0;
-}            
-
-
-
-
+}

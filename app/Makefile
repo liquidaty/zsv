@@ -194,6 +194,11 @@ YAJL_INCLUDE=-Iexternal/yajl/build/yajl-2.1.1/include
 YAJL_HELPER_OBJ=${BUILD_DIR}/external/yajl_helper/yajl_helper.o
 YAJL_HELPER_INCLUDE=-Iexternal/yajl_helper
 
+# everything uses prop, which in turn uses yajl and jq
+OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
+MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
+MORE_LIBS+=${LDFLAGS_JQ}
+
 ## json writer
 JSONWRITER_SRC=external/json_writer-1.0
 JSONWRITER_INCLUDE=-Iexternal/json_writer-1.0
@@ -310,11 +315,6 @@ ${STANDALONE_PFX}flatten${EXE} ${STANDALONE_PFX}stack${EXE} ${STANDALONE_PFX}des
 # prop uses utils/json
 ${CLI} ${STANDALONE_PFX}prop${EXE}: ${BUILD_DIR}/objs/utils/json.o
 ${CLI} ${STANDALONE_PFX}prop${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/json.o
-
-# everything uses prop, which in turn uses yajl and jq
-OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
-MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
-MORE_LIBS+=${LDFLAGS_JQ}
 
 # sql, 2db, 2json use sqlite3
 ${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE}: ${SQLITE_EXT}

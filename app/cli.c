@@ -458,8 +458,6 @@ static const char *extension_cmd_from_arg(const char *arg) {
 
 ZSV_CLI_EXPORT
 int ZSV_CLI_MAIN(int argc, const char *argv[]) {
-//  INIT_DEFAULT_ARGS();
-
   const char **alt_argv = NULL;
   struct builtin_cmd *builtin = find_builtin(argc > 1 ? argv[1] : "help");
   if(builtin) {
