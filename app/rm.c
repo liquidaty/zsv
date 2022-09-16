@@ -20,7 +20,6 @@
 
 #include <zsv/utils/dirs.h>
 #include <zsv/utils/cache.h>
-#include "cache.h"
 
 /**
  * TO DO: add --orphaned option to remove all orphaned caches
