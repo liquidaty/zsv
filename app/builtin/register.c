@@ -95,4 +95,3 @@ static int main_register(int argc, const char *argv[]) {
 static int main_unregister(int argc, const char *argv[]) {
   return main_register_aux(argc, argv);
 }
-

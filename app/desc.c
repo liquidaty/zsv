@@ -510,7 +510,6 @@ static void zsv_desc_execute(struct zsv_desc_data *data,
 
   if(!data->max_enum)
     data->max_enum = ZSV_DESC_MAX_ENUM_DEFAULT;
-  // data->parser = zsv_new(&data->opts);
   if(zsv_new_with_properties(data->opts, input_path, opts_used, &data->parser)
      == zsv_status_ok) {
     FILE *input_temp_file = NULL;

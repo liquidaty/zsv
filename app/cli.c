@@ -1,4 +1,4 @@
-/*
+/l*
  * Copyright (C) 2021 Liquidaty and the zsv/lib contributors
  * All rights reserved
  *
@@ -54,9 +54,8 @@ CLI_BUILTIN_DECL_STATIC(version);
 CLI_BUILTIN_DECL_STATIC(register);
 CLI_BUILTIN_DECL_STATIC(unregister);
 
-ZSV_MAIN_DECL(select); // CLI_BUILTIN_DECL(select); int zsv_select_cmd(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used);
-
-ZSV_MAIN_DECL(count); // CLI_BUILTIN_DECL(count);
+ZSV_MAIN_DECL(select);
+ZSV_MAIN_DECL(count);
 ZSV_MAIN_DECL(2json);
 ZSV_MAIN_DECL(2tsv);
 ZSV_MAIN_DECL(serialize);

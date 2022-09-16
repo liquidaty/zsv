@@ -362,7 +362,6 @@ static int detect_properties(const unsigned char *filepath, struct detect_opts d
   }
 
   opts.keep_empty_header_rows = 1;
-  // load_properties_init() will not run because opts
   data.parser = zsv_new(&opts);
   while(!zsv_signal_interrupted && zsv_parse_more(data.parser) == zsv_status_ok)
     ;

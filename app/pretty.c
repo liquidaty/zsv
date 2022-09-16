@@ -554,7 +554,6 @@ static struct zsv_pretty_data *zsv_pretty_init(struct zsv_pretty_opts *opts,
 
   parser_opts->row = zsv_pretty_row;
   parser_opts->ctx = data;
-//  data->parser = zsv_new(parser_opts);
   zsv_new_with_properties(parser_opts, input_path, opts_used, &data->parser);
 
   data->write = (size_t (*)(const void *, size_t, size_t, void *))fwrite;
