@@ -5,12 +5,14 @@
  */
 
 /*
-  for a given file, edits properties saved in .zsv/data/<filepath>/props.json
- */
+  for a given file, edits properties saved in ZSV_CACHE_DIR/<filepath>/props.json
+*/
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <errno.h>
 #include <yajl_helper.h>
@@ -20,33 +22,41 @@
 #include "zsv_command.h"
 
 #include <zsv/utils/os.h>
+#include <zsv/utils/file.h>
 #include <zsv/utils/json.h>
 #include <zsv/utils/cache.h>
 #include <zsv/utils/string.h>
 
 const char *zsv_property_usage_msg[] = {
-  APPNAME ": save parsing options associated with a file that are subsequently",
-  "          applied by default when processing that file",
+  APPNAME ": view or save parsing options associated with a file",
+  "          saved options will be applied by default when processing that file",
   "",
-  "Usage: " APPNAME " <filepath> <command> <arguments>",
-  "  where command can be:",
-  "    set <property_id> <value>",
-  "    unset <property_id>",
-  "    detect [-s,--save [-f,--force]]: try to auto-detect the best skip-head and header-row-span values",
-  "    show-all:  show all properties",
-  "    unset-all: delete all properties",
+  "Usage: " APPNAME " <filepath> [options]",
+  "  where filepath is the path to the input CSV file (or when using --auto, - for stdin)",
+  "  and options may be one or more of:",
+  "    -d,--header-row-span <value>: set/unset/auto-detect header depth (see below)",
+  "    -R,--skip-head <value>      : set/unset/auto-detect initial rows to skip (see below)",
+  "    --clear                     : delete all properties",
+  "    --auto                      : guess the best property values. This is equivalent to:",
+  "                                    -d auto -R auto",
+  "                                  when using this option, a dash (-) can be used instead",
+  "                                  of a filepath to read from stdin",
+  "    --save [-f,--overwrite]     : (only applicable with --auto) save the detected result",
+  "    -f,--overwrite              : overwrite any previously-saved properties",
   "",
-  "  and property_id can be any of:",
-  "    skip-head: skip n rows before reading header row(s)",
-  "     This option corresponds to -R/--skip-head parsing option",
-  "    header-row-span: set header row span; if n < 2, n is assumed to equal 1",
-  "     This option corresponds to -d/--header-row-span parsing option",
+  "For --header-row-span or --skip-head options, <value> can be:",
+  "  - a positive integer, to save the value to the associated file's properties",
+  "  - a zero (0), or \"none\" or \"-\" to remove the value from the associated",
+  "    file's properties",
+  "  - \"auto\" to auto-detect the property value (to save, use --save/--overwrite)",
   "",
-  "  When running in `detect` mode, a dash (-) can be used instead of a filepath",
-  "    to read from stdin",
+  "If no options are provided, currently saved properties are output in JSON format.",
   "",
   "  Properties are saved in " ZSV_CACHE_DIR "/<filename>/" ZSV_CACHE_PROPERTIES_NAME,
   "    which is deleted when the file is removed using `rm`",
+  "",
+  "The --auto feature is provided for convenience only, and is not intended to be smart enough",
+  "  to make guesses that can be blindly assumed to be correct. You have been warned!",
   NULL
 };
 
@@ -57,9 +67,14 @@ static int zsv_property_usage(FILE *target) {
 }
 
 static int show_all_properties(const unsigned char *filepath) {
-  int err = zsv_cache_print(filepath, zsv_cache_type_property, (const unsigned char *)"{}");
-  if(!err)
-    printf("\n");
+  int err = 0;
+  if(!zsv_file_readable((const char *)filepath, &err, NULL)) {
+    perror(filepath);
+    return err;
+  }
+  err = zsv_cache_print(filepath, zsv_cache_type_property, (const unsigned char *)"{}");
+  if(err == ENOENT)
+    err = 0;
   return err;
 }
 
@@ -217,11 +232,6 @@ static unsigned int type_detect(const unsigned char *s, size_t slen) {
   return result;
 }
 
-struct detect_opts {
-  char save;
-  char force;
-};
-
 #define ZSV_PROP_DETECT_ROW_MAX 10
 struct detect_properties_data {
   zsv_parser parser;
@@ -256,65 +266,6 @@ static void detect_properties_row(void *ctx) {
     zsv_abort(data->parser);
 }
 
-static int unset_all_properties(const unsigned char *filepath) {
-  return zsv_cache_remove(filepath, zsv_cache_type_property);
-}
-
-static int print_zsv_file_properties(struct zsv_file_properties *gp,
-                                     const unsigned char *filepath,
-                                     struct detect_opts *detect_opts) {
-  int err = 0;
-  const char *format = "{\n  \"skip-head\": %u,\n  \"header-row-span\": %u\n}%s";
-  printf(format, gp->skip, gp->header_span, "\n");
-  if(detect_opts->save) {
-    unsigned char *props_fn = zsv_cache_filepath(filepath, zsv_cache_type_property, 0, 0);
-    if(!props_fn)
-      err = 1;
-    else {
-      if(!detect_opts->force) {
-        struct zsv_opts zsv_opts = { 0 };
-        struct zsv_file_properties fp = { 0 };
-        err = zsv_cache_load_props((const char *)filepath, &zsv_opts, &fp, NULL);
-        // err = load_properties(filepath, &zsv_opts, &fp);
-        if(!err) {
-          if(fp.header_span_specified || fp.skip_specified) {
-            fprintf(stderr, "Properties for this file already exist; use -f or --force option to overwrite\n");
-            err = 1;
-          }
-        }
-      }
-      if(!err) {
-        if(!(gp->skip || gp->header_span))
-          err = unset_all_properties(filepath);
-        else {
-          unsigned char *props_fn_tmp = zsv_cache_filepath(filepath, zsv_cache_type_property, 1, 1);
-          if(!props_fn_tmp)
-            err = 1;
-          else {
-            // open a temp file, then write, then replace the orig file
-            FILE *f = fopen((char *)props_fn_tmp, "wb");
-            if(!f) {
-              perror((char *)props_fn_tmp);
-              err = 1;
-            } else {
-              if(!fprintf(f, format, gp->skip, gp->header_span, ""))
-                err = 1;
-              else {
-                if(zsv_replace_file(props_fn_tmp, props_fn))
-                  err = zsv_printerr(-1, "Unable to save %s", props_fn);
-              }
-              fclose(f);
-            }
-          }
-          free(props_fn_tmp);
-        }
-      }
-      free(props_fn);
-    }
-  }
-  return err;
-}
-
 static struct zsv_file_properties guess_properties(struct detect_properties_data *data) {
   struct zsv_file_properties result = { 0 };
   size_t i;
@@ -341,151 +292,296 @@ static struct zsv_file_properties guess_properties(struct detect_properties_data
     if(data_like <= 5 && data_like > 0 && data->rows[i].cols_used <= 5)
       break;
   }
+  if(result.header_span == data->rows_processed)
+    result.header_span = 1;
   return result;
 }
 
-static int detect_properties(const unsigned char *filepath, struct detect_opts detect_opts) {
-  struct zsv_opts opts;
+static int detect_properties(const unsigned char *filepath,
+                             struct zsv_file_properties *result,
+                             int64_t d, int64_t R,
+                             struct zsv_opts *opts) {
   struct detect_properties_data data = { 0 };
-
-  opts = zsv_get_default_opts();
-  opts.row = detect_properties_row;
-  opts.ctx = &data;
+  opts->row = detect_properties_row;
+  opts->ctx = &data;
   if(!strcmp((void *)filepath, "-"))
-    opts.stream = stdin;
+    opts->stream = stdin;
   else {
-    opts.stream = fopen((const char *)filepath, "rb");
-    if(!opts.stream) {
+    opts->stream = fopen((const char *)filepath, "rb");
+    if(!opts->stream) {
       perror((const char *)filepath);
       return 1;
     }
   }
 
-  opts.keep_empty_header_rows = 1;
-  data.parser = zsv_new(&opts);
+  opts->keep_empty_header_rows = 1;
+  data.parser = zsv_new(opts);
   while(!zsv_signal_interrupted && zsv_parse_more(data.parser) == zsv_status_ok)
     ;
   zsv_finish(data.parser);
   zsv_delete(data.parser);
 
-  fclose(opts.stream);
-  struct zsv_file_properties result = guess_properties(&data);
-  result.header_span += opts.header_span;
-  result.skip += opts.rows_to_ignore;
-  return print_zsv_file_properties(&result, filepath, &detect_opts);
+  fclose(opts->stream);
+  *result = guess_properties(&data);
+  result->header_span += opts->header_span;
+  result->skip += opts->rows_to_ignore;
+
+  return 0;
 }
 
-static int set_unset_property(const unsigned char *filepath, const char *cmd,
-                               const char *prop_id, const char *integer_str) {
-  int err = 0;
-  unsigned char *prop_id_json = zsv_json_from_str((void *)prop_id);
-  if(!prop_id_json)
-    err = zsv_printerr(ENOMEM, "Out of memory!");
-  else {
-    const unsigned char *filter = (const unsigned char *)
-      (!strcmp(cmd, "set") ?
-       ".[1] as $k|.[2] as $v|.[0] + ([{key:$k,value:$v}]|from_entries)" :
-       ".[1] as $k|(.[0]|to_entries|map(select(.key!=$k))|from_entries)"
-       );
-    err = zsv_modify_cache_file(filepath, zsv_cache_type_property, prop_id_json, (const unsigned char *)integer_str, filter);
-    // to do: debug "jv_parser_free" error given bad json such as:
-    //   err = modify_cache_file(filepath, zsv_cache_type_property, prop_id, integer_str, filter);
+#define ZSV_PROP_ARG_NONE -1
+#define ZSV_PROP_ARG_AUTO -2
+#define ZSV_PROP_ARG_REMOVE -3
+
+static int prop_arg_value(int i, int argc, const char *argv[], int64_t *value) {
+  if(i >= argc) {
+    fprintf(stderr, "Option %s requires a value\n", argv[i-1]);
+    return 1;
   }
-  free(prop_id_json);
+
+  const char *arg = argv[i];
+  if(!strcmp(arg, "auto"))
+    *value = ZSV_PROP_ARG_AUTO;
+  else if(!strcmp(arg, "none") || !strcmp(arg, "0") || !strcmp(arg, "-"))
+    *value = ZSV_PROP_ARG_REMOVE;
+  else {
+    char *end = NULL;
+    intmax_t i = strtoimax(arg, &end, 0);
+    if(arg && *arg && end && *end == '\0') {
+      if(i == 0)
+        *value = ZSV_PROP_ARG_REMOVE;
+      else if(i > 0 && i <= UINT_MAX)
+        *value = i;
+      return 0;
+    }
+    fprintf(stderr, "Invalid property value '%s'.\n", arg);
+    fprintf(stderr, "Please use an integer greater than or equal to zero,"
+            "'auto', 'none', or '-'\n");
+    return 1;
+  }
+  return 0;
+}
+
+/////
+static int merge_properties(int64_t values[2],
+                            struct zsv_file_properties *fp, char keep[2], int *remove_any
+                            ) {
+  int err = 0;
+  // for each of d and R
+  // if the corresponding argument > 0, save it
+  // if the corresponding argument = ZSV_PROP_ARG_NONE, use fp value if fp is nonzero, else don't include it in the saved file
+  // if the corersponding argument = ZSV_PROP_ARG_REMOVE
+  // else error / unexpected value
+  char fp_specified[2] = { fp->header_span_specified, fp->skip_specified };
+  unsigned fp_val[2] = { fp->header_span, fp->skip };
+  for(int i = 0; i < 2; i++) {
+    switch(values[i]) {
+    case ZSV_PROP_ARG_NONE:
+      if(fp_specified[i]) {
+        keep[i] = 1;
+        values[i] = fp_val[i];
+      }
+      break;
+    case ZSV_PROP_ARG_REMOVE:
+      *remove_any = 1;
+      values[i] = 0;
+      break;
+    default:
+      if(values[i] >= 0)
+        keep[i] = 1;
+      else {
+        fprintf(stderr, "save_properties: unexpected unhandled case!\n");
+        err = 1;
+      }
+      break;
+    }
+  }
   return err;
 }
 
-static char property_id_is_ok(const char *s) {
-  return (!strcmp(s, "skip-head") || !strcmp(s, "header-row-span"));
+// print_properties: return 1 if something was printed
+static char print_properties_helper(FILE *f, int64_t values[2], char keep[2],
+                                    const char *prop_id[2]) {
+  char started = 0;
+  for(int i = 0; i < 2; i++) {
+    if(keep[i]) {
+      if(!started) {
+        fprintf(f, "{\n");
+        started = 1;
+      } else
+        fprintf(f, ",\n");
+      fprintf(f, "  \"%s\": %u", prop_id[i], values[i]);
+    }
+  }
+  if(started)
+    fprintf(f, "\n}\n");
+  return started;
 }
 
-int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
+// print_properties: return 1 if something was printed
+// print to stdout
+// in addition, print to f, if provided
+static char print_properties(FILE *f, int64_t values[2], char keep[2],
+                             const char *prop_id[2]) {
+  char result = 0;
+  if(f)
+    result = print_properties_helper(f, values, keep, prop_id);
+  if(!print_properties_helper(stdout, values, keep, prop_id))
+    printf("{}\n");
+  return result;
+}
+
+/////
+static int merge_and_save_properties(const unsigned char *filepath,
+                                     char save, char overwrite,
+                                     int64_t d, int64_t R) {
   int err = 0;
-  if(m_argc > 1 && (!strcmp(m_argv[1], "-h") || !strcmp(m_argv[1], "--help")))
-    err = zsv_property_usage(stdout);
-  else if(m_argc < 3)
-    err = zsv_property_usage(stderr);
+  int overwrite_err = 0;
+  unsigned char *props_fn = zsv_cache_filepath(filepath, zsv_cache_type_property, 0, 0);
+  if(!props_fn)
+    err = 1;
   else {
-    const unsigned char *filepath = (const unsigned char *)m_argv[1];
-    const char *cmd = m_argv[2];
-    const char *property_id = NULL;
-    const char *value = NULL;
-
-    int mode_args = 0;
-    enum zsv_property_mode {
-      zsv_property_mode_show_all = 1,
-      zsv_property_mode_unset_all,
-      zsv_property_mode_set_unset,
-      zsv_property_mode_detect
-    } mode = 0;
-
-    if(!strcmp(cmd, "show-all"))
-      mode = zsv_property_mode_show_all;
-    else if(!strcmp(cmd, "unset-all"))
-      mode = zsv_property_mode_unset_all;
-    else if(!strcmp(cmd, "detect"))
-      mode = zsv_property_mode_detect;
-    else if(!strcmp(cmd, "set") || !strcmp(cmd, "unset")) {
-      mode = zsv_property_mode_set_unset;
-      mode_args = *cmd == 's' ? 2 : 1;
-      if(*cmd == 's' && (m_argc < 5 || !*m_argv[3] || !*m_argv[4]))
-        err = zsv_printerr(1, "%s command requires <property_id> and <value>", cmd);
-      else if(*cmd == 'u' && (m_argc < 4 || !*m_argv[3]))
-        err = zsv_printerr(1, "%s command requires <property_id>", cmd);
-      else {
-        property_id = m_argv[3];
-        if(!property_id_is_ok(property_id))
-          err = zsv_printerr(1, "Unrecognized property id; expected 'skip-head' or 'header-row-span', got %s", property_id);
-        else {
-          value = *cmd == 's' ? m_argv[4] : "null";
-          if(*cmd == 's') { // check that value consists solely of digits
-            for(const char *s = value; !err && *s; s++) {
-              if(!strchr("1234567890", *s)) {
-                fprintf(stderr, "value should be an integer >= 0; got %s\n", value);
-                err = 1;
-              }
-            }
-          }
+    struct zsv_file_properties fp = { 0 };
+    struct zsv_opts zsv_opts = { 0 };
+    err = zsv_cache_load_props((const char *)filepath, &zsv_opts, &fp, NULL);
+    if(!err) {
+      if(save && !overwrite) {
+        if((fp.header_span_specified && d)
+           || (fp.skip_specified && R)) {
+          fprintf(stderr, "Properties for this file already exist; use -f or --overwrite option to overwrite\n");
+          err = 1;
         }
       }
-    } else
-      err = zsv_printerr(1, "Unrecognized command: %s", cmd);
-
-    struct detect_opts detect_opts = { 0 };
-    for(int i = 3 + mode_args; !err && i < m_argc; i++) {
-      // options go here
-      const char *arg = m_argv[i];
-      if(mode == zsv_property_mode_detect) {
-        if(!strcmp("-s", arg) || !strcmp("--save", arg)) {
-          detect_opts.save = 1;
-          continue;
-        }
-        if(!strcmp("-f", arg) || !strcmp("--force", arg)) {
-          detect_opts.force = 1;
-          continue;
-        }
-      }
-      err = zsv_printerr(1, "Unrecognized option: %s", arg);
     }
 
     if(!err) {
-      switch(mode) {
-      case zsv_property_mode_show_all:
-        err = show_all_properties(filepath);
-        break;
-      case zsv_property_mode_detect:
-        err = detect_properties(filepath, detect_opts);
-        break;
-      case zsv_property_mode_unset_all:
-        err = unset_all_properties(filepath);
-        break;
-      case zsv_property_mode_set_unset:
-        err = set_unset_property(filepath, cmd, property_id, value);
-        show_all_properties(filepath);
-        break;
+      unsigned char *props_fn_tmp = save ? zsv_cache_filepath(filepath, zsv_cache_type_property, 1, 1) : NULL;
+      if(save && !props_fn_tmp)
+        err = 1;
+      else {
+        // open a temp file, then write, then replace the orig file
+        FILE *f = props_fn_tmp? fopen((char *)props_fn_tmp, "wb") : NULL;
+        if(props_fn_tmp && !f) {
+          perror((char *)props_fn_tmp);
+          err = 1;
+        } else {
+          int64_t final_values[2] = { d, R };
+          const char *prop_id[2] = { "header-row-span", "skip-head" };
+          char keep[2] = { '\0', '\0' };
+          int remove_any = 0;
+          err = merge_properties(final_values, &fp, keep, &remove_any);
+          char printed_something = 0;
+          if(!err)
+            printed_something = print_properties(f, final_values, keep, prop_id);
+          if(f)
+            fclose(f);
+
+          if(!err) {
+            if(save && f) {
+              if(printed_something) {
+                if(zsv_replace_file(props_fn_tmp, props_fn))
+                  err = zsv_printerr(-1, "Unable to save %s", props_fn);
+              } else if(remove_any)
+                err = zsv_cache_remove(filepath, zsv_cache_type_property);
+            }
+          }
+        }
+        free(props_fn_tmp);
+      }
+    }
+    free(props_fn);
+  }
+}
+/////
+
+int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
+  int err = 0;
+  if(m_argc < 2 ||
+     (m_argc > 1 && (!strcmp(m_argv[1], "-h") || !strcmp(m_argv[1], "--help"))))
+    err = zsv_property_usage(stdout);
+  else {
+    struct prop_opts {
+      int64_t d; // ZSV_PROP_ARG_AUTO, ZSV_PROP_ARG_REMOVE or > 0
+      int64_t R; // ZSV_PROP_ARG_AUTO, ZSV_PROP_ARG_REMOVE or > 0
+      unsigned char clear:1;
+      unsigned char save:1;
+      unsigned char overwrite:1;
+      unsigned char _:3;
+    };
+    struct prop_opts opts = { 0 };
+    opts.d = ZSV_PROP_ARG_NONE;
+    opts.R = ZSV_PROP_ARG_NONE;
+
+    const unsigned char *filepath = (const unsigned char *)m_argv[1];
+    if(m_argc == 2)
+      return show_all_properties(filepath);
+
+    if(m_argc == 3 && !strcmp("--clear", m_argv[2]))
+      return zsv_cache_remove(filepath, zsv_cache_type_property);
+
+    for(int i = 2; !err && i < m_argc; i++) {
+      const char *opt = m_argv[i];
+      if(!strcmp(opt, "-d") || !strcmp(opt, "--header-row-span"))
+        err = prop_arg_value(++i, m_argc, m_argv, &opts.d);
+      else if(!strcmp(opt, "-R") || !strcmp(opt, "--skip-head"))
+        err = prop_arg_value(++i, m_argc, m_argv, &opts.R);
+      else if(!strcmp(opt, "--clear"))
+        err = fprintf(stderr, "--clear cannot be used in conjunction with any other options\n");
+      else if(!strcmp(opt, "--auto")) {
+        if(opts.d != ZSV_PROP_ARG_NONE && opts.R != ZSV_PROP_ARG_NONE)
+          err = fprintf(stderr, "--auto specified, but all other properties also specified");
+        else {
+          if(opts.d == ZSV_PROP_ARG_NONE)
+            opts.d = ZSV_PROP_ARG_AUTO;
+          if(opts.R == ZSV_PROP_ARG_NONE)
+            opts.R = ZSV_PROP_ARG_AUTO;
+        }
+      } else if(!strcmp(opt, "--save"))
+        opts.save = 1;
+      else if(!strcmp(opt, "-f") || !strcmp(opt, "--overwrite"))
+        opts.overwrite = 1;
+      else {
+        fprintf(stderr, "Unrecognized option: %s\n", opt);
+        err = 1;
+      }
+    }
+
+    // check if option combination is invalid
+    if(!err) {
+      char have_auto = opts.d == ZSV_PROP_ARG_AUTO || opts.R == ZSV_PROP_ARG_AUTO;
+      char have_specified = opts.d >= 0 || opts.R >= 0;
+      char have_remove = opts.d == ZSV_PROP_ARG_REMOVE || opts.R == ZSV_PROP_ARG_REMOVE;
+
+      if(have_auto && (have_specified || have_remove)) {
+        fprintf(stderr, "Non-auto options may not be mixed with auto options\n");
+        err = 1;
+      }
+
+      if(have_specified || have_remove) {
+        opts.save = 1;
+        opts.overwrite = 1;
+      }
+    }
+
+    if(!err) {
+      struct zsv_file_properties fp = { 0 };
+      if(opts.d >= 0 || opts.R >= 0 || opts.d == ZSV_PROP_ARG_REMOVE || opts.R == ZSV_PROP_ARG_REMOVE)
+        opts.overwrite = 1;
+      if(opts.d == ZSV_PROP_ARG_AUTO || opts.R == ZSV_PROP_ARG_AUTO) {
+        struct zsv_opts zsv_opts;
+        zsv_args_to_opts(m_argc, m_argv, &m_argc, m_argv, &zsv_opts, NULL);
+        err = detect_properties(filepath, &fp, opts.d, opts.R, &zsv_opts);
+      }
+
+      if(!err) {
+        if(opts.d == ZSV_PROP_ARG_AUTO)
+          opts.d = fp.header_span;
+
+        if(opts.R == ZSV_PROP_ARG_AUTO)
+          opts.R = fp.skip;
+        err = merge_and_save_properties(filepath, opts.save, opts.overwrite, opts.d, opts.R);
       }
     }
   }
-
   return err;
 }

@@ -136,7 +136,9 @@ int zsv_modify_cache_file(const unsigned char *filepath,
   int err = 0;
   if(!cache_data) {
     err = errno;
-    if(err != ENOENT) { // file exists but could not be opened
+    if(err == ENOENT)
+      err = 0;
+    else { // file exists but could not be opened
       perror((const char *)cache_fn);
       return err;
     }

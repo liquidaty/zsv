@@ -18,7 +18,8 @@
 #include "zsv_main.h"
 
 #define APPNAME1(x) #x
-#define APPNAME APPNAME1(ZSV_COMMAND)
+#define APPNAME2(x) APPNAME1(x)
+#define APPNAME APPNAME2(ZSV_COMMAND)
 
 #include <zsv/utils/err.h>
 

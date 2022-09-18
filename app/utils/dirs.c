@@ -38,7 +38,7 @@ static size_t chop_slash(char* buff, size_t len) {
  * prefix should be determined at compile time e.g. /usr/local or ""
  * @return length written to buff, or 0 if failed
  */
-size_t get_config_dir(char* buff, size_t buffsize, const char *prefix) {
+size_t zsv_get_config_dir(char* buff, size_t buffsize, const char *prefix) {
 #if defined(_WIN32)
   const char *env_val = getenv("ZSV_CONFIG_DIR");
   (void)(prefix);
@@ -58,43 +58,6 @@ size_t get_config_dir(char* buff, size_t buffsize, const char *prefix) {
     written = snprintf(buff, buffsize, "%s", env_val);
   else
     written = snprintf(buff, buffsize, "%s/etc", prefix ? prefix : "");
-#endif
-  if(written > 0 && ((size_t)written) < buffsize)
-    return chop_slash(buff, written);
-  return 0;
-}
-
-/**
- * Get global app data dir for application data that is variable
- * local or not-local should be a compile-time option;
- * the default for `make install` is local and for packaged distributions is non-local
- * @param prefix_or_env should be prefix on unix-like systems, or LOCALAPPDATA or APPDATA on
- * Windows systems. If none is provided, defaults to /usr/local (unix) or LOCALAPPDATA (Windows)
- * @return length written to buff, or 0 if failed
- *
- * (or overridden via configure --localstatedir in which case this function should not be called)
- */
-size_t get_app_data_dir(char *buff, size_t buffsize, const char *prefix_or_env) {
-#ifdef _WIN32
-  const char *env = prefix_or_env ? prefix_or_env : "LOCALAPPDATA"; // : "APPDATA";
-  int written = snprintf(buff, buffsize, "%s", getenv(env));
-#else
-  int written = snprintf(buff, buffsize, "%s/var", prefix_or_env ? prefix_or_env : "");
-#endif
-  if(written > 0 && ((size_t)written) < buffsize)
-    return chop_slash(buff, written);
-  return 0;
-}
-
-/**
- * Get temp directory
- * @return length written to buff, or 0
- */
-size_t get_temp_dir(char *buff, size_t buffsize) {
-#ifdef _WIN32
-  int written = snprintf(buff, buffsize, "%s", getenv("TEMP"));
-#else
-  int written = snprintf(buff, buffsize, "%s", getenv("TMPDIR"));
 #endif
   if(written > 0 && ((size_t)written) < buffsize)
     return chop_slash(buff, written);
@@ -172,13 +135,13 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
 
 
 #if defined(_WIN32)
-size_t get_executable_path(char* buff, size_t buffsize) {
+size_t zsv_get_executable_path(char* buff, size_t buffsize) {
   return GetModuleFileNameA(NULL, buff, (DWORD)buffsize);
 }
 
 #elif defined(__APPLE__)
   #include <mach-o/dyld.h>
-size_t get_executable_path(char* buff, size_t bufflen) {
+size_t zsv_get_executable_path(char* buff, size_t bufflen) {
   uint32_t pathlen = bufflen;
   if(!_NSGetExecutablePath(buff, &pathlen)) {
     char real[FILENAME_MAX];
@@ -194,7 +157,7 @@ size_t get_executable_path(char* buff, size_t bufflen) {
 }
 #elif defined(__linux__) || defined(__EMSCRIPTEN__)
   #include <unistd.h>
-size_t get_executable_path(char* buff, size_t buffsize) {
+size_t zsv_get_executable_path(char* buff, size_t buffsize) {
   buffsize = readlink("/proc/self/exe", buff, buffsize - 1);
   buff[buffsize] = '\0';
   return buffsize;
@@ -202,7 +165,7 @@ size_t get_executable_path(char* buff, size_t buffsize) {
 #elif defined(__FreeBSD__)
 #include <sys/stat.h>
 #include <sys/sysctl.h>
-size_t get_executable_path(char* buff, size_t buffsize) {
+size_t zsv_get_executable_path(char* buff, size_t buffsize) {
   int mib[4];
   mib[0] = CTL_KERN;
   mib[1] = KERN_PROC;

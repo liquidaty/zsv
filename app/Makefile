@@ -25,12 +25,15 @@ LIBZSV_A=libzsv.a
 LIBZSV=${BUILD_DIR}/lib/${LIBZSV_A}
 LIBZSV_INSTALL=${LIBDIR}/${LIBZSV_A}
 
-#STRING_LIB_INCLUDE=
-#STRINGLIB_INCLUDE_FLAG=
-#ifneq ($(STRING_LIB_INCLUDE),)
-#  CFLAGS+= -DSTRING_LIB_INCLUDE='${STRING_LIB_INCLUDE}'
-#endif
-#STRING_LIB_OBJ=
+# if we are incorporating these commands into another project, we might
+# want to use different values for ZSV_TEMPFILE_SUFFIX and ZSV_CACHE_PREFIX
+# to do: set these in the configure script
+ifneq ($(ZSV_TEMPFILE_SUFFIX),)
+  CFLAGS+= -DZSV_TEMPFILE_SUFFIX='${ZSV_TEMPFILE_SUFFIX}'
+endif
+ifneq ($(ZSV_CACHE_PREFIX),)
+  CFLAGS+= -DZSV_CACHE_PREFIX='${ZSV_CACHE_PREFIX}'
+endif
 
 DEBUG=0
 WIN=
@@ -288,7 +291,7 @@ ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 ${CLI_APP_OBJECT} : cli_ini.c builtin/*.c
 ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8proc.c # ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI -DMAIN=main_$* ${CLI_INCLUDE} -Iexternal/sglib -I${INCLUDE_DIR} -c $< -o $@ ${MORE_SOURCE}
+	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} -Iexternal/sglib -I${INCLUDE_DIR} -c $< -o $@ ${MORE_SOURCE}
 
 ${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`

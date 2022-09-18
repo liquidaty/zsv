@@ -159,7 +159,7 @@ static int config_ini_handler(void* ctx, const char* section,
 }
 
 static size_t get_ini_file(char *buff, size_t buffsize) {
-  size_t len = get_config_dir(buff, buffsize, PREFIX);
+  size_t len = zsv_get_config_dir(buff, buffsize, PREFIX);
   if(len) {
     size_t n = snprintf(buff + len, buffsize - len, "%czsv.ini", FILESLASH);
     if(n > 0 && n + len < buffsize)

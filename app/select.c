@@ -513,60 +513,59 @@ static void zsv_select_header_row(void *ctx) {
 #define ZSV_SELECT_MAX_COLS_DEFAULT 1024
 #define ZSV_SELECT_MAX_COLS_DEFAULT_S "1024"
 
-const char *zsv_select_usage_msg[] =
-  {
-   APPNAME ": streaming CSV parser",
-   "",
-   "Usage: " APPNAME " [filename] [options] [-- col_specifier [... col_specifier]]",
-   "  where col_specifier is a column name or, if the -n option is used,",
-   "   a column index (starting at 1) or index range in the form of n-m",
-   "  e.g. " APPNAME " -n myfile.csv -- 1 4-6 50 10",
-   "       " APPNAME " myfile.csv -- first_col fiftieth_column \"Tenth Column\"",
-   "",
-   "Extracts and outputs specified columns. Outputs the input columns that are specified after",
-   "the '--' separator, or all columns if no '--' separator is provided",
-   "",
-   "Options:",
-   "  -b, --with-bom : output with BOM",
-   "  --fixed <offset1,offset2,offset3>: parse as fixed-width text; use given comma-separated list of positive integers for cell end indexes",
+const char *zsv_select_usage_msg[] = {
+  APPNAME ": streaming CSV parser",
+  "",
+  "Usage: " APPNAME " [filename] [options] [-- col_specifier [... col_specifier]]",
+  "  where col_specifier is a column name or, if the -n option is used,",
+  "   a column index (starting at 1) or index range in the form of n-m",
+  "  e.g. " APPNAME " -n myfile.csv -- 1 4-6 50 10",
+  "       " APPNAME " myfile.csv -- first_col fiftieth_column \"Tenth Column\"",
+  "",
+  "Extracts and outputs specified columns. Outputs the input columns that are specified after",
+  "the '--' separator, or all columns if no '--' separator is provided",
+  "",
+  "Options:",
+  "  -b, --with-bom : output with BOM",
+  "  --fixed <offset1,offset2,offset3>: parse as fixed-width text; use given comma-separated list of positive integers for cell end indexes",
 #ifndef ZSV_CLI
-   "  -v, --verbose: verbose output",
+  "  -v, --verbose: verbose output",
 #endif
-   "  -H, --head <n>: (head) only process the first n rows of data",
-   "                                selected from all rows in the input",
-   "  --header-row <header row>: insert the provided CSV as the first row",
-   "        e.g. --header-row 'colname1,colname2,\"my column 3\"'",
-   "  -s, --search <value>: only output rows with at least one cell containing value",
-   // to do: " -s, --search /<pattern>/modifiers: search on regex pattern; modifiers include 'g' (global) and 'i' (case-insensitive)",
-   "  --sample-every <num of rows>: output a sample consisting of the first row, then every nth row",
-   "  --sample-pct   <percentage>: output a randomly-selected sample (32 bits of randomness) of n percent of the input rows",
-   "  -d, --header-row-span <n>: apply header depth (rowspan) of n",
-   "  --distinct: skip subsequent occurrences of columns with the same name",
-   "  --merge: merge subsequent occurrences of columns with the same name, outputting first non-null value",
-   // --rename: like distinct, but instead of removing cols with dupe names, renames them, trying _<n> for n up to max cols
-   "  -e <embedded lineend char>: char to replace embedded lineend. if none provided, embedded lineends are preserved",
-   "      If the provided string begins with 0x, it will be interpreted as the hex representation of a string",
-   "  -x <column>: exclude the indicated column. can be specified more than once",
-   "  -N, --line-number: prefix each row with the row number",
-   "  -n: provided column indexes are numbers corresponding to column positions (starting with 1), instead of names",
+  "  -H, --head <n>: (head) only process the first n rows of data",
+  "                                selected from all rows in the input",
+  "  --header-row <header row>: insert the provided CSV as the first row",
+  "        e.g. --header-row 'colname1,colname2,\"my column 3\"'",
+  "  -s, --search <value>: only output rows with at least one cell containing value",
+  // to do: " -s, --search /<pattern>/modifiers: search on regex pattern; modifiers include 'g' (global) and 'i' (case-insensitive)",
+  "  --sample-every <num of rows>: output a sample consisting of the first row, then every nth row",
+  "  --sample-pct   <percentage>: output a randomly-selected sample (32 bits of randomness) of n percent of the input rows",
+  "  -d, --header-row-span <n>: apply header depth (rowspan) of n",
+  "  --distinct: skip subsequent occurrences of columns with the same name",
+  "  --merge: merge subsequent occurrences of columns with the same name, outputting first non-null value",
+  // --rename: like distinct, but instead of removing cols with dupe names, renames them, trying _<n> for n up to max cols
+  "  -e <embedded lineend char>: char to replace embedded lineend. if none provided, embedded lineends are preserved",
+  "      If the provided string begins with 0x, it will be interpreted as the hex representation of a string",
+  "  -x <column>: exclude the indicated column. can be specified more than once",
+  "  -N, --line-number: prefix each row with the row number",
+  "  -n: provided column indexes are numbers corresponding to column positions (starting with 1), instead of names",
 #ifndef ZSV_CLI
-   "  -T: input is tab-delimited, instead of comma-delimited",
-   "  -O, --other-delim <delim>: input is delimited with the given char, instead of comma-delimited",
-   "                             Note: this option does not support quoted values with embedded delimiters",
+  "  -T: input is tab-delimited, instead of comma-delimited",
+  "  -O, --other-delim <delim>: input is delimited with the given char, instead of comma-delimited",
+  "                             Note: this option does not support quoted values with embedded delimiters",
 #endif
-   "  -u, --malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8 input",
-   "     (default value is '?')",
-   "  -w, --whitespace-clean: normalize all whitespace to space or newline, single-char (non-consecutive) occurrences",
-   "  --whitespace-clean-no-newline: clean whitespace and remove embedded newlines",
-   "  -W, --no-trim: do not trim whitespace",
+  "  -u, --malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8 input",
+  "     (default value is '?')",
+  "  -w, --whitespace-clean: normalize all whitespace to space or newline, single-char (non-consecutive) occurrences",
+  "  --whitespace-clean-no-newline: clean whitespace and remove embedded newlines",
+  "  -W, --no-trim: do not trim whitespace",
 #ifndef ZSV_CLI
-   "  -C <maximum_number_of_columns>: defaults to " ZSV_SELECT_MAX_COLS_DEFAULT_S,
-   "  -L, --max-row-size <n>: set the maximum memory used for a single row",
-   "                          defaults to " ZSV_ROW_MAX_SIZE_DEFAULT_S ", min " ZSV_ROW_MAX_SIZE_MIN_S ")",
+  "  -C <maximum_number_of_columns>: defaults to " ZSV_SELECT_MAX_COLS_DEFAULT_S,
+  "  -L, --max-row-size <n>: set the maximum memory used for a single row",
+  "                          defaults to " ZSV_ROW_MAX_SIZE_DEFAULT_S ", min " ZSV_ROW_MAX_SIZE_MIN_S ")",
 #endif
-   "  -o <output filename>: name of file to save output to",
-   NULL
-  };
+  "  -o <output filename>: name of file to save output to",
+  NULL
+};
 
 static void zsv_select_usage() {
   for(int i = 0; zsv_select_usage_msg[i]; i++)
