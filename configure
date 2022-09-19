@@ -487,8 +487,7 @@ tryflag CFLAGS_CLMUL -mvpclmulqdq
 tryflag CFLAGS_LTO -flto
 tryflag CFLAGS_OPT -fvisibility=hidden
 tryldflag LDFLAGS_AUTO -Wl,--gc-sections
-tryldflag LDFLAGS_OPT_LTO -flto
-tryldflag LDFLAGS_OPT -fwhole-program
+tryflag CFLAGS_LTO -flto || (echo "no lto, trying -fwhole-program" && tryldflag LDFLAGS_OPT -fwhole-program)
 tryldflag LDFLAGS_OPT -march=native
 tryldflag LDFLAGS_OPT -ldl
 

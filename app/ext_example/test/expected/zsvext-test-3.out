@@ -30,7 +30,7 @@ Options common to all commands except `prop`, `rm` and `jq`:
   -S,--keep-blank-headers: disable default behavior of ignoring leading blank rows
   -v,--verbose: verbose output
 
-Commands:
+Commands that parse CSV or other tabular data:
   select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations
   sql      : run ad-hoc SQL
   count    : print the number of rows
@@ -39,12 +39,15 @@ Commands:
   flatten  : flatten a table consisting of N groups of data, each with 1 or
              more rows in the table, into a table of N rows
   2json    : convert CSV or sqlite3 db table to json
-  2db      : convert json to sqlite3 db
   2tsv     : convert to tab-delimited text
   serialize: convert into 3-column format (id, column name, cell value)
   stack    : stack tables vertically, aligning columns with common names
-  prop     : save parsing options for a given data file, that are automatically applied
-             when other lq commands are run on that file
+
+Other commands:
+  2db      : convert json to sqlite3 db
+  prop     : save parsing options associated with a file that are subsequently
+             applied by default when processing that file
+  rm       : remove a file and its related cache
   jq       : run a jq filter on json input
 
 (No extended commands)
@@ -78,7 +81,7 @@ Options common to all commands except `prop`, `rm` and `jq`:
   -S,--keep-blank-headers: disable default behavior of ignoring leading blank rows
   -v,--verbose: verbose output
 
-Commands:
+Commands that parse CSV or other tabular data:
   select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations
   sql      : run ad-hoc SQL
   count    : print the number of rows
@@ -87,12 +90,15 @@ Commands:
   flatten  : flatten a table consisting of N groups of data, each with 1 or
              more rows in the table, into a table of N rows
   2json    : convert CSV or sqlite3 db table to json
-  2db      : convert json to sqlite3 db
   2tsv     : convert to tab-delimited text
   serialize: convert into 3-column format (id, column name, cell value)
   stack    : stack tables vertically, aligning columns with common names
-  prop     : save parsing options for a given data file, that are automatically applied
-             when other lq commands are run on that file
+
+Other commands:
+  2db      : convert json to sqlite3 db
+  prop     : save parsing options associated with a file that are subsequently
+             applied by default when processing that file
+  rm       : remove a file and its related cache
   jq       : run a jq filter on json input
 
 Extended commands:

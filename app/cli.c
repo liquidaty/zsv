@@ -634,7 +634,7 @@ static struct zsv_ext *zsv_ext_new(const char *dl_name, const char *id, char ver
     } else
       fprintf(stderr, "Opening whaa???\n");
 #else
-    size_t n = get_executable_path(exe_path, sizeof(exe_path));
+    size_t n = zsv_get_executable_path(exe_path, sizeof(exe_path));
     if(n > 0 && n < sizeof(exe_path)) {
       char *end = strrchr(exe_path, FILESLASH);
       if(end) {

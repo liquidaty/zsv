@@ -96,14 +96,14 @@ CLI:
 	@echo "Testing CLI..."
 	@make CLI1=1 test -n | sed 's/\/[^ ]*\/bin\/zsv_/zsv /g' | sh
 
-test: ${TESTS} #${TMP_DIR} ${TESTS}
-
-# ${TMP_DIR}:
-#	@mkdir -p ${TMP_DIR}
+test: ${TESTS}
 
 .SECONDARY: worldcitiespop_mil.csv
 
 .PHONY: help test test-% test-stack clean
+
+test-prop:
+	EXE=${BUILD_DIR}/bin/zsv_prop${EXE} make -C prop test
 
 test-echo : ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}

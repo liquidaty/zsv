@@ -61,17 +61,23 @@ enum zsv_status zsv_properties_parser_destroy(struct zsv_properties_parser *pars
 }
 
 /**
- * Load cached file properties
- * @param data_filepath required file path
- * @param opts parser options to modify
- * @param fp (optional) parsed file properties
- * @param cmd_opts_used (optional) string of cmd options already used
- * @return 0 on success, else error code
+ * Load cached file properties into a zsp_opts and/or zsv_file_properties struct
+ * If cmd_opts_used is provided, then do not set any zsv_opts values, if the
+ * corresponding option code is already present in cmd_opts_used, and instead
+ * print a warning to stderr
+ *
+ * @param data_filepath            required file path
+ * @param opts (optional)          parser options to load
+ * @param fp (optional)            parsed file properties
+ * @param cmd_opts_used (optional) cmd option codes to skip + warn if found
+ * @return zsv_status_ok on success
  */
 enum zsv_status zsv_cache_load_props(const char *data_filepath,
                                      struct zsv_opts *opts,
                                      struct zsv_file_properties *fp,
                                      const char *cmd_opts_used) {
+  // we need some memory to save the parsed properties
+  // if the caller did not provide that, use our own
   struct zsv_file_properties tmp = { 0 };
   if(!fp)
     fp = &tmp;
@@ -94,7 +100,7 @@ enum zsv_status zsv_cache_load_props(const char *data_filepath,
     } else {
       p = zsv_properties_parser_new(fp);
       if(!p)
-          stat = zsv_status_memory;
+        stat = zsv_status_memory;
       else if(p->stat != yajl_status_ok)
         stat = zsv_status_error;
       else {
@@ -119,13 +125,13 @@ enum zsv_status zsv_cache_load_props(const char *data_filepath,
     if(fp->skip_specified) {
       if(cmd_opts_used && strchr(cmd_opts_used, 'R'))
         fprintf(stderr, "Warning: file property 'skip-head' overridden by command option\n");
-      else
+      else if(opts)
         opts->rows_to_ignore = fp->skip;
     }
     if(fp->header_span_specified) {
       if(cmd_opts_used && strchr(cmd_opts_used, 'd'))
         fprintf(stderr, "Warning: file property 'header-row-span' overridden by command option\n");
-      else
+      else if(opts)
         opts->header_span = fp->header_span;
     }
   }
