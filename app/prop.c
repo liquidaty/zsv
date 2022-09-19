@@ -362,7 +362,6 @@ static int prop_arg_value(int i, int argc, const char *argv[], int64_t *value) {
   return 0;
 }
 
-/////
 static int merge_properties(int64_t values[2],
                             struct zsv_file_properties *fp, char keep[2], int *remove_any
                             ) {
@@ -431,7 +430,6 @@ static char print_properties(FILE *f, int64_t values[2], char keep[2],
   return result;
 }
 
-/////
 static int merge_and_save_properties(const unsigned char *filepath,
                                      char save, char overwrite,
                                      int64_t d, int64_t R) {
@@ -491,8 +489,8 @@ static int merge_and_save_properties(const unsigned char *filepath,
     }
     free(props_fn);
   }
+  return err;
 }
-/////
 
 int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
   int err = 0;
