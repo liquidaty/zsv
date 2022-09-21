@@ -24,6 +24,10 @@ const char *zsv_lib_version() {
   return VERSION;
 }
 
+/**
+ * Read the next chunk of data from our input stream and parse it, calling our
+ * custom handlers as each cell and row are parsed
+ */
 ZSV_EXPORT
 enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   if(scanner->insert_string) {
@@ -82,9 +86,7 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   }
 
   size_t bytes_read;
-
   if(UNLIKELY(!scanner->checked_bom)) {
-
 #ifdef ZSV_EXTRAS
     // initialize progress timer
     if(scanner->opts.progress.seconds_interval)
@@ -331,4 +333,30 @@ unsigned char *zsv_remaining_buffer(struct zsv_scanner *scanner,
 ZSV_EXPORT
 size_t zsv_cum_scanned_length(zsv_parser parser) {
   return parser->cum_scanned_length + parser->scanned_length + (parser->had_bom ? strlen(ZSV_BOM) : 0);
+}
+
+/**
+ * @param parser parser handle
+ * @param utf8   the input string to parse. Note: this buffer may not overlap with
+ *               the parser buffer!
+ * @param len    length of the input to parse
+ */
+enum zsv_status zsv_parse_string(struct zsv_scanner *scanner,
+                                            const unsigned char *utf8,
+                                            size_t len) {
+  const unsigned char *cursor = utf8;
+  while(len) {
+    size_t capacity = scanner->buff.size - scanner->partial_row_length;
+    size_t bytes_read = len > capacity ? capacity : len;
+    memcpy(scanner->buff.buff + scanner->partial_row_length, cursor, len);
+    cursor += len;
+    len -= bytes_read;
+    if(scanner->filter)
+      bytes_read = scanner->filter(scanner->filter_ctx,
+                                   scanner->buff.buff + scanner->partial_row_length,
+                                   bytes_read);
+    if(bytes_read)
+      return zsv_scan(scanner, scanner->buff.buff, bytes_read);
+  }
+  return zsv_status_ok;
 }

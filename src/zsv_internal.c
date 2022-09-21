@@ -571,27 +571,6 @@ size_t zsv_filter_write(void *FILEp, unsigned char *buff, size_t bytes_read) {
   return bytes_read;
 }
 
-// zsv_parse_string(): *utf8 may not overlap w scanner buffer!
-enum zsv_status zsv_parse_string(struct zsv_scanner *scanner,
-                                            const unsigned char *utf8,
-                                            size_t len) {
-  const unsigned char *cursor = utf8;
-  while(len) {
-    size_t capacity = scanner->buff.size - scanner->partial_row_length;
-    size_t bytes_read = len > capacity ? capacity : len;
-    memcpy(scanner->buff.buff + scanner->partial_row_length, cursor, len);
-    cursor += len;
-    len -= bytes_read;
-    if(scanner->filter)
-      bytes_read = scanner->filter(scanner->filter_ctx,
-                                   scanner->buff.buff + scanner->partial_row_length,
-                                   bytes_read);
-    if(bytes_read)
-      return zsv_scan(scanner, scanner->buff.buff, bytes_read);
-  }
-  return zsv_status_ok;
-}
-
 static void apply_callbacks(struct zsv_scanner *scanner) {
   if(scanner->opts.cell) {
     // call the user-provided cell() callback on each cell

@@ -83,7 +83,12 @@ ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count
 
 ZSV_EXPORT size_t zsv_filter_write(void *FILEp, unsigned char *buff, size_t bytes_read);
 
-// zsv_parse_string(): *utf8 may not overlap w parser buffer!
+/**
+ * @param parser parser handle
+ * @param utf8   the input string to parse. Note: this buffer may not overlap with
+ *               the parser buffer!
+ * @param len    length of the input to parse
+ */
 ZSV_EXPORT enum zsv_status zsv_parse_string(zsv_parser parser,
                                             const unsigned char *restrict utf8,
                                             size_t len);
