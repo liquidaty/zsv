@@ -32,7 +32,7 @@ static void change_slashes_to_backslashes(char *path) {
   }
 }
 
-void to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len) {
+void zsv_win_to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len) {
   char buf[PATH_MAX], buf2[PATH_MAX];
   strlcpy(buf, path, sizeof(buf));
 
@@ -54,8 +54,8 @@ void to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len) {
 
 int zsv_replace_file(const void *src, const void *dest) {
   wchar_t wdest[PATH_MAX], wsrc[PATH_MAX];
-  to_unicode(dest, wdest, ARRAY_SIZE(wdest));
-  to_unicode(src, wsrc, ARRAY_SIZE(wsrc));
+  zsv_win_to_unicode(dest, wdest, ARRAY_SIZE(wdest));
+  zsv_win_to_unicode(src, wsrc, ARRAY_SIZE(wsrc));
 
   if(ReplaceFileW(wdest, wsrc, NULL, REPLACEFILE_IGNORE_MERGE_ERRORS, 0, 0)) // success
     return 0;
@@ -64,7 +64,7 @@ int zsv_replace_file(const void *src, const void *dest) {
   return 1; // fail
 }
 
-void printLastError() {
+void zsv_win_printLastError() {
   DWORD dw = GetLastError();
   LPVOID lpMsgBuf;
   LPVOID lpDisplayBuf;

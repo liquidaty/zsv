@@ -13,7 +13,7 @@
 void *dlopen(const char *dll_name, int flags) {
   (void)flags;
   wchar_t wbuf[PATH_MAX];
-  to_unicode(dll_name, wbuf, ARRAY_SIZE(wbuf));
+  zsv_win_to_unicode(dll_name, wbuf, ARRAY_SIZE(wbuf));
   return LoadLibraryW(wbuf);
 }
 
@@ -26,4 +26,3 @@ int dlclose(void *handle) {
   return result;
 }
 #endif
-
