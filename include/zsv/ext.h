@@ -76,7 +76,7 @@ struct zsv_ext_callbacks {
   void (*set_context)(zsv_parser handle, void *ctx);
   enum zsv_status (*parse_more)(struct zsv_scanner *scanner);
   void (*abort)(struct zsv_scanner *scanner);
-  size_t (*column_count)(zsv_parser parser);
+  size_t (*cell_count)(zsv_parser parser);
   struct zsv_cell (*get_cell)(zsv_parser parser, size_t ix);
   enum zsv_status (*finish)(zsv_parser);
   enum zsv_status (*delete)(zsv_parser);

@@ -209,7 +209,7 @@ unsigned char *zsv_cache_path(const unsigned char *data_filepath,
   const unsigned char *dir_end = (!last_slash && !last_backslash ? NULL :
                                   last_backslash > last_slash ? last_backslash :
                                   last_slash);
-  char *s;
+  char *s = NULL;
   char *filename_suffix = NULL;
   if(cache_filename)
     asprintf(&filename_suffix, "%c%s%s", FILESLASH, cache_filename,

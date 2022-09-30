@@ -401,15 +401,6 @@ static void zsv_desc_cell(void *ctx, unsigned char *restrict utf8_value, size_t 
   data->current_column_ix++;
 }
 
-static void zsv_desc_overflow(void *ctx, unsigned char *restrict utf8_value, size_t len) {
-  struct zsv_desc_data *data = ctx;
-  if(!data) return;
-
-  if(!data->overflowed)
-    data->overflowed = zsv_memdup(utf8_value, len);
-  data->overflow_count++;
-}
-
 static void zsv_desc_row(void *ctx) {
   struct zsv_desc_data *data = ctx;
 
@@ -503,9 +494,8 @@ static void zsv_desc_cleanup(struct zsv_desc_data *data) {
 static void zsv_desc_execute(struct zsv_desc_data *data,
                              const char *input_path,
                              const char *opts_used) {
-  data->opts->cell = zsv_desc_cell;
-  data->opts->row = zsv_desc_row;
-  data->opts->overflow = zsv_desc_overflow;
+  data->opts->cell_handler = zsv_desc_cell;
+  data->opts->row_handler = zsv_desc_row;
   data->opts->ctx = data;
 
   if(!data->max_enum)

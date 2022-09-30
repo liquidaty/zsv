@@ -160,6 +160,9 @@ char json_value_truthy(struct json_value *value) {
         return 0;
       return d ? 1 : 0;
     }
+    break;
+  case json_value_error:
+    return 0;
   }
   return 0;
 }
@@ -300,12 +303,11 @@ static int yajl_helper_map_key(void *ctx, const unsigned char *stringVal, size_t
   if(st->level <= st->max_level) {
     if(st->map_keys[st->level - 1])
       free(st->map_keys[st->level - 1]);
-
-    char *str = malloc(1 + len);
-    memcpy(str, stringVal, len);
-    str[len] = '\0';
-    if(st->level <= st->max_level)
-      st->map_keys[st->level - 1] = str;
+    char *str;
+    if((st->map_keys[st->level - 1] = str = malloc(1 + len))) {
+      memcpy(str, stringVal, len);
+      str[len] = '\0';
+    }
   }
 
   if(st->map_key)
@@ -373,6 +375,21 @@ static int yajl_helper_null(void *ctx) {
   return process_value(st, ctx, &value);
 }
 
+static int yajl_helper_error(void * ctx, const char *buf,
+                             size_t bufLen, int err_no) {
+  (void)(err_no);
+  struct yajl_helper_parse_state *st = ctx;
+
+  if(!st->value)
+    return 0; // stop parsing
+
+  struct json_value value;
+  value.type = json_value_error;
+  value.val.s = (unsigned char *)buf;
+  value.strlen = bufLen;
+  return process_value(st, ctx, &value);
+}
+
 void yajl_helper_callbacks_init(yajl_callbacks *callbacks, char nums_as_strings) {
   yajl_callbacks x = {
     yajl_helper_null,
@@ -385,7 +402,8 @@ void yajl_helper_callbacks_init(yajl_callbacks *callbacks, char nums_as_strings)
     yajl_helper_map_key,
     yajl_helper_end_map,
     yajl_helper_start_array,
-    yajl_helper_end_array
+    yajl_helper_end_array,
+    yajl_helper_error
   };
   memcpy(callbacks, &x, sizeof(x));
 }

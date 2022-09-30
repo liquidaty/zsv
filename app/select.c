@@ -302,7 +302,7 @@ static inline char zsv_select_row_search_hit(struct zsv_select_data *data) {
   if(!data->search_strings)
     return 1;
 
-  unsigned int j = zsv_column_count(data->parser);
+  unsigned int j = zsv_cell_count(data->parser);
   for(unsigned int i = 0; i < j; i++) {
     struct zsv_cell cell = zsv_get_cell(data->parser, i);
     cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
@@ -430,7 +430,7 @@ static void zsv_select_data_row(void *ctx) {
   struct zsv_select_data *data = ctx;
   data->data_row_count++;
 
-  if(UNLIKELY(zsv_column_count(data->parser) == 0 || data->cancelled))
+  if(UNLIKELY(zsv_cell_count(data->parser) == 0 || data->cancelled))
     return;
 
   // check if we should skip this row
@@ -487,7 +487,7 @@ static void zsv_select_header_row(void *ctx) {
   if(data->cancelled)
     return;
 
-  unsigned int cols = zsv_column_count(data->parser);
+  unsigned int cols = zsv_cell_count(data->parser);
   unsigned int max_header_ix = 0;
   for(unsigned int i = 0; i < cols; i++) {
     struct zsv_cell cell = zsv_get_cell(data->parser, i);
@@ -772,7 +772,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     data.out2in = calloc(data.opts->max_columns, sizeof(*data.out2in));
     data.csv_writer = zsv_writer_new(&writer_opts);
     if(data.header_names && data.csv_writer) {
-      data.opts->row = zsv_select_header_row;
+      data.opts->row_handler = zsv_select_header_row;
       data.opts->ctx = &data;
       data.opts->insert_header_row = insert_header_row;
       if(zsv_new_with_properties(data.opts, input_path, opts_used, &data.parser)

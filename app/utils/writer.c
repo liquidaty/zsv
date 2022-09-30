@@ -155,7 +155,7 @@ zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
   if(w) {
     if(!(w->out.buff = malloc(ZSV_OUTPUT_BUFF_SIZE))) {
       free(w); // out of memory!
-      return w;
+      return NULL;
     }
 
     if(!opts) {

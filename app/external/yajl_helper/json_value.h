@@ -8,7 +8,8 @@ struct json_value {
     json_value_int,
     json_value_string,
     json_value_double,
-    json_value_number_string
+    json_value_number_string,
+    json_value_error
   } type;
 
   union {

@@ -18,6 +18,7 @@
 #define __YAJL_COMMON_H__
 
 #include <stddef.h>
+#include <inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {

@@ -115,7 +115,7 @@ static void zsv_cached_rows_delete(struct zsv_cached_row *first) {
 }
 
 static struct zsv_cached_row *zsv_pretty_dupe_row(zsv_parser parser) {
-  unsigned col_count = zsv_column_count(parser);
+  unsigned col_count = zsv_cell_count(parser);
   if(col_count) {
     struct zsv_cached_row *r = calloc(1, sizeof(*r));
     if(r) {
@@ -191,7 +191,7 @@ static size_t zsv_pretty_get_width(struct zsv_pretty_data *data, size_t ix) {
 
 static size_t zsv_pretty_get_row_count(struct zsv_pretty_data *data,
                                          struct zsv_cached_row *r) {
-  return r ? r->count : zsv_column_count(data->parser);
+  return r ? r->count : zsv_cell_count(data->parser);
 }
 
 static void zsv_pretty_output_lineend(struct zsv_pretty_data *data,
@@ -413,8 +413,7 @@ static enum zsv_pretty_status zsv_pretty_add_to_cache(struct zsv_pretty_data *da
 }
 
 static enum zsv_pretty_status zsv_pretty_update_column_widths(struct zsv_pretty_data *data) {
-  size_t columns_used = zsv_column_count(data->parser);
-//  size_t columns_used = zsv_row_cells_count(r);
+  size_t columns_used = zsv_cell_count(data->parser);
   if(columns_used > 1) {
     if(columns_used > data->widths.allocated) {
       size_t *new_width_values = realloc(data->widths.values, columns_used * sizeof(*new_width_values));
@@ -459,7 +458,7 @@ static void zsv_pretty_row(void *ctx) {
   if(data->err)
     return;
 
-  unsigned int columns_used = zsv_column_count(data->parser);
+  unsigned int columns_used = zsv_cell_count(data->parser);
   if(columns_used < 2 && (zsv_pretty_get_cell(data->parser, NULL, 0).len == 0 || data->widths.used == 0)) {
     zsv_pretty_reset_column_widths(data);
     zsv_pretty_output_row(data, NULL);
@@ -552,7 +551,7 @@ static struct zsv_pretty_data *zsv_pretty_init(struct zsv_pretty_opts *opts,
   else if(!(data->line.max = get_console_width()))
     data->line.max = ZSV_PRETTY_DEFAULT_LINE_MAX_WIDTH;
 
-  parser_opts->row = zsv_pretty_row;
+  parser_opts->row_handler = zsv_pretty_row;
   parser_opts->ctx = data;
   zsv_new_with_properties(parser_opts, input_path, opts_used, &data->parser);
 
@@ -678,11 +677,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *pa
     while(!rc && !zsv_signal_interrupted
           && (status = zsv_parse_more(h->parser)) == zsv_status_ok)
       ;
+
+    zsv_pretty_flush(h);
+    zsv_pretty_destroy(h);
   }
-
-  zsv_pretty_flush(h);
-  zsv_pretty_destroy(h);
-
   if(opts.out)
     fclose(opts.out);
   if(in && in != stdin)

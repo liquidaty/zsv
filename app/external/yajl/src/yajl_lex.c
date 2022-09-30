@@ -91,6 +91,7 @@ struct yajl_lexer_t {
     unsigned int validateUTF8;
 
     yajl_alloc_funcs * alloc;
+
 };
 
 #define readChar(lxr, txt, off)                      \
@@ -627,7 +628,7 @@ yajl_lex_lex(yajl_lexer lexer, const unsigned char * jsonText,
                 if (tok == yajl_tok_comment) {
                     /* "error" is silly, but that's the initial
                      * state of tok.  guilty until proven innocent. */
-                    tok = yajl_tok_error;
+                    tok = yajl_tok_error; // compiler msg: Value stored to 'tok' is never read
                     yajl_buf_clear(lexer->buf);
                     lexer->bufInUse = 0;
                     startOffset = *offset;

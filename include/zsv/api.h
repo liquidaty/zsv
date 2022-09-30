@@ -26,49 +26,164 @@
 #else
 #define ZSV_EXPORT
 #endif
+/*****************************************************************************
+ * libzsv API
+ *
+ * Functions provided by the zsv library are described herein. This document is
+ * organized into three sections:
+ * - required functions. any time libzsv is used and any input at all is parsed,
+ *   each of these functions should be used (usually, exactly once)
+ * - minimal access functions. these functions are generally necessary to use
+ *   libzsv for any non-trivial task
+ * - other functions
+ ******************************************************************************/
 
-const char *zsv_lib_version();
+/******************************************************************************
+ * Required functions:
+ * - zsv_new(): allocate a parser
+ * - zsv_parse_more(): parse some data
+ * - zsv_finish(): tie up loose ends
+ * - zsv_delete(): dispose the parser
+ ******************************************************************************/
 
-ZSV_EXPORT
-const unsigned char *zsv_parse_status_desc(enum zsv_status status);
-
-ZSV_EXPORT
-char zsv_quoted(zsv_parser parser);
-
-ZSV_EXPORT
-void zsv_abort(zsv_parser);
-
-/* number of cells in the row */
-ZSV_EXPORT
-size_t zsv_column_count(zsv_parser parser);
-
-ZSV_EXPORT
-char zsv_row_is_blank(zsv_parser parser);
-
-ZSV_EXPORT
-struct zsv_cell zsv_get_cell(zsv_parser parser, size_t ix);
-
-ZSV_EXPORT
-void zsv_set_row_handler(zsv_parser, void (*row)(void *ctx));
-
-ZSV_EXPORT
-void zsv_set_context(zsv_parser parser, void *ctx);
-
-ZSV_EXPORT
-void zsv_set_input(zsv_parser, void *in);
-
+/**
+ * Create a zsv parser. Typically, passed options will at least include a
+ * a `row_handler()` callback. Many, but not all, options can be subsequently
+ * set or modified after calling `zsv_new()`
+ *
+ * @param options see `struct zsv_opts` in common.h
+ * @returns zsv parser handle
+ */
 ZSV_EXPORT
 zsv_parser zsv_new(struct zsv_opts *opts);
 
+/**
+ * Parse the next chunk of data from the input stream:
+ * - Immediately after a cell (column) delimiter is parsed, the configured
+ *   `cell_handler()` callback, if any, is called
+ * - Immediately after a row delimiter is parsed, the configured
+ *   `row_handler()` callback, if any, is called.
+ *
+ * @param parser
+ * @returns zsv_status_ok if more data remains to be parsed,
+ *          zsv_status_no_more_input if the stream's EOF has been reached,
+ *          or other zsv status code in the event of error or cancellation
+ */
 ZSV_EXPORT enum zsv_status zsv_parse_more(zsv_parser parser);
 
-ZSV_EXPORT enum zsv_status zsv_next_input(zsv_parser parser, void *f_next_input);
+/**
+ * Finish any remaining processing, after all input has been read
+ */
+ZSV_EXPORT enum zsv_status zsv_finish(zsv_parser);
 
-ZSV_EXPORT enum zsv_status zsv_set_malformed_utf8_replace(zsv_parser parser, unsigned char value);
+/**
+ * Dispose of a parser that was created with `zsv_new()` or `zsv_new_with_properties()`
+ */
+ZSV_EXPORT enum zsv_status zsv_delete(zsv_parser);
+
+
+/******************************************************************************
+ * minimal access functions:
+ * - zsv_cell_count(): get the number of cells in the row
+ * - zsv_get_cell(): retriev a cell value
+ ******************************************************************************/
+
+/**
+ * Get the number of cells in the row that was just parsed. This function
+ * is typically called from within your `row_handler()` callback. In the event
+ * that the last row did not contain a single cell delimiter, returns 1
+ *
+ * @param parser
+ * @returns number, >= 1, of cells in in the row that was just parsed
+ */
+ZSV_EXPORT
+size_t zsv_cell_count(zsv_parser parser);
+
+/**
+ * Get the contents of a cell in the row that was just parsed. See `struct zsv_cell`
+ * in common.h for further details
+ *
+ * @param parser
+ * @param index zero-based index of the cell to fetch
+ * @return `zsv_cell` structure with the bytes and length of this cell value
+ *
+ * An example of a `row_handler()` loop to print each cell in a row might be:
+ * ```
+ *   size_t cell_count = zsv_cell_count(parser);
+ *   for(size_t i = 0; i < cell_count; i++) {
+ *     struct zsv_cell c = zsv_get_cell(parser, i);
+ *     printf("%.*s", c.len, (const char *)c.str);
+ *   }
+ * ```
+ */
+ZSV_EXPORT
+struct zsv_cell zsv_get_cell(zsv_parser parser, size_t index);
+
+
+/******************************************************************************
+ * other functions
+ ******************************************************************************/
+
+/**
+ * Get the library version
+ */
+ZSV_EXPORT
+const char *zsv_lib_version();
+
+/**
+ * Change a parser's row handler. This function may be called at any time
+ * during the parsing process to change the row handler that is called each
+ * time a row is parsed
+ *
+ * @param parser
+ * @param row_handler new callback value
+ */
+ZSV_EXPORT void zsv_set_row_handler(zsv_parser,
+                                    void (*row_handler)(void *ctx));
+
+/**
+ * Check if the row we just parsed consisted entirely of blank data
+ *
+ * @param parser
+ * @return non-zero if blank, 0 if non-blank
+ */
+ZSV_EXPORT
+char zsv_row_is_blank(zsv_parser parser);
+
+/**
+ * Change the context pointer that is passed to our callbacks
+ * @param parser
+ * @param ctx new context pointer value
+ */
+ZSV_EXPORT
+void zsv_set_context(zsv_parser parser, void *ctx);
+
+/**
+ * Change the input stream our parser reads from.
+ * This can be used to read multiple inputs as a single combined input
+ * by calling `zsv_set_input()` after `zsv_parse_more()` returns
+ * `zsv_status_no_more_input`
+ */
+ZSV_EXPORT
+void zsv_set_input(zsv_parser, void *in);
+
+/**
+ * Insert a filter to process or modify, before parsing, the next chunk of raw
+ * bytes read from the input stream. For example, to save a copy of the raw
+ * input to a file, `zsv_set_scan_filter()` could be called with
+ * `zsv_filter_write` passed as the filter argument, and the target FILE *
+ * passed as the context pointer.
+ *
+ * @param parser
+ * @param filter callback that is called on each chunk that is read from the
+ *               input stream, before the chunk is parsed. The callback may
+ *               modify the contents of the buffer so long as its return value
+ *               does not exceed the bufflen it was passed
+ */
 ZSV_EXPORT enum zsv_status zsv_set_scan_filter(zsv_parser parser,
                                                size_t (*filter)(void *ctx,
                                                                 unsigned char *buff,
-                                                                size_t bytes_read),
+                                                                size_t bufflen),
                                                void *ctx);
 
 /**
@@ -81,9 +196,9 @@ ZSV_EXPORT enum zsv_status zsv_set_scan_filter(zsv_parser parser,
  */
 ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count, size_t *offsets);
 
-ZSV_EXPORT size_t zsv_filter_write(void *FILEp, unsigned char *buff, size_t bytes_read);
-
 /**
+ * Parse a string. This function is not used in any zsv CLI or example code, but is
+ * provided here for push-parser compatibility
  * @param parser parser handle
  * @param utf8   the input string to parse. Note: this buffer may not overlap with
  *               the parser buffer!
@@ -93,19 +208,19 @@ ZSV_EXPORT enum zsv_status zsv_parse_string(zsv_parser parser,
                                             const unsigned char *restrict utf8,
                                             size_t len);
 
-// return a ptr to remaining (unparsed) buffer and length remaining
-ZSV_EXPORT unsigned char *zsv_remaining_buffer(zsv_parser parser, size_t *len);
-
-ZSV_EXPORT void zsv_set_row_handler(zsv_parser handle,
-                                        void (*row)(void *ctx));
+/**
+ * Get a text description of a status code
+ */
+ZSV_EXPORT
+const unsigned char *zsv_parse_status_desc(enum zsv_status status);
 
 /**
- * Finish any remaining processing, after all input has been read
+ * Abort parsing. After this function is called, no further
+ * `row_handler()` or `cell_handler()` calls will be made, and parse functions
+ * will return zsv_status_cancelled
  */
-ZSV_EXPORT enum zsv_status zsv_finish(zsv_parser);
-
-
-ZSV_EXPORT enum zsv_status zsv_delete(zsv_parser);
+ZSV_EXPORT
+void zsv_abort(zsv_parser);
 
 /**
  * @return number of bytes scanned from the last zsv_parse_more() invocation
@@ -118,43 +233,41 @@ ZSV_EXPORT size_t zsv_scanned_length(zsv_parser);
 ZSV_EXPORT size_t zsv_cum_scanned_length(zsv_parser parser);
 
 /**
- * Create a zsv_opts structure and return its handle. This is only necessary in
- * environments where structures cannot be directly instantiated such as web
- * assembly
+ * Check the quoted status of the last cell that was read. This function is only
+ * applicable when called from within a cell_handler() callback. Furthermore, this
+ * function is generally only useful when the cell value will subsequent be
+ * output in CSV format
+ *
+ * @returns 0 if value will *not* need to be quoted when output as CSV, or
+ *          1 if it might need to be quoted
+ */
+ZSV_EXPORT
+char zsv_quoted(zsv_parser parser);
+
+/**
+ * Create a zsv_opts structure and return its handle
+ *
+ * This is only necessary in environments where structures cannot be directly
+ * instantiated such as web assembly. Otherwise, you should avoid this function
+ * and just create a `struct zsv_opts` on the stack
+ *
+ * Each argument to `zsv_opts_new()` corresponds to the same-named `struct zsv_opts` element
+ * See common.h for details
  */
 ZSV_EXPORT struct zsv_opts *
 zsv_opts_new(
-               void (*row)(void *ctx), /* row handler */
-
-               /**
-                * usually it is easier to do all processing in the row handler,
-                * but you can also / instead use a cell handler
-                */
-               void (*cell)(void *ctx, unsigned char *utf8_value, size_t len),
-
-               void *ctx,             /* pointer passed to row / cell handler(s) */
-               zsv_generic_read read, /* defaults to fread */
-               void *stream,          /* defaults to stdin */
-
-               unsigned char *buff,   /* user-provided buff */
-               size_t buffsize,       /* size of user-provided buff */
-
-               unsigned max_columns,  /* defaults to 1024 */
-               /**
-                * max_row_size defaults to 32k
-                * the parser will handle rows of *at least* this size (in bytes)
-                * buffer is automatically allocated and this is non-zero,
-                * buffsize = 2 * max_row_size
-                */
+               void (*row_handler)(void *ctx),
+               void (*cell_handler)(void *ctx, unsigned char *utf8_value, size_t len),
+               void *ctx,
+               zsv_generic_read read,
+               void *stream,
+               unsigned char *buff,
+               size_t buffsize,
+               unsigned max_columns,
                unsigned max_row_size,
-
-               char delimiter, /* defaults to comma */
-               char no_quotes  /* defaults to false */
-
+               char delimiter,
+               char no_quotes
 #ifdef ZSV_EXTRAS
-               /**
-                * maximum number of rows to parse (including any header rows)
-                */
                , size_t max_rows
 #endif
              );

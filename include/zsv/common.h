@@ -29,10 +29,13 @@ enum zsv_status {
 #endif
 };
 
+/**
+ * `zsv_parser` is the type of a zsv parser handle
+ */
 typedef struct zsv_scanner * zsv_parser;
 
 /**
- * Structure for returning parsed CSV cell values
+ * Structure returned by `zsv_get_cell()` for fetching a parsed CSV cell value
  */
 struct zsv_cell {
   /**
@@ -83,43 +86,73 @@ typedef void (*zsv_completed_callback)(void *ctx, int code);
 # endif
 
 struct zsv_opts {
-  // callbacks for handling cell and/or row data
-  void (*cell)(void *ctx, unsigned char *utf8_value, size_t len);
-  void (*row)(void *ctx);
-  void *ctx;
-  void (*overflow)(void *ctx, unsigned char *utf8, size_t len);
-  void (*error)(void *ctx, enum zsv_status status, const unsigned char *err_msg, size_t err_msg_len, unsigned char bad_c, size_t cum_scanned_length);
+  /**
+   * Callback that is called for each row that is parsed. In most use cases,
+   * this is where most of the code logic resides
+   */
+  void (*row_handler)(void *ctx);
 
   /**
-   * caller can specify its own read function for fetching data to be parsed
-   * default value is `fread()`
+   * Callback that is called immediately after a cell is parsed.
+   * The most common usage pattern is to omit the cell handler, and just loop
+   * through each cell in the `row_handler`. But if you prefer, you can use
+   * only a cell handler, or both a cell handler and a row handler.
+   */
+  void (*cell_handler)(void *ctx, unsigned char *utf8_value, size_t len);
+
+  /**
+   * If a row was too long to fit in the allocated memory, then
+   * if `overflow_row_handler` is set, it will be called after the remaining
+   * portion of the row is parsed. For example, if a row consists of
+   * XXXXX,YYYYY and there is only enough memory to hold XXXX
+   * then `row_handler()` will be called after parsing `XXXX,` and
+   * `overflow_row_handler()` called twice, after parsing `X,YY` and `YYY`,
+   * before the subsequent row is parsed
+   *
+   * Note: we considered adding a callback that would be called before the initial
+   * `row_handler()` call, in the event that a subsequent `overflow_row_handler()`
+   * call was anticipated. Because this scenario occurs so infrequently, we
+   * decided to keep it simple with a single callback. But we may reconsider
+   * if there is demand for that (or another) alternative approach
+   */
+  void (*overflow_row_handler)(void *ctx);
+
+  /**
+   * The context that is passed to each of our handlers
+   */
+  void *ctx;
+
+  /**
+   * Caller can specify its own read function for fetching data to be parsed
+   * If not specified, the default value is `fread()`
    */
   zsv_generic_read read;
 
   /**
-   * caller can specify its own stream that is passed to the read function
-   * default value is stdin
+   * Caller can specify its own stream that is passed to the read function
+   * If not specified, the default value is stdin
    */
   void *stream;
 
   /**
-   * optionally, the caller can specify its own buffer for the parser to use
-   * of at least ZSV_MIN_SCANNER_BUFFSIZE (4096) in size
+   * Caller can specify its own buffer for the parser to use of at least
+   * ZSV_MIN_SCANNER_BUFFSIZE (4096) in size. If not provided, an internal
+   * buffer is allocated
    */
   unsigned char *buff;
 
   /**
-   * if caller specifies its own buffer, this should be its size
-   * otherwise, this is the size of the internal buffer that will be created,
-   * subject to increase if/as appropriate if max_row_size is specified.
-   * defaults to 256k
+   * If caller specifies its own buffer, this should be its size
+   * Otherwise, this can be specified as the size of the internal buffer that
+   * will be created, subject to increase if/as appropriate if max_row_size
+   * is specified. Defaults to 256k
    *
    * cli option: -B,--buff-size
    */
   size_t buffsize;
 
   /**
-   * maximum number of columns to parse. defaults to 1024
+   * Maximum number of columns to parse. defaults to 1024
    *
    * cli option: -c,--max-column-count
    */
