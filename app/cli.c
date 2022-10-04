@@ -288,7 +288,7 @@ static enum zsv_ext_status ext_parse_all(zsv_execution_context ctx,
                                          ) {
   struct zsv_opts opts = custom ? *custom : ext_parser_opts(ctx);
   if(row_handler)
-    opts.row = row_handler;
+    opts.row_handler = row_handler;
   zsv_parser parser = zsv_new(&opts);
   if(!parser)
     return zsv_ext_status_memory;
@@ -316,7 +316,7 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->set_context = zsv_set_context;
     e->parse_more = zsv_parse_more;
     e->abort = zsv_abort;
-    e->column_count = zsv_column_count;
+    e->cell_count = zsv_cell_count;
     e->get_cell = zsv_get_cell;
     e->finish = zsv_finish;
     e->delete = zsv_delete;

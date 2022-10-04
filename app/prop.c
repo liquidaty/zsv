@@ -247,7 +247,7 @@ struct detect_properties_data {
 
 static void detect_properties_row(void *ctx) {
   struct detect_properties_data *data = ctx;
-  size_t cols_used = data->rows[data->rows_processed].cols_used = zsv_column_count(data->parser);
+  size_t cols_used = data->rows[data->rows_processed].cols_used = zsv_cell_count(data->parser);
   for(size_t i = 0; i < cols_used; i++) {
     struct zsv_cell c = zsv_get_cell(data->parser, i);
     unsigned int result = type_detect(c.str, c.len);
@@ -299,10 +299,13 @@ static struct zsv_file_properties guess_properties(struct detect_properties_data
 
 static int detect_properties(const unsigned char *filepath,
                              struct zsv_file_properties *result,
-                             int64_t d, int64_t R,
+                             int64_t detect_headerspan, /* reserved for future use */
+                             int64_t detect_rows_to_skip, /* reserved for future use */
                              struct zsv_opts *opts) {
+  (void)(detect_headerspan);
+  (void)(detect_rows_to_skip);
   struct detect_properties_data data = { 0 };
-  opts->row = detect_properties_row;
+  opts->row_handler = detect_properties_row;
   opts->ctx = &data;
   if(!strcmp((void *)filepath, "-"))
     opts->stream = stdin;
@@ -409,7 +412,7 @@ static char print_properties_helper(FILE *f, int64_t values[2], char keep[2],
         started = 1;
       } else
         fprintf(f, ",\n");
-      fprintf(f, "  \"%s\": %u", prop_id[i], values[i]);
+      fprintf(f, "  \"%s\": %u", prop_id[i], (unsigned)values[i]);
     }
   }
   if(started)
@@ -434,7 +437,6 @@ static int merge_and_save_properties(const unsigned char *filepath,
                                      char save, char overwrite,
                                      int64_t d, int64_t R) {
   int err = 0;
-  int overwrite_err = 0;
   unsigned char *props_fn = zsv_cache_filepath(filepath, zsv_cache_type_property, 0, 0);
   if(!props_fn)
     err = 1;
@@ -568,7 +570,10 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
       if(opts.d == ZSV_PROP_ARG_AUTO || opts.R == ZSV_PROP_ARG_AUTO) {
         struct zsv_opts zsv_opts;
         zsv_args_to_opts(m_argc, m_argv, &m_argc, m_argv, &zsv_opts, NULL);
-        err = detect_properties(filepath, &fp, opts.d, opts.R, &zsv_opts);
+        err = detect_properties(filepath, &fp,
+                                opts.d == ZSV_PROP_ARG_AUTO,
+                                opts.R == ZSV_PROP_ARG_AUTO,
+                                &zsv_opts);
       }
 
       if(!err) {

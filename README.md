@@ -57,9 +57,9 @@ that implements the expected
 * Low memory usage (regardless of how big your data is) and size footprint for
   both lib (~20k) and CLI executable (< 1MB)
 * Easy to use as a library in a few lines of code
-* Includes `zsv` CLI with built-in commands:
-  * `select`, `count`, `sql` query, `describe`, `flatten`, `serialize`, `2json`,
-    `2db`, `stack`, `pretty`, `2tsv`, `jq`
+* Includes the `zsv` CLI with the following built-in commands:
+  * `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
+    `2db`, `stack`, `pretty`, `2tsv`, `jq`, `prop`, `rm`
   * easily [convert between CSV/JSON/sqlite3](docs/csv_json_sqlite.md)
 * CLI is easy to extend/customize with a few lines of code via modular plug-in framework.
   Just write a few custom functions and compile into a distributable DLL that any existing zsv
@@ -205,6 +205,9 @@ for speed and ease of development for extending and/or customizing to your needs
 * `stack`: merge CSV files vertically
 * `jq`: run a jq filter
 * `2db`: [convert from JSON to sqlite3 db](docs/csv_json_sqlite.md)
+* `prop`: view or save parsing options associated with a file, such as initial
+          rows to ignore, or header row span. Saved options are be applied by
+          default when processing that file
 
 Each of these can also be built as an independent executable named `zsv_xxx`
 where `xxx` is the command name.
@@ -217,6 +220,12 @@ After installing, run `zsv help` to see usage details. The typical syntax is
 ```shell
 zsv sql my_population_data.csv "select * from data where population > 100000"
 ```
+
+### Using the API
+Basic examples of using the API can be found in [examples/lib/README.md](examples/lib/README.md).
+For more sophisticated (but at this time, only sporadically commented/documented) use cases,
+see the various CLI C source files in the app/ directory such as app/serialize.c
+
 
 ### Creating your own extension
 

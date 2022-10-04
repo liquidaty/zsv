@@ -135,7 +135,9 @@ enum zsv_status zsv_cache_load_props(const char *data_filepath,
         opts->header_span = fp->header_span;
     }
   }
-  if(p && zsv_properties_parser_destroy(p) != yajl_status_ok && stat == zsv_status_ok)
+  if(p && stat == zsv_status_ok
+     && zsv_properties_parser_destroy(p) != zsv_status_ok
+     )
     stat = zsv_status_error;
   return stat;
 }
@@ -179,6 +181,7 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
                                         zsv_parser *handle_out
                                         ) {
   enum zsv_status stat = zsv_status_ok;
+  *handle_out = NULL;
   if(input_path) {
     stat = zsv_cache_load_props(input_path, opts, NULL, opts_used);
     if(stat != zsv_status_ok)

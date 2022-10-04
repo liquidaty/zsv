@@ -153,7 +153,7 @@ static int zsvtabCreate(
 
 static int add_row_to_cache(zsv_parser parser, struct zsv_vtab_cache *cache,
                             size_t row_id) {
-  size_t count = zsv_column_count(parser);
+  size_t count = zsv_cell_count(parser);
   struct zsv_vtab_cache_row *r = sqlite3_malloc(sizeof(*r));
   if(!r)
     return SQLITE_NOMEM;
@@ -330,7 +330,7 @@ static int zsvtabConnect(
     goto zsvtab_connect_error;
   }
 
-  pNew->parser_opts.row = zsv_row_header;
+  pNew->parser_opts.row_handler = zsv_row_header;
   pNew->parser_opts.ctx = pNew;
   pNew->zFilename = CSV_FILENAME;
   pNew->opts_used = ZSV_OPTS_USED;
@@ -487,7 +487,7 @@ static int zsvtabFilter(
   zsvTable_clear(pTab);
   fseek(pTab->parser_opts.stream, 0, SEEK_SET);
 
-  pTab->parser_opts.row = zsv_row_header;
+  pTab->parser_opts.row_handler = zsv_row_header;
   if(!(pTab->parser = zsv_new(&pTab->parser_opts)))
     return SQLITE_ERROR;
   pTab->parser_status = zsv_parse_more(pTab->parser);

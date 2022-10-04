@@ -688,6 +688,7 @@ static yajl_handle zsv_2db_yajl_handle(zsv_2db_handle data) {
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zsv_opts, const char *opts_used) {
   (void)(zsv_opts);
+  (void)(opts_used);
   FILE *f_in = NULL;
   int err = 0;
   struct zsv_2db_options opts = { 0 };
@@ -739,7 +740,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
       fprintf(stderr, "Input file specified more than once\n"), err = 1;
     else if(!(f_in = fopen(argv[i], "rb")))
       fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
-    else if(!(strlen(argv[i]) > 5 && !zsv_stricmp((const unsigned char *)argv[i] + strlen(argv[i]) - 5, ".json")))
+    else if(!(strlen(argv[i]) > 5 && !zsv_stricmp((const unsigned char *)argv[i] + strlen(argv[i]) - 5, (const unsigned char *)".json")))
       fprintf(stderr, "Warning: input filename does not end with .json (%s)\n", argv[i]);
   }
 

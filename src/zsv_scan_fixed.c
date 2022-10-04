@@ -8,15 +8,15 @@ static inline char row_fx(struct zsv_scanner *scanner,
     size_t cell_end = row_start + (scanner->fixed.offsets[i] > row_length ? row_length : scanner->fixed.offsets[i]);
     size_t cell_length = cell_end - cell_start;
     unsigned char *s = buff + cell_start;
-    if(scanner->opts.cell)
-      scanner->opts.cell(scanner->opts.ctx, s, cell_length);
+    if(UNLIKELY(scanner->opts.cell_handler != NULL))
+      scanner->opts.cell_handler(scanner->opts.ctx, s, cell_length);
     struct zsv_cell c = { s, cell_length, 1 };
     scanner->row.cells[scanner->row.used++] = c;
 
     cell_start = cell_end;
   }
-  if(scanner->opts.row)
-    scanner->opts.row(scanner->opts.ctx);
+  if(VERY_LIKELY(scanner->opts.row_handler != NULL))
+    scanner->opts.row_handler(scanner->opts.ctx);
   scanner->row.used = 0;
   return scanner->abort;
 }

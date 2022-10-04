@@ -296,7 +296,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     unsigned i = 0;
     for(struct zsv_stack_input_file *input = data.inputs; !data.err && input; input = input->next, i++) {
       *opts = saved_opts;
-      opts->row = zsv_stack_header_row;
+      opts->row_handler = zsv_stack_header_row;
       opts->ctx = input;
       opts->delimiter = delimiter;
 
@@ -323,7 +323,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     // of all inputs
     size_t max_columns_count = 0;
     for(struct zsv_stack_input_file *input = data.inputs; !data.err && input; input = input->next)
-      max_columns_count += zsv_column_count(input->parser); // zsv_row_cells_count(input->row);
+      max_columns_count += zsv_cell_count(input->parser); // zsv_row_cells_count(input->row);
 
     // next, for each input, align the input columns with the output columns
     for(struct zsv_stack_input_file *input = data.inputs; input && !data.err; input = input->next) {
@@ -334,7 +334,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         else {
           input->output_column_map_size = max_columns_count;
           // assign column indexes to global columns
-          size_t cols_used = zsv_column_count(input->parser);
+          size_t cols_used = zsv_cell_count(input->parser);
           for(unsigned col_ix = 0; col_ix < cols_used; col_ix++) {
             struct zsv_cell cell = zsv_get_cell(input->parser, col_ix);
             size_t output_ix = zsv_stack_consolidate_header(&data, cell.str, cell.len);
@@ -370,7 +370,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     for(struct zsv_stack_input_file *input = data.inputs; input && !data.err; input = input->next, i++) {
       if(input->headers_done) {
         *opts = saved_opts;
-        opts->row = zsv_stack_data_row;
+        opts->row_handler = zsv_stack_data_row;
         opts->ctx = input;
         if(delimiter == '\t')
           opts->delimiter = delimiter;

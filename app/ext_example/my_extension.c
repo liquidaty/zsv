@@ -143,12 +143,12 @@ static void echo_rowhandler(void *ctx) {
 
   /**
    * In most cases, we will want to do something with the row that was just parsed,
-   * in which case we can use ext_get_parser(), column_count() and get_cell()
+   * in which case we can use ext_get_parser(), cell_count() and get_cell()
    * to get a parser handle, the number of cells in our current row, and each
    * cell's length and string (and other info)
    */
   zsv_parser parser = zsv_cb.ext_get_parser(ctx);
-  unsigned j = zsv_cb.column_count(parser);
+  unsigned j = zsv_cb.cell_count(parser);
   for(unsigned i = 0; i < j; i++) {
     struct zsv_cell c = zsv_cb.get_cell(parser, i);
 

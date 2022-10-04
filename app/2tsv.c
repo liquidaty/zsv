@@ -30,8 +30,6 @@ struct static_buff {
 struct zsv_2tsv_data {
   zsv_parser parser;
   struct static_buff out;
-  unsigned char overflowed:1;
-  unsigned char _:7;
 };
 
 __attribute__((always_inline)) static inline void zsv_2tsv_flush(struct static_buff *b) {
@@ -110,21 +108,9 @@ void zsv_2tsv_cell(struct zsv_2tsv_data *data, unsigned char *utf8_value, size_t
   }
 }
 
-void zsv_2tsv_overflow(void *ctx, unsigned char *utf8_value, size_t len) {
-  struct zsv_2tsv_data *data = ctx;
-  if(len) {
-    if(!data->overflowed) {
-      fwrite("overflow! ", 1, strlen("overflow! "), stderr);
-      fwrite(utf8_value, 1 ,len, stderr);
-      fprintf(stderr, "(subsequent overflows will be suppressed)");
-      data->overflowed = 1;
-    }
-  }
-}
-
 static void zsv_2tsv_row(void *ctx) {
   struct zsv_2tsv_data *data = ctx;
-  unsigned int cols = zsv_column_count(data->parser);
+  unsigned int cols = zsv_cell_count(data->parser);
   if(cols) {
     struct zsv_cell cell = zsv_get_cell(data->parser, 0);
     struct zsv_cell end = zsv_get_cell(data->parser, cols-1);
@@ -191,9 +177,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   if(!data.out.stream)
     data.out.stream = stdout;
 
-  opts->row = zsv_2tsv_row;
+  opts->row_handler = zsv_2tsv_row;
   opts->ctx = &data;
-  opts->overflow = zsv_2tsv_overflow;
   if(zsv_new_with_properties(opts, input_path, opts_used, &data.parser) == zsv_status_ok) {
     char output[ZSV_2TSV_BUFF_SIZE];
     data.out.buff = output;

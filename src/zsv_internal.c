@@ -53,9 +53,6 @@ struct zsv_scanner {
 
   size_t quote_close_position;
   struct zsv_opts opts;
-//  void (*row_orig)(void *ctx);
-//  void (*cell_orig)(void *ctx, unsigned char *, size_t);
-//  void *ctx_orig;
 
   size_t row_start;
   struct zsv_row row;
@@ -121,7 +118,7 @@ static int collate_header_append(struct zsv_scanner *scanner, struct collate_hea
   }
   struct collate_header *ch = *chp;
   size_t this_row_size = 0;
-  size_t column_count = zsv_column_count(scanner);
+  size_t column_count = zsv_cell_count(scanner);
   for(size_t i = 0, j = column_count; i < j; i++) {
     struct zsv_cell c = zsv_get_cell(scanner, i);
     if(c.len)
@@ -180,7 +177,7 @@ __attribute__((always_inline)) static inline void zsv_clear_cell(struct zsv_scan
   scanner->quoted = 0;
 }
 
-__attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner * scanner, unsigned char * s, size_t n, char is_end) {
+__attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner * scanner, unsigned char * s, size_t n) {
   // handle quoting
   if(UNLIKELY(scanner->quoted > 0)) {
     if(LIKELY(scanner->quote_close_position + 1 == n)) {
@@ -229,20 +226,14 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner * s
   }
   // end quote handling
 
-  if(VERY_UNLIKELY(scanner->waiting_for_end != 0)) { // overflow: cell size exceeds allocated memory
-    if(scanner->opts.overflow)
-      scanner->opts.overflow(scanner->opts.ctx, s, n);
-  } else {
-    if(scanner->opts.cell)
-      scanner->opts.cell(scanner->opts.ctx, s, n);
-    if(VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
-      struct zsv_row *row = &scanner->row;
-      struct zsv_cell c = { s, n, scanner->opts.no_quotes ? 1 : scanner->quoted };
-      row->cells[row->used++] = c;
-    } else
-      scanner->row.overflow++;
-  }
-  scanner->waiting_for_end = !is_end;
+  if(UNLIKELY(scanner->opts.cell_handler != NULL))
+    scanner->opts.cell_handler(scanner->opts.ctx, s, n);
+  if(VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
+    struct zsv_row *row = &scanner->row;
+    struct zsv_cell c = { s, n, scanner->opts.no_quotes ? 1 : scanner->quoted };
+    row->cells[row->used++] = c;
+  } else
+    scanner->row.overflow++;
   scanner->have_cell = 1;
 
   zsv_clear_cell(scanner);
@@ -254,8 +245,8 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
             scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
     scanner->row.overflow = 0;
   }
-  if(LIKELY(scanner->opts.row != NULL))
-    scanner->opts.row(scanner->opts.ctx);
+  if(VERY_LIKELY(scanner->opts.row_handler != NULL))
+    scanner->opts.row_handler(scanner->opts.ctx);
 # ifdef ZSV_EXTRAS
   scanner->progress.cum_row_count++;
   if(VERY_UNLIKELY(scanner->opts.progress.rows_interval
@@ -299,7 +290,7 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
 }
 
 static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
-  cell_dl(scanner, s, n, 1);
+  cell_dl(scanner, s, n);
   return row_dl(scanner);
 }
 
@@ -450,7 +441,7 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
     if(LIKELY(c == delimiter)) { // case ',':
       if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
-        cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start, 1);
+        cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
         scanner->cell_start = i + 1;
         c = 0;
         continue; // this char is not part of the cell content
@@ -556,56 +547,30 @@ enum zsv_status zsv_scan(struct zsv_scanner *scanner,
 // but may not be larger than the original number of bytes, and any data modification
 // must be done in-place to *buff
 enum zsv_status zsv_set_scan_filter(struct zsv_scanner *scanner,
-                                               size_t (*filter)(void *ctx,
-                                                                unsigned char *buff,
-                                                                size_t bytes_read),
-                                               void *ctx
-                                               ) {
+                                    size_t (*filter)(void *ctx,
+                                                     unsigned char *buff,
+                                                     size_t bytes_read),
+                                    void *ctx
+                                    ) {
   scanner->filter = filter;
   scanner->filter_ctx = ctx;
   return zsv_status_ok;
 }
 
-size_t zsv_filter_write(void *FILEp, unsigned char *buff, size_t bytes_read) {
-  fwrite(buff, 1, bytes_read, (FILE *)FILEp);
-  return bytes_read;
-}
-
-// zsv_parse_string(): *utf8 may not overlap w scanner buffer!
-enum zsv_status zsv_parse_string(struct zsv_scanner *scanner,
-                                            const unsigned char *utf8,
-                                            size_t len) {
-  const unsigned char *cursor = utf8;
-  while(len) {
-    size_t capacity = scanner->buff.size - scanner->partial_row_length;
-    size_t bytes_read = len > capacity ? capacity : len;
-    memcpy(scanner->buff.buff + scanner->partial_row_length, cursor, len);
-    cursor += len;
-    len -= bytes_read;
-    if(scanner->filter)
-      bytes_read = scanner->filter(scanner->filter_ctx,
-                                   scanner->buff.buff + scanner->partial_row_length,
-                                   bytes_read);
-    if(bytes_read)
-      return zsv_scan(scanner, scanner->buff.buff, bytes_read);
-  }
-  return zsv_status_ok;
-}
-
 static void apply_callbacks(struct zsv_scanner *scanner) {
-  if(scanner->opts.cell) {
+  if(UNLIKELY(scanner->opts.cell_handler != NULL)) {
     // call the user-provided cell() callback on each cell
     unsigned char saved_quoted = scanner->quoted;
-    for(size_t i = 0, j = zsv_column_count(scanner); i < j; i++) {
+    for(size_t i = 0, j = zsv_cell_count(scanner); i < j; i++) {
       struct zsv_cell c = zsv_get_cell(scanner, i);
       scanner->quoted = c.quoted;
-      scanner->opts.cell(scanner->opts.ctx, c.str, c.len);
+      scanner->opts.cell_handler(scanner->opts.ctx, c.str, c.len);
     }
     scanner->quoted = saved_quoted;
   }
-  if(scanner->opts.row)
-    // call the user-provided row() callback
-    scanner->opts.row(scanner->opts.ctx);
+  // call the user-provided row() callback
+  if(VERY_LIKELY(scanner->opts.row_handler != NULL))
+    scanner->opts.row_handler(scanner->opts.ctx);
 }
 
 static void set_callbacks(struct zsv_scanner *scanner);
@@ -651,7 +616,7 @@ static void collate_header_row(void *ctx) {
   }
   if(!scanner->opts.header_span) {
     set_callbacks(scanner);
-    if(scanner->opts.row || scanner->opts.cell) {
+    if(VERY_LIKELY(scanner->opts.row_handler != NULL || scanner->opts.cell_handler != NULL)) {
       if(scanner->collate_header) {
         size_t offset = 0;
         for(size_t i = 0; i < scanner->collate_header->column_count; i++) {
@@ -677,25 +642,30 @@ static void collate_header_row(void *ctx) {
 
 static void set_callbacks(struct zsv_scanner *scanner) {
   if(scanner->opts.rows_to_ignore) {
-    scanner->opts.row = ignore_header_rows;
-    scanner->opts.cell = NULL;
+    scanner->opts.row_handler = ignore_header_rows;
+    scanner->opts.cell_handler = NULL;
     scanner->opts.ctx = scanner;
   } else if(scanner->mode != ZSV_MODE_FIXED && !scanner->opts.keep_empty_header_rows) {
-    scanner->opts.row = skip_to_first_row_w_data;
-    scanner->opts.cell = NULL;
+    scanner->opts.row_handler = skip_to_first_row_w_data;
+    scanner->opts.cell_handler = NULL;
     scanner->opts.ctx = scanner;
   } else if(scanner->opts.header_span > 1) {
-    scanner->opts.row = collate_header_row;
-    scanner->opts.cell = NULL;
+    scanner->opts.row_handler = collate_header_row;
+    scanner->opts.cell_handler = NULL;
     scanner->opts.ctx = scanner;
   } else {
-    scanner->opts.row = scanner->opts_orig.row;
-    scanner->opts.cell = scanner->opts_orig.cell;
+    scanner->opts.row_handler = scanner->opts_orig.row_handler;
+    scanner->opts.cell_handler = scanner->opts_orig.cell_handler;
     scanner->opts.ctx = scanner->opts_orig.ctx;
   }
 }
 
 static void zsv_throwaway_row(void *ctx) {
+  struct zsv_scanner *scanner = ctx;
+  if(scanner->opts.overflow_row_handler != NULL) {
+    if(zsv_cell_count(scanner) > 1 || zsv_get_cell(scanner, 0).len > 0)
+      scanner->opts.overflow_row_handler(ctx);
+  }
   set_callbacks(ctx);
 }
 

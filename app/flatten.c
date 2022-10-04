@@ -91,12 +91,13 @@ static void flatten_agg_col_iterator_init(struct flatten_agg_col *c,
   }
 }
 
-static void flatten_agg_col_iterator_replace_str(struct flatten_agg_col_iterator *i, unsigned char *new_s) {
+static void flatten_agg_col_iterator_replace_str(struct flatten_agg_col_iterator *i, unsigned char **new_s) {
   if(i->current_cl)
-    i->current_cl->value = new_s;
+    i->current_cl->value = *new_s;
   else {
     fprintf(stderr, "flatten_agg_col_iterator_replace_str() error: no current value to replace\n");
-    free(new_s);
+    free(*new_s);
+    *new_s = NULL;
   }
 }
 
@@ -200,9 +201,6 @@ struct flatten_data {
 
   enum flatten_agg_method all_aggregation_method;
 
-  char *overflowed;
-  size_t overflow_count;
-
   unsigned char cancelled:1;
   unsigned char verbose:1;
   unsigned char have_agg:1;
@@ -289,16 +287,6 @@ static void flatten_cell1(void *hook, unsigned char *utf8_value, size_t len) {
     }
   }
   data->current_column_index++;
-}
-
-static void flatten_overflow(void *hook, unsigned char *utf8_value, size_t len) {
-  (void)(hook);
-  struct flatten_data *data = hook;
-  if(!data->overflowed)
-    data->overflowed = zsv_memdup(utf8_value, len);
-  data->overflow_count++;
-  if(data->cancelled)
-    return;
 }
 
 static void flatten_row1(void *hook) {
@@ -422,7 +410,8 @@ static void output_current_row(struct flatten_data *data) {
           flatten_agg_col_iterator_next(&it), i++) {
         if(i)
           joined_len += delimiter_len;
-        flatten_agg_col_iterator_replace_str(&it, flatten_replace_delim(it.str, delimiter, replacement));
+        it.str = flatten_replace_delim(it.str, delimiter, replacement);
+        flatten_agg_col_iterator_replace_str(&it, &it.str);
         if(it.str && *it.str)
           joined_len += strlen((char *)it.str);
       }
@@ -506,17 +495,6 @@ static void flatten_row2(void *hook) {
   data->row_count2++;
 }
 
-static void flatten_error(void *hook, enum zsv_status status,
-                          const unsigned char *err_msg, size_t err_msg_len,
-                          unsigned char bad_c, size_t cum_scanned_length) {
-  struct flatten_data *data = hook;
-  if(data->cancelled)
-    return;
-  (void)(status);
-  (void)(err_msg_len);
-  zsv_printerr(1, "%s (%c) at %zu", err_msg, bad_c, cum_scanned_length);
-}
-
 const char *flatten_usage_msg[] =
   {
    APPNAME ": flatten a table, based on a single-column key assuming that rows to flatten always appear in contiguous blocks",
@@ -580,7 +558,7 @@ static struct flatten_agg_col *flatten_agg_col_new(const char *arg, int *err) {
 
   unsigned char *agg_method_s = NULL;
 
-  while(*read) {
+  while(read && *read) {
     if(*read == '=') { // end of name!
       *read = '\0';
       agg_method_s = read + 1;
@@ -650,12 +628,6 @@ static void flatten_cleanup(struct flatten_data *data) {
   }
 
   FREEIF(data->agg_output_cols_vector);
-  if(data->overflowed) {
-    zsv_printerr(1, "Warning: data overflowed %zu times (example: %s)",
-             data->overflow_count, data->overflowed);
-    free(data->overflowed);
-  }
-
   zsv_writer_delete(data->csv_writer);
 }
 
@@ -767,10 +739,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     tmp_fn = zsv_get_temp_filename("zsv_flatten_XXXXXXXX");
     if(tmp_fn) {
       FILE *tmp_f = fopen(tmp_fn, "w+b");
-      opts->cell = flatten_cell1;
-      opts->row = flatten_row1;
-      opts->overflow = flatten_overflow;
-      opts->error = flatten_error;
+      opts->cell_handler = flatten_cell1;
+      opts->row_handler = flatten_row1;
       opts->stream = data.in;
       input_path = data.input_path;
       opts->ctx = &data;
@@ -795,10 +765,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   if(!err) {
     struct zsv_opts opts2 = { 0 };
-    opts2.cell = flatten_cell2;
-    opts2.row = flatten_row2;
-    opts2.overflow = flatten_overflow;
-    opts2.error = flatten_error;
+    opts2.cell_handler = flatten_cell2;
+    opts2.row_handler = flatten_row2;
     opts2.ctx = &data;
     data.current_column_index = 0;
 

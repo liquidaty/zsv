@@ -69,7 +69,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #endif
 
   if(!err) {
-    opts->row = row;
+    opts->row_handler = row;
     opts->ctx = &data;
     if(zsv_new_with_properties(opts, input_path, opts_used, &data.parser) != zsv_status_ok) {
       fprintf(stderr, "Unable to initialize parser\n");

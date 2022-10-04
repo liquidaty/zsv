@@ -42,6 +42,7 @@ yajl_status_to_string(yajl_status stat)
     return statStr;
 }
 
+
 yajl_handle
 yajl_alloc(const yajl_callbacks * callbacks,
            yajl_alloc_funcs * afs,
@@ -76,6 +77,14 @@ yajl_alloc(const yajl_callbacks * callbacks,
     yajl_bs_push(hand->stateStack, yajl_state_start);
 
     return hand;
+}
+
+const yajl_callbacks *
+yajl_swap_callbacks(yajl_handle h, const yajl_callbacks * callbacks, void *new_ctx) {
+  const yajl_callbacks *old_callbacks = h->callbacks;
+  h->callbacks = callbacks;
+  h->ctx = new_ctx;
+  return old_callbacks;
 }
 
 int

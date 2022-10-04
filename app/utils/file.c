@@ -123,3 +123,12 @@ int zsv_file_readable(const char *filename, int *err, FILE **f_out) {
   }
   return rc;
 }
+
+/**
+ * Function that is the same as `fwrite()`, but can be used as a callback
+ * argument to `zsv_set_scan_filter()`
+ */
+size_t zsv_filter_write(void *FILEp, unsigned char *buff, size_t bytes_read) {
+  fwrite(buff, 1, bytes_read, (FILE *)FILEp);
+  return bytes_read;
+}

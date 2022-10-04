@@ -20,7 +20,7 @@ struct data {
 
 static void row(void *ctx) {
   struct data *data = ctx;
-  unsigned j = zsv_column_count(data->parser);
+  unsigned j = zsv_cell_count(data->parser);
   for(unsigned i = 0; i < j; i++) {
     struct zsv_cell c = zsv_get_cell(data->parser, i);
     zsv_writer_cell(data->csv_writer, i == 0, c.str, c.len, c.quoted);
@@ -58,7 +58,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   if(!opts->stream)
     opts->stream = stdin;
 
-  opts->row = row;
+  opts->row_handler = row;
   opts->ctx = &data;
 
   if((data.csv_writer = zsv_writer_new(&writer_opts))) {

@@ -26,7 +26,7 @@
 #include "yajl_parser.h"
 
 #if defined(_WIN32) || defined(WIN32)
-#define snprintf sprintf_s
+// #define snprintf sprintf_s
 #endif
 
 #define STATUS_CONTINUE 1
@@ -50,11 +50,12 @@ struct context_s
 };
 typedef struct context_s context_t;
 
+
 #define RETURN_ERROR(ctx,retval,...) {                                  \
-        if ((ctx)->errbuf != NULL)                                      \
-            snprintf ((ctx)->errbuf, (ctx)->errbuf_size, __VA_ARGS__);  \
-        return (retval);                                                \
-    }
+    if ((ctx)->errbuf != NULL)                                          \
+      sprintf ((ctx)->errbuf, "%.*s", (int)(ctx)->errbuf_size, __VA_ARGS__); \
+    return (retval);                                                    \
+  }
 
 static yajl_val value_alloc (yajl_type type)
 {
@@ -238,9 +239,11 @@ static int context_add_value (context_t *ctx, yajl_val v)
         if (ctx->stack->key == NULL)
         {
             if (!YAJL_IS_STRING (v))
+              //                RETURN_ERROR (ctx, EINVAL, "context_add_value: "
+              //                              "Object key is not a string (%#04x)",
+              //                              v->type);
                 RETURN_ERROR (ctx, EINVAL, "context_add_value: "
-                              "Object key is not a string (%#04x)",
-                              v->type);
+                              "Object key is not a string");
 
             ctx->stack->key = v->u.string;
             v->u.string = NULL;
@@ -262,9 +265,11 @@ static int context_add_value (context_t *ctx, yajl_val v)
     }
     else
     {
-        RETURN_ERROR (ctx, EINVAL, "context_add_value: Cannot add value to "
-                      "a value of type %#04x (not a composite type)",
-                      ctx->stack->value->type);
+      //        RETURN_ERROR (ctx, EINVAL, "context_add_value: Cannot add value to "
+      //                      "a value of type %#04x (not a composite type)",
+      //                      ctx->stack->value->type);
+      RETURN_ERROR (ctx, EINVAL, "context_add_value: Cannot add value to "
+                    "a value of type xx (not a composite type)");
     }
 }
 
@@ -415,7 +420,8 @@ yajl_val yajl_tree_parse (const char *input,
             /* map key     = */ handle_string,
             /* end map     = */ handle_end_map,
             /* start array = */ handle_start_array,
-            /* end array   = */ handle_end_array
+            /* end array   = */ handle_end_array,
+            /* error       = */ NULL
         };
 
     yajl_handle handle;
@@ -432,7 +438,7 @@ yajl_val yajl_tree_parse (const char *input,
     handle = yajl_alloc (&callbacks, NULL, &ctx);
     yajl_config(handle, yajl_allow_comments, 1);
 
-    status = yajl_parse(handle,
+    status = yajl_parse(handle, // compiler msg: Value stored to 'status' is never read
                         (unsigned char *) input,
                         strlen (input));
     status = yajl_complete_parse (handle);
@@ -441,7 +447,7 @@ yajl_val yajl_tree_parse (const char *input,
                internal_err_str = (char *) yajl_get_error(handle, 1,
                      (const unsigned char *) input,
                      strlen(input));
-             snprintf(error_buffer, error_buffer_size, "%s", internal_err_str);
+               snprintf(error_buffer, error_buffer_size, "%s", internal_err_str);
              YA_FREE(&(handle->alloc), internal_err_str);
         }
         yajl_free (handle);

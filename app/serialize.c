@@ -150,14 +150,6 @@ static void serialize_cell(void *hook, unsigned char *utf8_value, size_t len) {
   data->current_col_index++;
 }
 
-static void serialize_overflow(void *hook, unsigned char *utf8_value, size_t len) {
-  (void)(hook);
-  struct serialize_data *data = hook;
-  if(data->err_msg)
-    return;
-  fprintf(stderr, "overflow! %.*s\n", (int)len, utf8_value);
-}
-
 static void serialize_row(void *hook) {
   struct serialize_data *data = hook;
   if(data->err_msg)
@@ -190,17 +182,6 @@ static void serialize_row(void *hook) {
 
   data->current_row_index++;
   data->current_col_index = 0;
-}
-
-static void serialize_error(void *hook, enum zsv_status status,
-                            const unsigned char *err_msg, size_t err_msg_len,
-                            unsigned char bad_c, size_t cum_scanned_length) {
-  struct serialize_data *data = hook;
-  if(data->err_msg)
-    return;
-  (void)(status);
-  (void)(err_msg_len);
-  fprintf(stderr, "%s (%c) at %zu\n", err_msg, bad_c, cum_scanned_length);
 }
 
 const char *serialize_usage_msg[] =
@@ -304,10 +285,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       return 1;
     }
 
-    opts->cell = serialize_cell;
-    opts->row = serialize_row;
-    opts->overflow = serialize_overflow;
-    opts->error = serialize_error;
+    opts->cell_handler = serialize_cell;
+    opts->row_handler = serialize_row;
     opts->stream = data.in;
     const char *input_path = data.input_path;
 

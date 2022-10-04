@@ -29,9 +29,12 @@
 #include <assert.h>
 #include <math.h>
 
+#include <sys/types.h>
+#include <stdlib.h>
+
 #define MAX_VALUE_TO_MULTIPLY ((LLONG_MAX / 10) + (LLONG_MAX % 10))
 
- /* same semantics as strtol */
+/* same semantics as strtol */
 long long
 yajl_parse_integer(const unsigned char *number, unsigned int length)
 {
@@ -60,6 +63,7 @@ yajl_parse_integer(const unsigned char *number, unsigned int length)
 
     return sign * ret;
 }
+
 
 unsigned char *
 yajl_render_error_string(yajl_handle hand, const unsigned char * jsonText,
@@ -282,12 +286,14 @@ yajl_do_parse(yajl_handle hand, const unsigned char * jsonText,
                             _CC_CHK(hand->callbacks->yajl_number(
                                         hand->ctx,(const char *) buf, bufLen));
                         } else if (hand->callbacks->yajl_integer) {
-                            long long int i = 0;
+                            long long i;
                             errno = 0;
                             i = yajl_parse_integer(buf, bufLen);
                             if ((i == LLONG_MIN || i == LLONG_MAX) &&
-                                errno == ERANGE)
-                            {
+                                errno == ERANGE) {
+                              if(hand->callbacks->yajl_error) {
+                                _CC_CHK(hand->callbacks->yajl_error(hand->ctx, buf, bufLen, errno));
+                              } else {
                                 yajl_bs_set(hand->stateStack,
                                             yajl_state_parse_error);
                                 hand->parseError = "integer overflow" ;
@@ -295,9 +301,10 @@ yajl_do_parse(yajl_handle hand, const unsigned char * jsonText,
                                 if (*offset >= bufLen) *offset -= bufLen;
                                 else *offset = 0;
                                 goto around_again;
-                            }
-                            _CC_CHK(hand->callbacks->yajl_integer(hand->ctx,
-                                                                  i));
+                              }
+                            } else
+                              _CC_CHK(hand->callbacks->yajl_integer(hand->ctx,
+                                                                    i));
                         }
                     }
                     break;
@@ -316,6 +323,9 @@ yajl_do_parse(yajl_handle hand, const unsigned char * jsonText,
                             if ((d == HUGE_VAL || d == -HUGE_VAL) &&
                                 errno == ERANGE)
                             {
+                              if(hand->callbacks->yajl_error) {
+                                _CC_CHK(hand->callbacks->yajl_error(hand->ctx, buf, buf ? strlen((const char *)buf) : 0, errno));
+                              } else {
                                 yajl_bs_set(hand->stateStack,
                                             yajl_state_parse_error);
                                 hand->parseError = "numeric (floating point) "
@@ -324,9 +334,10 @@ yajl_do_parse(yajl_handle hand, const unsigned char * jsonText,
                                 if (*offset >= bufLen) *offset -= bufLen;
                                 else *offset = 0;
                                 goto around_again;
-                            }
-                            _CC_CHK(hand->callbacks->yajl_double(hand->ctx,
-                                                                 d));
+                              }
+                            } else
+                              _CC_CHK(hand->callbacks->yajl_double(hand->ctx,
+                                                                   d));
                         }
                     }
                     break;
@@ -414,7 +425,7 @@ yajl_do_parse(yajl_handle hand, const unsigned char * jsonText,
                 default:
                     yajl_bs_set(hand->stateStack, yajl_state_parse_error);
                     hand->parseError =
-                        "invalid object key (must be a string)"; 
+                        "invalid object key (must be a string)";
                     goto around_again;
             }
         }
@@ -495,4 +506,3 @@ yajl_do_parse(yajl_handle hand, const unsigned char * jsonText,
     abort();
     return yajl_status_error;
 }
-

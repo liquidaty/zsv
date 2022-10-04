@@ -41,7 +41,6 @@ struct zsv_2json_data {
 
   char *db_tablename;
 
-  unsigned char overflowed:1;
 #define ZSV_JSON_SCHEMA_OBJECT 1
 #define ZSV_JSON_SCHEMA_DATABASE 2
   unsigned char schema:2;
@@ -49,7 +48,7 @@ struct zsv_2json_data {
   unsigned char no_empty:1;
   unsigned char err:1;
   unsigned char from_db:1;
-  unsigned char _:1;
+  unsigned char _:2;
 };
 
 static void zsv_2json_cleanup(struct zsv_2json_data *data) {
@@ -100,18 +99,6 @@ static void write_data_cell(struct zsv_2json_data *data, const unsigned char *ut
   jsonwriter_strn(data->jsw, utf8_value, len);
 }
 
-void zsv_2json_overflow(void *ctx, unsigned char *utf8_value, size_t len) {
-  struct zsv_2json_data *data = ctx;
-  if(len) {
-    if(!data->overflowed) {
-      fwrite("overflow! ", 1, strlen("overflow! "), stderr);
-      fwrite(utf8_value, 1 ,len, stderr);
-      fprintf(stderr, "(subsequent overflows will be suppressed)\n");
-      data->overflowed = 1;
-    }
-  }
-}
-
 static char *zsv_2json_db_first_tname(sqlite3 *db) {
   char *tname = NULL;
   sqlite3_stmt *stmt = NULL;
@@ -132,7 +119,7 @@ static char *zsv_2json_db_first_tname(sqlite3 *db) {
 
 static void zsv_2json_row(void *ctx) {
   struct zsv_2json_data *data = ctx;
-  unsigned int cols = zsv_column_count(data->parser);
+  unsigned int cols = zsv_cell_count(data->parser);
   if(cols) {
     char obj = 0;
     char arr = 0;
@@ -361,9 +348,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
       err = zsv_db2json(input_path, &data.db_tablename, data.jsw);
     } else {
-      opts->row = zsv_2json_row;
+      opts->row_handler = zsv_2json_row;
       opts->ctx = &data;
-      opts->overflow = zsv_2json_overflow;
       if(zsv_new_with_properties(opts, input_path, opts_used, &data.parser) == zsv_status_ok) {
         zsv_handle_ctrl_c_signal();
         while(!data.err
@@ -377,9 +363,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       err = data.err;
     }
     jsonwriter_delete(data.jsw);
-    zsv_2json_cleanup(&data);
   }
 
+  zsv_2json_cleanup(&data);
   if(opts->stream && opts->stream != stdin)
     fclose(opts->stream);
   if(out && out != stdout)
