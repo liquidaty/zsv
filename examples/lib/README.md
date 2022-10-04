@@ -8,6 +8,6 @@ This directory contains two simple examples using libzsv:
 
 ## Building
 
-To build, run `make build`
+To build, cd to this directory (`cd examples/lib`) and then run `make build`
 
 For further make options, run `make`
