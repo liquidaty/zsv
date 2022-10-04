@@ -222,7 +222,9 @@ zsv sql my_population_data.csv "select * from data where population > 100000"
 ```
 
 ### Using the API
-XXX add links here to documentation from examples/simple.c etc
+Basic examples of using the API can be find in [examples/lib/README.md](examples/lib/README.md).
+For more sophisticated (but at this time, only sporadically commented/documented) use cases,
+see the various CLI C source files in the app/ directory such as app/serialize.c
 
 
 ### Creating your own extension

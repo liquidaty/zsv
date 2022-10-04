@@ -56,15 +56,23 @@ static void find_my_column(void *ctx) {
 
   if(!found) {
     /**
-     * Abort if we couldn't find the target column name in our header row
-     * by calling `zsv_abort()`
+     * We couldn't find the target column name in our header row. Output a message and abort
      */
     fprintf(stderr, "Could not find column %.*s\n", (int)target_column_name_len, data->target_column_name);
+
+    /**
+     * Once `zsv_abort()` is called, the parser will no longer invoke any callbacks
+     * and `zsv_parse_more()` will return `zsv_status_cancelled`
+     */
     zsv_abort(data->parser);
+
+    /**
+     * set a flag that we will later use to determine our program's exit code
+     */
     data->not_found = 1;
   } else {
     /**
-     * we found the column we are looking for. print its name, and change our row callback
+     * we found the column we are looking for. print its name, and change our row handler
      * by calling `zsv_set_row_handler()`
      */
     printf("%s\n", data->target_column_name);
@@ -77,24 +85,55 @@ static void find_my_column(void *ctx) {
  */
 static void print_my_column(void *ctx) {
   struct my_data *data = ctx;
+
+  /* use zsv_get_cell() to get our cell data */
   struct zsv_cell c = zsv_get_cell(data->parser, data->target_column_position);
+
+  /* print the data, followed by a newline */
   printf("%.*s\n", (int)c.len, c.str);
 }
 
-
+/**
+ * Main routine. Our example will take a single argument specifying a column
+ * name, read from stdin, and output, for each row, the specified column
+ */
 int main(int argc, const char *argv[]) {
+  if(argc < 2) {
+    fprintf(stderr, "Usage: print_my_column column_name < input.csv\n");
+    fprintf(stderr, "Example:\n"
+            "  echo \"A,B,C\\nA1,B1,C1\\nA2,B2,\\nA3,,C3\\n,,C3\" | %s B\n\n", argv[0]);
+    return 0;
+  }
+
+  /**
+   * Initialize context data
+   */
   struct my_data data = { 0 };
+  data.target_column_name = argv[1];
+
+  /**
+   * Initialize parser options
+   */
   struct zsv_opts opts = { 0 };
   opts.row_handler = find_my_column;
   opts.ctx = &data;
 
-  if(argc < 2)
-    return fprintf(stderr, "Usage: print_my_column column_name < input.csv\n");
-
-  data.target_column_name = argv[1];
+  /**
+   * Create a parser
+   */
   data.parser = zsv_new(&opts);
+
+  /**
+   * Continuously parse our input until we have no more input
+   * or an error has occurred (such as not finding the specified
+   * column name in the first row)
+   */
   while(zsv_parse_more(data.parser) == zsv_status_ok)
     ;
+
+  /**
+   * Clean up
+   */
   zsv_finish(data.parser);
   zsv_delete(data.parser);
 

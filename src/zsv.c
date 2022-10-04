@@ -241,6 +241,8 @@ zsv_parser zsv_new(struct zsv_opts *opts) {
 ZSV_EXPORT
 enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
   enum zsv_status stat = zsv_status_ok;
+  if(!scanner)
+    return zsv_status_error;
   if(!scanner->abort) {
     if(scanner->mode == ZSV_MODE_FIXED) {
       if(scanner->partial_row_length)

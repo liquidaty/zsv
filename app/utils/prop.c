@@ -181,6 +181,7 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
                                         zsv_parser *handle_out
                                         ) {
   enum zsv_status stat = zsv_status_ok;
+  *handle_out = NULL;
   if(input_path) {
     stat = zsv_cache_load_props(input_path, opts, NULL, opts_used);
     if(stat != zsv_status_ok)
