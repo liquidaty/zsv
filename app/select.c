@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <assert.h>
 #ifdef _WIN32
 #define _CRT_RAND_S // for random number generator, used when sampling. must come before including stdlib.h
 #endif
@@ -22,6 +23,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/string.h>
+#include <zsv/utils/mem.h>
 
 struct zsv_select_search_str {
   struct zsv_select_search_str *next;
@@ -181,7 +183,6 @@ static int zsv_select_add_output_col(struct zsv_select_data *data, unsigned in_i
     }
     if(zsv_select_excluded_current_header_name(data, in_ix))
       return err;
-
     data->out2in[data->output_cols_count++].ix = in_ix;
   }
   return err;
@@ -358,22 +359,6 @@ static int zsv_select_check_exclusions_are_indexes(struct zsv_select_data *data)
   return err;
 }
 
-static void zsv_select_append_spaced_word(unsigned char **target, unsigned char *utf8_value, size_t len) {
-  if(!len)
-    return;
-
-  if(!*target)
-    asprintf((char **)target, "%.*s", (int)len, utf8_value);
-  else {
-    unsigned char *new_s;
-    asprintf((char **)&new_s, "%s %.*s", *target, (int)len, utf8_value);
-    if(new_s) {
-      free(*target);
-      *target = new_s;
-    }
-  }
-}
-
 // demo_random_bw_1_and_100(): this is a poor random number generator. you probably
 // will want to use a better one
 static double demo_random_bw_1_and_100() {
@@ -493,9 +478,8 @@ static void zsv_select_header_row(void *ctx) {
     struct zsv_cell cell = zsv_get_cell(data->parser, i);
     cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
     if(i < data->opts->max_columns) {
-      zsv_select_append_spaced_word(&data->header_names[i], cell.str, cell.len);
-      if(cell.len)
-        max_header_ix = i+1;
+      data->header_names[i] = zsv_memdup(cell.str, cell.len);
+      max_header_ix = i+1;
     }
   }
 
@@ -577,7 +561,6 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
     fclose(data->opts->stream);
 
   zsv_writer_delete(data->csv_writer);
-
   zsv_select_search_str_delete(data->search_strings);
 
   if(data->distinct == ZSV_SELECT_DISTINCT_MERGE) {
@@ -769,9 +752,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
 
     data.header_names = calloc(data.opts->max_columns, sizeof(*data.header_names));
+    assert(data.opts->max_columns > 0);
     data.out2in = calloc(data.opts->max_columns, sizeof(*data.out2in));
     data.csv_writer = zsv_writer_new(&writer_opts);
-    if(data.header_names && data.csv_writer) {
+    if(!(data.header_names && data.csv_writer))
+      stat = zsv_status_memory;
+    else {
       data.opts->row_handler = zsv_select_header_row;
       data.opts->ctx = &data;
       data.opts->insert_header_row = insert_header_row;
@@ -805,8 +791,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
   }
   zsv_select_cleanup(&data);
-  if(writer_opts.stream)
+  if(writer_opts.stream && writer_opts.stream != stdout)
     fclose(writer_opts.stream);
-
   return stat;
 }

@@ -180,6 +180,7 @@ zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
 
 enum zsv_writer_status zsv_writer_flush(zsv_csv_writer w) {
   if(!w) return zsv_writer_status_missing_handle;
+
   zsv_output_buff_flush(&w->out);
   return zsv_writer_status_ok;
 }

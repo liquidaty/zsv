@@ -35,7 +35,6 @@
  * to use thread-local storage with static initializer
  */
 static struct zsv_opts *zsv_with_default_opts(char mode) {
-
   ZSVTLS static char zsv_default_opts_initd = 0;
   ZSVTLS static struct zsv_opts zsv_default_opts = { 0 };
 
@@ -49,6 +48,9 @@ static struct zsv_opts *zsv_with_default_opts(char mode) {
       zsv_default_opts_initd = 1;
       zsv_default_opts.max_row_size = ZSV_ROW_MAX_SIZE_DEFAULT;
       zsv_default_opts.max_columns = ZSV_MAX_COLS_DEFAULT;
+    } else {
+      zsv_default_opts.max_row_size = zsv_default_opts.max_row_size ? zsv_default_opts.max_row_size : ZSV_ROW_MAX_SIZE_DEFAULT;
+      zsv_default_opts.max_columns = zsv_default_opts.max_columns ? zsv_default_opts.max_columns : ZSV_MAX_COLS_DEFAULT;
     }
     break;
   }
