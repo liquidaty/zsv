@@ -48,7 +48,8 @@ struct zsv_2json_data {
   unsigned char no_empty:1;
   unsigned char err:1;
   unsigned char from_db:1;
-  unsigned char _:2;
+  unsigned char compact:1;
+  unsigned char _:1;
 };
 
 static void zsv_2json_cleanup(struct zsv_2json_data *data) {
@@ -238,6 +239,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
      "Options:",
      "  -h, --help",
      "  -o, --output <filename>       : output to specified filename",
+     "  --compact                     : output compact JSON",
      "  --from-db                     : input is sqlite3 database",
      "  --db-table <table_name>       : name of table in input database to convert",
      "  --object                      : output as array of objects",
@@ -306,6 +308,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         data.schema = ZSV_JSON_SCHEMA_OBJECT;
     } else if(!strcmp(argv[i], "--no-header"))
       data.no_header = 1;
+    else if(!strcmp(argv[i], "--compact"))
+      data.compact = 1;
     else {
       if(opts->stream)
         fprintf(stderr, "Input file specified more than once\n"), err = zsv_status_error;
@@ -341,26 +345,30 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       out = stdout;
     if(!(data.jsw = jsonwriter_new(out)))
       err = zsv_status_error;
-    else if(data.from_db) {
-      if(opts->stream != stdin) {
-        fclose(opts->stream);
-        opts->stream = NULL;
+    else {
+      if(data.compact)
+        jsonwriter_set_option(data.jsw, jsonwriter_option_compact);
+      if(data.from_db) {
+        if(opts->stream != stdin) {
+          fclose(opts->stream);
+          opts->stream = NULL;
+        }
+        err = zsv_db2json(input_path, &data.db_tablename, data.jsw);
+      } else {
+        opts->row_handler = zsv_2json_row;
+        opts->ctx = &data;
+        if(zsv_new_with_properties(opts, input_path, opts_used, &data.parser) == zsv_status_ok) {
+          zsv_handle_ctrl_c_signal();
+          while(!data.err
+                && !zsv_signal_interrupted
+                && zsv_parse_more(data.parser) == zsv_status_ok)
+            ;
+          zsv_finish(data.parser);
+          zsv_delete(data.parser);
+          jsonwriter_end_all(data.jsw);
+        }
+        err = data.err;
       }
-      err = zsv_db2json(input_path, &data.db_tablename, data.jsw);
-    } else {
-      opts->row_handler = zsv_2json_row;
-      opts->ctx = &data;
-      if(zsv_new_with_properties(opts, input_path, opts_used, &data.parser) == zsv_status_ok) {
-        zsv_handle_ctrl_c_signal();
-        while(!data.err
-              && !zsv_signal_interrupted
-              && zsv_parse_more(data.parser) == zsv_status_ok)
-          ;
-        zsv_finish(data.parser);
-        zsv_delete(data.parser);
-        jsonwriter_end_all(data.jsw);
-      }
-      err = data.err;
     }
     jsonwriter_delete(data.jsw);
   }

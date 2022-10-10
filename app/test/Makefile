@@ -268,6 +268,8 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} 
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 #	ajv validate --strict-tuples=false -s ${THIS_MAKEFILE_DIR}/../../docs/csv.schema.json -d expected/$@.out.json [suffix must be json]
+	@(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv --compact ${REDIRECT1} ${TMP_DIR}/$@.compact.out && \
+	${CMP} ${TMP_DIR}/$@.compact.out expected/$@.compact.out && ${TEST_PASS} || ${TEST_FAIL})
 
 	@(${PREFIX} $< --object < ${TEST_DATA_DIR}/quoted2.csv ${REDIRECT1} ${TMP_DIR}/$@.out2 && \
 	${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL})
