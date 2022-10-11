@@ -492,12 +492,12 @@ const char *zsv_pretty_usage_msg[] =
    "",
    "Options:",
    "  -o, --output <filename> : save output the the specified file",
-   "  -w, --width <n>: set the max line width to output. if not provided",
+   "  -W, --width <n>: set the max line width to output. if not provided",
    "                            will try to detect automatically",
-   "  -r, --rows:             : set the number of lines to calculated widths from",
+   "  -p, --rows:             : set the number of (preview) rows to calculated widths from",
    "                            if not provided, defaults to 150",
-   "  -c, --max-col-width <n> : set the max column width. if not provided, defaults to 50",
-   "  -C, --min-col-width <n> : set the min column width. if not provided, defaults to 2",
+   "  -C, --max-col-width <n> : set the max column width. if not provided, defaults to 50",
+   "  -D, --min-col-width <n> : set the min column width. if not provided, defaults to 2",
    "  -A, --no-align          : do not fill in additional cells if the first row has more columns than the current row",
    "  -m, --markdown          : output the table in markdown format",
    "  -M, --markdown-pad      : output the table in markdown format with padding",
@@ -595,7 +595,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *pa
   opts.column_width_max = ZSV_PRETTY_DEFAULT_COLUMN_MAX_WIDTH;
   opts.cache_max_rows = ZSV_PRETTY_DEFAULT_CACHE_MAX;
 
-  const char *size_t_args[] = {"-w", "--width", "-c", "--max-col-width", "-C", "--min-col-width", "-r", "--rows", NULL };
+  const char *size_t_args[] = {"-W", "--width", "-C", "--max-col-width", "-D", "--min-col-width", "-p", "--rows", NULL };
   size_t size_t_maximums[] = { 32000, 32000, 500, 500, 500, 500, 100000000, 100000000 };
   for(int i = 1; !rc && i < argc; i++) {
     if(*argv[i] == '-') {
