@@ -128,7 +128,7 @@ struct zsv_cell zsv_get_cell(zsv_parser parser, size_t index);
  * Get the library version
  */
 ZSV_EXPORT
-const char *zsv_lib_version();
+const char *zsv_lib_version(void);
 
 /**
  * Change a parser's row handler. This function may be called at any time

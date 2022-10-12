@@ -261,15 +261,12 @@ static void zsv_select_add_search(struct zsv_select_data *data, const char *valu
 __attribute__((always_inline)) static inline unsigned char *
 zsv_select_cell_clean(struct zsv_select_data *data, unsigned char *utf8_value, char quoted, size_t *lenp) {
   size_t len = *lenp;
-  if(LIKELY(data->any_clean == 0))
-    return utf8_value;
-
   // to do: option to replace or warn non-printable chars 0 - 31:
   // vectorized scan
   // replace or warn if found
 
   if(UNLIKELY(data->malformed_utf8_replace != NULL))
-    len = zsv_strencode(utf8_value, len, *data->malformed_utf8_replace);
+    len = zsv_strencode(utf8_value, len, *data->malformed_utf8_replace, NULL, NULL);
 
   if(UNLIKELY(!data->no_trim_whitespace))
     utf8_value = (unsigned char *)zsv_strtrim(utf8_value, &len);
@@ -306,7 +303,8 @@ static inline char zsv_select_row_search_hit(struct zsv_select_data *data) {
   unsigned int j = zsv_cell_count(data->parser);
   for(unsigned int i = 0; i < j; i++) {
     struct zsv_cell cell = zsv_get_cell(data->parser, i);
-    cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
+    if(UNLIKELY(data->any_clean != 0))
+      cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
     if(cell.len) {
       for(struct zsv_select_search_str *ss = data->search_strings; ss; ss = ss->next)
         if(ss->value && *ss->value && memmem(cell.str, cell.len, ss->value, ss->len))
@@ -392,14 +390,16 @@ static void zsv_select_output_data_row(struct zsv_select_data *data) {
   for(unsigned int i = 0; i < cnt; i++) { // for each output column
     unsigned int in_ix = data->out2in[i].ix;
     struct zsv_cell cell = zsv_get_cell(data->parser, in_ix);
-    cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
+    if(UNLIKELY(data->any_clean != 0))
+      cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
     if(VERY_UNLIKELY(data->distinct == ZSV_SELECT_DISTINCT_MERGE)) {
       if(UNLIKELY(cell.len == 0)) {
         for(struct zsv_select_uint_list *ix = data->out2in[i].merge.indexes; ix; ix = ix->next) {
           unsigned int m_ix = ix->value;
           cell = zsv_get_cell(data->parser, m_ix);
           if(cell.len) {
-            cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
+            if(UNLIKELY(data->any_clean != 0))
+              cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
             if(cell.len)
               break;
           }
@@ -476,7 +476,8 @@ static void zsv_select_header_row(void *ctx) {
   unsigned int max_header_ix = 0;
   for(unsigned int i = 0; i < cols; i++) {
     struct zsv_cell cell = zsv_get_cell(data->parser, i);
-    cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
+    if(UNLIKELY(data->any_clean != 0))
+      cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
     if(i < data->opts->max_columns) {
       data->header_names[i] = zsv_memdup(cell.str, cell.len);
       max_header_ix = i+1;

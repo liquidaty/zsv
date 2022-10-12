@@ -51,7 +51,7 @@ unsigned char *zsv_strtolowercase(const unsigned char *s, size_t *lenp) {
       fprintf(stderr, "Warning: malformed UTF8 '%.*s'\n", (int)len_orig, s);
       memcpy(tmp_s, s, len_orig);
       tmp_s[len_orig] = '\0';
-      *lenp = zsv_strencode(tmp_s, len_orig, '?');
+      *lenp = zsv_strencode(tmp_s, len_orig, '?', NULL, NULL);
       new_s = utf8proc_tolower_str(tmp_s, lenp);
       free(tmp_s);
     }
@@ -300,7 +300,8 @@ size_t zsv_strwhite(unsigned char *s, size_t len, unsigned int flags) {
 // replace any non-conforming utf8 with the specified char, or
 // remove from the string (and shorten the string) if replace = 0.
 // returns the length of the valid string
-size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace) {
+size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace,
+                     int (*malformed_handler)(void *, const unsigned char *s, size_t n, size_t offset), void *handler_ctx) {
   size_t new_len = 0;
   int clen;
   for(size_t i2 = 0; i2 < n; i2 += (size_t)clen) {
@@ -308,6 +309,8 @@ size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace) {
     if(LIKELY(clen == 1))
       s[new_len++] = s[i2];
     else if(UNLIKELY(clen < 0) || UNLIKELY(i2 + clen >= n)) {
+      if(malformed_handler)
+        malformed_handler(handler_ctx, s, n, new_len);
       if(replace)
         s[new_len++] = replace;
       clen = 1;
@@ -320,6 +323,8 @@ size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace) {
         memmove(s + new_len, s + i2, clen);
         new_len += clen;
       } else { /* invalid; valid_n smaller than expected */
+        if(malformed_handler)
+          malformed_handler(handler_ctx, s, n, new_len);
         memset(s + new_len, replace, valid_n);
         new_len += valid_n;
         clen = valid_n;
