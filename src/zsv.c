@@ -20,7 +20,7 @@
 #include "zsv_internal.c"
 
 ZSV_EXPORT
-const char *zsv_lib_version() {
+const char *zsv_lib_version(void) {
   return VERSION;
 }
 
