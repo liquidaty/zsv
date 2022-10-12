@@ -33,7 +33,7 @@ struct collate_header {
 };
 
 struct zsv_scanner {
-  char last;
+  char last, last_scan;
   struct {
     unsigned char *buff; // provided by caller
     size_t size; // provided by caller

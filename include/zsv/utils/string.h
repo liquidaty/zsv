@@ -9,6 +9,7 @@
 #ifndef ASCII_STRING_H
 #define ASCII_STRING_H
 
+#include "../zsv_export.h"
 #include <stddef.h>
 #include <stdint.h>
 
@@ -62,6 +63,7 @@ size_t zsv_strwhite(unsigned char *s, size_t len, unsigned int flags);
  * @param  ctx      context pointer passed to callback
  * @return          length of the valid string
  */
+ZSV_EXPORT
 size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace,
                      int (*malformed_handler)(void *, const unsigned char *s, size_t n, size_t offset), void *handler_ctx);
 

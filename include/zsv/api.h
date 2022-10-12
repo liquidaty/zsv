@@ -20,12 +20,7 @@
 #define ZSV_MIN_SCANNER_BUFFSIZE 4096
 #define ZSV_DEFAULT_SCANNER_BUFFSIZE (1<<18) // 256k
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#define ZSV_EXPORT EMSCRIPTEN_KEEPALIVE
-#else
-#define ZSV_EXPORT
-#endif
+#include "zsv_export.h"
 /*****************************************************************************
  * libzsv API
  *
@@ -116,9 +111,21 @@ size_t zsv_cell_count(zsv_parser parser);
  *   }
  * ```
  */
-ZSV_EXPORT
 struct zsv_cell zsv_get_cell(zsv_parser parser, size_t index);
 
+/**
+ * `zsv_get_cell_str()` is not needed in most cases, but may be useful in
+ * restrictive cases such as when calling from Javascript/wasm
+ */
+ZSV_EXPORT
+const unsigned char *zsv_get_cell_str(zsv_parser parser, size_t ix);
+
+/**
+ * `zsv_get_cell_len()` is not needed in most cases, but may be useful in
+ * restrictive cases such as when calling from Javascript/wasm
+ */
+ZSV_EXPORT
+const size_t *zsv_get_cell_len(zsv_parser parser, size_t ix);
 
 /******************************************************************************
  * other functions

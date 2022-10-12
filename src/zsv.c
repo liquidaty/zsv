@@ -32,6 +32,7 @@ ZSV_EXPORT
 enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   if(scanner->insert_string) {
     size_t len = strlen(scanner->insert_string);
+//    if(len > scanner->buff.size - scanner->partial_row_length)
     if(len > scanner->buff.size)
       len = scanner->buff.size - 1; // to do: throw an error instead
     memcpy(scanner->buff.buff + scanner->partial_row_length, scanner->insert_string, len);
@@ -108,9 +109,22 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   if(UNLIKELY(scanner->filter != NULL))
     bytes_read = scanner->filter(scanner->filter_ctx,
                                  scanner->buff.buff + scanner->partial_row_length, bytes_read);
-  if(VERY_LIKELY(bytes_read))
+  if(VERY_LIKELY(bytes_read)) {
+    scanner->last_scan = scanner->buff.buff[bytes_read-1];
     return zsv_scan(scanner, scanner->buff.buff, bytes_read);
-  scanner->scanned_length = scanner->partial_row_length;
+  }
+
+  // always finish the input with a row delimiter. this allows
+  // zsv_get_cell_str() to always add a terminating null, and
+  // removes the need to process any trailing cell
+  if(scanner->last_scan && scanner->last_scan != '\n') {
+    scanner->last_scan = 0;
+    size_t scanned_length = scanner->partial_row_length;
+    enum zsv_status final_status = zsv_scan(scanner, "\n", 1);
+    scanner->scanned_length = scanned_length;
+    if(final_status != zsv_status_ok)
+      return final_status;
+  }
   return zsv_status_no_more_input;
 }
 
@@ -149,7 +163,6 @@ char zsv_quoted(zsv_parser parser) {
   return parser->quoted || parser->opts.no_quotes;
 }
 
-ZSV_EXPORT
 struct zsv_cell zsv_get_cell(zsv_parser parser, size_t ix) {
   if(ix < parser->row.used)
     return parser->row.cells[ix];
@@ -157,6 +170,30 @@ struct zsv_cell zsv_get_cell(zsv_parser parser, size_t ix) {
   struct zsv_cell c = { 0, 0, 0 };
   return c;
 }
+
+/**
+ * `zsv_get_cell_str()` is not needed in most cases, but may be useful in
+ * restrictive cases such as when calling from Javascript/wasm
+ */
+ZSV_EXPORT
+const unsigned char *zsv_get_cell_str(zsv_parser parser, size_t ix) {
+  if(ix < parser->row.used) {
+    parser->row.cells[ix].str[parser->row.cells[ix].len] = '\0';
+    return parser->row.cells[ix].str;
+  }
+  return NULL;
+}
+
+/**
+ * `zsv_get_cell_len()` is not needed in most cases, but may be useful in
+ * restrictive cases such as when calling from Javascript/wasm
+ */
+const size_t *zsv_get_cell_len(zsv_parser parser, size_t ix) {
+  if(ix < parser->row.used)
+    return parser->row.cells[ix].len;
+  return 0;
+}
+
 
 ZSV_EXPORT
 void zsv_set_input(zsv_parser parser, void *in) {
