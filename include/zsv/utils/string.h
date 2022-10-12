@@ -54,13 +54,16 @@ size_t zsv_strwhite(unsigned char *s, size_t len, unsigned int flags);
  * Force a string to conform to UTF8 encoding. Replaces any non-conforming utf8
  * with the specified char, or removes from the string (and shortens the string)
  * if replace = 0
- * @param  s       input string
- * @param  n       length (in bytes) of input
- * @param  replace the character to replace any malformed UTF8 bytes with, or 0
- *                 to remove and shorten the result
- * @return the length of the valid string
+ * @param  s        input string. invalid UTF8 bytes will be overwritten
+ * @param  n        length (in bytes) of input
+ * @param  replace  the character to replace any malformed UTF8 bytes with, or 0
+ *                  to remove and shorten the result
+ * @param  callback optional callback invoked upon scanning malformed UTF8
+ * @param  ctx      context pointer passed to callback
+ * @return          length of the valid string
  */
-size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace);
+size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace,
+                     int (*malformed_handler)(void *, const unsigned char *s, size_t n, size_t offset), void *handler_ctx);
 
 size_t zsv_strip_trailing_zeros(const char *s, size_t len);
 
