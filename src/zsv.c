@@ -339,19 +339,20 @@ size_t zsv_cum_scanned_length(zsv_parser parser) {
 enum zsv_status zsv_parse_string(struct zsv_scanner *scanner,
                                  const unsigned char *utf8,
                                  size_t len) {
+  enum zsv_status stat = zsv_status_ok;
   const unsigned char *cursor = utf8;
-  while(len) {
+  while(len && stat == zsv_status_ok) {
     size_t capacity = scanner->buff.size - scanner->partial_row_length;
-    size_t bytes_read = len > capacity ? capacity : len;
-    memcpy(scanner->buff.buff + scanner->partial_row_length, cursor, len);
-    cursor += len;
-    len -= bytes_read;
+    size_t this_chunk_size = len > capacity ? capacity : len;
+    memcpy(scanner->buff.buff + scanner->partial_row_length, cursor, this_chunk_size);
+    cursor += this_chunk_size;
+    len -= this_chunk_size;
     if(scanner->filter)
-      bytes_read = scanner->filter(scanner->filter_ctx,
+      this_chunk_size = scanner->filter(scanner->filter_ctx,
                                    scanner->buff.buff + scanner->partial_row_length,
-                                   bytes_read);
-    if(bytes_read)
-      return zsv_scan(scanner, scanner->buff.buff, bytes_read);
+                                   this_chunk_size);
+    if(this_chunk_size)
+      stat = zsv_scan(scanner, scanner->buff.buff, this_chunk_size);
   }
-  return zsv_status_ok;
+  return stat;
 }
