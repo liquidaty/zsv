@@ -58,7 +58,7 @@ static inline unsigned json_esc_char(unsigned char c, char replace[]) {
     replace[1] = 'u';
     replace[2] = '0';
     replace[3] = '0';
-    str2hex(replace+4, &c, 1);
+    str2hex((unsigned char *)replace+4, &c, 1);
     replacelen = 6;
     replace[6] = '\0';
   } else {

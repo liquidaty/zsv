@@ -19,35 +19,27 @@
 
 #include "zsv_internal.c"
 
+#ifndef ZSV_VERSION
+#define ZSV_VERSION "unknown"
+#endif
+
 ZSV_EXPORT
 const char *zsv_lib_version(void) {
-  return VERSION;
+  return ZSV_VERSION;
 }
 
 /**
- * Read the next chunk of data from our input stream and parse it, calling our
- * custom handlers as each cell and row are parsed
+ * When we parse a chunk, if it was not the first parse call, we might have a partial
+ * row at the end of our buffer that must be moved. The reason we do this at the beginning
+ * of a parse and not at the end of the prior parse is so that between chunks, the input
+ * chunk remains available in a contiguous block of one or more rows
  */
-ZSV_EXPORT
-enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
-  if(scanner->insert_string) {
-    size_t len = strlen(scanner->insert_string);
-    if(len > scanner->buff.size)
-      len = scanner->buff.size - 1; // to do: throw an error instead
-    memcpy(scanner->buff.buff + scanner->partial_row_length, scanner->insert_string, len);
-    if(scanner->buff.buff[len] != '\n')
-      scanner->buff.buff[len] = '\n';
-    zsv_scan(scanner, scanner->buff.buff, len + 1);
-    scanner->insert_string = NULL;
-  }
-  // if this is not the first parse call, we might have a partial
-  // row at the end of our buffer that must be moved
+__attribute__((always_inline)) static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
   scanner->last = '\0';
-  if(scanner->old_bytes_read) {
+  if(VERY_LIKELY(scanner->old_bytes_read)) {
     scanner->last = scanner->buff.buff[scanner->old_bytes_read-1];
     if(scanner->row_start < scanner->old_bytes_read) {
       size_t len = scanner->old_bytes_read - scanner->row_start;
-
       if(len < scanner->row_start)
         memcpy(scanner->buff.buff, scanner->buff.buff + scanner->row_start, len);
       else
@@ -58,7 +50,6 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
       scanner->row_start = 0;
       zsv_clear_cell(scanner);
     }
-
     scanner->cell_start -= scanner->row_start;
     for(size_t i2 = 0; i2 < scanner->row.used; i2++)
       scanner->row.cells[i2].str -= scanner->row_start;
@@ -67,8 +58,8 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   }
 
   scanner->cum_scanned_length += scanner->scanned_length;
-  size_t capacity = scanner->buff.size - scanner->partial_row_length;
 
+  size_t capacity = scanner->buff.size - scanner->partial_row_length;
   if(VERY_UNLIKELY(capacity == 0)) { // our row size was too small to fit a single row of data
     fprintf(stderr, "Warning: row truncated\n");
     if(scanner->mode == ZSV_MODE_FIXED) {
@@ -84,7 +75,27 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
     scanner->partial_row_length = 0;
     capacity = scanner->buff.size;
   }
+  return capacity;
+}
 
+/**
+ * Read the next chunk of data from our input stream and parse it, calling our
+ * custom handlers as each cell and row are parsed
+ */
+ZSV_EXPORT
+enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
+  if(scanner->insert_string) {
+    size_t len = strlen(scanner->insert_string);
+    if(len > scanner->buff.size - scanner->partial_row_length)
+      len = scanner->buff.size - 1; // to do: throw an error instead
+    memcpy(scanner->buff.buff + scanner->partial_row_length, scanner->insert_string, len);
+    if(scanner->buff.buff[len] != '\n')
+      scanner->buff.buff[len] = '\n';
+    zsv_scan(scanner, scanner->buff.buff, len + 1);
+    scanner->insert_string = NULL;
+  }
+
+  size_t capacity = scanner_pre_parse(scanner);
   size_t bytes_read;
   if(UNLIKELY(!scanner->checked_bom)) {
 #ifdef ZSV_EXTRAS
@@ -110,6 +121,7 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
                                  scanner->buff.buff + scanner->partial_row_length, bytes_read);
   if(VERY_LIKELY(bytes_read))
     return zsv_scan(scanner, scanner->buff.buff, bytes_read);
+
   scanner->scanned_length = scanner->partial_row_length;
   return zsv_status_no_more_input;
 }
@@ -149,13 +161,42 @@ char zsv_quoted(zsv_parser parser) {
   return parser->quoted || parser->opts.no_quotes;
 }
 
-ZSV_EXPORT
 struct zsv_cell zsv_get_cell(zsv_parser parser, size_t ix) {
   if(ix < parser->row.used)
     return parser->row.cells[ix];
 
   struct zsv_cell c = { 0, 0, 0 };
   return c;
+}
+
+/**
+ * `zsv_get_cell_len()` is not needed in most cases, but may be useful in
+ * restrictive cases such as when calling from Javascript into wasm
+ */
+ZSV_EXPORT
+size_t zsv_get_cell_len(zsv_parser parser, size_t ix) {
+  if(ix < parser->row.used)
+    return parser->row.cells[ix].len;
+  return 0;
+}
+
+/**
+ * `zsv_copy_cell_str()` is not needed in most cases, but may be useful in
+ * restrictive cases such as when calling from Javascript into wasm. Trailing
+ * NULL will be written to the buffer, which must be at least cell.len + 1
+ * in size. Because of this requirement, the caller should always first call
+ * `zsv_get_cell_len()` to ensure that the passed buffer is large enough
+ * Furthermore, the `ix` parameter is not checked for safety, so the caller
+ * must ensure that it is less than the cell count returned by `zsv_cell_count()`
+ *
+ * @param parser zsv parser handle
+ * @param ix     0-based index of the cell to copy. Caller must ensure validity
+ * @param buff   buffer to copy into. Must already be of size cell.len + 1
+ */
+ZSV_EXPORT
+void zsv_copy_cell_str(zsv_parser parser, size_t ix, unsigned char *buff) {
+  memcpy(buff, parser->row.cells[ix].str, parser->row.cells[ix].len);
+  buff[parser->row.cells[ix].len] = '\0';
 }
 
 ZSV_EXPORT
@@ -332,26 +373,27 @@ size_t zsv_cum_scanned_length(zsv_parser parser) {
 
 /**
  * @param parser parser handle
- * @param utf8   the input string to parse. Note: this buffer may not overlap with
+ * @param utf8   the input buffer. Note: this buffer may not overlap with
  *               the parser buffer!
  * @param len    length of the input to parse
  */
-enum zsv_status zsv_parse_string(struct zsv_scanner *scanner,
-                                 const unsigned char *utf8,
-                                 size_t len) {
+enum zsv_status zsv_parse_bytes(struct zsv_scanner *scanner,
+                                const unsigned char *utf8,
+                                size_t len) {
+  enum zsv_status stat = zsv_status_ok;
   const unsigned char *cursor = utf8;
-  while(len) {
-    size_t capacity = scanner->buff.size - scanner->partial_row_length;
-    size_t bytes_read = len > capacity ? capacity : len;
-    memcpy(scanner->buff.buff + scanner->partial_row_length, cursor, len);
-    cursor += len;
-    len -= bytes_read;
+  while(len && stat == zsv_status_ok) {
+    size_t capacity = scanner_pre_parse(scanner);
+    size_t this_chunk_size = len > capacity ? capacity : len;
+    memcpy(scanner->buff.buff + scanner->partial_row_length, cursor, this_chunk_size);
+    cursor += this_chunk_size;
+    len -= this_chunk_size;
     if(scanner->filter)
-      bytes_read = scanner->filter(scanner->filter_ctx,
+      this_chunk_size = scanner->filter(scanner->filter_ctx,
                                    scanner->buff.buff + scanner->partial_row_length,
-                                   bytes_read);
-    if(bytes_read)
-      return zsv_scan(scanner, scanner->buff.buff, bytes_read);
+                                   this_chunk_size);
+    if(this_chunk_size)
+      stat = zsv_scan(scanner, scanner->buff.buff, this_chunk_size);
   }
-  return zsv_status_ok;
+  return stat;
 }

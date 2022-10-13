@@ -300,6 +300,7 @@ size_t zsv_strwhite(unsigned char *s, size_t len, unsigned int flags) {
 // replace any non-conforming utf8 with the specified char, or
 // remove from the string (and shorten the string) if replace = 0.
 // returns the length of the valid string
+ZSV_EXPORT
 size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace,
                      int (*malformed_handler)(void *, const unsigned char *s, size_t n, size_t offset), void *handler_ctx) {
   size_t new_len = 0;

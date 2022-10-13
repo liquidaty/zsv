@@ -20,12 +20,7 @@
 #define ZSV_MIN_SCANNER_BUFFSIZE 4096
 #define ZSV_DEFAULT_SCANNER_BUFFSIZE (1<<18) // 256k
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#define ZSV_EXPORT EMSCRIPTEN_KEEPALIVE
-#else
-#define ZSV_EXPORT
-#endif
+#include "zsv_export.h"
 /*****************************************************************************
  * libzsv API
  *
@@ -116,9 +111,34 @@ size_t zsv_cell_count(zsv_parser parser);
  *   }
  * ```
  */
-ZSV_EXPORT
 struct zsv_cell zsv_get_cell(zsv_parser parser, size_t index);
 
+/**
+ * `zsv_get_cell_len()` is not needed in most cases, but may be useful in
+ * restrictive cases such as when calling from Javascript into wasm
+ *
+ * @param  parser
+ * @param  ix     0-based index of the cell to copy
+ * @return length of cell contents (0 if cell is empty)
+ */
+ZSV_EXPORT
+size_t zsv_get_cell_len(zsv_parser parser, size_t ix);
+
+/**
+ * `zsv_copy_cell_str()` is not needed in most cases, but may be useful in
+ * restrictive cases such as when calling from Javascript into wasm. Trailing
+ * NULL will be written to the buffer, which must be at least cell.len + 1
+ * in size. Because of this requirement, the caller should always first call
+ * `zsv_get_cell_len()` to ensure that the passed buffer is large enough
+ * Furthermore, the `ix` parameter is not checked for safety, so the caller
+ * must ensure that it is less than the cell count returned by `zsv_cell_count()`
+ *
+ * @param parser
+ * @param ix     0-based index of the cell to copy. Caller must ensure validity
+ * @param buff   buffer to copy into. Must already be of size cell.len + 1
+ */
+ZSV_EXPORT
+void zsv_copy_cell_str(zsv_parser parser, size_t ix, unsigned char *buff);
 
 /******************************************************************************
  * other functions
@@ -197,16 +217,17 @@ ZSV_EXPORT enum zsv_status zsv_set_scan_filter(zsv_parser parser,
 ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count, size_t *offsets);
 
 /**
- * Parse a string. This function is not used in any zsv CLI or example code, but is
- * provided here for push-parser compatibility
- * @param parser parser handle
- * @param utf8   the input string to parse. Note: this buffer may not overlap with
+ * Parse a buffer of bytes. This function is usually not needed, but
+ * can be used to parse in a push instead of pull manner
+ *
+ * @param parser
+ * @param utf8   the input buffer to parse. This buffer may not overlap with
  *               the parser buffer!
  * @param len    length of the input to parse
  */
-ZSV_EXPORT enum zsv_status zsv_parse_string(zsv_parser parser,
-                                            const unsigned char *restrict utf8,
-                                            size_t len);
+ZSV_EXPORT enum zsv_status zsv_parse_bytes(zsv_parser parser,
+                                           const unsigned char *restrict utf8,
+                                           size_t len);
 
 /**
  * Get a text description of a status code
