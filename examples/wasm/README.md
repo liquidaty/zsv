@@ -9,6 +9,8 @@ Most of the operative code is in [js/foot.js](js/foot.js) which effectively just
 When run, static files will be built in a subdirectory of the `build` directory, and a python local https server
 will be started to serve them on https://127.0.0.1:8888
 
+You can view a [demo of the built example here](https://liquidaty.github.io/zsv/examples/wasm/build/)
+
 ## Prerequisites
 
 To build, you need emscripten. To run the example web server, you need python3. Unlike some of the other examples,
