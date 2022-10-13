@@ -366,6 +366,6 @@ clean-obj:
 	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT}
 	rm -rf external/utf8proc-2.6.1
 
-${UTF8PROC_SRC}/utf8proc.c: external/utf8proc-2.6.1.tar.gz
+${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: external/utf8proc-2.6.1.tar.gz
 	@cd external && tar xf ../$< && chown -R `whoami` utf8proc-2.6.1
 	@touch $@

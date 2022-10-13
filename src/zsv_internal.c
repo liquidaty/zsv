@@ -33,7 +33,7 @@ struct collate_header {
 };
 
 struct zsv_scanner {
-  char last, last_scan;
+  char last;
   struct {
     unsigned char *buff; // provided by caller
     size_t size; // provided by caller
@@ -177,6 +177,7 @@ __attribute__((always_inline)) static inline void zsv_clear_cell(struct zsv_scan
   scanner->quoted = 0;
 }
 
+// always_inline has a noticeable impact. do not remove without benchmarking!
 __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner * scanner, unsigned char * s, size_t n) {
   // handle quoting
   if(UNLIKELY(scanner->quoted > 0)) {
@@ -289,6 +290,7 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
   return zsv_status_ok;
 }
 
+// __attribute__((always_inline))
 static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
   cell_dl(scanner, s, n);
   return row_dl(scanner);
