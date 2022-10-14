@@ -2,14 +2,24 @@
 
 ## Overview
 
-This example demonstrates how the zsv CSV parser can be compiled to web assembly and called via javascript.
+Two examples here demonstrate how the zsv CSV parser can be compiled to web assembly and called via javascript
+via a static page in a browser or a Node module.
 
 Most of the operative code is in [js/foot.js](js/foot.js) which effectively just converts between Javascript and emscripten.
 
-When run, static files will be built in a subdirectory of the `build` directory, and a python local https server
+### Browser
+To run the browser demo, run `make run`.
+Static files will be built in a subdirectory of the `build` directory, and a python local https server
 will be started to serve them on https://127.0.0.1:8888
 
 You can view a [demo of the built example here](https://liquidaty.github.io/zsv/examples/wasm/build/)
+
+### Node module
+To build a node module, run `make node`. Module files will be placed in node/node_modules/zsv-parser
+
+### Node example and test
+To run a test via node, run `make test`. The node module will be built, a sample program will be copied to
+`node/index.js`, which reads CSV from stdin and outputs JSON, and a test will be run
 
 ## Prerequisites
 
@@ -53,10 +63,14 @@ In this example, ZSV performs well, but is not as fast as other browser-based CS
 Separate commands can be used for build, run and clean:
 ```
 make build
+make node
 make run
 make clean
 ```
-or to see all options:
+
+Add MINIFY=1 to any of the above to generate minified code
+
+To see all make options:
 ```
 make
 ```

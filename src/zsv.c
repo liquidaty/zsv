@@ -373,15 +373,15 @@ size_t zsv_cum_scanned_length(zsv_parser parser) {
 
 /**
  * @param parser parser handle
- * @param utf8   the input buffer. Note: this buffer may not overlap with
+ * @param buff   the input buffer. Note: this buffer may not overlap with
  *               the parser buffer!
  * @param len    length of the input to parse
  */
 enum zsv_status zsv_parse_bytes(struct zsv_scanner *scanner,
-                                const unsigned char *utf8,
+                                const unsigned char *bytes,
                                 size_t len) {
   enum zsv_status stat = zsv_status_ok;
-  const unsigned char *cursor = utf8;
+  const unsigned char *cursor = bytes;
   while(len && stat == zsv_status_ok) {
     size_t capacity = scanner_pre_parse(scanner);
     size_t this_chunk_size = len > capacity ? capacity : len;

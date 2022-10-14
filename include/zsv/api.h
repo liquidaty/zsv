@@ -221,12 +221,12 @@ ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count
  * can be used to parse in a push instead of pull manner
  *
  * @param parser
- * @param utf8   the input buffer to parse. This buffer may not overlap with
+ * @param buff   the input buffer to parse. This buffer may not overlap with
  *               the parser buffer!
  * @param len    length of the input to parse
  */
 ZSV_EXPORT enum zsv_status zsv_parse_bytes(zsv_parser parser,
-                                           const unsigned char *restrict utf8,
+                                           const unsigned char *restrict buff,
                                            size_t len);
 
 /**
