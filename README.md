@@ -21,7 +21,7 @@ zsv+lib is a fast CSV parser library and extensible command-line utility.
 It achieves high performance using SIMD operations,
 [efficient memory use](docs/memory.md) and other optimization techniques.
 
-The ZSV CLI can be compiled to virtually any target, including web assembly.
+The ZSV CLI can be compiled to virtually any target, including [web assembly](examples/js).
 
 Pre-built CLI packages are available via brew and nuget.
 
