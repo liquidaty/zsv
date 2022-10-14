@@ -1,0 +1,25 @@
+{
+  "name": "zsv-parser",
+  "description": "flexible, high-performance streaming CSV parser",
+  "version": "0.3.0",
+  "author": {
+    "name": "Matt Wong, Ralph Eastwood and libzsv contributors",
+    "email": "info@liquidaty.com"
+  },
+  "contributors": [
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liquidaty/zsv"
+  },
+  "homepage": "https://github.com/liquidaty/zsv",
+  "keywords": ["csv", "parser", "streaming", "sax", "simd", "event"],
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": { "node": ">= 8.5.0" },
+  "files": [
+    "index.js",
+    "zsv.em.wasm"
+  ]
+}

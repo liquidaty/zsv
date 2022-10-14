@@ -48,7 +48,7 @@
         return z;
       }
     },
-    parse_bytes: function(z, byte_array) {
+    parseBytes: function(z, byte_array) {
       let len = byte_array.length;
       if(len) {
         // copy bytes into a chunk of memory that our library can access
@@ -58,19 +58,15 @@
           z.buff = _malloc(len);
           z.buffsize = len;
         }
+        // copy to memory that wasm can access, then parse
         writeArrayToMemory(byte_array, z.buff);
-
-        // ensure our input is valid UTF8
-        len = _zsv_strencode(z.buff, len, 0, 0, 0);
-
-        // parse
         return _zsv_parse_bytes(z.zsv, z.buff, len);
       }
     },
-    cell_count: function(z) {
+    cellCount: function(z) {
       return _zsv_cell_count(z.zsv);
     },
-    get_cell: function(z, i) {
+    getCell: function(z, i) {
       let len = _zsv_get_cell_len(z.zsv, i);
       if(len > 0) {
         if(!(z.cellbuffsize >= len + 1)) {
@@ -99,6 +95,6 @@
         _free(z.cellbuff);
       return _zsv_delete(z.zsv);
     },
-    run_on_load
+    runOnLoad: run_on_load
   };
 })();
