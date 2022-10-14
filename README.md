@@ -1,12 +1,23 @@
 # zsv+lib: the world's fastest (simd) CSV parser, with an extensible CLI
 
+lib + CLI:
 [![ci](https://github.com/liquidaty/zsv/actions/workflows/ci.yml/badge.svg)](https://github.com/liquidaty/zsv/actions/workflows/ci.yml)
 ![GitHub pre-release)](https://img.shields.io/github/v/release/liquidaty/zsv?include_prereleases&label=pre-release&logo=github&style=flat-square)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/liquidaty/zsv?logo=github&style=flat-square)
 ![GitHub all releases (downloads)](https://img.shields.io/github/downloads/liquidaty/zsv/total?logo=github&style=flat-square)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/liquidaty/zsv/blob/master/LICENSE)
 
-zsv+lib is a fast parser library for CSV and similar formats, and an extensible command-line utility.
+lib only:
+[![NPM Version][npm-version-image]][npm-url]
+[![NPM Install Size][npm-install-size-image]][npm-install-size-url]
+
+[npm-install-size-image]: https://badgen.net/packagephobia/install/zsv-lib
+[npm-install-size-url]: https://packagephobia.com/result?p=zsv-lib
+[npm-url]: https://npmjs.org/package/zsv-lib
+[npm-version-image]: https://badgen.net/npm/v/zsv-lib
+
+
+zsv+lib is a fast CSV parser library and extensible command-line utility.
 It achieves high performance using SIMD operations,
 [efficient memory use](docs/memory.md) and other optimization techniques.
 
