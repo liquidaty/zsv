@@ -1,4 +1,4 @@
-# ZSV in web assembly example
+# Using libzsv from Javascript (browser or Node)
 
 ## Overview
 
