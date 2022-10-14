@@ -1,28 +1,38 @@
-# zsv-parser
+# zsv-lib
 
-zsv-parser is a node package of the high-performance zsv parser for CSV and other delimited
+zsv-lib is a node package of the high-performance zsv parser library for CSV and other delimited
 or fixed-width tabular text data
 
-For more information about the underlying library, visit https://github.com/liquidaty/zsv
+This is a low-level library for "unopinionated" CSV parsing. Note that the related zsv CLI,
+which offers additional features such as ad hoc SQL, header manipulation, serializing, flattening,
+converting to JSON or SQLITE3 etc, is not part of this package, but may in the future be offered
+as part of a separate npm package.
+
+Note: the zsv C library supports a very wide range of options; not all are yet exposed in this
+package. Please feel free to post a ticket at https://github.com/liquidaty/zsv/issues
+if you'd like to request any feature that is available in the underlying library but
+not exposed in this package (or that does not yet exist in the underlying library at all)
+
+For more information about zsv+lib, please visit https://github.com/liquidaty/zsv
 
 ## Installation
 
-
 ```bash
-npm install zsv-parser
+npm install zsv-lib
 ```
 
 ## Usage
 
 libzsv works generally as follows:
-1. You define a row handler function, and push chunks of data through the parser
-2. The parser calls your function for each row that is parsed
-3. Your row handler extracts data from the current row and processes it however you want
+1. Create a custom a row handler function and create a parser with that function
+2. Push chunks of data through the parser
+3. The parser calls your custom function for each row that is parsed
+4. Your row handler extracts data from the parser and processes it however you want
 
 ### Pseudo-code example
 
 ```js
-const zsvParser = require('zsv-parser');
+const zsvParser = require('zsv-lib');
 
 let ctx = { rowcount: 0, parser: null };       /* create a context      */
 
@@ -57,6 +67,7 @@ package. Please feel free to post a ticket at https://github.com/liquidaty/zsv/i
 if you'd like to request any feature
 that is either unexposed from the underlying library, or does not yet exist in the
 underlying library
+
 
 ```
 /**
@@ -104,8 +115,8 @@ finish(parser)
 delete(parser)
 
 /**
- * Queue code to run only after the zsv-parser web assembly module has finished loading
- * @param callback function to call after the zsv-parser module has finished loaded
+ * Queue code to run only after the zsv-lib web assembly module has finished loading
+ * @param callback function to call after the zsv-lib module has finished loaded
  */
 runOnLoad(callback)
 

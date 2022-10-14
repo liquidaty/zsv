@@ -6,9 +6,17 @@
 ![GitHub all releases (downloads)](https://img.shields.io/github/downloads/liquidaty/zsv/total?logo=github&style=flat-square)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/liquidaty/zsv/blob/master/LICENSE)
 
-zsv+lib is a fast CSV parser library and extensible command-line utility.
+zsv+lib is a fast parser library for CSV and similar formats, and an extensible command-line utility.
 It achieves high performance using SIMD operations,
 [efficient memory use](docs/memory.md) and other optimization techniques.
+
+The ZSV CLI can be compiled to virtually any target, including web assembly.
+
+Pre-built CLI packages are available via brew and nuget.
+
+A pre-built library package is available for Node (`npm install zsv-lib`). Please note, this package
+is still in alpha and currently only exposes a small subset of the zsv library capabilities. More
+to come
 
 If you like zsv+lib, do not forget to give it a star! 🌟
 
@@ -141,6 +149,20 @@ choco.exe uninstall zsv
 **NOTE**: Windows build has a runtime dependency on `libwinpthread-1.dll`.
 Please download it from here (https://wikidll.com/mingw-w64/libwinpthread-1-dll)
 according to your Windows version and place it with `zsv` executable.
+
+#### Node
+
+The zsv parser library is available for node:
+```
+npm install zsv-lib
+```
+
+Please note:
+* this pacakge is still in alpha and currently only exposes a small subset of the zsv library capabilities.
+  More to come!
+* The CLI is not yet available as a Node package
+* If you'd like to use additional parser features, or use the CLI as a Node package,
+  please feel free to post a request in an issue here
 
 ### From source
 

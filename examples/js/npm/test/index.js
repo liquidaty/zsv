@@ -1,7 +1,7 @@
 const process= require('node:process');
 const { PerformanceObserver, performance } = require('node:perf_hooks');
 const fs = require('fs');
-const zsvParser = require('zsv-parser');
+const zsvParser = require('zsv-lib');
 
 /**
  * Example using libzsv to parse CSV input and execute a custom row handler function as each row is parsed
@@ -58,7 +58,7 @@ function finish(ctx, parser) {
 }
 
 /**
- * After the zsv-parser module has loaded, read from stdin or the specified file,
+ * After the zsv-lib module has loaded, read from stdin or the specified file,
  * parse the input, apply the row handler for each parsed row and finish
  */
 zsvParser.runOnLoad(function() {
