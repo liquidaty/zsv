@@ -25,7 +25,7 @@
   }
 
   return {
-    new: function(row_handler) {
+    new: function(row_handler, ctx) {
       let h = _zsv_new(null);
       if(h) {
         let z = {
@@ -37,8 +37,8 @@
           cellbuffsize: 0
         };
 
-        let this_row_handler = function(_ctx) {
-          row_handler();
+        let this_row_handler = function(_) {
+          row_handler(ctx);
         };
         // row_handlerp: void (*row_handler)(void *ctx);
         if(!(z.row_handler = addFunction(this_row_handler, 'vi')))

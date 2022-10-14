@@ -90,7 +90,7 @@ prep: ../../app/external/utf8proc-2.6.1/utf8proc.h
 test: npm/test/index.js node
 	@mkdir -p build/test
 	@cp -p $< node/
-	@echo "Running test (example) program node/index.js"
+	@echo "Running test (example) program \`node node/index.js ../../data/test/desc.csv\`"
 	@(cd node && node index.js ../../../data/test/desc.csv > ../build/test/out.json 2> ../build/test/out.err1)
 	@sed 's/[0-9.]*ms//g' < build/test/out.err1 > build/test/out.err
 	@cmp build/test/out.err npm/test/out.err
@@ -128,8 +128,8 @@ ${NODE_WASM}: ${WASM}
 	@mkdir -p `dirname "$@"`
 	@cp -p $< $@
 
-NODE_PKG_JSON=node/node_modules/${NODE_PKG_NAME}/package.json
-${NODE_PKG_JSON}: npm/package.json
+NODE_PKG_FILES=$(addprefix node/node_modules/${NODE_PKG_NAME}/, package.json README.md)
+${NODE_PKG_FILES}: node/node_modules/${NODE_PKG_NAME}/% : npm/%
 	@mkdir -p `dirname "$@"`
 	@cp -p $< $@
 
@@ -146,7 +146,7 @@ setup:
 	npm install -g uglify-es
 
 
-node: ${NODE_WASM} ${NODE_INDEX} ${NODE_PKG_JSON}
+node: ${NODE_WASM} ${NODE_INDEX} ${NODE_PKG_FILES}
 	@echo "Built node module in node/node_modules/zsv-parser"
 
 ## node test
