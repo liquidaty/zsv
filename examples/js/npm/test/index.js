@@ -1,7 +1,7 @@
 const process= require('node:process');
 const { PerformanceObserver, performance } = require('node:perf_hooks');
 const fs = require('fs');
-const zsvParser = require('zsv-parser');
+const zsvParser = require('zsv-lib');
 
 /**
  * Example using libzsv to parse CSV input and execute a custom row handler function as each row is parsed
@@ -13,7 +13,6 @@ const zsvParser = require('zsv-parser');
  */
 function createContext() {
   return {
-    parser: null,                 // handle to our parser
     rowcount: 0,                  // how many rows we've parsed so far
     startTime: performance.now(), // when the run was started
     data: [],                     // object to hold all data parsed thus far
@@ -25,21 +24,21 @@ function createContext() {
  * Define a row handler which will be called each time a row is parsed, and which
  * accesses all data through a context object
  */
-function rowHandler(ctx) {
+function rowHandler(ctx, z) {
   ctx.rowcount++;
-  let count = zsvParser.cellCount(ctx.parser);
+  let count = zsvParser.cellCount(z);
   let row = [];
   for(let i = 0; i < count; i++)
-    row.push(zsvParser.getCell(ctx.parser, i));
+    row.push(zsvParser.getCell(z, i));
   ctx.data.push(row);
 }
 
 /**
  * Define the steps to take after all parsing has completed
  */
-function finish(ctx) {
-  if(ctx.parser) {
-    zsvParser.finish(ctx.parser); /* finish parsing */
+function finish(ctx, parser) {
+  if(parser) {
+    zsvParser.finish(parser); /* finish parsing */
     let endTime = performance.now()   /* check the time */
 
     /* output a message describing the parse volume and performance */
@@ -54,13 +53,12 @@ function finish(ctx) {
     console.log(ctx.data);
 
     /* destroy the parser */
-    zsvParser.delete(ctx.parser);
-    ctx.parser = null;
+    zsvParser.delete(parser);
   }
 }
 
 /**
- * After the zsv-parser module has loaded, read from stdin or the specified file,
+ * After the zsv-lib module has loaded, read from stdin or the specified file,
  * parse the input, apply the row handler for each parsed row and finish
  */
 zsvParser.runOnLoad(function() {
@@ -69,7 +67,7 @@ zsvParser.runOnLoad(function() {
   let ctx = createContext();
 
   /* initialize parser */
-  ctx.parser = zsvParser.new(rowHandler, ctx);
+  let parser = zsvParser.new(rowHandler, ctx);
 
   try {
     /* read stdin if we have no arguments, else the first argument */
@@ -80,15 +78,15 @@ zsvParser.runOnLoad(function() {
     readStream.on('data', function(chunk) {
       if(chunk && chunk.length) {
         ctx.bytesRead += chunk.length;
-        zsvParser.parseBytes(ctx.parser, chunk);
+        zsvParser.parseBytes(parser, chunk);
       }
     });
 
     /* set our final callback */
-    readStream.on('end', function() { finish(ctx); });
+    readStream.on('end', function() { finish(ctx, parser); });
   } catch(e) {
     console.error('Unable to open for read: ' + inputFileName);
     console.error(e);
-    finish(ctx);
+    finish(ctx, parser);
   }
 });

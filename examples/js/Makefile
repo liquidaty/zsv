@@ -5,7 +5,7 @@ THIS_MAKEFILE:=$(lastword $(MAKEFILE_LIST))
 
 CC ?= emcc
 SED ?= sed
-NODE_PKG_NAME=zsv-parser
+NODE_PKG_NAME=zsv-lib
 
 CONFIGFILE= ${THIS_MAKEFILE_DIR}/../../config.emcc
 $(info Using config file ${CONFIGFILE})
@@ -147,6 +147,6 @@ setup:
 
 
 node: ${NODE_WASM} ${NODE_INDEX} ${NODE_PKG_FILES}
-	@echo "Built node module in node/node_modules/zsv-parser"
+	@echo "Built node module in node/node_modules/{NODE_PKG_NAME}"
 
 ## node test

@@ -9,7 +9,7 @@
   function run_if_loaded() {
     if(_loaded)
       while(do_on_load.length)
-        do_on_load.pop()();
+        do_on_load.shift()();
   }
 
   function run_on_load(f) {
@@ -24,27 +24,37 @@
     return ret;
   }
 
+  let activeParsers = [];
+  let activeParser_count = 0;
+
+  function globalRowHandler(ix) {
+    let z = activeParsers[ix];
+    z.rowHandler(z.ctx, z);
+  }
+
+  let globalRowHandlerp;
+  run_on_load(function() {
+    globalRowHandlerp = addFunction(globalRowHandler, 'vi');
+  });
+
   return {
-    new: function(row_handler, ctx) {
+    new: function(rowHandler, ctx) { // rowHandler will be called with args (h, ctx)
       let h = _zsv_new(null);
       if(h) {
         let z = {
           zsv: h,
-          row_handler: null,
+          rowHandler: rowHandler,
           buff: null,
           buffsize: 0,
           cellbuff: null,
-          cellbuffsize: 0
+          cellbuffsize: 0,
+          ix: activeParsers.length,
+          ctx: ctx
         };
-
-        let this_row_handler = function(_) {
-          row_handler(ctx);
-        };
-        // row_handlerp: void (*row_handler)(void *ctx);
-        if(!(z.row_handler = addFunction(this_row_handler, 'vi')))
-          console.log('Error! Unable to allocate row handler');
-        else
-          _zsv_set_row_handler(h, z.row_handler);
+        activeParsers.push(z);
+        activeParser_count++;
+        _zsv_set_row_handler(h, globalRowHandlerp);
+        _zsv_set_context(h, z.ix);
         return z;
       }
     },
@@ -87,12 +97,14 @@
       return _zsv_finish(z.zsv);
     },
     delete: function(z) {
-      if(z.row_handler)
-        removeFunction(z.row_handler);
       if(z.buff)
         _free(z.buff);
       if(z.cellbuff)
         _free(z.cellbuff);
+      activeParsers[z.ix] = null;
+      activeParser_count--;
+      if(activeParser_count == 0)
+        activeParsers = [];
       return _zsv_delete(z.zsv);
     },
     runOnLoad: run_on_load

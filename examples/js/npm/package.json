@@ -1,9 +1,9 @@
 {
-  "name": "zsv-parser",
-  "description": "flexible, high-performance streaming CSV parser",
-  "version": "0.3.0",
+  "name": "zsv-lib",
+  "description": "Node package for the ZSV library (high-performance simd CSV parser",
+  "version": "0.3.1",
   "author": {
-    "name": "Matt Wong, Ralph Eastwood and libzsv contributors",
+    "name": "Matt Wong, Ralph Eastwood and zsv+lib contributors",
     "email": "info@liquidaty.com"
   },
   "contributors": [
