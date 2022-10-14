@@ -68,10 +68,10 @@ TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
 
 help:
 	@echo "make [build|run|node|test|clean]"
-	@echo "to generate minified code, run"
+	@echo "by default, minified code is generated, which requires running the below once:"
 	@echo "  make setup"
-	@echo "once, then run"
-	@echo "  make MINIFY=1 [build|run|node|test]"
+	@echo "alternatively, to generate non-minified code, use NO_MINIFY=1:"
+	@echo "  make NO_MINIFY=1 [build|run|node|test]"
 
 build: ${BROWSER_JS} ${STATIC}
 	@echo Built ${BROWSER_JS}
@@ -115,10 +115,10 @@ ${BROWSER_JS}: prep ${EMJS} js/head.js js/foot.js
 	@cat js/head.js > $@.tmp.js
 	@cat ${EMJS} >> $@.tmp.js
 	@cat js/foot.js >> $@.tmp.js
-ifeq ($(MINIFY),1)
-	@uglifyjs $@.tmp.js -c -m > $@
-else
+ifeq ($(NO_MINIFY),1)
 	@mv $@.tmp.js $@
+else
+	@uglifyjs $@.tmp.js -c -m > $@
 endif
 
 ### node package build
@@ -136,10 +136,10 @@ ${NODE_PKG_FILES}: node/node_modules/${NODE_PKG_NAME}/% : npm/%
 ${NODE_INDEX}: ${BROWSER_JS} js/foot_node.js
 	@mkdir -p `dirname "$@"`
 	@cat $^ > $@.tmp.js
-ifeq ($(MINIFY),1)
-	@uglifyjs $@.tmp.js -c -m > $@
-else
+ifeq ($(NO_MINIFY),1)
 	@mv $@.tmp.js $@
+else
+	@uglifyjs $@.tmp.js -c -m > $@
 endif
 
 setup:
