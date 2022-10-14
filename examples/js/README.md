@@ -42,21 +42,14 @@ this example does not require that libzsv is already installed
 4. Click the button to upload a file
 
 ## Performance
-In this example, ZSV performs well, but is not as fast as other browser-based CSV parsers. That is OK! Here's why:
+When running in the browser, libzsv is fast, but not quite as other CSV parsers that have been optimized for Javascript
+(unlike when running natively, where libzsv is the fastest that we are aware of, that parses in the same manner as Excel for all edge cases).
 
-* It's still pretty darn fast
+The reason that pure-Javascript parsers can be faster in the browser is almost certaintly due to the extra memory operations required to pass string data beteween Javascript and web assembly (e.g. as described at https://hacks.mozilla.org/2019/08/webassembly-interface-types/).
 
-* It uses a row handler callback function. This provides the user with an easy way to achieve flexibility
-  throughout the entire parsing process
-
-* Because it's wasm, translation is bound to have some friction, especially here where a lot of string data
-  is being passed between Javascript and the API. See e.g. https://hacks.mozilla.org/2019/08/webassembly-interface-types/
-  for an explanation of why this innate performance drag exists between Javascript and wasm
-
-* Its purpose is not to be the fastest in-browser parser. Rather, if you are building something natively, and want
-  to use ZSV, you can benefit from using the same code base when you run in the browser. Most likely, ZSV's speed
-  will not be the bottleneck, and possibly the benefit of having a single code base shared between native and browser
-  environments is more than enough to make it worthwhile.
+Nonetheless, libzsv as web assembly called from Javascript is still extremely fast, and its primary objectives-- to be reasonably fast when used
+via Javascript, while providing a consistent interface across any platform you are building for (browser, node, or bare metal on any operating system)
+and offering the fastest bare-metal parser with flexible custom-function configuration-- are still very comfortably met.
 
 ## All the build commands
 
