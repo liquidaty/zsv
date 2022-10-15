@@ -26,7 +26,7 @@
 #include "yajl_parser.h"
 
 #if defined(_WIN32) || defined(WIN32)
-// #define snprintf sprintf_s
+#define snprintf sprintf_s
 #endif
 
 #define STATUS_CONTINUE 1
@@ -53,7 +53,8 @@ typedef struct context_s context_t;
 
 #define RETURN_ERROR(ctx,retval,...) {                                  \
     if ((ctx)->errbuf != NULL)                                          \
-      sprintf ((ctx)->errbuf, "%.*s", (int)(ctx)->errbuf_size, __VA_ARGS__); \
+      snprintf ((ctx)->errbuf, (ctx)->errbuf_size, __VA_ARGS__);        \
+    /*sprintf ((ctx)->errbuf, "%.*s", (int)(ctx)->errbuf_size, __VA_ARGS__); */ \
     return (retval);                                                    \
   }
 
@@ -239,12 +240,9 @@ static int context_add_value (context_t *ctx, yajl_val v)
         if (ctx->stack->key == NULL)
         {
             if (!YAJL_IS_STRING (v))
-              //                RETURN_ERROR (ctx, EINVAL, "context_add_value: "
-              //                              "Object key is not a string (%#04x)",
-              //                              v->type);
-                RETURN_ERROR (ctx, EINVAL, "context_add_value: "
-                              "Object key is not a string");
-
+              RETURN_ERROR (ctx, EINVAL, "context_add_value: "
+                            "Object key is not a string (%#04x)",
+                            v->type);
             ctx->stack->key = v->u.string;
             v->u.string = NULL;
             free(v);
@@ -265,11 +263,9 @@ static int context_add_value (context_t *ctx, yajl_val v)
     }
     else
     {
-      //        RETURN_ERROR (ctx, EINVAL, "context_add_value: Cannot add value to "
-      //                      "a value of type %#04x (not a composite type)",
-      //                      ctx->stack->value->type);
       RETURN_ERROR (ctx, EINVAL, "context_add_value: Cannot add value to "
-                    "a value of type xx (not a composite type)");
+                    "a value of type %#04x (not a composite type)",
+                    ctx->stack->value->type);
     }
 }
 
