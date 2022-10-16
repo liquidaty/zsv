@@ -167,6 +167,7 @@ void zsv_set_input(zsv_parser parser, void *in) {
   parser->in = in;
 }
 
+/*
 ZSV_EXPORT
 enum zsv_status zsv_set_buff(zsv_parser parser, void *buff, size_t size) {
   if(size < ZSV_MIN_SCANNER_BUFFSIZE)
@@ -177,6 +178,14 @@ enum zsv_status zsv_set_buff(zsv_parser parser, void *buff, size_t size) {
   parser->buff.size = size;
   parser->free_buff = 0;
   return zsv_status_ok;
+}
+*/
+ZSV_EXPORT unsigned char *zsv_get_buff(zsv_parser parser) {
+  return parser->buff.buff;
+}
+
+ZSV_EXPORT size_t zsv_get_buffsize(zsv_parser parser) {
+  return parser->buff.size;
 }
 
 ZSV_EXPORT

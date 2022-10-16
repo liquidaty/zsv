@@ -211,6 +211,9 @@ void zsv_set_input(zsv_parser, void *in);
 ZSV_EXPORT
 enum zsv_status zsv_set_buff(zsv_parser parser, void *buff, size_t size);
 
+ZSV_EXPORT unsigned char *zsv_get_buff(zsv_parser parser);
+ZSV_EXPORT size_t zsv_get_buffsize(zsv_parser parser);
+
 /**
  * Insert a filter to process or modify, before parsing, the next chunk of raw
  * bytes read from the input stream. For example, to save a copy of the raw

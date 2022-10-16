@@ -87,7 +87,6 @@
     return z.heap;
   }
 
-  // to do: set shared buffer with e.g. Uint8Array(Module.HEAP8.buffer, z.heap, size);
   return {
     /**
      * create a new parser
@@ -138,32 +137,16 @@
           getBytesRead: function() {
             return z.bytesRead;
           },
-          setInputStream: function(fHandle, buffsize) {
-            setBuff(z, zsv, buffsize);
-            z.jsbuff = new Uint8Array(z.heapSize);
+          setInputStream: function(fHandle) {
+            let buff = _zsv_get_buff(zsv);
+            let buffsize = _zsv_get_buffsize(zsv);
+            z.jsbuff = new Uint8Array(buff, 0, buffsize);
             z.fd = fHandle.fd;
             _zsv_set_read(zsv, globalReadFuncp);
             _zsv_set_input(zsv, z.ix);
           },
           parseMore: function() {
             return _zsv_parse_more(zsv);
-          },
-          parseBytes: function(byte_array) {
-            let len = byte_array.length;
-            if(len) {
-              // copy bytes into a chunk of memory that our library can access
-              if(!(z.buffsize >= len)) {
-                if(z.buff)
-                  _free(z.buff);
-                if(z.heap)
-                  _free(z.heap);
-                z.buff = _malloc(len);
-                z.buffsize = len;
-              }
-              // copy to memory that wasm can access, then parse
-              writeArrayToMemory(byte_array, z.buff);
-              return _zsv_parse_bytes(zsv, z.buff, len);
-            }
           },
           finish: function() {
             return _zsv_finish(zsv);
