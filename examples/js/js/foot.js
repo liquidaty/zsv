@@ -49,10 +49,6 @@
     let z = activeParsers[ix];
     let count = z.cellCount();
     let row = [];
-    // eliminate any bad UTF8
-    let start = _zsv_get_cell_str(z.zsv, 0);
-    let end = _zsv_get_cell_str(z.zsv, count - 1) + _zsv_get_cell_len(z.zsv, count - 1);
-    _zsv_strencode(start, end - start, '?'.charCodeAt(0), 0, 0);
 
     // convert bytes JS data
     for(let i = 0; i < count; i++)
@@ -111,8 +107,8 @@
 
         function getCell(i) {
           let s = _zsv_get_cell_str(zsv, i);
-          if(s)
-            return UTF8ToString(s, _zsv_get_cell_len(zsv, i));
+          if(s) // don't use UTF8ToString as it mishandles invalid UTF8 bytes
+            return String.fromCharCode.apply(null, new Uint8Array(Module.HEAP8.buffer, s, _zsv_get_cell_len(zsv, i)));
           return '';
         };
 
@@ -139,6 +135,26 @@
             z.fd = fHandle.fd;
             _zsv_set_read(zsv, globalReadFuncp);
             _zsv_set_input(zsv, z.ix);
+          },
+          parseBytes: function(byte_array) {
+            // this routine could be made more efficient by writing directly into
+            // the parser buffer
+            let len = byte_array.length;
+            if(len) {
+              // copy bytes into a chunk of memory that our library can access
+              if(!(z.buffsize >= len)) {
+                if(z.buff)
+                  _free(z.buff);
+                z.buff = _malloc(len);
+                z.buffsize = len;
+              }
+              // copy to memory that wasm can access, then parse
+              writeArrayToMemory(byte_array, z.buff);
+              return _zsv_parse_bytes(z.zsv, z.buff, len);
+              _zsv_set_row_handler(zsv, options.rowData === false ? globalRowHandlerNoDatap : globalRowHandlerWithDatap);
+              _zsv_set_context(zsv, z.ix);
+              return o;
+            }
           },
           parseMore: function() {
             return _zsv_parse_more(zsv);

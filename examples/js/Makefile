@@ -49,9 +49,9 @@ else
   CFLAGS += ${CFLAGS_DEBUG}
 endif
 
-INDEX=${BUILD_DIR}/index.html
+BROWSER_STATIC=${BUILD_DIR}/index.html ${BUILD_DIR}/zsv-browser-example.js
 OTHERUTIL=${BUILD_DIR}/localhost.pem
-STATIC=${INDEX} ${OTHERUTIL}
+STATIC=${BROWSER_STATIC} ${OTHERUTIL}
 
 ##### test-related definitions
 COLOR_NONE=\033[0m
@@ -96,7 +96,7 @@ test: npm/test/select_all.js node
 	@cmp build/test/out.err npm/test/out.err
 	@cmp build/test/out.json npm/test/out.json && ${TEST_PASS} || ${TEST_FAIL}
 
-${INDEX}: browser/index.html
+${BROWSER_STATIC}: ${BUILD_DIR}/% : browser/%
 	@mkdir -p `dirname "$@"`
 	@cp -p $< $@
 
@@ -109,6 +109,8 @@ ${EMJS}: ${ZSVSRC} zsv_parser_api_dummy.c
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} $^ -o $@
 
 ${WASM}: ${EMJS}
+
+${BUILD_DIR}/zsv-browser-example.js:
 
 ${BROWSER_JS}: prep ${EMJS} js/head.js js/foot.js
 	@mkdir -p `dirname "$@"`

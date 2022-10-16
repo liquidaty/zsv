@@ -350,8 +350,8 @@ enum zsv_jq_status zsv_jq_parse(zsv_jq_handle restrict h, const void * restrict 
   if(jv_get_kind(msg) == JV_KIND_STRING) {
     fprintf(stderr, "jq: parse error: %s\n", jv_string_value(msg));
     h->status = zsv_jq_status_error;
-  }
-  jv_free(msg);
+  } else
+    jv_free(msg);
   jv_free(value);
 
   return h->status;
