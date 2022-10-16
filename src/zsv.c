@@ -212,6 +212,17 @@ size_t zsv_get_cell_len(zsv_parser parser, size_t ix) {
   return 0;
 }
 
+ZSV_EXPORT
+unsigned char *zsv_get_cell_str(zsv_parser parser, size_t ix) {
+  struct zsv_cell c = zsv_get_cell(parser, ix);
+  // to do: make sure cell end isn't buff end
+  if(c.len) {
+    c.str[c.len] = '\0';
+    return c.str;
+  }
+  return NULL;
+}
+
 /**
  * `zsv_copy_cell_str()` is not needed in most cases, but may be useful in
  * restrictive cases such as when calling from Javascript into wasm. Trailing

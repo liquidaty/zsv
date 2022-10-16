@@ -124,6 +124,9 @@ struct zsv_cell zsv_get_cell(zsv_parser parser, size_t index);
 ZSV_EXPORT
 size_t zsv_get_cell_len(zsv_parser parser, size_t ix);
 
+ZSV_EXPORT
+unsigned char *zsv_get_cell_str(zsv_parser parser, size_t ix);
+
 /**
  * `zsv_copy_cell_str()` is not needed in most cases, but may be useful in
  * restrictive cases such as when calling from Javascript into wasm. Trailing

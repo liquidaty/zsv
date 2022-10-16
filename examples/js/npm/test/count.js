@@ -14,8 +14,7 @@ const zsvParser = require('zsv-lib');
 function createContext() {
   return {
     rowcount: 0,                  // how many rows we've parsed so far
-    startTime: performance.now(), // when the run was started
-    bytesRead: 0                  // how many bytes we've parsed thus far
+    startTime: performance.now() // when the run was started
   };
 }
 
@@ -25,6 +24,14 @@ function createContext() {
  */
 function rowHandler(row, ctx, z) {
   ctx.rowcount++;
+  /* if we had created the parser with option rowData === false,
+     we could fetch the row data ourselves with the below:
+
+  let count = parser.cellCount();
+  let row = [];
+  for(let i = 0; i < count; i++)
+    row.push(parser.getCell(i));
+  */
 }
 
 /**
@@ -32,16 +39,16 @@ function rowHandler(row, ctx, z) {
  */
 function finish(ctx, parser) {
   if(parser) {
-    zsvParser.finish(parser); /* finish parsing */
+    parser.finish(); /* finish parsing */
     let endTime = performance.now()   /* check the time */
 
     /* output a message describing the parse volume and performance */
-    console.error('Parsed ' + ctx.bytesRead + ' bytes; ' + ctx.rowcount +
+    console.error('Parsed ' + parser.getBytesRead() + ' bytes; ' + ctx.rowcount +
                   ' rows in ' + (endTime - ctx.startTime) + 'ms\n' +
                   'You can view the parsed data in your browser dev tools console (rt-click and select Inspect)');
 
     /* destroy the parser */
-    zsvParser.delete(parser);
+    parser.delete();
   }
 }
 
@@ -57,24 +64,15 @@ zsvParser.runOnLoad(function() {
   /* initialize parser */
   let parser = zsvParser.new(rowHandler, ctx, { rowData: false });
 
-  try {
-    /* read stdin if we have no arguments, else the first argument */
-    const readStream = process.argv.length < 3 ? process.stdin : fs.createReadStream(process.argv[2])
-    readStream.on('error', (error) => console.log(error.message));
+  /* read stdin if we have no arguments, else the first argument */
+  const readFile = process.argv.length < 3 ? process.stdin : { fd: fs.openSync(process.argv[2], 'r') };
 
-    /* while we read, pass data through the parser */
-    readStream.on('data', function(chunk) {
-      if(chunk && chunk.length) {
-        ctx.bytesRead += chunk.length;
-        zsvParser.parseBytes(parser, chunk);
-      }
-    });
+  /* set the parser input */
+  parser.setInputStream(readFile);
 
-    /* set our final callback */
-    readStream.on('end', function() { finish(ctx, parser); });
-  } catch(e) {
-    console.error('Unable to open for read: ' + inputFileName);
-    console.error(e);
-    finish(ctx, parser);
-  }
+  /* parse */
+  while(parser.parseMore() == 0);
+
+  /* finish */
+  finish(ctx, parser);
 });

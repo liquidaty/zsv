@@ -56,10 +56,12 @@
 
   function globalReadFunc(buff, n, m, ix) {
     let z = activeParsers[ix];
-    let bytes = fs.readSync(z.fd, z.jsbuff, 0, n * m);
+    let sz = n * m;
+    let jsbuff = new Uint8Array(buff, 0, sz);
+    let bytes = fs.readSync(z.fd, jsbuff, 0, sz);
     z.bytesRead += bytes;
     if(bytes)
-      writeArrayToMemory(z.jsbuff, buff);
+      writeArrayToMemory(jsbuff, buff);
     return bytes;
   }
 
@@ -104,6 +106,10 @@
         };
 
         function getCell(i) {
+          let s = _zsv_get_cell_str(zsv, i);
+          if(s)
+            return UTF8ToString(s);
+          /*
           let len = _zsv_get_cell_len(zsv, i);
           if(len > 0) {
             if(!(z.cellbuffsize >= len + 1)) {
@@ -114,7 +120,7 @@
             }
             _zsv_copy_cell_str(zsv, i, z.cellbuff);
             return UTF8ToString(z.cellbuff);
-          }
+          }*/
           return '';
         };
 
@@ -129,8 +135,7 @@
           ix: activeParsers.length,
           ctx: ctx,
           fd: 0,
-          bytesRead: 0,
-          jsbuff: null
+          bytesRead: 0
         };
 
         let o = {
@@ -138,9 +143,9 @@
             return z.bytesRead;
           },
           setInputStream: function(fHandle) {
-            let buff = _zsv_get_buff(zsv);
-            let buffsize = _zsv_get_buffsize(zsv);
-            z.jsbuff = new Uint8Array(buff, 0, buffsize);
+//            let buff = _zsv_get_buff(zsv);
+//            let buffsize = _zsv_get_buffsize(zsv);
+//            Uint8Array(Module.HEAP8.buffer, z.heap, size);
             z.fd = fHandle.fd;
             _zsv_set_read(zsv, globalReadFuncp);
             _zsv_set_input(zsv, z.ix);
