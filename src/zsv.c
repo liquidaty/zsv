@@ -157,6 +157,29 @@ void zsv_set_context(zsv_parser parser, void *ctx) {
 }
 
 ZSV_EXPORT
+void zsv_set_read(zsv_parser parser,
+                  size_t (*read_func)(void * restrict, size_t n, size_t size, void * restrict)) {
+  parser->read = read_func;
+}
+
+ZSV_EXPORT
+void zsv_set_input(zsv_parser parser, void *in) {
+  parser->in = in;
+}
+
+ZSV_EXPORT
+enum zsv_status zsv_set_buff(zsv_parser parser, void *buff, size_t size) {
+  if(size < ZSV_MIN_SCANNER_BUFFSIZE)
+    return zsv_status_invalid_option;
+  if(parser->free_buff)
+    free(parser->buff.buff);
+  parser->buff.buff = buff;
+  parser->buff.size = size;
+  parser->free_buff = 0;
+  return zsv_status_ok;
+}
+
+ZSV_EXPORT
 char zsv_quoted(zsv_parser parser) {
   return parser->quoted || parser->opts.no_quotes;
 }
@@ -197,11 +220,6 @@ ZSV_EXPORT
 void zsv_copy_cell_str(zsv_parser parser, size_t ix, unsigned char *buff) {
   memcpy(buff, parser->row.cells[ix].str, parser->row.cells[ix].len);
   buff[parser->row.cells[ix].len] = '\0';
-}
-
-ZSV_EXPORT
-void zsv_set_input(zsv_parser parser, void *in) {
-  parser->in = in;
 }
 
 ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count, size_t *offsets) {

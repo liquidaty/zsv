@@ -24,88 +24,174 @@
     return ret;
   }
 
+  /**
+   * To support multiple concurrent parsers without increasing the number of
+   * allocated function pointers required, we will create a global list of all
+   * active parsers which will be reset when the last active parser has completed.
+   *
+   * All parsers will share a constant pool of 2 row handlers (see below), each
+   * of which will then call the relevant instance-specific row handler
+   */
   let activeParsers = [];
   let activeParser_count = 0;
 
-  function globalRowHandler(ix) {
+  /**
+   * Register two global row handlers, one that will aggregate the entire row
+   * data before calling the row handler, and another that will leave it to the
+   * row handler to determine which cells to fetch
+   */
+  function globalRowHandlerNoData(ix) {
     let z = activeParsers[ix];
-    z.rowHandler(z.ctx, z);
+    z.rowHandler(null, z.ctx, z);
   }
 
-  let globalRowHandlerp;
+  function globalRowHandlerWithData(ix) {
+    let z = activeParsers[ix];
+    let count = z.cellCount();
+    let row = [];
+    for(let i = 0; i < count; i++)
+      row.push(z.getCell(i));
+    z.rowHandler(row, z.ctx, z);
+  }
+
+  function globalReadFunc(buff, n, m, ix) {
+    let z = activeParsers[ix];
+    let bytes = fs.readSync(z.fd, z.jsbuff, 0, n * m);
+    z.bytesRead += bytes;
+    if(bytes)
+      writeArrayToMemory(z.jsbuff, buff);
+    return bytes;
+  }
+
+  let globalReadFuncp;
+  let globalRowHandlerNoDatap, globalRowHandlerWithDatap;
   run_on_load(function() {
-    globalRowHandlerp = addFunction(globalRowHandler, 'vi');
+    globalReadFuncp = addFunction(globalReadFunc, 'iiiii');
+    globalRowHandlerNoDatap = addFunction(globalRowHandlerNoData, 'vi');
+    globalRowHandlerWithDatap = addFunction(globalRowHandlerWithData, 'vi');
   });
 
+  function setBuff(z, zsv, buffsize) {
+    if(!buffsize)
+      buffsize = 4096*16;
+    if(!(buffsize >= 512))
+      throw new Error('Invalid buffsize: ' + str(buffsize));
+    if(z.heap)
+      throw new Error('Buffer already allocated');
+    z.heap = _malloc(buffsize);
+    if(!z.heap)
+      throw new Error('xOut of memory!');
+    z.heapSize = buffsize;
+    if(_zsv_set_buff(zsv, z.heap, buffsize))
+      throw new Error('Unknown error!');
+    return z.heap;
+  }
+
+  // to do: set shared buffer with e.g. Uint8Array(Module.HEAP8.buffer, z.heap, size);
   return {
-    new: function(rowHandler, ctx) { // rowHandler will be called with args (h, ctx)
-      let h = _zsv_new(null);
-      if(h) {
+    /**
+     * create a new parser
+     *
+     * @param rowHandler callback with signature (row, ctx, parser)
+     * @param ctx        a caller-defined value that will be passed to the row handler
+     * @param options    if provided and options.rowData === false, row data will not be passed to the row handler
+     */
+    new: function(rowHandler, ctx, options) {
+      let zsv = _zsv_new(null);
+      options = options || {};
+      if(zsv) {
+        function cellCount() {
+          return _zsv_cell_count(zsv);
+        };
+
+        function getCell(i) {
+          let len = _zsv_get_cell_len(zsv, i);
+          if(len > 0) {
+            if(!(z.cellbuffsize >= len + 1)) {
+              if(z.cellbuff)
+                _free(z.cellbuff);
+                z.cellbuff = _malloc(len + 1);
+              z.cellbuffsize = len;
+            }
+            _zsv_copy_cell_str(zsv, i, z.cellbuff);
+            return UTF8ToString(z.cellbuff);
+          }
+          return '';
+        };
+
         let z = {
-          zsv: h,
           rowHandler: rowHandler,
+          cellCount: cellCount,
+          getCell: getCell,
           buff: null,
           buffsize: 0,
           cellbuff: null,
           cellbuffsize: 0,
           ix: activeParsers.length,
-          ctx: ctx
+          ctx: ctx,
+          fd: 0,
+          bytesRead: 0,
+          jsbuff: null
         };
+
+        let o = {
+          getBytesRead: function() {
+            return z.bytesRead;
+          },
+          setInputStream: function(fHandle, buffsize) {
+            setBuff(z, zsv, buffsize);
+            z.jsbuff = new Uint8Array(z.heapSize);
+            z.fd = fHandle.fd;
+            _zsv_set_read(zsv, globalReadFuncp);
+            _zsv_set_input(zsv, z.ix);
+          },
+          parseMore: function() {
+            return _zsv_parse_more(zsv);
+          },
+          parseBytes: function(byte_array) {
+            let len = byte_array.length;
+            if(len) {
+              // copy bytes into a chunk of memory that our library can access
+              if(!(z.buffsize >= len)) {
+                if(z.buff)
+                  _free(z.buff);
+                if(z.heap)
+                  _free(z.heap);
+                z.buff = _malloc(len);
+                z.buffsize = len;
+              }
+              // copy to memory that wasm can access, then parse
+              writeArrayToMemory(byte_array, z.buff);
+              return _zsv_parse_bytes(zsv, z.buff, len);
+            }
+          },
+          finish: function() {
+            return _zsv_finish(zsv);
+          },
+          abort: function() {
+            return _zsv_abort(zsv);
+          },
+          delete: function() {
+            if(z.buff)
+              _free(z.buff);
+            if(z.cellbuff)
+              _free(z.cellbuff);
+            activeParsers[z.ix] = null;
+            activeParser_count--;
+            if(activeParser_count == 0)
+              activeParsers = [];
+            return _zsv_delete(zsv);
+          },
+          cellCount: cellCount,
+          getCell: getCell
+        };
+
         activeParsers.push(z);
         activeParser_count++;
-        _zsv_set_row_handler(h, globalRowHandlerp);
-        _zsv_set_context(h, z.ix);
-        return z;
+        _zsv_set_row_handler(zsv, options.rowData === false ? globalRowHandlerNoDatap : globalRowHandlerWithDatap);
+        _zsv_set_context(zsv, z.ix);
+        return o;
       }
-    },
-    parseBytes: function(z, byte_array) {
-      let len = byte_array.length;
-      if(len) {
-        // copy bytes into a chunk of memory that our library can access
-        if(!(z.buffsize >= len)) {
-          if(z.buff)
-            _free(z.buff);
-          z.buff = _malloc(len);
-          z.buffsize = len;
-        }
-        // copy to memory that wasm can access, then parse
-        writeArrayToMemory(byte_array, z.buff);
-        return _zsv_parse_bytes(z.zsv, z.buff, len);
-      }
-    },
-    cellCount: function(z) {
-      return _zsv_cell_count(z.zsv);
-    },
-    getCell: function(z, i) {
-      let len = _zsv_get_cell_len(z.zsv, i);
-      if(len > 0) {
-        if(!(z.cellbuffsize >= len + 1)) {
-          if(z.cellbuff)
-            _free(z.cellbuff);
-          z.cellbuff = _malloc(len + 1);
-          z.cellbuffsize = len;
-        }
-        _zsv_copy_cell_str(z.zsv, i, z.cellbuff);
-        return UTF8ToString(z.cellbuff);
-      }
-      return '';
-    },
-    abort: function(z) {
-      return _zsv_abort(z.zsv);
-    },
-    finish: function(z) {
-      return _zsv_finish(z.zsv);
-    },
-    delete: function(z) {
-      if(z.buff)
-        _free(z.buff);
-      if(z.cellbuff)
-        _free(z.cellbuff);
-      activeParsers[z.ix] = null;
-      activeParser_count--;
-      if(activeParser_count == 0)
-        activeParsers = [];
-      return _zsv_delete(z.zsv);
     },
     runOnLoad: run_on_load
   };

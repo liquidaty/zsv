@@ -64,7 +64,7 @@ TEST_PASS=echo "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
 TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
 #####
 
-.PHONY: help all run clean prep node setup
+.PHONY: help all run clean prep node setup benchmark
 
 help:
 	@echo "make [build|run|node|test|clean]"
@@ -145,8 +145,11 @@ endif
 setup:
 	npm install -g uglify-es
 
+benchmark:
+	mkdir benchmark
+
 
 node: ${NODE_WASM} ${NODE_INDEX} ${NODE_PKG_FILES}
-	@echo "Built node module in node/node_modules/{NODE_PKG_NAME}"
+	@echo "Built node module in node/node_modules/${NODE_PKG_NAME}"
 
 ## node test

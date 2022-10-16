@@ -171,21 +171,45 @@ ZSV_EXPORT
 char zsv_row_is_blank(zsv_parser parser);
 
 /**
- * Change the context pointer that is passed to our callbacks
+ * Set the context pointer that is passed to our callbacks
  * @param parser
  * @param ctx new context pointer value
  */
 ZSV_EXPORT
 void zsv_set_context(zsv_parser parser, void *ctx);
 
+
 /**
- * Change the input stream our parser reads from.
- * This can be used to read multiple inputs as a single combined input
+ * Set the read function that is invoked by `zsv_parse_more()` to fetch more data.
+ * If not explicitly set, defaults to fread
+ *
+ * @param parser
+ * @param read_function
+ * @param stream        value that is passed to read_function when it is called
+ */
+
+ZSV_EXPORT
+void zsv_set_read(zsv_parser parser,
+                  size_t (*read_func)(void * restrict, size_t n, size_t size, void * restrict));
+
+/**
+ * Set the input stream our parser reads from. If not explicity set, defaults to
+ * stdin. This can be used to read multiple inputs as a single combined input
  * by calling `zsv_set_input()` after `zsv_parse_more()` returns
  * `zsv_status_no_more_input`
  */
 ZSV_EXPORT
 void zsv_set_input(zsv_parser, void *in);
+
+/**
+ * Set the buffer
+ * @param  parser
+ * @param  buff   the new buffer to use
+ * @param  size   size of new buffer (must be at least ZSV_DEFAULT_SCANNER_BUFFSIZE)
+ * @return status returns zsv_status_ok if and only if the call succeeded
+ */
+ZSV_EXPORT
+enum zsv_status zsv_set_buff(zsv_parser parser, void *buff, size_t size);
 
 /**
  * Insert a filter to process or modify, before parsing, the next chunk of raw

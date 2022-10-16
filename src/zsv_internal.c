@@ -630,7 +630,7 @@ static void collate_header_row(void *ctx) {
             scanner->row.cells[i].quoted = 1;
           } else {
             scanner->row.cells[i].len = 0;
-            scanner->row.cells[i].str = (unsigned char *)"";
+            scanner->row.cells[i].str = scanner->collate_header->buff.buff + offset; // (unsigned char *)"";
           }
           offset += len_plus1;
         }
