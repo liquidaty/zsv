@@ -49,6 +49,12 @@
     let z = activeParsers[ix];
     let count = z.cellCount();
     let row = [];
+    // eliminate any bad UTF8
+    let start = _zsv_get_cell_str(z.zsv, 0);
+    let end = _zsv_get_cell_str(z.zsv, count - 1) + _zsv_get_cell_len(z.zsv, count - 1);
+    _zsv_strencode(start, end - start, '?'.charCodeAt(0), 0, 0);
+
+    // convert bytes JS data
     for(let i = 0; i < count; i++)
       row.push(z.getCell(i));
     z.rowHandler(row, z.ctx, z);
@@ -57,11 +63,9 @@
   function globalReadFunc(buff, n, m, ix) {
     let z = activeParsers[ix];
     let sz = n * m;
-    let jsbuff = new Uint8Array(buff, 0, sz);
+    let jsbuff = new Uint8Array(Module.HEAP8.buffer, buff, sz);
     let bytes = fs.readSync(z.fd, jsbuff, 0, sz);
     z.bytesRead += bytes;
-    if(bytes)
-      writeArrayToMemory(jsbuff, buff);
     return bytes;
   }
 
@@ -108,23 +112,12 @@
         function getCell(i) {
           let s = _zsv_get_cell_str(zsv, i);
           if(s)
-            return UTF8ToString(s);
-          /*
-          let len = _zsv_get_cell_len(zsv, i);
-          if(len > 0) {
-            if(!(z.cellbuffsize >= len + 1)) {
-              if(z.cellbuff)
-                _free(z.cellbuff);
-                z.cellbuff = _malloc(len + 1);
-              z.cellbuffsize = len;
-            }
-            _zsv_copy_cell_str(zsv, i, z.cellbuff);
-            return UTF8ToString(z.cellbuff);
-          }*/
+            return UTF8ToString(s, _zsv_get_cell_len(zsv, i));
           return '';
         };
 
         let z = {
+          zsv: zsv,
           rowHandler: rowHandler,
           cellCount: cellCount,
           getCell: getCell,
@@ -143,9 +136,6 @@
             return z.bytesRead;
           },
           setInputStream: function(fHandle) {
-//            let buff = _zsv_get_buff(zsv);
-//            let buffsize = _zsv_get_buffsize(zsv);
-//            Uint8Array(Module.HEAP8.buffer, z.heap, size);
             z.fd = fHandle.fd;
             _zsv_set_read(zsv, globalReadFuncp);
             _zsv_set_input(zsv, z.ix);

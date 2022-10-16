@@ -124,24 +124,14 @@ struct zsv_cell zsv_get_cell(zsv_parser parser, size_t index);
 ZSV_EXPORT
 size_t zsv_get_cell_len(zsv_parser parser, size_t ix);
 
-ZSV_EXPORT
-unsigned char *zsv_get_cell_str(zsv_parser parser, size_t ix);
-
 /**
- * `zsv_copy_cell_str()` is not needed in most cases, but may be useful in
- * restrictive cases such as when calling from Javascript into wasm. Trailing
- * NULL will be written to the buffer, which must be at least cell.len + 1
- * in size. Because of this requirement, the caller should always first call
- * `zsv_get_cell_len()` to ensure that the passed buffer is large enough
- * Furthermore, the `ix` parameter is not checked for safety, so the caller
- * must ensure that it is less than the cell count returned by `zsv_cell_count()`
- *
+ * get a pointer to the cell contents (not NULL-terminated)
  * @param parser
  * @param ix     0-based index of the cell to copy. Caller must ensure validity
- * @param buff   buffer to copy into. Must already be of size cell.len + 1
+ * @return pointer to the cell contents, or NULL if contents are empty
  */
 ZSV_EXPORT
-void zsv_copy_cell_str(zsv_parser parser, size_t ix, unsigned char *buff);
+unsigned char *zsv_get_cell_str(zsv_parser parser, size_t ix);
 
 /******************************************************************************
  * other functions

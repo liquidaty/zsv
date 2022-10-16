@@ -63,7 +63,7 @@ __attribute__((always_inline)) static size_t scanner_pre_parse(struct zsv_scanne
   if(VERY_UNLIKELY(capacity == 0)) { // our row size was too small to fit a single row of data
     fprintf(stderr, "Warning: row truncated\n");
     if(scanner->mode == ZSV_MODE_FIXED) {
-      if(VERY_UNLIKELY(row_fx(scanner, scanner->buff.buff, 0, scanner->buff.size)))
+      if(VERY_UNLIKELY(row_fx(scanner, scanner->buff.buff, 0, scanner->buff.size - 1)))
         return zsv_status_cancelled;
     } else if(VERY_UNLIKELY(row_dl(scanner)))
       return zsv_status_cancelled;
@@ -215,31 +215,7 @@ size_t zsv_get_cell_len(zsv_parser parser, size_t ix) {
 ZSV_EXPORT
 unsigned char *zsv_get_cell_str(zsv_parser parser, size_t ix) {
   struct zsv_cell c = zsv_get_cell(parser, ix);
-  // to do: make sure cell end isn't buff end
-  if(c.len) {
-    c.str[c.len] = '\0';
-    return c.str;
-  }
-  return NULL;
-}
-
-/**
- * `zsv_copy_cell_str()` is not needed in most cases, but may be useful in
- * restrictive cases such as when calling from Javascript into wasm. Trailing
- * NULL will be written to the buffer, which must be at least cell.len + 1
- * in size. Because of this requirement, the caller should always first call
- * `zsv_get_cell_len()` to ensure that the passed buffer is large enough
- * Furthermore, the `ix` parameter is not checked for safety, so the caller
- * must ensure that it is less than the cell count returned by `zsv_cell_count()`
- *
- * @param parser zsv parser handle
- * @param ix     0-based index of the cell to copy. Caller must ensure validity
- * @param buff   buffer to copy into. Must already be of size cell.len + 1
- */
-ZSV_EXPORT
-void zsv_copy_cell_str(zsv_parser parser, size_t ix, unsigned char *buff) {
-  memcpy(buff, parser->row.cells[ix].str, parser->row.cells[ix].len);
-  buff[parser->row.cells[ix].len] = '\0';
+  return c.len ? c.str : NULL;
 }
 
 ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count, size_t *offsets) {
