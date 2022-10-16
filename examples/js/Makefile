@@ -87,11 +87,11 @@ prep: ../../app/external/utf8proc-2.6.1/utf8proc.h
 ../../app/external/utf8proc-2.6.1/utf8proc.h:
 	make -C ../../app ./external/utf8proc-2.6.1/utf8proc.h THIS_MAKEFILE_DIR=.
 
-test: npm/test/index.js node
+test: npm/test/select_all.js node
 	@mkdir -p build/test
 	@cp -p $< node/
-	@echo "Running test (example) program \`node node/index.js ../../data/test/desc.csv\`"
-	@(cd node && node index.js ../../../data/test/desc.csv > ../build/test/out.json 2> ../build/test/out.err1)
+	@echo "Running test (example) program \`node node/select_all.js ../../data/test/desc.csv\`"
+	@(cd node && node select_all.js ../../../data/test/desc.csv > ../build/test/out.json 2> ../build/test/out.err1)
 	@sed 's/[0-9.]*ms//g' < build/test/out.err1 > build/test/out.err
 	@cmp build/test/out.err npm/test/out.err
 	@cmp build/test/out.json npm/test/out.json && ${TEST_PASS} || ${TEST_FAIL}

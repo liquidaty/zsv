@@ -1,0 +1,80 @@
+const process= require('node:process');
+const { PerformanceObserver, performance } = require('node:perf_hooks');
+const fs = require('fs');
+const zsvParser = require('zsv-lib');
+
+/**
+ * Example using libzsv to parse CSV input and execute a custom row handler function as each row is parsed
+ */
+
+/**
+ * We will use a separate context for each parser, which is a pattern that allows us to run multiple
+ * parsers at the same time independently, although this example only runs one at a time
+ */
+function createContext() {
+  return {
+    rowcount: 0,                  // how many rows we've parsed so far
+    startTime: performance.now(), // when the run was started
+    bytesRead: 0                  // how many bytes we've parsed thus far
+  };
+}
+
+/**
+ * Define a row handler which will be called each time a row is parsed, and which
+ * accesses all data through a context object
+ */
+function rowHandler(row, ctx, z) {
+  ctx.rowcount++;
+}
+
+/**
+ * Define the steps to take after all parsing has completed
+ */
+function finish(ctx, parser) {
+  if(parser) {
+    zsvParser.finish(parser); /* finish parsing */
+    let endTime = performance.now()   /* check the time */
+
+    /* output a message describing the parse volume and performance */
+    console.error('Parsed ' + ctx.bytesRead + ' bytes; ' + ctx.rowcount +
+                  ' rows in ' + (endTime - ctx.startTime) + 'ms\n' +
+                  'You can view the parsed data in your browser dev tools console (rt-click and select Inspect)');
+
+    /* destroy the parser */
+    zsvParser.delete(parser);
+  }
+}
+
+/**
+ * After the zsv-lib module has loaded, read from stdin or the specified file,
+ * parse the input, apply the row handler for each parsed row and finish
+ */
+zsvParser.runOnLoad(function() {
+
+  /* get a new context */
+  let ctx = createContext();
+
+  /* initialize parser */
+  let parser = zsvParser.new(rowHandler, ctx, { rowData: false });
+
+  try {
+    /* read stdin if we have no arguments, else the first argument */
+    const readStream = process.argv.length < 3 ? process.stdin : fs.createReadStream(process.argv[2])
+    readStream.on('error', (error) => console.log(error.message));
+
+    /* while we read, pass data through the parser */
+    readStream.on('data', function(chunk) {
+      if(chunk && chunk.length) {
+        ctx.bytesRead += chunk.length;
+        zsvParser.parseBytes(parser, chunk);
+      }
+    });
+
+    /* set our final callback */
+    readStream.on('end', function() { finish(ctx, parser); });
+  } catch(e) {
+    console.error('Unable to open for read: ' + inputFileName);
+    console.error(e);
+    finish(ctx, parser);
+  }
+});
