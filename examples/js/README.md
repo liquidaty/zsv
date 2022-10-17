@@ -48,16 +48,13 @@ Running ZSV lib from Javascript is still experimental and is not yet fully optim
 unique to web assembly + Javascript, especially where a lot of string data
 is being passed between Javascript and the library (see e.g. https://hacks.mozilla.org/2019/08/webassembly-interface-types/)
 
-Currently, this Node/javascript package reads data either via unbuffered synchronous file read, or via `parseBytes` which
-requires a somewhat inefficient series of memory copies.
+On small files (under 1 MB), zsv-lib is 30-75% faster than, for example, the `csv-parser` library. However, on larger files,
+possibly due to the aforementioned Javascript/wasm memory overhead, it can be more than 50% slower than `csv-parser`.
 
-On small files (under 1 MB), zsv-lib is 30-75% faster than, for example, the csv-parser library. However, on larger files,
-likely due to its unoptimized raw synchronous read, it can be about 50% slower.
-
-Using a buffered async file read is likely to substantially increase performance.
-That said, at this time, the library remains reasonably fast with bounded memory.
-If further performance or API enhancements would be important to you, feel free to post an issue
-on https://github.com/liquidaty/zsv.
+For that same reason, if parsing native Emscripten file system files and solely reading/writing to that file system,
+libzsv is likely to be faster than native Javascript libraries that would require data to move between Javascript and wasm.
+However, no benchmark tests have been performed for that, and any such benchmarks would probably be more pratical if run
+on the zsv CLI than the library.
 
 ## All the build commands
 

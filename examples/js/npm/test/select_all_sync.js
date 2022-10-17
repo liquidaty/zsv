@@ -25,6 +25,14 @@ function createContext() {
  */
 function rowHandler(row, ctx, z) {
   ctx.rowcount++;
+  /* if we had created the parser with option rowData === false,
+     we could fetch the row data ourselves with the below:
+
+  let count = parser.cellCount();
+  let row = [];
+  for(let i = 0; i < count; i++)
+    row.push(parser.getCell(i));
+  */
   ctx.data.push(row);
 }
 
@@ -32,19 +40,24 @@ function rowHandler(row, ctx, z) {
  * Define the steps to take after all parsing has completed
  */
 function finish(ctx, parser) {
-  /* check the time */
-  let endTime = performance.now();
+  if(parser) {
+    parser.finish();                  /* finish parsing */
+    let endTime = performance.now()   /* check the time */
 
-  /* output a message describing the parse volume and performance */
-  console.error('Parsed ' + parser.getBytesRead() + ' bytes; ' + ctx.rowcount +
-                ' rows in ' + (endTime - ctx.startTime) + 'ms\n' +
-                'You can view the parsed data in your browser dev tools console (rt-click and select Inspect)');
+    /* output a message describing the parse volume and performance */
+    console.error('Parsed ' + parser.getBytesRead() + ' bytes; ' + ctx.rowcount +
+                  ' rows in ' + (endTime - ctx.startTime) + 'ms\n' +
+                  'You can view the parsed data in your browser dev tools console (rt-click and select Inspect)');
 
-  /**
-   * output the parsed data (we could have also done this while we parsed, and not
-   * bothered to accumulate it, to save memory)
-   */
-  console.log(ctx.data);
+    /**
+     * output the parsed data (we could have also done this while we parsed, and not
+     * bothered to accumulate it, to save memory)
+     */
+    console.log(ctx.data);
+
+    /* destroy the parser */
+    parser.delete();
+  }
 }
 
 /**
@@ -57,8 +70,17 @@ zsvParser.runOnLoad(function() {
   let ctx = createContext();
 
   /* read stdin if we have no arguments, else the first argument */
-  const readFile = process.argv.length < 3 ? process.stdin : fs.createReadStream(process.argv[2]);
+  const readFile = process.argv.length < 3 ? process.stdin : { fd: fs.openSync(process.argv[2], 'r') };
 
   /* initialize parser */
-  let parser = zsvParser.new(rowHandler, ctx, { async: readFile, end: finish });
+  let parser = zsvParser.new(rowHandler, ctx, { sync: readFile });
+
+  /* set the parser input */
+  parser.syncInput(readFile);
+
+  /* parse */
+  while(parser.parseMore() == 0);
+
+  /* finish */
+  finish(ctx, parser);
 });

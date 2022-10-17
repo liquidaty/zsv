@@ -49,7 +49,6 @@ function fileChanged(e) {
     streamFile(e.target.files[0], chunkSize, function(err, data) {
       if(!err) {
         if(data) {
-          console.log('hi', data.length);
           bytes_read += data.length;
           zHandle.parseBytes(data);
         } else // all done

@@ -167,7 +167,10 @@
      *
      * @param rowHandler callback with signature (row, ctx, parser)
      * @param ctx        a caller-defined value that will be passed to the row handler
-     * @param options    if provided and options.rowData === false, row data will not be passed to the row handler
+     * @param options
+     *        - rowData  if false, row data will not be passed to the row handler
+     *        - async    readableStream handle
+     *        - end      function(ctx, parser) to attach to stream end event
      */
     new: function(rowHandler, ctx, options) {
       let zsv = _zsv_new(null);
@@ -176,7 +179,7 @@
         function cellCount() {
           return _zsv_cell_count(zsv);
         };
-        let z;
+        let z, o;
 
         function getCell(i) {
           let s = _zsv_get_cell_str(zsv, i);
@@ -200,34 +203,55 @@
           bytesRead: 0
         };
 
-        let o = {
+        function parseBytes(byte_array) {
+          // this routine could be made more efficient by writing directly into
+          // the parser buffer
+          let len = byte_array.length;
+          if(len) {
+            // copy bytes into a chunk of memory that our library can access
+            if(!(z.buffsize >= len)) {
+              if(z.buff)
+                _free(z.buff);
+              z.buff = _malloc(len);
+              z.buffsize = len;
+            }
+            // copy to memory that wasm can access, then parse
+            writeArrayToMemory(byte_array, z.buff);
+            return _zsv_parse_bytes(z.zsv, z.buff, len);
+          }
+        }
+
+        if(options.sync) {
+          if(!(options.sync.fd === 0 || options.sync.fd > 0))
+            throw new Error('Sync read requires a file descriptor');
+          z.fd = options.sync.fd;
+          _zsv_set_read(zsv, globalReadFuncp);
+          _zsv_set_input(zsv, z.ix);
+        } else if(options.async) {
+          options.async.on('data', function(data) {
+            z.bytesRead += data.length;
+            parseBytes(data);
+          });
+          let end = options.end;
+          options.async.on('end', function() {
+            o.finish();
+            if(end)
+              end(ctx, o);
+            o.delete();
+          });
+        }
+
+        o = {
           getBytesRead: function() {
             return z.bytesRead;
           },
-          setInputStream: function(fHandle) {
+          parseBytes: parseBytes,
+
+          /** functions for async input */
+          syncInput: function(fHandle) {
             z.fd = fHandle.fd;
             _zsv_set_read(zsv, globalReadFuncp);
             _zsv_set_input(zsv, z.ix);
-          },
-          parseBytes: function(byte_array) {
-            // this routine could be made more efficient by writing directly into
-            // the parser buffer
-            let len = byte_array.length;
-            if(len) {
-              // copy bytes into a chunk of memory that our library can access
-              if(!(z.buffsize >= len)) {
-                if(z.buff)
-                  _free(z.buff);
-                z.buff = _malloc(len);
-                z.buffsize = len;
-              }
-              // copy to memory that wasm can access, then parse
-              writeArrayToMemory(byte_array, z.buff);
-              return _zsv_parse_bytes(z.zsv, z.buff, len);
-              _zsv_set_row_handler(zsv, options.rowData === false ? globalRowHandlerNoDatap : globalRowHandlerWithDatap);
-              _zsv_set_context(zsv, z.ix);
-              return o;
-            }
           },
           parseMore: function() {
             return _zsv_parse_more(zsv);

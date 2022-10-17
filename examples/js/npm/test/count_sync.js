@@ -3,11 +3,6 @@ const { PerformanceObserver, performance } = require('node:perf_hooks');
 const fs = require('fs');
 const zsvParser = require('zsv-lib');
 
-function printMemUsage() {
-  const memoryData = process.memoryUsage();
-  console.log(memoryData);
-}
-
 /**
  * Example using libzsv to parse CSV input and execute a custom row handler function as each row is parsed
  */
@@ -44,14 +39,18 @@ function rowHandler(row, ctx, z) {
  * Define the steps to take after all parsing has completed
  */
 function finish(ctx, parser) {
-//  printMemUsage();
+  if(parser) {
+    parser.finish();                  /* finish parsing */
+    let endTime = performance.now()   /* check the time */
 
-  let endTime = performance.now()   /* check the time */
+    /* output a message describing the parse volume and performance */
+    console.error('Parsed ' + parser.getBytesRead() + ' bytes; ' + ctx.rowcount +
+                  ' rows in ' + (endTime - ctx.startTime) + 'ms\n' +
+                  'You can view the parsed data in your browser dev tools console (rt-click and select Inspect)');
 
-  /* output a message describing the parse volume and performance */
-  console.error('Parsed ' + parser.getBytesRead() + ' bytes; ' + ctx.rowcount +
-                ' rows in ' + (endTime - ctx.startTime) + 'ms\n' +
-                'You can view the parsed data in your browser dev tools console (rt-click and select Inspect)');
+    /* destroy the parser */
+    parser.delete();
+  }
 }
 
 /**
@@ -63,10 +62,18 @@ zsvParser.runOnLoad(function() {
   /* get a new context */
   let ctx = createContext();
 
-  /* read stdin if we have no arguments, else the first argument */
-  const readFile = process.argv.length < 3 ? process.stdin : fs.createReadStream(process.argv[2]);
-
   /* initialize parser */
-//    printMemUsage();
-  let parser = zsvParser.new(rowHandler, ctx, { rowData: false, async: readFile, end: finish });
+  let parser = zsvParser.new(rowHandler, ctx, { rowData: false });
+
+  /* read stdin if we have no arguments, else the first argument */
+  const readFile = process.argv.length < 3 ? process.stdin : { fd: fs.openSync(process.argv[2], 'r') };
+
+  /* set the parser input */
+  parser.syncInput(readFile);
+
+  /* parse */
+  while(parser.parseMore() == 0);
+
+  /* finish */
+  finish(ctx, parser);
 });

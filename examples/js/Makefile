@@ -41,12 +41,12 @@ INDEX=${BUILD_DIR}/index.html
 EMJS=${BUILD_DIR}/zsv.em.js
 WASM=${BUILD_DIR}/zsv.em.wasm
 
-CFLAGS+= ${CFLAGS_PIC} -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_RUNTIME_METHODS="['setValue','addFunction','removeFunction']" -s RESERVED_FUNCTION_POINTERS=4 -s EXPORTED_FUNCTIONS="['_free','_malloc']"
+CFLAGS+= ${CFLAGS_PIC} -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_RUNTIME_METHODS="['setValue','addFunction','removeFunction','writeArrayToMemory']" -s RESERVED_FUNCTION_POINTERS=4 -s EXPORTED_FUNCTIONS="['_free','_malloc']"
 
-ifeq ($(DEBUG),0)
-  CFLAGS+= -O3 -DNDEBUG #  -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -lm -mavx2 -ftree-vectorize -flto
-else
+ifeq ($(DEBUG),1)
   CFLAGS += ${CFLAGS_DEBUG}
+else
+  CFLAGS+= -O3 -DNDEBUG #  -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -lm -mavx2 -ftree-vectorize -flto
 endif
 
 BROWSER_STATIC=${BUILD_DIR}/index.html ${BUILD_DIR}/zsv-browser-example.js
