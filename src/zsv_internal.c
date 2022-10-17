@@ -623,15 +623,12 @@ static void collate_header_row(void *ctx) {
         size_t offset = 0;
         for(size_t i = 0; i < scanner->collate_header->column_count; i++) {
           size_t len_plus1 = scanner->collate_header->lengths[i];
+          scanner->row.cells[i].str = scanner->collate_header->buff.buff + offset;
           if(len_plus1) {
             scanner->row.cells[i].len = len_plus1 - 1;
-            scanner->row.cells[i].str = scanner->collate_header->buff.buff + offset;
-            scanner->row.cells[i].str[len_plus1 - 1] = '\0';
             scanner->row.cells[i].quoted = 1;
-          } else {
+          } else
             scanner->row.cells[i].len = 0;
-            scanner->row.cells[i].str = (unsigned char *)"";
-          }
           offset += len_plus1;
         }
       }

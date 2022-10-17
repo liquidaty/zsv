@@ -15,6 +15,7 @@ will be started to serve them on https://127.0.0.1:8888
 You can view a [demo of the built example here](https://liquidaty.github.io/zsv/examples/wasm/build/)
 
 ### Node module
+
 To build a node module, run `make node`. Module files will be placed in node/node_modules/zsv-parser
 
 ### Node example and test
@@ -42,21 +43,18 @@ this example does not require that libzsv is already installed
 4. Click the button to upload a file
 
 ## Performance
-In this example, ZSV performs well, but is not as fast as other browser-based CSV parsers. That is OK! Here's why:
 
-* It's still pretty darn fast
+Running ZSV lib from Javascript is still experimental and is not yet fully optimized. Some performance challenges are
+unique to web assembly + Javascript, especially where a lot of string data
+is being passed between Javascript and the library (see e.g. https://hacks.mozilla.org/2019/08/webassembly-interface-types/)
 
-* It uses a row handler callback function. This provides the user with an easy way to achieve flexibility
-  throughout the entire parsing process
+On small files (under 1 MB), zsv-lib is 30-75% faster than, for example, the `csv-parser` library. However, on larger files,
+possibly due to the aforementioned Javascript/wasm memory overhead, it can be more than 50% slower than `csv-parser`.
 
-* Because it's wasm, translation is bound to have some friction, especially here where a lot of string data
-  is being passed between Javascript and the API. See e.g. https://hacks.mozilla.org/2019/08/webassembly-interface-types/
-  for an explanation of why this innate performance drag exists between Javascript and wasm
-
-* Its purpose is not to be the fastest in-browser parser. Rather, if you are building something natively, and want
-  to use ZSV, you can benefit from using the same code base when you run in the browser. Most likely, ZSV's speed
-  will not be the bottleneck, and possibly the benefit of having a single code base shared between native and browser
-  environments is more than enough to make it worthwhile.
+For that same reason, if parsing native Emscripten file system files and solely reading/writing to that file system,
+libzsv is likely to be faster than native Javascript libraries that would require data to move between Javascript and wasm.
+However, no benchmark tests have been performed for that, and any such benchmarks would probably be more pratical if run
+on the zsv CLI than the library.
 
 ## All the build commands
 

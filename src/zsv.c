@@ -157,6 +157,17 @@ void zsv_set_context(zsv_parser parser, void *ctx) {
 }
 
 ZSV_EXPORT
+void zsv_set_read(zsv_parser parser,
+                  size_t (*read_func)(void * restrict, size_t n, size_t size, void * restrict)) {
+  parser->read = read_func;
+}
+
+ZSV_EXPORT
+void zsv_set_input(zsv_parser parser, void *in) {
+  parser->in = in;
+}
+
+ZSV_EXPORT
 char zsv_quoted(zsv_parser parser) {
   return parser->quoted || parser->opts.no_quotes;
 }
@@ -180,28 +191,10 @@ size_t zsv_get_cell_len(zsv_parser parser, size_t ix) {
   return 0;
 }
 
-/**
- * `zsv_copy_cell_str()` is not needed in most cases, but may be useful in
- * restrictive cases such as when calling from Javascript into wasm. Trailing
- * NULL will be written to the buffer, which must be at least cell.len + 1
- * in size. Because of this requirement, the caller should always first call
- * `zsv_get_cell_len()` to ensure that the passed buffer is large enough
- * Furthermore, the `ix` parameter is not checked for safety, so the caller
- * must ensure that it is less than the cell count returned by `zsv_cell_count()`
- *
- * @param parser zsv parser handle
- * @param ix     0-based index of the cell to copy. Caller must ensure validity
- * @param buff   buffer to copy into. Must already be of size cell.len + 1
- */
 ZSV_EXPORT
-void zsv_copy_cell_str(zsv_parser parser, size_t ix, unsigned char *buff) {
-  memcpy(buff, parser->row.cells[ix].str, parser->row.cells[ix].len);
-  buff[parser->row.cells[ix].len] = '\0';
-}
-
-ZSV_EXPORT
-void zsv_set_input(zsv_parser parser, void *in) {
-  parser->in = in;
+unsigned char *zsv_get_cell_str(zsv_parser parser, size_t ix) {
+  struct zsv_cell c = zsv_get_cell(parser, ix);
+  return c.len ? c.str : NULL;
 }
 
 ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count, size_t *offsets) {

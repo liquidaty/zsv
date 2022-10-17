@@ -41,17 +41,17 @@ INDEX=${BUILD_DIR}/index.html
 EMJS=${BUILD_DIR}/zsv.em.js
 WASM=${BUILD_DIR}/zsv.em.wasm
 
-CFLAGS+= ${CFLAGS_PIC} -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_RUNTIME_METHODS="['setValue','addFunction','removeFunction']" -s RESERVED_FUNCTION_POINTERS=4 -s EXPORTED_FUNCTIONS="['_free','_malloc']"
+CFLAGS+= ${CFLAGS_PIC} -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_RUNTIME_METHODS="['setValue','addFunction','removeFunction','writeArrayToMemory']" -s RESERVED_FUNCTION_POINTERS=4 -s EXPORTED_FUNCTIONS="['_free','_malloc']"
 
-ifeq ($(DEBUG),0)
-  CFLAGS+= -O3 -DNDEBUG #  -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -lm -mavx2 -ftree-vectorize -flto
-else
+ifeq ($(DEBUG),1)
   CFLAGS += ${CFLAGS_DEBUG}
+else
+  CFLAGS+= -O3 -DNDEBUG #  -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -lm -mavx2 -ftree-vectorize -flto
 endif
 
-INDEX=${BUILD_DIR}/index.html
+BROWSER_STATIC=${BUILD_DIR}/index.html ${BUILD_DIR}/zsv-browser-example.js
 OTHERUTIL=${BUILD_DIR}/localhost.pem
-STATIC=${INDEX} ${OTHERUTIL}
+STATIC=${BROWSER_STATIC} ${OTHERUTIL}
 
 ##### test-related definitions
 COLOR_NONE=\033[0m
@@ -64,7 +64,7 @@ TEST_PASS=echo "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
 TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
 #####
 
-.PHONY: help all run clean prep node setup
+.PHONY: help all run clean prep node setup benchmark count_compare
 
 help:
 	@echo "make [build|run|node|test|clean]"
@@ -87,16 +87,16 @@ prep: ../../app/external/utf8proc-2.6.1/utf8proc.h
 ../../app/external/utf8proc-2.6.1/utf8proc.h:
 	make -C ../../app ./external/utf8proc-2.6.1/utf8proc.h THIS_MAKEFILE_DIR=.
 
-test: npm/test/index.js node
+test: npm/test/select_all.js node
 	@mkdir -p build/test
 	@cp -p $< node/
-	@echo "Running test (example) program \`node node/index.js ../../data/test/desc.csv\`"
-	@(cd node && node index.js ../../../data/test/desc.csv > ../build/test/out.json 2> ../build/test/out.err1)
+	@echo "Running test (example) program \`node node/select_all.js ../../data/test/desc.csv\`"
+	@(cd node && node select_all.js ../../../data/test/desc.csv > ../build/test/out.json 2> ../build/test/out.err1)
 	@sed 's/[0-9.]*ms//g' < build/test/out.err1 > build/test/out.err
 	@cmp build/test/out.err npm/test/out.err
 	@cmp build/test/out.json npm/test/out.json && ${TEST_PASS} || ${TEST_FAIL}
 
-${INDEX}: browser/index.html
+${BROWSER_STATIC}: ${BUILD_DIR}/% : browser/%
 	@mkdir -p `dirname "$@"`
 	@cp -p $< $@
 
@@ -109,6 +109,8 @@ ${EMJS}: ${ZSVSRC} zsv_parser_api_dummy.c
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} $^ -o $@
 
 ${WASM}: ${EMJS}
+
+${BUILD_DIR}/zsv-browser-example.js:
 
 ${BROWSER_JS}: prep ${EMJS} js/head.js js/foot.js
 	@mkdir -p `dirname "$@"`
@@ -145,8 +147,55 @@ endif
 setup:
 	npm install -g uglify-es
 
-
 node: ${NODE_WASM} ${NODE_INDEX} ${NODE_PKG_FILES}
-	@echo "Built node module in node/node_modules/{NODE_PKG_NAME}"
+	@echo "Built node module in node/node_modules/${NODE_PKG_NAME}"
 
-## node test
+
+#### node benchmark
+BENCHMARK_INPUT=${THIS_MAKEFILE_DIR}/../../app/benchmark/worldcitiespop_mil-sc.csv
+
+benchmark: node count_compare select_compare
+
+count_compare:
+	@cp -p npm/test/count*.js node/
+	@cd node && (npm list | grep csv-parser) && echo "csv-parser already installed" || npm install csv-parser
+
+	@echo "zsv count"
+	head -5000 ${BENCHMARK_INPUT} | node node/count.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | node node/count.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | node node/count.js 2>&1 | head -1
+
+	head -500000 ${BENCHMARK_INPUT} | node node/count.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | node node/count.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | node node/count.js 2>&1 | head -1
+
+
+	@echo "csv-parser count"
+	head -5000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
+
+	head -500000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
+
+select_compare:
+	@cp -p npm/test/select_all*.js node/
+	@cd node && (npm list | grep csv-parser) && echo "csv-parser already installed" || npm install csv-parser
+
+	@echo "zsv select_all"
+	head -5000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
+
+	head -500000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
+
+
+	@echo "csv-parser select_all"
+	head -5000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
+
+	head -500000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
