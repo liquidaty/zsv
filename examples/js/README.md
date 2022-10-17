@@ -15,6 +15,7 @@ will be started to serve them on https://127.0.0.1:8888
 You can view a [demo of the built example here](https://liquidaty.github.io/zsv/examples/wasm/build/)
 
 ### Node module
+
 To build a node module, run `make node`. Module files will be placed in node/node_modules/zsv-parser
 
 ### Node example and test
@@ -50,12 +51,13 @@ is being passed between Javascript and the library (see e.g. https://hacks.mozil
 Currently, this Node/javascript package reads data either via unbuffered synchronous file read, or via `parseBytes` which
 requires a somewhat inefficient series of memory copies.
 
-On small files (under 1 MB), zsv-lib is 2-4x faster than, for example, the csv-parser library. However, on larger files, it is about 20% slower.
+On small files (under 1 MB), zsv-lib is 30-75% faster than, for example, the csv-parser library. However, on larger files,
+likely due to its unoptimized raw synchronous read, it can be about 50% slower.
 
-Likely, this is due to zsv-lib using a sync non-buffered file read; using a buffered async file read is likely to substantially increase performance.
-At this time, making zsv-lib the fastest in-browser or Node solution is not a high priority, so long as the library is reasonably fast, but
-feel free to post a request on https://github.com/liquidaty/zsv if you'd like to request those performance enhancements to be made
-
+Using a buffered async file read is likely to substantially increase performance.
+That said, at this time, the library remains reasonably fast with bounded memory.
+If further performance or API enhancements would be important to you, feel free to post an issue
+on https://github.com/liquidaty/zsv.
 
 ## All the build commands
 

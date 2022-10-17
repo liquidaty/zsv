@@ -1,4 +1,74 @@
   var _loaded = false;
+  const decoder = new TextDecoder("utf-8");
+
+  function UTF8ToString2(ptr, len) {
+    // modified from https://github.com/vtree-rs/vtree_html/blob/d3dd028be4a80e65bf885e71c2f4bd0815c73882/src/js/utils.js
+    // using surrogate pair check used by j1
+    // replaces bad utf8 with '??'
+    const u8Array = HEAPU8;
+    const endPtr = ptr + len;
+
+    if (endPtr - ptr > 1024 && u8Array.subarray && decoder)
+      return decoder.decode(u8Array.subarray(ptr, endPtr));
+
+    let idx = ptr;
+    let str = '';
+    let last_surrogate = 0;
+    while (idx < endPtr) {
+      // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and
+      // https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
+      let u0 = u8Array[idx++];
+      if (!(u0 & 0x80))
+        str += String.fromCharCode(u0);
+      else if(idx < endPtr) {
+        let code;
+	const u1 = u8Array[idx++] & 63;
+	if ((u0 & 0xE0) === 0xC0) { // 110xxxxx
+          code = ((u0 & 31) << 6) | u1;
+        } else if(idx < endPtr) {
+	  const u2 = u8Array[idx++] & 63;
+	  if ((u0 & 0xF0) === 0xE0) // 1110xxxx
+	    code = ((u0 & 15) << 12) | (u1 << 6) | u2;
+	  else if(idx < endPtr) {
+	    const u3 = u8Array[idx++] & 63;
+	    if ((u0 & 0xF8) === 0xF0) // 11110xxx
+	      code = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | u3;
+	    else if(idx < endPtr) {
+	      const u4 = u8Array[idx++] & 63;
+	      if ((u0 & 0xFC) === 0xF8) // 111110xx
+		code = ((u0 & 3) << 24) | (u1 << 18) | (u2 << 12) | (u3 << 6) | u4;
+	      else if(idx < endPtr) {
+		const u5 = u8Array[idx++] & 63;
+		code = ((u0 & 1) << 30) | (u1 << 24) | (u2 << 18) | (u3 << 12) | (u4 << 6) | u5;
+	      }
+	    }
+	  }
+
+          // check for invalid surrogate pair
+          if(0xD800 <= code && code <= 0xDBFF) {
+            if(idx + 2 > endPtr) {
+              str += '??'; // Invalid surrogate! Change to '??'
+              continue;
+            }
+            let surrogate = u8Array[idx++] << 8;
+            surrogate += u8Array[idx++];
+            if(!(0xDC00 <= surrogate && surrogate <= 0xDFFF)) {
+              str += '??'; // Invalid surrogate! Change to '??'
+              idx -= 2;
+              continue;
+            }
+            code = 0x10000 + (((code - 0xD800) << 10) |(surrogate - 0xDC00));
+          }
+        }
+        if(code) {
+          if(code > 0x10FFFF)
+            code = 0xFFFD; // U+FFFD REPLACEMENT CHARACTER
+          str += String.fromCharCode(u0);
+        }
+      }
+    }
+    return str;
+  }
 
   Module.onRuntimeInitialized = function() {
     _loaded = true;
@@ -60,7 +130,23 @@
     let z = activeParsers[ix];
     let sz = n * m;
     let jsbuff = new Uint8Array(Module.HEAP8.buffer, buff, sz);
-    let bytes = fs.readSync(z.fd, jsbuff, 0, sz);
+    let bytes;
+    try {
+      bytes = fs.readSync(z.fd, jsbuff, 0, sz);
+    } catch(e) {
+      if(e.code == 'EAGAIN') {
+        for(let i = 0; i < 100; i++)
+          try {
+            bytes = fs.readSync(z.fd, jsbuff, 0, sz);
+            break;
+          } catch(e1) {
+          }
+      }
+      if(!bytes) {
+        console.error('Use buffered async read to fix this!', e.toString());
+        throw new Error(e)
+      }
+    }
     z.bytesRead += bytes;
     return bytes;
   }
@@ -72,6 +158,8 @@
     globalRowHandlerNoDatap = addFunction(globalRowHandlerNoData, 'vi');
     globalRowHandlerWithDatap = addFunction(globalRowHandlerWithData, 'vi');
   });
+
+  let qmCode = '?'.charCodeAt(0);
 
   return {
     /**
@@ -88,15 +176,16 @@
         function cellCount() {
           return _zsv_cell_count(zsv);
         };
+        let z;
 
         function getCell(i) {
           let s = _zsv_get_cell_str(zsv, i);
-          if(s) // don't use UTF8ToString as it mishandles invalid UTF8 bytes
-            return String.fromCharCode.apply(null, new Uint8Array(Module.HEAP8.buffer, s, _zsv_get_cell_len(zsv, i)));
+          if(s)
+            return UTF8ToString2(s, _zsv_get_cell_len(zsv, i));
           return '';
         };
 
-        let z = {
+        z = {
           zsv: zsv,
           rowHandler: rowHandler,
           cellCount: cellCount,

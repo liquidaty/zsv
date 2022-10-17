@@ -147,15 +147,14 @@ endif
 setup:
 	npm install -g uglify-es
 
+node: ${NODE_WASM} ${NODE_INDEX} ${NODE_PKG_FILES}
+	@echo "Built node module in node/node_modules/${NODE_PKG_NAME}"
+
+
+#### node benchmark
 BENCHMARK_INPUT=${THIS_MAKEFILE_DIR}/../../app/benchmark/worldcitiespop_mil-sc.csv
 
-benchmark: node count_compare
-
-#	select_compare
-#	select_compare
-#	select_compare
-#	select_compare
-#	select_compare
+benchmark: node count_compare select_compare
 
 count_compare:
 	@cp -p npm/test/count*.js node/
@@ -180,8 +179,23 @@ count_compare:
 	head -500000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
 	head -500000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
 
+select_compare:
+	@cp -p npm/test/select_all*.js node/
+	@cd node && (npm list | grep csv-parser) && echo "csv-parser already installed" || npm install csv-parser
 
-node: ${NODE_WASM} ${NODE_INDEX} ${NODE_PKG_FILES}
-	@echo "Built node module in node/node_modules/${NODE_PKG_NAME}"
+	@echo "zsv select_all"
+	head -5000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
 
-## node test
+	head -500000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
+
+
+	@echo "csv-parser select_all"
+	head -5000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
+
+	head -500000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
