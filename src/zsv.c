@@ -63,7 +63,7 @@ __attribute__((always_inline)) static size_t scanner_pre_parse(struct zsv_scanne
   if(VERY_UNLIKELY(capacity == 0)) { // our row size was too small to fit a single row of data
     fprintf(stderr, "Warning: row truncated\n");
     if(scanner->mode == ZSV_MODE_FIXED) {
-      if(VERY_UNLIKELY(row_fx(scanner, scanner->buff.buff, 0, scanner->buff.size - 1)))
+      if(VERY_UNLIKELY(row_fx(scanner, scanner->buff.buff, 0, scanner->buff.size)))
         return zsv_status_cancelled;
     } else if(VERY_UNLIKELY(row_dl(scanner)))
       return zsv_status_cancelled;
@@ -165,27 +165,6 @@ void zsv_set_read(zsv_parser parser,
 ZSV_EXPORT
 void zsv_set_input(zsv_parser parser, void *in) {
   parser->in = in;
-}
-
-/*
-ZSV_EXPORT
-enum zsv_status zsv_set_buff(zsv_parser parser, void *buff, size_t size) {
-  if(size < ZSV_MIN_SCANNER_BUFFSIZE)
-    return zsv_status_invalid_option;
-  if(parser->free_buff)
-    free(parser->buff.buff);
-  parser->buff.buff = buff;
-  parser->buff.size = size;
-  parser->free_buff = 0;
-  return zsv_status_ok;
-}
-*/
-ZSV_EXPORT unsigned char *zsv_get_buff(zsv_parser parser) {
-  return parser->buff.buff;
-}
-
-ZSV_EXPORT size_t zsv_get_buffsize(zsv_parser parser) {
-  return parser->buff.size;
 }
 
 ZSV_EXPORT

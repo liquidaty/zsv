@@ -41,7 +41,7 @@ function rowHandler(row, ctx, z) {
  */
 function finish(ctx, parser) {
   if(parser) {
-    parser.finish(); /* finish parsing */
+    parser.finish();                  /* finish parsing */
     let endTime = performance.now()   /* check the time */
 
     /* output a message describing the parse volume and performance */

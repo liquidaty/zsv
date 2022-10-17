@@ -13,6 +13,8 @@ package. Please feel free to post a ticket at https://github.com/liquidaty/zsv/i
 if you'd like to request any feature that is available in the underlying library but
 not exposed in this package (or that does not yet exist in the underlying library at all)
 
+Please (see here for further notes re performance)[../README.md#Performance].
+
 For more information about zsv+lib, please visit https://github.com/liquidaty/zsv
 
 ## Installation
@@ -29,36 +31,8 @@ libzsv works generally as follows:
 3. The parser calls your custom function for each row that is parsed
 4. Your row handler extracts data from the parser and processes it however you want
 
-### Pseudo-code example
-
-```js
-const zsvParser = require('zsv-lib');
-
-let ctx = { rowcount: 0, parser: null };       /* create a context      */
-
-let rowHandler = function(ctx) {               /* define a row handler  */
-  ctx.rowcount++;
-  let count = zsvParser.cellCount(ctx.parser); /* loop through row data */
-  for(let i = 0; i < count; i++) {
-    let cell = zsvParser.getCell(ctx.parser, i);
-    ...
-  }
-}
-
-ctx.parser = zsvParser.new(rowHandler, ctx);   /* create a parser       */
-
-do {                                           /* parse data            */
-  let chunk = ...;
-  myParser.parseBytes(myParser, chunk);
-} while(...);
-
-zsvParser.finish(ctx.parser);                  /* finish parsing        */
-
-console.log('Read ' + ctx.rowcount + ' rows'); /* after parsing is done */
-
-zsvParser.delete(ctx.parser);                  /* clean up              */
-
-```
+See the source for a (simple example that counts rows)[test/count.js]
+or (another simple example that outputs row data as json)[test/select_all.js]
 
 ### API
 

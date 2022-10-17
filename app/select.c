@@ -258,8 +258,10 @@ static void zsv_select_add_search(struct zsv_select_data *data, const char *valu
   data->search_strings = ss;
 }
 
-__attribute__((always_inline)) static inline unsigned char *
-zsv_select_cell_clean(struct zsv_select_data *data, unsigned char *utf8_value, char quoted, size_t *lenp) {
+#ifndef NDEBUG
+__attribute__((always_inline)) static inline
+#endif
+unsigned char *zsv_select_cell_clean(struct zsv_select_data *data, unsigned char *utf8_value, char quoted, size_t *lenp) {
   size_t len = *lenp;
   // to do: option to replace or warn non-printable chars 0 - 31:
   // vectorized scan

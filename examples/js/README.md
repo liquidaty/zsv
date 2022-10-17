@@ -43,6 +43,19 @@ this example does not require that libzsv is already installed
 
 ## Performance
 
+Running ZSV lib from Javascript is still experimental and is not yet fully optimized. Some performance challenges are
+unique to web assembly + Javascript, especially where a lot of string data
+is being passed between Javascript and the library (see e.g. https://hacks.mozilla.org/2019/08/webassembly-interface-types/)
+
+Currently, this Node/javascript package reads data either via unbuffered synchronous file read, or via `parseBytes` which
+requires a somewhat inefficient series of memory copies.
+
+On small files (under 1 MB), zsv-lib is 2-4x faster than, for example, the csv-parser library. However, on larger files, it is about 20% slower.
+
+Likely, this is due to zsv-lib using a sync non-buffered file read; using a buffered async file read is likely to substantially increase performance.
+At this time, making zsv-lib the fastest in-browser or Node solution is not a high priority, so long as the library is reasonably fast, but
+feel free to post a request on https://github.com/liquidaty/zsv if you'd like to request those performance enhancements to be made
+
 
 ## All the build commands
 

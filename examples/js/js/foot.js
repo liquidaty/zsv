@@ -50,7 +50,7 @@
     let count = z.cellCount();
     let row = [];
 
-    // convert bytes JS data
+    // convert bytes to JS data
     for(let i = 0; i < count; i++)
       row.push(z.getCell(i));
     z.rowHandler(row, z.ctx, z);
@@ -72,22 +72,6 @@
     globalRowHandlerNoDatap = addFunction(globalRowHandlerNoData, 'vi');
     globalRowHandlerWithDatap = addFunction(globalRowHandlerWithData, 'vi');
   });
-
-  function setBuff(z, zsv, buffsize) {
-    if(!buffsize)
-      buffsize = 4096*16;
-    if(!(buffsize >= 512))
-      throw new Error('Invalid buffsize: ' + str(buffsize));
-    if(z.heap)
-      throw new Error('Buffer already allocated');
-    z.heap = _malloc(buffsize);
-    if(!z.heap)
-      throw new Error('xOut of memory!');
-    z.heapSize = buffsize;
-    if(_zsv_set_buff(zsv, z.heap, buffsize))
-      throw new Error('Unknown error!');
-    return z.heap;
-  }
 
   return {
     /**

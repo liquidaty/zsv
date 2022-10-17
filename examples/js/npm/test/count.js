@@ -13,7 +13,7 @@ const zsvParser = require('zsv-lib');
  */
 function createContext() {
   return {
-    rowcount: 0,                  // how many rows we've parsed so far
+    rowcount: 0,                 // how many rows we've parsed so far
     startTime: performance.now() // when the run was started
   };
 }
@@ -24,8 +24,9 @@ function createContext() {
  */
 function rowHandler(row, ctx, z) {
   ctx.rowcount++;
-  /* if we had created the parser with option rowData === false,
-     we could fetch the row data ourselves with the below:
+  /* we created the parser with option rowData === false,
+     so the row argument will be null. We can still
+     fetch data if we want using e.g.:
 
   let count = parser.cellCount();
   let row = [];
@@ -39,7 +40,7 @@ function rowHandler(row, ctx, z) {
  */
 function finish(ctx, parser) {
   if(parser) {
-    parser.finish(); /* finish parsing */
+    parser.finish();                  /* finish parsing */
     let endTime = performance.now()   /* check the time */
 
     /* output a message describing the parse volume and performance */

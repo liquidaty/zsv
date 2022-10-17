@@ -171,7 +171,6 @@ char zsv_row_is_blank(zsv_parser parser);
 ZSV_EXPORT
 void zsv_set_context(zsv_parser parser, void *ctx);
 
-
 /**
  * Set the read function that is invoked by `zsv_parse_more()` to fetch more data.
  * If not explicitly set, defaults to fread
@@ -180,7 +179,6 @@ void zsv_set_context(zsv_parser parser, void *ctx);
  * @param read_function
  * @param stream        value that is passed to read_function when it is called
  */
-
 ZSV_EXPORT
 void zsv_set_read(zsv_parser parser,
                   size_t (*read_func)(void * restrict, size_t n, size_t size, void * restrict));
@@ -193,19 +191,6 @@ void zsv_set_read(zsv_parser parser,
  */
 ZSV_EXPORT
 void zsv_set_input(zsv_parser, void *in);
-
-/**
- * Set the buffer
- * @param  parser
- * @param  buff   the new buffer to use
- * @param  size   size of new buffer (must be at least ZSV_DEFAULT_SCANNER_BUFFSIZE)
- * @return status returns zsv_status_ok if and only if the call succeeded
- */
-ZSV_EXPORT
-enum zsv_status zsv_set_buff(zsv_parser parser, void *buff, size_t size);
-
-ZSV_EXPORT unsigned char *zsv_get_buff(zsv_parser parser);
-ZSV_EXPORT size_t zsv_get_buffsize(zsv_parser parser);
 
 /**
  * Insert a filter to process or modify, before parsing, the next chunk of raw
