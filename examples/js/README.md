@@ -46,15 +46,15 @@ this example does not require that libzsv is already installed
 
 Running ZSV lib from Javascript is still experimental and is not yet fully optimized. Some performance challenges are
 unique to web assembly + Javascript, especially where a lot of string data
-is being passed between Javascript and the library (see e.g. https://hacks.mozilla.org/2019/08/webassembly-interface-types/)
+is being passed between Javascript and the library (see e.g. https://hacks.mozilla.org/2019/08/webassembly-interface-types/).
 
-On small files (under 1 MB), zsv-lib is 30-75% faster than, for example, the `csv-parser` library. However, on larger files,
-possibly due to the aforementioned Javascript/wasm memory overhead, it can be more than 50% slower than `csv-parser`.
+Furthermore, it is unlikely that zsv-lib can approach its full performance potential
+until emscripten (or gcc) [can provide a SIMD-powered movemask function](https://github.com/WebAssembly/simd/pull/201). Until then, libzsv in emscripten resorts to the "slow"
+movemask, which does have a significant impact.
 
-For that same reason, if parsing native Emscripten file system files and solely reading/writing to that file system,
-libzsv is likely to be faster than native Javascript libraries that would require data to move between Javascript and wasm.
-However, no benchmark tests have been performed for that, and any such benchmarks would probably be more pratical if run
-on the zsv CLI than the library.
+Current testing suggests that on small files (under 1 MB), zsv-lib is 30-75% faster than, for example, the `csv-parser` library. However, on larger files,
+due to the aforementioned Javascript/wasm memory overhead and lack of
+SIMD movemask, it can be more than 50% slower than `csv-parser`.
 
 ## All the build commands
 
