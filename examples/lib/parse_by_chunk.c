@@ -3,16 +3,15 @@
 #include <stdlib.h>
 #include <zsv.h>
 
-/** zsv push parser example
+/** zsv example parsing in chunks
  *
  * This sample code shows how to use `zsv_parse_bytes()`
- * to push data through the parser, instead of using `zsv_parse_more()`
- * which pulls data from a stream
+ * to parse a chunk of bytes, instead of using `zsv_parse_more()`
+ * to pull data from a stream
  *
- * When given a choice, is is often advantageous to use the pull
- * approach to can reduce the amount of in-memory copying
- *
- * However, in some circumstances push parsing is preferred or necessary
+ * Note that, when given a choice, using `zsv_parse_more()`
+ * may be slightly more efficient / performant as is requires
+ * less memory copying
  *
  * In this example, we just count rows, but you could substitute in any
  * row handler you want
@@ -22,7 +21,7 @@
  * Create a structure to hold our data while we parse
  * In this case, we are just going to keep track of row count
  */
-struct push_parser_data {
+struct chunk_parse_data {
   unsigned count;
 };
 
@@ -30,8 +29,8 @@ struct push_parser_data {
  * Our row handler function will take a pointer to our data
  * and increment its count by 1
  */
-static void push_parser_row(void *dat) {
-  struct push_parser_data *data = dat;
+static void chunk_parse_row(void *dat) {
+  struct chunk_parse_data *data = dat;
   data->count++;
 }
 
@@ -41,9 +40,9 @@ static void push_parser_row(void *dat) {
  */
 int main(int argc, const char *argv[]) {
   if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
-    printf("Usage: push_parser < myfile.csv\n\n");
-    printf("Read from stdin and output the number of rows parsed.\n");
-    printf("Uses 'push' parse method\n");
+    printf("Usage: parse_by_chunk < myfile.csv\n\n");
+    printf("Reads stdin in chunks, parses each chunk using `zsv_parse_bytes()`,\n");
+    printf("and outputs the number of rows parsed.\n");
     return 0;
   }
 
@@ -60,8 +59,8 @@ int main(int argc, const char *argv[]) {
      * Configure the parser to use our row handler, and to pass
      * it our data when it's called
      */
-    struct push_parser_data d = { 0 };
-    zsv_set_row_handler(p, push_parser_row);
+    struct chunk_parse_data d = { 0 };
+    zsv_set_row_handler(p, chunk_parse_row);
     zsv_set_context(p, &d);
 
     /**

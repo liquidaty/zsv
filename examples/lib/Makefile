@@ -52,21 +52,24 @@ help:
 	@echo "To build using a specified configuration:"
 	@echo "  ${MAKE} CONFIGFILE=/path/to/config.mk build"
 	@echo
+	@echo "To build a specific example:"
+	@echo "  ${MAKE} simple|print_my_column|parse_by_chunk"
+	@echo
 	@echo "To remove all build files:"
 	@echo "  ${MAKE} clean"
 	@echo
 
-build: simple print_my_column push_parser
+build: simple print_my_column parse_by_chunk
 
 
-simple print_my_column push_parser: % : ${BUILD_DIR}/%${EXE}
+simple print_my_column parse_by_chunk: % : ${BUILD_DIR}/%${EXE}
 	@echo Built $<
 
-${BUILD_DIR}/print_my_column${EXE} ${BUILD_DIR}/simple${EXE} ${BUILD_DIR}/push_parser${EXE}: ${BUILD_DIR}/%${EXE} : %.c
+${BUILD_DIR}/print_my_column${EXE} ${BUILD_DIR}/simple${EXE} ${BUILD_DIR}/parse_by_chunk${EXE}: ${BUILD_DIR}/%${EXE} : %.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -o $@ $< ${LIBS} -L${LIBDIR}
 
 clean:
 	@rm -rf ${BUILD_DIR}
 
-.PHONY: help build clean simple print_my_column push_parser
+.PHONY: help build clean simple print_my_column parse_by_chunk

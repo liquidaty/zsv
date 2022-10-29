@@ -259,7 +259,7 @@ zsv sql my_population_data.csv "select * from data where population > 100000"
 Basic examples of using the API are in [examples/lib/README.md](examples/lib/README.md).
 
 An example of using the API, compiled to wasm and called via Javascript,
-is in [examples/wasm/README.md](examples/wasm/README.md).
+is in [examples/js/README.md](examples/js/README.md).
 
 For more sophisticated (but at this time, only sporadically commented/documented) use cases,
 see the various CLI C source files in the app/ directory such as app/serialize.c
