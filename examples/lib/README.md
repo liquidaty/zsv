@@ -23,7 +23,7 @@ void count_row(void *ctx) {
 }
 
 zsv_parser p = zsv_new(NULL);
-if!(p)
+if(!p)
   fprintf(stderr, "Out of memory!\n");
 else {
   size_t count = 0;
