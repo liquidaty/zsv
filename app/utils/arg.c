@@ -12,7 +12,7 @@
 #include <zsv.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/arg.h>
-#include <zst/utils/thread.h>
+#include <zsv/utils/thread.h>
 
 /*
  * global zsv_default_opts for convenience funcs zsv_get_default_opts() and zsv_set_default_opts()
