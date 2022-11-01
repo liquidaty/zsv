@@ -269,6 +269,10 @@ zsv_parser zsv_new(struct zsv_opts *opts) {
       scanner = NULL;
     }
   }
+
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+  movemask_pseudo_ARM_NEON_init();
+#endif
   return scanner;
 }
 

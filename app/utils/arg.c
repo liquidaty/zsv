@@ -12,19 +12,8 @@
 #include <zsv.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/arg.h>
+#include <zst/utils/thread.h>
 
-/*
- * for now we don't really need thread support because this is only being used
- * by the CLI. However, it's here anyway in case future enhancements or
- * user customizations need multithreading support
- */
-#ifndef ZSVTLS
-# ifndef NO_THREADING
-#  define ZSVTLS _Thread_local
-# else
-#  define ZSVTLS
-# endif
-#endif
 /*
  * global zsv_default_opts for convenience funcs zsv_get_default_opts() and zsv_set_default_opts()
  *  for the cli to pass global opts to the standalone modules

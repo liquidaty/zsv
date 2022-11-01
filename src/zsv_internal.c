@@ -338,14 +338,32 @@ typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (VECTOR_BYTES)))
   non-zero value in the vector (as opposed to real movemask which sets the bit
   only for each corresponding non-zero highest-bit value in the vector)
 */
-static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
+#if defined(__ARM_NEON) || defined(__ARM_NEON__)
+#include <zst/utils/thread.h>
 
+// see https://stackoverflow.com/questions/11870910/
+ZSVTLS uint8x16_t mm_powers;
+/**
+ * initialize movemask_pseudo() when running on ARM_NEON
+ * only needs to be called once per thread, so that we don't have
+ * to call it each time movemask_pseudo() is called
+ * rather than a separate zsv_init() function, to keep the API
+ * simple, we will just call it inside zsv_new()
+ */
+void movemask_pseudo_ARM_NEON_init() {
+  ZSVTLS static char movemask_pseudo_initd = 0;
+  if(!movemask_pseudo_initd) {
+    movemask_pseudo_initd = 1;
+    static const uint8_t __attribute__ ((aligned (16))) _powers[16]=
+      { 1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128 };
+    uint8x16_t mm_powers = vld1q_u8(_powers);
+  }
+}
+#endif
+
+static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
   // see https://stackoverflow.com/questions/11870910/
-  static const uint8_t __attribute__ ((aligned (16))) _powers[16]=
-    { 1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128 };
-  uint8x16_t mm_powers = vld1q_u8(_powers);
-
   // compute the mask from the input
   uint64x2_t imask= vpaddlq_u32(vpaddlq_u16(vpaddlq_u8(vandq_u8(v, mm_powers))));
 
