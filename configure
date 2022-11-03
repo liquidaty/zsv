@@ -25,6 +25,8 @@ Fine tuning of the installation directories:
 
 Optional features:
   --try-avx512            use avx512 instructions, if available (not recommended)
+  --force-avx2            force compile with (no CPU check) or without -mavx2
+  --force-avx             force compile with (no CPU check) or without -mavx
   --enable-small-lut      build with smaller lookup tables [no]
   --enable-debug-stderr   build with debug msgs in stderr [no]
   --enable-pie            build with position independent executables [auto]
@@ -110,6 +112,25 @@ trycchdr () {
 NO_$upper2 = 1"
         return 1
     fi
+}
+
+trycpusupport() {
+    rm -f "$tmpc"
+    printf "checking whether CPU accepts $1... "
+    cat >> "$tmpc" <<EOF
+int main() {
+  if(__builtin_cpu_supports("$1")) {
+    printf("yes\n");
+    return 0;
+  }
+  printf("no\n");
+  return 1;
+}
+EOF
+    if $CC -o "$tmpe" "$tmpc" >/dev/null 2>&1 ; then
+        "$tmpe" && return 0;
+    fi
+    return 1;
 }
 
 tryccfn () {
@@ -285,6 +306,13 @@ for arg ; do
         --mandir=*) MANDIR=${arg#*=} ;;
         --minimal|--minimal=yes) MINIMAL=yes;;
         --try-avx512|--try-avx512=yes) TRY_AVX512=yes;;
+
+        --force-avx2|--force-avx2=yes) FORCE_AVX2=yes;;
+        --force-avx2=no) FORCE_AVX2=no;;
+
+        --force-avx|--force-avx=yes) FORCE_AVX=yes;;
+        --force-avx=no) FORCE_AVX=no;;
+
         --enable-small-lut|--enable-small-lut=yes) usesmalllut=yes ;;
         --disable-small-lut|--enable-small-lut=no) usesmalllut=no ;;
         --enable-debug-stderr|--enable-debug-stderr=yes) usedebugstderr=yes ;;
@@ -326,12 +354,13 @@ set -C
 while : ; do i=$(($i+1))
              tmpc="./conf$$-$PPID-$i.c"
              tmpo="./conf$$-$PPID-$i.o"
+             tmpe="./conf$$-$PPID-$i._"
              2>|/dev/null > "$tmpc" && break
              test "$i" -gt 50 && fail "$0: cannot create temporary file $tmpc"
 done
 set +C
-trap 'rm -f "$tmpc" "$tmpo"' EXIT QUIT TERM HUP
-trap 'rm -f "$tmpc" "$tmpo" && echo && fail "$0: interrupted"' INT
+trap 'rm -f "$tmpc" "$tmpo" "$tmpe"' EXIT QUIT TERM HUP
+trap 'rm -f "$tmpc" "$tmpo" "$tmpe" && echo && fail "$0: interrupted"' INT
 
 #
 # Find an AWK tool to use
@@ -353,8 +382,8 @@ test -n "$MAKE" || fail "$0: cannot find a MAKE tool"
 # Find a C compiler to use
 #
 printf "checking for C compiler... "
-for c in cc gcc gcc-11 gcc-10 gcc-9 clang; do trycc1 "$c"; done
-for c in cc gcc gcc-11 gcc-10 gcc-8 clang; do trycc2 "$c"; done
+for c in cc gcc gcc-11 gcc-10 gcc-9 gcc-8 gcc-7 clang; do trycc1 "$c"; done
+for c in cc gcc gcc-11 gcc-10 gcc-9 gcc-8 gcc-7 clang; do trycc2 "$c"; done
 printf "%s\n" "$CC"
 test -n "$CC" || fail "$0: cannot find a C compiler"
 
@@ -482,7 +511,21 @@ tryflag CFLAGS -pipe
 # Try flags to optimize speed
 tryflag CFLAGS -ffunction-sections
 tryflag CFLAGS -fdata-sections
-tryflag CFLAGS_AVX2  -mavx2
+
+CFLAGS_AVX=
+if [ "$FORCE_AVX2" = "yes" ] ; then
+    CFLAGS_AVX=-mavx2
+    trycpusupport avx2 || echo "warning: avx2 forced but not supported on native CPU"
+elif [ "$FORCE_AVX2" != "no" ] ; then
+    trycpusupport avx2 && CFLAGS_AVX=-mavx2
+fi
+
+if [ "$FORCE_AVX" = "yes" ] ; then
+    CFLAGS_AVX=-mavx || echo "warning: avx forced but not supported on native CPU"
+elif [ "$FORCE_AVX" != "no" ] && [ "$CFLAGS_AVX" = "" ] ; then
+    trycpusupport avx && CFLAGS_AVX=-mavx
+fi
+
 tryflag CFLAGS_LTO -flto
 tryflag CFLAGS_OPT -fvisibility=hidden
 tryldflag LDFLAGS_AUTO -Wl,--gc-sections
@@ -521,14 +564,16 @@ if [ "$TRY_AVX512" = "yes" ]; then
     fi
 fi
 
-tryccfn CFLAGS_AVX_256 "_mm256_movemask_epi8" "immintrin.h" && trycchdr CFLAGS_AVX_256 "immintrin.h" && ( tryccfn CFLAGS_AVX_256 "_blsr_u32" "immintrin.h" || tryccfn CFLAGS_AVX_256 "__blsr_u32" "immintrin.h" ) && HAVE_AVX256=1
+#if [ "$HAVE_AVX256" != "1" ]; then
+#    tryccfn CFLAGS_AVX_256 "_mm256_movemask_epi8" "immintrin.h" && trycchdr CFLAGS_AVX_256 "immintrin.h" && ( tryccfn CFLAGS_AVX_256 "_blsr_u32" "immintrin.h" || tryccfn CFLAGS_AVX_256 "__blsr_u32" "immintrin.h" ) && HAVE_AVX256=1
+# fi
 
-if [ "$HAVE_AVX256" = "1" ] && [ "$CFLAGS_AVX2" != "-mavx2" ] ; then
-    echo "AVX256 requested, but -mavx2 compiler flag not supported"
-    exit 1
-elif [ "$HAVE_AVX256" != "1" ]; then
-   CFLAGS_AVX2=
-fi
+#if [ "$HAVE_AVX256" = "1" ] && [ "$CFLAGS_AVX" != "-mavx2" ] ; then
+#    echo "AVX256 requested, but -mavx2 compiler flag not supported"
+#    exit 1
+#elif [ "$HAVE_AVX256" != "1" ]; then
+#   CFLAGS_AVX=
+#fi
 
 tryccfn CFLAGS_AUTO "memmem" "string.h"
 
@@ -619,10 +664,8 @@ LDFLAGS_AUTO = $LDFLAGS_AUTO
 
 HAVE_AVX512=$HAVE_AVX512
 CFLAGS_AVX_512=$CFLAGS_AVX_512
-HAVE_AVX256=$HAVE_AVX256
-CFLAGS_AVX_256=$CFLAGS_AVX_256
 
-CFLAGS_AVX2=$CFLAGS_AVX2
+CFLAGS_AVX=$CFLAGS_AVX
 CFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g -Wall -Wextra -Wno-missing-field-initializers -Wno-unused-parameter # -g3 -ggdb
 LDFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g # -g3 -ggdb
 CFLAGS_PIC = $CFLAGS_PIC
@@ -665,10 +708,12 @@ fi
 
 if [ "$HAVE_AVX512" = "1" ]; then
     echo "*  - using 512-bit AVX instruction set"
-elif [ "$HAVE_AVX256" = "1" ]; then
-    echo "*  - using 256-bit AVX instruction set"
+elif [ "$CFLAGS_AVX" = "-mavx2" ]; then
+    echo "*  - using 256-bit AVX2 instruction set"
+elif [ "$CFLAGS_AVX" = "-mavx" ]; then
+    echo "*  - using 128-bit + AVX instruction set"
 else
-    echo "*  - using 128-bit vector size"
+    echo "*  - using 128-bit vector size, no AVX"
 fi
 
 echo "****************************************************************"

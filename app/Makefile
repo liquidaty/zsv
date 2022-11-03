@@ -125,7 +125,7 @@ ifneq ($(findstring emcc,$(CC)),) # emcc
     LDFLAGS+=-pthread
   endif
 else # not emcc
-  CFLAGS+= ${CFLAGS_AVX2}
+  CFLAGS+= ${CFLAGS_AVX}
   LDFLAGS+=-lpthread # Linux explicitly requires
 endif
 UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
