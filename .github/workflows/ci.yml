@@ -72,7 +72,8 @@ jobs:
         CC: gcc
         MAKE: gmake
         RUN_TESTS: false
-      uses: vmactions/freebsd-vm@v0.2.8
+      # uses: vmactions/freebsd-vm@v0.2.8
+      uses: vmactions/freebsd-vm@v0
       with:
         mem: 2048
         release: 12.3
