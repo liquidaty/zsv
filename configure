@@ -526,6 +526,8 @@ tryccfn CFLAGS_AVX_256 "_mm256_movemask_epi8" "immintrin.h" && trycchdr CFLAGS_A
 if [ "$HAVE_AVX256" = "1" ] && [ "$CFLAGS_AVX2" != "-mavx2" ] ; then
     echo "AVX256 requested, but -mavx2 compiler flag not supported"
     exit 1
+elif [ "$HAVE_AVX256" != "1" ]; then
+   CFLAGS_AVX2=
 fi
 
 tryccfn CFLAGS_AUTO "memmem" "string.h"
@@ -614,15 +616,13 @@ STATIC_LIBS = $STATIC_LIBS
 CFLAGS_AUTO = $CFLAGS_AUTO
 CFLAGS_LTO = $CFLAGS_LTO
 LDFLAGS_AUTO = $LDFLAGS_AUTO
-if [ "$HAVE_AVX256" = "1" ]; then
-   CFLAGS_AVX2 = $CFLAGS_AVX2
-fi
 
 HAVE_AVX512=$HAVE_AVX512
 CFLAGS_AVX_512=$CFLAGS_AVX_512
 HAVE_AVX256=$HAVE_AVX256
 CFLAGS_AVX_256=$CFLAGS_AVX_256
 
+CFLAGS_AVX2=$CFLAGS_AVX2
 CFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g -Wall -Wextra -Wno-missing-field-initializers -Wno-unused-parameter # -g3 -ggdb
 LDFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g # -g3 -ggdb
 CFLAGS_PIC = $CFLAGS_PIC
