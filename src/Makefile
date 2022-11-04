@@ -36,20 +36,12 @@ endif
 
 VERSION= $(shell (git describe --always --dirty --tags 2>/dev/null || echo "v0.0.0-zsv") | sed 's/^v//')
 
-ifeq ($(HAVE_AVX512),1)
-  CFLAGS+= ${CFLAGS_AVX_512}
-else
-  ifeq ($(HAVE_AVX256),1)
-    CFLAGS+= ${CFLAGS_AVX_256}
-  endif
-endif
-
 ZSV_EXTRAS ?=
 ifneq ($(findstring emcc,$(CC)),) # emcc
   ZSV_EXTRAS=1
   NO_THREADING=1
 else # not emcc
-  CFLAGS+= ${CFLAGS_AVX2}
+  CFLAGS+= ${CFLAGS_AVX}
 endif
 
 ifeq ($(NO_THREADING),1)

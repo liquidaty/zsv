@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdint.h> // uint16_t etc
 
 #ifdef ZSV_EXTRAS
 #include <time.h>
@@ -296,29 +297,36 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
   return row_dl(scanner);
 }
 
-#ifndef ZSV_NO_AVX
-# if !defined(__AVX2__)
-#  define ZSV_NO_AVX
-# elif defined(HAVE_AVX512)
-#  ifndef __AVX512BW__
-#   error AVX512 requested, but __AVX512BW__ macro not defined
-#  else
-#   define VECTOR_BYTES 64
-#   define zsv_mask_t uint64_t
-#   define movemask_pseudo(x) _mm512_movepi8_mask((__m512i)x)
-#   define NEXT_BIT __builtin_ffsl
-#  endif
-# elif defined(HAVE_AVX256)
-#  define VECTOR_BYTES 32
-#  define zsv_mask_t uint32_t
-#  define movemask_pseudo(x) _mm256_movemask_epi8((__m256i)x)
+#if !defined(__AVX2__) // -mavx2 compiler flag not present
+# define ZSV_NO_AVX
+# define zsv_mask_t uint16_t
+# define VECTOR_BYTES 16
+# define NEXT_BIT __builtin_ffs
+# if defined(__AVX__)
+#  include <emmintrin.h>
+#  define zsv_mask_t uint16_t
+#  define VECTOR_BYTES 16
 #  define NEXT_BIT __builtin_ffs
-# else
-#  define ZSV_NO_AVX
+#  define movemask_pseudo(x) _mm_movemask_epi8 ((__m128i) x)
 # endif
-#endif // ndef ZSV_NO_AVX
-
-#if defined(ZSV_NO_AVX)
+#elif defined(HAVE_AVX512)
+# ifndef __AVX512BW__
+#  error AVX512 requested, but __AVX512BW__ macro not defined
+# else
+#  include <immintrin.h>
+#  define VECTOR_BYTES 64
+#  define zsv_mask_t uint64_t
+#  define movemask_pseudo(x) _mm512_movepi8_mask((__m512i)x)
+#  define NEXT_BIT __builtin_ffsl
+# endif
+#elif defined(__AVX2__) // have avx2, not avx512
+# include <immintrin.h>
+# define VECTOR_BYTES 32
+# define zsv_mask_t uint32_t
+# define movemask_pseudo(x) _mm256_movemask_epi8((__m256i)x)
+# define NEXT_BIT __builtin_ffs
+#else
+# define ZSV_NO_AVX
 # define zsv_mask_t uint16_t
 # define VECTOR_BYTES 16
 # define NEXT_BIT __builtin_ffs
@@ -326,10 +334,7 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
 
 typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (VECTOR_BYTES)));
 
-#ifndef ZSV_NO_AVX
-# include <immintrin.h>
-#else
-
+#ifndef movemask_pseudo
 # if defined(__ARM_NEON) || defined(__ARM_NEON__)
 # include <arm_neon.h>
 # endif
@@ -365,7 +370,7 @@ static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
 #endif
 
 }
-#endif // ZSV_NO_AVX
+#endif // movemask_pseudo
 
 # include "vector_delim.c"
 
