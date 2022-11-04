@@ -147,8 +147,8 @@ endif
 
 ZSV=$(BINDIR)/zsv${EXE}
 
-SOURCES= echo count select 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm
-CLI_SOURCES=select desc count 2tsv pretty sql flatten 2json serialize stack 2db prop rm
+SOURCES= echo count select 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm merge
+CLI_SOURCES=select desc count 2tsv pretty sql flatten 2json serialize stack 2db prop rm merge
 
 ifneq ($(LDFLAGS_JQ),)
   SOURCES+= jq
@@ -226,7 +226,7 @@ help:
 	@echo "which will build and test all apps, or to build/test a single app:"
 	@echo "  ${MAKE} test-xx"
 	@echo "where xx is any of:"
-	@echo "  echo count select 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm"
+	@echo "  echo count select 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm merge"
 	@echo ""
 
 install: ${ZSV}
@@ -320,9 +320,9 @@ ${CLI} ${STANDALONE_PFX}prop${EXE}: ${BUILD_DIR}/objs/utils/json.o
 ${CLI} ${STANDALONE_PFX}prop${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/json.o
 
 # sql, 2db, 2json use sqlite3
-${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE}: ${SQLITE_EXT}
-${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+=${SQLITE_EXT}
-${STANDALONE_PFX}sql${EXE} ${CLI_OBJ_PFX}sql.o ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o: MORE_SOURCE+=${SQLITE_EXT_INCLUDE}
+${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}merge${EXE}: ${SQLITE_EXT}
+${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}merge${EXE}: MORE_OBJECTS+=${SQLITE_EXT}
+${STANDALONE_PFX}sql${EXE} ${CLI_OBJ_PFX}sql.o ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${CLI_OBJ_PFX}merge.o: MORE_SOURCE+=${SQLITE_EXT_INCLUDE}
 
 # 2json and desc use jsonwriter
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE}: ${JSONWRITER_OBJECT}
