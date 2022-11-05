@@ -60,6 +60,7 @@ static int main_help(int argc, const char *argv[]) {
     "  2tsv     : convert to tab-delimited text",
     "  serialize: convert into 3-column format (id, column name, cell value)",
     "  stack    : stack tables vertically, aligning columns with common names",
+    "  merge    : merge data into another table",
     "",
     "Other commands:",
     "  2db      : convert json to sqlite3 db",

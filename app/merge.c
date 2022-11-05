@@ -55,6 +55,9 @@ static int zsv_merge_sqlite3_check_stmt(sqlite3_stmt *stmt) {
   return 0;
 }
 
+/**
+ * to do: verify original value
+ */
 void zsv_merge_get_next_override(struct zsv_merge_data *data) {
   if(!data->override.eof) {
     sqlite3_stmt *stmt = data->o.sqlite3.stmt;
@@ -98,7 +101,7 @@ const char *zsv_merge_usage_msg[] =
   {
    APPNAME ": Merge two tabular data files",
    "",
-   "Usage: " APPNAME " file1 overrides.db",
+   "Usage: " APPNAME " file1 overrides.(db|csv) [--sql <query>]",
    "merges two files",
    "",
    "Options:",
