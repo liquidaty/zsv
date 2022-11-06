@@ -105,8 +105,7 @@ static void zsv_echo_row(void *hook) {
 }
 
 const char *zsv_echo_usage_msg[] = {
-  APPNAME ": Write tabular input to stdout",
-  "      with options for overwriting specific cells",
+  APPNAME ": write tabular input to stdout with optional cell overwrites",
   "",
   "Usage: " APPNAME " file1 [overwrites.(db|csv)] [--sql <query>]",
   "",
