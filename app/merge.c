@@ -19,6 +19,11 @@
 #include <zsv/utils/compiler.h>
 #include <zsv/utils/writer.h>
 #include <zsv/utils/string.h>
+#include <zsv/utils/mem.h>
+
+enum zsv_merge_override_input_type {
+  zsv_merge_override_input_type_sqlite3 = 0
+};
 
 struct zsv_merge_data {
   FILE *in;
@@ -35,11 +40,13 @@ struct zsv_merge_data {
     char eof;
   } override;
 
-  char override_input_type; // reserved
-  union {
+  enum zsv_merge_override_input_type override_input_type;
+  struct {
     struct {
+      char *filename;
       sqlite3 *db;
       sqlite3_stmt *stmt; // select row, column, override
+      const char *sql;
     } sqlite3;
   } o;
 };
@@ -101,13 +108,15 @@ const char *zsv_merge_usage_msg[] =
   {
    APPNAME ": Merge two tabular data files",
    "",
-   "Usage: " APPNAME " file1 overrides.(db|csv) [--sql <query>]",
+   "Usage: " APPNAME " file1 [overrides.(db|csv)] [--sql <query>]",
    "merges two files",
    "",
    "Options:",
-   "  -b        : output with BOM",
-   "  --override: xxx",
-   "  --sql     : xxx",
+   "  -b               : output with BOM",
+   "  --override-cells",
+   "    <source>       : override cells using given source. Source may be:",
+   "                     sqlite3://<filename>[?sql=<query>]",
+   "                       ex: sqlite3://overrides.db?sql=select row, column, value from overrides order by row, column",
    NULL
   };
 
@@ -119,12 +128,61 @@ static int zsv_merge_usage() {
 
 static void zsv_merge_cleanup(struct zsv_merge_data *data) {
   zsv_writer_delete(data->csv_writer);
+  free(data->o.sqlite3.filename);
   if(data->o.sqlite3.stmt)
     sqlite3_finalize(data->o.sqlite3.stmt);
   if(data->in && data->in != stdin)
     fclose(data->in);
   if(data->o.sqlite3.db)
     sqlite3_close(data->o.sqlite3.db);
+}
+
+static int zsv_merge_parse_override_source(struct zsv_merge_data *data, const char *source, size_t len) {
+#define zsv_merge_sqlite3_prefix "sqlite3://"
+  size_t pfx_len;
+  if(len > (pfx_len = strlen(zsv_merge_sqlite3_prefix)) && !memcmp(source, zsv_merge_sqlite3_prefix, pfx_len)) {
+    data->o.sqlite3.filename = zsv_memdup(source + pfx_len, len - pfx_len);
+    char *q = memchr(data->o.sqlite3.filename, '?', len - pfx_len);
+    if(q) {
+      *q = '\0';
+      q++;
+#define zsv_merge_sql_prefix "sql="
+      const char *sql = strstr(q, zsv_merge_sql_prefix);
+      if(sql)
+        data->o.sqlite3.sql = sql + strlen(zsv_merge_sql_prefix);
+    }
+    // open the sql connection
+    if(!(data->o.sqlite3.filename && *data->o.sqlite3.filename)) {
+      fprintf(stderr, "Invalid query string");
+      return 1;
+    }
+
+    int rc = sqlite3_open_v2(data->o.sqlite3.filename, &data->o.sqlite3.db, SQLITE_OPEN_READONLY, NULL);
+    if(rc != SQLITE_OK || !data->o.sqlite3.db) {
+      fprintf(stderr, "%s: %s\n", sqlite3_errstr(rc), data->o.sqlite3.filename);
+      return 1;
+    }
+
+    if(!data->o.sqlite3.sql) {
+      // to do: detect it from the db
+      fprintf(stderr, "Missing sql select statement for sqlite3 merge data e.g.:\n"
+              "  select row, column, value from overrides order by row, column\n");
+      return 1;
+    }
+
+    rc = sqlite3_prepare_v2(data->o.sqlite3.db, data->o.sqlite3.sql, -1, &data->o.sqlite3.stmt, NULL);
+    if(rc != SQLITE_OK || !data->o.sqlite3.stmt) {
+      fprintf(stderr, "%s\n", sqlite3_errmsg(data->o.sqlite3.db));
+      return 1;
+    }
+
+    // successful sqlite3 connection
+    data->override.eof = 0;
+    return 0;
+  }
+
+  fprintf(stderr, "Invalid override source: %s\n", source);
+  return 1;
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
@@ -135,6 +193,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   struct zsv_merge_data data = { 0 };
+  data.override_input_type = zsv_merge_override_input_type_sqlite3;
 
   int err = 0;
 
@@ -151,22 +210,19 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       data.input_path = input_path;
   }
 
-  if(data.in && !err) {
-    const char *sqlite3_filename = argv[2];
-    int rc = sqlite3_open_v2(sqlite3_filename, &data.o.sqlite3.db, SQLITE_OPEN_READONLY, NULL);
-    if(rc != SQLITE_OK || !data.o.sqlite3.db)
-      err = 1;
-
-    if(!err) {
-      rc = sqlite3_prepare_v2(data.o.sqlite3.db, "select row, column, override as value from gxfile_data_override", -1, &data.o.sqlite3.stmt, NULL);
-      if(rc != SQLITE_OK || !data.o.sqlite3.stmt)
+  data.override.eof = 1;
+  for(int arg_i = 1; !err && arg_i < argc; arg_i++) {
+    const char *arg = argv[arg_i];
+    if(!strcmp(arg, "-b"))
+      writer_opts.with_bom = 1;
+    else if(!strcmp(arg, "--override-cells")) {
+      if(arg_i+1 >= argc) {
+        fprintf(stderr, "Option %s requires a value\n", arg);
         err = 1;
-    }
-
-    for(int arg_i = 1; !err && arg_i < argc; arg_i++) {
-      const char *arg = argv[arg_i];
-      if(!strcmp(arg, "-b"))
-        writer_opts.with_bom = 1;
+      } else {
+        const char *src = argv[++arg_i];
+        err = zsv_merge_parse_override_source(&data, src, strlen(src));
+      }
     }
   }
 
