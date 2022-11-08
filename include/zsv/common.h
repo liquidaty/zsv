@@ -25,7 +25,7 @@ enum zsv_status {
   zsv_status_memory,
   zsv_status_error
 #ifdef ZSV_EXTRAS
-  ,zsv_status_max_rows_read
+  ,zsv_status_max_rows_read = 999
 #endif
 };
 

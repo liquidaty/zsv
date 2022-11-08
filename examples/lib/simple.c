@@ -42,7 +42,7 @@ void my_row_handler(void *ctx) {
     struct zsv_cell c = zsv_get_cell(data->parser, i);
 
     /* check if the cell data length is zero */
-    if(c.len == 0)
+    if(c.len > 0)
       nonblank++;
   }
 

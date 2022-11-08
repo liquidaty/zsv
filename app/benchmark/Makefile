@@ -4,6 +4,14 @@ CONFIGFILE ?= ../../config.mk
 $(info # Using config file ${CONFIGFILE})
 include ${CONFIGFILE}
 
+PULL=
+
+COUNT=count
+SELECT=select
+ifeq ($(PULL),1)
+  COUNT=count-pull
+endif
+
 CC ?= cc
 
 WIN=
@@ -32,7 +40,7 @@ QUICK=1
 
 help:
 	@echo "To run all tests (set QUICK to skip mlr and csvcut):"
-	@echo "    make all [QUICK=0]"
+	@echo "    make all [QUICK=0] [PULL=1]"
 	@echo "    make CLI"
 
 CLI: ZSVBIN="zsv "
@@ -40,7 +48,9 @@ CLI: ZSVBIN="zsv "
 CLI:
 	make all QUICK=${QUICK} ZSVBIN=${ZSVBIN} -n | sed 's/[.]*\/.*\/bin\/zsv_/zsv /g' | sh
 
-all: count select tsv
+
+
+all: ${COUNT} select tsv
 
 worldcitiespop_mil.csv:
 	curl -LO 'https://burntsushi.net/stuff/worldcitiespop_mil.csv'
@@ -48,15 +58,15 @@ worldcitiespop_mil.csv:
 worldcitiespop_mil.tsv: worldcitiespop_mil.csv
 	~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/csv2tsv < $< > $@
 
-count: worldcitiespop_mil.csv worldcitiespop_mil.tsv
-	@echo "${ZSVBIN}"count
+${COUNT}: worldcitiespop_mil.csv worldcitiespop_mil.tsv
+	@echo "${ZSVBIN}"${COUNT}
 
 	@printf "zsv                  : "
-	@(time ${ZSVBIN}count < $< > /dev/null) 2>&1 | xargs
+	@(time ${ZSVBIN}${COUNT} < $< > /dev/null) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(time ${ZSVBIN}count < $< > /dev/null) 2>&1 | xargs
+	@(time ${ZSVBIN}${COUNT} < $< > /dev/null) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(time ${ZSVBIN}count < $< > /dev/null) 2>&1 | xargs
+	@(time ${ZSVBIN}${COUNT} < $< > /dev/null) 2>&1 | xargs
 	@echo ""
 
 	@printf "xsv                  : "
@@ -153,4 +163,4 @@ ifneq ($(QUICK),1)
 	@(time mlr --csv cut -o -f City,Country,AccentCity,Region,Population,Latitude,Longitude $< > /dev/null) 2>&1 | xargs
 endif
 
-.PHONY: help all count select
+.PHONY: help all ${COUNT} select

@@ -144,9 +144,11 @@ size_t zsv_cell_count(zsv_parser parser) {
 
 ZSV_EXPORT
 void zsv_set_row_handler(zsv_parser parser, void (*row_handler)(void *ctx)) {
-  if(parser->opts.row_handler == parser->opts_orig.row_handler)
-    parser->opts.row_handler = row_handler;
-  parser->opts_orig.row_handler = row_handler;
+  if(VERY_LIKELY(!parser->pull_parser)) {
+    if(parser->opts.row_handler == parser->opts_orig.row_handler)
+      parser->opts.row_handler = row_handler;
+    parser->opts_orig.row_handler = row_handler;
+  }
 }
 
 ZSV_EXPORT
@@ -172,6 +174,7 @@ char zsv_quoted(zsv_parser parser) {
   return parser->quoted || parser->opts.no_quotes;
 }
 
+ZSV_EXPORT
 struct zsv_cell zsv_get_cell(zsv_parser parser, size_t ix) {
   if(ix < parser->row.used)
     return parser->row.cells[ix];
@@ -243,7 +246,7 @@ ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count
 
 /**
  * Create a zsv parser
- * @param opts
+ * @param   opts   optional pointer to zsv options
  * @returns parser handle
  */
 ZSV_EXPORT
@@ -370,6 +373,7 @@ size_t zsv_cum_scanned_length(zsv_parser parser) {
  *               the parser buffer!
  * @param len    length of the input to parse
  */
+ZSV_EXPORT
 enum zsv_status zsv_parse_bytes(struct zsv_scanner *scanner,
                                 const unsigned char *bytes,
                                 size_t len) {
@@ -389,4 +393,90 @@ enum zsv_status zsv_parse_bytes(struct zsv_scanner *scanner,
       stat = zsv_scan(scanner, scanner->buff.buff, this_chunk_size);
   }
   return stat;
+}
+
+#include "pull_parse.c"
+
+/**
+ * Create a zsv pull parser
+ * @param   opts   optional pointer to zsv options. may not have cell or row handlers, or ctx!
+ * @out     parser zsv_parser handle
+ * @return  zsv_status_ok on success
+ */
+ZSV_EXPORT
+enum zsv_status zsv_pull_new(struct zsv_opts *opts, zsv_parser *parser) {
+  *parser = NULL;
+  struct zsv_opts o = { 0 };
+  if(opts)
+    o = *opts;
+
+  if(o.cell_handler || o.row_handler || o.ctx)
+    return zsv_status_invalid_option;
+
+  struct zsv_pull_data *data = calloc(1, sizeof(*data));
+  if(!data)
+    return zsv_status_memory;
+
+  o.ctx = data;
+  o.row_handler = zsv_pull_row_handler;
+
+  data->parser = zsv_new(&o);
+  data->parser->pull_parser = 1;
+  *parser = data->parser;
+  return zsv_status_ok;
+}
+
+/**
+ * @param  parser parser handle
+ * @param  r      row data (only valid if return value is zsv_status_ok)
+ * @return zsv_status_ok on success, other status code on error
+ */
+ZSV_EXPORT
+enum zsv_status zsv_pull_next_row(zsv_parser parser, zsv_pull_row *r) {
+  if(VERY_UNLIKELY(parser->pull_parser == 0))
+    return zsv_status_invalid_option;
+
+  struct zsv_pull_data *data = parser->opts_orig.ctx;
+
+  if(data->stat != zsv_status_ok)
+    return data->stat;
+
+  // have data; advance to next row
+  if(data->current_row != NULL)
+    data->current_row = data->current_row->next;
+
+  // no data: fetch more
+  if(!data->current_row)
+    zsv_pull_fetch_more(parser, data);
+
+  if(data->current_row) {
+    *r = (zsv_pull_row)data->current_row;
+    return zsv_status_ok;
+  }
+
+  return zsv_status_no_more_input;
+}
+
+ZSV_EXPORT
+size_t zsv_pull_cell_count(zsv_pull_row r) {
+  return r->cell_count;
+}
+
+ZSV_EXPORT
+struct zsv_cell zsv_pull_get_cell(zsv_pull_row r, size_t ix) {
+  struct zsv_cell c = { 0 };
+  if(ix < r->cell_count) {
+    c.len = r->lengths[ix];
+    c.str = r->values[ix];
+    c.quoted = 1;
+  }
+  return c;
+}
+
+
+ZSV_EXPORT
+enum zsv_status zsv_pull_delete(zsv_parser parser) {
+  if(parser && parser->pull_parser && parser->opts_orig.ctx)
+    zsv_pull_data_free(parser->opts_orig.ctx);
+  return zsv_delete(parser);
 }

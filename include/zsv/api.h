@@ -80,7 +80,7 @@ ZSV_EXPORT enum zsv_status zsv_delete(zsv_parser);
 /******************************************************************************
  * minimal access functions:
  * - zsv_cell_count(): get the number of cells in the row
- * - zsv_get_cell(): retriev a cell value
+ * - zsv_get_cell(): retrieve a cell value
  ******************************************************************************/
 
 /**
@@ -89,7 +89,7 @@ ZSV_EXPORT enum zsv_status zsv_delete(zsv_parser);
  * that the last row did not contain a single cell delimiter, returns 1
  *
  * @param parser
- * @returns number, >= 1, of cells in in the row that was just parsed
+ * @returns number, >= 1, of cells in the row that was just parsed
  */
 ZSV_EXPORT
 size_t zsv_cell_count(zsv_parser parser);
@@ -302,5 +302,53 @@ zsv_opts_new(
  * Destroy an option structure that was created by zsv_opts_new()
  */
 ZSV_EXPORT void zsv_opts_delete(struct zsv_opts *);
+
+/******************************************************************************
+ * Pull parsing functions
+ ******************************************************************************/
+
+/**
+ * Create a zsv pull parser
+ * @param   opts   optional pointer to zsv options. may not have cell or row handlers, or ctx!
+ * @out     parser zsv_parser handle
+ * @return  zsv_status_ok on success
+ */
+ZSV_EXPORT
+enum zsv_status zsv_pull_new(struct zsv_opts *opts, zsv_parser *parser);
+
+/**
+ * Structure populated by zsv_pull_next_row()
+ */
+typedef struct _zsv_pull_row *zsv_pull_row;
+
+/**
+ * @param  parser parser handle
+ * @param  r      row data (only valid if return value is zsv_status_ok)
+ * @return zsv_status_ok on success, other status code on error
+ */
+ZSV_EXPORT
+enum zsv_status zsv_pull_next_row(zsv_parser parser, zsv_pull_row *r);
+
+/**
+ * Get the number of cells in a row returned by zsv_pull_next_row()
+ *
+ * @param   row
+ * @returns number of cells in the row
+ */
+ZSV_EXPORT
+size_t zsv_pull_cell_count(zsv_pull_row r);
+
+/**
+ * Get the contents of a cell from a row fetched via zsv_pull_next_row()
+ * See common.h for further details re `struct zsv_cell`
+ */
+ZSV_EXPORT
+struct zsv_cell zsv_pull_get_cell(zsv_pull_row r, size_t ix);
+
+/**
+ * Dispose of a parser that was created with `zsv_pull_new()`
+ */
+ZSV_EXPORT
+enum zsv_status zsv_pull_delete(zsv_parser parser);
 
 #endif

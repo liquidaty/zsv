@@ -47,7 +47,13 @@ The first two approaches are advanced by calling `zsv_parse_more()` until EOF or
 cancelled, and have the marginal performance advantage of minimizing memory copying.
 In the third approach, the byte array is passed using `zsv_parse_bytes()`.
 
-### Callbacks
+### Push vs Pull parsing
+
+libzsv is optimized for push parsing that calls user-provided callbacks each time a cell and/or
+row is parsed. libzsv also supports an experimental pull parser (that is not yet optimized
+for performance) that provides an api to "pull" each row for processing
+
+#### Push parsing with callbacks
 
 Data is passed back to your application through caller-specified callbacks as each cell and/or row
 is parsed:
@@ -58,7 +64,7 @@ void (*row_handler)(void *ctx);
 
 ```
 
-#### Iterating through cells in a row
+##### Iterating through cells in a row
 
 A common usage pattern is to define a row callback that iterates through
 cells in the row using `zsv_cell_count()` and `zsv_get_cell()`.
@@ -85,6 +91,29 @@ zsv_parser p = zsv_new(NULL);
 zsv_set_row_handler(p, my_row_handler);
 zsv_set_context(p, &count);
 ```
+
+#### Pull parsing
+To use pull parsing, initialize your parser with `zsv_pull_new()` and then iteratively call
+zsv_pull_next_row(). To iterate throuch cells in a row, use `zsv_pull_cell_count()` and
+`zsv_pull_get_cell()`:
+```
+zsv_parser p;
+enum zsv_status stat = zsv_pull_new(NULL, &p);
+if(stat == zsv_status_ok) {
+  zsv_pull_row *r;
+  while(zsv_pull_next_row(p, &r) == zsv_status_ok) {
+    size_t count = zsv_pull_cell_count(r);
+    for(size_t i = 0; i < count; i++) {
+      struct zsv_cell c = zsv_pull_get_cell(r, i);
+      printf("Got cell: %.*s\n", c.len, c.len ? c.str : "");
+    }
+  }
+  zsv_pull_delete(p);
+}
+```
+
+Note about pull parsing: the current implementation for pull parsing is significantly
+slower than for push parsing, but optimizations are forthcoming...
 
 ### Options
 Various options are supported using `struct zsv_opts`, only some of which are described
@@ -130,3 +159,5 @@ This directory contains two simple examples using libzsv:
 * [parse_by_chunk.c](parse_by_chunk.c): read a CSV file in chunks, parse each
   chunk, and output number of rows. This example
   uses `zsv_parse_bytes()` (whereas the other two examples use `zsv_parse_more()`)
+
+* [pull.c](pull.c): Same as simple.c, but uses pull parsing via `zsv_pull_next_row()`

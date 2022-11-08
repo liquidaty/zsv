@@ -60,4 +60,14 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
                                         zsv_parser *handle_out
                                         );
 
+/**
+ * zsv_pull_new_with_properties(): same as zsv_new_with_properties(),
+ * but returns a pull parser
+ */
+enum zsv_status zsv_pull_new_with_properties(struct zsv_opts *opts,
+                                             const char *input_path,
+                                             const char *opts_used,
+                                             zsv_parser *handle_out
+                                             );
+
 #endif

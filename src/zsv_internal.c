@@ -50,7 +50,7 @@ struct zsv_scanner {
   unsigned char had_bom:1;
   unsigned char abort:1;
   unsigned char have_cell:1;
-  unsigned char _:1;
+  unsigned char pull_parser:1;
 
   size_t quote_close_position;
   struct zsv_opts opts;
