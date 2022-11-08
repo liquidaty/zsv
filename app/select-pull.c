@@ -17,7 +17,7 @@
 #include <time.h>
 #include <stdarg.h>
 
-#define ZSV_COMMAND select
+#define ZSV_COMMAND select_pull
 #include "zsv_command.h"
 
 #include <zsv/utils/writer.h>

@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define ZSV_COMMAND count
+#define ZSV_COMMAND count_pull
 #include "zsv_command.h"
 
 static int count_usage() {
