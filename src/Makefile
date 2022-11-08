@@ -99,8 +99,9 @@ BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 
 NO_UTF8_CHECK=1
 
+LIB_SUFFIX=
 ZSV_OBJ=${BUILD_DIR}/objs/zsv.o
-LIBZSV_A=libzsv-avx1.a
+LIBZSV_A=libzsv${LIB_SUFFIX}.a
 LIBZSV=${BUILD_DIR}/lib/${LIBZSV_A}
 LIBZSV_INSTALL=${LIBDIR}/${LIBZSV_A}
 
@@ -113,7 +114,7 @@ endif
 # CFLAGS+= -Dfwrite=zsv_fwrite_clock -Dfflush=zsv_fflush_clock -Dfread=zsv_fread_clock
 
 help:
-	@echo "${MAKE} [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VERBOSE=1] [LIBDIR=${LIBDIR}] [INCLUDEDIR=${INCLUDEDIR}]"
+	@echo "${MAKE} [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VERBOSE=1] [LIBDIR=${LIBDIR}] [INCLUDEDIR=${INCLUDEDIR}] [LIB_SUFFIX=]"
 
 lib: ${LIBZSV}
 
