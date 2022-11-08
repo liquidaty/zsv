@@ -107,7 +107,7 @@ static void zsv_echo_row(void *hook) {
 const char *zsv_echo_usage_msg[] = {
   APPNAME ": write tabular input to stdout with optional cell overwrites",
   "",
-  "Usage: " APPNAME " file1 [overwrites.(db|csv)] [--sql <query>]",
+  "Usage: " APPNAME " [filename] [--overwrite <overwrite-source>]",
   "",
   "Options:",
   "  -b                  : output with BOM",
@@ -183,7 +183,7 @@ static int zsv_echo_parse_overwrite_source(struct zsv_echo_data *data, const cha
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
-  if(argc < 2 || (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))) {
+  if(argc < 1 || (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))) {
     zsv_echo_usage();
     return 0;
   }
