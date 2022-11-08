@@ -23,6 +23,10 @@ Fine tuning of the installation directories:
   --docdir=DIR            misc. documentation [PREFIX/share/doc]
   --mandir=DIR            man pages [PREFIX/share/man]
 
+xxx add avx options
+xxx output var if -no-avx libs should be used
+xxx [future: or -avx1 libs should be used]
+
 Optional features:
   --try-avx512            use avx512 instructions, if available (not recommended)
   --force-avx2            force compile with (no CPU check) or without -mavx2

@@ -148,7 +148,7 @@ endif
 ZSV=$(BINDIR)/zsv${EXE}
 
 SOURCES= echo count select 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm
-CLI_SOURCES=select desc count 2tsv pretty sql flatten 2json serialize stack 2db prop rm
+CLI_SOURCES=echo select desc count 2tsv pretty sql flatten 2json serialize stack 2db prop rm
 
 ifneq ($(LDFLAGS_JQ),)
   SOURCES+= jq
@@ -295,7 +295,7 @@ ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8pro
 
 ${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBDIR} -lzsv ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
+	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBDIR} -lzsv-avx1 ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
 	@echo Built $@
 
 # cli_internal: cli_internal.c.in cli_internal.h cli_internal.h.in
@@ -320,9 +320,9 @@ ${CLI} ${STANDALONE_PFX}prop${EXE}: ${BUILD_DIR}/objs/utils/json.o
 ${CLI} ${STANDALONE_PFX}prop${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/json.o
 
 # sql, 2db, 2json use sqlite3
-${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE}: ${SQLITE_EXT}
-${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+=${SQLITE_EXT}
-${STANDALONE_PFX}sql${EXE} ${CLI_OBJ_PFX}sql.o ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o: MORE_SOURCE+=${SQLITE_EXT_INCLUDE}
+${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}echo${EXE}: ${SQLITE_EXT}
+${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}echo${EXE}: MORE_OBJECTS+=${SQLITE_EXT}
+${STANDALONE_PFX}sql${EXE} ${CLI_OBJ_PFX}sql.o ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${CLI_OBJ_PFX}echo.o: MORE_SOURCE+=${SQLITE_EXT_INCLUDE}
 
 # 2json and desc use jsonwriter
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE}: ${JSONWRITER_OBJECT}
@@ -341,7 +341,7 @@ ${CLI} ${STANDALONE_PFX}pretty${EXE}: MORE_LIBS+=${LDFLAGS_TERMCAP}
 
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${LIBDIR} -lzsv ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${LIBDIR} -lzsv-avx1 ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
 
 ${BUILD_DIR}/external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}/external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`
