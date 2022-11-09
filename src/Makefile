@@ -125,6 +125,7 @@ ${LIBZSV}: ${ZSV_OBJ}
 	@rm -f $@
 	$(AR) rcv $@ $?
 	$(RANLIB) $@
+	$(AR) -t $@ # check it is there
 	@echo Built $@
 
 
