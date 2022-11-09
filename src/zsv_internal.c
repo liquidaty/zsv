@@ -405,6 +405,7 @@ static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
 
 # include "vector_delim.c"
 
+/*
 static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
                                       unsigned char *buff,
                                       size_t bytes_read
@@ -563,15 +564,16 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
   scanner->old_bytes_read = bytes_read;
   return zsv_status_ok;
 }
+*/
 
-
-/*
 #ifdef ZSV_SUPPORT_PULL_PARSER
 #undef ZSV_SUPPORT_PULL_PARSER
 #endif
 #define ZSV_SCAN_DELIM zsv_scan_delim
 #include "zsv_scan_delim.c"
 #undef ZSV_SCAN_DELIM
+
+/*
 #undef scanner_last
 #define ZSV_SUPPORT_PULL_PARSER 1
 #define ZSV_SCAN_DELIM zsv_scan_delim_pull
