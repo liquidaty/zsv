@@ -21,19 +21,17 @@
 
 /**
  * With pull parsing, the parser will not call our cell or row handlers
- * Instead, we use zsv_pull_next_row() and then process the rows iteratively
- * For each row, we retrieve a `zsv_pull_row` structure. We'll process
- * each of these as follows
+ * Instead, we use zsv_next_row() and then process the rows iteratively
  */
 
-void my_row_handler(zsv_pull_row r, size_t row_num) {
+void my_row_handler(zsv_parser p, size_t row_num) {
   /* get a cell count */
-  size_t cell_count = zsv_pull_cell_count(r);
+  size_t cell_count = zsv_cell_count(p);
 
   /* iterate through each cell in this row, to count blanks */
   size_t nonblank = 0;
   for(size_t i = 0; i < cell_count; i++) {
-    struct zsv_cell c = zsv_pull_get_cell(r, i);
+    struct zsv_cell c = zsv_get_cell(p, i);
     /* use r.values[] and r.lengths[] to get cell data */
     /* Here, we only care about lengths */
     if(c.len > 0)
@@ -70,43 +68,27 @@ int main(int argc, const char *argv[]) {
   }
 
   /**
-   * Get a pull parser using zsv_pull_new()
-   * for details, see ../../include/zsv/api.h
+   * Create a parser
    */
   struct zsv_opts opts = { 0 };
   opts.stream = f;
-
-  /**
-   * Create a parser
-   */
-  zsv_parser parser;
-  enum zsv_status stat = zsv_pull_new(&opts, &parser);
-  if(stat != zsv_status_ok) {
-    fprintf(stderr, "Could not get parser! %s\n", zsv_parse_status_desc(stat));
-    return stat;
+  zsv_parser parser = zsv_new(&opts);
+  if(!parser) {
+    fprintf(stderr, "Could not allocate parser!\n");
   }
 
   /* iterate through all rows */
-  zsv_pull_row row;
   size_t row_num = 0;
-  while(zsv_pull_next_row(parser, &row) == zsv_status_ok)
-    my_row_handler(row, ++row_num);
+  while(zsv_next_row(parser) == zsv_status_row)
+    my_row_handler(parser, ++row_num);
 
   /**
    * Clean up
    */
-  zsv_pull_delete(parser);
+  zsv_delete(parser);
 
   if(f != stdin)
     fclose(f);
 
-  /**
-   * If there was a parse error, print it
-  if(stat != zsv_status_no_more_input) {
-    fprintf(stderr, "Parse error: %s\n", zsv_parse_status_desc(stat));
-    return 1;
-  }
-
-   */
   return 0;
 }

@@ -123,8 +123,8 @@ all: lib
 ${LIBZSV}: ${ZSV_OBJ}
 	@mkdir -p `dirname "$@"`
 	@rm -f $@
-	@$(AR) rcv $@ $?
-	@$(RANLIB) $@
+	$(AR) rcv $@ $?
+	$(RANLIB) $@
 	@echo Built $@
 
 
