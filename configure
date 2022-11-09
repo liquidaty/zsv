@@ -409,8 +409,8 @@ CCSEARCHPATH=$(echo | ${CC} -E -Wp,-v - 2>&1 | ${AWK} '/ \//{print substr($0,2);
 # Check if it is clang, and the llvm tools instead
 compiler=$(${CC} -v 2>&1 | ${AWK} '/ +version +/{for(i=1;i<=NF;i++){if($i=="version"){printf("%s\n",(last=="LLVM")?"clang":last);exit 0;}last=$i;}}')
 if test "$compiler" = "clang"; then
-    arlist="$CC-llvm-ar $host-llvm-ar $CC-ar $host-ar llvm-ar ar"
-    ranliblist="$CC-llvm-ranlib $host-llvm-ranlib $CC-ranlib $host-ranlib llvm-ranlib ranlib"
+    arlist="$CC-llvm-ar $host-llvm-ar $CC-ar $host-ar llvm-ar `ls /usr/bin/llvm-ar*` ar"
+    ranliblist="$CC-llvm-ranlib $host-llvm-ranlib $CC-ranlib $host-ranlib llvm-ranlib `ls /usr/bin/llvm-ranlib*` ranlib"
 else
     arlist="$CC-ar $host-$compiler-ar $host-ar $compiler-ar ar"
     ranliblist="$CC-ranlib $host-$compiler-ranlib $host-ranlib $compiler-ranlib $compiler-ranlib ranlib"

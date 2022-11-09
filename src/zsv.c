@@ -374,7 +374,7 @@ enum zsv_status zsv_delete(zsv_parser parser) {
     free(parser->row.cells);
     free(parser->fixed.offsets);
     collate_header_destroy(&parser->collate_header);
-//    free(parser->pull.regs);
+    free(parser->pull.regs);
     free(parser);
   }
   return zsv_status_ok;
