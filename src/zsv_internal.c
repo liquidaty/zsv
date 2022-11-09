@@ -90,7 +90,7 @@ struct zsv_scan_delim_regs {
 };
 
 struct zsv_scan_fixed_regs {
-  char xx;
+  char xx; // to do
 };
 
 struct zsv_scanner {
@@ -156,14 +156,15 @@ struct zsv_scanner {
   } progress;
 #endif
   struct {
-    size_t bytes_read;
     union {
       struct zsv_scan_delim_regs delim;
       struct zsv_scan_fixed_regs fixed;
     } *regs;
-    char type; // delim
     enum zsv_status stat; // last status
     unsigned char *buff;
+    size_t bytes_read;
+    size_t row_used;
+    unsigned char now;
   } pull;
 };
 
@@ -712,7 +713,8 @@ static void collate_header_row(void *ctx) {
       }
 
       apply_callbacks(scanner);
-      collate_header_destroy(&scanner->collate_header);
+      if(scanner->mode != ZSV_MODE_DELIM_PULL)
+        collate_header_destroy(&scanner->collate_header);
 //    }
   }
 }

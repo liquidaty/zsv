@@ -787,9 +787,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         // process the input data
         zsv_handle_ctrl_c_signal();
         enum zsv_status status = zsv_next_row(parser);
-        if(status == zsv_status_ok)
+        if(status == zsv_status_row)
           zsv_select_header_row(&data, parser);
-        while((status = zsv_next_row(parser)) == zsv_status_ok)
+        while((status = zsv_next_row(parser)) == zsv_status_row)
           zsv_select_data_row(&data, parser);
         zsv_delete(parser);
       }

@@ -66,8 +66,7 @@ ifeq ($(DEBUG),0)
     endif
   endif
 else
-  CFLAGS += -g -O0
-#  CFLAGS += -g -O2
+  CFLAGS += ${CFLAGS_DEBUG}
 endif
 
 ifeq ($(DEBUG),1)

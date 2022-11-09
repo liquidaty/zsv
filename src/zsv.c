@@ -138,10 +138,10 @@ char zsv_row_is_blank(zsv_parser parser) {
   return zsv_internal_row_is_blank(parser);
 }
 
-/* zsv_last_pull_row(): helper function for zsv_next_row() */
-static void zsv_last_pull_row(void *ctx) {
-  char *flag = ctx;
-  *flag = 1;
+static void zsv_pull_row(void *ctx) {
+  zsv_parser parser = ctx;
+  parser->pull.now = 1;
+  parser->pull.row_used = parser->row.used;
 }
 
 /**
@@ -156,6 +156,8 @@ enum zsv_status zsv_next_row(zsv_parser parser) {
     if(!(parser->pull.regs = calloc(1, sizeof(*parser->pull.regs))))
       return zsv_status_memory;
     parser->mode = ZSV_MODE_DELIM_PULL;
+    zsv_set_row_handler(parser, zsv_pull_row);
+    zsv_set_context(parser, parser);
   }
   if(VERY_LIKELY(parser->pull.stat == zsv_status_row))
     parser->pull.stat = zsv_scan_delim_pull(parser, parser->pull.buff, parser->pull.bytes_read);
@@ -168,17 +170,15 @@ enum zsv_status zsv_next_row(zsv_parser parser) {
   }
 
   if(VERY_UNLIKELY(parser->pull.stat == zsv_status_no_more_input)) {
-    char had_row = 0;
-    void (*old_row_handler)(void *ctx) = parser->opts.row_handler;
-    void *old_ctx = parser->opts.ctx;
-    zsv_set_row_handler(parser, zsv_last_pull_row);
-    zsv_set_context(parser, &had_row);
+    parser->pull.now = 0;
     zsv_finish(parser);
-    zsv_set_row_handler(parser, old_row_handler);
-    zsv_set_context(parser, old_ctx);
+
     parser->pull.stat = zsv_status_done;
-    if(had_row)
-      return zsv_status_ok;
+    if(parser->pull.now) {
+      parser->pull.now = 0;
+      parser->row.used = parser->pull.row_used;
+      return zsv_status_row;
+    }
   }
   return parser->pull.stat;
 }
@@ -351,9 +351,10 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
       if(scanner->scanned_length > scanner->cell_start)
         cell_dl(scanner, scanner->buff.buff + scanner->cell_start,
                 scanner->scanned_length - scanner->cell_start);
-      if(scanner->have_cell)
+      if(scanner->have_cell) {
         if(row_dl(scanner))
           stat = zsv_status_cancelled;
+      }
     } else
       stat = zsv_status_cancelled;
 #ifdef ZSV_EXTRAS

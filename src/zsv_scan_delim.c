@@ -1,11 +1,3 @@
-
-#ifndef cell_and_row_dl
-// ok this is kind of ugly but needed for pull parsing
-#define cell_and_row_dl(scanner,s,n) do {       \
-    cell_dl(scanner, s, n);                     \
-    stat = row_dl(scanner);                     \
-  } while(0)
-
 #ifdef ZSV_SUPPORT_PULL_PARSER
 
 #define zsv_internal_save_reg(x) scanner->pull.regs->delim.x = x
@@ -173,17 +165,19 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
     } else if(UNLIKELY(c == '\r')) {
       if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
-        enum zsv_status stat;
-        cell_and_row_dl(scanner, buff + scanner->cell_start,
-                        i - scanner->cell_start);
+        enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start,
+                                               i - scanner->cell_start);
         if(VERY_UNLIKELY(stat))
           return stat;
 #ifdef ZSV_SUPPORT_PULL_PARSER
-        if(VERY_LIKELY(scanner->opts.row_handler == scanner->opts_orig.row_handler)) {
+        if(VERY_LIKELY(scanner->pull.now)) {
+          scanner->pull.now = 0;
+          scanner->row.used = scanner->pull.row_used;
           zsv_internal_save_regs(1);
           return zsv_status_row;
         }
       zsv_cell_and_row_dl_1:
+        scanner->row.used = 0;
         scanner->pull.regs->delim.location = 0;
 #endif
         scanner->cell_start = i + 1;
@@ -200,17 +194,19 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
         } else {
           // this is a row end
           scanner->scanned_length = i;
-          enum zsv_status stat;
-          cell_and_row_dl(scanner, buff + scanner->cell_start,
-                          i - scanner->cell_start);
+          enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start,
+                                                 i - scanner->cell_start);
           if(VERY_UNLIKELY(stat))
             return stat;
 #ifdef ZSV_SUPPORT_PULL_PARSER
-        if(VERY_LIKELY(scanner->opts.row_handler == scanner->opts_orig.row_handler)) {
-          zsv_internal_save_regs(2);
-          return zsv_status_row;
-        }
+          if(VERY_LIKELY(scanner->pull.now)) {
+            scanner->pull.now = 0;
+            scanner->row.used = scanner->pull.row_used;
+            zsv_internal_save_regs(2);
+            return zsv_status_row;
+          }
         zsv_cell_and_row_dl_2:
+          scanner->row.used= 0;
           scanner->pull.regs->delim.location = 0;
 #endif
           scanner->cell_start = i + 1;

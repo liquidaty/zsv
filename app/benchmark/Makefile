@@ -10,6 +10,7 @@ COUNT=count
 SELECT=select
 ifeq ($(PULL),1)
   COUNT=count-pull
+  SELECT=select-pull
 endif
 
 CC ?= cc
@@ -50,7 +51,7 @@ CLI:
 
 
 
-all: ${COUNT} select tsv
+all: count select tsv
 
 worldcitiespop_mil.csv:
 	curl -LO 'https://burntsushi.net/stuff/worldcitiespop_mil.csv'
@@ -58,7 +59,7 @@ worldcitiespop_mil.csv:
 worldcitiespop_mil.tsv: worldcitiespop_mil.csv
 	~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/csv2tsv < $< > $@
 
-${COUNT}: worldcitiespop_mil.csv worldcitiespop_mil.tsv
+count: worldcitiespop_mil.csv worldcitiespop_mil.tsv
 	@echo "${ZSVBIN}"${COUNT}
 
 	@printf "zsv                  : "
@@ -122,13 +123,13 @@ tsv: worldcitiespop_mil.csv
 
 
 select: worldcitiespop_mil.csv worldcitiespop_mil.tsv
-	@echo "${ZSVBIN}"select
+	@echo "${ZSVBIN}"${SELECT}
 	@printf "zsv                  : "
-	@(time ${ZSVBIN}select -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
+	@(time ${ZSVBIN}${SELECT} -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(time ${ZSVBIN}select -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
+	@(time ${ZSVBIN}${SELECT} -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(time ${ZSVBIN}select -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
+	@(time ${ZSVBIN}${SELECT} -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
 	@echo ""
 
 	@printf "xsv                  : "
@@ -163,4 +164,4 @@ ifneq ($(QUICK),1)
 	@(time mlr --csv cut -o -f City,Country,AccentCity,Region,Population,Latitude,Longitude $< > /dev/null) 2>&1 | xargs
 endif
 
-.PHONY: help all ${COUNT} select
+.PHONY: help all count select
