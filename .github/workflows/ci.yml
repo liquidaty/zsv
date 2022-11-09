@@ -25,7 +25,7 @@ jobs:
     env:
       TAG: "0.3.2"
       AMD64_LINUX_GCC: amd64-linux-gcc
-      AMD64_LINUX_CLANG: amd64-linux-clang
+#      AMD64_LINUX_CLANG: amd64-linux-clang
       AMD64_WINDOWS_MINGW: amd64-windows-mingw
       AMD64_MACOSX_GCC: amd64-macosx-gcc
       AMD64_FREEBSD_GCC: amd64-freebsd-gcc
@@ -98,18 +98,18 @@ jobs:
         ./scripts/ci-create-debian-package.sh
         ./scripts/ci-create-rpm-package.sh
 
-    - name: Build on Linux (${{ env.AMD64_LINUX_CLANG }})
-      if: runner.os == 'Linux'
-      env:
-        PREFIX: ${{ env.AMD64_LINUX_CLANG }}
-        CC: clang
-        MAKE: make
-        RUN_TESTS: true
-      shell: bash
-      run: |
-        ./scripts/ci-build.sh
-        ./scripts/ci-create-debian-package.sh
-        ./scripts/ci-create-rpm-package.sh
+    # - name: Build on Linux (${{ env.AMD64_LINUX_CLANG }})
+    #   if: runner.os == 'Linux'
+    #   env:
+    #     PREFIX: ${{ env.AMD64_LINUX_CLANG }}
+    #     CC: clang
+    #     MAKE: make
+    #     RUN_TESTS: true
+    #   shell: bash
+    #   run: |
+    #     ./scripts/ci-build.sh
+    #     ./scripts/ci-create-debian-package.sh
+    #     ./scripts/ci-create-rpm-package.sh
 
     - name: Build on Linux (${{ env.AMD64_WINDOWS_MINGW }})
       if: runner.os == 'Linux'
@@ -151,16 +151,16 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.zip)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v3
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.zip
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.zip)
+    #   if: runner.os == 'Linux'
+    #   uses: actions/upload-artifact@v3
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.zip
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.deb)
       if: runner.os == 'Linux'
@@ -173,16 +173,16 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.deb)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v3
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.deb
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.deb)
+    #   if: runner.os == 'Linux'
+    #   uses: actions/upload-artifact@v3
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.deb
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.rpm)
       if: runner.os == 'Linux'
@@ -195,16 +195,16 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.rpm)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v3
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.rpm
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.rpm)
+    #   if: runner.os == 'Linux'
+    #   uses: actions/upload-artifact@v3
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.rpm
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
       if: runner.os == 'Linux'
@@ -261,16 +261,16 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v3
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz)
+    #   if: runner.os == 'Linux'
+    #   uses: actions/upload-artifact@v3
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz)
       if: runner.os == 'Linux'
