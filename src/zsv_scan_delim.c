@@ -1,3 +1,11 @@
+
+#ifndef cell_and_row_dl
+// ok this is kind of ugly but needed for pull parsing
+#define cell_and_row_dl(scanner,s,n) do {       \
+    cell_dl(scanner, s, n);                     \
+    stat = row_dl(scanner);                     \
+  } while(0)
+
 #ifdef ZSV_SUPPORT_PULL_PARSER
 
 #define zsv_internal_save_reg(x) scanner->pull.regs->delim.x = x
@@ -15,11 +23,17 @@
     zsv_internal_save_reg(mask_total_offset); \
     zsv_internal_save_reg(mask);              \
     zsv_internal_save_reg(mask_last_start);   \
-    zsv_internal_save_reg(dl_v);              \
-    zsv_internal_save_reg(nl_v);              \
-    zsv_internal_save_reg(cr_v);              \
-    zsv_internal_save_reg(qt_v);              \
+    memcpy(&scanner->pull.regs->delim.v, &v,  \
+           sizeof(v));                        \
   } while(0)
+
+/*
+    zsv_internal_save_reg(v.dl);              \
+    zsv_internal_save_reg(v.nl);              \
+    zsv_internal_save_reg(v.cr);              \
+    zsv_internal_save_reg(v.qt);              \
+*/
+
 #define zsv_internal_restore_reg(x) x = scanner->pull.regs->delim.x
 #define zsv_internal_restore_regs() do {         \
     buff = scanner->pull.buff;                   \
@@ -34,17 +48,29 @@
     zsv_internal_restore_reg(mask_total_offset); \
     zsv_internal_restore_reg(mask);              \
     zsv_internal_restore_reg(mask_last_start);   \
-    zsv_internal_restore_reg(dl_v);              \
-    zsv_internal_restore_reg(nl_v);              \
-    zsv_internal_restore_reg(cr_v);              \
-    zsv_internal_restore_reg(qt_v);              \
+    memcpy(&v, &scanner->pull.regs->delim.v,     \
+           sizeof(v));                           \
   } while(0)
+/*
+
+    zsv_internal_restore_reg(v.dl);              \
+    zsv_internal_restore_reg(v.nl);              \
+    zsv_internal_restore_reg(v.cr);              \
+    zsv_internal_restore_reg(v.qt);              \
+*/
 #endif
 
 static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
                                       unsigned char *buff,
                                       size_t bytes_read
                                       ) {
+  struct {
+    zsv_uc_vector dl;
+    zsv_uc_vector nl;
+    zsv_uc_vector cr;
+    zsv_uc_vector qt;
+  } v;
+
   size_t i;
   size_t bytes_chunk_end;
   char delimiter;
@@ -54,7 +80,6 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
   size_t mask_total_offset;
   zsv_mask_t mask;
   int mask_last_start;
-  zsv_uc_vector dl_v, nl_v, cr_v, qt_v;
 
 #ifdef ZSV_SUPPORT_PULL_PARSER
   if(scanner->pull.regs->delim.location) {
@@ -75,10 +100,10 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
   // to do: move into one-time execution code?
   // (but, will also locate away from function stack)
   quote = scanner->opts.no_quotes > 0 ? -1 : '"'; // ascii code 34
-  memset(&dl_v, delimiter, sizeof(zsv_uc_vector)); // ascii 44
-  memset(&nl_v, '\n', sizeof(zsv_uc_vector)); // ascii code 10
-  memset(&cr_v, '\r', sizeof(zsv_uc_vector)); // ascii code 13
-  memset(&qt_v, scanner->opts.no_quotes > 0 ? 0 : '"', sizeof(qt_v));
+  memset(&v.dl, delimiter, sizeof(zsv_uc_vector)); // ascii 44
+  memset(&v.nl, '\n', sizeof(zsv_uc_vector)); // ascii code 10
+  memset(&v.cr, '\r', sizeof(zsv_uc_vector)); // ascii code 13
+  memset(&v.qt, scanner->opts.no_quotes > 0 ? 0 : '"', sizeof(v.qt));
   // case "hel"|"o": check if we have an embedded dbl-quote past the initial opening quote, which was
   // split between the last buffer and this one e.g. "hel""o" where the last buffer ended
   // with "hel" and this one starts with "o"
@@ -97,6 +122,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
   }
 
 #define scanner_last (i ? buff[i-1] : scanner->last)
+
   mask_total_offset = 0;
   mask = 0;
   scanner->buffer_end = bytes_read;
@@ -107,10 +133,10 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
         // keep going until we get a delim or we are at the eof
         mask_total_offset = vec_delims(buff + i,
                                        bytes_read - i,
-                                       &dl_v,
-                                       &nl_v,
-                                       &cr_v,
-                                       &qt_v,
+                                       &v.dl,
+                                       &v.nl,
+                                       &v.cr,
+                                       &v.qt,
                                        &mask);
         if(LIKELY(mask_total_offset != 0)) {
           i += mask_total_offset;
@@ -147,13 +173,16 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
     } else if(UNLIKELY(c == '\r')) {
       if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
-        enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start,
-                                               i - scanner->cell_start);
+        enum zsv_status stat;
+        cell_and_row_dl(scanner, buff + scanner->cell_start,
+                        i - scanner->cell_start);
         if(VERY_UNLIKELY(stat))
           return stat;
 #ifdef ZSV_SUPPORT_PULL_PARSER
-        zsv_internal_save_regs(1);
-        return zsv_status_row;
+        if(VERY_LIKELY(scanner->opts.row_handler == scanner->opts_orig.row_handler)) {
+          zsv_internal_save_regs(1);
+          return zsv_status_row;
+        }
       zsv_cell_and_row_dl_1:
         scanner->pull.regs->delim.location = 0;
 #endif
@@ -171,13 +200,16 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
         } else {
           // this is a row end
           scanner->scanned_length = i;
-          enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start,
-                                                 i - scanner->cell_start);
+          enum zsv_status stat;
+          cell_and_row_dl(scanner, buff + scanner->cell_start,
+                          i - scanner->cell_start);
           if(VERY_UNLIKELY(stat))
             return stat;
 #ifdef ZSV_SUPPORT_PULL_PARSER
+        if(VERY_LIKELY(scanner->opts.row_handler == scanner->opts_orig.row_handler)) {
           zsv_internal_save_regs(2);
           return zsv_status_row;
+        }
         zsv_cell_and_row_dl_2:
           scanner->pull.regs->delim.location = 0;
 #endif

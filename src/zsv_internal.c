@@ -70,6 +70,12 @@ struct collate_header {
 };
 
 struct zsv_scan_delim_regs {
+  struct {
+    zsv_uc_vector dl;
+    zsv_uc_vector nl;
+    zsv_uc_vector cr;
+    zsv_uc_vector qt;
+  } v;
   size_t i;
   size_t bytes_chunk_end;
   size_t bytes_read;
@@ -80,7 +86,6 @@ struct zsv_scan_delim_regs {
   size_t mask_total_offset;
   zsv_mask_t mask;
   int mask_last_start;
-  zsv_uc_vector dl_v, nl_v, cr_v, qt_v;
   unsigned char location;
 };
 
@@ -150,18 +155,16 @@ struct zsv_scanner {
     size_t max_rows;      /* max rows to read, including header row(s) */
   } progress;
 #endif
-  /*
   struct {
-    char type; // delim
-    enum zsv_status stat; // last status
-    unsigned char *buff;
     size_t bytes_read;
     union {
       struct zsv_scan_delim_regs delim;
       struct zsv_scan_fixed_regs fixed;
     } *regs;
+    char type; // delim
+    enum zsv_status stat; // last status
+    unsigned char *buff;
   } pull;
-  */
 };
 
 void collate_header_destroy(struct collate_header **chp) {
@@ -366,7 +369,6 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
 }
 
 #ifndef movemask_pseudo
-XXXXX
 /*
   provide our own pseudo-movemask, which sets the 1 bit for each corresponding
   non-zero value in the vector (as opposed to real movemask which sets the bit
@@ -410,20 +412,36 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
                                       unsigned char *buff,
                                       size_t bytes_read
                                       ) {
-  bytes_read += scanner->partial_row_length;
-  size_t i = scanner->partial_row_length;
+  struct {
+    zsv_uc_vector dl;
+    zsv_uc_vector nl;
+    zsv_uc_vector cr;
+    zsv_uc_vector qt;
+  } v;
+
+  size_t i;
+  size_t bytes_chunk_end;
+  char delimiter;
   unsigned char c;
-  char skip_next_delim = 0;
-  size_t bytes_chunk_end = bytes_read >= sizeof(zsv_uc_vector) ? bytes_read - sizeof(zsv_uc_vector) + 1 : 0;
-  const char delimiter = scanner->opts.delimiter;
+  char skip_next_delim;
+  int quote;
+  size_t mask_total_offset;
+  zsv_mask_t mask;
+  int mask_last_start;
+
+  bytes_read += scanner->partial_row_length;
+  i = scanner->partial_row_length;
+  skip_next_delim = 0;
+  bytes_chunk_end = bytes_read >= sizeof(zsv_uc_vector) ? bytes_read - sizeof(zsv_uc_vector) + 1 : 0;
+  delimiter = scanner->opts.delimiter;
 
   scanner->partial_row_length = 0;
 
-  int quote = scanner->opts.no_quotes > 0 ? -1 : '"'; // ascii code 34
-  zsv_uc_vector dl_v; memset(&dl_v, delimiter, sizeof(zsv_uc_vector)); // ascii 44
-  zsv_uc_vector nl_v; memset(&nl_v, '\n', sizeof(zsv_uc_vector)); // ascii code 10
-  zsv_uc_vector cr_v; memset(&cr_v, '\r', sizeof(zsv_uc_vector)); // ascii code 13
-  zsv_uc_vector qt_v; memset(&qt_v, scanner->opts.no_quotes > 0 ? 0 : '"', sizeof(qt_v));
+  quote = scanner->opts.no_quotes > 0 ? -1 : '"'; // ascii code 34
+  memset(&v.dl, delimiter, sizeof(zsv_uc_vector)); // ascii 44
+  memset(&v.nl, '\n', sizeof(zsv_uc_vector)); // ascii code 10
+  memset(&v.cr, '\r', sizeof(zsv_uc_vector)); // ascii code 13
+  memset(&v.qt, scanner->opts.no_quotes > 0 ? 0 : '"', sizeof(v.qt));
 
   // case "hel"|"o": check if we have an embedded dbl-quote past the initial opening quote, which was
   // split between the last buffer and this one e.g. "hel""o" where the last buffer ended
@@ -443,17 +461,21 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
   }
 
 #define scanner_last (i ? buff[i-1] : scanner->last)
-  size_t mask_total_offset = 0;
-  zsv_mask_t mask = 0;
-  int mask_last_start;
 
+  mask_total_offset = 0;
+  mask = 0;
   scanner->buffer_end = bytes_read;
   for(; i < bytes_read; i++) {
     if(UNLIKELY(mask == 0)) {
       mask_last_start = i;
       if(VERY_LIKELY(i < bytes_chunk_end)) {
         // keep going until we get a delim or we are at the eof
-        mask_total_offset = vec_delims(buff + i, bytes_read - i, &dl_v, &nl_v, &cr_v, &qt_v,
+        mask_total_offset = vec_delims(buff + i,
+                                       bytes_read - i,
+                                       &v.dl,
+                                       &v.nl,
+                                       &v.cr,
+                                       &v.qt,
                                        &mask);
         if(LIKELY(mask_total_offset != 0)) {
           i += mask_total_offset;
@@ -572,28 +594,24 @@ static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
 #define ZSV_SCAN_DELIM zsv_scan_delim
 #include "zsv_scan_delim.c"
 #undef ZSV_SCAN_DELIM
-
-/*
 #undef scanner_last
+
 #define ZSV_SUPPORT_PULL_PARSER 1
 #define ZSV_SCAN_DELIM zsv_scan_delim_pull
 #include "zsv_scan_delim.c"
-*/
 
 #include "zsv_scan_fixed.c"
 
-enum zsv_status zsv_scan(struct zsv_scanner *scanner,
+static enum zsv_status zsv_scan(struct zsv_scanner *scanner,
                          unsigned char *buff,
                          size_t bytes_read
                          ) {
   switch(scanner->mode) {
   case ZSV_MODE_FIXED:
     return zsv_scan_fixed(scanner, buff, bytes_read);
-    /*
   case ZSV_MODE_DELIM_PULL:
      // return zsv_status_row or zsv_status_ok (next call to parse_more)
     return zsv_scan_delim_pull(scanner, buff, bytes_read);
-    */
   default:
     return zsv_scan_delim(scanner, buff, bytes_read);
   }
@@ -673,9 +691,12 @@ static void collate_header_row(void *ctx) {
     if(collate_header_append(scanner, &scanner->collate_header))
       scanner->abort = 1;
   }
+
   if(!scanner->opts.header_span) {
+    // finished with header; combine all rows into a single row
     set_callbacks(scanner);
-    if(VERY_LIKELY(scanner->opts.row_handler != NULL || scanner->opts.cell_handler != NULL)) {
+//    if(VERY_LIKELY(scanner->opts.row_handler != NULL || scanner->opts.cell_handler != NULL
+//                   || scanner->mode == ZSV_MODE_DELIM_PULL)) {
       if(scanner->collate_header) {
         size_t offset = 0;
         for(size_t i = 0; i < scanner->collate_header->column_count; i++) {
@@ -692,7 +713,7 @@ static void collate_header_row(void *ctx) {
 
       apply_callbacks(scanner);
       collate_header_destroy(&scanner->collate_header);
-    }
+//    }
   }
 }
 

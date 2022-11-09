@@ -34,7 +34,8 @@ const char *zsv_lib_version(void) {
  * of a parse and not at the end of the prior parse is so that between chunks, the input
  * chunk remains available in a contiguous block of one or more rows
  */
-__attribute__((always_inline)) static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
+// __attribute__((always_inline))
+inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
   scanner->last = '\0';
   if(VERY_LIKELY(scanner->old_bytes_read)) {
     scanner->last = scanner->buff.buff[scanner->old_bytes_read-1];
@@ -149,12 +150,12 @@ static void zsv_last_pull_row(void *ctx) {
  */
 ZSV_EXPORT
 enum zsv_status zsv_next_row(zsv_parser parser) {
-/*
   if(VERY_UNLIKELY(!parser->pull.regs)) {
     if(parser->started)
       return zsv_status_error; // error: already started a push parser
     if(!(parser->pull.regs = calloc(1, sizeof(*parser->pull.regs))))
       return zsv_status_memory;
+    parser->mode = ZSV_MODE_DELIM_PULL;
   }
   if(VERY_LIKELY(parser->pull.stat == zsv_status_row))
     parser->pull.stat = zsv_scan_delim_pull(parser, parser->pull.buff, parser->pull.bytes_read);
@@ -180,10 +181,6 @@ enum zsv_status zsv_next_row(zsv_parser parser) {
       return zsv_status_ok;
   }
   return parser->pull.stat;
-*/
-
-
-  return zsv_status_error;
 }
 
 // to do: rename to zsv_column_count(). rename all other zsv_hand to just zsv_

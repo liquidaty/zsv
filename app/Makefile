@@ -104,7 +104,7 @@ ifeq ($(DEBUG),0)
     endif
   endif
 else
-  CFLAGS += -g
+  CFLAGS += -g -O0
 endif
 
 CCBN=$(shell basename ${CC})

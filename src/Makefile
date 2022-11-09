@@ -41,7 +41,7 @@ ifneq ($(findstring emcc,$(CC)),) # emcc
   ZSV_EXTRAS=1
   NO_THREADING=1
 else # not emcc
-  CFLAGS+= ${CFLAGS_AVX} ${CFLAGS_LTO}
+  CFLAGS+= ${CFLAGS_AVX}
 endif
 
 ifeq ($(NO_THREADING),1)
@@ -53,7 +53,7 @@ ifeq ($(ZSV_EXTRAS),1)
 endif
 
 ifeq ($(DEBUG),0)
-  CFLAGS+= -DNDEBUG -O3
+  CFLAGS+= -DNDEBUG -O3  ${CFLAGS_LTO}
   CFLAGS+= ${CFLAGS_OPENMP}
 
   ifeq ($(PGO),1)
@@ -67,6 +67,7 @@ ifeq ($(DEBUG),0)
   endif
 else
   CFLAGS += -g -O0
+#  CFLAGS += -g -O2
 endif
 
 ifeq ($(DEBUG),1)
