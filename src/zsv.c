@@ -78,36 +78,6 @@ __attribute__((always_inline)) static size_t scanner_pre_parse(struct zsv_scanne
   return capacity;
 }
 
-/*
-ZSV_EXPORT
-enum zsv_status zsv_next_row(struct zsv_scanner *scanner) {
-  // preparation: possible states
-  // 1. need another chunk, have more
-  // 2. not at end of current chunk
-  // 3. need another chunk, none left
-
-  // next row:
-  // 1. have (row handler called)
-  // 2. don't have (row handler not called)
-
-  // zsv_parse_more: return row, ok, no-more-input
-  if(!(scanner->pull.regs.delim.buff && scanner->regs.delim.bytes_read))
-    return (scanner->regs.delim.stat = zsv_parse_more(scanner));
-  if(scanner->regs.delim.stat == zsv_status_row)
-    return (scanner->regs.delim.stat = zsv_scan(scanner->regs.delim.buff, scanner->regs.delim.bytes_read));
-  if(scanner->regs.delim.stat == zsv_status_ok) // need to get another chunk
-    return (scanner->regs.delim.stat = zsv_parse_more(scanner));
-  if(scanner->regs.delim.stat == zsv_status_no_more_input) {
-    if(scanner->regs.delim.stat_final == zsv_status_ok // first time for this chunk
-       || scanner->regs.delim.stat_final == zsv_status_row)
-      return (scanner->regs.delim.stat_final = zsv_scan(scanner->regs.delim.buff, scanner->regs.delim.bytes_read));
-    if(scanner->regs.delim.stat_final
-
-      zsv_finish
-
-}
-
-*/
 
 /**
  * Read the next chunk of data from our input stream and parse it, calling our
@@ -179,6 +149,7 @@ static void zsv_last_pull_row(void *ctx) {
  */
 ZSV_EXPORT
 enum zsv_status zsv_next_row(zsv_parser parser) {
+/*
   if(VERY_UNLIKELY(!parser->pull.regs)) {
     if(parser->started)
       return zsv_status_error; // error: already started a push parser
@@ -209,6 +180,10 @@ enum zsv_status zsv_next_row(zsv_parser parser) {
       return zsv_status_ok;
   }
   return parser->pull.stat;
+*/
+
+
+  return zsv_status_error;
 }
 
 // to do: rename to zsv_column_count(). rename all other zsv_hand to just zsv_
@@ -401,7 +376,7 @@ enum zsv_status zsv_delete(zsv_parser parser) {
     free(parser->row.cells);
     free(parser->fixed.offsets);
     collate_header_destroy(&parser->collate_header);
-    free(parser->pull.regs);
+//    free(parser->pull.regs);
     free(parser);
   }
   return zsv_status_ok;

@@ -41,7 +41,7 @@ ifneq ($(findstring emcc,$(CC)),) # emcc
   ZSV_EXTRAS=1
   NO_THREADING=1
 else # not emcc
-  CFLAGS+= ${CFLAGS_AVX}
+  CFLAGS+= ${CFLAGS_AVX} ${CFLAGS_LTO}
 endif
 
 ifeq ($(NO_THREADING),1)
