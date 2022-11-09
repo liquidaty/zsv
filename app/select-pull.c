@@ -298,13 +298,13 @@ unsigned char *zsv_select_cell_clean(struct zsv_select_data *data, unsigned char
   return utf8_value;
 }
 
-static inline char zsv_select_row_search_hit(struct zsv_select_data *data, zsv_pull_row r) {
+static inline char zsv_select_row_search_hit(struct zsv_select_data *data, zsv_parser p) {
   if(!data->search_strings)
     return 1;
 
-  unsigned int j = zsv_pull_cell_count(r);
+  unsigned int j = zsv_cell_count(p);
   for(unsigned int i = 0; i < j; i++) {
-    struct zsv_cell cell = zsv_pull_get_cell(r, i);
+    struct zsv_cell cell = zsv_get_cell(p, i);
     if(UNLIKELY(data->any_clean != 0))
       cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
     if(cell.len) {
@@ -380,7 +380,7 @@ static double demo_random_bw_1_and_100() {
 }
 
 // zsv_select_output_row(): output row data
-static void zsv_select_output_data_row(struct zsv_select_data *data, zsv_pull_row r) {
+static void zsv_select_output_data_row(struct zsv_select_data *data, zsv_parser p) {
   unsigned int cnt = data->output_cols_count;
   char first = 1;
   if(data->prepend_line_number) {
@@ -391,14 +391,14 @@ static void zsv_select_output_data_row(struct zsv_select_data *data, zsv_pull_ro
   /* print data row */
   for(unsigned int i = 0; i < cnt; i++) { // for each output column
     unsigned int in_ix = data->out2in[i].ix;
-    struct zsv_cell cell = zsv_pull_get_cell(r, in_ix);
+    struct zsv_cell cell = zsv_get_cell(p, in_ix);
     if(UNLIKELY(data->any_clean != 0))
       cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
     if(VERY_UNLIKELY(data->distinct == ZSV_SELECT_DISTINCT_MERGE)) {
       if(UNLIKELY(cell.len == 0)) {
         for(struct zsv_select_uint_list *ix = data->out2in[i].merge.indexes; ix; ix = ix->next) {
           unsigned int m_ix = ix->value;
-          cell = zsv_pull_get_cell(r, m_ix);
+          cell = zsv_get_cell(p, m_ix);
           if(cell.len) {
             if(UNLIKELY(data->any_clean != 0))
               cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
@@ -413,10 +413,10 @@ static void zsv_select_output_data_row(struct zsv_select_data *data, zsv_pull_ro
   }
 }
 
-static void zsv_select_data_row(struct zsv_select_data *data, zsv_pull_row r) {
+static void zsv_select_data_row(struct zsv_select_data *data, zsv_parser p) {
   data->data_row_count++;
 
-  if(UNLIKELY(zsv_pull_cell_count(r) == 0 || data->cancelled))
+  if(UNLIKELY(zsv_cell_count(p) == 0 || data->cancelled))
     return;
 
   // check if we should skip this row
@@ -435,11 +435,11 @@ static void zsv_select_data_row(struct zsv_select_data *data, zsv_pull_row r) {
   if(LIKELY(!data->skip_this_row)) {
     // if we have a search filter, check that
     char skip = 0;
-    skip = !zsv_select_row_search_hit(data, r);
+    skip = !zsv_select_row_search_hit(data, p);
     if(!skip) {
 
       // print the data row
-      zsv_select_output_data_row(data, r);
+      zsv_select_output_data_row(data, p);
       if(UNLIKELY(data->data_rows_limit > 0))
         if(data->data_row_count + 1 >= data->data_rows_limit)
           data->cancelled = 1;
@@ -465,14 +465,14 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
     zsv_select_print_header_row(data);
 }
 
-static void zsv_select_header_row(struct zsv_select_data *data, zsv_pull_row r) {
+static void zsv_select_header_row(struct zsv_select_data *data, zsv_parser p) {
   if(data->cancelled)
     return;
 
-  unsigned int cols = zsv_pull_cell_count(r);
+  unsigned int cols = zsv_cell_count(p);
   unsigned int max_header_ix = 0;
   for(unsigned int i = 0; i < cols; i++) {
-    struct zsv_cell cell = zsv_pull_get_cell(r, i);
+    struct zsv_cell cell = zsv_get_cell(p, i);
     if(UNLIKELY(data->any_clean != 0))
       cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
     if(i < data->opts->max_columns) {
@@ -764,7 +764,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 //      data.opts->ctx = &data;
       zsv_parser parser;
       data.opts->insert_header_row = insert_header_row;
-      if(zsv_pull_new_with_properties(data.opts, input_path, opts_used, &parser)
+      if(zsv_new_with_properties(data.opts, input_path, opts_used, &parser)
          == zsv_status_ok) {
         // all done with
         data.any_clean = data.malformed_utf8_replace
@@ -786,13 +786,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
         // process the input data
         zsv_handle_ctrl_c_signal();
-        zsv_pull_row r;
-        enum zsv_status status = zsv_pull_next_row(parser, &r);
+        enum zsv_status status = zsv_next_row(parser);
         if(status == zsv_status_ok)
-          zsv_select_header_row(&data, r);
-        while((status = zsv_pull_next_row(parser, &r)) == zsv_status_ok)
-          zsv_select_data_row(&data, r);
-        zsv_pull_delete(parser);
+          zsv_select_header_row(&data, parser);
+        while((status = zsv_next_row(parser)) == zsv_status_ok)
+          zsv_select_data_row(&data, parser);
+        zsv_delete(parser);
       }
     }
   }

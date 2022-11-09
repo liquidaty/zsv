@@ -60,15 +60,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   if(!err) {
     zsv_parser parser;
-    if(zsv_pull_new_with_properties(opts, input_path, opts_used, &parser) != zsv_status_ok) {
+//    if(zsv_pull_new_with_properties(opts, input_path, opts_used, &parser) != zsv_status_ok) {
+    if(zsv_new_with_properties(opts, input_path, opts_used, &parser) != zsv_status_ok) {
       fprintf(stderr, "Unable to initialize parser\n");
       err = 1;
     } else {
       size_t count = 0;
-      zsv_pull_row r;
-      while(zsv_pull_next_row(parser, &r) == zsv_status_ok)
+//      zsv_pull_row r;
+      while(zsv_next_row(parser) == zsv_status_row)
         count++;
-      zsv_pull_delete(parser);
+      zsv_delete(parser);
       printf("%zu\n", count  > 0 ? count - 1 : 0);
     }
   }

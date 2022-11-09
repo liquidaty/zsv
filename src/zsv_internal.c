@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <stdint.h> // uint16_t etc
 
 #ifdef ZSV_EXTRAS
 #include <time.h>
@@ -18,6 +17,36 @@
 
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/compiler.h>
+
+#ifndef ZSV_NO_AVX
+# if !defined(__AVX2__)
+#  define ZSV_NO_AVX
+# elif defined(HAVE_AVX512)
+#  ifndef __AVX512BW__
+#   error AVX512 requested, but __AVX512BW__ macro not defined
+#  else
+#   define VECTOR_BYTES 64
+#   define zsv_mask_t uint64_t
+#   define movemask_pseudo(x) _mm512_movepi8_mask((__m512i)x)
+#   define NEXT_BIT __builtin_ffsl
+#  endif
+# elif defined(HAVE_AVX256)
+#  define VECTOR_BYTES 32
+#  define zsv_mask_t uint32_t
+#  define movemask_pseudo(x) _mm256_movemask_epi8((__m256i)x)
+#  define NEXT_BIT __builtin_ffs
+# else
+#  define ZSV_NO_AVX
+# endif
+#endif // ndef ZSV_NO_AVX
+
+#if defined(ZSV_NO_AVX)
+# define zsv_mask_t uint16_t
+# define VECTOR_BYTES 16
+# define NEXT_BIT __builtin_ffs
+#endif
+
+typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (VECTOR_BYTES)));
 
 struct zsv_row {
   size_t used, allocated, overflow;
@@ -31,6 +60,25 @@ struct collate_header {
   } buff;
   size_t *lengths; // length PLUS 1 of each cell
   size_t column_count;
+};
+
+struct zsv_scan_delim_regs {
+  size_t i;
+  size_t bytes_chunk_end;
+  size_t bytes_read;
+  char delimiter;
+  unsigned char c;
+  char skip_next_delim;
+  int quote;
+  size_t mask_total_offset;
+  zsv_mask_t mask;
+  int mask_last_start;
+  zsv_uc_vector dl_v, nl_v, cr_v, qt_v;
+  unsigned char location;
+};
+
+struct zsv_scan_fixed_regs {
+  char xx;
 };
 
 struct zsv_scanner {
@@ -50,7 +98,7 @@ struct zsv_scanner {
   unsigned char had_bom:1;
   unsigned char abort:1;
   unsigned char have_cell:1;
-  unsigned char pull_parser:1;
+  unsigned char started:1;
 
   size_t quote_close_position;
   struct zsv_opts opts;
@@ -79,6 +127,7 @@ struct zsv_scanner {
 
 #define ZSV_MODE_DELIM 0
 #define ZSV_MODE_FIXED 1
+#define ZSV_MODE_DELIM_PULL 2
   unsigned char mode;
   struct {
     unsigned *offsets; // 0-based position of each cell end. offset[0] = end of first cell
@@ -94,6 +143,16 @@ struct zsv_scanner {
     size_t max_rows;      /* max rows to read, including header row(s) */
   } progress;
 #endif
+  struct {
+    char type; // delim
+    enum zsv_status stat; // last status
+    unsigned char *buff;
+    size_t bytes_read;
+    union {
+      struct zsv_scan_delim_regs delim;
+      struct zsv_scan_fixed_regs fixed;
+    } *regs;
+  } pull;
 };
 
 void collate_header_destroy(struct collate_header **chp) {
@@ -297,44 +356,10 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
   return row_dl(scanner);
 }
 
-#if !defined(__AVX2__) // -mavx2 compiler flag not present
-# define ZSV_NO_AVX
-# define zsv_mask_t uint16_t
-# define VECTOR_BYTES 16
-# define NEXT_BIT __builtin_ffs
-# if defined(__AVX__)
-#  include <emmintrin.h>
-#  define zsv_mask_t uint16_t
-#  define VECTOR_BYTES 16
-#  define NEXT_BIT __builtin_ffs
-#  define movemask_pseudo(x) _mm_movemask_epi8 ((__m128i) x)
-# endif
-#elif defined(HAVE_AVX512)
-# ifndef __AVX512BW__
-#  error AVX512 requested, but __AVX512BW__ macro not defined
-# else
-#  include <immintrin.h>
-#  define VECTOR_BYTES 64
-#  define zsv_mask_t uint64_t
-#  define movemask_pseudo(x) _mm512_movepi8_mask((__m512i)x)
-#  define NEXT_BIT __builtin_ffsl
-# endif
-#elif defined(__AVX2__) // have avx2, not avx512
+#ifndef ZSV_NO_AVX
 # include <immintrin.h>
-# define VECTOR_BYTES 32
-# define zsv_mask_t uint32_t
-# define movemask_pseudo(x) _mm256_movemask_epi8((__m256i)x)
-# define NEXT_BIT __builtin_ffs
 #else
-# define ZSV_NO_AVX
-# define zsv_mask_t uint16_t
-# define VECTOR_BYTES 16
-# define NEXT_BIT __builtin_ffs
-#endif
 
-typedef unsigned char zsv_uc_vector __attribute__ ((vector_size (VECTOR_BYTES)));
-
-#ifndef movemask_pseudo
 # if defined(__ARM_NEON) || defined(__ARM_NEON__)
 # include <arm_neon.h>
 # endif
@@ -370,168 +395,20 @@ static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
 #endif
 
 }
-#endif // movemask_pseudo
+#endif // ZSV_NO_AVX
 
 # include "vector_delim.c"
 
-static enum zsv_status zsv_scan_delim(struct zsv_scanner *scanner,
-                                      unsigned char *buff,
-                                      size_t bytes_read
-                                      ) {
-  bytes_read += scanner->partial_row_length;
-  size_t i = scanner->partial_row_length;
-  unsigned char c;
-  char skip_next_delim = 0;
-  size_t bytes_chunk_end = bytes_read >= sizeof(zsv_uc_vector) ? bytes_read - sizeof(zsv_uc_vector) + 1 : 0;
-  const char delimiter = scanner->opts.delimiter;
+#ifdef ZSV_SUPPORT_PULL_PARSER
+#undef ZSV_SUPPORT_PULL_PARSER
+#endif
+#define ZSV_SCAN_DELIM zsv_scan_delim
+#include "zsv_scan_delim.c"
 
-  scanner->partial_row_length = 0;
-
-  int quote = scanner->opts.no_quotes > 0 ? -1 : '"'; // ascii code 34
-  zsv_uc_vector dl_v; memset(&dl_v, delimiter, sizeof(zsv_uc_vector)); // ascii 44
-  zsv_uc_vector nl_v; memset(&nl_v, '\n', sizeof(zsv_uc_vector)); // ascii code 10
-  zsv_uc_vector cr_v; memset(&cr_v, '\r', sizeof(zsv_uc_vector)); // ascii code 13
-  zsv_uc_vector qt_v; memset(&qt_v, scanner->opts.no_quotes > 0 ? 0 : '"', sizeof(qt_v));
-
-  // case "hel"|"o": check if we have an embedded dbl-quote past the initial opening quote, which was
-  // split between the last buffer and this one e.g. "hel""o" where the last buffer ended
-  // with "hel" and this one starts with "o"
-  if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED)
-     && i > scanner->cell_start + 1 // case "|hello": need the + 1 in case split after first char of quoted value e.g. "hello" => " and hello"
-     && scanner->last == quote) {
-    if(buff[i] != quote) {
-      scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
-      scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
-      scanner->quote_close_position = i - scanner->cell_start - 1;
-    } else {
-      scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
-      scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
-      i++;
-    }
-  }
-
-#define scanner_last (i ? buff[i-1] : scanner->last)
-  size_t mask_total_offset = 0;
-  zsv_mask_t mask = 0;
-  int mask_last_start;
-
-  scanner->buffer_end = bytes_read;
-  for(; i < bytes_read; i++) {
-    if(UNLIKELY(mask == 0)) {
-      mask_last_start = i;
-      if(VERY_LIKELY(i < bytes_chunk_end)) {
-        // keep going until we get a delim or we are at the eof
-        mask_total_offset = vec_delims(buff + i, bytes_read - i, &dl_v, &nl_v, &cr_v, &qt_v,
-                                       &mask);
-        if(LIKELY(mask_total_offset != 0)) {
-          i += mask_total_offset;
-          if(VERY_UNLIKELY(mask == 0 && i == bytes_read))
-            break; // vector processing ended on exactly our buffer end
-        }
-      } else if(skip_next_delim) {
-        skip_next_delim = 0;
-        continue;
-      }
-    }
-    if(VERY_LIKELY(mask)) {
-      size_t next_offset = NEXT_BIT(mask);
-      i = mask_last_start + next_offset - 1;
-      mask = clear_lowest_bit(mask);
-      if(VERY_UNLIKELY(skip_next_delim)) {
-        skip_next_delim = 0;
-        continue;
-      }
-    }
-
-    // to do: consolidate csv and tsv/scanner->delimiter parsers
-    c = buff[i];
-    if(LIKELY(c == delimiter)) { // case ',':
-      if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
-        scanner->scanned_length = i;
-        cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-        scanner->cell_start = i + 1;
-        c = 0;
-        continue; // this char is not part of the cell content
-      } else
-        // we are inside an open quote, which is needed to escape this char
-        scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
-    } else if(UNLIKELY(c == '\r')) {
-      if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
-        scanner->scanned_length = i;
-        enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-        if(VERY_UNLIKELY(stat))
-          return stat;
-
-        scanner->cell_start = i + 1;
-        scanner->row_start = i + 1;
-        continue; // this char is not part of the cell content
-      } else
-        // we are inside an open quote, which is needed to escape this char
-        scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
-    } else if(UNLIKELY(c == '\n')) {
-      if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
-        if(scanner_last == '\r') { // ignore; we are outside a cell and last char was rowend
-          scanner->cell_start = i + 1;
-          scanner->row_start = i + 1;
-        } else {
-          // this is a row end
-          scanner->scanned_length = i;
-          enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-          if(VERY_UNLIKELY(stat))
-            return stat;
-          scanner->cell_start = i + 1;
-          scanner->row_start = i + 1;
-        }
-        continue; // this char is not part of the cell content
-      } else
-        // we are inside an open quote, which is needed to escape this char
-        scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
-    } else if(LIKELY(c == quote)) {
-      if(i == scanner->cell_start) {
-        scanner->quoted = ZSV_PARSER_QUOTE_UNCLOSED;
-        scanner->quote_close_position = 0;
-        c = 0;
-      } else if(scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) {
-        // the cell started with a quote that is not yet closed
-        if(VERY_LIKELY(i + 1 < bytes_read)) {
-          if(LIKELY(buff[i+1] != quote)) {
-            // buff[i] is the closing quote (not an escaped quote)
-            scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
-            scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
-
-            // keep track of closing quote position to handle the edge case
-            // where content follows the closing quote e.g. cell content is:
-            //  "this-cell"-did-not-need-quotes
-            if(LIKELY(scanner->quote_close_position == 0))
-              scanner->quote_close_position = i - scanner->cell_start;
-          } else {
-            // next char is also '"'
-            // e.g. cell content is: "this "" is a dbl quote"
-            //           cursor is here => ^
-            // include in cell content and don't further process
-            scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
-            scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
-            skip_next_delim = 1;
-          }
-        }
-      } else {
-        // cell_length > 0 and cell did not start w quote, so
-        // we have a quote in middle of an unquoted cell
-        // process as a normal char
-        scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
-        scanner->quote_close_position = 0;
-      }
-    }
-  }
-  scanner->scanned_length = i;
-
-  // save bytes_read-- we will need to shift any remaining partial row
-  // before we read next from our input. however, we intentionally refrain
-  // from doing this until the next parse_more() call, so that the entirety
-  // of all rows parsed thus far are still available until that next call
-  scanner->old_bytes_read = bytes_read;
-  return zsv_status_ok;
-}
+#undef ZSV_SCAN_DELIM
+#define ZSV_SUPPORT_PULL_PARSER 1
+#define ZSV_SCAN_DELIM zsv_scan_delim_pull
+#include "zsv_scan_delim.c"
 
 #include "zsv_scan_fixed.c"
 
@@ -542,6 +419,9 @@ enum zsv_status zsv_scan(struct zsv_scanner *scanner,
   switch(scanner->mode) {
   case ZSV_MODE_FIXED:
     return zsv_scan_fixed(scanner, buff, bytes_read);
+  case ZSV_MODE_DELIM_PULL:
+     // return zsv_status_row or zsv_status_ok (next call to parse_more)
+    return zsv_scan_delim_pull(scanner, buff, bytes_read);
   default:
     return zsv_scan_delim(scanner, buff, bytes_read);
   }

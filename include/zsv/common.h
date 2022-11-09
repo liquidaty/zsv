@@ -23,7 +23,9 @@ enum zsv_status {
   zsv_status_no_more_input,
   zsv_status_invalid_option,
   zsv_status_memory,
-  zsv_status_error
+  zsv_status_error,
+  zsv_status_row,
+  zsv_status_done = 100
 #ifdef ZSV_EXTRAS
   ,zsv_status_max_rows_read = 999
 #endif

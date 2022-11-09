@@ -191,22 +191,3 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
     return zsv_status_ok;
   return zsv_status_memory;
 }
-
-/**
- * zsv_pull_new_with_properties(): same as zsv_new_with_properties(),
- * but returns a pull parser
- */
-enum zsv_status zsv_pull_new_with_properties(struct zsv_opts *opts,
-                                             const char *input_path,
-                                             const char *opts_used,
-                                             zsv_parser *handle_out
-                                             ) {
-  enum zsv_status stat = zsv_status_ok;
-  *handle_out = NULL;
-  if(input_path) {
-    stat = zsv_cache_load_props(input_path, opts, NULL, opts_used);
-    if(stat != zsv_status_ok)
-      return stat;
-  }
-  return zsv_pull_new(opts, handle_out);
-}

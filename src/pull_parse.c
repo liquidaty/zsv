@@ -63,11 +63,12 @@ void zsv_pull_fetch_more(zsv_parser parser, struct zsv_pull_data *data) {
 void zsv_pull_row_handler(void *ctx) {
   // we could make this more memory efficient by recycling row pointers...
   // but we will leave that for another day
+  fprintf(stderr, "  zsv_pull_row_handler\n");
+
   struct zsv_pull_data *data = ctx;
   if(data->stat != zsv_status_ok)
     return;
   unsigned int columns_used = zsv_cell_count(data->parser);
-
   struct zsv_chunk_row_internal *r = calloc(1, sizeof(*r));
   if(!r) {
     data->stat = zsv_status_memory;
