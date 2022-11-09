@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdint.h> // uint32_t
 
 #ifdef ZSV_EXTRAS
 #include <time.h>
