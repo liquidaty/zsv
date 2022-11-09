@@ -27,11 +27,11 @@ Fine tuning of the installation directories:
   --mandir=DIR            man pages [PREFIX/share/man]
 
 Optional features:
-  --try-avx512            use avx512 instructions, if available (not recommended)
-  --force-avx2            force compile with (no CPU check) or without -mavx2
-  --force-avx             force compile with (no CPU check) or without -mavx
-  --enable-small-lut      build with smaller lookup tables [no]
-  --enable-debug-stderr   build with debug msgs in stderr [no]
+  --try-avx512            use avx512 instructions, if available [no]
+  --force-avx2            force compile with (no CPU check) or without -mavx2 [auto]
+  --force-avx             force compile with (no CPU check) or without -mavx [auto]
+  --enable-lto            compile with LTO (works with some but not all platforms/compilers) [no]
+  --enable-whole-program  compile without -fwhole-program even if no -flto [yes]
   --enable-pie            build with position independent executables [auto]
   --enable-pic            build with position independent shared libraries [auto]
   --enable-termcap        build with ncurses / termcap (used by \`pretty\` to get console width) [auto]
@@ -289,9 +289,10 @@ MANDIR='$(PREFIX)/share/man'
 
 MINIMAL=no
 
+TRY_LTO=no
+TRY_WHOLE_PROGRAM=auto
+
 help=yes
-usesmalllut=no
-usedebugstderr=no
 usepie=auto
 usepic=auto
 usetermcap=auto
@@ -318,13 +319,17 @@ for arg ; do
         --force-avx|--force-avx=yes) FORCE_AVX=yes;;
         --force-avx=no) FORCE_AVX=no;;
 
-        --enable-small-lut|--enable-small-lut=yes) usesmalllut=yes ;;
-        --disable-small-lut|--enable-small-lut=no) usesmalllut=no ;;
-        --enable-debug-stderr|--enable-debug-stderr=yes) usedebugstderr=yes ;;
-        --disable-debug-stderr|--enable-debug-stderr=no) usedebugstderr=no ;;
+        --enable-lto|--enable-lto=yes) TRY_LTO=yes;;
+        --enable-lto|--enable-lto=auto) TRY_LTO=auto;;
+        --disable-lto|--enable-lto=no) TRY_LTO=no;;
+
+        --enable-whole-program|--enable-whole-program=yes) TRY_WHOLE_PROGRAM=yes ;;
+        --disable-whole-program|--enable-whole-program=no) TRY_WHOLE_PROGRAM=no ;;
+
         --enable-pie|--enable-pie=yes) usepie=yes ;;
         --enable-pie=auto) usepie=auto ;;
         --disable-pie|--enable-pie=no) usepie=no ;;
+
         --enable-pic|enable-pic=yes) usepic=yes ;;
         --enable-termcap|--enable-termcap=yes) usetermcap=yes ;;
         --enable-termcap=auto) usetermcap=auto ;;
@@ -531,10 +536,31 @@ elif [ "$FORCE_AVX" != "no" ] && [ "$CFLAGS_AVX" = "" ] ; then
     trycpusupport avx && CFLAGS_AVX=-mavx
 fi
 
-tryflag CFLAGS_LTO -flto
+HAVE_LTO=0
+if [ "$TRY_LTO" = "yes" ]; then
+    HAVE_LTO=1
+    CFLAGS_LTO="$CFLAGS_LTO -flto"
+elif [ "$TRY_LTO" = "auto" ]; then
+    tryflag CFLAGS_LTO -flto && HAVE_LTO=1
+fi
+
+if [ "$TRY_WHOLE_PROGRAM" = "yes" ] ; then
+    if [ "$HAVE_LTO" = "0" ] ; then
+        LDFLAGS_OPT="$LDFLAGS_OPT -fwhole-program"
+    else
+        echo "Error: whole-program and lto are mutually exclusive; disable one or set both to auto"
+        exit 1
+    fi
+elif [ "$TRY_WHOLE_PROGRAM" = "auto" ] ; then
+    if [ "$HAVE_LTO" = "0" ] ; then
+        tryldflag LDFLAGS_OPT -fwhole-program
+    else
+        echo "Have LTO, not trying -fwhole-program"
+    fi
+fi
+
 tryflag CFLAGS_OPT -fvisibility=hidden
 tryldflag LDFLAGS_AUTO -Wl,--gc-sections
-tryflag CFLAGS_LTO -flto || (echo "no lto, trying -fwhole-program" && tryldflag LDFLAGS_OPT -fwhole-program)
 
 if [ "$ARCH" != "none" ] ; then
     tryldflag LDFLAGS_OPT -march=$ARCH
@@ -615,12 +641,6 @@ tryccfn1 CFLAGS_AUTO "__builtin_expect" "0,0"
 tryccfn1 CFLAGS_AUTO "__builtin_expect_with_probability" "0,0,0.5"
 
 # Optional features
-if test "$usesmalllut" = "yes" ; then
-    USE_SMALL_LUT=1
-else
-    USE_SMALL_LUT=0
-fi
-
 if test "$usedebugstderr" = "yes" ; then
     USE_DEBUG_STDERR=1
 else
@@ -680,7 +700,6 @@ CFLAGS_PIC = $CFLAGS_PIC
 LDFLAGS_PIC = $LDFLAGS_PIC
 CFLAGS_PIE = $CFLAGS_PIE
 LDFLAGS_PIE = $LDFLAGS_PIE
-USE_SMALL_LUT = $USE_SMALL_LUT
 USE_DEBUG_STDERR = $USE_DEBUG_STDERR
 CFLAGS_VECTORIZE = $CFLAGS_VECTORIZE
 CFLAGS_VECTORIZE_OPTIMIZED = $CFLAGS_VECTORIZE_OPTIMIZED
