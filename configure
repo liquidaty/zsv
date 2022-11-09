@@ -12,7 +12,10 @@ Defaults for the options are specified in brackets.
 
 Configuration:
   --config-file=FILE      save config to FILE [config.mk]
+
+Optional configuration:
   --minimal=yes           do not include extra features (default=no)
+  --arch=ARCH             use -march=ARCH. Set to 'none' for none, else defaults to 'native'
 
 Installation directories:
   --prefix=PREFIX         main installation prefix [\$PREFIX or /usr/local]
@@ -22,10 +25,6 @@ Fine tuning of the installation directories:
   --sharedir=DIR          share directories [PREFIX/share]
   --docdir=DIR            misc. documentation [PREFIX/share/doc]
   --mandir=DIR            man pages [PREFIX/share/man]
-
-xxx add avx options
-xxx output var if -no-avx libs should be used
-xxx [future: or -avx1 libs should be used]
 
 Optional features:
   --try-avx512            use avx512 instructions, if available (not recommended)
@@ -123,17 +122,13 @@ trycpusupport() {
     printf "checking whether CPU accepts $1... "
     cat >> "$tmpc" <<EOF
 int main() {
-  if(__builtin_cpu_supports("$1")) {
-    printf("yes\n");
+  if(__builtin_cpu_supports("$1"))
     return 0;
-  }
-  printf("no\n");
   return 1;
 }
 EOF
-    if $CC -o "$tmpe" "$tmpc" >/dev/null 2>&1 ; then
-        "$tmpe" && return 0;
-    fi
+    $CC -o "$tmpe" "$tmpc" >/dev/null 2>&1 && "$tmpe" && echo "yes" && return 0;
+    echo "no"
     return 1;
 }
 
@@ -260,6 +255,10 @@ if [ "$CONFIGFILE" = "" ]; then
     CONFIGFILE=config.mk
 fi
 
+if [ "$ARCH" = "" ]; then
+    ARCH=native
+fi
+
 # check prefixes first, since others may be derived from it unless overridden
 PREFIX=$PREFIX
 for arg ; do
@@ -302,6 +301,8 @@ for arg ; do
     case "$arg" in
         --help|-h) usage ;;
         --host=*) host=${arg#*=} ;;
+        --arch=*) ARCH=${arg#*=} ;;
+        ARCH=*) ARCH=${arg#*=} ;;
         --config-file=*) CONFIGFILE=${arg#*=} ;;
         CONFIGFILE=*) CONFIGFILE=${arg#*=} ;;
         --prefix=*) ;; # already handled
@@ -534,7 +535,10 @@ tryflag CFLAGS_LTO -flto
 tryflag CFLAGS_OPT -fvisibility=hidden
 tryldflag LDFLAGS_AUTO -Wl,--gc-sections
 tryflag CFLAGS_LTO -flto || (echo "no lto, trying -fwhole-program" && tryldflag LDFLAGS_OPT -fwhole-program)
-tryldflag LDFLAGS_OPT -march=native
+
+if [ "$ARCH" != "none" ] ; then
+    tryldflag LDFLAGS_OPT -march=$ARCH
+fi
 tryldflag LDFLAGS_OPT -ldl
 
 # Try hardening flags
