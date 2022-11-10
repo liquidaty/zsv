@@ -45,7 +45,7 @@ BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 TMP_DIR=${THIS_LIB_BASE}/tmp
 TEST_DATA_DIR=${THIS_LIB_BASE}/data
 
-SOURCES= echo count select sql 2json serialize flatten pretty desc stack 2db 2tsv jq
+SOURCES= echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
 TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES})
@@ -117,76 +117,79 @@ test-echo-overwrite: ${BUILD_DIR}/bin/zsv_echo${EXE}
 worldcitiespop_mil.csv:
 	curl -LOk 'https://burntsushi.net/stuff/worldcitiespop_mil.csv'
 
-test-count: test-count-1 test-count-2
+test-count test-count-pull: test-% : test-1-% test-2-%
 
-test-count-1: ${BUILD_DIR}/bin/zsv_count${EXE} worldcitiespop_mil.csv
+test-1-count test-1-count-pull: test-1-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
 	@cat worldcitiespop_mil.csv | ${PREFIX} $< ${REDIRECT} ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out expected/test-1-count.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-count-2: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR}/test/buffsplit_quote.csv
+test-2-count test-2-count-pull: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR}/test/buffsplit_quote.csv
 	@${TEST_INIT}
 	@for x in 5000 5002 5004 5006 5008 5010 5013 5015 5017 5019 5021 5101 5105 5111 5113 5115 5117 5119 5121 5123 5125 5127 5129 5131 5211 5213 5215 5217 5311 5313 5315 5317 5413 5431 5433 5455 6133 ; do $< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv ; done > ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out expected/test-2-count.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select: test-select-n test-select-6 test-select-7 test-select-8 test-select-9 test-select-quotebuff test-select-fixed-1 test-select-merge
+test-select test-select-pull: test-% : test-n-% test-6-% test-7-% test-8-% test-9-% test-quotebuff-% test-fixed-1-% test-merge-%
 
-test-select-merge: ${BUILD_DIR}/bin/zsv_select${EXE}
+test-merge-select test-merge-select-pull: test-merge-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@${PREFIX} $< --merge ${TEST_DATA_DIR}/test/select-merge.csv ${REDIRECT} ${TMP_DIR}/test-select-merge.out
-	@${CMP} ${TMP_DIR}/test-select-merge.out expected/test-select-merge.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --merge ${TEST_DATA_DIR}/test/select-merge.csv ${REDIRECT} ${TMP_DIR}/test-merge-%.out
+	@${CMP} ${TMP_DIR}/test-merge-%.out expected/test-merge-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select-quotebuff: ${BUILD_DIR}/bin/zsv_select${EXE}
+test-quotebuff-select test-quotebuff-select-pull: test-quotebuff-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
 	@${THIS_MAKEFILE_DIR}/select-quotebuff-gen.sh  | ${PREFIX} $< -B 4096 ${REDIRECT} /tmp/$@.out
 # use a dummy ${CMP} call so that it works with LEAKS=1
 	@${CMP} /dev/null /dev/null && sed 's/"/Q/g' < /tmp/$@.out | grep QQ >/dev/null && ${TEST_FAIL} || ${TEST_PASS}
 
-test-select-n: ${BUILD_DIR}/bin/zsv_select${EXE}
+test-n-select test-n-select-pull: test-n-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv -u "?" -R 4 -d 2 ${REDIRECT} ${TMP_DIR}/test-select.out
-	@${CMP} ${TMP_DIR}/test-select.out expected/test-select.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} $< ${TEST_DATA_DIR}/test/embedded.csv -e 'X' ${REDIRECT} ${TMP_DIR}/test-select.2.out
-	@${CMP} ${TMP_DIR}/test-select.2.out expected/test-select.2.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} $< ${TEST_DATA_DIR}/test/embedded_dos.csv -e 'X' ${REDIRECT} ${TMP_DIR}/test-select.3.out
-	@${CMP} ${TMP_DIR}/test-select.3.out expected/test-select.3.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv -u "?" -R 4 -d 2 -N ${REDIRECT} ${TMP_DIR}/test-select.4.out
-	@${CMP} ${TMP_DIR}/test-select.4.out expected/test-select.4.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} $<  ${TEST_DATA_DIR}/quoted.csv -e 'x' ${REDIRECT} ${TMP_DIR}/test-select.5.out
-	@${CMP} ${TMP_DIR}/test-select.5.out expected/test-select.5.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv -u "?" -R 4 -d 2 ${REDIRECT} ${TMP_DIR}/test-n-$*.out
+	@${CMP} ${TMP_DIR}/test-n-$*.out expected/test-select.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/embedded.csv -e 'X' ${REDIRECT} ${TMP_DIR}/test-2-$*.out
+	@${CMP} ${TMP_DIR}/test-2-$*.out expected/test-2-select.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/embedded_dos.csv -e 'X' ${REDIRECT} ${TMP_DIR}/test-3-$*.out
+	@${CMP} ${TMP_DIR}/test-3-$*.out expected/test-3-select.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv -u "?" -R 4 -d 2 -N ${REDIRECT} ${TMP_DIR}/test-4-$*.out
+	@${CMP} ${TMP_DIR}/test-4-$*.out expected/test-4-select.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $<  ${TEST_DATA_DIR}/quoted.csv -e 'x' ${REDIRECT} ${TMP_DIR}/test-5-$*.out
+	@${CMP} ${TMP_DIR}/test-5-$*.out expected/test-5-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select-6: ${BUILD_DIR}/bin/zsv_select${EXE}
+test-6-select test-6-select-pull: test-6-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
 	@${PREFIX} $< ${TEST_DATA_DIR}/test/tab.txt -t ${REDIRECT} ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out expected/test-6-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select-7: ${BUILD_DIR}/bin/zsv_select${EXE}
+test-7-select test-7-select-pull: test-7-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
 	@${PREFIX} $< ${TEST_DATA_DIR}/test/white.csv ${REDIRECT} ${TMP_DIR}/$@.out1
-	@${CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out1 expected/test-7-select.out1 && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< --whitespace-clean ${TEST_DATA_DIR}/test/white.csv ${REDIRECT} ${TMP_DIR}/$@.out2
-	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out2 expected/test-7-select.out2 && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< --whitespace-clean-no-newline ${TEST_DATA_DIR}/test/white.csv ${REDIRECT} ${TMP_DIR}/$@.out3
-	@${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out3 expected/test-7-select.out3 && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select-8: ${BUILD_DIR}/bin/zsv_select${EXE}
+test-8-select test-8-select-pull: test-8-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
 	@${PREFIX} $< ${TEST_DATA_DIR}/test/white_utf8.csv ${REDIRECT} ${TMP_DIR}/$@.out1
-	@${CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out1 expected/test-8-select.out1 && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< --whitespace-clean ${TEST_DATA_DIR}/test/white_utf8.csv ${REDIRECT} ${TMP_DIR}/$@.out2
-	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out2 expected/test-8-select.out2 && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< --whitespace-clean-no-newline ${TEST_DATA_DIR}/test/white_utf8.csv ${REDIRECT} ${TMP_DIR}/$@.out3
-	@${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out3 expected/test-8-select.out3 && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select-9: ${BUILD_DIR}/bin/zsv_select${EXE}
+test-9-select test-9-select-pull: test-9-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
 	@${PREFIX} $< ${TEST_DATA_DIR}/test/quoted3.csv -q ${REDIRECT} ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out expected/test-9-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select-fixed-1: ${BUILD_DIR}/bin/zsv_select${EXE}
+test-fixed-1-select-pull:
+	@echo "Skipping test-fixed-1-select-pull"
+
+test-fixed-1-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
 	@${PREFIX} $< ${TEST_DATA_DIR}/fixed.csv --fixed 3,7,12,18,20,21,22 ${REDIRECT} ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out expected/test-fixed-1-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-blank-leading-rows: test-blank-leading-rows-1 test-blank-leading-rows-2 test-blank-leading-rows-3 test-blank-leading-rows-4
 

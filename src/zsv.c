@@ -34,7 +34,8 @@ const char *zsv_lib_version(void) {
  * of a parse and not at the end of the prior parse is so that between chunks, the input
  * chunk remains available in a contiguous block of one or more rows
  */
-__attribute__((always_inline)) static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
+// __attribute__((always_inline))
+inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
   scanner->last = '\0';
   if(VERY_LIKELY(scanner->old_bytes_read)) {
     scanner->last = scanner->buff.buff[scanner->old_bytes_read-1];
@@ -78,6 +79,7 @@ __attribute__((always_inline)) static size_t scanner_pre_parse(struct zsv_scanne
   return capacity;
 }
 
+
 /**
  * Read the next chunk of data from our input stream and parse it, calling our
  * custom handlers as each cell and row are parsed
@@ -97,13 +99,12 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
 
   size_t capacity = scanner_pre_parse(scanner);
   size_t bytes_read;
-  if(UNLIKELY(!scanner->checked_bom)) {
+  if(VERY_UNLIKELY(scanner->checked_bom == 0)) {
 #ifdef ZSV_EXTRAS
     // initialize progress timer
     if(scanner->opts.progress.seconds_interval)
       scanner->progress.last_time = time(NULL);
 #endif
-
     size_t bom_len = strlen(ZSV_BOM);
     scanner->checked_bom = 1;
     if(scanner->read(scanner->buff.buff, 1, bom_len, scanner->in) == bom_len
@@ -116,7 +117,8 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   } else // already checked bom. read as usual
     bytes_read = scanner->read(scanner->buff.buff + scanner->partial_row_length, 1,
                                capacity, scanner->in);
-  if(UNLIKELY(scanner->filter != NULL))
+  scanner->started = 1;
+  if(VERY_UNLIKELY(scanner->filter != NULL))
     bytes_read = scanner->filter(scanner->filter_ctx,
                                  scanner->buff.buff + scanner->partial_row_length, bytes_read);
   if(VERY_LIKELY(bytes_read))
@@ -134,6 +136,51 @@ void zsv_abort(zsv_parser parser) {
 ZSV_EXPORT
 char zsv_row_is_blank(zsv_parser parser) {
   return zsv_internal_row_is_blank(parser);
+}
+
+static void zsv_pull_row(void *ctx) {
+  zsv_parser parser = ctx;
+  parser->pull.now = 1;
+  parser->pull.row_used = parser->row.used;
+}
+
+/**
+ * For pull parsing, use zsv_next_row(). Not quite as fast as push parsing, but pretty close
+ * @return zsv_status_row on success
+ */
+ZSV_EXPORT
+enum zsv_status zsv_next_row(zsv_parser parser) {
+  if(VERY_UNLIKELY(!parser->pull.regs)) {
+    if(parser->started)
+      return zsv_status_error; // error: already started a push parser
+    if(!(parser->pull.regs = calloc(1, sizeof(*parser->pull.regs))))
+      return zsv_status_memory;
+    parser->mode = ZSV_MODE_DELIM_PULL;
+    zsv_set_row_handler(parser, zsv_pull_row);
+    zsv_set_context(parser, parser);
+  }
+  if(VERY_LIKELY(parser->pull.stat == zsv_status_row))
+    parser->pull.stat = zsv_scan_delim_pull(parser, parser->pull.buff, parser->pull.bytes_read);
+  if(VERY_UNLIKELY(parser->pull.stat == zsv_status_ok)) {
+    do {
+      parser->pull.stat = zsv_parse_more(parser); // should return zsv_status_row or zsv_status_no_more_input
+    } while(parser->pull.stat == zsv_status_ok);
+    if(VERY_LIKELY(parser->pull.stat == zsv_status_row))
+      return parser->pull.stat;
+  }
+
+  if(VERY_UNLIKELY(parser->pull.stat == zsv_status_no_more_input)) {
+    parser->pull.now = 0;
+    zsv_finish(parser);
+
+    parser->pull.stat = zsv_status_done;
+    if(parser->pull.now) {
+      parser->pull.now = 0;
+      parser->row.used = parser->pull.row_used;
+      return zsv_status_row;
+    }
+  }
+  return parser->pull.stat;
 }
 
 // to do: rename to zsv_column_count(). rename all other zsv_hand to just zsv_
@@ -304,9 +351,10 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
       if(scanner->scanned_length > scanner->cell_start)
         cell_dl(scanner, scanner->buff.buff + scanner->cell_start,
                 scanner->scanned_length - scanner->cell_start);
-      if(scanner->have_cell)
+      if(scanner->have_cell) {
         if(row_dl(scanner))
           stat = zsv_status_cancelled;
+      }
     } else
       stat = zsv_status_cancelled;
 #ifdef ZSV_EXTRAS
@@ -326,6 +374,7 @@ enum zsv_status zsv_delete(zsv_parser parser) {
     free(parser->row.cells);
     free(parser->fixed.offsets);
     collate_header_destroy(&parser->collate_header);
+    free(parser->pull.regs);
     free(parser);
   }
   return zsv_status_ok;
@@ -344,6 +393,10 @@ const unsigned char *zsv_parse_status_desc(enum zsv_status status) {
     return (unsigned char *)"Invalid option";
   case zsv_status_memory:
     return (unsigned char *)"Out of memory";
+  case zsv_status_done:
+    return (unsigned char *)"No more rows to pull";
+  case zsv_status_row:
+    return (unsigned char *)"Row successfully pulled";
   case zsv_status_error:
     return (unsigned char *)"Unexpected error";
 #ifdef ZSV_EXTRAS

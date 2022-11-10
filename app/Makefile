@@ -104,7 +104,7 @@ ifeq ($(DEBUG),0)
     endif
   endif
 else
-  CFLAGS += -g
+  CFLAGS += ${CFLAGS_DEBUG}
 endif
 
 CCBN=$(shell basename ${CC})
@@ -149,7 +149,7 @@ endif
 
 ZSV=$(BINDIR)/zsv${EXE}
 
-SOURCES= echo count select 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm
+SOURCES= echo count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm
 CLI_SOURCES=echo select desc count 2tsv pretty sql flatten 2json serialize stack 2db prop rm
 
 ifneq ($(LDFLAGS_JQ),)
@@ -228,7 +228,7 @@ help:
 	@echo "which will build and test all apps, or to build/test a single app:"
 	@echo "  ${MAKE} test-xx"
 	@echo "where xx is any of:"
-	@echo "  echo count select 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm"
+	@echo "  echo count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm"
 	@echo ""
 
 install: ${ZSV}
@@ -324,7 +324,7 @@ ${CLI} ${STANDALONE_PFX}prop${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/json.
 # sql, 2db, 2json use sqlite3
 ${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}echo${EXE}: ${SQLITE_EXT}
 ${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}echo${EXE}: MORE_OBJECTS+=${SQLITE_EXT}
-${STANDALONE_PFX}sql${EXE} ${CLI_OBJ_PFX}sql.o ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${CLI_OBJ_PFX}echo.o: MORE_SOURCE+=${SQLITE_EXT_INCLUDE}
+${STANDALONE_PFX}sql${EXE} ${CLI_OBJ_PFX}sql.o ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}echo${EXE} ${CLI_OBJ_PFX}echo.o: MORE_SOURCE+=${SQLITE_EXT_INCLUDE}
 
 # 2json and desc use jsonwriter
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE}: ${JSONWRITER_OBJECT}

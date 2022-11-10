@@ -53,7 +53,7 @@ ifeq ($(ZSV_EXTRAS),1)
 endif
 
 ifeq ($(DEBUG),0)
-  CFLAGS+= -DNDEBUG -O3
+  CFLAGS+= -DNDEBUG -O3  ${CFLAGS_LTO}
   CFLAGS+= ${CFLAGS_OPENMP}
 
   ifeq ($(PGO),1)
@@ -66,7 +66,7 @@ ifeq ($(DEBUG),0)
     endif
   endif
 else
-  CFLAGS += -g -O0
+  CFLAGS += ${CFLAGS_DEBUG}
 endif
 
 ifeq ($(DEBUG),1)
@@ -123,8 +123,9 @@ all: lib
 ${LIBZSV}: ${ZSV_OBJ}
 	@mkdir -p `dirname "$@"`
 	@rm -f $@
-	@$(AR) rcv $@ $?
-	@$(RANLIB) $@
+	$(AR) rcv $@ $?
+	$(RANLIB) $@
+	$(AR) -t $@ # check it is there
 	@echo Built $@
 
 

@@ -59,5 +59,4 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
                                         const char *opts_used,
                                         zsv_parser *handle_out
                                         );
-
 #endif

@@ -80,7 +80,7 @@ ZSV_EXPORT enum zsv_status zsv_delete(zsv_parser);
 /******************************************************************************
  * minimal access functions:
  * - zsv_cell_count(): get the number of cells in the row
- * - zsv_get_cell(): retriev a cell value
+ * - zsv_get_cell(): retrieve a cell value
  ******************************************************************************/
 
 /**
@@ -89,7 +89,7 @@ ZSV_EXPORT enum zsv_status zsv_delete(zsv_parser);
  * that the last row did not contain a single cell delimiter, returns 1
  *
  * @param parser
- * @returns number, >= 1, of cells in in the row that was just parsed
+ * @returns number, >= 1, of cells in the row that was just parsed
  */
 ZSV_EXPORT
 size_t zsv_cell_count(zsv_parser parser);
@@ -302,5 +302,18 @@ zsv_opts_new(
  * Destroy an option structure that was created by zsv_opts_new()
  */
 ZSV_EXPORT void zsv_opts_delete(struct zsv_opts *);
+
+/******************************************************************************
+ * Pull parsing functions
+ ******************************************************************************/
+
+/**
+ * To use pull parsing, do not use row or cell handlers, handler context
+ * or zsv_parse_more(). Instead, call zsv_next_row() until a non-ok result
+ * @param  parser parser handle
+ * @return zsv_status_ok on success, other status code on error
+ */
+ZSV_EXPORT
+enum zsv_status zsv_next_row(zsv_parser parser);
 
 #endif

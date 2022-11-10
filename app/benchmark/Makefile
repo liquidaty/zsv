@@ -4,6 +4,15 @@ CONFIGFILE ?= ../../config.mk
 $(info # Using config file ${CONFIGFILE})
 include ${CONFIGFILE}
 
+PULL=
+
+COUNT=count
+SELECT=select
+ifeq ($(PULL),1)
+  COUNT=count-pull
+  SELECT=select-pull
+endif
+
 CC ?= cc
 
 WIN=
@@ -32,13 +41,15 @@ QUICK=1
 
 help:
 	@echo "To run all tests (set QUICK to skip mlr and csvcut):"
-	@echo "    make all [QUICK=0]"
+	@echo "    make all [QUICK=0] [PULL=1]"
 	@echo "    make CLI"
 
 CLI: ZSVBIN="zsv "
 
 CLI:
 	make all QUICK=${QUICK} ZSVBIN=${ZSVBIN} -n | sed 's/[.]*\/.*\/bin\/zsv_/zsv /g' | sh
+
+
 
 all: count select tsv
 
@@ -49,14 +60,14 @@ worldcitiespop_mil.tsv: worldcitiespop_mil.csv
 	~/Downloads/tsv-utils-v2.2.1_osx-x86_64_ldc2/bin/csv2tsv < $< > $@
 
 count: worldcitiespop_mil.csv worldcitiespop_mil.tsv
-	@echo "${ZSVBIN}"count
+	@echo "${ZSVBIN}"${COUNT}
 
 	@printf "zsv                  : "
-	@(time ${ZSVBIN}count < $< > /dev/null) 2>&1 | xargs
+	@(time ${ZSVBIN}${COUNT} < $< > /dev/null) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(time ${ZSVBIN}count < $< > /dev/null) 2>&1 | xargs
+	@(time ${ZSVBIN}${COUNT} < $< > /dev/null) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(time ${ZSVBIN}count < $< > /dev/null) 2>&1 | xargs
+	@(time ${ZSVBIN}${COUNT} < $< > /dev/null) 2>&1 | xargs
 	@echo ""
 
 	@printf "xsv                  : "
@@ -112,13 +123,13 @@ tsv: worldcitiespop_mil.csv
 
 
 select: worldcitiespop_mil.csv worldcitiespop_mil.tsv
-	@echo "${ZSVBIN}"select
+	@echo "${ZSVBIN}"${SELECT}
 	@printf "zsv                  : "
-	@(time ${ZSVBIN}select -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
+	@(time ${ZSVBIN}${SELECT} -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(time ${ZSVBIN}select -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
+	@(time ${ZSVBIN}${SELECT} -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(time ${ZSVBIN}select -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
+	@(time ${ZSVBIN}${SELECT} -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
 	@echo ""
 
 	@printf "xsv                  : "
