@@ -3,8 +3,7 @@
 #include <zsv.h>
 
 /**
- * Simple example using libzsv as a pull parser
- * to call a row handler after each row is parsed
+ * Simple example using libzsv as a pull parser for CSV input
  *
  * This is the same as simple.c, but uses pull parsing instead of push parsing
  *
@@ -17,41 +16,15 @@
  *   Row 1 has 2 columns of which 0 are non-blank
  *   Row 2 has 4 columns of which 3 are non-blank
  *
+ * With pull parsing, the parser just repeatedly calls zsv_next_row() so long
+ * as it returns `zsv_status_row`
  */
-
-/**
- * With pull parsing, the parser will not call our cell or row handlers
- * Instead, we use zsv_next_row() and then process the rows iteratively
- */
-
-void my_row_handler(zsv_parser p, size_t row_num) {
-  /* get a cell count */
-  size_t cell_count = zsv_cell_count(p);
-
-  /* iterate through each cell in this row, to count blanks */
-  size_t nonblank = 0;
-  for(size_t i = 0; i < cell_count; i++) {
-    struct zsv_cell c = zsv_get_cell(p, i);
-    /* use r.values[] and r.lengths[] to get cell data */
-    /* Here, we only care about lengths */
-    if(c.len > 0)
-      nonblank++;
-  }
-
-  /* print our results for this row */
-  printf("Row %zu has %zu columns of which %zu %s non-blank\n", row_num,
-         cell_count, nonblank, nonblank == 1 ? "is" : "are");
-}
 
 /**
  * Main routine. Our program will take a single argument (a file name, or -)
  * and output, for each row, the numbers of total and blank cells
  */
 int main(int argc, const char *argv[]) {
-
-  /**
-   * Process our arguments; output usage and/or errors if appropriate
-   */
   if(argc != 2) {
     fprintf(stderr, "Reads a CSV file or stdin, and for each row,\n"
             " output counts of total and blank cells\n");
@@ -75,13 +48,33 @@ int main(int argc, const char *argv[]) {
   zsv_parser parser = zsv_new(&opts);
   if(!parser) {
     fprintf(stderr, "Could not allocate parser!\n");
+    return -1;
   }
 
-  /* iterate through all rows */
+  /**
+   * iterate through all rows
+   */
   size_t row_num = 0;
-  while(zsv_next_row(parser) == zsv_status_row)
-    my_row_handler(parser, ++row_num);
+  while(zsv_next_row(parser) == zsv_status_row) {
+    row_num++;
 
+    /* get a cell count */
+    size_t cell_count = zsv_cell_count(parser);
+
+    /* iterate through each cell in this row, to count blanks */
+    size_t nonblank = 0;
+    for(size_t i = 0; i < cell_count; i++) {
+      struct zsv_cell c = zsv_get_cell(parser, i);
+      /* use r.values[] and r.lengths[] to get cell data */
+      /* Here, we only care about lengths */
+      if(c.len > 0)
+        nonblank++;
+    }
+
+    /* print our results for this row */
+    printf("Row %zu has %zu columns of which %zu %s non-blank\n", row_num,
+           cell_count, nonblank, nonblank == 1 ? "is" : "are");
+  }
   /**
    * Clean up
    */
