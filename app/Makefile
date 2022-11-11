@@ -83,11 +83,13 @@ ifeq ($(WIN),0)
       CFLAGS_EXE+= -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2 -s PTHREAD_POOL_SIZE=8
     endif
   endif
+  CONFIGURE_HOST=
 else
   BUILD_SUBDIR=win/${DBG_SUBDIR}
   EXE=.exe
   CFLAGS+= -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE
   CFLAGS+= -Wl,--strip-all
+  CONFIGURE_HOST=--host=x86_64-w64-mingw32
 endif
 
 CFLAGS+= -std=gnu11
@@ -149,14 +151,10 @@ endif
 
 ZSV=$(BINDIR)/zsv${EXE}
 
-SOURCES= echo count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm
-CLI_SOURCES=echo select desc count 2tsv pretty sql flatten 2json serialize stack 2db prop rm
+SOURCES= echo count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm jq
+CLI_SOURCES=echo select desc count 2tsv pretty sql flatten 2json serialize stack 2db prop rm jq
 
-ifneq ($(LDFLAGS_JQ),)
-  SOURCES+= jq
-  CLI_SOURCES+= jq
-  CFLAGS+= -DUSE_JQ
-endif
+CFLAGS+= -DUSE_JQ
 
 STATIC_LIB_FLAGS=
 ifneq ($(STATIC_LIBS),)
@@ -186,42 +184,56 @@ ifeq ($(VERBOSE),1)
   CFLAGS+= ${CFLAGS_VECTORIZE_OPTIMIZED} ${CFLAGS_VECTORIZE_MISSED} ${CFLAGS_VECTORIZE_ALL}
 endif
 
-INIH_SRC=external/inih
-INIH_INCLUDE=external/inih
-INIH_OBJECT=${BUILD_DIR}/external/inih/inih.o
+INIH_SRC=${THIS_MAKEFILE_DIR}/external/inih
+INIH_INCLUDE=${THIS_MAKEFILE_DIR}/external/inih
+INIH_OBJECT=${BUILD_DIR}-external/inih/inih.o
 CLI_INCLUDE+= -I${INIH_INCLUDE}
 
-YAJL_SRC=external/yajl/yajl.c
+YAJL_SRC=${THIS_MAKEFILE_DIR}/external/yajl/yajl.c
 YAJL_OBJ1=yajl yajl_alloc yajl_buf yajl_encode yajl_gen yajl_lex yajl_parser yajl_tree yajl_version
-YAJL_OBJ=$(addprefix ${BUILD_DIR}/external/yajl/,$(addsuffix .o,${YAJL_OBJ1}))
-YAJL_INCLUDE=-Iexternal/yajl/build/yajl-2.1.1/include
+YAJL_OBJ=$(addprefix ${BUILD_DIR}-external/yajl/,$(addsuffix .o,${YAJL_OBJ1}))
+YAJL_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/yajl/build/yajl-2.1.1/include
 
-YAJL_HELPER_OBJ=${BUILD_DIR}/external/yajl_helper/yajl_helper.o
-YAJL_HELPER_INCLUDE=-Iexternal/yajl_helper
+YAJL_HELPER_OBJ=${BUILD_DIR}-external/yajl_helper/yajl_helper.o
+YAJL_HELPER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/yajl_helper
 
-# everything uses prop, which in turn uses yajl and jq
-OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
-MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
-MORE_LIBS+=${LDFLAGS_JQ}
+# jq
+JQ_TARBALL=${THIS_MAKEFILE_DIR}/external/jq-1.6.tar.bz2
+JQ_SRC=${BUILD_DIR}/external/jq-src
+
+JQ_PREFIX=
+ifeq ($(JQ_PREFIX),)
+  JQ_PREFIX=${BUILD_DIR}-external/jq-build
+endif
+
+JQ_INCLUDE_DIR=${JQ_PREFIX}/include
+JQ_LIB=${JQ_PREFIX}/lib/libjq.a
 
 ## json writer
-JSONWRITER_SRC=external/json_writer-1.0
-JSONWRITER_INCLUDE=-Iexternal/json_writer-1.0
-JSONWRITER_OBJECT=${BUILD_DIR}/external/json_writer-1.0/jsonwriter.o
+JSONWRITER_SRC=${THIS_MAKEFILE_DIR}/external/json_writer-1.0
+JSONWRITER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/json_writer-1.0
+JSONWRITER_OBJECT=${BUILD_DIR}-external/json_writer-1.0/jsonwriter.o
 
 ## utf8proc
 UTF8PROC_SRC=${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1
-UTF8PROC_INCLUDE=external/utf8proc-2.6.1
-UTF8PROC_OBJECT=${BUILD_DIR}/external/utf8proc-2.6.1/utf8proc.o
+UTF8PROC_INCLUDE=${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1
+UTF8PROC_OBJECT=${BUILD_DIR}-external/utf8proc-2.6.1/utf8proc.o
 CFLAGS+= -I${UTF8PROC_INCLUDE} -DUTF8PROC -DUTF8PROC_STATIC
 
 # sqlite3
-SQLITE_EXT=${BUILD_DIR}/external/sqlite3/sqlite3_and_csv_vtab.o
 SQLITE_SRC=${THIS_MAKEFILE_DIR}/external/sqlite3/sqlite3*.c
-SQLITE_EXT_INCLUDE=-Iexternal/sqlite3
+SQLITE_EXT=${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o
+SQLITE_EXT_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/sqlite3
+
+# everything uses prop, which in turn uses yajl and jq
+OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ}
+MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -I${JQ_INCLUDE_DIR}
+MORE_LIBS+=${JQ_LIB} ${LDFLAGS_JQ}
 
 help:
-	@echo "To build: ${MAKE} [DEBUG=1] [clean] [BINDIR=${BINDIR}] <install|all|test>"
+	@echo "To build: ${MAKE} [DEBUG=1] [clean] [BINDIR=${BINDIR}] [JQ_PREFIX=/usr/local] <install|all|test>"
+	@echo
+	@echo "If JQ_PREFIX is not defined, libjq will be built in the build dir"
 	@echo
 	@echo "To build and test individual apps, run:"
 	@echo "  ${MAKE} test"
@@ -266,7 +278,7 @@ ${CLEANS}: clean-%:
 	rm -f ${STANDALONE_PFX}$*${EXE}
 	rm -f ${BUILD_DIR}/*/*$*.o
 
-.PHONY: all install cli build build-% clean clean-% test test-%
+.PHONY: all install cli build build-% clean clean-% test test-% lib-%
 
 .SECONDARY: ${OBJECTS}
 
@@ -274,7 +286,7 @@ ${CLEANS}: clean-%:
 .SUFFIXES:
 .SUFFIXES: .o .c .a
 
-${BUILD_DIR}/objs/utils/%.o : utils/%.c ${INCLUDE_DIR}/zsv/utils/%.h
+${BUILD_DIR}/objs/utils/%.o : utils/%.c ${INCLUDE_DIR}/zsv/utils/%.h ${JQ_INCLUDE_DIR}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/$*.c ${MORE_SOURCE}
 
@@ -290,10 +302,10 @@ ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INIH_INCLUDE} -DINI_HANDLER_LINENO=1 -DINI_CALL_HANDLER_ON_NEW_SECTION=1 -c $< -o $@
 
-${CLI_APP_OBJECT} : cli_ini.c builtin/*.c
+${CLI_APP_OBJECT} : cli_ini.c builtin/*.c ${JQ_INCLUDE_DIR}
 ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8proc.c # ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} -Iexternal/sglib -I${INCLUDE_DIR} -c $< -o $@ ${MORE_SOURCE}
+	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} -I${THIS_MAKEFILE_DIR}/external/sglib -I${INCLUDE_DIR} -c $< -o $@ ${MORE_SOURCE}
 
 ${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
@@ -310,12 +322,39 @@ cli_internal.c.in: cli_internal.h.in
 
 ${SQLITE_EXT}: ${SQLITE_SRC}
 
+${JQ_INCLUDE_DIR}: ${JQ_LIB}
+
+${JQ_SRC}: ${JQ_TARBALL}
+	@rm -rf $@-tmp
+	@mkdir -p $@-tmp
+	cd $@-tmp && tar xf ${JQ_TARBALL} \
+	&& cp -p ${THIS_MAKEFILE_DIR}/external/jq.diff ./ \
+	&& git apply jq.diff
+	mv $@-tmp/jq-1.6 $@
+	rm -rf $@-tmp
+
+
+lib-jq: ${JQ_LIB}
+	@echo "Using jq library ${JQ_LIB}"
+
+${JQ_LIB}: ${JQ_INCLUDE_DIR}
+	cd $< \
+	&& CC="${CC}" CFLAGS="${CFLAGS}" ./configure \
+	    --prefix="${JQ_PREFIX}" \
+	    --disable-maintainer-mode \
+	    --without-oniguruma \
+	    --disable-docs \
+	    --disable-shared \
+	    --enable-static \
+	    ${CONFIGURE_HOST} \
+	&& make install
+
 ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${JSONWRITER_INCLUDE} -DINCLUDE_UTILS $< -c -o $@
 
 # flatten stack desc use sglib
-${STANDALONE_PFX}flatten${EXE} ${STANDALONE_PFX}stack${EXE} ${STANDALONE_PFX}desc${EXE}: MORE_SOURCE+=-Iexternal/sglib
+${STANDALONE_PFX}flatten${EXE} ${STANDALONE_PFX}stack${EXE} ${STANDALONE_PFX}desc${EXE}: MORE_SOURCE+=-I${THIS_MAKEFILE_DIR}/external/sglib
 
 # prop uses utils/json
 ${CLI} ${STANDALONE_PFX}prop${EXE}: ${BUILD_DIR}/objs/utils/json.o
@@ -345,11 +384,11 @@ ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${LIBDIR} ${LIBZSV_L} ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
 
-${BUILD_DIR}/external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}/external/%.o : external/%.c
+${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}-external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ -c $<
 
-${YAJL_OBJ}: ${BUILD_DIR}/external/yajl/%.o : external/yajl/src/%.c
+${YAJL_OBJ}: ${BUILD_DIR}-external/yajl/%.o : external/yajl/src/%.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${YAJL_INCLUDE} -c external/yajl/src/$*.c -o $@
 
@@ -360,6 +399,14 @@ ${YAJL_HELPER_OBJ}: external/yajl_helper/yajl_helper.c
 test:
 	@${MAKE} -C test $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
+clean-all: clean clean-external clean-obj clean-lib
+
+clean-external:
+	@rm -rf ${JQ_SRC}
+
+clean-lib:
+	@rm -rf ${BUILD_DIR}-external
+
 clean: clean-obj
 	rm -rf ${BUILD_DIR}
 	make -C test clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
@@ -368,6 +415,6 @@ clean-obj:
 	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT}
 	rm -rf external/utf8proc-2.6.1
 
-${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: external/utf8proc-2.6.1.tar.gz
-	@cd external && tar xf ../$< && chown -R `whoami` utf8proc-2.6.1
+${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: ${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1.tar.gz
+	@cd external && tar xf $< && chown -R `whoami` utf8proc-2.6.1
 	@touch $@
