@@ -337,8 +337,8 @@ ${JQ_SRC}: ${JQ_TARBALL}
 lib-jq: ${JQ_LIB}
 	@echo "Using jq library ${JQ_LIB}"
 
-${JQ_LIB}: ${JQ_INCLUDE_DIR}
-	cd $< \
+${JQ_LIB}: ${JQ_SRC} ${JQ_INCLUDE_DIR}
+	cd ${JQ_SRC} \
 	&& CC="${CC}" CFLAGS="${CFLAGS}" ./configure \
 	    --prefix="${JQ_PREFIX}" \
 	    --disable-maintainer-mode \
