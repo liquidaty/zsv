@@ -65,7 +65,7 @@ all:
 	@${MAKE} -C app all CONFIGFILE=${CONFIGFILEPATH}
 
 clean:
-	@${MAKE} -C app clean CONFIGFILE=${CONFIGFILEPATH}
+	@${MAKE} -C app clean-all CONFIGFILE=${CONFIGFILEPATH}
 	@${MAKE} -C src clean CONFIGFILE=${CONFIGFILEPATH}
 	@rm -rf ${THIS_MAKEFILE_DIR}/build
 

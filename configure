@@ -35,7 +35,6 @@ Optional features:
   --enable-pie            build with position independent executables [auto]
   --enable-pic            build with position independent shared libraries [auto]
   --enable-termcap        build with ncurses / termcap (used by \`pretty\` to get console width) [auto]
-  --enable-jq             build with jq (requires installed jq lib) [auto]
 
 Some influential environment variables:
   CC                      C compiler command [detected]
@@ -296,7 +295,6 @@ help=yes
 usepie=auto
 usepic=auto
 usetermcap=auto
-usejq=auto
 
 for arg ; do
     case "$arg" in
@@ -334,9 +332,7 @@ for arg ; do
         --enable-termcap|--enable-termcap=yes) usetermcap=yes ;;
         --enable-termcap=auto) usetermcap=auto ;;
         --disable-termcap|--enable-termcap=no) usetermcap=no ;;
-        --enable-jq|--enable-jq=yes) usejq=yes ;;
-        --enable-jq=auto) usejq=auto ;;
-        --disable-jq|--enable-jq=no) usejq=no ;;
+
         --enable-pic=auto) usepic=auto ;;
         --disable-pic|--enable-pic=no) usepic=no ;;
         --enable-*|--disable-*|--with-*|--without-*|--*dir=*|--build=*) ;;
@@ -619,22 +615,20 @@ if [ "$usetermcap" = "yes" ] || [ "$usetermcap" = "auto" ] ; then
             fi
 fi
 
-if [ "$usejq" = "yes" ] || [ "$usejq" = "auto" ] ; then
-    tryldflag LDFLAGS_JQ -ljq -L${PREFIX}/lib || \
-        if test "$usejq" = "yes"; then
-            echo "Error: --enable-jq specified, but not found"
-            exit 1
-        fi
-    if ! [ "$LDFLAGS_JQ" = "" ] ; then
-        tryldflag LDFLAGS_JQ -lm
-        tryldflag LDFLAGS_JQ -lshlwapi
-	if [ "$MINGW" = "1" ]; then
-	    tryldflag LDFLAGS_TMP -pthread && STATIC_LIBS="$STATIC_LIBS -pthread"
-	else
-            tryldflag LDFLAGS_JQ -pthread
-	fi
-    fi
+# if [ "$usejq" = "yes" ] || [ "$usejq" = "auto" ] ; then
+#     tryldflag LDFLAGS_JQ -ljq -L${PREFIX}/lib || \
+#         if test "$usejq" = "yes"; then
+#             echo "Error: --enable-jq specified, but not found"
+#             exit 1
+#         fi
+tryldflag LDFLAGS_JQ -lm
+tryldflag LDFLAGS_JQ -lshlwapi
+if [ "$MINGW" = "1" ]; then
+    tryldflag LDFLAGS_TMP -pthread && STATIC_LIBS="$STATIC_LIBS -pthread"
+else
+    tryldflag LDFLAGS_JQ -pthread
 fi
+# fi
 
 tryccfn CFLAGS_AUTO "arc4random_uniform" "stdlib.h" || tryccfn CFLAGS_AUTO "rand_s" "stdlib.h" "" "#define _CRT_RAND_S"
 tryccfn1 CFLAGS_AUTO "__builtin_expect" "0,0"
@@ -721,11 +715,11 @@ echo ""
 echo "****************************************************************"
 echo "*  zsv configuration                                           *"
 echo "****************************************************************"
-if [ "$LDFLAGS_JQ" = "" ]; then
-    echo "*  - libjq (-ljq): no. \`jq\` command will be disabled           *"
-else
-    echo "*  - libjq: yes                                                *"
-fi
+# if [ "$LDFLAGS_JQ" = "" ]; then
+#     echo "*  - libjq (-ljq): no. \`jq\` command will be disabled           *"
+# else
+#     echo "*  - libjq: yes                                                *"
+# fi
 
 if [ "$LDFLAGS_TERMCAP" = "" ]; then
     echo "*  - termcap: no. \`pretty\` will use default width assumption   *"
