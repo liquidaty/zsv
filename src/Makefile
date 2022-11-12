@@ -111,8 +111,6 @@ ifeq ($(NO_UTF8_CHECK),1)
 endif
 
 
-# CFLAGS+= -Dfwrite=zsv_fwrite_clock -Dfflush=zsv_fflush_clock -Dfread=zsv_fread_clock
-
 help:
 	@echo "${MAKE} [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VERBOSE=1] [LIBDIR=${LIBDIR}] [INCLUDEDIR=${INCLUDEDIR}] [LIB_SUFFIX=]"
 

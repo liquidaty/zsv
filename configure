@@ -300,10 +300,16 @@ for arg ; do
     case "$arg" in
         --help|-h) usage ;;
         --host=*) host=${arg#*=} ;;
+
         --arch=*) ARCH=${arg#*=} ;;
         ARCH=*) ARCH=${arg#*=} ;;
+
         --config-file=*) CONFIGFILE=${arg#*=} ;;
         CONFIGFILE=*) CONFIGFILE=${arg#*=} ;;
+
+        --jq-prefix=*) JQ_PREFIX=${arg#*=} ;;
+        JQ_PREFIX=*) JQ_PREFIX=${arg#*=} ;;
+
         --prefix=*) ;; # already handled
         --exec-prefix=*) ;; # already handled EXEC_PREFIX=${arg#*=} ;;
         --docdir=*) DOCDIR=${arg#*=} ;;
@@ -410,8 +416,8 @@ CCSEARCHPATH=$(echo | ${CC} -E -Wp,-v - 2>&1 | ${AWK} '/ \//{print substr($0,2);
 # Check if it is clang, and the llvm tools instead
 compiler=$(${CC} -v 2>&1 | ${AWK} '/ +version +/{for(i=1;i<=NF;i++){if($i=="version"){printf("%s\n",(last=="LLVM")?"clang":last);exit 0;}last=$i;}}')
 if test "$compiler" = "clang"; then
-    arlist="$CC-llvm-ar $host-llvm-ar $CC-ar $host-ar llvm-ar `ls /usr/bin/llvm-ar*` ar"
-    ranliblist="$CC-llvm-ranlib $host-llvm-ranlib $CC-ranlib $host-ranlib llvm-ranlib `ls /usr/bin/llvm-ranlib*` ranlib"
+    arlist="$CC-llvm-ar $host-llvm-ar $CC-ar $host-ar llvm-ar `ls /usr/bin/llvm-ar* 2>/dev/null` ar"
+    ranliblist="$CC-llvm-ranlib $host-llvm-ranlib $CC-ranlib $host-ranlib llvm-ranlib `ls /usr/bin/llvm-ranlib* 2>/dev/null` ranlib"
 else
     arlist="$CC-ar $host-$compiler-ar $host-ar $compiler-ar ar"
     ranliblist="$CC-ranlib $host-$compiler-ranlib $host-ranlib $compiler-ranlib $compiler-ranlib ranlib"
@@ -504,14 +510,6 @@ test "$usepic" = "no" && tryflag CFLAGS_PIC -fno-pic
 test "$usepie" = "no" && tryldflag LDFLAGS_PIE -no-pie
 test "$usepic" = "no" && trysharedldflag LDFLAGS_PIC -fno-pic
 
-#if test $MINGW -eq 0 ; then
-#LDFLAGS_STD="-lc"
-#tryflag CFLAGS_AUTO -fstack-protector-all
-#case "$CFLAGS_AUTO" in
-#*-fstack-protector*) CFLAGS_AUTO="-D_FORTIFY_SOURCE=2"; ;;
-#esac
-#fi
-
 tryflag CFLAGS -pipe
 
 # Try flags to optimize speed
@@ -594,17 +592,6 @@ if [ "$TRY_AVX512" = "yes" ]; then
     fi
 fi
 
-#if [ "$HAVE_AVX256" != "1" ]; then
-#    tryccfn CFLAGS_AVX_256 "_mm256_movemask_epi8" "immintrin.h" && trycchdr CFLAGS_AVX_256 "immintrin.h" && ( tryccfn CFLAGS_AVX_256 "_blsr_u32" "immintrin.h" || tryccfn CFLAGS_AVX_256 "__blsr_u32" "immintrin.h" ) && HAVE_AVX256=1
-# fi
-
-#if [ "$HAVE_AVX256" = "1" ] && [ "$CFLAGS_AVX" != "-mavx2" ] ; then
-#    echo "AVX256 requested, but -mavx2 compiler flag not supported"
-#    exit 1
-#elif [ "$HAVE_AVX256" != "1" ]; then
-#   CFLAGS_AVX=
-#fi
-
 tryccfn CFLAGS_AUTO "memmem" "string.h"
 
 if [ "$usetermcap" = "yes" ] || [ "$usetermcap" = "auto" ] ; then
@@ -615,12 +602,16 @@ if [ "$usetermcap" = "yes" ] || [ "$usetermcap" = "auto" ] ; then
             fi
 fi
 
-# if [ "$usejq" = "yes" ] || [ "$usejq" = "auto" ] ; then
-#     tryldflag LDFLAGS_JQ -ljq -L${PREFIX}/lib || \
-#         if test "$usejq" = "yes"; then
-#             echo "Error: --enable-jq specified, but not found"
-#             exit 1
-#         fi
+if [ "$JQ_PREFIX" != "" ] && [ "$ARCH" = "native" ]; then
+    echo "checking --prefix-jq ${JQ_PREFIX}"
+    if ! tryldflag LDFLAGS_JQ -ljq -L${JQ_PREFIX}/lib ; then
+        echo "Error: Failed to compile with -ljq and -L${JQ_PREFIX}/lib"
+        exit 1
+    else
+        LDFLAGS_JQ="$LDFLAGS_JQ -L$JQ_PREFIX/lib"
+    fi
+fi
+
 tryldflag LDFLAGS_JQ -lm
 tryldflag LDFLAGS_JQ -lshlwapi
 if [ "$MINGW" = "1" ]; then
@@ -628,7 +619,6 @@ if [ "$MINGW" = "1" ]; then
 else
     tryldflag LDFLAGS_JQ -pthread
 fi
-# fi
 
 tryccfn CFLAGS_AUTO "arc4random_uniform" "stdlib.h" || tryccfn CFLAGS_AUTO "rand_s" "stdlib.h" "" "#define _CRT_RAND_S"
 tryccfn1 CFLAGS_AUTO "__builtin_expect" "0,0"
@@ -678,6 +668,7 @@ LDFLAGS_STD = $LDFLAGS_STD
 CFLAGS_OPT = $CFLAGS_OPT
 LDFLAGS_OPT = $LDFLAGS_OPT
 LDFLAGS_TERMCAP = $LDFLAGS_TERMCAP
+JQ_PREFIX = $JQ_PREFIX
 LDFLAGS_JQ = $LDFLAGS_JQ
 STATIC_LIBS = $STATIC_LIBS
 CFLAGS_AUTO = $CFLAGS_AUTO
@@ -715,16 +706,15 @@ echo ""
 echo "****************************************************************"
 echo "*  zsv configuration                                           *"
 echo "****************************************************************"
-# if [ "$LDFLAGS_JQ" = "" ]; then
-#     echo "*  - libjq (-ljq): no. \`jq\` command will be disabled           *"
-# else
-#     echo "*  - libjq: yes                                                *"
-# fi
+
+if [ "$JQ_PREFIX" != "" ]; then
+    echo "*  - jq-prefix: $JQ_PREFIX                                       *"
+fi
 
 if [ "$LDFLAGS_TERMCAP" = "" ]; then
     echo "*  - termcap: no. \`pretty\` will use default width assumption   *"
 else
-    echo "*  - termcap: yes                                              *"
+    echo "*  - termcap: yes                                                *"
 fi
 
 if [ "$HAVE_AVX512" = "1" ]; then
