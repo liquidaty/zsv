@@ -15,16 +15,7 @@
     zsv_internal_save_reg(mask_total_offset); \
     zsv_internal_save_reg(mask);              \
     zsv_internal_save_reg(mask_last_start);   \
-    memcpy(&scanner->pull.regs->delim.v, &v,  \
-           sizeof(v));                        \
   } while(0)
-
-/*
-    zsv_internal_save_reg(v.dl);              \
-    zsv_internal_save_reg(v.nl);              \
-    zsv_internal_save_reg(v.cr);              \
-    zsv_internal_save_reg(v.qt);              \
-*/
 
 #define zsv_internal_restore_reg(x) x = scanner->pull.regs->delim.x
 #define zsv_internal_restore_regs() do {         \
@@ -40,16 +31,11 @@
     zsv_internal_restore_reg(mask_total_offset); \
     zsv_internal_restore_reg(mask);              \
     zsv_internal_restore_reg(mask_last_start);   \
-    memcpy(&v, &scanner->pull.regs->delim.v,     \
-           sizeof(v));                           \
+    memset(&v.dl, scanner->opts.delimiter, sizeof(zsv_uc_vector));      \
+    memset(&v.nl, '\n', sizeof(zsv_uc_vector)); \
+    memset(&v.cr, '\r', sizeof(zsv_uc_vector)); \
+    memset(&v.qt, scanner->opts.no_quotes > 0 ? 0 : '"', sizeof(v.qt)); \
   } while(0)
-/*
-
-    zsv_internal_restore_reg(v.dl);              \
-    zsv_internal_restore_reg(v.nl);              \
-    zsv_internal_restore_reg(v.cr);              \
-    zsv_internal_restore_reg(v.qt);              \
-*/
 #endif
 
 static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,

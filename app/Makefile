@@ -115,7 +115,6 @@ THIS_LIB_BASE=$(shell cd .. && pwd)
 INCLUDE_DIR=${THIS_LIB_BASE}/include
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq
-# LDFLAGS=
 
 ZSV_EXTRAS ?=
 ifneq ($(WIN),0)
@@ -201,13 +200,16 @@ YAJL_HELPER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/yajl_helper
 JQ_TARBALL=${THIS_MAKEFILE_DIR}/external/jq-1.6.tar.bz2
 JQ_SRC=${BUILD_DIR}/external/jq-src
 
-JQ_PREFIX=
+JQ_PREFIX ?=
 ifeq ($(JQ_PREFIX),)
   JQ_PREFIX=${BUILD_DIR}-external/jq-build
+  JQ_INCLUDE_DIR=${JQ_PREFIX}/include
+  JQ_BUNDLE_LIB=${JQ_PREFIX}/lib/libjq.a
+  JQ_LIB=${JQ_BUNDLE_LIB}
+else
+  JQ_INCLUDE_DIR=${JQ_PREFIX}/include
+  JQ_LIB=
 endif
-
-JQ_INCLUDE_DIR=${JQ_PREFIX}/include
-JQ_LIB=${JQ_PREFIX}/lib/libjq.a
 
 ## json writer
 JSONWRITER_SRC=${THIS_MAKEFILE_DIR}/external/json_writer-1.0
@@ -286,7 +288,7 @@ ${CLEANS}: clean-%:
 .SUFFIXES:
 .SUFFIXES: .o .c .a
 
-${BUILD_DIR}/objs/utils/%.o : utils/%.c ${INCLUDE_DIR}/zsv/utils/%.h ${JQ_INCLUDE_DIR}
+${BUILD_DIR}/objs/utils/%.o : utils/%.c ${INCLUDE_DIR}/zsv/utils/%.h ${JQ_LIB}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/$*.c ${MORE_SOURCE}
 
@@ -302,7 +304,7 @@ ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INIH_INCLUDE} -DINI_HANDLER_LINENO=1 -DINI_CALL_HANDLER_ON_NEW_SECTION=1 -c $< -o $@
 
-${CLI_APP_OBJECT} : cli_ini.c builtin/*.c ${JQ_INCLUDE_DIR}
+${CLI_APP_OBJECT} : cli_ini.c builtin/*.c ${JQ_LIB}
 ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8proc.c # ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} -I${THIS_MAKEFILE_DIR}/external/sglib -I${INCLUDE_DIR} -c $< -o $@ ${MORE_SOURCE}
@@ -312,8 +314,6 @@ ${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${C
 	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBDIR} ${LIBZSV_L} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
 	@echo Built $@
 
-# cli_internal: cli_internal.c.in cli_internal.h cli_internal.h.in
-
 cli_internal.h.in: ${THIS_MAKEFILE_DIR}/../include/zsv/ext/implementation_private.h
 	cat $< | perl -ne 'print if /ZSV_EXT_EXPORT/ .. /;/' | sed 's/ZSV_EXT_EXPORT *//g' | sed $$'s/ *;.*/;\\\n/' | sed 's/(/)(/' | sed 's/zsv_ext_\([a-z]*\))/(*\1)/' | grep -v '^$$' > $@
 
@@ -322,7 +322,7 @@ cli_internal.c.in: cli_internal.h.in
 
 ${SQLITE_EXT}: ${SQLITE_SRC}
 
-${JQ_INCLUDE_DIR}: ${JQ_LIB}
+# ${JQ_INCLUDE_DIR}: ${JQ_LIB}
 
 ${JQ_SRC}: ${JQ_TARBALL}
 	@rm -rf $@-tmp
@@ -337,12 +337,13 @@ ${JQ_SRC}: ${JQ_TARBALL}
 lib-jq: ${JQ_LIB}
 	@echo "Using jq library ${JQ_LIB}"
 
-${JQ_LIB}: ${JQ_SRC} ${JQ_INCLUDE_DIR}
+${JQ_BUNDLE_LIB}: ${JQ_SRC} # -D_REENTRANT needed for clang to not break
 	cd ${JQ_SRC} \
-	&& CC="${CC}" CFLAGS="${CFLAGS}" ./configure \
+	&& CC="${CC}" CFLAGS="${CFLAGS} -D_REENTRANT" ./configure \
 	    --prefix="${JQ_PREFIX}" \
 	    --disable-maintainer-mode \
 	    --without-oniguruma \
+	    --no-recursion \
 	    --disable-docs \
 	    --disable-shared \
 	    --enable-static \
