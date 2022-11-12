@@ -328,8 +328,8 @@ ${JQ_SRC}: ${JQ_TARBALL}
 	@rm -rf $@-tmp
 	@mkdir -p $@-tmp
 	cd $@-tmp && tar xf ${JQ_TARBALL} \
-	&& cp -p ${THIS_MAKEFILE_DIR}/external/jq.diff ./ \
-	&& git apply jq.diff || (echo "Failed! ls $@-tmp/* output: " && ls $@-tmp/* && exit 1)
+#	&& cp -p ${THIS_MAKEFILE_DIR}/external/jq.diff ./ \
+#	&& git apply jq.diff || (echo "Failed! ls $@-tmp/* output: " && ls $@-tmp/* && exit 1)
 	mv $@-tmp/jq-1.6 $@
 	rm -rf $@-tmp
 
