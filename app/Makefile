@@ -347,7 +347,7 @@ ${JQ_LIB}: ${JQ_SRC} ${JQ_INCLUDE_DIR}
 	    --disable-shared \
 	    --enable-static \
 	    ${CONFIGURE_HOST} \
-	&& make install
+	&& ${MAKE} install
 
 ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 	@mkdir -p `dirname "$@"`
@@ -409,7 +409,7 @@ clean-lib:
 
 clean: clean-obj
 	rm -rf ${BUILD_DIR}
-	make -C test clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+	${MAKE} -C test clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 clean-obj:
 	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT}
