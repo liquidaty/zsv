@@ -388,6 +388,9 @@ static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
   vst1q_lane_u8((uint8_t*)&mask + 1, (uint8x16_t)imask, 8);
   return mask;
 }
+# elif defined(__SSE2__)
+typedef char zsv_c_vector __attribute__ ((vector_size (VECTOR_BYTES)));
+#  define movemask_pseudo(x) __builtin_ia32_pmovmskb128((zsv_c_vector)x)
 # else
 static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
   // to do: see https://github.com/WebAssembly/simd/issues/131 for wasm

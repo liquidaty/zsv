@@ -16,6 +16,7 @@ Configuration:
 Optional configuration:
   --minimal=yes           do not include extra features (default=no)
   --arch=ARCH             use -march=ARCH. Set to 'none' for none, else defaults to 'native'
+  --jq-prefix=JQ_PREFIX   specify directory containing lib/libjq and include/jq.h
 
 Installation directories:
   --prefix=PREFIX         main installation prefix [\$PREFIX or /usr/local]
@@ -44,6 +45,8 @@ Some influential environment variables:
   RANLIB                  ranlib archive indexer command [detected]
   CFLAGS                  C compiler flags [-Os -pipe ...]
   LDFLAGS                 Linker flags
+
+  CROSS_COMPILING=no      Set to yes to disable auto-detect compilation flags
 
 Use these variables to override the choices made by configure.
 
@@ -244,7 +247,7 @@ trysharedldflag () {
 }
 
 # Beginning of actual script
-
+CROSS_COMPILING=no
 CFLAGS_AUTO=
 CFLAGS_TRY=
 LDFLAGS_AUTO=
@@ -254,7 +257,7 @@ if [ "$CONFIGFILE" = "" ]; then
     CONFIGFILE=config.mk
 fi
 
-if [ "$ARCH" = "" ]; then
+if [ "$ARCH" = "" ] && [ "$CROSS_COMPILING" = "no" ]; then
     ARCH=native
 fi
 
@@ -290,6 +293,8 @@ MINIMAL=no
 
 TRY_LTO=no
 TRY_WHOLE_PROGRAM=auto
+FORCE_AVX2=auto
+FORCE_AVX=auto
 
 help=yes
 usepie=auto
@@ -517,18 +522,27 @@ tryflag CFLAGS -ffunction-sections
 tryflag CFLAGS -fdata-sections
 
 CFLAGS_AVX=
+HAVE_AVX=
 if [ "$FORCE_AVX2" = "yes" ] ; then
     CFLAGS_AVX=-mavx2
     trycpusupport avx2 || echo "warning: avx2 forced but not supported on native CPU"
-elif [ "$FORCE_AVX2" != "no" ] ; then
+elif [ "$FORCE_AVX2" = "auto" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     trycpusupport avx2 && CFLAGS_AVX=-mavx2
 fi
 
 if [ "$FORCE_AVX" = "yes" ] ; then
     CFLAGS_AVX=-mavx || echo "warning: avx forced but not supported on native CPU"
-elif [ "$FORCE_AVX" != "no" ] && [ "$CFLAGS_AVX" = "" ] ; then
+elif [ "$FORCE_AVX" = "auto" ] && [ "$CFLAGS_AVX" = "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     trycpusupport avx && CFLAGS_AVX=-mavx
 fi
+
+if [ "$CFLAGS_AVX" = "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
+    trycpusupport sse2 && tryflag CFLAGS -msse2
+fi
+
+# __builtin_ia32_pmovmskb128
+##
+
 
 HAVE_LTO=0
 if [ "$TRY_LTO" = "yes" ]; then
@@ -557,7 +571,10 @@ tryflag CFLAGS_OPT -fvisibility=hidden
 tryldflag LDFLAGS_AUTO -Wl,--gc-sections
 
 if [ "$ARCH" != "none" ] ; then
-    tryldflag LDFLAGS_OPT -march=$ARCH
+    if ! tryflag CFLAGS -march=$ARCH ; then
+        echo "Flag -march=$ARCH failed!"
+        exit 1
+    fi
 fi
 tryldflag LDFLAGS_OPT -ldl
 
@@ -602,7 +619,7 @@ if [ "$usetermcap" = "yes" ] || [ "$usetermcap" = "auto" ] ; then
             fi
 fi
 
-if [ "$JQ_PREFIX" != "" ] && [ "$ARCH" = "native" ]; then
+if [ "$JQ_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     echo "checking --prefix-jq ${JQ_PREFIX}"
     if ! tryldflag LDFLAGS_JQ -ljq -L${JQ_PREFIX}/lib ; then
         echo "Error: Failed to compile with -ljq and -L${JQ_PREFIX}/lib"

@@ -75,7 +75,7 @@ that implements the expected
   [app/benchmark/README.md](app/benchmark/README.md)
 * Low memory usage (regardless of how big your data is) and size footprint for
   both lib (~20k) and CLI executable (< 1MB)
-* Easy to use as a library in a few lines of code
+* Easy to use as a library in a few lines of code, via either pull or push parsing
 * Includes the `zsv` CLI with the following built-in commands:
   * `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
     `2db`, `stack`, `pretty`, `2tsv`, `jq`, `prop`, `rm`
@@ -156,10 +156,6 @@ choco.exe install zsv -source .\zsv-amd64-windows-mingw.nupkg
 # Uninstall
 choco.exe uninstall zsv
 ```
-
-**NOTE**: Windows build has a runtime dependency on `libwinpthread-1.dll`.
-Please download it from here (https://wikidll.com/mingw-w64/libwinpthread-1-dll)
-according to your Windows version and place it with `zsv` executable.
 
 #### Node
 
@@ -256,7 +252,7 @@ zsv sql my_population_data.csv "select * from data where population > 100000"
 
 ### Using the API
 
-Basic examples of using the API are in [examples/lib/README.md](examples/lib/README.md).
+Full application code examples can be found at [examples/lib/README.md](examples/lib/README.md).
 
 An example of using the API, compiled to wasm and called via Javascript,
 is in [examples/js/README.md](examples/js/README.md).
