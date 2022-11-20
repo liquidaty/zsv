@@ -227,9 +227,10 @@ static int collate_header_append(struct zsv_scanner *scanner, struct collate_hea
     // move prior cell value
     size_t old_cell_len = ch->lengths[i-1]; // old_cell_len includes delim
     if(old_cell_len) {
-      memcpy(new_row + new_row_end - old_cell_len,
-             new_row + old_row_end - old_cell_len,
-             old_cell_len);
+      // need memmove, not memcpy
+      memmove(new_row + new_row_end - old_cell_len,
+              new_row + old_row_end - old_cell_len,
+              old_cell_len);
       old_row_end -= old_cell_len;
       new_row_end -= old_cell_len;
     }
