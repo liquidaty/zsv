@@ -57,8 +57,12 @@ zsvParser.runOnLoad(function() {
   let ctx = createContext();
 
   /* read stdin if we have no arguments, else the first argument */
-  const readFile = process.argv.length < 3 ? process.stdin : fs.createReadStream(process.argv[2]);
+  const readFile = process.argv.length < 3 || !process.argv[2] ? process.stdin : fs.createReadStream(process.argv[2]);
+
+  let outputIndexes;
+  if(process.argv.length > 3 && process.argv[3])
+    outputIndexes = JSON.parse(process.argv[3]);
 
   /* initialize parser */
-  let parser = zsvParser.new(rowHandler, ctx, { async: readFile, end: finish });
+  let parser = zsvParser.new(rowHandler, ctx, { async: readFile, end: finish, outputIndexes: outputIndexes });
 });

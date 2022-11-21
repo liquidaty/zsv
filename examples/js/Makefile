@@ -41,7 +41,7 @@ INDEX=${BUILD_DIR}/index.html
 EMJS=${BUILD_DIR}/zsv.em.js
 WASM=${BUILD_DIR}/zsv.em.wasm
 
-CFLAGS+= ${CFLAGS_PIC} -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_RUNTIME_METHODS="['setValue','addFunction','removeFunction','writeArrayToMemory']" -s RESERVED_FUNCTION_POINTERS=4 -s EXPORTED_FUNCTIONS="['_free','_malloc']"
+CFLAGS+= ${CFLAGS_PIC} -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_RUNTIME_METHODS="['setValue','addFunction','removeFunction','writeArrayToMemory']" -s RESERVED_FUNCTION_POINTERS=4 -s EXPORTED_FUNCTIONS="['_free','_malloc']" -sASSERTIONS
 
 ifeq ($(DEBUG),1)
   CFLAGS += ${CFLAGS_DEBUG}
@@ -64,14 +64,14 @@ TEST_PASS=echo "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
 TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
 #####
 
-.PHONY: help all run clean prep node setup benchmark count_compare
+.PHONY: help all run clean prep node setup benchmark count_compare select_compare
 
 help:
 	@echo "make [build|run|node|test|clean]"
 	@echo "by default, minified code is generated, which requires running the below once:"
 	@echo "  make setup"
 	@echo "alternatively, to generate non-minified code, use NO_MINIFY=1:"
-	@echo "  make NO_MINIFY=1 [build|run|node|test]"
+	@echo "  make NO_MINIFY=1 [build|run|node|test|benchmark]"
 
 build: ${BROWSER_JS} ${STATIC}
 	@echo Built ${BROWSER_JS}
@@ -91,7 +91,7 @@ test: npm/test/select_all.js node
 	@mkdir -p build/test
 	@cp -p $< node/
 	@echo "Running test (example) program \`node node/select_all.js ../../data/test/desc.csv\`"
-	@(cd node && node select_all.js ../../../data/test/desc.csv > ../build/test/out.json 2> ../build/test/out.err1)
+	@(cd node && ${NODE} select_all.js ../../../data/test/desc.csv > ../build/test/out.json 2> ../build/test/out.err1)
 	@sed 's/[0-9.]*ms//g' < build/test/out.err1 > build/test/out.err
 	@cmp build/test/out.err npm/test/out.err
 	@cmp build/test/out.json npm/test/out.json && ${TEST_PASS} || ${TEST_FAIL}
@@ -121,6 +121,7 @@ ifeq ($(NO_MINIFY),1)
 	@mv $@.tmp.js $@
 else
 	@uglifyjs $@.tmp.js -c -m > $@
+	rm $@.tmp.js
 endif
 
 ### node package build
@@ -142,6 +143,7 @@ ifeq ($(NO_MINIFY),1)
 	@mv $@.tmp.js $@
 else
 	@uglifyjs $@.tmp.js -c -m > $@
+	rm $@.tmp.js
 endif
 
 setup:
@@ -152,7 +154,9 @@ node: ${NODE_WASM} ${NODE_INDEX} ${NODE_PKG_FILES}
 
 
 #### node benchmark
-BENCHMARK_INPUT=${THIS_MAKEFILE_DIR}/../../app/benchmark/worldcitiespop_mil-sc.csv
+BENCHMARK_INPUT=${THIS_MAKEFILE_DIR}/../../app/benchmark/worldcitiespop_mil.csv
+
+NODE=node --experimental-wasm-modules
 
 benchmark: node count_compare select_compare
 
@@ -161,41 +165,50 @@ count_compare:
 	@cd node && (npm list | grep csv-parser) && echo "csv-parser already installed" || npm install csv-parser
 
 	@echo "zsv count"
-	head -5000 ${BENCHMARK_INPUT} | node node/count.js 2>&1 | head -1
-	head -5000 ${BENCHMARK_INPUT} | node node/count.js 2>&1 | head -1
-	head -5000 ${BENCHMARK_INPUT} | node node/count.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/count.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/count.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/count.js 2>&1 | head -1
 
-	head -500000 ${BENCHMARK_INPUT} | node node/count.js 2>&1 | head -1
-	head -500000 ${BENCHMARK_INPUT} | node node/count.js 2>&1 | head -1
-	head -500000 ${BENCHMARK_INPUT} | node node/count.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/count.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/count.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/count.js 2>&1 | head -1
 
 
 	@echo "csv-parser count"
-	head -5000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
-	head -5000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
-	head -5000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/count-csv-parser.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/count-csv-parser.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/count-csv-parser.js 2>&1 | head -1
 
-	head -500000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
-	head -500000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
-	head -500000 ${BENCHMARK_INPUT} | node node/count-csv-parser.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/count-csv-parser.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/count-csv-parser.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/count-csv-parser.js 2>&1 | head -1
 
 select_compare:
 	@cp -p npm/test/select_all*.js node/
 	@cd node && (npm list | grep csv-parser) && echo "csv-parser already installed" || npm install csv-parser
 
 	@echo "zsv select_all"
-	head -5000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
-	head -5000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
-	head -5000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/select_all.js '' '[0,2]' 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/select_all.js '' '[0,2]' 2>&1 | head -1
 
-	head -500000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
-	head -500000 ${BENCHMARK_INPUT} | node node/select_all.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/select_all.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/select_all.js 2>&1 | head -1
 
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all.js '' '[0,2]' 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all.js '' '[0,2]' 2>&1 | head -1
+
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all.js 2>&1 | head -1
 
 	@echo "csv-parser select_all"
-	head -5000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
-	head -5000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
-	head -5000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-csv-parser.js '' '[0,2]' 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-csv-parser.js '' '[0,2]' 2>&1 | head -1
 
-	head -500000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
-	head -500000 ${BENCHMARK_INPUT} | node node/select_all-csv-parser.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-csv-parser.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-csv-parser.js 2>&1 | head -1
+
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-csv-parser.js '' '[0,2]' 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-csv-parser.js '' '[0,2]' 2>&1 | head -1
+
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-csv-parser.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-csv-parser.js 2>&1 | head -1

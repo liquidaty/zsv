@@ -40,11 +40,16 @@ function finish(ctx) {
 
 
 let ctx = createContext();
+
+let opts = {};
+if(process.argv.length > 3 && process.argv[3])
+  opts.mapHeaders = ({ header, index }) => (index == 0 || index == 2 ? header : null);
+
 /* read stdin if we have no arguments, else the first argument */
-const readStream = process.argv.length < 3 ? process.stdin : fs.createReadStream(process.argv[2])
+const readStream = process.argv.length < 3 || !process.argv[2] ? process.stdin : fs.createReadStream(process.argv[2])
 readStream.on('error', (error) => console.log(error.message));
 readStream
-  .pipe(csv())
+  .pipe(csv(opts))
   .on('data', (row) => {
     ctx.rowcount++;
     ctx.data.push(row);
