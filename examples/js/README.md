@@ -50,12 +50,12 @@ is being passed between Javascript and the library (see e.g. https://hacks.mozil
 
 However, initial results are promising:
 
-* Running only "count", zsv-lib is ~90%+ faster than, for example, the `csv-parser` library
+* Running only "count", zsv-lib is ~90%+ faster than `csv-parser` and `papaparse`
 * The more cell data that is fetched, the more this advantage diminishes due to the aforementioned Javascript/wasm memory overhead.
-  Our benchmarking suggests that if the entire row's data is fetched, performance is about on par with the csv-parser library,
-  and if only a portion is fetched, performance is roughly proportional to the difference between count (~90% faster) and the
-  amount of total data fetched i.e. if about one-third of the row data is fetched, performance will likely be around
-  90 * (1 - 1/3) = 60% faster than csv-parser
+  Our benchmarking suggests that if the entire row's data is fetched, performance is about on par with both csv-parser and papaparse.
+  If only a portion is fetched, performance is about the same for papaparse, and faster than csv-parser (how much faster
+  being roughly proportional to the difference between count (~90% faster) and the
+  amount of total data fetched)
 
 ## All the build commands
 

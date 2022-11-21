@@ -162,7 +162,7 @@ benchmark: node count_compare select_compare
 
 count_compare:
 	@cp -p npm/test/count*.js node/
-	@cd node && (npm list | grep csv-parser) && echo "csv-parser already installed" || npm install csv-parser
+	@cd node && (npm list | grep csv-parser) && echo "csv-parser already installed" || npm install csv-parser papaparse
 
 	@echo "zsv count"
 	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/count.js 2>&1 | head -1
@@ -183,9 +183,18 @@ count_compare:
 	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/count-csv-parser.js 2>&1 | head -1
 	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/count-csv-parser.js 2>&1 | head -1
 
+	@echo "papaparse count"
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/count-papaparse.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/count-papaparse.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/count-papaparse.js 2>&1 | head -1
+
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/count-papaparse.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/count-papaparse.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/count-papaparse.js 2>&1 | head -1
+
 select_compare:
 	@cp -p npm/test/select_all*.js node/
-	@cd node && (npm list | grep csv-parser) && echo "csv-parser already installed" || npm install csv-parser
+	@cd node && (npm list | grep csv-parser) && echo "csv-parser already installed" || npm install csv-parser papaparse
 
 	@echo "zsv select_all"
 	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/select_all.js '' '[0,2]' 2>&1 | head -1
@@ -212,3 +221,16 @@ select_compare:
 
 	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-csv-parser.js 2>&1 | head -1
 	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-csv-parser.js 2>&1 | head -1
+
+	@echo "papaparse select_all"
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-papaparse.js '' '[0,2]' 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-papaparse.js '' '[0,2]' 2>&1 | head -1
+
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-papaparse.js 2>&1 | head -1
+	head -5000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-papaparse.js 2>&1 | head -1
+
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-papaparse.js '' '[0,2]' 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-papaparse.js '' '[0,2]' 2>&1 | head -1
+
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-papaparse.js 2>&1 | head -1
+	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/select_all-papaparse.js 2>&1 | head -1
