@@ -225,12 +225,22 @@ test-stack2: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${PREFIX} $< ${TEST_DATA_DIR}/stack2-[12].csv ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-2tsv test-sql test-serialize test-flatten test-pretty : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+test-2tsv test-sql test-flatten test-pretty : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 #	@if [ "$@" = "test-2tsv" ] ; then echo "TO DO: update 2tsv to output Excel format-- see data/Excel.tsv"; fi
+
+test-serialize : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+	@${TEST_INIT}
+	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
+	(${PREFIX} $< < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+	(${PREFIX} $< -p < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@-2.out && \
+	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
+
 
 test-sql: test-sql2 test-sql3 test-sql4
 test-sql2: ${BUILD_DIR}/bin/zsv_sql${EXE}
