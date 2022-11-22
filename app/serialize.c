@@ -53,8 +53,10 @@ struct serialize_data {
     size_t len;
     unsigned char case_insensitive:1;
     unsigned char entire:1;
-    unsigned dummy:6;
+    unsigned _:6;
   } filter;
+  unsigned char use_column_position:1;
+  unsigned char _:7;
 };
 
 struct output_header_name *get_output_header_name(struct serialize_data *data,
@@ -76,9 +78,14 @@ static void serialize_cell(void *hook, unsigned char *utf8_value, size_t len) {
     if(!h)
       asprintf(&data->err_msg, "Out of memory!");
     else {
-      if((h->str = malloc(1 + len))) {
-        memcpy(h->str, utf8_value, len);
-        h->str[len] = '\0';
+      // save the column header name
+      if(data->use_column_position)
+        asprintf((char **)&h->str, "%u", data->current_col_index);
+      else {
+        if((h->str = malloc(1 + len))) {
+          memcpy(h->str, utf8_value, len);
+          h->str[len] = '\0';
+        }
       }
       h->next = data->temp_header_names;
       data->temp_header_names = h;
@@ -166,11 +173,26 @@ static void serialize_row(void *hook) {
       for(struct serialize_header_name *hn = data->temp_header_names; hn; hn = hn->next, i++, j--) {
         if((data->header_names[j-1].str = hn->str)) {
           if((data->header_names[j-1].output_str =
-            zsv_writer_str_to_csv(hn->str, strlen((char *)hn->str))))
+              zsv_writer_str_to_csv(hn->str, strlen((char *)hn->str))))
             data->header_names[j-1].output_len =
               strlen((char *)data->header_names[j-1].output_str);
         }
         hn->str = NULL;
+      }
+    }
+
+    if(data->use_column_position) {
+      // process the header row as if it was a data row
+      data->current_col_index = 0;
+      for(unsigned int i = 0; i < data->col_count; i++) {
+        struct zsv_cell cell = zsv_get_cell(data->parser, i);
+        // write row ID
+        zsv_writer_cell_s(data->csv_writer, 1, (const unsigned char *)"Header", 0);
+        // write column name
+        zsv_writer_cell(data->csv_writer, 0, data->header_names[i].str,
+                        data->header_names[i].output_len, 0);
+        // write cell value
+        zsv_writer_cell(data->csv_writer, 0, cell.str, cell.len, cell.quoted);
       }
     }
   }
@@ -192,10 +214,13 @@ const char *serialize_usage_msg[] =
    "Serializes a CSV file",
    "",
    "Options:",
-   "  -b: output with BOM",
-   "  -f <value>, --filter <value>: only output cells with text that contains the given value",
-   "  -i, --case-insensitive: use case-insensitive match for the filter value",
-   "  -e, --entire: match the entire cell's content",
+   "  -b                    : output with BOM",
+   "  -f,--filter <value>   : only output cells with text that contains the given value",
+   "  -e,--entire           : match the entire cell's content (only applicable with -f)",
+   "  -i,--case-insensitive : use case-insensitive match for the filter value",
+   "  -p,--position         : output column position instead of name; the second column",
+   "                          will be position 1, and the first row will be treated as a",
+   "                          normal data row",
    NULL
   };
 
@@ -249,6 +274,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         }
       } else if(!strcmp(arg, "-i") || !strcmp(arg, "--case-insensitive"))
         data.filter.case_insensitive = 1;
+      else if(!strcmp(arg, "-p") || !strcmp(arg, "--position"))
+        data.use_column_position = 1;
       else if(!strcmp(arg, "-e") || !strcmp(arg, "--entire"))
         data.filter.entire = 1;
       else if(!strcmp(argv[arg_i], "-b"))
