@@ -121,29 +121,37 @@
     let row = [];
 
     // convert bytes to JS data
-    for(let i = 0; i < count; i++)
-      row.push(z.getCell(i));
+    if(z.outputIndexes) {
+      for(let i = 0; i < z.outputIndexes.length; i++)
+        row.push(z.getCell(z.outputIndexes[i]));
+    } else {
+      for(let i = 0; i < count; i++)
+        row.push(z.getCell(i));
+    }
     z.rowHandler(row, z.ctx, z);
   }
 
   function globalReadFunc(buff, n, m, ix) {
     let z = activeParsers[ix];
     let sz = n * m;
-    let jsbuff = new Uint8Array(Module.HEAP8.buffer, buff, sz);
+    if(sz != z.last_sz) {
+      z.jsbuff = new Uint8Array(Module.HEAP8.buffer, buff, sz);
+      z.sz = sz;
+    }
     let bytes;
     try {
-      bytes = fs.readSync(z.fd, jsbuff, 0, sz);
+      bytes = fs.readSync(z.fd, z.jsbuff, 0, sz);
     } catch(e) {
       if(e.code == 'EAGAIN') {
         for(let i = 0; i < 100; i++)
           try {
-            bytes = fs.readSync(z.fd, jsbuff, 0, sz);
+            bytes = fs.readSync(z.fd, z.jsbuff, 0, sz);
             break;
           } catch(e1) {
           }
       }
       if(!bytes) {
-        console.error('Use buffered async read to fix this!', e.toString());
+        console.error('EAGAIN error: for stdin on linux/mac, node does not support sync-- use async instead', e.toString());
         throw new Error(e)
       }
     }
@@ -163,14 +171,16 @@
 
   return {
     /**
-     * create a new parser
+     * create a push parser
      *
      * @param rowHandler callback with signature (row, ctx, parser)
      * @param ctx        a caller-defined value that will be passed to the row handler
      * @param options
-     *        - rowData  if false, row data will not be passed to the row handler
-     *        - async    readableStream handle
-     *        - end      function(ctx, parser) to attach to stream end event
+     *        - rowData       if false, row data will not be passed to the row handler
+     *        - sync          synchronous readableStream handle
+     *        - async         async readableStream handle
+     *        - end           function(ctx, parser) to attach to stream end event
+     *        - outputIndexes array of 0-based indexes to output
      */
     new: function(rowHandler, ctx, options) {
       let zsv = _zsv_new(null);
@@ -191,6 +201,7 @@
         z = {
           zsv: zsv,
           rowHandler: rowHandler,
+          outputIndexes: options.outputIndexes,
           cellCount: cellCount,
           getCell: getCell,
           buff: null,
@@ -281,6 +292,10 @@
         activeParser_count++;
         _zsv_set_row_handler(zsv, options.rowData === false ? globalRowHandlerNoDatap : globalRowHandlerWithDatap);
         _zsv_set_context(zsv, z.ix);
+
+        if(options.sync)
+          while(_zsv_parse_more(zsv) == 0) // _zsv_status_ok
+            ;
         return o;
       }
     },

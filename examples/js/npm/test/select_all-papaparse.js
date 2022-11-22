@@ -1,7 +1,7 @@
 const process= require('node:process');
 const { PerformanceObserver, performance } = require('node:perf_hooks');
 const fs = require('fs');
-const csv = require('csv-parser')
+const papa = require('papaparse');
 
 /**
  * Example using libzsv to parse CSV input and execute a custom row handler function as each row is parsed
@@ -42,21 +42,26 @@ function finish(ctx) {
 let ctx = createContext();
 
 let opts = {};
+
 if(process.argv.length > 3 && process.argv[3]) {
   let indexes = JSON.parse(process.argv[3]);
-  opts.mapHeaders = ({ header, index }) => (indexes.indexOf(index) > -1 ? header : null);
+  opts.step = function(results, parser) {
+    ctx.rowcount++;
+    ctx.data.push(indexes.map(ix => results.data[ix]));
+    return results;
+  };
+  opts.complete = function(results) {
+    finish(ctx);
+  }
+} else {
+  opts.complete = function(results) {
+    ctx.rowcount = results.data.length;
+    ctx.data = results.data;
+    finish(ctx);
+  }
 }
+
 
 /* read stdin if we have no arguments, else the first argument */
 const readStream = process.argv.length < 3 || !process.argv[2] ? process.stdin : fs.createReadStream(process.argv[2])
-readStream.on('error', (error) => console.log(error.message));
-readStream
-  .pipe(csv(opts))
-  .on('data', (row) => {
-    ctx.rowcount++;
-    ctx.data.push(row);
-  })
-  .on('end', () => {
-    finish(ctx);
-  });
-
+papa.parse(readStream, opts);

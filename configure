@@ -16,6 +16,7 @@ Configuration:
 Optional configuration:
   --minimal=yes           do not include extra features (default=no)
   --arch=ARCH             use -march=ARCH. Set to 'none' for none, else defaults to 'native'
+  --jq-prefix=JQ_PREFIX   specify directory containing lib/libjq and include/jq.h
 
 Installation directories:
   --prefix=PREFIX         main installation prefix [\$PREFIX or /usr/local]
@@ -30,6 +31,7 @@ Optional features:
   --try-avx512            use avx512 instructions, if available [no]
   --force-avx2            force compile with (no CPU check) or without -mavx2 [auto]
   --force-avx             force compile with (no CPU check) or without -mavx [auto]
+  --force-sse2            force compile with (no CPU check) or without -msse2 [auto]
   --enable-lto            compile with LTO (works with some but not all platforms/compilers) [no]
   --enable-whole-program  compile without -fwhole-program even if no -flto [yes]
   --enable-pie            build with position independent executables [auto]
@@ -44,6 +46,8 @@ Some influential environment variables:
   RANLIB                  ranlib archive indexer command [detected]
   CFLAGS                  C compiler flags [-Os -pipe ...]
   LDFLAGS                 Linker flags
+
+  CROSS_COMPILING=no      Set to yes to disable auto-detect compilation flags
 
 Use these variables to override the choices made by configure.
 
@@ -244,7 +248,7 @@ trysharedldflag () {
 }
 
 # Beginning of actual script
-
+CROSS_COMPILING=no
 CFLAGS_AUTO=
 CFLAGS_TRY=
 LDFLAGS_AUTO=
@@ -254,7 +258,7 @@ if [ "$CONFIGFILE" = "" ]; then
     CONFIGFILE=config.mk
 fi
 
-if [ "$ARCH" = "" ]; then
+if [ "$ARCH" = "" ] && [ "$CROSS_COMPILING" = "no" ]; then
     ARCH=native
 fi
 
@@ -290,6 +294,9 @@ MINIMAL=no
 
 TRY_LTO=no
 TRY_WHOLE_PROGRAM=auto
+FORCE_AVX2=auto
+FORCE_AVX=auto
+FORCE_SSE2=auto
 
 help=yes
 usepie=auto
@@ -322,6 +329,9 @@ for arg ; do
 
         --force-avx|--force-avx=yes) FORCE_AVX=yes;;
         --force-avx=no) FORCE_AVX=no;;
+
+        --force-sse2|--force-sse2=yes) FORCE_SSE2=yes;;
+        --force-sse2=no) FORCE_SSE2=no;;
 
         --enable-lto|--enable-lto=yes) TRY_LTO=yes;;
         --enable-lto|--enable-lto=auto) TRY_LTO=auto;;
@@ -517,17 +527,39 @@ tryflag CFLAGS -ffunction-sections
 tryflag CFLAGS -fdata-sections
 
 CFLAGS_AVX=
-if [ "$FORCE_AVX2" = "yes" ] ; then
+
+HAVE_AVX=
+if [ "$FORCE_AVX2" = "no" ]; then
+    tryflag CFLAGS -mno-avx2
+elif [ "$FORCE_AVX2" = "yes" ] ; then
     CFLAGS_AVX=-mavx2
-    trycpusupport avx2 || echo "warning: avx2 forced but not supported on native CPU"
-elif [ "$FORCE_AVX2" != "no" ] ; then
+    if [ "$CROSS_COMPILING" = "no" ] ; then
+        trycpusupport avx2 || echo "warning: avx2 forced but not supported on native CPU"
+    fi
+elif [ "$FORCE_AVX2" = "auto" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     trycpusupport avx2 && CFLAGS_AVX=-mavx2
 fi
 
 if [ "$FORCE_AVX" = "yes" ] ; then
     CFLAGS_AVX=-mavx || echo "warning: avx forced but not supported on native CPU"
-elif [ "$FORCE_AVX" != "no" ] && [ "$CFLAGS_AVX" = "" ] ; then
+elif [ "$FORCE_AVX" = "auto" ] && [ "$CFLAGS_AVX" = "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     trycpusupport avx && CFLAGS_AVX=-mavx
+fi
+if [ "$FORCE_AVX" = "no" ]; then
+    tryflag CFLAGS -mno-avx
+fi
+
+if [ "$FORCE_SSE2" = "no" ]; then
+    tryflag CFLAGS -mno-sse2
+elif [ "$FORCE_SSE2" = "yes" ] ; then
+    CFLAGS_SSE=-msse2
+    if [ "$CROSS_COMPILING" = "no" ] ; then
+        trycpusupport sse2 || echo "warning: sse2 forced but not supported on native CPU"
+    fi
+elif [ "$FORCE_SSE2" = "auto" ] && [ "$CROSS_COMPILING" = "no" ] ; then
+    if [ "$CFLAGS_SSE" = "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
+        trycpusupport sse2 && tryflag CFLAGS_SSE -msse2
+    fi
 fi
 
 HAVE_LTO=0
@@ -557,7 +589,10 @@ tryflag CFLAGS_OPT -fvisibility=hidden
 tryldflag LDFLAGS_AUTO -Wl,--gc-sections
 
 if [ "$ARCH" != "none" ] ; then
-    tryldflag LDFLAGS_OPT -march=$ARCH
+    if ! tryflag CFLAGS -march=$ARCH ; then
+        echo "Flag -march=$ARCH failed!"
+        exit 1
+    fi
 fi
 tryldflag LDFLAGS_OPT -ldl
 
@@ -602,7 +637,7 @@ if [ "$usetermcap" = "yes" ] || [ "$usetermcap" = "auto" ] ; then
             fi
 fi
 
-if [ "$JQ_PREFIX" != "" ] && [ "$ARCH" = "native" ]; then
+if [ "$JQ_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     echo "checking --prefix-jq ${JQ_PREFIX}"
     if ! tryldflag LDFLAGS_JQ -ljq -L${JQ_PREFIX}/lib ; then
         echo "Error: Failed to compile with -ljq and -L${JQ_PREFIX}/lib"
@@ -676,9 +711,11 @@ CFLAGS_LTO = $CFLAGS_LTO
 LDFLAGS_AUTO = $LDFLAGS_AUTO
 
 HAVE_AVX512=$HAVE_AVX512
-CFLAGS_AVX_512=$CFLAGS_AVX_512
 
+CFLAGS_AVX_512=$CFLAGS_AVX_512
 CFLAGS_AVX=$CFLAGS_AVX
+CFLAGS_SSE=$CFLAGS_SSE
+
 CFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g -Wall -Wextra -Wno-missing-field-initializers -Wno-unused-parameter # -g3 -ggdb
 LDFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g # -g3 -ggdb
 CFLAGS_PIC = $CFLAGS_PIC

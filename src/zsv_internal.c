@@ -372,7 +372,12 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
   only for each corresponding non-zero highest-bit value in the vector)
 */
 
-# if defined(__ARM_NEON) || defined(__ARM_NEON__)
+# ifdef __EMSCRIPTEN__
+
+#include <wasm_simd128.h>
+#define movemask_pseudo(x) wasm_i8x16_bitmask(x)
+
+# elif defined(__ARM_NEON) || defined(__ARM_NEON__)
 #  include <arm_neon.h>
 static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
   // see https://stackoverflow.com/questions/11870910/
@@ -389,17 +394,27 @@ static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
   vst1q_lane_u8((uint8_t*)&mask + 1, (uint8x16_t)imask, 8);
   return mask;
 }
+
+# elif defined(__SSE2__)
+
+typedef char zsv_c_vector __attribute__ ((vector_size (VECTOR_BYTES)));
+#  define movemask_pseudo(x) __builtin_ia32_pmovmskb128((zsv_c_vector)x)
+
 # else
+
+// slow path
+
 static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
-  // to do: see https://github.com/WebAssembly/simd/issues/131 for wasm
   zsv_mask_t mask = 0, tmp = 1;
   for(size_t i = 0; i < sizeof(zsv_uc_vector); i++) {
-    mask += (v[i] ? tmp : 0);
+    mask |= (v[i] ? tmp : 0);
     tmp <<= 1;
   }
+
   return mask;
 }
-# endif // __ARM_NEON
+
+# endif // __EMSCRIPTEN__
 #endif // ndef movemask_pseudo
 
 # include "vector_delim.c"

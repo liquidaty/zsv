@@ -44,17 +44,18 @@ this example does not require that libzsv is already installed
 
 ## Performance
 
-Running ZSV lib from Javascript is still experimental and is not yet fully optimized. Some performance challenges are
-unique to web assembly + Javascript, especially where a lot of string data
+Running ZSV lib from Javascript is still experimental and is not yet fully optimized.
+Some performance challenges rae particular to web assembly + Javascript, e.g. where a lot of string data
 is being passed between Javascript and the library (see e.g. https://hacks.mozilla.org/2019/08/webassembly-interface-types/).
 
-Furthermore, it is unlikely that zsv-lib can approach its full performance potential
-until emscripten (or gcc) [can provide a SIMD-powered movemask function](https://github.com/WebAssembly/simd/pull/201). Until then, libzsv in emscripten resorts to the "slow"
-movemask, which does have a significant impact.
+However, initial results are promising:
 
-Current testing suggests that on small files (under 1 MB), zsv-lib is 30-75% faster than, for example, the `csv-parser` library. However, on larger files,
-due to the aforementioned Javascript/wasm memory overhead and lack of
-SIMD movemask, it can be more than 50% slower than `csv-parser`.
+* Running only "count", zsv-lib is ~90%+ faster than `csv-parser` and `papaparse`
+* The more cell data that is fetched, the more this advantage diminishes due to the aforementioned Javascript/wasm memory overhead.
+  Our benchmarking suggests that if the entire row's data is fetched, performance is about on par with both csv-parser and papaparse.
+  If only a portion is fetched, performance is about the same for papaparse, and faster than csv-parser (how much faster
+  being roughly proportional to the difference between count (~90% faster) and the
+  amount of total data fetched)
 
 ## All the build commands
 
@@ -67,6 +68,11 @@ make clean
 ```
 
 Add MINIFY=1 to any of the above to generate minified code
+
+To run benchmark tests:
+```
+make benchmark
+```
 
 To see all make options:
 ```

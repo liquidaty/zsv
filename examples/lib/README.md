@@ -4,8 +4,6 @@
 
 This directory contains the following examples:
 
-
-
 | file     | description |
 | -- | -- |
 | [pull.c](pull.c) | Same as simple.c, but uses pull parsing via `zsv_pull_next_row()`|
