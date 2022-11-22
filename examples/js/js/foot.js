@@ -151,7 +151,7 @@
           }
       }
       if(!bytes) {
-        console.error('Use buffered async read to fix this!', e.toString());
+        console.error('EAGAIN error: for stdin on linux/mac, node does not support sync-- use async instead', e.toString());
         throw new Error(e)
       }
     }
