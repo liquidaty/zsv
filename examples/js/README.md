@@ -45,7 +45,7 @@ this example does not require that libzsv is already installed
 ## Performance
 
 Running ZSV lib from Javascript is still experimental and is not yet fully optimized.
-Some performance challenges rae particular to web assembly + Javascript, e.g. where a lot of string data
+Some performance challenges are particular to web assembly + Javascript, e.g. where a lot of string data
 is being passed between Javascript and the library (see e.g. https://hacks.mozilla.org/2019/08/webassembly-interface-types/).
 
 However, initial results are promising:
