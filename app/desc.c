@@ -329,6 +329,8 @@ static void zsv_desc_cell(void *ctx, unsigned char *restrict utf8_value, size_t 
   if(!data || data->err || data->done)
     return;
 
+  // trim the cell values, so we don't count e.g. " abc" as different from "abc"
+  utf8_value = (unsigned char *)zsv_strtrim(utf8_value, &len);
   if(data->row_count == 0) {
     if(data->current_column_ix < data->max_cols) {
       struct zsv_desc_column_name *e = calloc(1, sizeof(*e));
