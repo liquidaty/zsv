@@ -317,3 +317,14 @@ jobs:
           ${{ env.ARTIFACT_DIR }}/*.deb
           ${{ env.ARTIFACT_DIR }}/*.rpm
           ${{ env.ARTIFACT_DIR }}/*.nupkg
+
+    # --- Update homebrew tap ---
+
+    - name: Update homebrew tap (liquidaty/homebrew-zsv)
+      if: ${{ startsWith(github.ref, 'refs/tags/v') && runner.os == 'macOS' }}
+      env:
+        HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+        TAG: ${{ env.TAG }}
+        TRIPLET: ${{ env.AMD64_MACOSX_GCC }}
+      run: |
+        ./scripts/ci-update-homebrew-tap.sh
