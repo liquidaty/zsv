@@ -64,7 +64,7 @@ echo "$DIFF"
 echo "[INF] ---- git diff $HOMEBREW_TAP_FORMULA ENDS ----"
 
 git add "$HOMEBREW_TAP_FORMULA"
-git commit -m "Update liquidaty/homebrew-zsv tap."
+git commit -m "Automatic update of liquidaty/homebrew-zsv tap."
 git push origin main
 
 cd ..
