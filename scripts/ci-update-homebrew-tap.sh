@@ -40,21 +40,27 @@ echo "[INF] Setting up GitHub credentials"
 echo "$HOMEBREW_TAP_DEPLOY_KEY" > $HOMEBREW_TAP_DEPLOY_KEY_FILE
 chmod 400 $HOMEBREW_TAP_DEPLOY_KEY_FILE
 export GIT_SSH_COMMAND="ssh -i $PWD/$HOMEBREW_TAP_DEPLOY_KEY_FILE -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
-git config --global user.name "liquidaty/zsv CI"
-git config --global user.email "liquidaty/zsv-ci@localhost"
+git config --global user.name "zsv-ci"
+git config --global user.email "zsv-ci@localhost"
 
 rm -rf "$HOMEBREW_TAP_DIR"
 
 git clone "$HOMEBREW_TAP_REPO"
 cd "$HOMEBREW_TAP_DIR"
 
-# Update url and sha256
+echo "[INF] Replacing url and sha256 in formula [$HOMEBREW_TAP_FORMULA]"
 sed -i -e "s|url .*|url '$TAR_URL'|" $HOMEBREW_TAP_FORMULA
 sed -i -e "s|sha256 .*|sha256 '$SHA256'|" $HOMEBREW_TAP_FORMULA
 
-echo "[INF] --- $HOMEBREW_TAP_FORMULA STARTS ---"
-cat "$HOMEBREW_TAP_FORMULA"
-echo "[INF] ---- $HOMEBREW_TAP_FORMULA ENDS ----"
+DIFF=$(git diff "$HOMEBREW_TAP_FORMULA")
+if [ "$DIFF" = "" ]; then
+  echo "[INF] Homebrew tap formula is already updated!"
+  exit 0
+fi
+
+echo "[INF] --- git diff $HOMEBREW_TAP_FORMULA STARTS ---"
+echo "$DIFF"
+echo "[INF] ---- git diff $HOMEBREW_TAP_FORMULA ENDS ----"
 
 git add "$HOMEBREW_TAP_FORMULA"
 git commit -m "Update liquidaty/homebrew-zsv tap."
