@@ -55,6 +55,7 @@ sed -i -e "s|sha256 .*|sha256 '$SHA256'|" $HOMEBREW_TAP_FORMULA
 DIFF=$(git diff "$HOMEBREW_TAP_FORMULA")
 if [ "$DIFF" = "" ]; then
   echo "[INF] Homebrew tap formula is already updated!"
+  echo "[INF] ulr and sha256 fields are the same. Exiting!"
   exit 0
 fi
 

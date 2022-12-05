@@ -325,7 +325,7 @@ jobs:
       # if: ${{ startsWith(github.ref, 'refs/tags/v') && runner.os == 'macOS' }}
       env:
         HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-        TAG: 0.3.3-alpha
+        TAG: 0.2.1-alpha
         # TAG: ${{ env.TAG }}
         TRIPLET: ${{ env.AMD64_MACOSX_GCC }}
       run: |
