@@ -4,13 +4,13 @@ set -e
 
 echo "[INF] Running $0"
 
-if [ "$HOMEBREW_TAP_DEPLOY_KEY" = "" ] || [ "$TAG" = "" ]; then
+if [ "$HOMEBREW_TAP_DEPLOY_KEY" = "" ] || [ "$TAG" = "" ] || [ "$TRIPLET" = "" ]; then
   echo "[ERR] One or more environment variable(s) are not set!"
-  echo "[ERR] Set HOMEBREW_TAP_DEPLOY_KEY and TAG before running $0 script."
+  echo "[ERR] Set HOMEBREW_TAP_DEPLOY_KEY, TAG, and TRIPLET before running $0 script."
   exit 1
 fi
 
-TAR="zsv-$TAG-amd64-macosx-gcc.tar.gz"
+TAR="zsv-$TAG-$TRIPLET.tar.gz"
 TAR_URL="https://github.com/liquidaty/zsv/releases/download/v$TAG/$TAR"
 HOMEBREW_TAP_REPO="git@github.com:liquidaty/homebrew-zsv.git"
 HOMEBREW_TAP_DIR="homebrew-zsv"
@@ -51,6 +51,10 @@ cd "$HOMEBREW_TAP_DIR"
 # Update url and sha256
 sed -i -e "s|url .*|url '$TAR_URL'|" $HOMEBREW_TAP_FORMULA
 sed -i -e "s|sha256 .*|sha256 '$SHA256'|" $HOMEBREW_TAP_FORMULA
+
+echo "[INF] --- $HOMEBREW_TAP_FORMULA STARTS ---"
+cat "$HOMEBREW_TAP_FORMULA"
+echo "[INF] ---- $HOMEBREW_TAP_FORMULA ENDS ----"
 
 git add "$HOMEBREW_TAP_FORMULA"
 git commit -m "Update liquidaty/homebrew-zsv tap."
