@@ -48,14 +48,15 @@ rm -rf "$HOMEBREW_TAP_DIR"
 git clone "$HOMEBREW_TAP_REPO"
 cd "$HOMEBREW_TAP_DIR"
 
-echo "[INF] Replacing url and sha256 in formula [$HOMEBREW_TAP_FORMULA]"
+echo "[INF] Replacing 'url' and 'sha256' fields [$HOMEBREW_TAP_FORMULA]"
 sed -i -e "s|url .*|url '$TAR_URL'|" $HOMEBREW_TAP_FORMULA
 sed -i -e "s|sha256 .*|sha256 '$SHA256'|" $HOMEBREW_TAP_FORMULA
 
 DIFF=$(git diff "$HOMEBREW_TAP_FORMULA")
 if [ "$DIFF" = "" ]; then
-  echo "[INF] Homebrew tap formula is already updated!"
-  echo "[INF] ulr and sha256 fields are the same. Exiting!"
+  echo "[INF] 'url' and 'sha256' fields are the same."
+  echo "[INF] Homebrew tap formula is already updated."
+  echo "[INF] No changes required. Exiting!"
   exit 0
 fi
 
@@ -63,13 +64,14 @@ echo "[INF] --- git diff $HOMEBREW_TAP_FORMULA STARTS ---"
 echo "$DIFF"
 echo "[INF] ---- git diff $HOMEBREW_TAP_FORMULA ENDS ----"
 
+echo "[INF] Commiting and pushing changes"
 git add "$HOMEBREW_TAP_FORMULA"
-git commit -m "Automatic update of liquidaty/homebrew-zsv tap."
+git commit -m "Automatic bump version to v$TAG."
 git push origin main
 
 cd ..
 rm -rf "$HOMEBREW_TAP_DIR"
 
-echo "[INF] liquidaty/homebrew-zsv tap updated successfully!"
+echo "[INF] Homebrew tap updated successfully!"
 
 echo "[INF] --- [DONE] ---"
