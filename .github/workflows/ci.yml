@@ -24,7 +24,7 @@ jobs:
     runs-on: macos-10.15
 
     env:
-      TAG: "0.3.2-alpha"
+      TAG: "0.3.2"
       AMD64_LINUX_GCC: amd64-linux-gcc
       AMD64_LINUX_CLANG: amd64-linux-clang
       AMD64_WINDOWS_MINGW: amd64-windows-mingw
@@ -325,7 +325,8 @@ jobs:
       # if: ${{ startsWith(github.ref, 'refs/tags/v') && runner.os == 'macOS' }}
       env:
         HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-        TAG: ${{ env.TAG }}
+        TAG: 0.2.1-alpha
+        # TAG: ${{ env.TAG }}
         TRIPLET: ${{ env.AMD64_MACOSX_GCC }}
       run: |
         ./scripts/ci-update-homebrew-tap.sh
