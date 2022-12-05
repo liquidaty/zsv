@@ -18,7 +18,7 @@ jobs:
     name: ci
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-10.15, macos-12]
+        os: [ubuntu-20.04, macos-12]
 
     runs-on: ${{ matrix.os }}
 
@@ -72,16 +72,13 @@ jobs:
         CC: gcc
         MAKE: gmake
         RUN_TESTS: false
-      # uses: vmactions/freebsd-vm@v0.2.8
-      uses: vmactions/freebsd-vm@v0
+      uses: vmactions/freebsd-vm@v0   # https://github.com/vmactions/freebsd-vm
       with:
         mem: 2048
         release: 12.3
         envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
         usesh: true
         prepare: pkg install -y tree zip git autotools gmake lang/gcc
-        # copyback: false
-        # sync: sshfs
         run: |
           ./scripts/ci-build.sh
 
