@@ -24,7 +24,7 @@ jobs:
     runs-on: macos-10.15
 
     env:
-      TAG: "0.3.2"
+      TAG: "0.3.2-alpha"
       AMD64_LINUX_GCC: amd64-linux-gcc
       AMD64_LINUX_CLANG: amd64-linux-clang
       AMD64_WINDOWS_MINGW: amd64-windows-mingw
