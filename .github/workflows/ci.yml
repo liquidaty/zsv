@@ -16,12 +16,11 @@ on:
 jobs:
   ci:
     name: ci
-    # strategy:
-    #   matrix:
-    #     os: [ubuntu-20.04, macos-10.15, macos-12]
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-10.15, macos-12]
 
-    # runs-on: ${{ matrix.os }}
-    runs-on: macos-10.15
+    runs-on: ${{ matrix.os }}
 
     env:
       TAG: "0.3.2"
