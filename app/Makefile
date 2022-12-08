@@ -333,7 +333,6 @@ ${JQ_SRC}: ${JQ_TARBALL}
 	mv $@-tmp/jq-1.6 $@
 	rm -rf $@-tmp
 
-
 lib-jq: ${JQ_LIB}
 	@echo "Using jq library ${JQ_LIB}"
 

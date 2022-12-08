@@ -247,7 +247,10 @@ __attribute__((always_inline)) static inline void zsv_clear_cell(struct zsv_scan
 }
 
 // always_inline has a noticeable impact. do not remove without benchmarking!
-__attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner * scanner, unsigned char * s, size_t n) {
+#ifdef NDEBUG
+__attribute__((always_inline)) static inline
+#endif
+void cell_dl(struct zsv_scanner * scanner, unsigned char * s, size_t n) {
   // handle quoting
   if(UNLIKELY(scanner->quoted > 0)) {
     if(LIKELY(scanner->quote_close_position + 1 == n)) {
@@ -526,26 +529,23 @@ static void collate_header_row(void *ctx) {
   if(!scanner->opts.header_span) {
     // finished with header; combine all rows into a single row
     set_callbacks(scanner);
-//    if(VERY_LIKELY(scanner->opts.row_handler != NULL || scanner->opts.cell_handler != NULL
-//                   || scanner->mode == ZSV_MODE_DELIM_PULL)) {
-      if(scanner->collate_header) {
-        size_t offset = 0;
-        for(size_t i = 0; i < scanner->collate_header->column_count; i++) {
-          size_t len_plus1 = scanner->collate_header->lengths[i];
-          scanner->row.cells[i].str = scanner->collate_header->buff.buff + offset;
-          if(len_plus1) {
-            scanner->row.cells[i].len = len_plus1 - 1;
-            scanner->row.cells[i].quoted = 1;
-          } else
-            scanner->row.cells[i].len = 0;
-          offset += len_plus1;
-        }
+    if(scanner->collate_header) {
+      size_t offset = 0;
+      for(size_t i = 0; i < scanner->collate_header->column_count; i++) {
+        size_t len_plus1 = scanner->collate_header->lengths[i];
+        scanner->row.cells[i].str = scanner->collate_header->buff.buff + offset;
+        if(len_plus1) {
+          scanner->row.cells[i].len = len_plus1 - 1;
+          scanner->row.cells[i].quoted = 1;
+        } else
+          scanner->row.cells[i].len = 0;
+        offset += len_plus1;
       }
+    }
 
-      apply_callbacks(scanner);
-      if(scanner->mode != ZSV_MODE_DELIM_PULL)
-        collate_header_destroy(&scanner->collate_header);
-//    }
+    apply_callbacks(scanner);
+    if(scanner->mode != ZSV_MODE_DELIM_PULL)
+      collate_header_destroy(&scanner->collate_header);
   }
 }
 
@@ -580,7 +580,7 @@ static void zsv_throwaway_row(void *ctx) {
 
 static int zsv_scanner_init(struct zsv_scanner *scanner,
                               struct zsv_opts *opts) {
-  size_t need_buff_size = 0; // opts->buffsize
+  size_t need_buff_size = 0;
   if(opts->buffsize < opts->max_row_size * 2)
     need_buff_size = opts->max_row_size * 2;
   opts->delimiter = opts->delimiter ? opts->delimiter : ',';

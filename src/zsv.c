@@ -39,12 +39,10 @@ inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
   scanner->last = '\0';
   if(VERY_LIKELY(scanner->old_bytes_read)) {
     scanner->last = scanner->buff.buff[scanner->old_bytes_read-1];
+
     if(scanner->row_start < scanner->old_bytes_read) {
       size_t len = scanner->old_bytes_read - scanner->row_start;
-      if(len < scanner->row_start)
-        memcpy(scanner->buff.buff, scanner->buff.buff + scanner->row_start, len);
-      else
-        memmove(scanner->buff.buff, scanner->buff.buff + scanner->row_start, len);
+      memmove(scanner->buff.buff, scanner->buff.buff + scanner->row_start, len);
       scanner->partial_row_length = len;
     } else {
       scanner->cell_start = 0;
@@ -54,6 +52,7 @@ inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
     scanner->cell_start -= scanner->row_start;
     for(size_t i2 = 0; i2 < scanner->row.used; i2++)
       scanner->row.cells[i2].str -= scanner->row_start;
+
     scanner->row_start = 0;
     scanner->old_bytes_read = 0;
   }
@@ -61,6 +60,7 @@ inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
   scanner->cum_scanned_length += scanner->scanned_length;
 
   size_t capacity = scanner->buff.size - scanner->partial_row_length;
+
   if(VERY_UNLIKELY(capacity == 0)) { // our row size was too small to fit a single row of data
     fprintf(stderr, "Warning: row truncated\n");
     if(scanner->mode == ZSV_MODE_FIXED) {
@@ -78,7 +78,6 @@ inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
   }
   return capacity;
 }
-
 
 /**
  * Read the next chunk of data from our input stream and parse it, calling our
