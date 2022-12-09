@@ -247,10 +247,7 @@ __attribute__((always_inline)) static inline void zsv_clear_cell(struct zsv_scan
 }
 
 // always_inline has a noticeable impact. do not remove without benchmarking!
-#ifdef NDEBUG
-__attribute__((always_inline)) static inline
-#endif
-void cell_dl(struct zsv_scanner * scanner, unsigned char * s, size_t n) {
+__attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner * scanner, unsigned char * s, size_t n) {
   // handle quoting
   if(UNLIKELY(scanner->quoted > 0)) {
     if(LIKELY(scanner->quote_close_position + 1 == n)) {
