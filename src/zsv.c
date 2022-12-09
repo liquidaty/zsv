@@ -41,10 +41,7 @@ inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
     scanner->last = scanner->buff.buff[scanner->old_bytes_read-1];
     if(scanner->row_start < scanner->old_bytes_read) {
       size_t len = scanner->old_bytes_read - scanner->row_start;
-      if(len < scanner->row_start)
-        memcpy(scanner->buff.buff, scanner->buff.buff + scanner->row_start, len);
-      else
-        memmove(scanner->buff.buff, scanner->buff.buff + scanner->row_start, len);
+      memmove(scanner->buff.buff, scanner->buff.buff + scanner->row_start, len);
       scanner->partial_row_length = len;
     } else {
       scanner->cell_start = 0;
@@ -78,7 +75,6 @@ inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
   }
   return capacity;
 }
-
 
 /**
  * Read the next chunk of data from our input stream and parse it, calling our

@@ -72,7 +72,6 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
   skip_next_delim = 0;
   bytes_chunk_end = bytes_read >= sizeof(zsv_uc_vector) ? bytes_read - sizeof(zsv_uc_vector) + 1 : 0;
   delimiter = scanner->opts.delimiter;
-
   scanner->partial_row_length = 0;
 
   // to do: move into one-time execution code?
@@ -82,12 +81,15 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
   memset(&v.nl, '\n', sizeof(zsv_uc_vector)); // ascii code 10
   memset(&v.cr, '\r', sizeof(zsv_uc_vector)); // ascii code 13
   memset(&v.qt, scanner->opts.no_quotes > 0 ? 0 : '"', sizeof(v.qt));
-  // case "hel"|"o": check if we have an embedded dbl-quote past the initial opening quote, which was
-  // split between the last buffer and this one e.g. "hel""o" where the last buffer ended
-  // with "hel" and this one starts with "o"
-  if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED)
-     && i > scanner->cell_start + 1 // case "|hello": need the + 1 in case split after first char of quoted value e.g. "hello" => " and hello"
-     && scanner->last == quote) {
+
+  if(scanner->quoted & ZSV_PARSER_QUOTE_PENDING) {
+    // if we're here, then the last chunk we read ended with a lone quote char inside
+    // a quoted cell, and we are waiting to find out whether it is followed by
+    // another dbl-quote e.g. if the end of the last chunk is |, we had:
+    //   ...,"hel"|"o"
+    //   ...,"hel"|,...
+    //   ...,"hel"|p,...
+    scanner->quoted -= ZSV_PARSER_QUOTE_PENDING;
     if(buff[i] != quote) {
       scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
       scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
@@ -229,7 +231,8 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
             scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
             skip_next_delim = 1;
           }
-        }
+        } else // we are at the end of this input chunk
+          scanner->quoted |= ZSV_PARSER_QUOTE_PENDING;
       } else {
         // cell_length > 0 and cell did not start w quote, so
         // we have a quote in middle of an unquoted cell

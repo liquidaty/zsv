@@ -57,6 +57,7 @@ struct zsv_cell {
 #  define ZSV_PARSER_QUOTE_CLOSED   2 /* value was quoted */
 #  define ZSV_PARSER_QUOTE_NEEDED   4 /* value contains delimiter or dbl-quote */
 #  define ZSV_PARSER_QUOTE_EMBEDDED 8 /* value contains dbl-quote */
+#  define ZSV_PARSER_QUOTE_PENDING 16 /* only used internally by parser */
   /**
    * quoted flags enable additional efficiency, in particular when input data will
    * be output as text (csv, json etc), by indicating whether the cell contents may
