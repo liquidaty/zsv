@@ -76,8 +76,11 @@ test: test-eol
 
 test-eol: test-eol-1 test-eol-2 test-eol-3 test-eol-4
 
-test-eol-%: build/simple${EXE}
+test-eol-%: build/simple${EXE} build/pull${EXE}
 	@$< ${TEST_DATA_DIR}/test/no-eol-$*.csv > ${TMP_DIR}/$@.out
+	@cmp ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+	@build/pull${EXE} ${TEST_DATA_DIR}/test/no-eol-$*.csv > ${TMP_DIR}/$@.out
 	@cmp ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 simple print_my_column parse_by_chunk pull: % : ${BUILD_DIR}/%${EXE}
