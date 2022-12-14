@@ -262,6 +262,9 @@ enum zsv_writer_status zsv_writer_cell_s(zsv_csv_writer w, char new_row,
                            check_if_needs_quoting);
 }
 
+/*
+ * returns: newly allocated value (caller must free) or NULL
+ */
 unsigned char *zsv_writer_str_to_csv(const unsigned char *s, size_t len) {
   if(len) {
     unsigned char *csv_s = zsv_csv_quote(s, len, NULL, 0);
