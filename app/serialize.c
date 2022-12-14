@@ -52,8 +52,7 @@ struct serialize_data {
     unsigned _:6;
   } filter;
   unsigned char use_column_position:1;
-  unsigned char header_done:1;
-  unsigned char _:6;
+  unsigned char _:7;
 };
 
 static void serialize_write_tuple(struct serialize_data *data,
@@ -68,11 +67,8 @@ static void serialize_write_tuple(struct serialize_data *data,
   // to do: write additional column headers
   for(struct serialize_additional_column *col = data->additional_columns; col; col = col->next) {
     if(col->position_plus_1) {
-      if(VERY_LIKELY(data->header_done)) {
-        struct zsv_cell c = zsv_get_cell(data->parser, col->position_plus_1 - 1);
-        zsv_writer_cell(data->csv_writer, 0, c.str, c.len, c.quoted);
-      } else
-        zsv_writer_cell(data->csv_writer, 0, col->name, col->len, 1);
+      struct zsv_cell c = zsv_get_cell(data->parser, col->position_plus_1 - 1);
+      zsv_writer_cell(data->csv_writer, 0, c.str, c.len, c.quoted);
     }
   }
 }
@@ -139,7 +135,8 @@ static void serialize_header(void *hook) {
           c && !data->err_msg; c = c->next) {
         for(unsigned i = 0; i < data->col_count && !data->err_msg; i++) {
           struct zsv_cell tmp = zsv_get_cell(data->parser, i);
-          if(c->len == tmp.len && !memcmp(tmp.str, c->name, tmp.len)) {
+
+          if(!zsv_strincmp(tmp.str, tmp.len, c->name, c->len)) {
             // found
             c->position_plus_1 = i + 1;
             break;
@@ -179,7 +176,6 @@ static void serialize_header(void *hook) {
       serialize_write_tuple(data, firstCell.str, firstCell.len, firstCell.quoted,
                             (const unsigned char *)"Column", strlen("Column"),
                             (const unsigned char *)"Value", strlen("Value"), 0);
-      data->header_done = 1;
 
       if(data->use_column_position) {
         // process the header row as if it was a data row
@@ -230,7 +226,7 @@ const char *serialize_usage_msg[] =
    "                           will be position 1, and the first row will be treated as a",
    "                           normal data row",
    "  -a,--add <column name> : add additional columns to output. may be specified",
-   "                           multiple times",
+   "                           multiple times for multiple additional columns",
    NULL
   };
 
