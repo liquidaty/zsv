@@ -19,8 +19,15 @@
 #include <zsv/utils/string.h>
 
 struct output_header_name {
-  unsigned char *output_str;
-  size_t output_len;
+  unsigned char *str;
+  size_t len;
+};
+
+struct serialize_additional_column {
+  struct serialize_additional_column *next;
+  unsigned char *name;
+  size_t len;
+  size_t position_plus_1; // 0 = unassigned / not found
 };
 
 struct serialize_data {
@@ -33,6 +40,9 @@ struct serialize_data {
   unsigned int col_count;
 
   char *err_msg;
+
+  struct serialize_additional_column *additional_columns;
+  struct serialize_additional_column **additional_columns_next;
   struct {
     const char *value;
     unsigned char *value_lc; // only used if case_insensitive is set
@@ -42,19 +52,29 @@ struct serialize_data {
     unsigned _:6;
   } filter;
   unsigned char use_column_position:1;
-  unsigned char _:7;
+  unsigned char header_done:1;
+  unsigned char _:6;
 };
 
-static void write_tuple(struct serialize_data *data,
-                        const unsigned char *id, size_t id_len, char id_quoted,
-                        const unsigned char *colname, size_t colname_len,
-                        const unsigned char *s, size_t len, char quoted) {
+static void serialize_write_tuple(struct serialize_data *data,
+                                  const unsigned char *id, size_t id_len, char id_quoted,
+                                  const unsigned char *colname, size_t colname_len,
+                                  const unsigned char *s, size_t len, char quoted) {
   // write row ID, column name, cell value
   zsv_writer_cell(data->csv_writer, 1, id, id_len, id_quoted);
   zsv_writer_cell(data->csv_writer, 0, colname, colname_len, 0);
   zsv_writer_cell(data->csv_writer, 0, s, len, quoted);
 
   // to do: write additional column headers
+  for(struct serialize_additional_column *col = data->additional_columns; col; col = col->next) {
+    if(col->position_plus_1) {
+      if(VERY_LIKELY(data->header_done)) {
+        struct zsv_cell c = zsv_get_cell(data->parser, col->position_plus_1 - 1);
+        zsv_writer_cell(data->csv_writer, 0, c.str, c.len, c.quoted);
+      } else
+        zsv_writer_cell(data->csv_writer, 0, col->name, col->len, 1);
+    }
+  }
 }
 
 static inline void serialize_cell(struct serialize_data *data,
@@ -90,9 +110,9 @@ static inline void serialize_cell(struct serialize_data *data,
 
   if(!skip)
     // write tuple
-    write_tuple(data, id.str, id.len, id.quoted,
-                data->header_names[i].output_str, data->header_names[i].output_len,
-                cell.str, cell.len, cell.quoted);
+    serialize_write_tuple(data, id.str, id.len, id.quoted,
+                          data->header_names[i].str, data->header_names[i].len,
+                          cell.str, cell.len, cell.quoted);
 }
 
 static void serialize_row(void *hook);
@@ -113,47 +133,69 @@ static void serialize_header(void *hook) {
       firstCell.str = (unsigned char *)"(Blank)";
       firstCell.len = strlen((const char *)firstCell.str);
     }
-    write_tuple(data, firstCell.str, firstCell.len, firstCell.quoted,
-                (const unsigned char *)"Column", strlen("Column"),
-                (const unsigned char *)"Value", strlen("Value"), 0);
-    data->header_names = calloc(data->col_count, sizeof(*data->header_names));
-    if(!data->header_names)
-      asprintf(&data->err_msg, "Out of memory!");
+    // if we have additional columns, find them and output their header names
+    if(data->additional_columns) {
+      for(struct serialize_additional_column *c = data->additional_columns;
+          c && !data->err_msg; c = c->next) {
+        for(unsigned i = 0; i < data->col_count && !data->err_msg; i++) {
+          struct zsv_cell tmp = zsv_get_cell(data->parser, i);
+          if(c->len == tmp.len && !memcmp(tmp.str, c->name, tmp.len)) {
+            // found
+            c->position_plus_1 = i + 1;
+            break;
+          }
+        }
+        if(!c->position_plus_1)
+          asprintf(&data->err_msg, "Column '%s' not found\n", (char *)c->name);
+      }
+    }
+    if(!data->err_msg) {
+      data->header_names = calloc(data->col_count, sizeof(*data->header_names));
+      if(!data->header_names)
+        asprintf(&data->err_msg, "Out of memory!");
+    }
 
     for(unsigned i = 1; i < data->col_count && !data->err_msg; i++) {
       struct zsv_cell cell  = zsv_get_cell(data->parser, i);
       // save the column header name
       if(data->use_column_position)
-        asprintf((char **)&data->header_names[i].output_str, "%u", i);
+        asprintf((char **)&data->header_names[i].str, "%u", i);
       else {
         struct zsv_cell c = zsv_get_cell(data->parser, i);
         if(i == 0 && c.len == 0)
-          data->header_names[i].output_str = (unsigned char *)strdup("(Blank)");
+          data->header_names[i].str = (unsigned char *)strdup("(Blank)");
         else
-          data->header_names[i].output_str = zsv_writer_str_to_csv(cell.str, cell.len);
+          data->header_names[i].str = zsv_writer_str_to_csv(cell.str, cell.len);
       }
 
-      if(data->header_names[i].output_str)
-        data->header_names[i].output_len = strlen((const char *)data->header_names[i].output_str);
+      if(data->header_names[i].str)
+        data->header_names[i].len = strlen((const char *)data->header_names[i].str);
       else if(cell.len)
         asprintf(&data->err_msg, "Out of memory!");
     }
 
-    if(data->use_column_position) {
-      // process the header row as if it was a data row
+    if(!data->err_msg) {
+      // print the output table header
+      serialize_write_tuple(data, firstCell.str, firstCell.len, firstCell.quoted,
+                            (const unsigned char *)"Column", strlen("Column"),
+                            (const unsigned char *)"Value", strlen("Value"), 0);
+      data->header_done = 1;
 
-      // output ID cell
-      struct zsv_cell cell = zsv_get_cell(data->parser, 0);
-      write_tuple(data, (const unsigned char *)"Header", strlen("Header"), 0,
-                  (const unsigned char *)"0", 1,
-                  cell.str, cell.len, cell.quoted);
+      if(data->use_column_position) {
+        // process the header row as if it was a data row
+        // output ID cell
+        struct zsv_cell cell = zsv_get_cell(data->parser, 0);
+        serialize_write_tuple(data, (const unsigned char *)"Header", strlen("Header"), 0,
+                              (const unsigned char *)"0", 1,
+                              cell.str, cell.len, cell.quoted);
 
-      // output other cells
-      for(unsigned i = 1; i < data->col_count; i++) {
-        cell = zsv_get_cell(data->parser, i);
-        write_tuple(data, (const unsigned char *)"Header", strlen("Header"), 0,
-                    data->header_names[i].output_str, data->header_names[i].output_len,
-                    cell.str, cell.len, cell.quoted);
+        // output other cells
+        for(unsigned i = 1; i < data->col_count; i++) {
+          cell = zsv_get_cell(data->parser, i);
+          serialize_write_tuple(data, (const unsigned char *)"Header", strlen("Header"), 0,
+                                data->header_names[i].str, data->header_names[i].len,
+                                cell.str, cell.len, cell.quoted);
+        }
       }
     }
   }
@@ -180,13 +222,15 @@ const char *serialize_usage_msg[] =
    "Serializes a CSV file",
    "",
    "Options:",
-   "  -b                    : output with BOM",
-   "  -f,--filter <value>   : only output cells with text that contains the given value",
-   "  -e,--entire           : match the entire cell's content (only applicable with -f)",
-   "  -i,--case-insensitive : use case-insensitive match for the filter value",
-   "  -p,--position         : output column position instead of name; the second column",
-   "                          will be position 1, and the first row will be treated as a",
-   "                          normal data row",
+   "  -b                     : output with BOM",
+   "  -f,--filter <value>    : only output cells with text that contains the given value",
+   "  -e,--entire            : match the entire cell's content (only applicable with -f)",
+   "  -i,--case-insensitive  : use case-insensitive match for the filter value",
+   "  -p,--position          : output column position instead of name; the second column",
+   "                           will be position 1, and the first row will be treated as a",
+   "                           normal data row",
+   "  -a,--add <column name> : add additional columns to output. may be specified",
+   "                           multiple times",
    NULL
   };
 
@@ -204,12 +248,35 @@ static void serialize_cleanup(struct serialize_data *data) {
 
   if(data->header_names) {
     for(unsigned int i = 0; i < data->col_count; i++)
-      free(data->header_names[i].output_str);
+      free(data->header_names[i].str);
     free(data->header_names);
   }
 
   if(data->in && data->in != stdin)
     fclose(data->in);
+
+  for(struct serialize_additional_column *next, *c = data->additional_columns; c; c = next) {
+    next = c->next;
+    free(c->name);
+    free(c);
+  }
+}
+
+static int serialize_append_additional_column(struct serialize_data *data, const char *name) {
+  struct serialize_additional_column *c = calloc(1, sizeof(*c));
+  if(c) {
+    if((c->name = (unsigned char *)strdup(name))) {
+      c->len = strlen((char *)c->name);
+      if(!data->additional_columns)
+        data->additional_columns = c;
+      else
+        *data->additional_columns_next = c;
+      data->additional_columns_next = &c->next;
+      return 0;
+    }
+    free(c);
+  }
+  return 1;
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
@@ -227,6 +294,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           data.filter.value = argv[++arg_i];
         else {
           fprintf(stderr, "filter option requires a value\n");
+          err = 1;
+        }
+      } else if(!strcmp(arg, "-a") || !strcmp(arg, "--add")) {
+        if(arg_i + 1 < argc)
+          err = serialize_append_additional_column(&data, argv[++arg_i]);
+        else {
+          fprintf(stderr, "%s option requires a value\n", argv[arg_i]);
           err = 1;
         }
       } else if(!strcmp(arg, "-i") || !strcmp(arg, "--case-insensitive"))
