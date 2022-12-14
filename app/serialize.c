@@ -18,13 +18,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/string.h>
 
-struct serialize_header_name {
-  struct serialize_header_name *next;
-  unsigned char *str;
-};
-
 struct output_header_name {
-  unsigned char *str;
   unsigned char *output_str;
   size_t output_len;
 };
@@ -35,16 +29,8 @@ struct serialize_data {
   zsv_csv_writer csv_writer;
   zsv_parser parser;
 
-  unsigned char *row_id;
-  char row_id_quoted;
-
-  unsigned int current_row_index;
-  unsigned int current_col_index;
-  struct serialize_header_name *temp_header_names;
-
   struct output_header_name *header_names;
   unsigned int col_count;
-  size_t output_row_count;
 
   char *err_msg;
   struct {
@@ -59,102 +45,118 @@ struct serialize_data {
   unsigned char _:7;
 };
 
-struct output_header_name *get_output_header_name(struct serialize_data *data,
-                                                  unsigned i) {
-  if(i < data->col_count && data->header_names)
-    return &data->header_names[i];
-  return NULL;
+static void write_tuple(struct serialize_data *data,
+                        const unsigned char *id, size_t id_len, char id_quoted,
+                        const unsigned char *colname, size_t colname_len,
+                        const unsigned char *s, size_t len, char quoted) {
+  // write row ID, column name, cell value
+  zsv_writer_cell(data->csv_writer, 1, id, id_len, id_quoted);
+  zsv_writer_cell(data->csv_writer, 0, colname, colname_len, 0);
+  zsv_writer_cell(data->csv_writer, 0, s, len, quoted);
+
+  // to do: write additional column headers
 }
 
-static void serialize_cell(void *hook, unsigned char *utf8_value, size_t len) {
+static inline void serialize_cell(struct serialize_data *data,
+                                  struct zsv_cell id, unsigned i) {
+  struct zsv_cell cell = zsv_get_cell(data->parser, i);
+  char skip = 0;
+  if(data->filter.value) {
+    if(data->filter.case_insensitive) {
+      if(data->filter.entire) {
+        int err = 0;
+        skip = zsv_strincmp(cell.str, cell.len, (const unsigned char *)data->filter.value, data->filter.len);
+        if(err) {
+          skip = 1;
+          fprintf(stderr, "Ignoring invalid utf8: %.*s\n", (int)cell.len, cell.str);
+        }
+      } else { // case-insensitive, not-entire-cell. skip if not contains
+        if(data->filter.value_lc) {
+          size_t len = cell.len;
+          unsigned char *tmp = zsv_strtolowercase(cell.str, &len);
+          if(tmp) {
+            skip = !zsv_strstr(tmp, data->filter.value_lc);
+            free(tmp);
+          }
+        }
+      }
+    } else {
+      if(data->filter.entire) // case-sensitive, exact / entire-cell. skip if not equal
+        skip = !(cell.len == data->filter.len && !memcmp(cell.str, data->filter.value, cell.len));
+      else // case-sensitive, not-entire-cell. skip if not contains
+        skip = !memmem(cell.str, cell.len, data->filter.value, data->filter.len);
+    }
+  }
+
+  if(!skip)
+    // write tuple
+    write_tuple(data, id.str, id.len, id.quoted,
+                data->header_names[i].output_str, data->header_names[i].output_len,
+                cell.str, cell.len, cell.quoted);
+}
+
+static void serialize_row(void *hook);
+
+static void serialize_header(void *hook) {
   struct serialize_data *data = hook;
+  zsv_set_row_handler(data->parser, serialize_row);
   if(data->err_msg)
     return;
 
-  char quoted = zsv_quoted(data->parser);
-
-  if(data->current_row_index == 0) {
-    struct serialize_header_name *h = calloc(1, sizeof(*h));
-    if(!h)
+  data->col_count = zsv_cell_count(data->parser);
+  if(!data->col_count)
+    asprintf(&data->err_msg, "No columns read in first row; aborting\n");
+  else {
+    // write header
+    struct zsv_cell firstCell = zsv_get_cell(data->parser, 0);
+    if(firstCell.len == 0) {
+      firstCell.str = (unsigned char *)"(Blank)";
+      firstCell.len = strlen((const char *)firstCell.str);
+    }
+    write_tuple(data, firstCell.str, firstCell.len, firstCell.quoted,
+                (const unsigned char *)"Column", strlen("Column"),
+                (const unsigned char *)"Value", strlen("Value"), 0);
+    data->header_names = calloc(data->col_count, sizeof(*data->header_names));
+    if(!data->header_names)
       asprintf(&data->err_msg, "Out of memory!");
-    else {
+
+    for(unsigned i = 1; i < data->col_count && !data->err_msg; i++) {
+      struct zsv_cell cell  = zsv_get_cell(data->parser, i);
       // save the column header name
       if(data->use_column_position)
-        asprintf((char **)&h->str, "%u", data->current_col_index);
+        asprintf((char **)&data->header_names[i].output_str, "%u", i);
       else {
-        if((h->str = malloc(1 + len))) {
-          memcpy(h->str, utf8_value, len);
-          h->str[len] = '\0';
-        }
+        struct zsv_cell c = zsv_get_cell(data->parser, i);
+        if(i == 0 && c.len == 0)
+          data->header_names[i].output_str = (unsigned char *)strdup("(Blank)");
+        else
+          data->header_names[i].output_str = zsv_writer_str_to_csv(cell.str, cell.len);
       }
-      h->next = data->temp_header_names;
-      data->temp_header_names = h;
+
+      if(data->header_names[i].output_str)
+        data->header_names[i].output_len = strlen((const char *)data->header_names[i].output_str);
+      else if(cell.len)
+        asprintf(&data->err_msg, "Out of memory!");
     }
 
-    if(data->current_col_index == 0) {
-      // write header
-      zsv_writer_cell(data->csv_writer, 1,
-                        utf8_value, len, quoted);
-      zsv_writer_cell(data->csv_writer, 0,
-                        (const unsigned char *)"Column", strlen("Column"), 0);
-      zsv_writer_cell(data->csv_writer, 0,
-                        (const unsigned char *)"Value", strlen("Value"), 0);
-    }
-  } else if(data->current_col_index == 0) {
-    if(data->row_id)
-      free(data->row_id);
-    if((data->row_id = malloc(1 + len))) {
-      memcpy(data->row_id, utf8_value, len);
-      data->row_id[len] = '\0';
-    }
-    data->row_id_quoted = quoted;
-  } else if(data->current_col_index < data->col_count) {
-    char skip = 0;
-    if(data->filter.value) {
-      if(data->filter.case_insensitive) {
-        if(data->filter.entire) { // case-insensitive, exact / entire-cell. skip if not equal
-          int err = 0;
-          skip = zsv_strincmp(utf8_value, len, (const unsigned char *)data->filter.value, data->filter.len);
-          if(err) {
-            skip = 1;
-            fprintf(stderr, "Ignoring invalid utf8: %.*s\n", (int)len, utf8_value);
-          }
-        } else { // case-insensitive, not-entire-cell. skip if not contains
-          if(data->filter.value_lc) {
-            unsigned char *tmp = zsv_strtolowercase(utf8_value, &len);
-            if(tmp) {
-              skip = !zsv_strstr(tmp, data->filter.value_lc);
-              free(tmp);
-            }
-          }
-        }
-      } else {
-        if(data->filter.entire) // case-sensitive, exact / entire-cell. skip if not equal
-          skip = !(len == data->filter.len && !memcmp(utf8_value, data->filter.value, len));
-        else // case-sensitive, not-entire-cell. skip if not contains
-          skip = !memmem(utf8_value, len, data->filter.value, data->filter.len);
+    if(data->use_column_position) {
+      // process the header row as if it was a data row
+
+      // output ID cell
+      struct zsv_cell cell = zsv_get_cell(data->parser, 0);
+      write_tuple(data, (const unsigned char *)"Header", strlen("Header"), 0,
+                  (const unsigned char *)"0", 1,
+                  cell.str, cell.len, cell.quoted);
+
+      // output other cells
+      for(unsigned i = 1; i < data->col_count; i++) {
+        cell = zsv_get_cell(data->parser, i);
+        write_tuple(data, (const unsigned char *)"Header", strlen("Header"), 0,
+                    data->header_names[i].output_str, data->header_names[i].output_len,
+                    cell.str, cell.len, cell.quoted);
       }
-    }
-
-    if(!skip) {
-      // write tuple
-      struct output_header_name *header_name =
-        get_output_header_name(data, data->current_col_index);
-
-      // write row ID
-      zsv_writer_cell(data->csv_writer, 1, data->row_id,
-                        strlen((char *)data->row_id), data->row_id_quoted);
-
-      // write column name
-      zsv_writer_cell(data->csv_writer, 0,
-                        header_name->output_str, header_name->output_len,
-                        0);
-
-      // write cell value
-      zsv_writer_cell(data->csv_writer, 0, utf8_value, len, quoted);
     }
   }
-  data->current_col_index++;
 }
 
 static void serialize_row(void *hook) {
@@ -162,48 +164,12 @@ static void serialize_row(void *hook) {
   if(data->err_msg)
     return;
 
-  if(data->current_row_index == 0) {
-    if(!data->current_col_index)
-      asprintf(&data->err_msg, "No columns read in first row; aborting\n");
-    else {
-      data->col_count = data->current_col_index;
-      data->header_names = calloc(data->col_count, sizeof(*data->header_names));
+  // the first cell is the row ID
+  struct zsv_cell id = zsv_get_cell(data->parser, 0);
 
-      unsigned int i = 0, j = data->col_count;
-      for(struct serialize_header_name *hn = data->temp_header_names; hn; hn = hn->next, i++, j--) {
-        if((data->header_names[j-1].str = hn->str)) {
-          if((data->header_names[j-1].output_str =
-              zsv_writer_str_to_csv(hn->str, strlen((char *)hn->str))))
-            data->header_names[j-1].output_len =
-              strlen((char *)data->header_names[j-1].output_str);
-        }
-        hn->str = NULL;
-      }
-    }
-
-    if(data->use_column_position) {
-      // process the header row as if it was a data row
-      data->current_col_index = 0;
-      for(unsigned int i = 0; i < data->col_count; i++) {
-        struct zsv_cell cell = zsv_get_cell(data->parser, i);
-        // write row ID
-        zsv_writer_cell_s(data->csv_writer, 1, (const unsigned char *)"Header", 0);
-        // write column name
-        zsv_writer_cell(data->csv_writer, 0, data->header_names[i].str,
-                        data->header_names[i].output_len, 0);
-        // write cell value
-        zsv_writer_cell(data->csv_writer, 0, cell.str, cell.len, cell.quoted);
-      }
-    }
-  }
-
-  if(data->row_id) {
-    free(data->row_id);
-    data->row_id = NULL;
-  }
-
-  data->current_row_index++;
-  data->current_col_index = 0;
+  unsigned j = zsv_cell_count(data->parser);
+  for(unsigned i = 1; i < j && i < data->col_count; i++)
+    serialize_cell(data, id, i);
 }
 
 const char *serialize_usage_msg[] =
@@ -234,22 +200,13 @@ static void serialize_cleanup(struct serialize_data *data) {
   zsv_writer_delete(data->csv_writer);
 
   free(data->filter.value_lc);
-  for(struct serialize_header_name *next, *hn = data->temp_header_names; hn; hn = next) {
-    next = hn->next;
-    free(hn->str);
-    free(hn);
-  }
+  free(data->err_msg);
 
   if(data->header_names) {
-    for(unsigned int i = 0; i < data->col_count; i++) {
-      free(data->header_names[i].str);
+    for(unsigned int i = 0; i < data->col_count; i++)
       free(data->header_names[i].output_str);
-    }
     free(data->header_names);
   }
-
-  free(data->err_msg);
-  free(data->row_id);
 
   if(data->in && data->in != stdin)
     fclose(data->in);
@@ -312,8 +269,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       return 1;
     }
 
-    opts->cell_handler = serialize_cell;
-    opts->row_handler = serialize_row;
+    opts->row_handler = serialize_header;
     opts->stream = data.in;
     const char *input_path = data.input_path;
 
