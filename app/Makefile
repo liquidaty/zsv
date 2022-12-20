@@ -93,8 +93,19 @@ else
 endif
 
 CFLAGS+= -std=gnu11
+CFLAGS_O ?=
+ifeq ($(CFLAGS_O),)
+  ifeq ($(DEBUG),0)
+    CFLAGS_O=-O3
+  else
+    CFLAGS_O=-O0
+  endif
+endif
+
+CFLAGS+=${CFLAGS_O}
+
 ifeq ($(DEBUG),0)
-  CFLAGS+= -O3 -DNDEBUG -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -ftree-vectorize ${CFLAGS_OPT}
+  CFLAGS+=-DNDEBUG -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE ${CFLAGS_OPT} #-ftree-vectorize
 
   ifeq ($(PGO),1)
     CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4
