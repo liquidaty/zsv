@@ -151,7 +151,7 @@ For Windows (`*.nupkg`), install with `choco.exe`:
 
 ```shell
 # Install
-choco.exe install zsv -source .\zsv-amd64-windows-mingw.nupkg
+choco.exe install zsv --pre -source .\zsv-amd64-windows-mingw.nupkg
 
 # Uninstall
 choco.exe uninstall zsv
