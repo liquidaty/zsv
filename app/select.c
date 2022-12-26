@@ -77,7 +77,6 @@ struct zsv_select_data {
 
   char header_finished;
 
-  const unsigned char *malformed_utf8_replace;
   char embedded_lineend;
 
   double sample_pct;
@@ -266,9 +265,6 @@ unsigned char *zsv_select_cell_clean(struct zsv_select_data *data, unsigned char
   // to do: option to replace or warn non-printable chars 0 - 31:
   // vectorized scan
   // replace or warn if found
-
-  if(UNLIKELY(data->malformed_utf8_replace != NULL))
-    len = zsv_strencode(utf8_value, len, *data->malformed_utf8_replace, NULL, NULL);
 
   if(UNLIKELY(!data->no_trim_whitespace))
     utf8_value = (unsigned char *)zsv_strtrim(utf8_value, &len);
@@ -540,8 +536,6 @@ const char *zsv_select_usage_msg[] = {
   "  -O, --other-delim <delim>: input is delimited with the given char, instead of comma-delimited",
   "                             Note: this option does not support quoted values with embedded delimiters",
 #endif
-  "  -u, --malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8 input",
-  "     (default value is '?')",
   "  -w, --whitespace-clean: normalize all whitespace to space or newline, single-char (non-consecutive) occurrences",
   "  --whitespace-clean-no-newline: clean whitespace and remove embedded newlines",
   "  -W, --no-trim: do not trim whitespace",
@@ -643,13 +637,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         stat = zsv_printerr(1, "Unable to open for writing: %s", argv[arg_i]);
       else if(data.opts->verbose)
         fprintf(stderr, "Opened %s for write\n", argv[arg_i]);
-    } else if(!strcmp(argv[arg_i], "-u") || !strcmp(argv[arg_i], "--malformed-utf8-replacement")) {
-      if(++arg_i >= argc)
-        stat = zsv_printerr(1, "-u option requires parameter");
-      else if(strlen(argv[arg_i]) > 1 || (*argv[arg_i] & 128))
-        stat = zsv_printerr(1, "-u value must be a single-byte UTF8 char");
-      else
-        data.malformed_utf8_replace = (const unsigned char*)argv[arg_i];
     } else if(!strcmp(argv[arg_i], "-N") || !strcmp(argv[arg_i], "--line-number")) {
       data.prepend_line_number = 1;
     } else if(!strcmp(argv[arg_i], "-n"))
@@ -767,8 +754,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       if(zsv_new_with_properties(data.opts, input_path, opts_used, &data.parser)
          == zsv_status_ok) {
         // all done with
-        data.any_clean = data.malformed_utf8_replace
-          || !data.no_trim_whitespace
+        data.any_clean =
+          !data.no_trim_whitespace
           || data.clean_white
           || data.embedded_lineend;
 

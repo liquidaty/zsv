@@ -57,8 +57,8 @@ help:
 	@echo "  - libzsv must already be installed (for more info, \`cd ../.. && ${MAKE}\`)"
 	@echo "  - configuration file must be available (to generate, \`cd ../.. && ./configure\`)"
 	@echo
-	@echo "To build using the default configuration:"
-	@echo "  ${MAKE} build"
+	@echo "To build and test using the default configuration:"
+	@echo "  ${MAKE} build test"
 	@echo
 	@echo "To build using a specified configuration:"
 	@echo "  ${MAKE} CONFIGFILE=/path/to/config.mk build"

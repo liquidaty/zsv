@@ -12,6 +12,7 @@
 #include <zsv.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/arg.h>
+#include <assert.h>
 
 /*
  * for now we don't really need thread support because this is only being used
@@ -113,8 +114,11 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx) {
  *     -t,--tab-delim
  *     -O,--other-delim <C>
  *     -q,--no-quote
- *     -S,--keep-blank-headers: disable default behavior of ignoring leading blank rows
+ *     -R,--skip-head <n>: skip specified number of initial rows
  *     -d,--header-row-span <n>: apply header depth (rowspan) of n
+ *     -u,--malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8 input
+ *       (default for "desc" commamnd is '?')
+ *     -S,--keep-blank-headers: disable default behavior of ignoring leading blank rows
  *     -v,--verbose
  *
  * @param  argc      count of args to process
@@ -136,6 +140,13 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
                                  struct zsv_opts *opts_out,
                                  char *opts_used
                                  ) {
+#ifdef ZSV_EXTRAS
+  static const char *short_args = "BcrtOqvRdSuL";
+#else
+  static const char *short_args = "BcrtOqvRdSu";
+#endif
+  assert(strlen(short_args) < ZSV_OPTS_SIZE_MAX);
+
   *opts_out = zsv_get_default_opts();
   int options_start = 1; // skip this many args before we start looking for options
   int err = 0;
@@ -146,12 +157,6 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
     memset(opts_used, ' ', ZSV_OPTS_SIZE_MAX-1);
     opts_used[ZSV_OPTS_SIZE_MAX-1] = '\0';
   }
-
-#ifdef ZSV_EXTRAS
-  static const char *short_args = "BcrtOqvRdSL";
-#else
-  static const char *short_args = "BcrtOqvRdS";
-#endif
 
   static const char *long_args[] = {
     "buff-size",
@@ -164,11 +169,13 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
     "skip-head",
     "header-row-span",
     "keep-blank-headers",
+    "malformed-utf8-replacement",
 #ifdef ZSV_EXTRAS
     "limit-rows",
 #endif
     NULL
   };
+
   for(int i = options_start; !err && i < argc; i++) {
     char arg = 0;
     if(*argv[i] != '-') { /* pass this option through */
@@ -210,6 +217,7 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
     case 'O':
     case 'R':
     case 'd':
+    case 'u':
       if(++i >= argc)
         err = fprintf(stderr, "Error: option %s requires a value\n", argv[i-1]);
       else if(arg == 'O') {
@@ -220,6 +228,16 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
           err = fprintf(stderr, "Error: column delimiter may not be '\\n', '\\r' or '\"'\n");
         else
           opts_out->delimiter = *val;
+      } else if(arg == 'u') {
+        const char *val = argv[i];
+        if(!strcmp(val, "none"))
+          opts_out->malformed_utf8_replace = ZSV_MALFORMED_UTF8_DO_NOT_REPLACE;
+        else if(!*val)
+          opts_out->malformed_utf8_replace = ZSV_MALFORMED_UTF8_REMOVE;
+        else if(strlen(val) > 2 || *val < 0)
+          err = fprintf(stderr, "Error: %s value must be a single-byte UTF8 char, empty string or 'none'\n", argv[i-1]);
+        else
+          opts_out->malformed_utf8_replace = *val;
       } else {
         const char *val = argv[i];
         /* arg = 'B', 'c', 'r', 'R', 'd', or 'L' (ZSV_EXTRAS only) */

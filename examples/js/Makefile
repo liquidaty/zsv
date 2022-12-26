@@ -64,10 +64,11 @@ TEST_PASS=echo "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
 TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
 #####
 
-.PHONY: help all run clean prep node setup benchmark count_compare select_compare
+.PHONY: help all run clean prep node setup benchmark count_compare select_compare node_ok
+
 
 help:
-	@echo "make [build|run|node|test|clean]"
+	@echo "make [build|run|node|test|clean] [NODE=/path/to/node]" # e.g. NODE=/usr/local/Cellar/node/19.1.0/bin/node
 	@echo "by default, minified code is generated, which requires running the below once:"
 	@echo "  make setup"
 	@echo "alternatively, to generate non-minified code, use NO_MINIFY=1:"
@@ -87,9 +88,9 @@ prep: ../../app/external/utf8proc-2.6.1/utf8proc.h
 ../../app/external/utf8proc-2.6.1/utf8proc.h:
 	make -C ../../app ./external/utf8proc-2.6.1/utf8proc.h THIS_MAKEFILE_DIR=.
 
-test: npm/test/select_all.js node
+test: node_ok npm/test/select_all.js node
 	@mkdir -p build/test
-	@cp -p $< node/
+	@cp -p npm/test/select_all.js node/
 	@echo "Running test (example) program \`node node/select_all.js ../../data/test/desc.csv\`"
 	@(cd node && ${NODE} select_all.js ../../../data/test/desc.csv > ../build/test/out.json 2> ../build/test/out.err1)
 	@sed 's/[0-9.]*ms//g' < build/test/out.err1 > build/test/out.err
@@ -158,9 +159,18 @@ BENCHMARK_INPUT=${THIS_MAKEFILE_DIR}/../../app/benchmark/worldcitiespop_mil.csv
 
 NODE=node --experimental-wasm-modules
 
-benchmark: node count_compare select_compare
+NODE_VERSION=$(shell ${NODE} --version | sed 's/[.].*$$//' | sed 's/v//')
+NODE_OK=$(shell [ "0${NODE_VERSION}" -gt "14" ] && echo "1" || echo "0")
 
-count_compare:
+node_ok:
+ifneq ($(NODE_OK),1)
+	echo "Node version must be at least 15"
+	exit 1
+endif
+
+benchmark: node_ok node count_compare select_compare
+
+count_compare: node_ok
 	@cp -p npm/test/count*.js node/
 	@cd node && (npm list | grep csv-parser) && echo "csv-parser already installed" || npm install csv-parser papaparse
 
@@ -192,7 +202,7 @@ count_compare:
 	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/count-papaparse.js 2>&1 | head -1
 	head -500000 ${BENCHMARK_INPUT} | ${NODE} node/count-papaparse.js 2>&1 | head -1
 
-select_compare:
+select_compare: node_ok
 	@cp -p npm/test/select_all*.js node/
 	@cd node && (npm list | grep csv-parser) && echo "csv-parser already installed" || npm install csv-parser papaparse
 

@@ -357,7 +357,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
             if(sscanf(ix_str, "%u,", &next_ix)) {
               if(next_ix == 0)
                 fprintf(stderr, "--join-indexes index must be greater than zero\n");
-              else if(next_ix > col_count)
+              else if(next_ix > (unsigned)col_count)
                 fprintf(stderr, "Column %u out of range; input has only %i columns\n", next_ix, col_count), err = 1;
               else if(!sqlite3_column_name(stmt, next_ix - 1))
                 fprintf(stderr, "Column %u unexpectedly missing name\n", next_ix);

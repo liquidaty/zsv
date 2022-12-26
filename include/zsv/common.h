@@ -218,6 +218,16 @@ struct zsv_opts {
    */
   unsigned char keep_empty_header_rows;
 
+  /**
+   * by default, zsv ignores malformed UTF8; set malformed_utf8_replace to
+   * a value between 1 and 127 to replace malformed UTF8 with that single
+   * char, to ZSV_MALFORMED_UTF8_REMOVE to remove
+   * or ZSV_MALFORMED_UTF8_DO_NOT_REPLACE to explicitly leave untouched
+   */
+#define ZSV_MALFORMED_UTF8_DO_NOT_REPLACE -2
+#define ZSV_MALFORMED_UTF8_REMOVE -1
+  char malformed_utf8_replace;
+
 # ifdef ZSV_EXTRAS
   struct {
     /**
