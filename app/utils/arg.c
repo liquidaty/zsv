@@ -145,7 +145,7 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
 #else
   static const char *short_args = "BcrtOqvRdSu";
 #endif
-  assert(strlen(short_args) < ZSV_OPTS_SIZE_MAX;
+  assert(strlen(short_args) < ZSV_OPTS_SIZE_MAX);
 
   *opts_out = zsv_get_default_opts();
   int options_start = 1; // skip this many args before we start looking for options
