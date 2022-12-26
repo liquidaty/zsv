@@ -380,8 +380,7 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
   only for each corresponding non-zero highest-bit value in the vector)
 */
 
-# if defined(__EMSCRIPTEN__) /*  && defined(__SSE2__) */
-
+# if defined(__EMSCRIPTEN__) && defined(__SSE2__)
 #include <wasm_simd128.h>
 #define movemask_pseudo(x) wasm_i8x16_bitmask(x)
 
