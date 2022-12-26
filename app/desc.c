@@ -188,7 +188,7 @@ struct zsv_desc_data {
   enum zsv_desc_status err;
 
   zsv_parser parser;
-  const char *malformed_utf8_replace;
+//  const char *malformed_utf8_replace;
 
   unsigned char flags; // see ZSV_DESC_FLAG_XXX
   unsigned char done;
@@ -455,8 +455,8 @@ const char *zsv_desc_usage_msg[] =
    "  -H: only output header names",
    "  -q, --quick: minimize example counts,",
    "  -a, --all: calculate all metadata (for now, this only adds uniqueness info)",
-   "  -u, --malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8 input",
-   "     (default value is '?')",
+//   "  -u, --malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8 input",
+//   "     (default value is '?')",
    "  -o <output filename>: name of file to save output to (defaults to stdout)",
    NULL
   };
@@ -527,10 +527,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     struct zsv_desc_data data = { 0 };
     const char *input_path = NULL;
     int err = 0;
+    if(opts->malformed_utf8_replace != ZSV_MALFORMED_UTF8_DO_NOT_REPLACE) // user specified to be 'none'
+      opts->malformed_utf8_replace = '?';
+
     data.opts = opts;
     data.max_cols = ZSV_DESC_MAX_COLS_DEFAULT; // default
     data.column_names_tail = &data.column_names;
-    data.malformed_utf8_replace = "?";
 
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
 
@@ -550,6 +552,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         data.quick = 1;
       else if(!strcmp(argv[arg_i], "-H"))
         data.header_only = 1;
+      /*
       else if(!strcmp(argv[arg_i], "-u") || !strcmp(argv[arg_i], "--malformed-utf8-replacement")) {
         arg_i++;
         if(!(arg_i < argc))
@@ -558,7 +561,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           data.err = zsv_printerr(zsv_desc_status_error, "-u value must be a single-byte UTF8 char");
         else
           data.malformed_utf8_replace = argv[arg_i];
-      } else if(!strcmp(argv[arg_i], "-C")) {
+      */
+      else if(!strcmp(argv[arg_i], "-C")) {
         arg_i++;
         if(!(arg_i < argc && atoi(argv[arg_i]) > 9))
           data.err = zsv_printerr(zsv_desc_status_error, "-C (max cols) invalid: should be positive integer > 9 (got %s)", argv[arg_i]);

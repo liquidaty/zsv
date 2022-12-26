@@ -18,6 +18,7 @@
 
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/compiler.h>
+#include <zsv/utils/string.h>
 
 #if !defined(__AVX2__) // -mavx2 compiler flag not present
 # define ZSV_NO_AVX
@@ -296,6 +297,13 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner * s
   }
   // end quote handling
 
+  if(scanner->opts.malformed_utf8_replace) {
+    if(scanner->opts.malformed_utf8_replace < 0)
+      n = zsv_strencode(s, n, 0, NULL, NULL);
+    else
+      n = zsv_strencode(s, n, scanner->opts.malformed_utf8_replace, NULL, NULL);
+  }
+
   if(UNLIKELY(scanner->opts.cell_handler != NULL))
     scanner->opts.cell_handler(scanner->opts.ctx, s, n);
   if(VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
@@ -372,7 +380,7 @@ static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner, unsig
   only for each corresponding non-zero highest-bit value in the vector)
 */
 
-# if defined(__EMSCRIPTEN__) && defined(__SIMD128__)
+# if defined(__EMSCRIPTEN__) /*  && defined(__SSE2__) */
 
 #include <wasm_simd128.h>
 #define movemask_pseudo(x) wasm_i8x16_bitmask(x)
@@ -582,6 +590,8 @@ static void zsv_throwaway_row(void *ctx) {
 static int zsv_scanner_init(struct zsv_scanner *scanner,
                               struct zsv_opts *opts) {
   size_t need_buff_size = 0;
+  if(opts->malformed_utf8_replace == ZSV_MALFORMED_UTF8_DO_NOT_REPLACE)
+    opts->malformed_utf8_replace = 0;
   if(opts->buffsize < opts->max_row_size * 2)
     need_buff_size = opts->max_row_size * 2;
   opts->delimiter = opts->delimiter ? opts->delimiter : ',';

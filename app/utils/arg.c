@@ -148,9 +148,9 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
   }
 
 #ifdef ZSV_EXTRAS
-  static const char *short_args = "BcrtOqvRdSL";
+  static const char *short_args = "BcrtOqvRdSuL";
 #else
-  static const char *short_args = "BcrtOqvRdS";
+  static const char *short_args = "BcrtOqvRdSu";
 #endif
 
   static const char *long_args[] = {
@@ -164,6 +164,7 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
     "skip-head",
     "header-row-span",
     "keep-blank-headers",
+    "malformed-utf8-replacement",
 #ifdef ZSV_EXTRAS
     "limit-rows",
 #endif
@@ -210,6 +211,7 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
     case 'O':
     case 'R':
     case 'd':
+    case 'u':
       if(++i >= argc)
         err = fprintf(stderr, "Error: option %s requires a value\n", argv[i-1]);
       else if(arg == 'O') {
@@ -220,6 +222,16 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
           err = fprintf(stderr, "Error: column delimiter may not be '\\n', '\\r' or '\"'\n");
         else
           opts_out->delimiter = *val;
+      } else if(arg == 'u') {
+        const char *val = argv[i];
+        if(!strcmp(val, "none"))
+          opts_out->malformed_utf8_replace = ZSV_MALFORMED_UTF8_DO_NOT_REPLACE;
+        else if(!*val)
+          opts_out->malformed_utf8_replace = ZSV_MALFORMED_UTF8_REMOVE;
+        else if(strlen(val) > 2 || *val < 0)
+          err = fprintf(stderr, "Error: %s value must be a single-byte UTF8 char, empty string or 'none'\n", argv[i-1]);
+        else
+          opts_out->malformed_utf8_replace = *val;
       } else {
         const char *val = argv[i];
         /* arg = 'B', 'c', 'r', 'R', 'd', or 'L' (ZSV_EXTRAS only) */

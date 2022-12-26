@@ -44,6 +44,8 @@ static int main_help(int argc, const char *argv[]) {
     "  -O,--other-delim <char>: set column delimiter to specified character",
     "  -q,--no-quote: turn off quote handling",
     "  -R,--skip-head <n>: skip specified number of initial rows",
+    "  -u, --malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8 input",
+    "     (default for \"desc\" commamnd is '?')",
     "  -d,--header-row-span <n>: apply header depth (rowspan) of n",
     "  -S,--keep-blank-headers: disable default behavior of ignoring leading blank rows",
     "  -v,--verbose: verbose output",

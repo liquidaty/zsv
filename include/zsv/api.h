@@ -316,4 +316,26 @@ ZSV_EXPORT void zsv_opts_delete(struct zsv_opts *);
 ZSV_EXPORT
 enum zsv_status zsv_next_row(zsv_parser parser);
 
+
+/******************************************************************************
+ * Miscellaneous functions used by the parser that may have standalone utility
+ ******************************************************************************/
+
+/**
+ * Force a string to conform to UTF8 encoding. Replaces any non-conforming utf8
+ * with the specified char, or removes from the string (and shortens the string)
+ * if replace = 0
+ * @param  s        input string. invalid UTF8 bytes will be overwritten
+ * @param  n        length (in bytes) of input
+ * @param  replace  the character to replace any malformed UTF8 bytes with, or 0
+ *                  to remove and shorten the result
+ * @param  callback optional callback invoked upon scanning malformed UTF8
+ * @param  ctx      context pointer passed to callback
+ * @return          length of the valid string
+ */
+ZSV_EXPORT
+size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace,
+                     int (*malformed_handler)(void *, const unsigned char *s, size_t n, size_t offset),
+                     void *handler_ctx);
+
 #endif
