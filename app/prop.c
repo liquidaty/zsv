@@ -69,7 +69,7 @@ static int zsv_property_usage(FILE *target) {
 static int show_all_properties(const unsigned char *filepath) {
   int err = 0;
   if(!zsv_file_readable((const char *)filepath, &err, NULL)) {
-    perror(filepath);
+    perror((const char *)filepath);
     return err;
   }
   err = zsv_cache_print(filepath, zsv_cache_type_property, (const unsigned char *)"{}");

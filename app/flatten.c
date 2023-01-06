@@ -530,7 +530,7 @@ const char *flatten_usage_msg[] =
 
 static void flatten_usage() {
   for(int i = 0; flatten_usage_msg[i]; i++)
-    fprintf(stderr, "%s\n", flatten_usage_msg[i]);
+    fprintf(stdout, "%s\n", flatten_usage_msg[i]);
 }
 
 void flatten_agg_cols_delete(struct flatten_agg_col **p) {

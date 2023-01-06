@@ -507,7 +507,7 @@ const char *zsv_pretty_usage_msg[] =
 
 static void zsv_pretty_usage() {
   for(int i = 0; zsv_pretty_usage_msg[i]; i++)
-    fprintf(stderr, "%s\n", zsv_pretty_usage_msg[i]);
+    fprintf(stdout, "%s\n", zsv_pretty_usage_msg[i]);
 }
 
 static void zsv_pretty_flush(struct zsv_pretty_data *data) {
