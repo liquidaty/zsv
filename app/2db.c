@@ -716,7 +716,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       for(int j = 0; usage[j]; j++)
-        fprintf(stderr, "%s\n", usage[j]);
+        fprintf(stdout, "%s\n", usage[j]);
       goto exit_2db;
     } else if(!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if(++i >= argc)

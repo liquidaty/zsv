@@ -232,7 +232,7 @@ const char *serialize_usage_msg[] =
 
 static int serialize_usage() {
   for(int i = 0; serialize_usage_msg[i]; i++)
-    fprintf(stderr, "%s\n", serialize_usage_msg[i]);
+    fprintf(stdout, "%s\n", serialize_usage_msg[i]);
   return 1;
 }
 

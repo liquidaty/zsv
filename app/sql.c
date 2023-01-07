@@ -58,7 +58,7 @@ const char *zsv_sql_usage_msg[] =
 
 static void zsv_sql_usage() {
   for(int i = 0; zsv_sql_usage_msg[i]; i++)
-    fprintf(stderr, "%s\n", zsv_sql_usage_msg[i]);
+    fprintf(stdout, "%s\n", zsv_sql_usage_msg[i]);
 }
 
 struct zsv_sql_data {

@@ -141,7 +141,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       fprintf(stdout, "Usage: " APPNAME " [filename] [-o <output_filename>]\n");
-      fprintf(stdout, "  Reads CSV input and converts to tsv");
+      fprintf(stdout, "  Reads CSV input and converts to tsv\n");
       err = 1;
     } else if(!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if(++i >= argc)

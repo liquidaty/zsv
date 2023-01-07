@@ -119,7 +119,7 @@ const char *zsv_echo_usage_msg[] = {
 
 static int zsv_echo_usage() {
   for(int i = 0; zsv_echo_usage_msg[i]; i++)
-    fprintf(stderr, "%s\n", zsv_echo_usage_msg[i]);
+    fprintf(stdout, "%s\n", zsv_echo_usage_msg[i]);
   return 1;
 }
 
