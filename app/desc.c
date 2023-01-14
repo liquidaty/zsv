@@ -76,6 +76,8 @@ static struct zsv_desc_unique_key *zsv_desc_unique_key_new(const unsigned char *
 }
 
 static void zsv_desc_unique_key_delete(zsv_desc_unique_key *e) {
+  if(e)
+    free(e->value);
   free(e);
 }
 
