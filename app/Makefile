@@ -104,8 +104,9 @@ endif
 
 CFLAGS+=${CFLAGS_O}
 
+CFLAGS+=-Wshadow -Wall -Wextra
 ifeq ($(DEBUG),0)
-  CFLAGS+=-DNDEBUG -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE ${CFLAGS_OPT} #-ftree-vectorize
+  CFLAGS+=-DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE ${CFLAGS_OPT} #-ftree-vectorize
 
   ifeq ($(PGO),1)
     CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4

@@ -346,3 +346,8 @@ test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL})
 	@(${PREFIX} $< < ${TEST_DATA_DIR}/test/$*-trim.csv ${REDIRECT2} ${TMP_DIR}/$@.trim && \
 	${CMP} ${TMP_DIR}/$@.trim expected/$@.trim && ${TEST_PASS} || ${TEST_FAIL})
+
+test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+	@${TEST_INIT}
+	@(${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
