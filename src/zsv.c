@@ -255,6 +255,7 @@ char zsv_quoted(zsv_parser parser) {
   return parser->quoted || parser->opts.no_quotes;
 }
 
+// to do: benchmark returning zsv_cell struct vs just a zsv_cell pointer
 struct zsv_cell zsv_get_cell(zsv_parser parser, size_t ix) {
   if(ix < parser->row.used)
     return parser->row.cells[ix];

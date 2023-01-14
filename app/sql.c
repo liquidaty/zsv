@@ -51,8 +51,9 @@ const char *zsv_sql_usage_msg[] =
    "     of the join. For example, if joining two files that, respectively, have columns",
    "     A,B,C,D and X,B,C,A,Y then `--join-indexes 1,3` will join on columns A and C",
    "  -b: output with BOM",
-   "  -C, --max-cols <n>: change the maximum allowable columns. must be > 0 and < 2000",
-   "  -o <output filename>: name of file to save output to",
+   "  -C, --max-cols <n>    : change the maximum allowable columns. must be > 0 and < 2000",
+   "  -o <output filename>  : name of file to save output to",
+   "  --memory              : use in-memory instead of temporary db (see https://www.sqlite.org/inmemorydb.html)",
    NULL
 };
 
@@ -63,11 +64,12 @@ static void zsv_sql_usage() {
 
 struct zsv_sql_data {
   FILE *in;
-  int dummy;
   struct string_list *more_input_filenames;
   char *sql_dynamic; // will hold contents of sql file, if any
   char *join_indexes; // will hold contents of join_indexes arg, prefixed and suffixed with a comma
   struct string_list *join_column_names;
+  unsigned char in_memory:1;
+  unsigned char _:7;
 };
 
 static void zsv_sql_finalize(struct zsv_sql_data *data) {
@@ -228,7 +230,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           fprintf(stderr, "Could not open for writing: %s\n", argv[arg_i]);
           err = 1;
         }
-      } else if(!strcmp(arg, "-b"))
+      } else if(!strcmp(arg, "--memory"))
+        data.in_memory = 1;
+      else if(!strcmp(arg, "-b"))
         writer_opts.with_bom = 1;
       else if(!strcmp(arg, "-C") || !strcmp(arg, "--max-cols")) {
         if(arg_i+1 < argc && atoi(argv[arg_i+1]) > 0 && atoi(argv[arg_i+1]) <= 2000)
@@ -331,7 +335,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       zsv_writer_set_temp_buff(cw, cw_buff, sizeof(cw_buff));
 
       char *err_msg = NULL;
-      if((rc = sqlite3_open_v2("file::memory:", &db, SQLITE_OPEN_URI | SQLITE_OPEN_READWRITE, NULL)) == SQLITE_OK
+      const char *db_url = data.in_memory ? "file::memory:" : "";
+      if((rc = sqlite3_open_v2(db_url, &db, SQLITE_OPEN_URI | SQLITE_OPEN_READWRITE, NULL)) == SQLITE_OK
          && db
          && (rc = sqlite3_create_module(db, "csv", &CsvModule, 0) == SQLITE_OK)
          && (rc = create_virtual_csv_table(tmpfn ? tmpfn : input_filename, db, opts_used, max_cols, &err_msg, 0)) == SQLITE_OK

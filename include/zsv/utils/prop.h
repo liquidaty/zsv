@@ -50,8 +50,16 @@ enum zsv_status zsv_properties_parser_destroy(struct zsv_properties_parser *pars
  * with any saved properties (such as rows_to_ignore or header_span) for the
  * specified input file. In the event that saved properties conflict with a
  * command-line option, the command-line option "wins" (the property value is
- * ignored), but a warning is printed.
+ * ignored), but a warning is printed
  *
+ * @param opts       parser options. see `zsv_new()`
+ * @param input_path path of file whose zsv properties should be loaded. this
+ *                   param is used solely for loading properties and has no
+ *                   impact on the data that is actually parsed, which is
+ *                   determined by opts->stream
+ * @param opts_used  string specifyig which other command-line options were
+ *                   already used (may be useful to differentiate between
+ *                   unspecified default values vs specified values)
  * @param handle_out returns zsv parser handle, or NULL on fail
  */
 enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,

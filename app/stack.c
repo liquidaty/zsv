@@ -240,163 +240,166 @@ static void zsv_stack_data_row(void *ctx) {
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
   int err = 0;
-  if(argc < 2)
+  if(argc < 2) {
     zsv_stack_usage();
-  else if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
-    zsv_stack_usage();
-  else {
-    struct zsv_opts saved_opts = *opts;
-    struct zsv_stack_data data = { 0 };
-    char delimiter = 0; // defaults to csv
-    struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
-    writer_opts.stream = stdout;
+    return 1;
+  }
 
+  if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
+    return zsv_stack_usage();
+
+  struct zsv_opts saved_opts = *opts;
+  struct zsv_stack_data data = { 0 };
+  char delimiter = 0; // defaults to csv
+  struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
+  writer_opts.stream = stdout;
+
+  for(int arg_i = 1; !data.err && arg_i < argc; arg_i++) {
+    const char *arg = argv[arg_i];
+    if(!strcmp(arg, "-b"))
+      writer_opts.with_bom = 1;
+    else if(!strcmp(arg, "-T"))
+      delimiter = '\t';
+    else if(!strcmp(arg, "-o")) {
+      arg_i++;
+      if(arg_i >= argc)
+        fprintf(stderr, "-o option: no filename specified\n");
+      else {
+        if(!(writer_opts.stream = fopen(argv[arg_i], "wb"))){
+          data.err = 1;
+          fprintf(stderr, "Unable to open file for writing: %s\n", argv[arg_i]);
+        }
+      }
+    }
+  }
+
+  if(!(data.csv_writer = zsv_writer_new(&writer_opts)))
+    data.err = 1;
+
+  if(!data.err) {
+    struct zsv_stack_input_file **next_input = &data.inputs;
     for(int arg_i = 1; !data.err && arg_i < argc; arg_i++) {
       const char *arg = argv[arg_i];
-      if(!strcmp(arg, "-b"))
-        writer_opts.with_bom = 1;
-      else if(!strcmp(arg, "-T"))
-        delimiter = '\t';
-      else if(!strcmp(arg, "-o")) {
-        arg_i++;
-        if(arg_i >= argc)
-          fprintf(stderr, "-o option: no filename specified\n");
-        else {
-          if(!(writer_opts.stream = fopen(argv[arg_i], "wb"))){
-            data.err = 1;
-            fprintf(stderr, "Unable to open file for writing: %s\n", argv[arg_i]);
-          }
-        }
+      if(*arg == '-') {
+        if(!strcmp(arg, "-o"))
+          arg_i++;
+        continue;
       }
-    }
 
-    if(!(data.csv_writer = zsv_writer_new(&writer_opts)))
+      FILE *f = fopen(arg, "rb");
+      if(!f) {
+        fprintf(stderr, "Could not open file for reading: %s\n", arg);
+        data.err = 1;
+      } else
+        next_input = zsv_stack_input_file_add(arg, next_input, &data.inputs_count, f, &data);
+    }
+  }
+
+  // collect all header names so we can line them up
+  unsigned i = 0;
+  for(struct zsv_stack_input_file *input = data.inputs; !data.err && input; input = input->next, i++) {
+    *opts = saved_opts;
+    opts->row_handler = zsv_stack_header_row;
+    opts->ctx = input;
+    opts->delimiter = delimiter;
+
+    // to do: max_cell_size
+    opts->stream = input->f;
+    if(zsv_new_with_properties(opts, input->fname, opts_used, &input->parser)
+       != zsv_status_ok)
       data.err = 1;
+    else {
+      zsv_handle_ctrl_c_signal();
+      enum zsv_status status;
+      while(!data.err
+            && !input->headers_done
+            && (status = zsv_parse_more(input->parser)) == zsv_status_ok)
+        ;
+    }
+  }
 
-    if(!data.err) {
-      struct zsv_stack_input_file **next_input = &data.inputs;
-      for(int arg_i = 1; !data.err && arg_i < argc; arg_i++) {
-        const char *arg = argv[arg_i];
-        if(*arg == '-') {
-          if(!strcmp(arg, "-o"))
-            arg_i++;
-          continue;
+  // we have read the header row of each input, so:
+  // - consolidate a column header names into a single list
+  // - assign output->input column mappings for each input
+
+  // first, get maximum size of consolidated cols, which is just the sum of the column count
+  // of all inputs
+  size_t max_columns_count = 0;
+  for(struct zsv_stack_input_file *input = data.inputs; !data.err && input; input = input->next)
+    max_columns_count += zsv_cell_count(input->parser); // zsv_row_cells_count(input->row);
+
+  // next, for each input, align the input columns with the output columns
+  for(struct zsv_stack_input_file *input = data.inputs; input && !data.err; input = input->next) {
+    if(max_columns_count) {
+      if(!(input->output_column_map = calloc(max_columns_count,
+                                             sizeof(*input->output_column_map))))
+        data.err = 1;
+      else {
+        input->output_column_map_size = max_columns_count;
+        // assign column indexes to global columns
+        size_t cols_used = zsv_cell_count(input->parser);
+        for(unsigned col_ix = 0; col_ix < cols_used; col_ix++) {
+          struct zsv_cell cell = zsv_get_cell(input->parser, col_ix);
+          size_t output_ix = zsv_stack_consolidate_header(&data, cell.str, cell.len);
+          if(output_ix)
+            input->output_column_map[output_ix - 1] = col_ix + 1;
         }
-
-        FILE *f = fopen(arg, "rb");
-        if(!f) {
-          fprintf(stderr, "Could not open file for reading: %s\n", arg);
-          data.err = 1;
-        } else
-          next_input = zsv_stack_input_file_add(arg, next_input, &data.inputs_count, f, &data);
       }
     }
+    zsv_delete(input->parser);
+  }
 
-    // collect all header names so we can line them up
-    unsigned i = 0;
-    for(struct zsv_stack_input_file *input = data.inputs; !data.err && input; input = input->next, i++) {
+  // not necessary, but free up unused memory by resizing each input's output_column_map
+  for(struct zsv_stack_input_file *input = data.inputs; input && !data.err; input = input->next) {
+    if(!data.colnames_count) {
+      if(input->output_column_map) {
+        free(input->output_column_map);
+        input->output_column_map = NULL;
+      }
+    } else {
+      size_t *resized = realloc(input->output_column_map, data.colnames_count * sizeof(*resized));
+      if(resized)
+        input->output_column_map = resized;
+    }
+  }
+
+  // print headers
+  for(struct zsv_stack_colname *e = data.first_colname; !data.err && e; e = e->next) {
+    const unsigned char *name = e->orig_name ? e->orig_name : e->name ? e->name : (const unsigned char *)"";
+    zsv_writer_cell(data.csv_writer, e == data.first_colname, name, strlen((const char *)name), 1);
+  }
+
+  // process data
+  for(struct zsv_stack_input_file *input = data.inputs; input && !data.err; input = input->next, i++) {
+    if(input->headers_done) {
       *opts = saved_opts;
-      opts->row_handler = zsv_stack_header_row;
+      opts->row_handler = zsv_stack_data_row;
       opts->ctx = input;
-      opts->delimiter = delimiter;
+      if(delimiter == '\t')
+        opts->delimiter = delimiter;
 
-       // to do: max_cell_size
+      rewind(input->f);
+      input->headers_done = 0;
       opts->stream = input->f;
       if(zsv_new_with_properties(opts, input->fname, opts_used, &input->parser)
          != zsv_status_ok)
         data.err = 1;
       else {
-        zsv_handle_ctrl_c_signal();
-        enum zsv_status status;
-        while(!data.err
-              && !input->headers_done
+        enum zsv_status status = zsv_status_ok;
+        while(status == zsv_status_ok && !data.err
               && (status = zsv_parse_more(input->parser)) == zsv_status_ok)
           ;
+        zsv_finish(input->parser);
+        zsv_delete(input->parser);
+        input->parser = NULL;
       }
     }
-
-    // we have read the header row of each input, so:
-    // - consolidate a column header names into a single list
-    // - assign output->input column mappings for each input
-
-    // first, get maximum size of consolidated cols, which is just the sum of the column count
-    // of all inputs
-    size_t max_columns_count = 0;
-    for(struct zsv_stack_input_file *input = data.inputs; !data.err && input; input = input->next)
-      max_columns_count += zsv_cell_count(input->parser); // zsv_row_cells_count(input->row);
-
-    // next, for each input, align the input columns with the output columns
-    for(struct zsv_stack_input_file *input = data.inputs; input && !data.err; input = input->next) {
-      if(max_columns_count) {
-        if(!(input->output_column_map = calloc(max_columns_count,
-                                               sizeof(*input->output_column_map))))
-          data.err = 1;
-        else {
-          input->output_column_map_size = max_columns_count;
-          // assign column indexes to global columns
-          size_t cols_used = zsv_cell_count(input->parser);
-          for(unsigned col_ix = 0; col_ix < cols_used; col_ix++) {
-            struct zsv_cell cell = zsv_get_cell(input->parser, col_ix);
-            size_t output_ix = zsv_stack_consolidate_header(&data, cell.str, cell.len);
-            if(output_ix)
-              input->output_column_map[output_ix - 1] = col_ix + 1;
-          }
-        }
-      }
-      zsv_delete(input->parser);
-    }
-
-    // not necessary, but free up unused memory by resizing each input's output_column_map
-    for(struct zsv_stack_input_file *input = data.inputs; input && !data.err; input = input->next) {
-      if(!data.colnames_count) {
-        if(input->output_column_map) {
-          free(input->output_column_map);
-          input->output_column_map = NULL;
-        }
-      } else {
-        size_t *resized = realloc(input->output_column_map, data.colnames_count * sizeof(*resized));
-        if(resized)
-          input->output_column_map = resized;
-      }
-    }
-
-    // print headers
-    for(struct zsv_stack_colname *e = data.first_colname; !data.err && e; e = e->next) {
-      const unsigned char *name = e->orig_name ? e->orig_name : e->name ? e->name : (const unsigned char *)"";
-      zsv_writer_cell(data.csv_writer, e == data.first_colname, name, strlen((const char *)name), 1);
-    }
-
-    // process data
-    for(struct zsv_stack_input_file *input = data.inputs; input && !data.err; input = input->next, i++) {
-      if(input->headers_done) {
-        *opts = saved_opts;
-        opts->row_handler = zsv_stack_data_row;
-        opts->ctx = input;
-        if(delimiter == '\t')
-          opts->delimiter = delimiter;
-
-        rewind(input->f);
-        input->headers_done = 0;
-        opts->stream = input->f;
-        if(zsv_new_with_properties(opts, input->fname, opts_used, &input->parser)
-           != zsv_status_ok)
-          data.err = 1;
-        else {
-         enum zsv_status status = zsv_status_ok;
-         while(status == zsv_status_ok && !data.err
-               && (status = zsv_parse_more(input->parser)) == zsv_status_ok)
-           ;
-         zsv_finish(input->parser);
-         zsv_delete(input->parser);
-         input->parser = NULL;
-        }
-      }
-    }
-    err = data.err;
-    zsv_stack_cleanup(&data);
-
-    if(writer_opts.stream && writer_opts.stream != stdout)
-      fclose(writer_opts.stream);
   }
+  err = data.err;
+  zsv_stack_cleanup(&data);
+
+  if(writer_opts.stream && writer_opts.stream != stdout)
+    fclose(writer_opts.stream);
+
   return err;
 }

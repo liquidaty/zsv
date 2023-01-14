@@ -294,3 +294,12 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
   *argc_out = new_argc;
   return err ? zsv_status_error : zsv_status_ok;
 }
+
+const char *zsv_next_arg(int arg_i, int argc, const char *argv[], int *err) {
+  if(!(arg_i < argc && strlen(argv[arg_i]) > 0)) {
+    fprintf(stderr, "%s option value invalid: should be non-empty string\n", argv[arg_i-1]);
+    *err = 1;
+    return NULL;
+  }
+  return argv[arg_i];
+}
