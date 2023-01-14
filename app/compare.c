@@ -44,7 +44,7 @@ static void zsv_compare_output_scalar(struct zsv_compare_data *data,
 
 static void zsv_compare_output_tuple(struct zsv_compare_data *data,
                                      struct zsv_compare_input *key_input,
-                                     zsv_compare_unique_colname *output_col,
+                                     const unsigned char *colname,
                                      struct zsv_cell *values // in original input order
                                      ) {
   // print ID | Column | Value 1 | ... | Value N
@@ -65,7 +65,7 @@ static void zsv_compare_output_tuple(struct zsv_compare_data *data,
     }
 
     // output column name of this cell
-    zsv_writer_cell_s(data->writer.handle.csv, ZSV_WRITER_SAME_ROW, output_col->name, 1);
+    zsv_writer_cell_s(data->writer.handle.csv, ZSV_WRITER_SAME_ROW, colname, 1);
   }
 
   for(unsigned i = 0; i < data->input_count; i++) {
@@ -90,17 +90,33 @@ static void zsv_compare_output_tuple(struct zsv_compare_data *data,
 }
 
 static void zsv_compare_print_row(struct zsv_compare_data *data,
-                                  const unsigned first_ix, // first input ix in inputs_to_sort
                                   const unsigned last_ix   // last input ix in inputs_to_sort
                                   ) {
+  struct zsv_compare_input *key_input = data->inputs_to_sort[0];
+
   // for now, output format is simple: for each value,
   // output a single scalar if the values are the same,
   // and a tuple if they differ
-
   struct zsv_cell *values = calloc(data->input_count, sizeof(*values));
   if(!values) {
     data->status = zsv_compare_status_memory;
     return;
+  }
+
+#define ZSV_COMPARE_MISSING "Missing"
+
+  if(last_ix + 1 < data->input_count) {
+    // if we don't have data from every input, then output "Missing" for missing inputs
+    for(unsigned i = last_ix + 1; i < data->input_count; i++) {
+      struct zsv_compare_input *input = data->inputs_to_sort[i];
+      unsigned input_ix = input->index;
+      values[input_ix].str = (unsigned char *)ZSV_COMPARE_MISSING;
+      values[input_ix].len = strlen(ZSV_COMPARE_MISSING);
+    }
+    zsv_compare_output_tuple(data, key_input, (unsigned char *)"<key>", values);
+
+    // reset values
+    memset(values, 0, data->input_count * sizeof(*values));
   }
 
   // for each output column
@@ -110,11 +126,9 @@ static void zsv_compare_print_row(struct zsv_compare_data *data,
     if(output_col->is_key)
       continue;
 
-    //
     char different = 0;
-    struct zsv_compare_input *key_input = NULL;
     unsigned first_input_ix = 0;
-    for(unsigned i = first_ix; i <= last_ix; i++) {
+    for(unsigned i = 0; i <= last_ix; i++) {
       struct zsv_compare_input *input = data->inputs_to_sort[i];
       if(input->done || !input->row_loaded) continue;
 
@@ -129,19 +143,14 @@ static void zsv_compare_print_row(struct zsv_compare_data *data,
         unsigned input_col_ix = col_ix_plus_1 - 1;
         if(!output_col)
           output_col = input->output_colnames[input_col_ix];
-
-        if(!key_input)
-          key_input = input;
         values[input_ix] = zsv_get_cell(input->parser, input_col_ix);
-        if(i > first_ix && !different && data->cmp(data->cmp_ctx, values[first_input_ix], values[input_ix]))
+        if(i > 0 && !different && data->cmp(data->cmp_ctx, values[first_input_ix], values[input_ix]))
           different = 1;
       }
     }
-//    if(!different) // output scalar
-//      zsv_compare_output_scalar(data, &values[first_ix]);
-//    else // output tuple
+
     if(different)
-      zsv_compare_output_tuple(data, key_input, output_col, values);
+      zsv_compare_output_tuple(data, key_input, output_col->name, values);
   }
   free(values);
 }
@@ -374,6 +383,8 @@ static int zsv_compare_inputp_cmp(const void *inputpx, const void* inputpy) {
   const struct zsv_compare_input *y = *yp;
 
   if(!x->row_loaded && !y->row_loaded) return 0;
+  if(!x->row_loaded) return -1;
+  if(!y->row_loaded) return 1;
 
   int cmp = 0;
   for(unsigned i = 0; !cmp && i < x->key_count && i < y->key_count; i++)
@@ -397,34 +408,28 @@ static enum zsv_compare_status zsv_compare_next(struct zsv_compare_data *data) {
   qsort(data->inputs_to_sort, data->input_count,
         sizeof(*data->inputs_to_sort), zsv_compare_inputp_cmp);
 
-  // find the next subset of inputs with identical id values and process it
-//  for(unsigned i = 0; i < data->input_count; i++) {
-    unsigned first = 0; // = i;
-    unsigned last = 0; // = i;
-    struct zsv_compare_input *min_input = data->inputs_to_sort[first];
-    for(unsigned tmp_i = first + 1; tmp_i < data->input_count; tmp_i++) {
-      struct zsv_compare_input *tmp = data->inputs_to_sort[tmp_i];
-      if(!tmp->row_loaded) continue;
-      if(!zsv_compare_inputp_cmp(&min_input, &tmp)) { // keys are the same
-        last = tmp_i;
-        continue;
-      }
-
-      // keys are different
-      break;
+  // find the next subset of inputs with identical id values and process those inputs
+  unsigned last = 0;
+  struct zsv_compare_input *min_input = data->inputs_to_sort[0];
+  for(unsigned tmp_i = 1; tmp_i < data->input_count; tmp_i++) {
+    struct zsv_compare_input *tmp = data->inputs_to_sort[tmp_i];
+    if(!tmp->row_loaded) continue;
+    if(!zsv_compare_inputp_cmp(&min_input, &tmp)) { // keys are the same
+      last = tmp_i;
+      continue;
     }
 
-    // print row
-    zsv_compare_print_row(data, first, last);
+    // keys are different
+    break;
+  }
 
-    // reset row_loaded
-    for(unsigned tmp = first; tmp <= last; tmp++)
-      // data->inputs[tmp].row_loaded = 0;
-      data->inputs_to_sort[tmp]->row_loaded = 0;
+  // print row
+  zsv_compare_print_row(data, last);
 
-    // update counter
-//    i = last;
-//  }
+  // reset row_loaded
+  for(unsigned tmp = 0; tmp <= last; tmp++)
+    data->inputs_to_sort[tmp]->row_loaded = 0;
+
   return zsv_compare_status_ok;
 }
 
