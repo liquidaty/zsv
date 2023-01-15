@@ -229,6 +229,35 @@ zsv_compare_unique_colname_add_if_not_found(struct zsv_compare_unique_colname **
   return found;
 }
 
+// add a colname to a list. allow duplicate names, but track instances
+// separately (i.e.
+static enum zsv_compare_status
+zsv_compare_unique_colname_add(zsv_compare_unique_colname **tree,
+                               const unsigned char *s,
+                               unsigned len,
+                               zsv_compare_unique_colname **new_col,
+                               unsigned *instance_num) {
+  int added = 0;
+  unsigned _instance_num = 0;
+  zsv_compare_unique_colname *_new_col =
+    zsv_compare_unique_colname_add_if_not_found(tree, s, len,
+                                                _instance_num, &added);
+  if(!_new_col)
+    return zsv_compare_status_error;
+
+  if(!added) { // we've seen this column before in this input
+    _instance_num = ++_new_col->total_instances;
+    _new_col =
+      zsv_compare_unique_colname_add_if_not_found(tree, s, len,
+                                                  _instance_num, &added);
+    if(!added) // should not happen
+      return zsv_compare_status_error;
+  }
+  *new_col = _new_col;
+  *instance_num = _instance_num;
+  return zsv_compare_status_ok;
+}
+
 static enum zsv_compare_status zsv_compare_set_inputs(struct zsv_compare_data *data, unsigned input_count) {
   if(!input_count || !(data->inputs = calloc(input_count, sizeof(*data->inputs)))
      || !(data->inputs_to_sort = calloc(input_count, sizeof(*data->inputs_to_sort))))
@@ -445,9 +474,10 @@ static int compare_usage() {
     "Usage: compare [options] [file1.csv] [file2.csv] [...]",
     "Options:",
     " -h,--help        : show usage",
-    " --allow-dupes    : allow duplicate column names",
+//    " --allow-dupes    : allow duplicate column names",
     " -k,--key <field> : specify a field to match rows on",
     "                    can be specified multiple times",
+
 //    " -a,--add <field> : specify an additional field to output",
 //    "                    will use the [first input] source",
     NULL
@@ -483,9 +513,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         && !err && arg_i < argc; arg_i++) {
     const char *arg = argv[arg_i];
 #include <zsv/utils/arg.h>
-    if(!strcmp(arg, "--allow-duplicate-column-names"))
-      data->allow_duplicate_column_names = 1;
-    else if(!strcmp(arg, "-k") || !strcmp(arg, "--key")) {
+//    if(!strcmp(arg, "--allow-duplicate-column-names"))
+//      data->allow_duplicate_column_names = 1;
+//    else
+    if(!strcmp(arg, "-k") || !strcmp(arg, "--key")) {
       const char *next_arg = zsv_next_arg(++arg_i, argc, argv, &err);
       if(next_arg) {
         next_key = zsv_compare_key_add(next_key, next_arg, &err);
@@ -543,32 +574,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           const unsigned char *colname_s = colname.str;
           unsigned colname_len = colname.len;
 
-          int added = 0;
-          unsigned instance_num = 0;
-          zsv_compare_unique_colname *input_col =
-            zsv_compare_unique_colname_add_if_not_found(&input->colnames,
-                                                        colname_s, colname_len,
-                                                        instance_num, &added);
-          if(!input_col) {
-            data->status = zsv_compare_status_error;
+          unsigned instance_num;
+          zsv_compare_unique_colname *input_col;
+          data->status =
+            zsv_compare_unique_colname_add(&input->colnames,
+                                           colname_s, colname_len,
+                                           &input_col, &instance_num);
+          if(data->status != zsv_compare_status_ok)
             break;
-          }
 
-          if(!added) { // we've seen this column before in this input
-            if(!data->allow_duplicate_column_names) { // no dupes; ignore this col
-              input_col = NULL;
-            } else { // update instance num and retry
-              instance_num = ++input_col->instance_num;
-              input_col =
-                zsv_compare_unique_colname_add_if_not_found(&input->colnames,
-                                                            colname_s, colname_len,
-                                                            instance_num, &added);
-              if(!added) // should not happen
-                data->status = zsv_compare_status_error;
-            }
-          }
-
-          if(input_col && added) {
+          if(input_col) {
             // now that we know this colname+instance_num is unique to this input
             // check if it is a key
             for(unsigned key_ix = 0; found_keys < input->key_count && key_ix < input->key_count; key_ix++) {
@@ -583,6 +598,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
             }
 
             // add it to the output
+            int added = 0;
             zsv_compare_unique_colname *output_col =
               zsv_compare_unique_colname_add_if_not_found(&data->output_colnames,
                                                           colname_s, colname_len,

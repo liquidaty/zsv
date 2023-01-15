@@ -4,13 +4,20 @@
 #include <sglib.h>
 
 typedef struct zsv_compare_unique_colname {
-  struct zsv_compare_unique_colname *left;
-  struct zsv_compare_unique_colname *right;
-  struct zsv_compare_unique_colname *next;
+  struct zsv_compare_unique_colname *next; // retain order via linked list
+
+  // name and instance_num must be unique
   unsigned char *name;
   size_t name_len;
   unsigned instance_num;
+
+  // keep track of how many instances we've seen in total
+  unsigned total_instances; // only applies if instance_num == 0
+
   unsigned output_ix; // only used for output columns
+
+  struct zsv_compare_unique_colname *left;
+  struct zsv_compare_unique_colname *right;
   unsigned char color;
   unsigned char is_key;
 } zsv_compare_unique_colname;
