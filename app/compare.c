@@ -162,6 +162,7 @@ static void zsv_compare_input_free(struct zsv_compare_input *input) {
   if(input->stream)
     fclose(input->stream);
   free(input->output_colnames);
+  free(input->keys);
 }
 
 static struct zsv_compare_unique_colname *
@@ -322,8 +323,14 @@ static void zsv_compare_data_free(struct zsv_compare_data *data) {
   for(unsigned i = 0; i < data->input_count; i++)
     zsv_compare_input_free(&data->inputs[i]);
   free(data->inputs);
+  free(data->inputs_to_sort);
 
   zsv_compare_unique_colnames_delete(&data->output_colnames);
+
+  for(struct zsv_compare_key *next, *key = data->keys; key; key = next) {
+    next = key->next;
+    free(key);
+  }
 }
 
 void zsv_compare_delete(zsv_compare_handle z) {
@@ -437,12 +444,12 @@ static int compare_usage() {
   static const char *usage[] = {
     "Usage: compare [options] [file1.csv] [file2.csv] [...]",
     "Options:",
-    " -h,--help             : show usage",
-    " --allow-dupes         : allow duplicate column names",
-    " -k,--key <field>      : specify a key to match rows on",
-//    " -i,--input <filename> : use specified file input\n"
-//    " -I,--no-case          : use case-insensitive comparison\n"
-//    " --format-table        :
+    " -h,--help        : show usage",
+    " --allow-dupes    : allow duplicate column names",
+    " -k,--key <field> : specify a field to match rows on",
+    "                    can be specified multiple times",
+//    " -a,--add <field> : specify an additional field to output",
+//    "                    will use the [first input] source",
     NULL
   };
 
