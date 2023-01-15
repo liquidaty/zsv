@@ -58,6 +58,14 @@ struct zsv_compare_key {
   unsigned position_plus_1; // position can be specified in lieu of name
 };
 
+struct zsv_compare_added_column {
+  struct zsv_compare_added_column *next;
+  struct zsv_compare_unique_colname *colname;
+  struct zsv_compare_unique_colname *output_colname;
+  struct zsv_compare_input *input;
+  unsigned col_ix; // index of column in input from which to extract this value
+};
+
 struct zsv_compare_data {
   enum zsv_compare_status status;
   unsigned input_count; // number of allocated compare_input structs
@@ -74,6 +82,8 @@ struct zsv_compare_data {
   zsv_compare_unique_colname **output_colnames_next;
   zsv_compare_unique_colname *output_colnames_first; // linked list
 
+  struct zsv_compare_added_column *added_columns;
+  zsv_compare_unique_colname *added_colnames;
   zsv_compare_cell_func cmp;
   void *cmp_ctx;
 

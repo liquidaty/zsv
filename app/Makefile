@@ -92,7 +92,8 @@ else
   CONFIGURE_HOST=--host=x86_64-w64-mingw32
 endif
 
-CFLAGS+= -std=gnu11
+CFLAGS+=-std=gnu11
+CFLAGS+=-Wunused
 CFLAGS_O ?=
 ifeq ($(CFLAGS_O),)
   ifeq ($(DEBUG),0)

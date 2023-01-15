@@ -98,6 +98,9 @@ size_t zsv_cell_count(zsv_parser parser);
  * Get the contents of a cell in the row that was just parsed. See `struct zsv_cell`
  * in common.h for further details
  *
+ * `zsv_get_cell_trimmed` is equivalent to `zsv_get_cell`, except that it
+ * returns a value with leading and trailing whitespace removed
+ *
  * @param parser
  * @param index zero-based index of the cell to fetch
  * @return `zsv_cell` structure with the bytes and length of this cell value
@@ -112,6 +115,8 @@ size_t zsv_cell_count(zsv_parser parser);
  * ```
  */
 struct zsv_cell zsv_get_cell(zsv_parser parser, size_t index);
+
+struct zsv_cell zsv_get_cell_trimmed(zsv_parser parser, size_t index);
 
 /**
  * `zsv_get_cell_len()` is not needed in most cases, but may be useful in

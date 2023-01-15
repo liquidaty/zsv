@@ -247,6 +247,10 @@ enum zsv_writer_status zsv_writer_cell_Lf(zsv_csv_writer w, char new_row, const 
   return zsv_writer_status_error;
 }
 
+enum zsv_writer_status zsv_writer_cell_blank(zsv_csv_writer w, char new_row) {
+  return zsv_writer_cell(w, new_row, (const unsigned char *)"", 0, 0);
+}
+
 enum zsv_writer_status zsv_writer_cell_zu(zsv_csv_writer w, char new_row, size_t zu) {
   char s[64];
   int n = snprintf(s, sizeof(s), "%zu", zu);

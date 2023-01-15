@@ -71,4 +71,7 @@ enum zsv_writer_status zsv_writer_cell_Lf(zsv_csv_writer w, char new_row,
                                                      const char *fmt_spec, // provide X in %XLf e.g. ".2" or ""
                                                      long double ldbl);
 
+// write a blank cell
+enum zsv_writer_status zsv_writer_cell_blank(zsv_csv_writer w, char new_row);
+
 #endif

@@ -256,11 +256,19 @@ char zsv_quoted(zsv_parser parser) {
 }
 
 // to do: benchmark returning zsv_cell struct vs just a zsv_cell pointer
+ZSV_EXPORT
 struct zsv_cell zsv_get_cell(zsv_parser parser, size_t ix) {
   if(ix < parser->row.used)
     return parser->row.cells[ix];
 
   struct zsv_cell c = { 0, 0, 0 };
+  return c;
+}
+
+ZSV_EXPORT
+struct zsv_cell zsv_get_cell_trimmed(zsv_parser parser, size_t ix) {
+  struct zsv_cell c = zsv_get_cell(parser, ix);
+  c.str = (unsigned char *)zsv_strtrim(c.str, &c.len);
   return c;
 }
 
