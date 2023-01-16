@@ -11,6 +11,9 @@
 #include <stdlib.h>
 #include <jsonwriter.h>
 
+#include <sqlite3.h>
+extern sqlite3_module CsvModule;
+
 #include <zsv/utils/string.h>
 #include <zsv/utils/writer.h>
 
@@ -22,6 +25,8 @@
 
 #include "compare_unique_colname.c"
 #include "compare_added_column.c"
+#include "compare_sort.c"
+
 
 static struct zsv_compare_key **zsv_compare_key_add(struct zsv_compare_key **next,
                                                     const char *s, int *err) {
@@ -85,7 +90,7 @@ static void zsv_compare_output_tuple(struct zsv_compare_data *data,
       if(data->writer.type != 'j')
         zsv_writer_cell_blank(data->writer.handle.csv, ZSV_WRITER_SAME_ROW);
     } else {
-      struct zsv_cell c = zsv_get_cell_trimmed(ac->input->parser, ac->col_ix);
+      struct zsv_cell c = data->get_cell(ac->input, ac->col_ix);
       zsv_writer_cell(data->writer.handle.csv, ZSV_WRITER_SAME_ROW,
                       c.str, c.len, c.quoted);
     }
@@ -149,7 +154,7 @@ static void zsv_compare_print_row(struct zsv_compare_data *data,
         unsigned input_col_ix = col_ix_plus_1 - 1;
         if(!output_col)
           output_col = input->output_colnames[input_col_ix];
-        values[input_ix] = zsv_get_cell_trimmed(input->parser, input_col_ix);
+        values[input_ix] = data->get_cell(input, input_col_ix);
         if(i > 0 && !different && data->cmp(data->cmp_ctx, values[first_input_ix], values[input_ix]))
           different = 1;
       }
@@ -169,6 +174,9 @@ static void zsv_compare_input_free(struct zsv_compare_input *input) {
     fclose(input->stream);
   free(input->output_colnames);
   free(input->keys);
+  if(input->sort_stmt) {
+    sqlite3_finalize(input->sort_stmt);
+  }
 }
 
 static enum zsv_compare_status zsv_compare_set_inputs(struct zsv_compare_data *data, unsigned input_count) {
@@ -195,7 +203,7 @@ static enum zsv_compare_status zsv_compare_set_inputs(struct zsv_compare_data *d
 
 static int zsv_compare_cell(void *ctx, struct zsv_cell c1, struct zsv_cell c2);
 
-static void zsv_compare_start(struct zsv_compare_data *data) {
+static void zsv_compare_output_begin(struct zsv_compare_data *data) {
   if(data->writer.type == 'j') {
     if(!(data->writer.handle.jsw = jsonwriter_new(stdout))) // to do: data->out
       data->status = zsv_compare_status_memory;
@@ -236,7 +244,7 @@ static void zsv_compare_start(struct zsv_compare_data *data) {
   }
 }
 
-static void zsv_compare_end(struct zsv_compare_data *data) {
+static void zsv_compare_output_end(struct zsv_compare_data *data) {
   if(data->writer.type == 'j') {
     jsonwriter_flush(data->writer.handle.jsw);
     jsonwriter_end(data->writer.handle.jsw);
@@ -247,11 +255,72 @@ static void zsv_compare_end(struct zsv_compare_data *data) {
     data->status = zsv_compare_status_ok;
 }
 
+static enum zsv_status zsv_compare_next_unsorted_row(struct zsv_compare_input *input) {
+  return zsv_next_row(input->parser);
+}
+
+static struct zsv_cell zsv_compare_get_unsorted_cell(struct zsv_compare_input *input,
+                                                     unsigned ix) {
+  return zsv_get_cell_trimmed(input->parser, ix);
+}
+
+static unsigned zsv_compare_get_unsorted_colcount(struct zsv_compare_input *input) {
+  return zsv_cell_count(input->parser);
+}
+
+static enum zsv_compare_status
+input_init_unsorted(struct zsv_compare_data *data,
+                    struct zsv_compare_input *input,
+                    struct zsv_opts *opts,
+                    const char *opts_used) {
+  (void)(opts_used);
+  if(!(input->stream = fopen(input->path, "rb"))) {
+    perror(input->path);
+    return zsv_compare_status_error;
+  }
+  struct zsv_opts these_opts = *opts;
+  these_opts.stream = input->stream;
+  enum zsv_status stat = zsv_new_with_properties(&these_opts, input->path, NULL, &input->parser);
+  if(stat != zsv_status_ok)
+    return zsv_compare_status_error;
+
+  if(data->next_row(input) != zsv_status_row)
+    return zsv_compare_status_error;
+
+  return zsv_compare_status_ok;
+}
+
 zsv_compare_handle zsv_compare_new() {
   zsv_compare_handle z = calloc(1, sizeof(*z));
   zsv_compare_set_comparison(z, zsv_compare_cell, z);
   z->output_colnames_next = &z->output_colnames;
+
+  z->next_row = zsv_compare_next_unsorted_row;
+  z->get_cell = zsv_compare_get_unsorted_cell;
+  z->get_column_name = zsv_compare_get_unsorted_cell;
+  z->get_column_count = zsv_compare_get_unsorted_colcount;
+  z->input_init = input_init_unsorted;
   return z;
+}
+
+static void zsv_compare_set_sorted_callbacks(struct zsv_compare_data *data) {
+  data->next_row = zsv_compare_next_sorted_row;
+  data->get_cell = zsv_compare_get_sorted_cell;
+  data->get_column_name = zsv_compare_get_sorted_colname;
+  data->get_column_count = zsv_compare_get_sorted_colcount;
+  data->input_init = input_init_sorted;
+}
+
+static enum zsv_compare_status zsv_compare_init_sorted(struct zsv_compare_data *data) {
+  int rc;
+  const char *db_url = data->sort_in_memory ? "file::memory:" : "";
+  if((rc = sqlite3_open_v2(db_url, &data->sort_db, SQLITE_OPEN_URI | SQLITE_OPEN_READWRITE, NULL)) == SQLITE_OK
+     && data->sort_db
+     && (rc = sqlite3_create_module(data->sort_db, "csv", &CsvModule, 0) == SQLITE_OK)) {
+    zsv_compare_set_sorted_callbacks(data);
+    return zsv_compare_status_ok;
+  }
+  return zsv_compare_status_error;
 }
 
 static void zsv_compare_data_free(struct zsv_compare_data *data) {
@@ -264,6 +333,12 @@ static void zsv_compare_data_free(struct zsv_compare_data *data) {
     zsv_compare_input_free(&data->inputs[i]);
   free(data->inputs);
   free(data->inputs_to_sort);
+
+  if(data->sort) {
+//    zsv_compare_sort_delete(data->sort);
+    if(data->sort_db)
+      sqlite3_close(data->sort_db);
+  }
 
   zsv_compare_added_column_delete(data->added_columns);
 
@@ -303,11 +378,11 @@ static enum zsv_compare_status zsv_compare_advance(struct zsv_compare_data *data
     struct zsv_compare_input *input = &data->inputs[i];
     if(input->done) continue;
     if(input->row_loaded) continue;
-    if(zsv_next_row(input->parser) != zsv_status_row)
+    if(data->next_row(input) != zsv_status_row)
       input->done = 1;
     else {
       for(unsigned idx = 0; idx < input->key_count; idx++)
-        input->keys[idx].value = zsv_get_cell_trimmed(input->parser, input->keys[idx].col_ix);
+        input->keys[idx].value = data->get_cell(input, input->keys[idx].col_ix);
       input->row_loaded = 1;
       got = 1;
     }
@@ -382,6 +457,7 @@ static int compare_usage() {
     "                    can be specified multiple times",
     " -a,--add <field> : specify an additional field to output",
     "                    will use the [first input] source",
+    " --sort           : sort on keys before comparing",
     NULL
   };
 
@@ -391,7 +467,13 @@ static int compare_usage() {
   return 0;
 }
 
-int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
+// TO DO: consolidate common code w sql.c-- move to utils/db.c?
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
+                               const char *opts_used) {
+  /**
+   * See sql.c re passing options to sqlite3 when sorting is used
+   */
+  (void)(opts_used);
   if(argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
     compare_usage();
     return argc < 2 ? 1 : 0;
@@ -412,6 +494,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   unsigned input_count = 0;
   struct zsv_compare_key **next_key = &data->keys;
   struct zsv_compare_added_column **added_column_next = &data->added_columns;
+//  struct zsv_compare_sort **sort_next = &data->sort;
   for(int arg_i = 1; data->status == zsv_compare_status_ok
         && !err && arg_i < argc; arg_i++) {
     const char *arg = argv[arg_i];
@@ -440,8 +523,30 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
                                          &data->status);
         }
       }
+    } else if(!strcmp(arg, "--sort")) {
+      data->sort = 1;
+      /*
+      const char *next_arg = zsv_next_arg(++arg_i, argc, argv, &err);
+      if(next_arg)
+        sort_next = zsv_compare_sort_add(sort_next, next_arg, &data->status);
+      */
     } else
       input_filenames[input_count++] = arg;
+  }
+
+
+  struct zsv_opts original_default_opts;
+  if(data->sort) {
+    if(!data->key_count) {
+      fprintf(stderr, "--sort requires one or more keys\n");
+      data->status = zsv_compare_status_error;
+    } else {
+      original_default_opts = zsv_get_default_opts();
+      zsv_set_default_opts(*opts);
+
+      if(data->status == zsv_compare_status_ok)
+        data->status = zsv_compare_init_sorted(data);
+    }
   }
 
   if(err && data->status == zsv_compare_status_ok)
@@ -455,40 +560,29 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       for(unsigned ix = 0; data->status == zsv_compare_status_ok && ix < input_count; ix++) {
         struct zsv_compare_input *input = &data->inputs[ix];
         input->path = input_filenames[ix];
-        if(!(input->stream = fopen(input->path, "rb"))) {
-          perror(input->path);
-          data->status = zsv_compare_status_error;
-          break;
-        }
-        struct zsv_opts these_opts = *opts;
-        these_opts.stream = input->stream;
-        enum zsv_status stat = zsv_new_with_properties(&these_opts, input->path, opts_used, &input->parser);
-        if(stat != zsv_status_ok)
-          data->status = zsv_compare_status_error;
+        data->status = data->input_init(data, input, opts, opts_used);
       }
     }
 
     char started = 0;
     if(data->status == zsv_compare_status_ok) {
       started = 1;
-      zsv_compare_start(data);
-      // load header rows, determine total number of output columns amongst all
+      zsv_compare_output_begin(data);
 
       // find keys
       for(unsigned i = 0; data->status == zsv_compare_status_ok && i < data->input_count; i++) {
         struct zsv_compare_input *input = &data->inputs[i];
-        if(zsv_next_row(input->parser) != zsv_status_row)
-          input->done = 1;
-        else {
-          if((input->col_count = zsv_cell_count(input->parser)))
-            if(!(input->output_colnames = calloc(input->col_count, sizeof(*input->output_colnames))))
-              data->status = zsv_compare_status_memory;
+        if((input->col_count = data->get_column_count(input))) {
+          if(!(input->output_colnames = calloc(input->col_count, sizeof(*input->output_colnames)))) {
+            data->status = zsv_compare_status_memory;
+            break;
+          }
         }
 
         unsigned found_keys = 0;
         for(unsigned j = 0; j < input->col_count && !input->done
               && data->status == zsv_compare_status_ok; j++) {
-          struct zsv_cell colname = zsv_get_cell_trimmed(input->parser, j);
+          struct zsv_cell colname = data->get_column_name(input, j);
           const unsigned char *colname_s = colname.str;
           unsigned colname_len = colname.len;
           zsv_compare_unique_colname *input_col;
@@ -610,12 +704,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     while(data->status == zsv_compare_status_ok && zsv_compare_next(data) == zsv_compare_status_ok)
       ;
     if(started)
-      zsv_compare_end(data);
+      zsv_compare_output_end(data);
   }
 
   free(input_filenames);
 
   err = data->status == zsv_compare_status_ok ? 0 : 1;
+
+  if(data->sort)
+    zsv_set_default_opts(original_default_opts); // restore default options
+
   zsv_compare_delete(data);
   return err;
 }

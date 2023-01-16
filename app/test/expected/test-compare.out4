@@ -1,0 +1,4 @@
+C,Column,compare/t1.csv,compare/t5.csv,compare/t6-unsorted.csv
+C9-NONMATCHING,<key>,Missing,,
+C9-NONMATCHING,A,,A1,AAA
+X2,B,B2,BB,BB

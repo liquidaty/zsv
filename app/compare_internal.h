@@ -2,6 +2,7 @@
 #define ZSV_COMPARE_PRIVATE_H
 
 #include <sglib.h>
+#include <sqlite3.h>
 
 typedef struct zsv_compare_unique_colname {
   struct zsv_compare_unique_colname *next; // retain order via linked list
@@ -47,6 +48,8 @@ struct zsv_compare_input {
   unsigned key_count;
   struct zsv_compare_input_key *keys;
 
+  sqlite3_stmt *sort_stmt;
+
   unsigned char row_loaded:1;
   unsigned char done:1;
   unsigned char _:6;
@@ -65,6 +68,13 @@ struct zsv_compare_added_column {
   struct zsv_compare_input *input;
   unsigned col_ix; // index of column in input from which to extract this value
 };
+
+/*
+struct zsv_compare_sort {
+  struct zsv_compare_sort *next;
+  const char *by;
+};
+*/
 
 struct zsv_compare_data {
   enum zsv_compare_status status;
@@ -87,9 +97,18 @@ struct zsv_compare_data {
   zsv_compare_cell_func cmp;
   void *cmp_ctx;
 
-//  void (*unmatched_row_handler)(void *ctx, struct zsv_compare_input *key_input,
-//                                struct zsv_compare_input *unmatched_row_input);
-//  void *unmatched_row_handler_ctx;
+  enum zsv_status (*next_row)(struct zsv_compare_input *input);
+  struct zsv_cell (*get_cell)(struct zsv_compare_input *input, unsigned ix);
+  struct zsv_cell (*get_column_name)(struct zsv_compare_input *input, unsigned ix);
+  unsigned (*get_column_count)(struct zsv_compare_input *input);
+  enum zsv_compare_status (*input_init)(struct zsv_compare_data *data,
+                                        struct zsv_compare_input *input,
+                                        struct zsv_opts *opts,
+                                        const char *opts_used);
+
+//  struct zsv_compare_sort *sort;
+  sqlite3 *sort_db; // used when --sort option was specified
+
   struct {
     char type; // 'j' for json
     union {
@@ -99,7 +118,9 @@ struct zsv_compare_data {
   } writer;
 
   unsigned char allow_duplicate_column_names:1;
-  unsigned char _:7;
+  unsigned char sort:1;
+  unsigned char sort_in_memory:1;
+  unsigned char _:5;
 };
 
 #endif
