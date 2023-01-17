@@ -60,8 +60,10 @@ static void zsv_compare_output_strn(struct zsv_compare_data *data,
                                     int new_row,
                                     int quoted) {
   if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
-    if(data->writer.object && s == NULL)
-      return zsv_compare_output_property_name(data, new_row, 1);
+    if(data->writer.object && s == NULL) {
+      zsv_compare_output_property_name(data, new_row, 1);
+      return;
+    }
     if(data->writer.object)
       zsv_compare_output_property_name(data, new_row, 0);
     if(s == NULL)
@@ -80,7 +82,7 @@ static void zsv_compare_output_str(struct zsv_compare_data *data,
                                    const unsigned char *s,
                                    int new_row,
                                    int quoted) {
-  return zsv_compare_output_strn(data, s, s ? strlen((const char *)s) : 0, new_row, quoted);
+  zsv_compare_output_strn(data, s, s ? strlen((const char *)s) : 0, new_row, quoted);
 }
 
 static void zsv_compare_output_zu(struct zsv_compare_data *data,

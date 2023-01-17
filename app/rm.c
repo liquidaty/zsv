@@ -118,7 +118,7 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
           unsigned char *cache_dir = zsv_cache_path((const unsigned char *)filepath, NULL, 0);
           if(!cache_dir)
             err = zsv_printerr(ENOMEM, "Out of memory!");
-          else if(zsv_dir_exists(cache_dir)) {
+          else if(zsv_dir_exists((const char *)cache_dir)) {
             err = zsv_remove_dir_recursive(cache_dir);
             if(verbose) {
               if(!err)
