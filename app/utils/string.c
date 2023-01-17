@@ -225,7 +225,6 @@ size_t zsv_strnext_is_sign(const unsigned char *s, size_t len) {
   return 0;
 }
 
-
 /**
  * zsv_strwhite(): convert consecutive white to single space
  *
@@ -304,4 +303,25 @@ size_t zsv_strip_trailing_zeros(const char *s, size_t len) {
       len--;
   }
   return len;
+}
+
+/**
+ * zsv_strunescape_backslash(): convert consecutive white to single space
+ *
+ * @param s     string to convert
+ * @param len   length of input string
+ * @param flags bitfield of ZSV_STRWHITE_FLAG_XXX values
+ */
+size_t zsv_strunescape_backslash(unsigned char *s, size_t len) {
+  if(len == 0 || !memchr(s, '\\', len - 1))
+    return len;
+  size_t j = 0;
+  for(size_t i = 0; i < len; i++, j++) {
+    if(UNLIKELY(s[i] == '\\' && i + 1 < len && memchr("tnr", s[i+1], 3))) {
+      ++i;
+      s[j] = s[i] == 't' ? '\t' : s[i] == 'n' ? '\n' : '\r';
+    } else
+      s[j] = s[i];
+  }
+  return j;
 }

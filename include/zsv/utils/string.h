@@ -88,6 +88,15 @@ const unsigned char *zsv_strtrim_left(const char unsigned * restrict s, size_t *
 const unsigned char *zsv_strtrim(const char unsigned * restrict s, size_t *lenp);
 
 /**
+ * zsv_strunescape_backslash(): convert consecutive white to single space
+ *
+ * @param s     string to convert
+ * @param len   length of input string
+ * @param flags bitfield of ZSV_STRWHITE_FLAG_XXX values
+ */
+size_t zsv_strunescape_backslash(unsigned char *s, size_t len);
+
+/**
  * Get the next UTF8 codepoint in a string
  * Return: length of next character (in bytes), or 0 on error or end of string
  */
