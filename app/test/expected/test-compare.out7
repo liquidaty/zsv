@@ -1,0 +1,23 @@
+[
+  {
+    "Row #": 1,
+    "Column": "B",
+    "compare/t1.csv": "X1",
+    "compare/t2.csv": "B1",
+    "compare/t3.csv": "X1"
+  },
+  {
+    "Row #": 2,
+    "Column": "B",
+    "compare/t1.csv": "B2",
+    "compare/t2.csv": "B2",
+    "compare/t3.csv": "BB"
+  },
+  {
+    "Row #": 2,
+    "Column": "C",
+    "compare/t1.csv": "X2",
+    "compare/t2.csv": "C2",
+    "compare/t3.csv": "C2"
+  }
+]

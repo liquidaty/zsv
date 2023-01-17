@@ -10,7 +10,7 @@ static char starts_w_str_underscore(const unsigned char *s, size_t s_len,
                                     const unsigned char *prefix) {
   char result = 0;
   unsigned char *s_lc = zsv_strtolowercase(s, &s_len);
-  size_t pfx_len = strlen(prefix);
+  size_t pfx_len = strlen((const char *)prefix);
   unsigned char *prefix_lc = zsv_strtolowercase(prefix, &pfx_len);
   if(pfx_len + 1 < s_len && !memcmp(s_lc, prefix_lc, pfx_len) && s_lc[pfx_len] == '_')
     result = 1;
@@ -70,7 +70,7 @@ int zsv_dbtable2json(sqlite3 *db, const char *tname, jsonwriter_handle jsw) {
             // strip the leading "tablename_" from the index name
             const char *ix_name = (const char *)text;
             size_t ix_name_len = len;
-            if(ix_name_len > strlen(tname) + 1 && starts_w_str_underscore(ix_name, ix_name_len, tname)) {
+            if(ix_name_len > strlen(tname) + 1 && starts_w_str_underscore((const unsigned char *)ix_name, ix_name_len, (const unsigned char *)tname)) {
               ix_name += strlen(tname) + 1;
               ix_name_len -= strlen(tname) + 1;
             }

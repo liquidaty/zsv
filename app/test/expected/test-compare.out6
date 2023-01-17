@@ -1,0 +1,30 @@
+[
+  [
+    "Row #",
+    "Column",
+    "compare/t1.csv",
+    "compare/t2.csv",
+    "compare/t3.csv"
+  ],
+  [
+    1,
+    "B",
+    "X1",
+    "B1",
+    "X1"
+  ],
+  [
+    2,
+    "B",
+    "B2",
+    "B2",
+    "BB"
+  ],
+  [
+    2,
+    "C",
+    "X2",
+    "C2",
+    "C2"
+  ]
+]

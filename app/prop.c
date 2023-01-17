@@ -349,12 +349,12 @@ static int prop_arg_value(int i, int argc, const char *argv[], int64_t *value) {
     *value = ZSV_PROP_ARG_REMOVE;
   else {
     char *end = NULL;
-    intmax_t i = strtoimax(arg, &end, 0);
+    intmax_t j = strtoimax(arg, &end, 0);
     if(arg && *arg && end && *end == '\0') {
-      if(i == 0)
+      if(j == 0)
         *value = ZSV_PROP_ARG_REMOVE;
-      else if(i > 0 && i <= UINT_MAX)
-        *value = i;
+      else if(j > 0 && j <= UINT_MAX)
+        *value = j;
       return 0;
     }
     fprintf(stderr, "Invalid property value '%s'.\n", arg);
