@@ -561,15 +561,27 @@ static int compare_usage() {
     "  --json           : output as JSON",
     "  --json-compact   : output as compact JSON",
     "  --json-object    : output as an array of objects",
+    "",
+    "NOTES",
+    "",
+    "    If no keys are specified, each row from each input is compared to the",
+    "    row in the corresponding position in each other input (all the first rows",
+    "    from each input are compared to each other, all the second rows are compared to",
+    "    each other, etc).",
+    "",
+    "    If one or more key is specified, each input is assumed to already be",
+    "    lexicographically sorted in ascending order; this is a necessary condition",
+    "    for the output to be correct (unless the --sort option is used). However, it",
+    "    is not required for each input to contain the same population of row keys",
+    "",
+    "    The --sort option uses sqlite3 (unindexed) sort and is intended to be a",
+    "    convenience rather than performance feature. If you need high performance",
+    "    sorting, other solutions, such as a multi-threaded parallel sort, are likely",
+    "    superior. For handling quoted data, `2tsv` can be used to convert to a delimited",
+    "    format without quotes, that can be directly parsed with common UNIX utilities",
+    "    (such as `sort`), and `select --unescape` can be used to convert back",
     NULL
   };
-
-  /**
-   * sorting uses sqlite3 (unindexed) sort and is intended to be a convenience
-   * rather than a performance feature. If you need high performance sorting,
-   * other solutions, such as a multi-threaded parallel sort, will serve you
-   * better
-   */
 
   for(unsigned i = 0; usage[i]; i++)
     printf("%s\n", usage[i]);
