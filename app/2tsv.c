@@ -134,15 +134,30 @@ static void zsv_2tsv_row(void *ctx) {
   zsv_2tsv_write(&data->out, (const unsigned char *) "\n", 1);
 }
 
+int zsv_2tsv_usage(int rc) {
+  static const char *zsv_2tsv_usage_msg[] =
+    {
+      APPNAME ": convert CSV to TSV (tab-delimited text) suitable for simple-delimiter",
+      "       text processing. By default, embedded tabs or multilines will be escaped",
+      "       to \\t, \\n or \\r, respectively",
+      "",
+      "Usage: " APPNAME " [filename] [-o <output_filename>]",
+      "  e.g. " APPNAME " < myfile.csv > myfile.tsv",
+      NULL
+    };
+  for(int i = 0; zsv_2tsv_usage_msg[i]; i++)
+    fprintf(stdout, "%s\n", zsv_2tsv_usage_msg[i]);
+
+  return rc;
+}
+
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
   struct zsv_2tsv_data data = { 0 };
   const char *input_path = NULL;
   int err = 0;
   for(int i = 1; !err && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-      fprintf(stdout, "Usage: " APPNAME " [filename] [-o <output_filename>]\n");
-      fprintf(stdout, "  Reads CSV input and converts to tsv\n");
-      err = 1;
+      return zsv_2tsv_usage(0);
     } else if(!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if(++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = 1;

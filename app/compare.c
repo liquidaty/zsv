@@ -27,6 +27,7 @@ extern sqlite3_module CsvModule;
 #include "compare_added_column.c"
 #include "compare_sort.c"
 
+#define ZSV_COMPARE_OUTPUT_TYPE_JSON 'j'
 
 static struct zsv_compare_key **zsv_compare_key_add(struct zsv_compare_key **next,
                                                     const char *s, int *err) {
@@ -41,62 +42,83 @@ static struct zsv_compare_key **zsv_compare_key_add(struct zsv_compare_key **nex
   return next;
 }
 
+static void zsv_compare_output_zu(struct zsv_compare_data *data,
+                                  size_t n,
+                                  int new_row) {
+ if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON)
+   jsonwriter_int(data->writer.handle.jsw, n);
+ else
+   zsv_writer_cell_zu(data->writer.handle.csv, ZSV_WRITER_NEW_ROW, data->row_count);
+}
+
+static void zsv_compare_output_strn(struct zsv_compare_data *data,
+                                    const unsigned char *s, size_t len,
+                                    int new_row,
+                                    int quoted) {
+  if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
+    if(s == NULL)
+      jsonwriter_null(data->writer.handle.jsw);
+    else
+      jsonwriter_strn(data->writer.handle.jsw, s, len);
+  } else {
+    if(s == NULL)
+      zsv_writer_cell_blank(data->writer.handle.csv, ZSV_WRITER_SAME_ROW);
+    else
+      zsv_writer_cell(data->writer.handle.csv, new_row, s, len, quoted);
+  }
+}
+
+static void zsv_compare_output_str(struct zsv_compare_data *data,
+                                   const unsigned char *s,
+                                   int new_row,
+                                   int quoted) {
+  return zsv_compare_output_strn(data, s, s ? strlen((const char *)s) : 0, new_row, quoted);
+}
+
 static void zsv_compare_output_tuple(struct zsv_compare_data *data,
                                      struct zsv_compare_input *key_input,
                                      const unsigned char *colname,
                                      struct zsv_cell *values // in original input order
                                      ) {
   // print ID | Column | Value 1 | ... | Value N
-  if(data->writer.type == 'j') {
+  if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON)
     jsonwriter_start_array(data->writer.handle.jsw);
-  // to do: output ID values and column name
-  } else {
-    // to do: output ID values
-    if(!data->keys) // id is effectively just row number
-      zsv_writer_cell_zu(data->writer.handle.csv, ZSV_WRITER_NEW_ROW, data->row_count);
-    else {
-      for(unsigned idx = 0; idx < key_input->key_count; idx++) {
-        struct zsv_cell *c = &key_input->keys[idx].value;
-        zsv_writer_cell(data->writer.handle.csv,
-                        idx == 0 ? ZSV_WRITER_NEW_ROW : ZSV_WRITER_SAME_ROW,
-                        c->str, c->len, c->quoted);
-      }
-    }
 
-    // output column name of this cell
-    zsv_writer_cell_s(data->writer.handle.csv, ZSV_WRITER_SAME_ROW, colname, 1);
+  // to do: output ID values
+  if(!data->keys) // id is effectively just row number
+    zsv_compare_output_zu(data, data->row_count, ZSV_WRITER_NEW_ROW);
+  else {
+    for(unsigned idx = 0; idx < key_input->key_count; idx++) {
+      struct zsv_cell *c = &key_input->keys[idx].value;
+      zsv_compare_output_strn(data, c->str, c->len, idx == 0 ? ZSV_WRITER_NEW_ROW : ZSV_WRITER_SAME_ROW, c->quoted);
+    }
   }
+
+  // output column name of this cell
+  zsv_compare_output_str(data, colname, ZSV_WRITER_SAME_ROW, 1);
 
   for(unsigned i = 0; i < data->input_count; i++) {
     struct zsv_compare_input *input = &data->inputs[i];
     if(input->done || !input->row_loaded) { // no data for this input
-      if(data->writer.type == 'j')
-        jsonwriter_null(data->writer.handle.jsw);
-      else
-        zsv_writer_cell_blank(data->writer.handle.csv, ZSV_WRITER_SAME_ROW);
+      zsv_compare_output_str(data, NULL, ZSV_WRITER_SAME_ROW, 0);
     } else {
       struct zsv_cell *value = &values[i];
-      if(data->writer.type == 'j')
-        jsonwriter_strn(data->writer.handle.jsw, value->str, value->len);
-      else
-        zsv_writer_cell(data->writer.handle.csv, ZSV_WRITER_SAME_ROW,
-                        value->str, value->len, value->quoted);
+      zsv_compare_output_strn(data, value->str, value->len, ZSV_WRITER_SAME_ROW, value->quoted);
     }
   }
 
   // output additional columns
   for(struct zsv_compare_added_column *ac = data->added_columns; ac; ac = ac->next) {
     if(!ac->input) {
-      if(data->writer.type != 'j')
-        zsv_writer_cell_blank(data->writer.handle.csv, ZSV_WRITER_SAME_ROW);
+      if(data->writer.type != ZSV_COMPARE_OUTPUT_TYPE_JSON)
+        zsv_compare_output_str(data, NULL, ZSV_WRITER_SAME_ROW, 0);
     } else {
       struct zsv_cell c = data->get_cell(ac->input, ac->col_ix);
-      zsv_writer_cell(data->writer.handle.csv, ZSV_WRITER_SAME_ROW,
-                      c.str, c.len, c.quoted);
+      zsv_compare_output_strn(data, c.str, c.len, ZSV_WRITER_SAME_ROW, c.quoted);
     }
   }
 
-  if(data->writer.type == 'j')
+  if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON)
     jsonwriter_end_array(data->writer.handle.jsw);
 }
 
@@ -204,48 +226,56 @@ static enum zsv_compare_status zsv_compare_set_inputs(struct zsv_compare_data *d
 static int zsv_compare_cell(void *ctx, struct zsv_cell c1, struct zsv_cell c2);
 
 static void zsv_compare_output_begin(struct zsv_compare_data *data) {
-  if(data->writer.type == 'j') {
+  if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
     if(!(data->writer.handle.jsw = jsonwriter_new(stdout))) // to do: data->out
       data->status = zsv_compare_status_memory;
-    else
+    else {
+      if(data->writer.compact)
+        jsonwriter_set_option(data->writer.handle.jsw, jsonwriter_option_compact);
       jsonwriter_start_array(data->writer.handle.jsw);
+    }
   } else {
     if(!(data->writer.handle.csv = zsv_writer_new(NULL)))
       data->status = zsv_compare_status_memory;
+  }
+
+  if(data->status == zsv_compare_status_ok) {
+    // write header row
+    if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON)
+      jsonwriter_start_array(data->writer.handle.jsw);
+
+    // write keys
+    if(!data->keys) // id is effectively just row number
+      zsv_compare_output_str(data, (const unsigned char *)"Row #", ZSV_WRITER_NEW_ROW, 0);
     else {
-      // write header row
-
-      // write keys
-      if(!data->keys) // id is effectively just row number
-        zsv_writer_cell_s(data->writer.handle.csv, ZSV_WRITER_NEW_ROW, (const unsigned char *)"Row #", 0);
-      else {
-        for(struct zsv_compare_key *key_name = data->keys; key_name; key_name = key_name->next) {
-          zsv_writer_cell_s(data->writer.handle.csv,
-                            key_name == data->keys ? ZSV_WRITER_NEW_ROW : ZSV_WRITER_SAME_ROW,
-                            (const unsigned char *)key_name->name, 1);
-        }
-      }
-
-      // write "Column"
-      zsv_writer_cell_s(data->writer.handle.csv, ZSV_WRITER_SAME_ROW, (const unsigned char *)"Column", 0);
-
-      // write input name(s)
-      for(unsigned i = 0; i < data->input_count; i++) {
-        struct zsv_compare_input *input = &data->inputs[i];
-        zsv_writer_cell_s(data->writer.handle.csv, ZSV_WRITER_SAME_ROW, (const unsigned char *)input->path, 1);
-      }
-
-      // write additional column names
-      for(struct zsv_compare_added_column *ac = data->added_columns; ac; ac = ac->next) {
-        zsv_writer_cell(data->writer.handle.csv, ZSV_WRITER_SAME_ROW,
-                        ac->colname->name, ac->colname->name_len, 1);
-      }
+      for(struct zsv_compare_key *key_name = data->keys; key_name; key_name = key_name->next)
+        zsv_compare_output_str(data,
+                               (const unsigned char *)key_name->name,
+                               key_name == data->keys ? ZSV_WRITER_NEW_ROW : ZSV_WRITER_SAME_ROW,
+                               1);
     }
+
+    // write "Column"
+    zsv_compare_output_str(data, (const unsigned char *)"Column", ZSV_WRITER_SAME_ROW, 0);
+
+    // write input name(s)
+    for(unsigned i = 0; i < data->input_count; i++) {
+      struct zsv_compare_input *input = &data->inputs[i];
+      zsv_compare_output_str(data, (const unsigned char *)input->path, ZSV_WRITER_SAME_ROW, 1);
+    }
+
+    // write additional column names
+    for(struct zsv_compare_added_column *ac = data->added_columns; ac; ac = ac->next)
+      zsv_compare_output_strn(data, ac->colname->name, ac->colname->name_len,
+                              ZSV_WRITER_SAME_ROW, 1);
+
+    if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON)
+      jsonwriter_end_array(data->writer.handle.jsw);
   }
 }
 
 static void zsv_compare_output_end(struct zsv_compare_data *data) {
-  if(data->writer.type == 'j') {
+  if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
     jsonwriter_flush(data->writer.handle.jsw);
     jsonwriter_end(data->writer.handle.jsw);
   } else {
@@ -324,7 +354,7 @@ static enum zsv_compare_status zsv_compare_init_sorted(struct zsv_compare_data *
 }
 
 static void zsv_compare_data_free(struct zsv_compare_data *data) {
-  if(data->writer.type == 'j')
+  if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON)
     jsonwriter_delete(data->writer.handle.jsw);
   else
     zsv_writer_delete(data->writer.handle.csv);
@@ -335,7 +365,6 @@ static void zsv_compare_data_free(struct zsv_compare_data *data) {
   free(data->inputs_to_sort);
 
   if(data->sort) {
-//    zsv_compare_sort_delete(data->sort);
     if(data->sort_db)
       sqlite3_close(data->sort_db);
   }
@@ -451,15 +480,27 @@ static int compare_usage() {
   static const char *usage[] = {
     "Usage: compare [options] [file1.csv] [file2.csv] [...]",
     "Options:",
-    " -h,--help        : show usage",
-//    " --allow-dupes    : allow duplicate column names",
-    " -k,--key <field> : specify a field to match rows on",
-    "                    can be specified multiple times",
-    " -a,--add <field> : specify an additional field to output",
-    "                    will use the [first input] source",
-    " --sort           : sort on keys before comparing",
+    "  -h,--help        : show usage",
+    "  -k,--key <field> : specify a field to match rows on",
+    "                     can be specified multiple times",
+    "  -a,--add <field> : specify an additional field to output",
+    "                     will use the [first input] source",
+    "  --sort           : sort on keys before comparing",
+    "  --sort-in-memory : for sorting,  use in-memory instead of temporary db",
+    "                     (see https://www.sqlite.org/inmemorydb.html)",
+    "  --json           : output as JSON",
+    "  --json-compact   : output as compact JSON",
+//    "  --json-object    : output as an array of objects",
+    // "  --table          : output entire table",
     NULL
   };
+
+  /**
+   * sorting uses sqlite3 (unindexed) sort and is intended to be a convenience
+   * rather than a performance feature. If you need high performance sorting,
+   * other solutions, such as a multi-threaded parallel sort, will serve you
+   * better
+   */
 
   for(unsigned i = 0; usage[i]; i++)
     printf("%s\n", usage[i]);
@@ -479,7 +520,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return argc < 2 ? 1 : 0;
   }
 
-  const char **input_filenames = calloc(argc, sizeof(*input_filenames)); // temporarily hold the input file names
+  // temporarily hold the input file names
+  const char **input_filenames = calloc(argc, sizeof(*input_filenames));
   if(!input_filenames)
     return zsv_compare_status_memory;
 
@@ -494,14 +536,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   unsigned input_count = 0;
   struct zsv_compare_key **next_key = &data->keys;
   struct zsv_compare_added_column **added_column_next = &data->added_columns;
-//  struct zsv_compare_sort **sort_next = &data->sort;
   for(int arg_i = 1; data->status == zsv_compare_status_ok
         && !err && arg_i < argc; arg_i++) {
     const char *arg = argv[arg_i];
 #include <zsv/utils/arg.h>
-//    if(!strcmp(arg, "--allow-duplicate-column-names"))
-//      data->allow_duplicate_column_names = 1;
-//    else
     if(!strcmp(arg, "-k") || !strcmp(arg, "--key")) {
       const char *next_arg = zsv_next_arg(++arg_i, argc, argv, &err);
       if(next_arg) {
@@ -525,11 +563,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     } else if(!strcmp(arg, "--sort")) {
       data->sort = 1;
-      /*
-      const char *next_arg = zsv_next_arg(++arg_i, argc, argv, &err);
-      if(next_arg)
-        sort_next = zsv_compare_sort_add(sort_next, next_arg, &data->status);
-      */
+    } else if(!strcmp(arg, "--json")) {
+      data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
+    } else if(!strcmp(arg, "--json-compact")) {
+      data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
+      data->writer.compact = 1;
     } else
       input_filenames[input_count++] = arg;
   }
@@ -556,7 +594,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   else {
     if((data->status = zsv_compare_set_inputs(data, input_count)) == zsv_compare_status_ok) {
       // initialize parsers
-
       for(unsigned ix = 0; data->status == zsv_compare_status_ok && ix < input_count; ix++) {
         struct zsv_compare_input *input = &data->inputs[ix];
         input->path = input_filenames[ix];

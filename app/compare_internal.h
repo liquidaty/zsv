@@ -117,10 +117,9 @@ struct zsv_compare_data {
     } handle;
   } writer;
 
-  unsigned char allow_duplicate_column_names:1;
   unsigned char sort:1;
   unsigned char sort_in_memory:1;
-  unsigned char _:5;
+  unsigned char _:6;
 };
 
 #endif

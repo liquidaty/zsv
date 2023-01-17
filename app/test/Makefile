@@ -363,3 +363,6 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 
 	@(${PREFIX} $< -k C compare/t1.csv compare/t5.csv compare/t6-unsorted.csv ${REDIRECT1} ${TMP_DIR}/$@.out5 && \
 	${CMP} ${TMP_DIR}/$@.out5 expected/$@.out5 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv --json ${REDIRECT1} ${TMP_DIR}/$@.out6 && \
+	${CMP} ${TMP_DIR}/$@.out6 expected/$@.out6 && ${TEST_PASS} || ${TEST_FAIL})
