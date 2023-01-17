@@ -265,13 +265,6 @@ struct zsv_cell zsv_get_cell(zsv_parser parser, size_t ix) {
   return c;
 }
 
-ZSV_EXPORT
-struct zsv_cell zsv_get_cell_trimmed(zsv_parser parser, size_t ix) {
-  struct zsv_cell c = zsv_get_cell(parser, ix);
-  c.str = (unsigned char *)zsv_strtrim(c.str, &c.len);
-  return c;
-}
-
 /**
  * `zsv_get_cell_len()` is not needed in most cases, but may be useful in
  * restrictive cases such as when calling from Javascript into wasm

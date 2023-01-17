@@ -118,5 +118,12 @@ size_t zsv_strnext_is_sign(const unsigned char *s, size_t len);
  */
 size_t zsv_strnext_is_currency(const unsigned char *s, size_t len);
 
+/*
+ * `zsv_get_cell_trimmed` is equivalent to `zsv_get_cell`, except that it
+ * returns a value with leading and trailing whitespace removed
+ */
+#include <zsv.h>
+struct zsv_cell zsv_get_cell_trimmed(zsv_parser parser, size_t index);
+
 
 #endif
