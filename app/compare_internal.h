@@ -94,6 +94,8 @@ struct zsv_compare_data {
 
   struct zsv_compare_added_column *added_columns;
   zsv_compare_unique_colname *added_colnames;
+  unsigned added_colcount;
+
   zsv_compare_cell_func cmp;
   void *cmp_ctx;
 
@@ -115,6 +117,17 @@ struct zsv_compare_data {
       zsv_csv_writer csv;
       jsonwriter_handle jsw;
     } handle;
+
+    struct {
+      unsigned used;
+      unsigned allocated;
+      char **names;
+    } properties;
+
+    unsigned cell_ix;        // only used for json + object output
+    unsigned char compact:1; // whether to output compact JSON
+    unsigned char object:1;  // whether to output JSON as objects
+    unsigned char _:6;
   } writer;
 
   unsigned char sort:1;

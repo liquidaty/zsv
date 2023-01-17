@@ -42,13 +42,17 @@ static struct zsv_compare_key **zsv_compare_key_add(struct zsv_compare_key **nex
   return next;
 }
 
-static void zsv_compare_output_zu(struct zsv_compare_data *data,
-                                  size_t n,
-                                  int new_row) {
- if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON)
-   jsonwriter_int(data->writer.handle.jsw, n);
- else
-   zsv_writer_cell_zu(data->writer.handle.csv, ZSV_WRITER_NEW_ROW, data->row_count);
+static void zsv_compare_output_property_name(struct zsv_compare_data *data, int new_row, char skip) {
+  if(new_row)
+    data->writer.cell_ix = 0;
+  else
+    data->writer.cell_ix++;
+  if(!skip) {
+    if(data->writer.cell_ix < data->writer.properties.used)
+      jsonwriter_object_key(data->writer.handle.jsw, data->writer.properties.names[data->writer.cell_ix]);
+    else
+      jsonwriter_object_key(data->writer.handle.jsw, "Error missing key!");
+  }
 }
 
 static void zsv_compare_output_strn(struct zsv_compare_data *data,
@@ -56,6 +60,10 @@ static void zsv_compare_output_strn(struct zsv_compare_data *data,
                                     int new_row,
                                     int quoted) {
   if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
+    if(data->writer.object && s == NULL)
+      return zsv_compare_output_property_name(data, new_row, 1);
+    if(data->writer.object)
+      zsv_compare_output_property_name(data, new_row, 0);
     if(s == NULL)
       jsonwriter_null(data->writer.handle.jsw);
     else
@@ -75,6 +83,56 @@ static void zsv_compare_output_str(struct zsv_compare_data *data,
   return zsv_compare_output_strn(data, s, s ? strlen((const char *)s) : 0, new_row, quoted);
 }
 
+static void zsv_compare_output_zu(struct zsv_compare_data *data,
+                                  size_t n,
+                                  int new_row) {
+  if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
+    if(data->writer.object)
+      zsv_compare_output_property_name(data, new_row, 0);
+    jsonwriter_int(data->writer.handle.jsw, n);
+  } else
+    zsv_writer_cell_zu(data->writer.handle.csv, ZSV_WRITER_NEW_ROW, data->row_count);
+}
+
+static void zsv_compare_header_str(struct zsv_compare_data *data,
+                                   const unsigned char *s,
+                                   int new_row,
+                                   int quoted) {
+  if(!(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON &&
+       data->writer.object))
+    zsv_compare_output_str(data, s, new_row, quoted);
+  else {
+    // we will output as JSON objects, so save the property names for later use
+    if(data->writer.properties.used + 1 < data->writer.properties.allocated)
+      data->writer.properties.names[data->writer.properties.used++] = strdup(s ? (const char *)s : "");
+    else
+      fprintf(stderr, "zsv_compare_header_str: insufficient header names allocation adding %s!\n", s);
+  }
+}
+
+static void zsv_compare_allocate_properties(struct zsv_compare_data *data,
+                                            unsigned count) {
+  if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON &&
+     data->writer.object && count > 0) {
+    if((data->writer.properties.names = malloc(count*sizeof(*data->writer.properties.names))))
+      data->writer.properties.allocated = count;
+  }
+}
+
+static void zsv_compare_json_row_start(struct zsv_compare_data *data) {
+  if(data->writer.object)
+    jsonwriter_start_object(data->writer.handle.jsw);
+  else
+    jsonwriter_start_array(data->writer.handle.jsw);
+}
+
+static void zsv_compare_json_row_end(struct zsv_compare_data *data) {
+  if(data->writer.object)
+    jsonwriter_end_object(data->writer.handle.jsw);
+  else
+    jsonwriter_end_array(data->writer.handle.jsw);
+}
+
 static void zsv_compare_output_tuple(struct zsv_compare_data *data,
                                      struct zsv_compare_input *key_input,
                                      const unsigned char *colname,
@@ -82,7 +140,7 @@ static void zsv_compare_output_tuple(struct zsv_compare_data *data,
                                      ) {
   // print ID | Column | Value 1 | ... | Value N
   if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON)
-    jsonwriter_start_array(data->writer.handle.jsw);
+    zsv_compare_json_row_start(data);
 
   // to do: output ID values
   if(!data->keys) // id is effectively just row number
@@ -119,7 +177,7 @@ static void zsv_compare_output_tuple(struct zsv_compare_data *data,
   }
 
   if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON)
-    jsonwriter_end_array(data->writer.handle.jsw);
+    zsv_compare_json_row_end(data);
 }
 
 static void zsv_compare_print_row(struct zsv_compare_data *data,
@@ -240,44 +298,52 @@ static void zsv_compare_output_begin(struct zsv_compare_data *data) {
   }
 
   if(data->status == zsv_compare_status_ok) {
+    unsigned header_col_count =
+      (data->key_count ? data->key_count : 1) + // match keys
+      2 + // column name and column value
+      data->input_count + // input names
+      data->added_colcount; // added columns
+
+    zsv_compare_allocate_properties(data, header_col_count);
+
     // write header row
-    if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON)
+    if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON && !data->writer.object)
       jsonwriter_start_array(data->writer.handle.jsw);
 
     // write keys
     if(!data->keys) // id is effectively just row number
-      zsv_compare_output_str(data, (const unsigned char *)"Row #", ZSV_WRITER_NEW_ROW, 0);
+      zsv_compare_header_str(data, (const unsigned char *)"Row #", ZSV_WRITER_NEW_ROW, 0);
     else {
       for(struct zsv_compare_key *key_name = data->keys; key_name; key_name = key_name->next)
-        zsv_compare_output_str(data,
+        zsv_compare_header_str(data,
                                (const unsigned char *)key_name->name,
                                key_name == data->keys ? ZSV_WRITER_NEW_ROW : ZSV_WRITER_SAME_ROW,
                                1);
     }
 
     // write "Column"
-    zsv_compare_output_str(data, (const unsigned char *)"Column", ZSV_WRITER_SAME_ROW, 0);
+    zsv_compare_header_str(data, (const unsigned char *)"Column", ZSV_WRITER_SAME_ROW, 0);
 
     // write input name(s)
     for(unsigned i = 0; i < data->input_count; i++) {
       struct zsv_compare_input *input = &data->inputs[i];
-      zsv_compare_output_str(data, (const unsigned char *)input->path, ZSV_WRITER_SAME_ROW, 1);
+      zsv_compare_header_str(data, (const unsigned char *)input->path, ZSV_WRITER_SAME_ROW, 1);
     }
 
     // write additional column names
     for(struct zsv_compare_added_column *ac = data->added_columns; ac; ac = ac->next)
-      zsv_compare_output_strn(data, ac->colname->name, ac->colname->name_len,
-                              ZSV_WRITER_SAME_ROW, 1);
+      zsv_compare_header_str(data, ac->colname->name, // ac->colname->name_len,
+                             ZSV_WRITER_SAME_ROW, 1);
 
-    if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON)
+    if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON && !data->writer.object)
       jsonwriter_end_array(data->writer.handle.jsw);
   }
 }
 
 static void zsv_compare_output_end(struct zsv_compare_data *data) {
   if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
-    jsonwriter_flush(data->writer.handle.jsw);
-    jsonwriter_end(data->writer.handle.jsw);
+    if(data->writer.handle.jsw)
+      jsonwriter_end(data->writer.handle.jsw);
   } else {
     zsv_writer_flush(data->writer.handle.csv);
   }
@@ -354,15 +420,19 @@ static enum zsv_compare_status zsv_compare_init_sorted(struct zsv_compare_data *
 }
 
 static void zsv_compare_data_free(struct zsv_compare_data *data) {
-  if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON)
-    jsonwriter_delete(data->writer.handle.jsw);
-  else
+  if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
+    if(data->writer.handle.jsw)
+      jsonwriter_delete(data->writer.handle.jsw);
+  } else
     zsv_writer_delete(data->writer.handle.csv);
 
   for(unsigned i = 0; i < data->input_count; i++)
     zsv_compare_input_free(&data->inputs[i]);
   free(data->inputs);
   free(data->inputs_to_sort);
+  for(unsigned i = 0; i < data->writer.properties.used; i++)
+    free(data->writer.properties.names[i]);
+  free(data->writer.properties.names);
 
   if(data->sort) {
     if(data->sort_db)
@@ -490,8 +560,7 @@ static int compare_usage() {
     "                     (see https://www.sqlite.org/inmemorydb.html)",
     "  --json           : output as JSON",
     "  --json-compact   : output as compact JSON",
-//    "  --json-object    : output as an array of objects",
-    // "  --table          : output entire table",
+    "  --json-object    : output as an array of objects",
     NULL
   };
 
@@ -559,12 +628,17 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           added_column_next =
             zsv_compare_added_column_add(added_column_next, colname,
                                          &data->status);
+          if(data->status == zsv_compare_status_ok)
+            data->added_colcount++;
         }
       }
     } else if(!strcmp(arg, "--sort")) {
       data->sort = 1;
     } else if(!strcmp(arg, "--json")) {
       data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
+    } else if(!strcmp(arg, "--json-object")) {
+      data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
+      data->writer.object = 1;
     } else if(!strcmp(arg, "--json-compact")) {
       data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
       data->writer.compact = 1;

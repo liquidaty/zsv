@@ -1,0 +1,20 @@
+[
+  {
+    "c": "C1",
+    "Column": "B",
+    "compare/t1.csv": "X1",
+    "compare/t7.csv": "B1",
+    "compare/t3.csv": "X1"
+  },
+  {
+    "c": "C2",
+    "Column": "<key>",
+    "compare/t1.csv": "Missing"
+  },
+  {
+    "c": "C2",
+    "Column": "B",
+    "compare/t7.csv": "",
+    "compare/t3.csv": "BB"
+  }
+]
