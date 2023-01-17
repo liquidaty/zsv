@@ -11,6 +11,9 @@
 
 #include <stdio.h>
 
+#define ZSV_WRITER_NEW_ROW 1
+#define ZSV_WRITER_SAME_ROW 0
+
 /*** csv writer ***/
 struct zsv_csv_writer_options {
   char with_bom;
@@ -41,9 +44,10 @@ enum zsv_writer_status zsv_writer_flush(zsv_csv_writer w);
 void zsv_writer_set_temp_buff(zsv_csv_writer w, unsigned char *buff,
                                 size_t buffsize);
 
-enum zsv_writer_status zsv_writer_cell(zsv_csv_writer, char new_row,
-                                           const unsigned char *s, size_t len,
-                                           char check_if_needs_quoting);
+enum zsv_writer_status zsv_writer_cell(zsv_csv_writer,
+                                       char new_row, // ZSV_WRITER_NEW_ROW or ZSV_WRITER_SAME_ROW
+                                       const unsigned char *s, size_t len,
+                                       char check_if_needs_quoting);
 
 unsigned char *zsv_writer_str_to_csv(const unsigned char *s, size_t len);
 
@@ -66,5 +70,8 @@ enum zsv_writer_status zsv_writer_cell_s(zsv_csv_writer w, char new_row,
 enum zsv_writer_status zsv_writer_cell_Lf(zsv_csv_writer w, char new_row,
                                                      const char *fmt_spec, // provide X in %XLf e.g. ".2" or ""
                                                      long double ldbl);
+
+// write a blank cell
+enum zsv_writer_status zsv_writer_cell_blank(zsv_csv_writer w, char new_row);
 
 #endif

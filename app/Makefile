@@ -92,7 +92,8 @@ else
   CONFIGURE_HOST=--host=x86_64-w64-mingw32
 endif
 
-CFLAGS+= -std=gnu11
+CFLAGS+=-std=gnu11
+CFLAGS+=-Wunused
 CFLAGS_O ?=
 ifeq ($(CFLAGS_O),)
   ifeq ($(DEBUG),0)
@@ -104,8 +105,9 @@ endif
 
 CFLAGS+=${CFLAGS_O}
 
+CFLAGS+=-Wshadow -Wall -Wextra
 ifeq ($(DEBUG),0)
-  CFLAGS+=-DNDEBUG -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE ${CFLAGS_OPT} #-ftree-vectorize
+  CFLAGS+=-DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE ${CFLAGS_OPT} #-ftree-vectorize
 
   ifeq ($(PGO),1)
     CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4
@@ -161,8 +163,8 @@ endif
 
 ZSV=$(BINDIR)/zsv${EXE}
 
-SOURCES= echo count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm jq
-CLI_SOURCES=echo select desc count 2tsv pretty sql flatten 2json serialize stack 2db prop rm jq
+SOURCES= echo count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm jq compare
+CLI_SOURCES=echo select desc count 2tsv pretty sql flatten 2json serialize stack 2db prop rm jq compare
 
 CFLAGS+= -DUSE_JQ
 
@@ -363,21 +365,22 @@ ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 	${CC} ${CFLAGS} ${JSONWRITER_INCLUDE} -DINCLUDE_UTILS $< -c -o $@
 
 # flatten stack desc use sglib
-${STANDALONE_PFX}flatten${EXE} ${STANDALONE_PFX}stack${EXE} ${STANDALONE_PFX}desc${EXE}: MORE_SOURCE+=-I${THIS_MAKEFILE_DIR}/external/sglib
+# ${STANDALONE_PFX}flatten${EXE} ${STANDALONE_PFX}stack${EXE} ${STANDALONE_PFX}desc${EXE}:
+MORE_SOURCE+=-I${THIS_MAKEFILE_DIR}/external/sglib
 
 # prop uses utils/json
 ${CLI} ${STANDALONE_PFX}prop${EXE}: ${BUILD_DIR}/objs/utils/json.o
 ${CLI} ${STANDALONE_PFX}prop${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/json.o
 
-# sql, 2db, 2json use sqlite3
-${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}echo${EXE}: ${SQLITE_EXT}
-${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}echo${EXE}: MORE_OBJECTS+=${SQLITE_EXT}
-${STANDALONE_PFX}sql${EXE} ${CLI_OBJ_PFX}sql.o ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}echo${EXE} ${CLI_OBJ_PFX}echo.o: MORE_SOURCE+=${SQLITE_EXT_INCLUDE}
+# sql, 2db, 2json, echo, compare use sqlite3
+${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}echo${EXE} ${STANDALONE_PFX}compare${EXE}: ${SQLITE_EXT}
+${CLI} ${STANDALONE_PFX}sql${EXE} ${STANDALONE_PFX}2db${EXE} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}echo${EXE} ${STANDALONE_PFX}compare${EXE}: MORE_OBJECTS+=${SQLITE_EXT}
+${STANDALONE_PFX}sql${EXE} ${CLI_OBJ_PFX}sql.o ${STANDALONE_PFX}2db${EXE} ${CLI_OBJ_PFX}2db.o ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}echo${EXE} ${CLI_OBJ_PFX}echo.o ${CLI_OBJ_PFX}compare.o: MORE_SOURCE+=${SQLITE_EXT_INCLUDE}
 
-# 2json and desc use jsonwriter
-${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE}: ${JSONWRITER_OBJECT}
-${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
-${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o: MORE_SOURCE+= ${JSONWRITER_INCLUDE}
+# 2json, desc, compare use jsonwriter
+${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE}: ${JSONWRITER_OBJECT}
+${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
+${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o: MORE_SOURCE+= ${JSONWRITER_INCLUDE}
 
 # utils/db uses jsonwriter
 ${BUILD_DIR}/objs/utils/db.o : MORE_SOURCE+= ${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}

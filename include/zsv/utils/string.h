@@ -88,6 +88,15 @@ const unsigned char *zsv_strtrim_left(const char unsigned * restrict s, size_t *
 const unsigned char *zsv_strtrim(const char unsigned * restrict s, size_t *lenp);
 
 /**
+ * zsv_strunescape_backslash(): convert consecutive white to single space
+ *
+ * @param s     string to convert
+ * @param len   length of input string
+ * @param flags bitfield of ZSV_STRWHITE_FLAG_XXX values
+ */
+size_t zsv_strunescape_backslash(unsigned char *s, size_t len);
+
+/**
  * Get the next UTF8 codepoint in a string
  * Return: length of next character (in bytes), or 0 on error or end of string
  */
@@ -108,6 +117,13 @@ size_t zsv_strnext_is_sign(const unsigned char *s, size_t len);
  *  Check if the next char is a currency char. If so, return its length, else return 0
  */
 size_t zsv_strnext_is_currency(const unsigned char *s, size_t len);
+
+/*
+ * `zsv_get_cell_trimmed` is equivalent to `zsv_get_cell`, except that it
+ * returns a value with leading and trailing whitespace removed
+ */
+#include <zsv.h>
+struct zsv_cell zsv_get_cell_trimmed(zsv_parser parser, size_t index);
 
 
 #endif

@@ -716,7 +716,7 @@ CFLAGS_AVX_512=$CFLAGS_AVX_512
 CFLAGS_AVX=$CFLAGS_AVX
 CFLAGS_SSE=$CFLAGS_SSE
 
-CFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g -Wall -Wextra -Wno-missing-field-initializers -Wno-unused-parameter # -g3 -ggdb
+CFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g -Wall -Wextra -Wno-missing-field-initializers -Wunused # -g3 -ggdb
 LDFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g # -g3 -ggdb
 CFLAGS_PIC = $CFLAGS_PIC
 LDFLAGS_PIC = $LDFLAGS_PIC

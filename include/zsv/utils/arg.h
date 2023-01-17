@@ -82,4 +82,20 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
                                  char *opts_used
                                  );
 
+/**
+ * Fetch the next arg, if it exists, else print an error message
+ * The argc_i argument does not need to be valid; it will be checked
+ * against argc.
+ *
+ * Example:
+ *   const char *value = zsv_next_arg(++arg_i, argc, argv, &err);
+ *
+ * @param  argc_i index of next arg to test
+ * @param  argc   total arg count
+ * @param  argv   args to process
+ * @param  err    return non-zero in the case of error
+ * @return        next argument, if it exists, else NULL
+ */
+const char *zsv_next_arg(int arg_i, int argc, const char *argv[], int *err);
+
 #endif

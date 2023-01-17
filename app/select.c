@@ -111,7 +111,8 @@ struct zsv_select_data {
   unsigned char any_clean:1;
 #define ZSV_SELECT_DISTINCT_MERGE 2
   unsigned char distinct:2; // 1 = ignore subsequent cols, ZSV_SELECT_DISTINCT_MERGE = merge subsequent cols (first non-null value)
-  unsigned char _:5;
+  unsigned char unescape:1;
+  unsigned char _:4;
 };
 
 enum zsv_select_column_index_selection_type {
@@ -260,11 +261,19 @@ static void zsv_select_add_search(struct zsv_select_data *data, const char *valu
 #ifndef NDEBUG
 __attribute__((always_inline)) static inline
 #endif
-unsigned char *zsv_select_cell_clean(struct zsv_select_data *data, unsigned char *utf8_value, char quoted, size_t *lenp) {
+unsigned char *zsv_select_cell_clean(struct zsv_select_data *data, unsigned char *utf8_value, char *quoted, size_t *lenp) {
+
   size_t len = *lenp;
   // to do: option to replace or warn non-printable chars 0 - 31:
   // vectorized scan
   // replace or warn if found
+  if(UNLIKELY(data->unescape)) {
+    size_t new_len = zsv_strunescape_backslash(utf8_value, len);
+    if(new_len != len) {
+      *quoted = 1;
+      len = new_len;
+    }
+  }
 
   if(UNLIKELY(!data->no_trim_whitespace))
     utf8_value = (unsigned char *)zsv_strtrim(utf8_value, &len);
@@ -272,7 +281,7 @@ unsigned char *zsv_select_cell_clean(struct zsv_select_data *data, unsigned char
   if(UNLIKELY(data->clean_white))
     len = zsv_strwhite(utf8_value, len, data->whitspace_clean_flags); // to do: zsv_clean
 
-  if(UNLIKELY(data->embedded_lineend && quoted)) {
+  if(UNLIKELY(data->embedded_lineend && *quoted)) {
     unsigned char *tmp;
     const char *to_replace[] = { "\r\n", "\r", "\n" };
     for(int i = 0; i < 3; i++) {
@@ -302,7 +311,7 @@ static inline char zsv_select_row_search_hit(struct zsv_select_data *data) {
   for(unsigned int i = 0; i < j; i++) {
     struct zsv_cell cell = zsv_get_cell(data->parser, i);
     if(UNLIKELY(data->any_clean != 0))
-      cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
+      cell.str = zsv_select_cell_clean(data, cell.str, &cell.quoted, &cell.len);
     if(cell.len) {
       for(struct zsv_select_search_str *ss = data->search_strings; ss; ss = ss->next)
         if(ss->value && *ss->value && memmem(cell.str, cell.len, ss->value, ss->len))
@@ -389,7 +398,7 @@ static void zsv_select_output_data_row(struct zsv_select_data *data) {
     unsigned int in_ix = data->out2in[i].ix;
     struct zsv_cell cell = zsv_get_cell(data->parser, in_ix);
     if(UNLIKELY(data->any_clean != 0))
-      cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
+      cell.str = zsv_select_cell_clean(data, cell.str, &cell.quoted, &cell.len);
     if(VERY_UNLIKELY(data->distinct == ZSV_SELECT_DISTINCT_MERGE)) {
       if(UNLIKELY(cell.len == 0)) {
         for(struct zsv_select_uint_list *ix = data->out2in[i].merge.indexes; ix; ix = ix->next) {
@@ -397,7 +406,7 @@ static void zsv_select_output_data_row(struct zsv_select_data *data) {
           cell = zsv_get_cell(data->parser, m_ix);
           if(cell.len) {
             if(UNLIKELY(data->any_clean != 0))
-              cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
+              cell.str = zsv_select_cell_clean(data, cell.str, &cell.quoted, &cell.len);
             if(cell.len)
               break;
           }
@@ -475,7 +484,7 @@ static void zsv_select_header_row(void *ctx) {
   for(unsigned int i = 0; i < cols; i++) {
     struct zsv_cell cell = zsv_get_cell(data->parser, i);
     if(UNLIKELY(data->any_clean != 0))
-      cell.str = zsv_select_cell_clean(data, cell.str, cell.quoted, &cell.len);
+      cell.str = zsv_select_cell_clean(data, cell.str, &cell.quoted, &cell.len);
     if(i < data->opts->max_columns) {
       data->header_names[i] = zsv_memdup(cell.str, cell.len);
       max_header_ix = i+1;
@@ -509,39 +518,44 @@ const char *zsv_select_usage_msg[] = {
   "the '--' separator, or all columns if no '--' separator is provided",
   "",
   "Options:",
-  "  -b, --with-bom : output with BOM",
+  "  -b,--with-bom: output with BOM",
   "  --fixed <offset1,offset2,offset3>: parse as fixed-width text; use given comma-separated list of positive integers for cell end indexes",
 #ifndef ZSV_CLI
-  "  -v, --verbose: verbose output",
+  "  -v,--verbose                : verbose output",
 #endif
-  "  -H, --head <n>: (head) only process the first n rows of data",
+  "  -H,--head <n>               : (head) only process the first n rows of data",
   "                                selected from all rows in the input",
-  "  --header-row <header row>: insert the provided CSV as the first row",
-  "        e.g. --header-row 'colname1,colname2,\"my column 3\"'",
-  "  -s, --search <value>: only output rows with at least one cell containing value",
-  // to do: " -s, --search /<pattern>/modifiers: search on regex pattern; modifiers include 'g' (global) and 'i' (case-insensitive)",
+  "  --header-row <header row>   : insert the provided CSV as the first row",
+  "                                e.g. --header-row 'col1,col2,\"my col 3\"'",
+  "  -s,--search <value>         : only output rows with at least one cell containing"
+  "                                value",
+  // to do: " -s,--search /<pattern>/modifiers: search on regex pattern; modifiers include 'g' (global) and 'i' (case-insensitive)",
   "  --sample-every <num of rows>: output a sample consisting of the first row, then every nth row",
-  "  --sample-pct   <percentage>: output a randomly-selected sample (32 bits of randomness) of n percent of the input rows",
-  "  -d, --header-row-span <n>: apply header depth (rowspan) of n",
-  "  --distinct: skip subsequent occurrences of columns with the same name",
-  "  --merge: merge subsequent occurrences of columns with the same name, outputting first non-null value",
+  "  --sample-pct <percentage>   : output a randomly-selected sample (32 bits of randomness) of n percent of the input rows",
+  "  -d,--header-row-span <n>    : apply header depth (rowspan) of n",
+  "  --distinct                  : skip subsequent occurrences of columns with the same name",
+  "  --merge                     : merge subsequent occurrences of columns with the same",
+  "                                name, outputting first non-null value",
   // --rename: like distinct, but instead of removing cols with dupe names, renames them, trying _<n> for n up to max cols
-  "  -e <embedded lineend char>: char to replace embedded lineend. if none provided, embedded lineends are preserved",
+  "  -e <embedded lineend char>  : char to replace embedded lineend. if none provided, embedded lineends are preserved",
   "      If the provided string begins with 0x, it will be interpreted as the hex representation of a string",
-  "  -x <column>: exclude the indicated column. can be specified more than once",
-  "  -N, --line-number: prefix each row with the row number",
+  "  -x <column>                 : exclude the indicated column. can be specified more than once",
+  "  -N,--line-number            : prefix each row with the row number",
   "  -n: provided column indexes are numbers corresponding to column positions (starting with 1), instead of names",
 #ifndef ZSV_CLI
-  "  -T: input is tab-delimited, instead of comma-delimited",
-  "  -O, --other-delim <delim>: input is delimited with the given char, instead of comma-delimited",
-  "                             Note: this option does not support quoted values with embedded delimiters",
+  "  -T                          : input is tab-delimited, instead of comma-delimited",
+  "  -O,--other-delim <delim>    : input is delimited with the given char",
+  "                                Note: this option does not support quoted values",
+  "                                with embedded delimiters",
 #endif
-  "  -w, --whitespace-clean: normalize all whitespace to space or newline, single-char (non-consecutive) occurrences",
+  "  --unescape                  : escape any backslash-escaped input e.g. \\t, \\n, \\r",
+  "                                such as output from `2tsv`",
+  "  -w,--whitespace-clean       : normalize all whitespace to space or newline, single-char (non-consecutive) occurrences",
   "  --whitespace-clean-no-newline: clean whitespace and remove embedded newlines",
-  "  -W, --no-trim: do not trim whitespace",
+  "  -W,--no-trim: do not trim whitespace",
 #ifndef ZSV_CLI
   "  -C <maximum_number_of_columns>: defaults to " ZSV_SELECT_MAX_COLS_DEFAULT_S,
-  "  -L, --max-row-size <n>: set the maximum memory used for a single row",
+  "  -L,--max-row-size <n>: set the maximum memory used for a single row",
   "                          defaults to " ZSV_ROW_MAX_SIZE_DEFAULT_S ", min " ZSV_ROW_MAX_SIZE_MIN_S ")",
 #endif
   "  -o <output filename>: name of file to save output to",
@@ -649,6 +663,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         stat = zsv_printerr(1, "%s option requires a value", argv[arg_i-1]);
     } else if(!strcmp(argv[arg_i], "-v") || !strcmp(argv[arg_i], "--verbose")) {
       data.verbose = 1;
+    } else if(!strcmp(argv[arg_i], "--unescape")) {
+      data.unescape = 1;
     } else if(!strcmp(argv[arg_i], "-w") || !strcmp(argv[arg_i], "--whitespace-clean"))
       data.clean_white = 1;
     else if(!strcmp(argv[arg_i], "--whitespace-clean-no-newline")) {
@@ -757,7 +773,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         data.any_clean =
           !data.no_trim_whitespace
           || data.clean_white
-          || data.embedded_lineend;
+          || data.embedded_lineend
+          || data.unescape;;
 
         // set to fixed if applicable
         if(data.fixed.count && zsv_set_fixed_offsets(data.parser, data.fixed.count,
