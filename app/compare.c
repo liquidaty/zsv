@@ -660,7 +660,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       input_filenames[input_count++] = arg;
   }
 
-
   struct zsv_opts original_default_opts;
   if(data->sort) {
     if(!data->key_count) {
@@ -689,11 +688,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     }
 
-    char started = 0;
     if(data->status == zsv_compare_status_ok) {
-      started = 1;
-      zsv_compare_output_begin(data);
-
       // find keys
       for(unsigned i = 0; data->status == zsv_compare_status_ok && i < data->input_count; i++) {
         struct zsv_compare_input *input = &data->inputs[i];
@@ -764,12 +759,21 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
             if(!k->found)
               fprintf(stderr, "\n  %s", k->key->name);
           }
+          fprintf(stderr, "\n");
           data->status = zsv_compare_status_error;
         }
       }
+    }
 
+    if(data->status == zsv_compare_status_ok) {
       if(data->output_colcount == 0)
         data->status = zsv_compare_status_no_data;
+    }
+
+    char started = 0;
+    if(data->status == zsv_compare_status_ok) {
+      started = 1;
+      zsv_compare_output_begin(data);
 
       // match output colnames to added columns
       for(struct zsv_compare_added_column *ac = data->added_columns;
