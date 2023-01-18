@@ -498,8 +498,8 @@ static int zsv_compare_inputp_cmp(const void *inputpx, const void* inputpy) {
   const struct zsv_compare_input *y = *yp;
 
   if(!x->row_loaded && !y->row_loaded) return 0;
-  if(!x->row_loaded) return -1;
-  if(!y->row_loaded) return 1;
+  if(!x->row_loaded) return 1;
+  if(!y->row_loaded) return -1;
 
   int cmp = 0;
   for(unsigned i = 0; !cmp && i < x->key_count && i < y->key_count; i++)
