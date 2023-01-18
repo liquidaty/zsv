@@ -98,7 +98,7 @@ Then:
 * input will need to be sorted
 * each table has a slightly different population
 
-So we can run:
+We can run:
 ```
 zsv compare t1.csv t2.csv --sort -k country -k city
 ```
@@ -107,13 +107,13 @@ and get the following output:
 
 |country|city|Column|t1.csv|t2.csv|
 |--|--|--|--|--|
-|cn|fulongling|<key>|Missing||
+|cn|fulongling|&lt;key&gt;|Missing||
 |de|placken|Longitude|8.433333|10.4|
-|ie|burtown cross roads|<key>|Missing||
-|kr|chusamdong|<key>|Missing||
+|ie|burtown cross roads|&lt;key&gt;|Missing||
+|kr|chusamdong|&lt;key&gt;|Missing||
 |pl|ciesle male|AccentCity|Ciesle Male|Ciesle XXX|
-|ru|chishmabash|<key>||Missing|
-|tr|yenioe|<key>|Missing||
+|ru|chishmabash|&lt;key&gt;||Missing|
+|tr|yenioe|&lt;key&gt;|Missing||
 |zr|kakova|Region|09|XX|
 
 Or in either of two JSON formats:
