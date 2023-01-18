@@ -498,8 +498,8 @@ static int zsv_compare_inputp_cmp(const void *inputpx, const void* inputpy) {
   const struct zsv_compare_input *y = *yp;
 
   if(!x->row_loaded && !y->row_loaded) return 0;
-  if(!x->row_loaded) return -1;
-  if(!y->row_loaded) return 1;
+  if(!x->row_loaded) return 1;
+  if(!y->row_loaded) return -1;
 
   int cmp = 0;
   for(unsigned i = 0; !cmp && i < x->key_count && i < y->key_count; i++)
@@ -660,11 +660,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       input_filenames[input_count++] = arg;
   }
 
-
   struct zsv_opts original_default_opts;
   if(data->sort) {
     if(!data->key_count) {
-      fprintf(stderr, "--sort requires one or more keys\n");
+      fprintf(stderr, "Error: --sort requires one or more keys\n");
       data->status = zsv_compare_status_error;
     } else {
       original_default_opts = zsv_get_default_opts();
@@ -679,7 +678,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     data->status = zsv_compare_status_error;
   else if(!input_count)
     data->status = zsv_compare_status_error;
-  else {
+  else if(data->status == zsv_compare_status_ok) {
     if((data->status = zsv_compare_set_inputs(data, input_count)) == zsv_compare_status_ok) {
       // initialize parsers
       for(unsigned ix = 0; data->status == zsv_compare_status_ok && ix < input_count; ix++) {
@@ -689,11 +688,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     }
 
-    char started = 0;
     if(data->status == zsv_compare_status_ok) {
-      started = 1;
-      zsv_compare_output_begin(data);
-
       // find keys
       for(unsigned i = 0; data->status == zsv_compare_status_ok && i < data->input_count; i++) {
         struct zsv_compare_input *input = &data->inputs[i];
@@ -764,12 +759,21 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
             if(!k->found)
               fprintf(stderr, "\n  %s", k->key->name);
           }
+          fprintf(stderr, "\n");
           data->status = zsv_compare_status_error;
         }
       }
+    }
 
+    if(data->status == zsv_compare_status_ok) {
       if(data->output_colcount == 0)
         data->status = zsv_compare_status_no_data;
+    }
+
+    char started = 0;
+    if(data->status == zsv_compare_status_ok) {
+      started = 1;
+      zsv_compare_output_begin(data);
 
       // match output colnames to added columns
       for(struct zsv_compare_added_column *ac = data->added_columns;
