@@ -664,7 +664,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   struct zsv_opts original_default_opts;
   if(data->sort) {
     if(!data->key_count) {
-      fprintf(stderr, "--sort requires one or more keys\n");
+      fprintf(stderr, "Error: --sort requires one or more keys\n");
       data->status = zsv_compare_status_error;
     } else {
       original_default_opts = zsv_get_default_opts();
@@ -679,7 +679,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     data->status = zsv_compare_status_error;
   else if(!input_count)
     data->status = zsv_compare_status_error;
-  else {
+  else if(data->status == zsv_compare_status_ok) {
     if((data->status = zsv_compare_set_inputs(data, input_count)) == zsv_compare_status_ok) {
       // initialize parsers
       for(unsigned ix = 0; data->status == zsv_compare_status_ok && ix < input_count; ix++) {
