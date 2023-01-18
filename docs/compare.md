@@ -1,6 +1,6 @@
 # Tabular file compare
 
-zsv's [`compare`](../README.md#compare) command compares multiple tables and outputs differences in tabular or JSON format.
+zsv's `compare` command compares multiple tables and outputs differences in tabular or JSON format.
 
 ## Background
 
