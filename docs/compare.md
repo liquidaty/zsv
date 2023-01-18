@@ -13,14 +13,14 @@ Examples where multiple tables may contain differences that need to be identifie
 
 Comparing tables of data presents several challenges, some of which are addressed by `zsv compare` and others that are not.
 
-Challenges that `zsv compare` aims to fully solve include:
-* Comparing multiple tables currently is somewhat achievable with built-in utilities such as `awk`,
+Challenges that `zsv compare` addresses include:
+* Comparing multiple tables currently is somewhat achievable using a collection of common utilities,
   but requires different solutions for different operating systems and platforms, and typically requires custom
-  scripting depending on input-specific situations. Searching for "table comparison" on stackoverflow, for example,
-  yields multiple questions whose answers all involving custom scripting, many of which assume the tables already
-  reside in a relational database. A better solution would be consistent across platforms and supports
-  canned options for common use cases
-* Achieve high performance and scalability with bounded memory for pre-sorted input
+  scripting that depends on both platform and specific input schema. Searching for "table comparison" on stackoverflow, for example,
+  yields multiple questions whose answers all involving different sets of tools and custom scripts (and many of which assume the tables already
+  reside in a relational database), and even fewer that consider performance. A better solution would be consistent across platforms, support
+  canned options for common use cases, have few or no additional dependencies, and well-defined performance expectations and limitations
+* Achieve high performance and scalability with bounded memory (for pre-sorted input)
 * Columns might not appear in the same order across all inputs
 * Column population may not be the same across all inputs
 * Column names might be duplicated within any one input
@@ -32,17 +32,19 @@ Challenges that `zsv compare` aims to fully solve include:
 * Inputs may be large and memory may be limited
 * Desired output format may be any of myriad tabular, JSON or other formats
 * Case-insensitive matching across a full Unicode character set
+* Desired output may include additional columns for context
 
-Challenges that `zsv compare` aims to solve for limited cases includes:
-* Provide an easy built-in option to handle unsorted data with reasonable single-threaded performance
+Challenges that `zsv compare` aims to solve for limited cases include:
+* Input data might be unsorted, but small enough to sort with reasonable performance using [vanilla sqlite3 sort](https://www.sqlite.org/eqp.html#temporary_sorting_b_trees)
 
 Challenges that `zsv compare` does not try to solve include:
 * The name of any given column to compare across inputs might differ across inputs
-  (e.g. "My Column X" vs "My_Column_X")
+  (e.g. input 1 contains "My Column X" that we want to compare against input 2's "My_Column_X")
 * Exact comparison may be undesirable when content differs cosmetically but not substantively, e.g. in
-  scale ("70" vs "0.70"), format ("1/1/2023" vs "2023-01-01"), enumeration ("Washington" vs "WA")
-  precision ("5.2499999999999" vs "5.25") and other
-* Comparing large, unsorted datasets may require significant time / CPU / memory resources as sort must be performed prior to comparison
+  scale ("70" vs "0.70"), format ("1/1/2023" vs "2023-01-01", or "70%" vs "0.7"), enumeration ("Washington" vs "WA"),
+  precision ("5.2499999999999" vs "5.25") and/or other
+* When comparing large, unsorted datasets in order to sort prior to comparison, a high-performance sort that offers parallelization,
+  multi-threading, algorithm control and/or other high-performance sort features may be desired
 
 (If you are an interested in solutions to these kinds of problems, please contact [Liquidaty](info@liquidaty.com)
 and/or check out https://hub.liquidaty.com.)
@@ -52,7 +54,7 @@ and/or check out https://hub.liquidaty.com.)
 Row matching and sorting is handled as follows:
 * Rows between inputs are matched either by row number or by one or more specified key columns
 * Input is assumed to be sorted and uses bounded memory
-* Unsorted input can still be processed; will sort using the sqlite3 API
+* Unsorted input can still be processed; will sort using the [sqlite3 API](https://www.sqlite.org/eqp.html#temporary_sorting_b_trees)
 
 ## Example
 
