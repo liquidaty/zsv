@@ -78,8 +78,10 @@ that implements the expected
 * Easy to use as a library in a few lines of code, via either pull or push parsing
 * Includes the `zsv` CLI with the following built-in commands:
   * `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
-    `2db`, `stack`, `pretty`, `2tsv`, `jq`, `prop`, `rm`
+    `2db`, `stack`, `pretty`, `2tsv`, `compare`, `jq`, `prop`, `rm`
   * easily [convert between CSV/JSON/sqlite3](docs/csv_json_sqlite.md)
+  * xxxx
+
 * CLI is easy to extend/customize with a few lines of code via modular plug-in framework.
   Just write a few custom functions and compile into a distributable DLL that any existing zsv
   installation can use
@@ -227,6 +229,7 @@ for speed and ease of development for extending and/or customizing to your needs
   format
 * `2json`: convert CSV to JSON. Optionally, output in [database schema](docs/db.schema.json)
 * `2tsv`: convert CSV to TSV
+* <a name="compare">`compare`</a>: compare two or more tables of data and output the differences
 * `serialize` (inverse of flatten): convert an NxM table to a single 3x (Nx(M-1))
   table with columns: Row, Column Name, Column Value
 * `flatten` (inverse of serialize): flatten a table by combining rows that share
