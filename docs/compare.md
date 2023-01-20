@@ -46,7 +46,7 @@ Challenges that `zsv compare` does not try to solve include:
 * When comparing large, unsorted datasets in order to sort prior to comparison, a high-performance sort that offers parallelization,
   multi-threading, algorithm control and/or other high-performance sort features may be desired
 
-(If you are an interested in solutions to these kinds of problems, please contact [Liquidaty](info@liquidaty.com)
+(If you are an interested in solutions to these kinds of problems, please contact <a href="mailto:info@liquidaty.com">Liquidaty</a>
 and/or check out https://hub.liquidaty.com.)
 
 ## Matching and sorting
