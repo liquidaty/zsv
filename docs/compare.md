@@ -182,6 +182,6 @@ to get:
 No rigorous benchmarking has yet been performed, but preliminary testing yields reasonable performance and memory usage.
 
 Running a comparison of two 40MB CSV files, each a table of 100,000 rows with 61 columns, containing approximately
-60,000 differences, took about 5.8 seconds and used a maximum about 1.8MB of RAM on a 2019 MBA.
+60,000 differences, took about 5.5 seconds and used a maximum about 1.8MB of RAM on a 2019 MBA.
 
-The same test with sorting used significantly more memory (up to ~40MB) and took about 8 seconds to complete.
+The same test with sorting used significantly more memory (up to ~40MB) and took about 7.8 seconds to complete.
