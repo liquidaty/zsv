@@ -33,17 +33,15 @@ jobs:
       ARTIFACT_RETENTION_DAYS: 5
 
     steps:
-    - name: Get tag
-      uses: dawidd6/action-get-tag@v1
+    - name: Get tag if tagged/released and set TAG env var
       if: startsWith(github.ref, 'refs/tags/v')
-      id: tag
-      with:
-        strip_v: true
-
-    - name: Set TAG env var
-      if: startsWith(github.ref, 'refs/tags/v')
+      shell: bash
       run: |
-        TAG=${{ steps.tag.outputs.tag }}
+        TAG=$(echo $GITHUB_REF | cut -d '/' -f3)
+        echo "TAG: $TAG"
+        if [[ $TAG == "v"* ]]; then
+          TAG="${TAG:1}"
+        fi
         echo "TAG: $TAG"
         echo "TAG=$TAG" >> $GITHUB_ENV
 
