@@ -77,6 +77,9 @@ that implements the expected
   both lib (~20k) and CLI executable (< 1MB)
 * Handles general delimited data (e.g. pipe-delimited) and fixed-with input
   (with specified widths or auto-detected widths)
+* Handles multi-row headers
+* Handles input from any stream, including caller-defined streams accessed via
+  a single caller-defined `fread`-like function
 * Easy to use as a library in a few lines of code, via either pull or push parsing
 * Includes the `zsv` CLI with the following built-in commands:
   * `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
