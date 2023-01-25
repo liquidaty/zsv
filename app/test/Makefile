@@ -136,7 +136,7 @@ test-2-count test-2-count-pull: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR
 	@for x in 5000 5002 5004 5006 5008 5010 5013 5015 5017 5019 5021 5101 5105 5111 5113 5115 5117 5119 5121 5123 5125 5127 5129 5131 5211 5213 5215 5217 5311 5313 5315 5317 5413 5431 5433 5455 6133 ; do $< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv ; done > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/test-2-count.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select test-select-pull: test-% : test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-quotebuff-% test-fixed-1-% test-merge-%
+test-select test-select-pull: test-% : test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-merge-%
 
 test-merge-select test-merge-select-pull: test-merge-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -198,13 +198,19 @@ test-10-select: test-10-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 test-10-select-pull:
 	@echo 'N/a (test-10-select-pull)'
 
-test-fixed-1-select-pull:
-	@echo "Skipping test-fixed-1-select-pull"
-
 test-fixed-1-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
 	@${PREFIX} $< ${TEST_DATA_DIR}/fixed.csv --fixed 3,7,12,18,20,21,22 ${REDIRECT} ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/test-fixed-1-select.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-fixed-2-select: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_INIT}
+	@${PREFIX} $< ${TEST_DATA_DIR}/fixed-auto.txt --fixed-auto ${REDIRECT} ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-fixed-1-select-pull test-fixed-2-select-pull:
+	@echo "Skipping $@"
+
 
 test-blank-leading-rows: test-blank-leading-rows-1 test-blank-leading-rows-2 test-blank-leading-rows-3 test-blank-leading-rows-4
 
