@@ -70,11 +70,13 @@ that implements the expected
   "dirty"
 * Runs on macOS (tested on clang/gcc), Linux (gcc), Windows (mingw),
   BSD (gcc-only) and in-browser (emscripten/wasm)
-* Fast (maybe the fastest ever, at least on all platforms we've benchmarked where
-  256 SIMD operations are available). See
+* Fastest (at least, vs all alternatives and on all platforms we've benchmarked where
+  256-bit SIMD operations are available). See
   [app/benchmark/README.md](app/benchmark/README.md)
 * Low memory usage (regardless of how big your data is) and size footprint for
   both lib (~20k) and CLI executable (< 1MB)
+* Handles general delimited data (e.g. pipe-delimited) and fixed-with input
+  (with specified widths or auto-detected widths)
 * Easy to use as a library in a few lines of code, via either pull or push parsing
 * Includes the `zsv` CLI with the following built-in commands:
   * `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
