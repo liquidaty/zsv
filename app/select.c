@@ -603,10 +603,10 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
  * Approach:
  * - find each instance of white followed by not-white, but ignore the first instance of it
  */
-static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struct zsv_opts *opts, char **scanned) {
+static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struct zsv_opts *opts, char **scanned, char verbose) {
   fixed->count = 0;
   unsigned buffsize = 1024*1024; // 1MB
-  char *buff = malloc(buffsize);
+  char *buff = calloc(buffsize, sizeof(*buff));
   if(!buff)
     return zsv_status_memory;
 
@@ -614,7 +614,7 @@ static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struc
   size_t i;
   char was_space = 1;
   char first = 1;
-  for(i = 0; i < buffsize; i++) {
+  for(i = 0; i < buffsize-1; i++) {
     c = fgetc(opts->stream);
     if(c == EOF || c == '\n')
       break;
@@ -630,17 +630,16 @@ static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struc
     } else
       was_space = 1;
   }
+  if(!first)
+    fixed->count++;
+
   if(c != '\n' || !fixed->count) {
     free(buff);
     return zsv_status_error;
   }
 
-  if(!was_space)
-    fixed->count++;
-
   // free unused memory
-  char *buff_tmp = realloc(buff, i);
-  buff[i] = '\0';
+  char *buff_tmp = realloc(buff, i+1);
   if(buff_tmp)
     buff = buff_tmp;
   *scanned = buff;
@@ -656,6 +655,8 @@ static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struc
   int count = 0;
   was_space = 1;
   first = 1;
+  if(verbose)
+    fprintf(stderr, "Running --fixed ");
   for(i = 0; i < buffsize; i++) {
     c = buff[i];
     if(c == EOF || c == '\0')
@@ -665,15 +666,23 @@ static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struc
       if(was_space) {
         if(first)
           first = 0;
-        else
+        else {
+          if(verbose)
+            fprintf(stderr, "%s%zu", count ? "," : "", i);
           fixed->offsets[count++] = i;
+        }
       }
       was_space = 0;
     } else
       was_space = 1;
   }
-  if(!was_space)
+  if(!first) {
+    if(verbose)
+      fprintf(stderr, "%s%zu", count ? "," : "", i);
     fixed->offsets[count++] = i;
+  }
+  if(verbose)
+    fprintf(stderr, "\n");
   return zsv_status_ok;
 }
 
@@ -847,7 +856,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     else if(insert_header_row)
       stat = zsv_printerr(zsv_status_error, "--fixed-auto can not be specified together with --header-row");
     else {
-      stat = auto_detect_fixed_column_sizes(&data.fixed, data.opts, &fixed_auto_scanned_buff);
+      stat = auto_detect_fixed_column_sizes(&data.fixed, data.opts, &fixed_auto_scanned_buff, opts->verbose);
       if(fixed_auto_scanned_buff)
         data.opts->insert_header_row = fixed_auto_scanned_buff;
     }
