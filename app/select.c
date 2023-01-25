@@ -43,6 +43,11 @@ struct zsv_select_uint_list {
   unsigned int value;
 };
 
+struct fixed {
+  size_t *offsets;
+  size_t count;
+};
+
 struct zsv_select_data {
   FILE *in;
   unsigned int current_column_ix;
@@ -92,10 +97,7 @@ struct zsv_select_data {
 
   size_t overflow_size;
 
-  struct {
-    size_t *offsets;
-    size_t count;
-  } fixed;
+  struct fixed fixed;
 
   unsigned char whitspace_clean_flags;
 
@@ -519,7 +521,9 @@ const char *zsv_select_usage_msg[] = {
   "",
   "Options:",
   "  -b,--with-bom: output with BOM",
-  "  --fixed <offset1,offset2,offset3>: parse as fixed-width text; use given comma-separated list of positive integers for cell end indexes",
+  "  --fixed <offset1,offset2,..>: parse as fixed-width text; use given comma-separated list of positive integers for cell end indexes",
+  "  --fixed-auto                : parse as fixed-width text; derive widths from first row in input data (up to max 1MB size)",
+  "                                assumes ASCII whitespace; multi-byte whitespace is not counted as whitespace",
 #ifndef ZSV_CLI
   "  -v,--verbose                : verbose output",
 #endif
@@ -591,18 +595,104 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
   free(data->fixed.offsets);
 }
 
+/**
+ * Get a list of ending positions for each column name based on the ending position of each column name
+ * where the first row is of the below form (dash = whitespace):
+ * ----COLUMN1----COLUMN2-----COLUMN3----
+ *
+ * Approach:
+ * - find each instance of white followed by not-white, but ignore the first instance of it
+ */
+static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struct zsv_opts *opts, char **scanned) {
+  fixed->count = 0;
+  unsigned buffsize = 1024*1024; // 1MB
+  char *buff = malloc(buffsize);
+  if(!buff)
+    return zsv_status_memory;
+
+  int c;
+  size_t i;
+  char was_space = 1;
+  char first = 1;
+  for(i = 0; i < buffsize; i++) {
+    c = fgetc(opts->stream);
+    if(c == EOF || c == '\n')
+      break;
+    buff[i] = c;
+    if(!isspace(c)) {
+      if(was_space) {
+        if(first)
+          first = 0;
+        else
+          fixed->count++;
+      }
+      was_space = 0;
+    } else
+      was_space = 1;
+  }
+  if(c != '\n' || !fixed->count) {
+    free(buff);
+    return zsv_status_error;
+  }
+
+  if(!was_space)
+    fixed->count++;
+
+  // free unused memory
+  char *buff_tmp = realloc(buff, i);
+  buff[i] = '\0';
+  if(buff_tmp)
+    buff = buff_tmp;
+  *scanned = buff;
+  buffsize = i;
+
+  // set offset values
+  free(fixed->offsets);
+  fixed->offsets = malloc(fixed->count * sizeof(*fixed->offsets));
+  if(!fixed->offsets)
+    return zsv_status_memory;
+
+  // do the loop again, but assign values this time
+  int count = 0;
+  was_space = 1;
+  first = 1;
+  for(i = 0; i < buffsize; i++) {
+    c = buff[i];
+    if(c == EOF || c == '\0')
+      break;
+    buff[i] = c;
+    if(!isspace(c)) {
+      if(was_space) {
+        if(first)
+          first = 0;
+        else
+          fixed->offsets[count++] = i;
+      }
+      was_space = 0;
+    } else
+      was_space = 1;
+  }
+  if(!was_space)
+    fixed->offsets[count++] = i;
+  return zsv_status_ok;
+}
+
+
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
   if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     zsv_select_usage();
     return zsv_status_ok;
   }
 
+  char fixed_auto = 0;
   struct zsv_select_data data = { 0 };
   data.opts = opts;
   const char *input_path = NULL;
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   int col_index_arg_i = 0;
   const char *insert_header_row = NULL;
+  char *fixed_auto_scanned_buff = NULL;
+
   enum zsv_status stat = zsv_status_ok;
   for(int arg_i = 1; stat == zsv_status_ok && arg_i < argc; arg_i++) {
     if(!strcmp(argv[arg_i], "--")) {
@@ -611,6 +701,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
     if(!strcmp(argv[arg_i], "-b") || !strcmp(argv[arg_i], "--with-bom"))
       writer_opts.with_bom = 1;
+    else if(!strcmp(argv[arg_i], "--fixed-auto"))
+      fixed_auto = 1;
     else if(!strcmp(argv[arg_i], "--fixed")) {
       if(++arg_i >= argc)
         stat = zsv_printerr(1, "%s option requires parameter", argv[arg_i-1]);
@@ -749,6 +841,18 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #endif
   }
 
+  if(stat == zsv_status_ok && fixed_auto) {
+    if(data.fixed.offsets)
+      stat = zsv_printerr(zsv_status_error, "Please specify either --fixed-auto or --fixed, but not both");
+    else if(insert_header_row)
+      stat = zsv_printerr(zsv_status_error, "--fixed-auto can not be specified together with --header-row");
+    else {
+      stat = auto_detect_fixed_column_sizes(&data.fixed, data.opts, &fixed_auto_scanned_buff);
+      if(fixed_auto_scanned_buff)
+        data.opts->insert_header_row = fixed_auto_scanned_buff;
+    }
+  }
+
   if(stat == zsv_status_ok) {
     if(!col_index_arg_i)
       data.col_argc = 0;
@@ -766,7 +870,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     else {
       data.opts->row_handler = zsv_select_header_row;
       data.opts->ctx = &data;
-      data.opts->insert_header_row = insert_header_row;
+      if(!data.opts->insert_header_row)
+        data.opts->insert_header_row = insert_header_row;
+
       if(zsv_new_with_properties(data.opts, input_path, opts_used, &data.parser)
          == zsv_status_ok) {
         // all done with
@@ -797,6 +903,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     }
   }
+  free(fixed_auto_scanned_buff);
   zsv_select_cleanup(&data);
   if(writer_opts.stream && writer_opts.stream != stdout)
     fclose(writer_opts.stream);
