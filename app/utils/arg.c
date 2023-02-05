@@ -115,10 +115,12 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx) {
  *     -O,--other-delim <C>
  *     -q,--no-quote
  *     -R,--skip-head <n>: skip specified number of initial rows
- *     -d,--header-row-span <n>: apply header depth (rowspan) of n
+ *     -d,--header-row-span <n> : apply header depth (rowspan) of n
  *     -u,--malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8 input
  *       (default for "desc" commamnd is '?')
- *     -S,--keep-blank-headers: disable default behavior of ignoring leading blank rows
+ *     -S,--keep-blank-headers  : disable default behavior of ignoring leading blank rows
+ *     -0,--header-row <header> : insert the provided CSV as the first row (in position 0)
+ *                                e.g. --header-row 'col1,col2,\"my col 3\"'",
  *     -v,--verbose
  *
  * @param  argc      count of args to process
@@ -141,24 +143,13 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
                                  char *opts_used
                                  ) {
 #ifdef ZSV_EXTRAS
-  static const char *short_args = "BcrtOqvRdSuL";
+  static const char *short_args = "BcrtOqvRdSu0L";
 #else
-  static const char *short_args = "BcrtOqvRdSu";
+  static const char *short_args = "BcrtOqvRdSu0";
 #endif
   assert(strlen(short_args) < ZSV_OPTS_SIZE_MAX);
 
-  *opts_out = zsv_get_default_opts();
-  int options_start = 1; // skip this many args before we start looking for options
-  int err = 0;
-  int new_argc = 0;
-  for(; new_argc < options_start && new_argc < argc; new_argc++)
-    argv_out[new_argc] = argv[new_argc];
-  if(opts_used) {
-    memset(opts_used, ' ', ZSV_OPTS_SIZE_MAX-1);
-    opts_used[ZSV_OPTS_SIZE_MAX-1] = '\0';
-  }
-
-  static const char *long_args[] = {
+  static const char *long_args[] = { //
     "buff-size",
     "max-column-count",
     "max-row-size",
@@ -170,11 +161,23 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
     "header-row-span",
     "keep-blank-headers",
     "malformed-utf8-replacement",
+    "header-row",
 #ifdef ZSV_EXTRAS
     "limit-rows",
 #endif
     NULL
   };
+
+  *opts_out = zsv_get_default_opts();
+  int options_start = 1; // skip this many args before we start looking for options
+  int err = 0;
+  int new_argc = 0;
+  for(; new_argc < options_start && new_argc < argc; new_argc++)
+    argv_out[new_argc] = argv[new_argc];
+  if(opts_used) {
+    memset(opts_used, ' ', ZSV_OPTS_SIZE_MAX-1);
+    opts_used[ZSV_OPTS_SIZE_MAX-1] = '\0';
+  }
 
   for(int i = options_start; !err && i < argc; i++) {
     char arg = 0;
@@ -218,67 +221,73 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[],
     case 'R':
     case 'd':
     case 'u':
+    case '0':
       if(++i >= argc)
         err = fprintf(stderr, "Error: option %s requires a value\n", argv[i-1]);
-      else if(arg == 'O') {
+      else {
         const char *val = argv[i];
-        if(strlen(val) != 1 || *val == 0)
-          err = fprintf(stderr, "Error: delimiter '%s' may only be a single ascii character", val);
-        else if(strchr("\n\r\"", *val))
-          err = fprintf(stderr, "Error: column delimiter may not be '\\n', '\\r' or '\"'\n");
+        if(arg == 'O') {
+          if(strlen(val) != 1 || *val == 0)
+            err = fprintf(stderr, "Error: delimiter '%s' may only be a single ascii character", val);
+          else if(strchr("\n\r\"", *val))
+            err = fprintf(stderr, "Error: column delimiter may not be '\\n', '\\r' or '\"'\n");
         else
           opts_out->delimiter = *val;
-      } else if(arg == 'u') {
-        const char *val = argv[i];
-        if(!strcmp(val, "none"))
-          opts_out->malformed_utf8_replace = ZSV_MALFORMED_UTF8_DO_NOT_REPLACE;
-        else if(!*val)
-          opts_out->malformed_utf8_replace = ZSV_MALFORMED_UTF8_REMOVE;
-        else if(strlen(val) > 2 || *val < 0)
-          err = fprintf(stderr, "Error: %s value must be a single-byte UTF8 char, empty string or 'none'\n", argv[i-1]);
-        else
-          opts_out->malformed_utf8_replace = *val;
-      } else {
-        const char *val = argv[i];
-        /* arg = 'B', 'c', 'r', 'R', 'd', or 'L' (ZSV_EXTRAS only) */
-        long n = atol(val);
-        if(n < 0)
-          err = fprintf(stderr, "Error: option %s value may not be less than zero (got %li\n", val, n);
+        } else if(arg == 'u') {
+          if(!strcmp(val, "none"))
+            opts_out->malformed_utf8_replace = ZSV_MALFORMED_UTF8_DO_NOT_REPLACE;
+          else if(!*val)
+            opts_out->malformed_utf8_replace = ZSV_MALFORMED_UTF8_REMOVE;
+          else if(strlen(val) > 2 || *val < 0)
+            err = fprintf(stderr, "Error: %s value must be a single-byte UTF8 char, empty string or 'none'\n", argv[i-1]);
+          else
+            opts_out->malformed_utf8_replace = *val;
+        } else if(arg == '0') {
+          if(*val == 0)
+            err = fprintf(stderr, "Invalid empty Inserted header row\n");
+          else
+            opts_out->insert_header_row = argv[i];
+        } else {
+          /* arg = 'B', 'c', 'r', 'R', 'd', or 'L' (ZSV_EXTRAS only) */
+          long n = atol(val);
+          if(n < 0)
+            err = fprintf(stderr, "Error: option %s value may not be less than zero (got %li\n", val, n);
 #ifdef ZSV_EXTRAS
-        else if(arg == 'L') {
-          if(n < 1)
-            err = fprintf(stderr, "Error: max rows may not be less than 1 (got %s)\n", val);
-          else
-            opts_out->max_rows = n;
-        } else
+          else if(arg == 'L') {
+            if(n < 1)
+              err = fprintf(stderr, "Error: max rows may not be less than 1 (got %s)\n", val);
+            else
+              opts_out->max_rows = n;
+          } else
 #endif
-        if(arg == 'B') {
-          if(n < ZSV_MIN_SCANNER_BUFFSIZE)
-            err = fprintf(stderr, "Error: buff size may not be less than %u (got %s)\n",
-                          ZSV_MIN_SCANNER_BUFFSIZE, val);
-          else
-            opts_out->buffsize = n;
-        } else if(arg == 'c') {
-          if(n < 8)
-            err = fprintf(stderr, "Error: max column count may not be less than 8 (got %s)\n", val);
-          else
-            opts_out->max_columns = n;
-        } else if(arg == 'r') {
-          if(n < ZSV_ROW_MAX_SIZE_MIN)
-            err = fprintf(stderr, "Error: max row size size may not be less than %u (got %s)\n",
-                          ZSV_ROW_MAX_SIZE_MIN, val);
-          else
-            opts_out->max_row_size = n;
-        } else if(arg == 'd') {
-          if(n < 8 && n >= 0)
-            opts_out->header_span = n;
-          else
-            err = fprintf(stderr, "Error: header_span must be an integer between 0 and 8\n");
-        } else if(arg == 'R') {
-          if(n >= 0)
-            opts_out->rows_to_ignore = n;
-          else
-            err = fprintf(stderr, "Error: rows_to_skip must be >= 0\n");
+            if(arg == 'B') {
+              if(n < ZSV_MIN_SCANNER_BUFFSIZE)
+                err = fprintf(stderr, "Error: buff size may not be less than %u (got %s)\n",
+                              ZSV_MIN_SCANNER_BUFFSIZE, val);
+              else
+                opts_out->buffsize = n;
+            } else if(arg == 'c') {
+              if(n < 8)
+                err = fprintf(stderr, "Error: max column count may not be less than 8 (got %s)\n", val);
+              else
+                opts_out->max_columns = n;
+            } else if(arg == 'r') {
+              if(n < ZSV_ROW_MAX_SIZE_MIN)
+                err = fprintf(stderr, "Error: max row size size may not be less than %u (got %s)\n",
+                              ZSV_ROW_MAX_SIZE_MIN, val);
+              else
+                opts_out->max_row_size = n;
+            } else if(arg == 'd') {
+              if(n < 8 && n >= 0)
+                opts_out->header_span = n;
+              else
+                err = fprintf(stderr, "Error: header_span must be an integer between 0 and 8\n");
+            } else if(arg == 'R') {
+              if(n >= 0)
+                opts_out->rows_to_ignore = n;
+              else
+                err = fprintf(stderr, "Error: rows_to_skip must be >= 0\n");
+            }
         }
       }
       break;

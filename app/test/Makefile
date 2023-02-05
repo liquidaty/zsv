@@ -198,6 +198,11 @@ test-10-select: test-10-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 test-10-select-pull:
 	@echo 'N/a (test-10-select-pull)'
 
+test-11-select test-11-select-pull: test-11-% : ${BUILD_DIR}/bin/zsv_%${EXE}
+	@${TEST_INIT}
+	@${PREFIX} (echo "A1,B1" | $< --header-row "column1,column2") > /tmp/$@.out
+	@cmp /tmp/$@.out expected/test-11-select.out && ${TEST_PASS} || ${TEST_FAIL}
+
 test-fixed-1-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
 	@${PREFIX} $< ${TEST_DATA_DIR}/fixed.csv --fixed 3,7,12,18,20,21,22 ${REDIRECT} ${TMP_DIR}/$@.out

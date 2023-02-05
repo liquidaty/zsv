@@ -117,21 +117,30 @@ inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
 }
 
 /**
+ * apply --header-row option
+ */
+static enum zsv_status zsv_insert_string(struct zsv_scanner *scanner) {
+  // to do: replace below with
+  // return parse_bytes(scanner, bytes, len);
+  size_t len = strlen(scanner->insert_string);
+  if(len > scanner->buff.size - scanner->partial_row_length)
+    len = scanner->buff.size - 1; // to do: throw an error instead
+  memcpy(scanner->buff.buff + scanner->partial_row_length, scanner->insert_string, len);
+  if(scanner->buff.buff[len] != '\n')
+    scanner->buff.buff[len] = '\n';
+  enum zsv_status stat = zsv_scan(scanner, scanner->buff.buff, len + 1);
+  scanner->insert_string = NULL;
+  return stat;
+}
+
+/**
  * Read the next chunk of data from our input stream and parse it, calling our
  * custom handlers as each cell and row are parsed
  */
 ZSV_EXPORT
 enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
-  if(scanner->insert_string) {
-    size_t len = strlen(scanner->insert_string);
-    if(len > scanner->buff.size - scanner->partial_row_length)
-      len = scanner->buff.size - 1; // to do: throw an error instead
-    memcpy(scanner->buff.buff + scanner->partial_row_length, scanner->insert_string, len);
-    if(scanner->buff.buff[len] != '\n')
-      scanner->buff.buff[len] = '\n';
-    zsv_scan(scanner, scanner->buff.buff, len + 1);
-    scanner->insert_string = NULL;
-  }
+  if(VERY_UNLIKELY(scanner->insert_string != NULL))
+    zsv_insert_string(scanner);
 
   size_t capacity = scanner_pre_parse(scanner);
   size_t bytes_read;
@@ -194,6 +203,10 @@ enum zsv_status zsv_next_row(zsv_parser parser) {
     parser->mode = ZSV_MODE_DELIM_PULL;
     zsv_set_row_handler(parser, zsv_pull_row);
     zsv_set_context(parser, parser);
+    if(parser->insert_string != NULL)
+      parser->pull.stat = zsv_insert_string(parser);
+    if(parser->pull.stat == zsv_status_row)
+      return parser->pull.stat;
   }
   if(VERY_LIKELY(parser->pull.stat == zsv_status_row))
     parser->pull.stat = zsv_scan_delim_pull(parser, parser->pull.buff, parser->pull.bytes_read);
