@@ -585,7 +585,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   const char *input_path = NULL;
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   int col_index_arg_i = 0;
-  const char *insert_header_row = NULL;
   enum zsv_status stat = zsv_status_ok;
   for(int arg_i = 1; stat == zsv_status_ok && arg_i < argc; arg_i++) {
     if(!strcmp(argv[arg_i], "--")) {
@@ -655,12 +654,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       data.whitspace_clean_flags = 1;
     } else if(!strcmp(argv[arg_i], "-W") || !strcmp(argv[arg_i], "--no-trim")) {
       data.no_trim_whitespace = 1;
-    } else if(!strcmp(argv[arg_i], "--header-row")) {
-      arg_i++;
-      if(!(arg_i < argc))
-        stat = zsv_printerr(1, "%s option requires a header row value such as 'column_name1,\"column name 2\"'", argv[arg_i-1]);
-      else
-        insert_header_row = argv[arg_i];
     } else if(!strcmp(argv[arg_i], "--sample-every")) {
       arg_i++;
       if(!(arg_i < argc))
@@ -748,7 +741,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       stat = zsv_status_memory;
     else {
       zsv_parser parser;
-      data.opts->insert_header_row = insert_header_row;
       if(zsv_new_with_properties(data.opts, input_path, opts_used, &parser)
          == zsv_status_ok) {
         // all done with

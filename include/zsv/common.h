@@ -197,6 +197,8 @@ struct zsv_opts {
    * if the actual data does not have a header row with column names, the caller
    * should provide one (in CSV format) which will be treated as if it was the
    * first row of data
+   *
+   * cli option: -0,--header-row
    */
   const char *insert_header_row;
 
