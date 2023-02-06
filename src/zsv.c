@@ -377,6 +377,8 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
     return zsv_status_error;
   if(!scanner->abort) {
     if(scanner->mode == ZSV_MODE_FIXED) {
+      if(scanner->partial_row_length && memchr("\n\r", scanner->buff.buff[scanner->partial_row_length-1], 2))
+        scanner->partial_row_length--;
       if(scanner->partial_row_length)
         return row_fx(scanner, scanner->buff.buff, 0, scanner->partial_row_length);
       return zsv_status_ok;
