@@ -755,7 +755,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         for(const char *end = argv[arg_i]; ; end++) {
           if(*end == ',' || *end == '\0') {
             if(!sscanf(start, "%zu,", &data.fixed.offsets[count++])) {
-              stat = zsv_printerr(1, "Invalid offset: %s.*\n", end - start, start);
+              stat = zsv_printerr(1, "Invalid offset: %.*s\n", end - start, start);
               break;
             } else if(*end == '\0')
               break;
