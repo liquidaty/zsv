@@ -10,7 +10,6 @@ on:
     paths-ignore:
     - "**.md"
   release:
-    branches: [main]
     types: [published]
 
 jobs:
