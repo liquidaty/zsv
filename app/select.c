@@ -86,7 +86,7 @@ struct zsv_select_data {
 
   double sample_pct;
 
-  unsigned char sample_every_n;
+  unsigned sample_every_n;
 
   size_t data_rows_limit;
   size_t skip_data_rows;
@@ -808,7 +808,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       else if(atoi(argv[arg_i]) <= 0)
         stat = zsv_printerr(1, "--sample-every value should be an integer > 0");
       else
-        data.sample_every_n = atoi(argv[arg_i]);
+        data.sample_every_n = atoi(argv[arg_i]); // TO DO: check for overflow
     } else if(!strcmp(argv[arg_i], "--sample-pct")) {
       arg_i++;
       double d;
