@@ -19,7 +19,7 @@ static char starts_w_str_underscore(const unsigned char *s, size_t s_len,
   return result;
 }
 
-int zsv_dbtable2json(sqlite3 *db, const char *tname, jsonwriter_handle jsw) {
+int zsv_dbtable2json(sqlite3 *db, const char *tname, jsonwriter_handle jsw, size_t limit) {
   int err = 0;
   const char *index_sql = "select name, sql from sqlite_master where type = 'index' and tbl_name = :tbl_name";
   const char *unique_sql = "select 1 from PRAGMA_index_list(?) where name = ? and [unique] <> 0";
@@ -116,6 +116,7 @@ int zsv_dbtable2json(sqlite3 *db, const char *tname, jsonwriter_handle jsw) {
       // ------ data: array of rows
       jsonwriter_start_array(jsw);
       // for each row
+      size_t count = 0;
       while(sqlite3_step(data_stmt) == SQLITE_ROW) {
         jsonwriter_start_array(jsw); // start row
         for(int i = 0; i < colcount; i++) {
@@ -127,7 +128,8 @@ int zsv_dbtable2json(sqlite3 *db, const char *tname, jsonwriter_handle jsw) {
             jsonwriter_null(jsw);
         }
         jsonwriter_end_array(jsw); // end row
-        //        sqlite3_reset(data_stmt);
+        if(limit && ++count >= limit)
+          break;
       }
       jsonwriter_end_array(jsw);
 
