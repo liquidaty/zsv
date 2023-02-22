@@ -12,6 +12,8 @@
 #include <sqlite3.h>
 #include <jsonwriter.h>
 
-int zsv_dbtable2json(sqlite3 *db, const char *tname, jsonwriter_handle jsw);
+// zsv_dbtable2json: convert a db table to json
+// @limit: if nonzero, limit number of rows processed
+int zsv_dbtable2json(sqlite3 *db, const char *tname, jsonwriter_handle jsw, size_t limit);
 
 #endif

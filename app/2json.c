@@ -220,7 +220,7 @@ static int zsv_db2json(const char *input_filename, char **tname, jsonwriter_hand
   if(!*tname)
     fprintf(stderr, "No table name provided, and none found in %s\n", input_filename), err = 1;
   else
-    err = zsv_dbtable2json(db, *tname, jsw);
+    err = zsv_dbtable2json(db, *tname, jsw, 0);
   return err;
 }
 
