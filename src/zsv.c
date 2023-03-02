@@ -152,13 +152,16 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
 #endif
     size_t bom_len = strlen(ZSV_BOM);
     scanner->checked_bom = 1;
-    if(scanner->read(scanner->buff.buff, 1, bom_len, scanner->in) == bom_len
+    if((bytes_read = scanner->read(scanner->buff.buff, 1, bom_len, scanner->in)) == bom_len
        && !memcmp(scanner->buff.buff, ZSV_BOM, bom_len)) {
       // have bom. disregard what we just read
       bytes_read = scanner->read(scanner->buff.buff, 1, capacity, scanner->in);
       scanner->had_bom = 1;
-    } else // no BOM. keep the bytes we just read
-      bytes_read = bom_len + scanner->read(scanner->buff.buff + bom_len, 1, capacity - bom_len, scanner->in);
+    } else { // no BOM. keep the bytes we just read
+      // bytes_read = bom_len + scanner->read(scanner->buff.buff + bom_len, 1, capacity - bom_len, scanner->in);
+      if(bytes_read == bom_len) // maybe we only read < 3 bytes
+        bytes_read += scanner->read(scanner->buff.buff + bom_len, 1, capacity - bom_len, scanner->in);
+    }
   } else // already checked bom. read as usual
     bytes_read = scanner->read(scanner->buff.buff + scanner->partial_row_length, 1,
                                capacity, scanner->in);
