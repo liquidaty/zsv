@@ -72,7 +72,10 @@ help:
 
 build: simple print_my_column parse_by_chunk pull
 
-test: test-eol
+test: test-eol test-tiny
+
+test-tiny: build/simple${EXE}
+	@[ "`echo '' | $< - 2>&1`" = "" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-eol: test-eol-1 test-eol-2 test-eol-3 test-eol-4
 
