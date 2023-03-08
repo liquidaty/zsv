@@ -258,10 +258,23 @@ test-stack2: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${PREFIX} $< ${TEST_DATA_DIR}/stack2-[12].csv ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-sql test-flatten test-pretty : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+test-sql test-flatten : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+test-pretty: test-pretty-1 test-pretty-escape-chars
+
+test-pretty-1 : test-%-1: ${BUILD_DIR}/bin/zsv_%${EXE}
+	@${TEST_INIT}
+	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
+	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+test-pretty-escape-chars: ${BUILD_DIR}/bin/zsv_pretty${EXE}
+	@${TEST_INIT}
+	@(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/pretty-escape.csv -M ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-2tsv: test-2tsv-1 test-2tsv-2

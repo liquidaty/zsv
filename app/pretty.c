@@ -293,7 +293,25 @@ void zsv_pretty_write_cell(unsigned char *buff, size_t bytes, struct zsv_pretty_
                                                                            &used_width, &utf8_err);
       }
       if(bytes_to_print) {
-        data->write(buff, 1, bytes_to_print, data->write_arg);
+        if((data->markdown || data->markdown_pad)
+           && (memchr(buff, '|', bytes_to_print)
+               || memchr(buff, '\\', bytes_to_print))
+           ) {
+          char *tmp = malloc(bytes_to_print*2);
+          if(!tmp)
+            data->parser_status = zsv_status_memory;
+          else {
+            size_t tmp_len = 0;
+            for(size_t i = 0; i < bytes_to_print; i++) {
+              if(memchr("|\\", buff[i], 2))
+                tmp[tmp_len++] = '\\';
+              tmp[tmp_len++] = buff[i];
+            }
+            data->write(tmp, 1, tmp_len, data->write_arg);
+            free(tmp);
+          }
+        } else
+          data->write(buff, 1, bytes_to_print, data->write_arg);
         data->line.printed += used_width;
 
         if(ellipsis) {
