@@ -54,6 +54,7 @@ Other commands:
   prop     : save parsing options associated with a file that are subsequently
              applied by default when processing that file
   rm       : remove a file and its related cache
+  mv       : rename (move) a file and/or its related cache
   jq       : run a jq filter on json input
 
 (No extended commands)
@@ -111,6 +112,7 @@ Other commands:
   prop     : save parsing options associated with a file that are subsequently
              applied by default when processing that file
   rm       : remove a file and its related cache
+  mv       : rename (move) a file and/or its related cache
   jq       : run a jq filter on json input
 
 Extended commands:

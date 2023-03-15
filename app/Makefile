@@ -163,8 +163,8 @@ endif
 
 ZSV=$(BINDIR)/zsv${EXE}
 
-SOURCES= echo count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm jq
-CLI_SOURCES=echo select desc count 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm jq
+SOURCES= echo count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq
+CLI_SOURCES=echo select desc count 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq
 
 CFLAGS+= -DUSE_JQ
 
@@ -255,7 +255,7 @@ help:
 	@echo "which will build and test all apps, or to build/test a single app:"
 	@echo "  ${MAKE} test-xx"
 	@echo "where xx is any of:"
-	@echo "  echo count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm"
+	@echo "  echo count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm mv"
 	@echo ""
 
 install: ${ZSV}

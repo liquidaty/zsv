@@ -27,9 +27,9 @@
 const char *zsv_rm_usage_msg[] = {
   APPNAME ": remove a file and its related cache",
   "",
-  "Usage: " APPNAME " <filepath> <options>",
+  "Usage: " APPNAME " [options] <filepath>",
   "  where options may be:",
-  "    -v,--verbose: do not prompt for confirmation",
+  "    -v,--verbose: verbose output",
 #ifndef NO_STDIN
   "    -f,--force  : do not prompt for confirmation",
 #endif
@@ -107,11 +107,10 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
             fprintf(stderr, "Removing %s", filepath);
           err = unlink(filepath);
           if(err) {
-            perror(filepath);
-            if(force)
+            if(err == ENOENT && force)
               err = 0;
             else
-              fprintf(stderr, "Cached files (if any) not removed\n");
+              perror(filepath);
           }
         }
         if(!err) {
