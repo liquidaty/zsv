@@ -36,12 +36,16 @@ const char *zsv_property_usage_msg[] = {
   "  and options may be one or more of:",
   "    -d,--header-row-span <value>: set/unset/auto-detect header depth (see below)",
   "    -R,--skip-head <value>      : set/unset/auto-detect initial rows to skip (see below)",
+  "    --list-files                : x", // output a list of all cache files
   "    --clear                     : delete all properties",
+  "    --clear-orphans             : delete properties of all orphaned files in the given file or directory path",
   "    --auto                      : guess the best property values. This is equivalent to:",
   "                                    -d auto -R auto",
   "                                  when using this option, a dash (-) can be used instead",
   "                                  of a filepath to read from stdin",
   "    --save [-f,--overwrite]     : (only applicable with --auto) save the detected result",
+  "    --export <output path>      : export all properties to a single JSON file (- for stdout)", // to do: add option to check for valid JSON
+  "    --import <input path>       : import properties from a single JSON file (- for stdin)", // to do: add option to check for valid JSON
   "    -f,--overwrite              : overwrite any previously-saved properties",
   "",
   "For --header-row-span or --skip-head options, <value> can be:",
