@@ -24,6 +24,7 @@
 #include <zsv/utils/os.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/json.h>
+#include <zsv/utils/dirs.h>
 #include <zsv/utils/cache.h>
 #include <zsv/utils/string.h>
 
@@ -32,11 +33,13 @@ const char *zsv_property_usage_msg[] = {
   "          saved options will be applied by default when processing that file",
   "",
   "Usage: " APPNAME " <filepath> [options]",
-  "  where filepath is the path to the input CSV file (or when using --auto, - for stdin)",
+  "  where filepath is the path to the input CSV file, or",
+  "    when using --auto: input CSV file or - for stdin",
+  "    when using --clear-orphans: directory to clear from (. for current directory)",
   "  and options may be one or more of:",
   "    -d,--header-row-span <value>: set/unset/auto-detect header depth (see below)",
   "    -R,--skip-head <value>      : set/unset/auto-detect initial rows to skip (see below)",
-  "    --list-files                : x", // output a list of all cache files
+  "    --list-files                : list all property sets associted with the given file", // output a list of all cache files
   "    --clear                     : delete all properties",
   "    --clear-orphans             : delete properties of all orphaned files in the given file or directory path",
   "    --auto                      : guess the best property values. This is equivalent to:",
@@ -44,8 +47,9 @@ const char *zsv_property_usage_msg[] = {
   "                                  when using this option, a dash (-) can be used instead",
   "                                  of a filepath to read from stdin",
   "    --save [-f,--overwrite]     : (only applicable with --auto) save the detected result",
-  "    --export <output path>      : export all properties to a single JSON file (- for stdout)", // to do: add option to check for valid JSON
-  "    --import <input path>       : import properties from a single JSON file (- for stdin)", // to do: add option to check for valid JSON
+  "    --copy <dest filepath>      : copy properties to another file", // to do: opt to check valid JSON
+  "    --export <output path>      : export all properties to a single JSON file (- for stdout)", // to do: opt to check valid JSON
+  "    --import <input path>       : import properties from a single JSON file (- for stdin)", // to do: opt to check valid JSON
   "    -f,--overwrite              : overwrite any previously-saved properties",
   "",
   "For --header-row-span or --skip-head options, <value> can be:",
@@ -498,20 +502,156 @@ static int merge_and_save_properties(const unsigned char *filepath,
   return err;
 }
 
+enum zsv_prop_mode {
+  zsv_prop_mode_default = 0,
+  zsv_prop_mode_list_files = 'l',
+  zsv_prop_mode_clear_orphans = 'o',
+  zsv_prop_mode_export = 'e',
+  zsv_prop_mode_import = 'i',
+  zsv_prop_mode_copy = 'c'
+};
+
+static enum zsv_prop_mode zsv_prop_get_mode(const char *opt) {
+  if(!strcmp(opt, "--clear-orphans")) return zsv_prop_mode_clear_orphans;
+  if(!strcmp(opt, "--list-files")) return zsv_prop_mode_list_files;
+  if(!strcmp(opt, "--copy")) return zsv_prop_mode_copy;
+  if(!strcmp(opt, "--export")) return zsv_prop_mode_export;
+  if(!strcmp(opt, "--import")) return zsv_prop_mode_import;
+  return zsv_prop_mode_default;
+}
+
+struct prop_opts {
+  int64_t d; // ZSV_PROP_ARG_AUTO, ZSV_PROP_ARG_REMOVE or > 0
+  int64_t R; // ZSV_PROP_ARG_AUTO, ZSV_PROP_ARG_REMOVE or > 0
+  unsigned char clear:1;
+  unsigned char save:1;
+  unsigned char overwrite:1;
+  unsigned char _:3;
+};
+
+static int zsv_prop_execute_default(const unsigned char *filepath, struct zsv_opts zsv_opts, struct prop_opts opts) {
+  int err = 0;
+  struct zsv_file_properties fp = { 0 };
+  if(opts.d >= 0 || opts.R >= 0 || opts.d == ZSV_PROP_ARG_REMOVE || opts.R == ZSV_PROP_ARG_REMOVE)
+    opts.overwrite = 1;
+  if(opts.d == ZSV_PROP_ARG_AUTO || opts.R == ZSV_PROP_ARG_AUTO) {
+    err = detect_properties(filepath, &fp,
+                            opts.d == ZSV_PROP_ARG_AUTO,
+                            opts.R == ZSV_PROP_ARG_AUTO,
+                            &zsv_opts);
+  }
+
+  if(!err) {
+    if(opts.d == ZSV_PROP_ARG_AUTO)
+      opts.d = fp.header_span;
+
+    if(opts.R == ZSV_PROP_ARG_AUTO)
+      opts.R = fp.skip;
+    err = merge_and_save_properties(filepath, opts.save, opts.overwrite, opts.d, opts.R);
+  }
+  return err;
+}
+
+static int zsv_is_prop_file(struct zsv_foreach_dirent_ctx *ctx, size_t depth) {
+  return depth == 1 && !strcmp(ctx->entry, "props.json");
+}
+
+static zsv_foreach_dirent_func
+zsv_prop_get_or_set_is_prop_file(
+                                 int (*custom_is_prop_file)(struct zsv_foreach_dirent_ctx *, size_t),
+                                 char set
+                                 ) {
+  static int (*func)(struct zsv_foreach_dirent_ctx *ctx, size_t) = zsv_is_prop_file;
+  if(set) {
+    if(!(func = custom_is_prop_file))
+      func = zsv_is_prop_file;
+  }
+  return func;
+}
+
+static int zsv_prop_foreach_list(struct zsv_foreach_dirent_ctx *ctx, size_t depth) {
+  // return error
+  zsv_foreach_dirent_func is_prop_file = zsv_prop_get_or_set_is_prop_file(NULL, 0);
+  if(is_prop_file(ctx, depth))
+    printf("%s\n", ctx->entry);
+  return 0;
+}
+
+size_t zsv_prop_max_file_depth = 1;
+
+static zsv_foreach_dirent_func
+zsv_prop_get_or_set_is_prop_dir(
+                                int (*custom_is_prop_dir)(struct zsv_foreach_dirent_ctx *ctx, size_t),
+                                char set
+                                ) {
+  static int (*func)(struct zsv_foreach_dirent_ctx *ctx, size_t) = NULL;
+  if(set)
+    func = custom_is_prop_dir;
+  return func;
+}
+
+static int zsv_prop_execute_list_files(const unsigned char *filepath) {
+  int err = 0;
+  unsigned char *cache_path = zsv_cache_path(filepath, NULL, 0);
+  if(cache_path) {
+    zsv_foreach_dirent((const char *)cache_path, 0, zsv_prop_max_file_depth, NULL, NULL, zsv_prop_foreach_list, NULL);
+    free(cache_path);
+  }
+  return err;
+}
+
+
+/*
+static int zsv_prop_foreach_orphan(struct zsv_foreach_dirent_ctx *ctx) {
+  // if depth = 1 and childpath is not a file in the base dir, then its an orphan
+  if(ctx->depth == 1) {
+  }
+}
+*/
+
+static int zsv_prop_execute_clear_orphans(const char *dirpath) {
+  int err = 0;
+  size_t dirpath_len = strlen(dirpath);
+  while(dirpath_len && memchr("/\\", dirpath[dirpath_len-1], 2) != NULL)
+    dirpath_len--;
+  if(!dirpath_len)
+    return 0;
+
+  char *cache_parent;
+  asprintf(&cache_parent, "%.*s%c"ZSV_CACHE_DIR, dirpath_len, dirpath, FILESLASH);
+  if(!cache_parent) {
+    fprintf(stderr, "Out of memory!\n");
+    return 1;
+  }
+
+//  zsv_foreach_dirent(cache_parent, 0, zsv_prop_max_file_depth, NULL, NULL, xxxxzsv_prop_foreach_orphan, NULL);
+  free(cache_parent);
+  return err;
+}
+
+static int zsv_prop_execute_export(const char *filepath, const char *dest, unsigned char overwrite) {
+  int err = 0;
+
+  return err;
+}
+
+static int zsv_prop_execute_copy(const char *filepath, const char *dest, unsigned char overwrite) {
+  int err = 0;
+
+  return err;
+}
+
+static int zsv_prop_execute_import(const char *filepath, const char *src, unsigned char overwrite) {
+  int err = 0;
+  return err;
+}
+
 int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
   int err = 0;
   if(m_argc < 2 ||
      (m_argc > 1 && (!strcmp(m_argv[1], "-h") || !strcmp(m_argv[1], "--help"))))
     err = zsv_property_usage(stdout);
   else {
-    struct prop_opts {
-      int64_t d; // ZSV_PROP_ARG_AUTO, ZSV_PROP_ARG_REMOVE or > 0
-      int64_t R; // ZSV_PROP_ARG_AUTO, ZSV_PROP_ARG_REMOVE or > 0
-      unsigned char clear:1;
-      unsigned char save:1;
-      unsigned char overwrite:1;
-      unsigned char _:3;
-    };
     struct prop_opts opts = { 0 };
     opts.d = ZSV_PROP_ARG_NONE;
     opts.R = ZSV_PROP_ARG_NONE;
@@ -523,13 +663,28 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
     if(m_argc == 3 && !strcmp("--clear", m_argv[2]))
       return zsv_cache_remove(filepath, zsv_cache_type_property);
 
+    enum zsv_prop_mode mode = zsv_prop_mode_default;
+    const char *mode_arg = NULL;   // e.g. "--export"
+    const char *mode_value = NULL; // e.g. "saved_export.json"
     for(int i = 2; !err && i < m_argc; i++) {
       const char *opt = m_argv[i];
       if(!strcmp(opt, "-d") || !strcmp(opt, "--header-row-span"))
         err = prop_arg_value(++i, m_argc, m_argv, &opts.d);
       else if(!strcmp(opt, "-R") || !strcmp(opt, "--skip-head"))
         err = prop_arg_value(++i, m_argc, m_argv, &opts.R);
-      else if(!strcmp(opt, "--clear"))
+      else if((mode = zsv_prop_get_mode(opt))) {
+        if(mode_arg)
+          err = fprintf(stderr, "Option %s cannot be used together with %s\n", opt, mode_arg);
+        else {
+          mode_arg = opt;
+          if(mode == zsv_prop_mode_export || mode == zsv_prop_mode_import || mode == zsv_prop_mode_copy) {
+            if(++i < m_argc)
+              mode_value = m_argv[i];
+            else
+              err = fprintf(stderr, "Option %s requires a value\n", opt);
+          }
+        }
+      } else if(!strcmp(opt, "--clear"))
         err = fprintf(stderr, "--clear cannot be used in conjunction with any other options\n");
       else if(!strcmp(opt, "--auto")) {
         if(opts.d != ZSV_PROP_ARG_NONE && opts.R != ZSV_PROP_ARG_NONE)
@@ -559,7 +714,9 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
       if(have_auto && (have_specified || have_remove)) {
         fprintf(stderr, "Non-auto options may not be mixed with auto options\n");
         err = 1;
-      }
+      } else if((have_auto || have_specified || have_remove || opts.save)
+                && mode != zsv_prop_mode_default)
+        err = fprintf(stderr, "Invalid options in combination with %s\n", mode_arg);
 
       if(have_specified || have_remove) {
         opts.save = 1;
@@ -568,25 +725,30 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
     }
 
     if(!err) {
-      struct zsv_file_properties fp = { 0 };
-      if(opts.d >= 0 || opts.R >= 0 || opts.d == ZSV_PROP_ARG_REMOVE || opts.R == ZSV_PROP_ARG_REMOVE)
-        opts.overwrite = 1;
-      if(opts.d == ZSV_PROP_ARG_AUTO || opts.R == ZSV_PROP_ARG_AUTO) {
-        struct zsv_opts zsv_opts;
-        zsv_args_to_opts(m_argc, m_argv, &m_argc, m_argv, &zsv_opts, NULL);
-        err = detect_properties(filepath, &fp,
-                                opts.d == ZSV_PROP_ARG_AUTO,
-                                opts.R == ZSV_PROP_ARG_AUTO,
-                                &zsv_opts);
-      }
 
-      if(!err) {
-        if(opts.d == ZSV_PROP_ARG_AUTO)
-          opts.d = fp.header_span;
-
-        if(opts.R == ZSV_PROP_ARG_AUTO)
-          opts.R = fp.skip;
-        err = merge_and_save_properties(filepath, opts.save, opts.overwrite, opts.d, opts.R);
+      switch(mode) {
+      case zsv_prop_mode_list_files:
+        err = err = zsv_prop_execute_list_files(filepath);
+        break;
+      case zsv_prop_mode_clear_orphans:
+        err = zsv_prop_execute_clear_orphans(filepath);
+        break;
+      case zsv_prop_mode_copy:
+        err = zsv_prop_execute_copy(filepath, mode_value, opts.overwrite);
+        break;
+      case zsv_prop_mode_export:
+        err = zsv_prop_execute_export(filepath, mode_value, opts.overwrite);
+        break;
+      case zsv_prop_mode_import:
+        err = zsv_prop_execute_import(filepath, mode_value, opts.overwrite);
+        break;
+      case zsv_prop_mode_default:
+        {
+          struct zsv_opts zsv_opts;
+          zsv_args_to_opts(m_argc, m_argv, &m_argc, m_argv, &zsv_opts, NULL);
+          err = zsv_prop_execute_default(filepath, zsv_opts, opts);
+        }
+        break;
       }
     }
   }

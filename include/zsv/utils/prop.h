@@ -67,4 +67,7 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
                                         const char *opts_used,
                                         zsv_parser *handle_out
                                         );
+
+// xxx zsv_prop_get_or_set_is_prop_dir() zsv_prop_get_or_set_is_prop_file()
+extern size_t zsv_prop_max_file_depth;
 #endif
