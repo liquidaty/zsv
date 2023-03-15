@@ -30,6 +30,14 @@ char *zsv_get_temp_filename(const char *prefix);
  * Check if a file exists and is readable (with fopen + "rb")
  *
  * @param filename
+ * @returns: true  (1) if file exists
+ */
+int zsv_file_exists(const char* filename);
+
+/**
+ * Check if a file exists and is readable (with fopen + "rb")
+ *
+ * @param filename
  * @param err      if file is not readbale, *err is set to a code as defined in errno.h
  * @param f_out:   if provided, on success, set to the opened file ptr
  * @returns: true  (1) if file exists and is readable

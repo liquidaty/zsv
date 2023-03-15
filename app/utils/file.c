@@ -91,6 +91,21 @@ void zsv_redirect_file_from_temp(FILE *f, int bak, int old_fd) {
   close(bak);
 }
 
+#if defined(_WIN32) || defined(WIN32) || defined(WIN)
+int zsv_file_exists(const char* filename) {
+  DWORD attributes = GetFileAttributes(filename);
+  return (attributes != INVALID_FILE_ATTRIBUTES && !(attributes & FILE_ATTRIBUTE_DIRECTORY));
+}
+#else
+# include <sys/stat.h> // S_IRUSR S_IWUSR
+
+int zsv_file_exists(const char* filename) {
+  struct stat buffer;
+  return (stat(filename, &buffer) == 0);
+}
+#endif
+
+
 int zsv_file_readable(const char *filename, int *err, FILE **f_out) {
   FILE *f;
   int rc;

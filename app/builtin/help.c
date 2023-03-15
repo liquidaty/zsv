@@ -72,6 +72,7 @@ static int main_help(int argc, const char *argv[]) {
     "  prop     : save parsing options associated with a file that are subsequently",
     "             applied by default when processing that file",
     "  rm       : remove a file and its related cache",
+    "  mv       : rename (move) a file and/or its related cache",
 #ifdef USE_JQ
     "  jq       : run a jq filter on json input",
 #endif
