@@ -101,7 +101,12 @@ int zsv_file_exists(const char* filename) {
 
 int zsv_file_exists(const char* filename) {
   struct stat buffer;
-  return (stat(filename, &buffer) == 0);
+  if(stat(filename, &buffer) == 0) {
+    char is_dir = buffer.st_mode & S_IFDIR ? 1 : 0;
+    if(!is_dir)
+      return 1;
+  }
+  return 0;
 }
 #endif
 

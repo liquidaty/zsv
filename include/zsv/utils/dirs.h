@@ -55,44 +55,38 @@ int zsv_remove_dir_recursive(const unsigned char *path);
 
 #include <sys/stat.h>
 
-struct zsv_foreach_dirent_ctx {
-  const char *parent;
-  const char *entry;
-  const char *parent_and_entry;
-  struct stat stat;
+struct zsv_foreach_dirent_handle {
+  const char *parent;           /* name of the parent directory */
+  const char *entry;            /* file / dir name of current entry being processed */
+  const char *parent_and_entry; /* parent + entry separated by file separator */
+  const struct stat stat;       /* stat of current entry */
 
-  void *file_ctx;
-  void *dir_ctx;
+  void *ctx;                    /* caller-provided context to pass to handler */
 
-//  int err;
-//  const char *root_path; /* the dir_path that zsv_foreach_dirent was first called with */
-//  char *current_filepath;
-
-  /* pointer into current_filepath that skips the root_path portion e.g. props.json */
-//  const char *current_childpath;
-
-  /* handles for caller's private use */
+  unsigned char verbose:1;
+  unsigned char is_dir:1;       /* non-zero if this entry is a directory */
+  unsigned char no_recurse:1;        /* set to 1 when handling a dir to prevent recursing into it */
+  unsigned char _:5;
 };
 
-typedef int (*zsv_foreach_dirent_func)(struct zsv_foreach_dirent_ctx *ctx, size_t depth);
+typedef int (*zsv_foreach_dirent_handler)(struct zsv_foreach_dirent_handle *h, size_t depth);
 
 /**
  * Recursively process entries (files and folders) in a directory
  *
- * @param ctx: pointer to context
- * @param dir_path: path of directory to begin processing children of
- * @param dir_func: return 0 on success, non-zero on error
- * @param dir_ctx:  pointer passed to dir_func
- * @param file_func:return 0 on success, non-zero on error
- * @param file_ctx: pointer passed to file_ctx
+ * @param dir_path    : path of directory to begin processing children of
+ * @param max_depth   : maximum depth to recurse, or 0 for no maximum
+ * @param handler     : caller-provided entry handler. return 0 on success, non-zero on error
+ * @param ctx         : pointer passed to the handler
+ * @param verbose     : non-zero for verbose output
  *
  * returns error
  */
 int zsv_foreach_dirent(const char *dir_path,
-                        size_t depth,
-                        size_t max_depth,
-                        zsv_foreach_dirent_func dir_func, void *dir_ctx,
-                        zsv_foreach_dirent_func file_func, void *file_ctx
-                        );
+                       size_t max_depth,
+                       zsv_foreach_dirent_handler handler,
+                       void *ctx,
+                       char verbose
+                       );
 
 #endif

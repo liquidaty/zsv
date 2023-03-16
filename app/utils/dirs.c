@@ -205,40 +205,38 @@ static int rmdir_w_msg(const char *path, int *err) {
   return *err;
 }
 
-static int zsv_foreach_file_remove(struct zsv_foreach_dirent_ctx *ctx, size_t depth) {
+static int zsv_foreach_dirent_remove(struct zsv_foreach_dirent_handle *h, size_t depth) {
   (void)(depth);
-  if(ctx->parent_and_entry) {
-    if(unlink(ctx->parent_and_entry)) {
-      perror(ctx->parent_and_entry); // "Unable to remove file");
+  if(!h->is_dir) { // file
+    if(h->parent_and_entry) {
+      if(unlink(h->parent_and_entry)) {
+        perror(h->parent_and_entry); // "Unable to remove file");
+        return 1;
+      }
+    }
+  } else {           // dir
+    struct dir_path *dn = calloc(1, sizeof(*dn));
+    if(!dn) {
+      fprintf(stderr, "Out of memory!\n");
       return 1;
+    }
+    if(h->parent_and_entry) {
+      dn->path = strdup(h->parent_and_entry);
+      dn->next = *((struct dir_path **)h->ctx);
+      *((struct dir_path **)h->ctx) = dn;
     }
   }
   return 0;
 }
 
-static int zvs_foreach_dir_save_reverse(struct zsv_foreach_dirent_ctx *ctx, size_t depth) {
-  (void)(depth);
-  struct dir_path *dn = calloc(1, sizeof(*dn));
-  if(!dn) {
-    fprintf(stderr, "Out of memory!\n");
-    return 1;
-  }
-
-  if(ctx->parent_and_entry) {
-    dn->path = strdup(ctx->parent_and_entry);
-    dn->next = *((struct dir_path **)ctx->dir_ctx);
-    *((struct dir_path **)ctx->dir_ctx) = dn;
-  }
-  return 0;
-}
-
 // return error
-int zsv_foreach_dirent(const char *dir_path,
-                        size_t depth,
-                        size_t max_depth,
-                        zsv_foreach_dirent_func dir_func, void *dir_ctx,
-                        zsv_foreach_dirent_func file_func, void *file_ctx
-                        ) {
+static
+int zsv_foreach_dirent_aux(const char *dir_path,
+                           size_t depth,
+                           size_t max_depth,
+                           zsv_foreach_dirent_handler handler, void *ctx,
+                           char verbose
+                           ) {
   int err = 0;
   if(!dir_path)
     return 1;
@@ -257,25 +255,21 @@ int zsv_foreach_dirent(const char *dir_path,
       if(!tmp)
         fprintf(stderr, "Out of memory!\n"), err = 1;
       else {
-        struct zsv_foreach_dirent_ctx ctx = { 0 };
-        stat(tmp, &ctx.stat);
-        ctx.parent = dir_path;
-        ctx.entry = de->d_name;
-        ctx.parent_and_entry = tmp;
-        if(ctx.stat.st_mode & S_IFDIR) {
-          if(dir_func) {
-            ctx.dir_ctx = dir_ctx;
-            err = dir_func(&ctx, depth + 1);
-          }
+        struct zsv_foreach_dirent_handle h = { 0 };
+        h.verbose = 1;
+        stat(tmp, (struct stat *)&h.stat);
+        h.parent = dir_path;
+        h.entry = de->d_name;
+        h.parent_and_entry = tmp;
+        h.ctx = ctx;
+        char is_dir = h.stat.st_mode & S_IFDIR ? 1 : 0;
+        h.is_dir = is_dir;
+        if(handler)
+          err = handler(&h, depth + 1);
 
+        if(is_dir && !h.no_recurse)
           // recurse!
-          zsv_foreach_dirent(tmp, depth + 1, max_depth, dir_func, dir_ctx, file_func, file_ctx);
-        } else {
-          if(file_func) {
-            ctx.file_ctx = file_ctx;
-            err = file_func(&ctx, depth);
-          }
-        }
+          zsv_foreach_dirent_aux(tmp, depth + 1, max_depth, handler, ctx, verbose);
         free(tmp);
       }
     }
@@ -284,18 +278,23 @@ int zsv_foreach_dirent(const char *dir_path,
   return err;
 }
 
+int zsv_foreach_dirent(const char *dir_path,
+                       size_t max_depth,
+                       zsv_foreach_dirent_handler handler, void *ctx,
+                       char verbose
+                       ) {
+  return zsv_foreach_dirent_aux(dir_path, 0, max_depth, handler, ctx, verbose);
+}
+
 /**
  * Remove a directory and all of its contents
  */
 int zsv_remove_dir_recursive(const unsigned char *path) {
-//  struct zsv_foreach_dirent_ctx ctx = { 0 };
   // we will delete all files first, then
   // delete directories in the reverse order we received them
   struct dir_path *reverse_dirs = NULL;
-  int err = zsv_foreach_dirent((const char *)path, 0, 0,
-                               zsv_foreach_file_remove, NULL,
-                               zvs_foreach_dir_save_reverse, &reverse_dirs);
-
+  int err = zsv_foreach_dirent((const char *)path, 0,
+                               zsv_foreach_dirent_remove, &reverse_dirs, 0);
   // unlink and free each dir
   for(struct dir_path *next, *dn = reverse_dirs; !err && dn; dn = next) {
     next = dn->next;
