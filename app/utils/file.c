@@ -110,6 +110,17 @@ int zsv_file_exists(const char* filename) {
 }
 #endif
 
+size_t zsv_dir_len_basename(const char *filepath, const char **basename) {
+  for(size_t len = strlen(filepath); len; len--) {
+    if(filepath[len-1] == '/' || filepath[len-1] == '\\') {
+      *basename = filepath + len;
+      return len - 1;
+    }
+  }
+
+  *basename = filepath;
+  return 0;
+}
 
 int zsv_file_readable(const char *filename, int *err, FILE **f_out) {
   FILE *f;

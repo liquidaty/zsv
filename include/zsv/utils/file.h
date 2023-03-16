@@ -54,5 +54,12 @@ int zsv_file_readable(const char *filename, int *err, FILE **f_out);
  */
 size_t zsv_filter_write(void *FILEp, unsigned char *buff, size_t bytes_read);
 
+/**
+ * Get a file path's directory length and base name
+ * Returns the length of the directory portion of the path
+ * and the base name portion of the path
+ */
+size_t zsv_dir_len_basename(const char *filepath, const char **basename);
+
 
 #endif

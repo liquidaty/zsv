@@ -657,7 +657,50 @@ static int zsv_prop_foreach_clean(struct zsv_foreach_dirent_handle *h, size_t de
   return err;
 }
 
+static int zsv_prop_execute_copy(const char *src, const char *dest, unsigned char force, unsigned char dry, unsigned char verbose) {
+
+  // if !force, only proceed if:
+  // - src exists (file)
+  // - dest exists (file)
+  // - dest file property cache d.n. have conflicts
+
+  // first, copy any property files of src into a temp property location for dest
+  //  e.g. if src is /path/to/abc.csv and dest is /path2/dest.csv copy /path/to/.zsv/data/abc.csv/... to /path2/.zsv/data-tmp/dest.csv/...
+
+  // then, rename from tmp to actual
+  // e.g. from /path2/.zsv/data-tmp/dest.csv to /path2/.zsv/data/dest.csv
+  int err = 0;
+
+/*
+
+  size_t dirpath_len = strlen(src);
+  while(dirpath_len && memchr("/\\", dirpath[dirpath_len-1], 2) != NULL)
+    dirpath_len--;
+  if(!dirpath_len)
+    return 0;
+
+  char *cache_parent;
+  if(!strcmp(dirpath, "."))
+    cache_parent = strdup(ZSV_CACHE_DIR);
+  else
+    asprintf(&cache_parent, "%.*s%c%s", (int)dirpath_len, dirpath, FILESLASH, ZSV_CACHE_DIR);
+  if(!cache_parent) {
+    fprintf(stderr, "Out of memory!\n");
+    return 1;
+  }
+
+  struct zsv_prop_foreach_clean_ctx ctx = { 0 };
+  ctx.dirpath = dirpath;
+  ctx.dry = dry;
+
+  zsv_foreach_dirent(cache_parent, 0, zsv_prop_foreach_clean, &ctx, verbose);
+  free(cache_parent);
+*/
+  return err;
+}
+
 static int zsv_prop_execute_clean(const char *dirpath, unsigned char dry, unsigned char verbose) {
+  // TO DO: if ZSV_CACHE_DIR-tmp exists, delete it (file or dir)
   int err = 0;
   size_t dirpath_len = strlen(dirpath);
   while(dirpath_len && memchr("/\\", dirpath[dirpath_len-1], 2) != NULL)
@@ -685,15 +728,6 @@ static int zsv_prop_execute_clean(const char *dirpath, unsigned char dry, unsign
 }
 
 static int zsv_prop_execute_export(const char *filepath, const char *dest, unsigned char overwrite) {
-  (void)(filepath);
-  (void)(dest);
-  (void)(overwrite);
-  int err = 0;
-
-  return err;
-}
-
-static int zsv_prop_execute_copy(const char *filepath, const char *dest, unsigned char overwrite) {
   (void)(filepath);
   (void)(dest);
   (void)(overwrite);
@@ -804,7 +838,7 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
         err = zsv_prop_execute_clean((const char *)filepath, dry, verbose);
         break;
       case zsv_prop_mode_copy:
-        err = zsv_prop_execute_copy((const char *)filepath, mode_value, opts.overwrite);
+        err = zsv_prop_execute_copy((const char *)filepath, mode_value, opts.overwrite, dry, verbose);
         break;
       case zsv_prop_mode_export:
         err = zsv_prop_execute_export((const char *)filepath, mode_value, opts.overwrite);
