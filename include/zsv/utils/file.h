@@ -61,5 +61,11 @@ size_t zsv_filter_write(void *FILEp, unsigned char *buff, size_t bytes_read);
  */
 size_t zsv_dir_len_basename(const char *filepath, const char **basename);
 
+/**
+ * Copy a file. Create any needed directories
+ * On error, prints error message and returns non-zero
+ */
+int zsv_copy_file(const char *src, const char *dest);
+
 
 #endif

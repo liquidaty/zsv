@@ -13,6 +13,9 @@
 #include <unistd.h> // for close()
 #include <fcntl.h> // open
 
+#include <zsv/utils/dirs.h>
+
+
 #if defined(_WIN32) || defined(WIN32) || defined(WIN)
 #include <windows.h>
 
@@ -110,6 +113,42 @@ int zsv_file_exists(const char* filename) {
 }
 #endif
 
+/**
+ * Copy a file. On error, output error message and return non-zero
+ */
+int zsv_copy_file(const char *src, const char *dest) {
+  // create one or more directories if needed
+  if(zsv_mkdirs(dest, 1)) {
+    fprintf(stderr, "Unable to create directories needed for %s\n", dest);
+    return -1;
+  }
+
+  // copy the file
+  int err = 0;
+  FILE *fsrc = fopen(src, "rb");
+  if(!fsrc)
+    err = errno ? errno : -1, perror(src);
+  else {
+    FILE *fdest = fopen(dest, "wb");
+    if(!fdest)
+      err = errno ? errno : -1, perror(dest);
+    else {
+      char buffer[4096];
+      size_t bytes_read;
+      while((bytes_read = fread(buffer, 1, sizeof(buffer), fsrc)) > 0) {
+        if(fwrite(buffer, 1, bytes_read, fdest) != bytes_read) {
+          perror(dest);
+          err = errno ? errno : -1;
+          break;
+        }
+      }
+      fclose(fdest);
+    }
+    fclose(fsrc);
+  }
+  return err;
+}
+
 size_t zsv_dir_len_basename(const char *filepath, const char **basename) {
   for(size_t len = strlen(filepath); len; len--) {
     if(filepath[len-1] == '/' || filepath[len-1] == '\\') {
@@ -132,19 +171,8 @@ int zsv_file_readable(const char *filename, int *err, FILE **f_out) {
     rc = 0;
     if(err)
       *err = errno;
-    else switch(errno) {
-      case ENOENT:
-	fprintf(stderr, "File '%s' not found\n", filename);
-	break;
-      case EACCES:
-	fprintf(stderr, "No permissions to read '%s'\n", filename);
-	break;
-      case EISDIR:
-	fprintf(stderr, "File '%s' is a directory\n", filename);
-	break;
-      default:
-	fprintf(stderr, "Unknown error opening '%s'\n", filename);
-      }
+    else
+      perror(filename);
   } else {
     rc = 1;
     if(f_out)

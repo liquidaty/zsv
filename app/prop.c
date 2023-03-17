@@ -16,7 +16,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <yajl_helper.h>
-#include <unistd.h> // unlink
+#include <unistd.h> // unlink, access
 
 #define ZSV_COMMAND_NO_OPTIONS
 #define ZSV_COMMAND prop
@@ -571,8 +571,16 @@ zsv_prop_get_or_set_is_prop_file(
                                  char set
                                  ) {
   static struct is_property_ctx ctx = {
+#ifndef ZSV_IS_PROP_FILE_HANDLER
     .handler = zsv_is_prop_file,
+#else
+    .handler = ZSV_IS_PROP_FILE_HANDLER,
+#endif
+#ifndef ZSV_IS_PROP_FILE_DEPTH
     .max_depth = 1
+#else
+    .max_depth = ZSV_IS_PROP_FILE_DEPTH
+#endif
   };
 
   if(set) {
@@ -657,45 +665,126 @@ static int zsv_prop_foreach_clean(struct zsv_foreach_dirent_handle *h, size_t de
   return err;
 }
 
-static int zsv_prop_execute_copy(const char *src, const char *dest, unsigned char force, unsigned char dry, unsigned char verbose) {
+enum zsv_prop_foreach_copy_mode {
+  zsv_prop_foreach_copy_mode_check = 1,
+  zsv_prop_foreach_copy_mode_copy
+};
 
-  // if !force, only proceed if:
-  // - src exists (file)
-  // - dest exists (file)
-  // - dest file property cache d.n. have conflicts
+struct zsv_prop_foreach_copy_ctx {
+  struct is_property_ctx is_property_ctx;
+  const unsigned char *src_cache_dir;
+  const unsigned char *dest_cache_dir;
+  enum zsv_prop_foreach_copy_mode mode;
+  int err;
+  unsigned char output_started:1;
+  unsigned char force:1;
+  unsigned char dry:1;
+  unsigned char _:5;
+};
 
-  // first, copy any property files of src into a temp property location for dest
-  //  e.g. if src is /path/to/abc.csv and dest is /path2/dest.csv copy /path/to/.zsv/data/abc.csv/... to /path2/.zsv/data-tmp/dest.csv/...
-
-  // then, rename from tmp to actual
-  // e.g. from /path2/.zsv/data-tmp/dest.csv to /path2/.zsv/data/dest.csv
-  int err = 0;
-
-/*
-
-  size_t dirpath_len = strlen(src);
-  while(dirpath_len && memchr("/\\", dirpath[dirpath_len-1], 2) != NULL)
-    dirpath_len--;
-  if(!dirpath_len)
-    return 0;
-
-  char *cache_parent;
-  if(!strcmp(dirpath, "."))
-    cache_parent = strdup(ZSV_CACHE_DIR);
-  else
-    asprintf(&cache_parent, "%.*s%c%s", (int)dirpath_len, dirpath, FILESLASH, ZSV_CACHE_DIR);
-  if(!cache_parent) {
-    fprintf(stderr, "Out of memory!\n");
-    return 1;
+static int zsv_prop_foreach_copy(struct zsv_foreach_dirent_handle *h, size_t depth) {
+  if(!h->is_dir) {
+    struct zsv_prop_foreach_copy_ctx *ctx = h->ctx;
+    if(ctx->is_property_ctx.handler(h, depth)) {
+      char *dest_prop_filepath;
+      asprintf(&dest_prop_filepath, "%s%s", ctx->dest_cache_dir, h->parent_and_entry + strlen((const char *)ctx->src_cache_dir));
+      if(!dest_prop_filepath) {
+        ctx->err = errno = ENOMEM;
+        perror(NULL);
+      } else {
+        switch(ctx->mode) {
+        case zsv_prop_foreach_copy_mode_check:
+          {
+            if(!zsv_file_readable(h->parent_and_entry, &ctx->err, NULL)) { // check if source is not readable
+              perror(h->parent_and_entry);
+            } else if(!ctx->force && access(dest_prop_filepath, F_OK) != -1) { // check if dest already exists
+              ctx->err = EEXIST;
+              if(!ctx->output_started) {
+                ctx->output_started = 1;
+                const char *msg = strerror(EEXIST);
+                fprintf(stderr, "%s:\n", msg ? msg : "File already exists");
+              }
+              fprintf(stderr, "  %s\n", dest_prop_filepath);
+            } else if(ctx->dry)
+              printf("%s => %s\n", h->parent_and_entry, dest_prop_filepath);
+          }
+          break;
+        case zsv_prop_foreach_copy_mode_copy:
+          if(!ctx->dry) {
+            char *dest_prop_filepath_tmp;
+            asprintf(&dest_prop_filepath_tmp, "%s.temp", dest_prop_filepath);
+            if(!dest_prop_filepath_tmp) {
+              ctx->err = errno = ENOMEM;
+              perror(NULL);
+            } else {
+              if(h->verbose)
+                fprintf(stderr, "Copying temp: %s => %s\n", h->parent_and_entry, dest_prop_filepath_tmp);
+              int err = zsv_copy_file(h->parent_and_entry, dest_prop_filepath_tmp);
+              if(err)
+                ctx->err = err;
+              else {
+                if(h->verbose)
+                  fprintf(stderr, "Renaming: %s => %s\n", dest_prop_filepath_tmp, dest_prop_filepath);
+                if(rename(dest_prop_filepath_tmp, dest_prop_filepath)) {
+                  const char *msg = strerror(errno);
+                  fprintf(stderr, "Unable to rename %s -> %s: %s\n", dest_prop_filepath_tmp, dest_prop_filepath, msg ? msg : "Unknown error");
+                  ctx->err = errno;
+                }
+              }
+              free(dest_prop_filepath_tmp);
+            }
+          }
+          break;
+        }
+        free(dest_prop_filepath);
+      }
+    }
   }
+  return 0;
+}
 
-  struct zsv_prop_foreach_clean_ctx ctx = { 0 };
-  ctx.dirpath = dirpath;
-  ctx.dry = dry;
+static int zsv_prop_execute_copy(const char *src, const char *dest, unsigned char force, unsigned char dry, unsigned char verbose) {
+  int err = 0;
+  unsigned char *src_cache_dir = zsv_cache_path((const unsigned char *)src, NULL, 0);
+  unsigned char *dest_cache_dir = zsv_cache_path((const unsigned char *)dest, NULL, 0);
 
-  zsv_foreach_dirent(cache_parent, 0, zsv_prop_foreach_clean, &ctx, verbose);
-  free(cache_parent);
-*/
+  if(!(src_cache_dir && dest_cache_dir))
+    err = errno = ENOMEM, perror(NULL);
+  else {
+    // if !force, only proceed if:
+    // - src exists (file)
+    // - dest exists (file)
+    // - dest file property cache d.n. have conflicts
+    struct zsv_prop_foreach_copy_ctx ctx = { 0 };
+    ctx.is_property_ctx = *zsv_prop_get_or_set_is_prop_file(NULL, 0, 0);
+    ctx.dest_cache_dir = dest_cache_dir;
+    ctx.src_cache_dir = src_cache_dir;
+    ctx.force = force;
+    ctx.dry = dry;
+
+    if(!force) {
+      if(!zsv_file_exists(src))
+        err = errno = ENOENT, perror(src);
+      if(!zsv_file_exists(dest))
+        err = errno = ENOENT, perror(dest);
+    }
+
+    if(!err) {
+      // for each property file, check if dest has same-named property file
+      ctx.mode = zsv_prop_foreach_copy_mode_check;
+      zsv_foreach_dirent((const char *)src_cache_dir, ctx.is_property_ctx.max_depth, zsv_prop_foreach_copy,
+                         &ctx, verbose);
+    }
+
+    if(!err && !(ctx.err && !force)) {
+      // copy the files
+      ctx.mode = zsv_prop_foreach_copy_mode_copy;
+      zsv_foreach_dirent((const char *)src_cache_dir, ctx.is_property_ctx.max_depth, zsv_prop_foreach_copy,
+                         &ctx, verbose);
+    }
+  }
+  free(src_cache_dir);
+  free(dest_cache_dir);
   return err;
 }
 
@@ -732,7 +821,7 @@ static int zsv_prop_execute_export(const char *filepath, const char *dest, unsig
   (void)(dest);
   (void)(overwrite);
   int err = 0;
-
+  fprintf(stderr, "To do!\n");
   return err;
 }
 
@@ -741,6 +830,7 @@ static int zsv_prop_execute_import(const char *filepath, const char *src, unsign
   (void)(src);
   (void)(overwrite);
   int err = 0;
+  fprintf(stderr, "To do!\n");
   return err;
 }
 

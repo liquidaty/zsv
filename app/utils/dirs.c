@@ -256,7 +256,7 @@ int zsv_foreach_dirent_aux(const char *dir_path,
         fprintf(stderr, "Out of memory!\n"), err = 1;
       else {
         struct zsv_foreach_dirent_handle h = { 0 };
-        h.verbose = 1;
+        h.verbose = verbose;
         stat(tmp, (struct stat *)&h.stat);
         h.parent = dir_path;
         h.entry = de->d_name;
