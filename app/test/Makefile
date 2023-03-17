@@ -98,7 +98,7 @@ test: ${TESTS}
 .PHONY: help test test-% test-stack clean
 
 test-prop:
-	EXE=${BUILD_DIR}/bin/zsv_prop${EXE} make -C prop test
+	make -C prop test EXE=${BUILD_DIR}/bin/zsv_prop${EXE}
 
 test-echo : test-echo1 test-echo-overwrite test-echo-eol
 

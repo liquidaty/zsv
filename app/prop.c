@@ -757,12 +757,18 @@ static int zsv_prop_foreach_export(struct zsv_foreach_dirent_handle *h, size_t d
   if(!h->is_dir) {
     struct zsv_prop_foreach_export_ctx *ctx = h->ctx;
     if(ctx->is_property_ctx.handler(h, depth) && !ctx->err) {
-      if(strlen(h->parent_and_entry) > 5 && !zsv_stricmp((const unsigned char *)h->parent_and_entry + strlen(h->parent_and_entry) - 5, (const unsigned char *)".json")) {
-        // for now, only handle json
+      char suffix = 0;
+      if(strlen(h->parent_and_entry) > 5 && !zsv_stricmp((const unsigned char *)h->parent_and_entry + strlen(h->parent_and_entry) - 5, (const unsigned char *)".json"))
+        suffix = 'j'; // json
+      else if(strlen(h->parent_and_entry) > 4 && !zsv_stricmp((const unsigned char *)h->parent_and_entry + strlen(h->parent_and_entry) - 4, (const unsigned char *)".txt"))
+        suffix = 't'; // text
+      if(suffix) {
+        // for now, only handle json or txt
         FILE *f = fopen(h->parent_and_entry, "rb");
         if(!f)
           perror(h->parent_and_entry);
         else {
+          // create an entry for this file. the map key is the file name; its value is the file contents
           unsigned char *js = zsv_json_from_str((const unsigned char *)h->parent_and_entry + strlen((const char *)ctx->src_cache_dir) + 1);
           if(!js)
             errno = ENOMEM, perror(NULL);
@@ -772,10 +778,27 @@ static int zsv_prop_foreach_export(struct zsv_foreach_dirent_handle *h, size_t d
                 ctx->err = 1;
             if(!ctx->err) {
               ctx->count++;
-              if(zsv_jq_parse(ctx->zjq, js, strlen((const char *)js)) || zsv_jq_parse(ctx->zjq, ":", 1))
-                ctx->err = 1;
-              else if(zsv_jq_parse_file(ctx->zjq, f))
-                ctx->err = 1;
+              switch(suffix) {
+              case 'j': // json
+                if(zsv_jq_parse(ctx->zjq, js, strlen((const char *)js)) || zsv_jq_parse(ctx->zjq, ":", 1))
+                  ctx->err = 1;
+                else if(zsv_jq_parse_file(ctx->zjq, f))
+                  ctx->err = 1;
+                break;
+              case 't': // txt
+                // for now we are going to limit txt file values to 4096 chars and JSON-stringify it
+                {
+                  unsigned char buff[4096];
+                  size_t n = fread(buff, 1, sizeof(buff), f);
+                  unsigned char *txt_js = NULL;
+                  if(n) {
+                    txt_js = zsv_json_from_str_n(buff, n);
+                    if(zsv_jq_parse(ctx->zjq, txt_js ? txt_js : (const unsigned char *)"null", txt_js ? n : 4))
+                      ctx->err = 1;
+                  }
+                }
+                break;
+              }
             }
           }
           free(js);
