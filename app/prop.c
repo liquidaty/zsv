@@ -565,6 +565,10 @@ struct is_property_ctx {
   size_t max_depth;
 };
 
+#ifdef ZSV_IS_PROP_FILE_HANDLER
+int ZSV_IS_PROP_FILE_HANDLER(struct zsv_foreach_dirent_handle *, size_t);
+#endif
+
 struct is_property_ctx *
 zsv_prop_get_or_set_is_prop_file(
                                  int (*custom_is_prop_file)(struct zsv_foreach_dirent_handle *, size_t),
@@ -778,26 +782,28 @@ static int zsv_prop_foreach_export(struct zsv_foreach_dirent_handle *h, size_t d
                 ctx->err = 1;
             if(!ctx->err) {
               ctx->count++;
-              switch(suffix) {
-              case 'j': // json
-                if(zsv_jq_parse(ctx->zjq, js, strlen((const char *)js)) || zsv_jq_parse(ctx->zjq, ":", 1))
-                  ctx->err = 1;
-                else if(zsv_jq_parse_file(ctx->zjq, f))
-                  ctx->err = 1;
-                break;
-              case 't': // txt
-                // for now we are going to limit txt file values to 4096 chars and JSON-stringify it
-                {
-                  unsigned char buff[4096];
-                  size_t n = fread(buff, 1, sizeof(buff), f);
-                  unsigned char *txt_js = NULL;
-                  if(n) {
-                    txt_js = zsv_json_from_str_n(buff, n);
-                    if(zsv_jq_parse(ctx->zjq, txt_js ? txt_js : (const unsigned char *)"null", txt_js ? n : 4))
-                      ctx->err = 1;
+              if(zsv_jq_parse(ctx->zjq, js, strlen((const char *)js)) || zsv_jq_parse(ctx->zjq, ":", 1))
+                ctx->err = 1;
+              else {
+                switch(suffix) {
+                case 'j': // json
+                  if(zsv_jq_parse_file(ctx->zjq, f))
+                    ctx->err = 1;
+                  break;
+                case 't': // txt
+                  // for now we are going to limit txt file values to 4096 chars and JSON-stringify it
+                  {
+                    unsigned char buff[4096];
+                    size_t n = fread(buff, 1, sizeof(buff), f);
+                    unsigned char *txt_js = NULL;
+                    if(n) {
+                      txt_js = zsv_json_from_str_n(buff, n);
+                      if(zsv_jq_parse(ctx->zjq, txt_js ? txt_js : (const unsigned char *)"null", txt_js ? strlen((const char *)txt_js) : 4))
+                        ctx->err = 1;
+                    }
                   }
+                  break;
                 }
-                break;
               }
             }
           }
