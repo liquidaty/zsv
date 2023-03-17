@@ -93,7 +93,6 @@ test-copy:
 	@echo '{}' > ${TMP_DIR}/$@/.zsv/data/abc.csv/props.json
 	@touch ${TMP_DIR}/$@/abc.csv
 	@[ "`${EXE} ${TMP_DIR}/$@/abc.csv --copy ${TMP_DIR}/$@/def.csv 2>&1`" = "${TMP_DIR}/$@/def.csv: No such file or directory" ] && ${TEST_PASS} || ${TEST_FAIL}
-
 	@touch ${TMP_DIR}/$@/def.csv
 	@${EXE} ${TMP_DIR}/$@/abc.csv --copy ${TMP_DIR}/$@/def.csv
 	@cmp ${TMP_DIR}/$@/.zsv/data/abc.csv/props.json ${TMP_DIR}/$@/.zsv/data/def.csv/props.json && ${TEST_PASS} || ${TEST_FAIL}
@@ -111,7 +110,11 @@ test-clean:
 
 test-export:
 	@${TEST_INIT}
-	@echo "TO DO!"
+	@rm -rf ${TMP_DIR}/$@
+	@mkdir -p ${TMP_DIR}/$@/.zsv/data/abc.csv
+	@echo '{"a":1}' > ${TMP_DIR}/$@/.zsv/data/abc.csv/props.json
+	@touch ${TMP_DIR}/$@/abc.csv
+	@ [ "`${EXE} ${TMP_DIR}/$@/abc.csv --export - | jq -c`" = '{"props.json":{"a":1}}' ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-import:
 	@${TEST_INIT}

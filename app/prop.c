@@ -25,6 +25,7 @@
 #include <zsv/utils/os.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/json.h>
+#include <zsv/utils/jq.h>
 #include <zsv/utils/dirs.h>
 #include <zsv/utils/cache.h>
 #include <zsv/utils/string.h>
@@ -743,6 +744,49 @@ static int zsv_prop_foreach_copy(struct zsv_foreach_dirent_handle *h, size_t dep
   return 0;
 }
 
+struct zsv_prop_foreach_export_ctx {
+  struct is_property_ctx is_property_ctx;
+  const unsigned char *src_cache_dir;
+  struct jv_to_json_ctx jctx;
+  zsv_jq_handle zjq;
+  unsigned count; // number of files exported so far
+  int err;
+};
+
+static int zsv_prop_foreach_export(struct zsv_foreach_dirent_handle *h, size_t depth) {
+  if(!h->is_dir) {
+    struct zsv_prop_foreach_export_ctx *ctx = h->ctx;
+    if(ctx->is_property_ctx.handler(h, depth) && !ctx->err) {
+      if(strlen(h->parent_and_entry) > 5 && !zsv_stricmp((const unsigned char *)h->parent_and_entry + strlen(h->parent_and_entry) - 5, (const unsigned char *)".json")) {
+        // for now, only handle json
+        FILE *f = fopen(h->parent_and_entry, "rb");
+        if(!f)
+          perror(h->parent_and_entry);
+        else {
+          unsigned char *js = zsv_json_from_str((const unsigned char *)h->parent_and_entry + strlen((const char *)ctx->src_cache_dir) + 1);
+          if(!js)
+            errno = ENOMEM, perror(NULL);
+          else if(*js) {
+            if(ctx->count > 0)
+              if(zsv_jq_parse(ctx->zjq, ",", 1))
+                ctx->err = 1;
+            if(!ctx->err) {
+              ctx->count++;
+              if(zsv_jq_parse(ctx->zjq, js, strlen((const char *)js)) || zsv_jq_parse(ctx->zjq, ":", 1))
+                ctx->err = 1;
+              else if(zsv_jq_parse_file(ctx->zjq, f))
+                ctx->err = 1;
+            }
+          }
+          free(js);
+          fclose(f);
+        }
+      }
+    }
+  }
+  return 0;
+}
+
 static int zsv_prop_execute_copy(const char *src, const char *dest, unsigned char force, unsigned char dry, unsigned char verbose) {
   int err = 0;
   unsigned char *src_cache_dir = zsv_cache_path((const unsigned char *)src, NULL, 0);
@@ -816,12 +860,45 @@ static int zsv_prop_execute_clean(const char *dirpath, unsigned char dry, unsign
   return err;
 }
 
-static int zsv_prop_execute_export(const char *filepath, const char *dest, unsigned char overwrite) {
-  (void)(filepath);
-  (void)(dest);
-  (void)(overwrite);
+static int zsv_prop_execute_export(const char *src, const char *dest, unsigned char verbose) {
   int err = 0;
-  fprintf(stderr, "To do!\n");
+  unsigned char *src_cache_dir = zsv_cache_path((const unsigned char *)src, NULL, 0);
+  if(!(src_cache_dir))
+    err = errno = ENOMEM, perror(NULL);
+  else {
+    FILE *fdest = dest ? fopen(dest, "wb") : stdout;
+    if(!fdest)
+      err = errno, perror(dest);
+    else {
+      struct zsv_prop_foreach_export_ctx ctx = { 0 };
+      ctx.is_property_ctx = *zsv_prop_get_or_set_is_prop_file(NULL, 0, 0);
+      ctx.src_cache_dir = src_cache_dir;
+
+      // use a jq filter to pretty-print
+      ctx.jctx.write1 = zsv_jq_fwrite1;
+      ctx.jctx.ctx = fdest;
+      ctx.jctx.flags = JV_PRINT_PRETTY | JV_PRINT_SPACE1;
+      enum zsv_jq_status jqstat;
+      ctx.zjq = zsv_jq_new((const unsigned char *)".", jv_to_json_func, &ctx.jctx, &jqstat);
+      if(!ctx.zjq)
+        err = 1, fprintf(stderr, "zsv_jq_new\n");
+      else {
+        if(jqstat == zsv_jq_status_ok && zsv_jq_parse(ctx.zjq, "{", 1) == zsv_jq_status_ok) {
+          // export each file
+          zsv_foreach_dirent((const char *)src_cache_dir, ctx.is_property_ctx.max_depth, zsv_prop_foreach_export,
+                             &ctx, verbose);
+          if(!ctx.err && zsv_jq_parse(ctx.zjq, "}", 1))
+            ctx.err = 1;
+          if(!ctx.err && zsv_jq_finish(ctx.zjq))
+            ctx.err = 1;
+          zsv_jq_delete(ctx.zjq);
+        }
+        err = ctx.err;
+      }
+      fclose(fdest);
+    }
+  }
+  free(src_cache_dir);
   return err;
 }
 
@@ -931,7 +1008,7 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
         err = zsv_prop_execute_copy((const char *)filepath, mode_value, opts.overwrite, dry, verbose);
         break;
       case zsv_prop_mode_export:
-        err = zsv_prop_execute_export((const char *)filepath, mode_value, opts.overwrite);
+        err = zsv_prop_execute_export((const char *)filepath, mode_value && strcmp(mode_value, "-") ? mode_value : NULL, verbose);
         break;
       case zsv_prop_mode_import:
         err = zsv_prop_execute_import((const char *)filepath, mode_value, opts.overwrite);
