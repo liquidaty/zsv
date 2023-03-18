@@ -67,4 +67,31 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
                                         const char *opts_used,
                                         zsv_parser *handle_out
                                         );
+
+/**
+ * If you are building your own CLI and incorporating zsv CLI commands into it,
+ * the `prop` command can be customized by providing your own function
+ * for determining whether a file in the property cache is a property file,
+ * which can be set using zsv_prop_get_or_set_is_prop_file()
+ *
+ * @param is_prop_file: your function, that returns non-zero if the given file entry
+ *                             is a property file. If NULL, is set to zsv_is_prop_file
+ * @param max_depth   : maximum depth of any property file. if is_prop_file was NULL,
+ *                      max_depth is set to 1
+ */
+#include "dirs.h"
+
+struct is_property_ctx; /* opaque structure for internal use */
+struct is_property_ctx *
+zsv_prop_get_or_set_is_prop_file(
+                                 int (*is_prop_file)(struct zsv_foreach_dirent_handle *, size_t),
+                                 int max_depth,
+                                 char set
+                                 );
+
+/**
+ * If you provide your own is_prop_file() function and you also want to include any
+ * zsv property file, your is_prop_file() can call zsv_is_prop_file()
+ */
+int zsv_is_prop_file(struct zsv_foreach_dirent_handle *h, size_t depth);
 #endif

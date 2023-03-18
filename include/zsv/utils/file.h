@@ -20,7 +20,7 @@
 #endif // LINEEND
 /**
  * Get a temp file name. The returned value, if any, will have been allocated
- * on the stack, and the caller should `free()`
+ * on the heap, and the caller should `free()`
  *
  * @param prefix string with which the resulting file name will be prefixed
  */
@@ -54,5 +54,23 @@ int zsv_file_readable(const char *filename, int *err, FILE **f_out);
  */
 size_t zsv_filter_write(void *FILEp, unsigned char *buff, size_t bytes_read);
 
+/**
+ * Get a file path's directory length and base name
+ * Returns the length of the directory portion of the path
+ * and the base name portion of the path
+ */
+size_t zsv_dir_len_basename(const char *filepath, const char **basename);
+
+/**
+ * Copy a file. Create any needed directories
+ * On error, prints error message and returns non-zero
+ */
+int zsv_copy_file(const char *src, const char *dest);
+
+/**
+ * Copy a file, given source and destination FILE pointers
+ * Return error number per errno.h
+ */
+int zsv_copy_file_ptr(FILE *src, FILE *dest);
 
 #endif

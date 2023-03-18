@@ -72,9 +72,9 @@ struct zsv_2db_data {
   char *connection_string;
 
   struct {
-    yajl_handle handle;
+//    yajl_handle handle;
     struct yajl_helper_parse_state st;
-    yajl_callbacks callbacks;
+//    yajl_callbacks callbacks;
     yajl_status yajl_stat;
     enum zsv_2db_state state;
 
@@ -153,10 +153,9 @@ static void zsv_2db_delete(zsv_2db_handle data) {
 
   free(data->json_parser.row_values);
 
-
   yajl_helper_parse_state_free(&data->json_parser.st);
-  if(data->json_parser.handle)
-    yajl_free(data->json_parser.handle);
+//  if(data->json_parser.handle)
+//    yajl_free(data->json_parser.handle);
 
   free(data);
 }
@@ -165,11 +164,11 @@ static int zsv_2db_json_parse_err(struct zsv_2db_data *data,
                                   unsigned char *last_parsed_buff,
                                   size_t last_parsed_buff_len
                                   ) {
-  unsigned char *str = yajl_get_error(data->json_parser.handle, 1,
+  unsigned char *str = yajl_get_error(data->json_parser.st.yajl, 1,
                                       last_parsed_buff, last_parsed_buff_len);
   if(str) {
     fprintf(stderr, "Error parsing JSON: %s", (const char *)str);
-    yajl_free_error(data->json_parser.handle, str);
+    yajl_free_error(data->json_parser.st.yajl, str);
   }
   return 1;
 }
@@ -626,18 +625,17 @@ static zsv_2db_handle zsv_2db_new(struct zsv_2db_options *opts) {
       sqlite3_exec(data->db, "PRAGMA journal_mode = OFF", NULL, NULL, NULL);
 
       // parse the input and create & populate the database table
-      yajl_helper_parse_state_init(&data->json_parser.st, 32,
-                                   json_start_map, json_end_map, json_map_key,
-                                   json_start_array, json_end_array,
-                                   json_process_value,
-                                   data);
-      yajl_helper_callbacks_init(&data->json_parser.callbacks, 1);
-
-      data->json_parser.handle = yajl_alloc(&data->json_parser.callbacks, NULL,
-                                            &data->json_parser.st);
-      if(!data->json_parser.handle) {
+      if(yajl_helper_parse_state_init(&data->json_parser.st, 32,
+                                      json_start_map, json_end_map, json_map_key,
+                                      json_start_array, json_end_array,
+                                      json_process_value,
+                                      data) != yajl_status_ok) {
         fprintf(stderr, "Unable to get yajl parser\n");
         err = 1;
+      } else {
+//        yajl_helper_callbacks_init(&data->json_parser.callbacks, 32);
+//        data->json_parser.handle = st->yajl; // yajl_alloc(&data->json_parser.callbacks, NULL,
+        // &data->json_parser.st);
       }
     }
   }
@@ -683,7 +681,7 @@ static int zsv_2db_finish(zsv_2db_handle data) {
 
 // exportable
 static yajl_handle zsv_2db_yajl_handle(zsv_2db_handle data) {
-  return data->json_parser.handle;
+  return data->json_parser.st.yajl;
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zsv_opts, const char *opts_used) {
@@ -770,12 +768,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
             break;
           yajl_status stat = yajl_parse(zsv_2db_yajl_handle(data), buff, bytes_read);
           if(stat != yajl_status_ok)
-            err = zsv_2db_json_parse_err(data, buff, bytes_read);
+            // err = zsv_2db_json_parse_err(data, buff, bytes_read);
+            err = yajl_helper_print_err(data->json_parser.st.yajl, buff, bytes_read);
         }
 
         if(!err) {
           if(yajl_complete_parse(zsv_2db_yajl_handle(data)) != yajl_status_ok)
-             err = zsv_2db_json_parse_err(data, buff, bytes_read);
+            // err = zsv_2db_json_parse_err(data, buff, bytes_read);
+            err = yajl_helper_print_err(data->json_parser.st.yajl, buff, bytes_read);
           else if(zsv_2db_err(data) || zsv_2db_finish(data))
             err = 1;
         }

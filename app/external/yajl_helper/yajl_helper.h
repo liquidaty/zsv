@@ -103,7 +103,14 @@ unsigned char *json_str_dup_if_len(struct json_value *value);
 // malloc() a new string and return that. returns buff, if buff was written to, else new malloc'd mem
 unsigned char *json_str_dup_if_len_buff(struct json_value *value, unsigned char *buff, size_t bufflen);
 
+/*
+ * yajl_helper_got_path() and yajl_helper_got_path_prefix() are the same except that the former
+ * requires that the current level is equal to the level argument, and the latter only requires
+ * that the current level is greater than or equal to the level argument
+ */
 char yajl_helper_got_path(struct yajl_helper_parse_state *st, unsigned int level, const char *path);
+char yajl_helper_got_path_prefix(struct yajl_helper_parse_state *st, unsigned int level, const char *path);
+
 char yajl_helper_path_is(struct yajl_helper_parse_state *st, const char *path);
 
 const char *yajl_helper_get_map_key(struct yajl_helper_parse_state *st, unsigned int offset);
@@ -157,5 +164,14 @@ void int_list_free(struct int_list *e);
  * Print the current path for e.g. error reporting
  */
 void yajl_helper_dump_path(struct yajl_helper_parse_state *st, FILE *out);
+
+/**
+ * Print any error from the yajl parser
+ * Returns non-zero
+ */
+int yajl_helper_print_err(yajl_handle yajl,
+                          unsigned char *last_parsed_buff,
+                          size_t last_parsed_buff_len
+                          );
 
 #endif // ifdef YAJL_HELPER_H

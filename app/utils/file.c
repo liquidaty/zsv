@@ -13,6 +13,10 @@
 #include <unistd.h> // for close()
 #include <fcntl.h> // open
 
+#include <zsv/utils/dirs.h>
+#include <zsv/utils/file.h>
+
+
 #if defined(_WIN32) || defined(WIN32) || defined(WIN)
 #include <windows.h>
 
@@ -33,16 +37,22 @@ char *zsv_get_temp_filename(const char *prefix) {
 }
 #else
 
+/**
+ * Get a temp file name. The returned value, if any, will have been allocated
+ * on the heap, and the caller should `free()`
+ *
+ * @param prefix string with which the resulting file name will be prefixed
+ */
 char *zsv_get_temp_filename(const char *prefix) {
   char *s = NULL;
   char *tmpdir = getenv("TMPDIR");
   if(!tmpdir)
     tmpdir = ".";
   asprintf(&s, "%s/%s_XXXXXXXX", tmpdir, prefix);
-#ifndef NDEBUG
-  fprintf(stderr, "creating temp file: %s\n", s ? s : "Out of memory!");
-#endif
-  if(s) {
+  if(!s) {
+    const char *msg = strerror(errno);
+    fprintf(stderr, "%s%c%s: %s\n", tmpdir, FILESLASH, prefix, msg ? msg : "Unknown error");
+  } else {
     int fd = mkstemp(s);
     if(fd > 0) {
       close(fd);
@@ -101,10 +111,74 @@ int zsv_file_exists(const char* filename) {
 
 int zsv_file_exists(const char* filename) {
   struct stat buffer;
-  return (stat(filename, &buffer) == 0);
+  if(stat(filename, &buffer) == 0) {
+    char is_dir = buffer.st_mode & S_IFDIR ? 1 : 0;
+    if(!is_dir)
+      return 1;
+  }
+  return 0;
 }
 #endif
 
+/**
+ * Copy a file, given source and destination paths
+ * On error, output error message and return non-zero
+ */
+int zsv_copy_file(const char *src, const char *dest) {
+  // create one or more directories if needed
+  if(zsv_mkdirs(dest, 1)) {
+    fprintf(stderr, "Unable to create directories needed for %s\n", dest);
+    return -1;
+  }
+
+  // copy the file
+  int err = 0;
+  FILE *fsrc = fopen(src, "rb");
+  if(!fsrc)
+    err = errno ? errno : -1, perror(src);
+  else {
+    FILE *fdest = fopen(dest, "wb");
+    if(!fdest)
+      err = errno ? errno : -1, perror(dest);
+    else {
+      err = zsv_copy_file_ptr(fsrc, fdest);
+      if(err)
+        perror(dest);
+      fclose(fdest);
+    }
+    fclose(fsrc);
+  }
+  return err;
+}
+
+/**
+ * Copy a file, given source and destination FILE pointers
+ * Return error number per errno.h
+ */
+int zsv_copy_file_ptr(FILE *src, FILE *dest) {
+  int err = 0;
+  char buffer[4096];
+  size_t bytes_read;
+  while((bytes_read = fread(buffer, 1, sizeof(buffer), src)) > 0) {
+    if(fwrite(buffer, 1, bytes_read, dest) != bytes_read) {
+      err = errno ? errno : -1;
+      break;
+    }
+  }
+  return err;
+}
+
+size_t zsv_dir_len_basename(const char *filepath, const char **basename) {
+  for(size_t len = strlen(filepath); len; len--) {
+    if(filepath[len-1] == '/' || filepath[len-1] == '\\') {
+      *basename = filepath + len;
+      return len - 1;
+    }
+  }
+
+  *basename = filepath;
+  return 0;
+}
 
 int zsv_file_readable(const char *filename, int *err, FILE **f_out) {
   FILE *f;
@@ -116,19 +190,8 @@ int zsv_file_readable(const char *filename, int *err, FILE **f_out) {
     rc = 0;
     if(err)
       *err = errno;
-    else switch(errno) {
-      case ENOENT:
-	fprintf(stderr, "File '%s' not found\n", filename);
-	break;
-      case EACCES:
-	fprintf(stderr, "No permissions to read '%s'\n", filename);
-	break;
-      case EISDIR:
-	fprintf(stderr, "File '%s' is a directory\n", filename);
-	break;
-      default:
-	fprintf(stderr, "Unknown error opening '%s'\n", filename);
-      }
+    else
+      perror(filename);
   } else {
     rc = 1;
     if(f_out)
