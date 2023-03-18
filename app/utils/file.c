@@ -37,16 +37,22 @@ char *zsv_get_temp_filename(const char *prefix) {
 }
 #else
 
+/**
+ * Get a temp file name. The returned value, if any, will have been allocated
+ * on the heap, and the caller should `free()`
+ *
+ * @param prefix string with which the resulting file name will be prefixed
+ */
 char *zsv_get_temp_filename(const char *prefix) {
   char *s = NULL;
   char *tmpdir = getenv("TMPDIR");
   if(!tmpdir)
     tmpdir = ".";
   asprintf(&s, "%s/%s_XXXXXXXX", tmpdir, prefix);
-#ifndef NDEBUG
-  fprintf(stderr, "creating temp file: %s\n", s ? s : "Out of memory!");
-#endif
-  if(s) {
+  if(!s) {
+    const char *msg = strerror(errno);
+    fprintf(stderr, "%s%c%s: %s\n", tmpdir, FILESLASH, prefix, msg ? msg : "Unknown error");
+  } else {
     int fd = mkstemp(s);
     if(fd > 0) {
       close(fd);

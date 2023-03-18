@@ -939,8 +939,12 @@ struct prop_import_ctx {
   char *out_filepath;
   struct jv_to_json_ctx jctx;
   zsv_jq_handle zjq;
+
+  int err;
   unsigned char in_obj:1;
-  unsigned char _:7;
+  unsigned char do_check:1;
+  unsigned char dry:1;
+  unsigned char _:5;
 };
 
 static void prop_import_close_out(struct prop_import_ctx *ctx) {
@@ -959,8 +963,9 @@ static void prop_import_close_out(struct prop_import_ctx *ctx) {
 
 static int prop_import_map_key(struct yajl_helper_parse_state *st,
                                const unsigned char *s, size_t len) {
-  if(yajl_helper_level(st) == 1 && len) { // new file
+  if(yajl_helper_level(st) == 1 && len) { // new property file entry
     struct prop_import_ctx *ctx = yajl_helper_data(st);
+
     char *fn = NULL;
     if(ctx->filepath_prefix)
       asprintf(&fn, "%s%c%.*s", ctx->filepath_prefix, FILESLASH, (int)len, s);
@@ -969,6 +974,14 @@ static int prop_import_map_key(struct yajl_helper_parse_state *st,
     if(!fn) {
       errno = ENOMEM;
       perror(NULL);
+    } else if(ctx->do_check) {
+      // we just want to check if the destination file exists
+      if(access(fn, F_OK) != -1) { // it exists
+        ctx->err = errno = EEXIST;
+        perror(fn);
+      }
+    } else if(ctx->dry) { // just output the name of the file
+      printf("%s\n", fn);
     } else if(zsv_mkdirs(fn, 1)) {
       fprintf(stderr, "Unable to create directories for %s\n", fn);
     } else if(!((ctx->out = fopen(fn, "wb")))) {
@@ -978,7 +991,6 @@ static int prop_import_map_key(struct yajl_helper_parse_state *st,
       fn = NULL;
 
       // if it's a JSON file, use a jq filter to pretty-print
-
       if(strlen(ctx->out_filepath) > 5 && !zsv_stricmp((const unsigned char *)ctx->out_filepath + strlen(ctx->out_filepath) - 5, (const unsigned char *)".json")) {
         ctx->jctx.write1 = zsv_jq_fwrite1;
         ctx->jctx.ctx = ctx->out;
@@ -1039,7 +1051,7 @@ static int prop_import_process_value(struct yajl_helper_parse_state *st,
     if(ctx->zjq) {
       unsigned char *js = len ? zsv_json_from_str_n(jsstr, len) : NULL;
       if(js)
-        zsv_jq_parse(ctx->zjq, js, strlen(js));
+        zsv_jq_parse(ctx->zjq, js, strlen((char *)js));
       else
         zsv_jq_parse(ctx->zjq, "null", 4);
       free(js);
@@ -1066,13 +1078,16 @@ static int zsv_prop_execute_import(const char *dest, const char *src, unsigned c
     err = errno;
     perror(src);
   } else {
+    char *tmp_fn = NULL;
     if(!force) {
-      // make sure we will not overwrite any existing file
-      /*
       // if input is stdin, we'll need to read it twice, so save it first
+      // this isn't the most efficient way to do it, as it reads it 3 times
+      // but it's easier and the diff is immaterial
       if(fsrc == stdin) {
         fsrc = NULL;
-        tmp_fn = src = zsv_get_temp_filename("zsv_prop_XXXXXXXX");
+        tmp_fn = zsv_get_temp_filename("zsv_prop_XXXXXXXX");
+        src = (const char *)tmp_fn;
+        FILE *tmp_f;
         if(!tmp_fn) {
           err = errno = ENOMEM;
           perror(NULL);
@@ -1080,53 +1095,87 @@ static int zsv_prop_execute_import(const char *dest, const char *src, unsigned c
           err = errno;
           perror(tmp_fn);
         } else {
-          err = zsv_file_copy_ptr(stdin, tmp_f);
+          err = zsv_copy_file_ptr(stdin, tmp_f);
           fclose(tmp_f);
-          fsrc = fopen(tmp_fn, "rb");
+          if(!(fsrc = fopen(tmp_fn, "rb"))) {
+            err = errno;
+            perror(tmp_fn);
+          }
         }
       }
-
-      if(fsrc && !err) {
-      if(!dest_cache_dir)
-        err = errno = ENOMEM, perror(NULL);
-      else {
-
-      }
-    */
     }
 
     if(!err) {
-      // do the import
-      size_t bytes_read;
-      struct yajl_helper_parse_state st;
-//      yajl_callbacks callbacks;
-      struct prop_import_ctx ctx = { 0 };
-      ctx.filepath_prefix = (const char *)dest_cache_dir;
-      if(yajl_helper_parse_state_init(&st, 32,
-                                      prop_import_start_obj, prop_import_end_obj, // map start/end
-                                      prop_import_map_key,
-                                      prop_import_start_obj, prop_import_end_obj, // array start/end
-                                      prop_import_process_value,
-                                      &ctx) != yajl_status_ok) {
-        err = errno = ENOMEM;
-        perror(NULL);
-      } else {
-//        yajl_helper_callbacks_init(&callbacks, 32);
-        while((bytes_read = fread(ctx.buff, 1, sizeof(ctx.buff), fsrc)) > 0) {
-          if(yajl_parse(st.yajl, ctx.buff, bytes_read) != yajl_status_ok)
-            yajl_helper_print_err(st.yajl, ctx.buff, bytes_read);
-          if(ctx.in_obj)
-            prop_import_flush(st.yajl, &ctx);
-        }
-        if(yajl_complete_parse(st.yajl) != yajl_status_ok)
-          yajl_helper_print_err(st.yajl, ctx.buff, bytes_read);
+      // we will run this loop either once (force) or twice (no force):
+      // 1. check before running (no force)
+      // 2. do the import
+      char do_check = !force;
 
-        if(ctx.out) { // e.g. if bad JSON and parse failed
-          fclose(ctx.out);
-          free(ctx.out_filepath);
+      if(do_check && !zsv_dir_exists((const char *)dest_cache_dir))
+        do_check = 0;
+
+      for(int i = do_check ? 0 : 1; i < 2 && !err; i++) {
+        do_check = i == 0;
+
+        size_t bytes_read;
+        struct yajl_helper_parse_state st;
+        struct prop_import_ctx ctx = { 0 };
+        ctx.filepath_prefix = (const char *)dest_cache_dir;
+
+        int (*start_obj)(struct yajl_helper_parse_state *st) = NULL;
+        int (*end_obj)(struct yajl_helper_parse_state *st) = NULL;
+        int (*process_value)(struct yajl_helper_parse_state *, struct json_value *) = NULL;
+
+        if(do_check)
+          ctx.do_check = do_check;
+        else {
+          ctx.dry = dry;
+          if(!ctx.dry) {
+            start_obj = prop_import_start_obj;
+            end_obj = prop_import_end_obj;
+            process_value = prop_import_process_value;
+          }
+        }
+
+        if(yajl_helper_parse_state_init(&st, 32,
+                                        start_obj, end_obj, // map start/end
+                                        prop_import_map_key,
+                                        start_obj, end_obj, // array start/end
+                                        process_value,
+                                        &ctx) != yajl_status_ok) {
+          err = errno = ENOMEM;
+          perror(NULL);
+        } else {
+          while((bytes_read = fread(ctx.buff, 1, sizeof(ctx.buff), fsrc)) > 0) {
+            if(yajl_parse(st.yajl, ctx.buff, bytes_read) != yajl_status_ok)
+              yajl_helper_print_err(st.yajl, ctx.buff, bytes_read);
+            if(ctx.in_obj)
+              prop_import_flush(st.yajl, &ctx);
+          }
+          if(yajl_complete_parse(st.yajl) != yajl_status_ok)
+            yajl_helper_print_err(st.yajl, ctx.buff, bytes_read);
+
+          if(ctx.out) { // e.g. if bad JSON and parse failed
+            fclose(ctx.out);
+            free(ctx.out_filepath);
+          }
+        }
+        yajl_helper_parse_state_free(&st);
+
+        if(ctx.err)
+          err = ctx.err;
+        if(i == 0) {
+          rewind(fsrc);
+          if(errno) {
+            err = errno;
+            perror(NULL);
+          }
         }
       }
-      yajl_helper_parse_state_free(&st);
+    }
+    if(tmp_fn) {
+      unlink(tmp_fn);
+      free(tmp_fn);
     }
   }
 

@@ -36,8 +36,6 @@ help:
 	@echo "# run all tests:"
 	@echo "    make test"
 
-EXE=
-
 ifeq ($(EXE),)
   $(error EXE is not defined)
 endif
@@ -118,7 +116,15 @@ test-export:
 
 test-import:
 	@${TEST_INIT}
-	@echo "TO DO!"
+	@rm -rf ${TMP_DIR}/$@
+	@mkdir -p ${TMP_DIR}/$@/.zsv/data/abc.csv
+	@[ "`echo '{"props.json":{"b":1}}' | ${EXE} ${TMP_DIR}/$@/def.csv --import - 2>&1`" = "${TMP_DIR}/$@/def.csv: No such file or directory" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@echo '{"props.json":{"b":1}}' | ${EXE} ${TMP_DIR}/$@/def.csv --import - -f
+	@[ "`jq -c < ${TMP_DIR}/$@/.zsv/data/def.csv/props.json`" = '{"b":1}' ] && ${TEST_PASS} || ${TEST_FAIL}
+	@touch ${TMP_DIR}/$@/def.csv
+	@[ "`echo '{"props.json":{"b":1}}' | ${EXE} ${TMP_DIR}/$@/def.csv --import - 2>&1`" = "${TMP_DIR}/$@/.zsv/data/def.csv/props.json: File exists" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ "`echo '{"props.json":{"b":1}}' | ${EXE} ${TMP_DIR}/$@/def.csv --import - -f --dry`" = "${TMP_DIR}/$@/.zsv/data/def.csv/props.json" ] && ${TEST_PASS} || ${TEST_FAIL}
+
 clean:
 	@rm -rf ${TMP_DIR}
 

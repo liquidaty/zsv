@@ -20,7 +20,7 @@
 #endif // LINEEND
 /**
  * Get a temp file name. The returned value, if any, will have been allocated
- * on the stack, and the caller should `free()`
+ * on the heap, and the caller should `free()`
  *
  * @param prefix string with which the resulting file name will be prefixed
  */
