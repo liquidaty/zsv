@@ -932,12 +932,30 @@ static int zsv_prop_execute_export(const char *src, const char *dest, unsigned c
 }
 
 struct prop_import_ctx {
-  FILE *out;
-  size_t content_start;
-  char *out_filepath;
   const char *filepath_prefix;
   unsigned char buff[4096];
+  size_t content_start;
+  FILE *out;
+  char *out_filepath;
+  struct jv_to_json_ctx jctx;
+  zsv_jq_handle zjq;
+  unsigned char in_obj:1;
+  unsigned char _:7;
 };
+
+static void prop_import_close_out(struct prop_import_ctx *ctx) {
+  if(ctx->zjq) {
+    zsv_jq_finish(ctx->zjq);
+    zsv_jq_delete(ctx->zjq);
+    ctx->zjq = NULL;
+  }
+  if(ctx->out) {
+    fclose(ctx->out);
+    ctx->out = NULL;
+    free(ctx->out_filepath);
+    ctx->out_filepath = NULL;
+  }
+}
 
 static int prop_import_map_key(struct yajl_helper_parse_state *st,
                                const unsigned char *s, size_t len) {
@@ -958,15 +976,30 @@ static int prop_import_map_key(struct yajl_helper_parse_state *st,
     } else {
       ctx->out_filepath = fn;
       fn = NULL;
+
+      // if it's a JSON file, use a jq filter to pretty-print
+
+      if(strlen(ctx->out_filepath) > 5 && !zsv_stricmp((const unsigned char *)ctx->out_filepath + strlen(ctx->out_filepath) - 5, (const unsigned char *)".json")) {
+        ctx->jctx.write1 = zsv_jq_fwrite1;
+        ctx->jctx.ctx = ctx->out;
+        ctx->jctx.flags = JV_PRINT_PRETTY | JV_PRINT_SPACE1;
+        enum zsv_jq_status jqstat;
+        ctx->zjq = zsv_jq_new((const unsigned char *)".", jv_to_json_func, &ctx->jctx, &jqstat);
+        if(!ctx->zjq) {
+          fprintf(stderr, "zsv_jq_new: unable to open for %s\n", ctx->out_filepath);
+          prop_import_close_out(ctx);
+        }
+      }
     }
     free(fn);
   }
   return 1;
 }
 
-static int prop_import_start_map(struct yajl_helper_parse_state *st) {
+static int prop_import_start_obj(struct yajl_helper_parse_state *st) {
   if(yajl_helper_level(st) == 2) {
     struct prop_import_ctx *ctx = yajl_helper_data(st);
+    ctx->in_obj = 1;
     ctx->content_start = yajl_get_bytes_consumed(st->yajl) - 1;
   }
   return 1;
@@ -974,31 +1007,49 @@ static int prop_import_start_map(struct yajl_helper_parse_state *st) {
 
 // prop_import_flush(): return err
 static int prop_import_flush(yajl_handle yajl, struct prop_import_ctx *ctx) {
-  if(ctx->out) {
+  if(ctx->zjq) {
     size_t current_position = yajl_get_bytes_consumed(yajl);
     if(current_position <= ctx->content_start)
       fprintf(stderr, "Error! prop_import_flush unexpected current position\n");
     else
-      fwrite(ctx->buff + ctx->content_start, 1, current_position - ctx->content_start, ctx->out);
+      zsv_jq_parse(ctx->zjq, ctx->buff + ctx->content_start,
+                   current_position - ctx->content_start);
     ctx->content_start = 0;
   }
   return 0;
 }
 
-static int prop_import_end_map(struct yajl_helper_parse_state *st) {
+static int prop_import_end_obj(struct yajl_helper_parse_state *st) {
   if(yajl_helper_level(st) == 1) { // just finished level 2
     struct prop_import_ctx *ctx = yajl_helper_data(st);
     prop_import_flush(st->yajl, yajl_helper_data(st));
-    if(ctx->out) {
-      fclose(ctx->out);
-      ctx->out = NULL;
-
-      free(ctx->out_filepath);
-      ctx->out_filepath = NULL;
-    }
+    prop_import_close_out(ctx);
+    ctx->in_obj = 0;
   }
   return 1;
 }
+
+static int prop_import_process_value(struct yajl_helper_parse_state *st,
+                                     struct json_value *value) {
+  if(yajl_helper_level(st) == 1) { // just finished level 2
+    struct prop_import_ctx *ctx = yajl_helper_data(st);
+    const unsigned char *jsstr;
+    size_t len;
+    json_value_default_string(value, &jsstr, &len);
+    if(ctx->zjq) {
+      unsigned char *js = len ? zsv_json_from_str_n(jsstr, len) : NULL;
+      if(js)
+        zsv_jq_parse(ctx->zjq, js, strlen(js));
+      else
+        zsv_jq_parse(ctx->zjq, "null", 4);
+      free(js);
+    } else if(len && ctx->out)
+      fwrite(jsstr, 1, len, ctx->out);
+    prop_import_close_out(ctx);
+  }
+  return 1;
+}
+
 
 static int zsv_prop_execute_import(const char *dest, const char *src, unsigned char force, unsigned char dry, unsigned char verbose) {
   unsigned char *dest_cache_dir = NULL;
@@ -1052,9 +1103,10 @@ static int zsv_prop_execute_import(const char *dest, const char *src, unsigned c
       struct prop_import_ctx ctx = { 0 };
       ctx.filepath_prefix = (const char *)dest_cache_dir;
       if(yajl_helper_parse_state_init(&st, 32,
-                                      prop_import_start_map, prop_import_end_map, prop_import_map_key,
-                                      NULL, NULL, // start_array, end_array,
-                                      NULL, // process_value,
+                                      prop_import_start_obj, prop_import_end_obj, // map start/end
+                                      prop_import_map_key,
+                                      prop_import_start_obj, prop_import_end_obj, // array start/end
+                                      prop_import_process_value,
                                       &ctx) != yajl_status_ok) {
         err = errno = ENOMEM;
         perror(NULL);
@@ -1063,7 +1115,8 @@ static int zsv_prop_execute_import(const char *dest, const char *src, unsigned c
         while((bytes_read = fread(ctx.buff, 1, sizeof(ctx.buff), fsrc)) > 0) {
           if(yajl_parse(st.yajl, ctx.buff, bytes_read) != yajl_status_ok)
             yajl_helper_print_err(st.yajl, ctx.buff, bytes_read);
-          prop_import_flush(st.yajl, &ctx);
+          if(ctx.in_obj)
+            prop_import_flush(st.yajl, &ctx);
         }
         if(yajl_complete_parse(st.yajl) != yajl_status_ok)
           yajl_helper_print_err(st.yajl, ctx.buff, bytes_read);
