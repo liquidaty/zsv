@@ -167,6 +167,24 @@ char json_value_truthy(struct json_value *value) {
   return 0;
 }
 
+/**
+ * Print any error from the yajl parser
+ * Returns non-zero
+ */
+int yajl_helper_print_err(yajl_handle yajl,
+                          unsigned char *last_parsed_buff,
+                          size_t last_parsed_buff_len
+                          ) {
+  unsigned char *str = yajl_get_error(yajl, 1,
+                                      last_parsed_buff, last_parsed_buff_len);
+  if(str) {
+    fprintf(stderr, "Error parsing JSON: %s", (const char *)str);
+    yajl_free_error(yajl, str);
+  }
+  return 1;
+}
+
+
 const char *yajl_helper_get_map_key(struct yajl_helper_parse_state *st, unsigned int offset) {
   if(YAJL_HELPER_LEVEL(st) >= offset + 1) {
     unsigned int level = st->level - offset;
@@ -176,12 +194,9 @@ const char *yajl_helper_get_map_key(struct yajl_helper_parse_state *st, unsigned
   return NULL;
 }
 
-char yajl_helper_got_path(struct yajl_helper_parse_state *st, unsigned int level, const char *path) {
-  if(YAJL_HELPER_LEVEL(st) != level)
-    return 0;
-
-  unsigned int this_level = st->level_offset + 1;
-  for(; *path && this_level <= st->level; path++) {
+static char yajl_helper_got_path_aux(struct yajl_helper_parse_state *st, unsigned int level, const char *path) {
+  for(unsigned i = 1; *path && i <= level; path++, i++) {
+    unsigned this_level = st->level_offset + i;
     switch(*path) {
     case '{':
     case '[':
@@ -199,14 +214,24 @@ char yajl_helper_got_path(struct yajl_helper_parse_state *st, unsigned int level
           path += len;
         }
       }
-
-      this_level++;
       break;
     default: // map key start
       return 0;
     }
   }
   return 1;
+}
+
+char yajl_helper_got_path(struct yajl_helper_parse_state *st, unsigned int level, const char *path) {
+  if(YAJL_HELPER_LEVEL(st) != level)
+    return 0;
+  return yajl_helper_got_path_aux(st, level, path);
+}
+
+char yajl_helper_got_path_prefix(struct yajl_helper_parse_state *st, unsigned int level, const char *path) {
+  if(YAJL_HELPER_LEVEL(st) < level)
+    return 0;
+  return yajl_helper_got_path_aux(st, level, path);
 }
 
 char yajl_helper_path_is(struct yajl_helper_parse_state *st, const char *path) {
@@ -318,10 +343,13 @@ static int yajl_helper_map_key(void *ctx, const unsigned char *stringVal, size_t
 
 static inline int process_value(struct yajl_helper_parse_state *st,
                             void *ctx, struct json_value *v) {
-  int rc = st->value(ctx, v);
-  if(st->level && strchr("{[", st->stack[st->level-1]) && st->level <= st->max_level)
-    st->item_ind[st->level-1]++;
-  return rc;
+  if(st->value) {
+    int rc = st->value(ctx, v);
+    if(st->level && strchr("{[", st->stack[st->level-1]) && st->level <= st->max_level)
+      st->item_ind[st->level-1]++;
+    return rc;
+  }
+  return 1;
 }
 
 static int yajl_helper_number_str(void * ctx, const char * numberVal,

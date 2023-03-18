@@ -931,12 +931,156 @@ static int zsv_prop_execute_export(const char *src, const char *dest, unsigned c
   return err;
 }
 
-static int zsv_prop_execute_import(const char *filepath, const char *src, unsigned char overwrite) {
-  (void)(filepath);
-  (void)(src);
-  (void)(overwrite);
+struct prop_import_ctx {
+  FILE *out;
+  size_t content_start;
+  char *out_filepath;
+  const char *filepath_prefix;
+  unsigned char buff[4096];
+};
+
+static int prop_import_map_key(struct yajl_helper_parse_state *st,
+                               const unsigned char *s, size_t len) {
+  if(yajl_helper_level(st) == 1 && len) { // new file
+    struct prop_import_ctx *ctx = yajl_helper_data(st);
+    char *fn = NULL;
+    if(ctx->filepath_prefix)
+      asprintf(&fn, "%s%c%.*s", ctx->filepath_prefix, FILESLASH, (int)len, s);
+    else
+      asprintf(&fn, "%.*s", (int)len, s);
+    if(!fn) {
+      errno = ENOMEM;
+      perror(NULL);
+    } else if(zsv_mkdirs(fn, 1)) {
+      fprintf(stderr, "Unable to create directories for %s\n", fn);
+    } else if(!((ctx->out = fopen(fn, "wb")))) {
+      perror(fn);
+    } else {
+      ctx->out_filepath = fn;
+      fn = NULL;
+    }
+    free(fn);
+  }
+  return 1;
+}
+
+static int prop_import_start_map(struct yajl_helper_parse_state *st) {
+  if(yajl_helper_level(st) == 2) {
+    struct prop_import_ctx *ctx = yajl_helper_data(st);
+    ctx->content_start = yajl_get_bytes_consumed(st->yajl) - 1;
+  }
+  return 1;
+}
+
+// prop_import_flush(): return err
+static int prop_import_flush(yajl_handle yajl, struct prop_import_ctx *ctx) {
+  if(ctx->out) {
+    size_t current_position = yajl_get_bytes_consumed(yajl);
+    if(current_position <= ctx->content_start)
+      fprintf(stderr, "Error! prop_import_flush unexpected current position\n");
+    else
+      fwrite(ctx->buff + ctx->content_start, 1, current_position - ctx->content_start, ctx->out);
+    ctx->content_start = 0;
+  }
+  return 0;
+}
+
+static int prop_import_end_map(struct yajl_helper_parse_state *st) {
+  if(yajl_helper_level(st) == 1) { // just finished level 2
+    struct prop_import_ctx *ctx = yajl_helper_data(st);
+    prop_import_flush(st->yajl, yajl_helper_data(st));
+    if(ctx->out) {
+      fclose(ctx->out);
+      ctx->out = NULL;
+
+      free(ctx->out_filepath);
+      ctx->out_filepath = NULL;
+    }
+  }
+  return 1;
+}
+
+static int zsv_prop_execute_import(const char *dest, const char *src, unsigned char force, unsigned char dry, unsigned char verbose) {
+  unsigned char *dest_cache_dir = NULL;
+  FILE *fsrc = NULL;
   int err = 0;
-  fprintf(stderr, "To do!\n");
+
+  if(!force && !zsv_file_exists(dest)) {
+    err = errno = ENOENT;
+    perror(dest);
+  } else if(!(dest_cache_dir = zsv_cache_path((const unsigned char *)dest, NULL, 0))) {
+    err = errno = ENOMEM;
+    perror(NULL);
+  } else if(!(fsrc = src ? fopen(src, "rb") : stdin)) {
+    err = errno;
+    perror(src);
+  } else {
+    if(!force) {
+      // make sure we will not overwrite any existing file
+      /*
+      // if input is stdin, we'll need to read it twice, so save it first
+      if(fsrc == stdin) {
+        fsrc = NULL;
+        tmp_fn = src = zsv_get_temp_filename("zsv_prop_XXXXXXXX");
+        if(!tmp_fn) {
+          err = errno = ENOMEM;
+          perror(NULL);
+        } else if(!(tmp_f = fopen(tmp_fn, "wb"))) {
+          err = errno;
+          perror(tmp_fn);
+        } else {
+          err = zsv_file_copy_ptr(stdin, tmp_f);
+          fclose(tmp_f);
+          fsrc = fopen(tmp_fn, "rb");
+        }
+      }
+
+      if(fsrc && !err) {
+      if(!dest_cache_dir)
+        err = errno = ENOMEM, perror(NULL);
+      else {
+
+      }
+    */
+    }
+
+    if(!err) {
+      // do the import
+      size_t bytes_read;
+      struct yajl_helper_parse_state st;
+//      yajl_callbacks callbacks;
+      struct prop_import_ctx ctx = { 0 };
+      ctx.filepath_prefix = (const char *)dest_cache_dir;
+      if(yajl_helper_parse_state_init(&st, 32,
+                                      prop_import_start_map, prop_import_end_map, prop_import_map_key,
+                                      NULL, NULL, // start_array, end_array,
+                                      NULL, // process_value,
+                                      &ctx) != yajl_status_ok) {
+        err = errno = ENOMEM;
+        perror(NULL);
+      } else {
+//        yajl_helper_callbacks_init(&callbacks, 32);
+        while((bytes_read = fread(ctx.buff, 1, sizeof(ctx.buff), fsrc)) > 0) {
+          if(yajl_parse(st.yajl, ctx.buff, bytes_read) != yajl_status_ok)
+            yajl_helper_print_err(st.yajl, ctx.buff, bytes_read);
+          prop_import_flush(st.yajl, &ctx);
+        }
+        if(yajl_complete_parse(st.yajl) != yajl_status_ok)
+          yajl_helper_print_err(st.yajl, ctx.buff, bytes_read);
+
+        if(ctx.out) { // e.g. if bad JSON and parse failed
+          fclose(ctx.out);
+          free(ctx.out_filepath);
+        }
+      }
+      yajl_helper_parse_state_free(&st);
+    }
+  }
+
+  if(fsrc && fsrc != stdin)
+    fclose(fsrc);
+  free(dest_cache_dir);
+
   return err;
 }
 
@@ -1040,7 +1184,7 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
         err = zsv_prop_execute_export((const char *)filepath, mode_value && strcmp(mode_value, "-") ? mode_value : NULL, verbose);
         break;
       case zsv_prop_mode_import:
-        err = zsv_prop_execute_import((const char *)filepath, mode_value, opts.overwrite);
+        err = zsv_prop_execute_import((const char *)filepath, mode_value && strcmp(mode_value, "-") ? mode_value : NULL, opts.overwrite, dry, verbose);
         break;
       case zsv_prop_mode_default:
         {

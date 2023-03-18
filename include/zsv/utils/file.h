@@ -67,5 +67,10 @@ size_t zsv_dir_len_basename(const char *filepath, const char **basename);
  */
 int zsv_copy_file(const char *src, const char *dest);
 
+/**
+ * Copy a file, given source and destination FILE pointers
+ * Return error number per errno.h
+ */
+int zsv_copy_file_ptr(FILE *src, FILE *dest);
 
 #endif

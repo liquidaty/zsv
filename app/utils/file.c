@@ -14,6 +14,7 @@
 #include <fcntl.h> // open
 
 #include <zsv/utils/dirs.h>
+#include <zsv/utils/file.h>
 
 
 #if defined(_WIN32) || defined(WIN32) || defined(WIN)
@@ -114,7 +115,8 @@ int zsv_file_exists(const char* filename) {
 #endif
 
 /**
- * Copy a file. On error, output error message and return non-zero
+ * Copy a file, given source and destination paths
+ * On error, output error message and return non-zero
  */
 int zsv_copy_file(const char *src, const char *dest) {
   // create one or more directories if needed
@@ -133,18 +135,29 @@ int zsv_copy_file(const char *src, const char *dest) {
     if(!fdest)
       err = errno ? errno : -1, perror(dest);
     else {
-      char buffer[4096];
-      size_t bytes_read;
-      while((bytes_read = fread(buffer, 1, sizeof(buffer), fsrc)) > 0) {
-        if(fwrite(buffer, 1, bytes_read, fdest) != bytes_read) {
-          perror(dest);
-          err = errno ? errno : -1;
-          break;
-        }
-      }
+      err = zsv_copy_file_ptr(fsrc, fdest);
+      if(err)
+        perror(dest);
       fclose(fdest);
     }
     fclose(fsrc);
+  }
+  return err;
+}
+
+/**
+ * Copy a file, given source and destination FILE pointers
+ * Return error number per errno.h
+ */
+int zsv_copy_file_ptr(FILE *src, FILE *dest) {
+  int err = 0;
+  char buffer[4096];
+  size_t bytes_read;
+  while((bytes_read = fread(buffer, 1, sizeof(buffer), src)) > 0) {
+    if(fwrite(buffer, 1, bytes_read, dest) != bytes_read) {
+      err = errno ? errno : -1;
+      break;
+    }
   }
   return err;
 }
