@@ -33,7 +33,7 @@ jobs:
     steps:
     - name: Set TAG environment variable
       run: |
-        git describe --always --dirty --tags 2>/dev/null || echo "v0.0.0-zsv") | sed 's/^v//'
+        (git describe --always --dirty --tags 2>/dev/null || echo "v0.0.0-zsv") | sed 's/^v//'
       id: tagenv
       env:
         TAG: ${{ steps.tagenv.outputs.stdout }}
