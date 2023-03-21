@@ -22,7 +22,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      TAG: "0.3.2"
       AMD64_LINUX_GCC: amd64-linux-gcc
       AMD64_LINUX_CLANG: amd64-linux-clang
       AMD64_WINDOWS_MINGW: amd64-windows-mingw
