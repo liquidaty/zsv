@@ -32,7 +32,7 @@ jobs:
 
     steps:
     - name: Get tag if NOT tagged/released and set TAG env var
-      if: !startsWith(github.ref, 'refs/tags/v')
+      if: "!startsWith(github.ref, 'refs/tags/v')"
       shell: bash
       run: |
         TAG=$(git describe --always --dirty --tags 2>/dev/null || sed 's/^v//')
