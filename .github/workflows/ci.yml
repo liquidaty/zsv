@@ -22,6 +22,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
+      TAG: "0.3.5"
       AMD64_LINUX_GCC: amd64-linux-gcc
       AMD64_LINUX_CLANG: amd64-linux-clang
       AMD64_WINDOWS_MINGW: amd64-windows-mingw
@@ -31,15 +32,6 @@ jobs:
       ARTIFACT_RETENTION_DAYS: 5
 
     steps:
-    - name: Get tag if NOT tagged/released and set TAG env var
-      if: "!startsWith(github.ref, 'refs/tags/v')"
-      shell: bash
-      id: gettag
-      run: |
-        TAG=$(git describe --always --dirty --tags 2>/dev/null || sed 's/^v//')
-        echo "TAG=$TAG" >> $GITHUB_ENV
-        echo "$TAG"
-
     - name: Get tag if tagged/released and set TAG env var
       if: startsWith(github.ref, 'refs/tags/v')
       shell: bash
@@ -149,165 +141,165 @@ jobs:
     - name: Prepare build artifacts for upload
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_GCC }}.zip)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.zip)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_GCC }}.zip
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.zip
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_CLANG }}.zip)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.zip)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_CLANG }}.zip
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.zip
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_GCC }}.deb)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.deb)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_GCC }}.deb
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.deb
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_CLANG }}.deb)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.deb)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_CLANG }}.deb
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.deb
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_GCC }}.rpm)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.rpm)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_GCC }}.rpm
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.rpm
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_CLANG }}.rpm)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.rpm)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_CLANG }}.rpm
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.rpm
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_WINDOWS_MINGW }}.zip
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_MACOSX_GCC }}.zip)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.zip)
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_MACOSX_GCC }}.zip
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.zip
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_FREEBSD_GCC }}.zip)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip)
       if: matrix.os == 'macos-12'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_FREEBSD_GCC }}.zip
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_GCC }}.tar.gz)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.tar.gz)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_GCC }}.tar.gz
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.tar.gz
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_MACOSX_GCC }}.tar.gz)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.tar.gz)
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_MACOSX_GCC }}.tar.gz
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.tar.gz
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz)
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz)
       if: matrix.os == 'macos-12'
       uses: actions/upload-artifact@v3
       env:
-        ARTIFACT_NAME: zsv-${{ steps.gettag.outputs.stdout }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
@@ -333,7 +325,7 @@ jobs:
       if: ${{ startsWith(github.ref, 'refs/tags/v') && runner.os == 'macOS' }}
       env:
         HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-        TAG: ${{ steps.gettag.outputs.stdout }}
+        TAG: ${{ env.TAG }}
         TRIPLET: ${{ env.AMD64_MACOSX_GCC }}
       run: |
         ./scripts/ci-update-homebrew-tap.sh
