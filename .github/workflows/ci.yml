@@ -22,7 +22,6 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     env:
-      TAG: $((git describe --always --dirty --tags 2>/dev/null || echo "v0.0.0-zsv") | sed 's/^v//')
       AMD64_LINUX_GCC: amd64-linux-gcc
       AMD64_LINUX_CLANG: amd64-linux-clang
       AMD64_WINDOWS_MINGW: amd64-windows-mingw
@@ -32,6 +31,13 @@ jobs:
       ARTIFACT_RETENTION_DAYS: 5
 
     steps:
+    - name: Set TAG environment variable
+      run: |
+        git describe --always --dirty --tags 2>/dev/null || echo "v0.0.0-zsv") | sed 's/^v//'
+      id: tagenv
+      env:
+        TAG: ${{ steps.tagenv.outputs.stdout }}
+
     - name: Get tag if tagged/released and set TAG env var
       if: startsWith(github.ref, 'refs/tags/v')
       shell: bash
