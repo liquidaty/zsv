@@ -476,7 +476,12 @@ int ZSV_CLI_MAIN(int argc, const char *argv[]) {
           argv[2],
           "--help"
         };
-        return help_builtin->main(2, argv_tmp);
+        if(help_builtin->main)
+          return help_builtin->main(2, argv_tmp);
+        else if(help_builtin->cmd)
+          return help_builtin->cmd(2, argv_tmp, NULL, NULL);
+        else
+          return fprintf(stderr, "Unexpected syntax!\n");
       } else {
         const char *ext_cmd = extension_cmd_from_arg(argv[2]);
         if(ext_cmd) {
