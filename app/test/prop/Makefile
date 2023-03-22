@@ -44,6 +44,7 @@ test: test-1 test-2 test-3 test-4 test-5 test-6 test-7 test-8 test-copy test-cle
 
 test-1:
 	@${TEST_INIT}
+	@${PREFIX} ${EXE} dummy.csv -R 2 ${SUFFIX}
 	@${PREFIX} ${EXE} dummy.csv --clear ${SUFFIX}
 	@${CHECK} [ "`${EXE} dummy.csv`" == "{}" ] && ${TEST_PASS} || ${TEST_FAIL}
 
