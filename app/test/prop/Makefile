@@ -48,43 +48,44 @@ test-1:
 	@touch .zsv/data/dummy.csv/hello.json
 	@${PREFIX} ${EXE} dummy.csv --clear ${SUFFIX}
 	@ls .zsv/data/dummy.csv/hello.json 2>/dev/null && ${TEST_FAIL} || ${TEST_PASS}
-	@${CHECK} [ "`${EXE} dummy.csv`" == "{}" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv`" = "{}" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-2:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv -R 2 ${SUFFIX}
-	@${CHECK} [ "`${EXE} dummy.csv|jq -c -S`" == '{"skip-head":2}' ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv|jq -c -S`" = '{"skip-head":2}' ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-3:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv -d 3 ${SUFFIX}
-	@${CHECK} [ "`${EXE} dummy.csv|jq -c -S`" == '{"header-row-span":3,"skip-head":2}' ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv|jq -c -S`" = '{"header-row-span":3,"skip-head":2}' ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-4:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv -R - ${SUFFIX}
-	@${CHECK} [ "`${EXE} dummy.csv|jq -c -S`" == '{"header-row-span":3}' ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv|jq -c -S`" = '{"header-row-span":3}' ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-5:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv -d - ${SUFFIX}
-	@${CHECK} [ "`${EXE} dummy.csv|jq -c -S`" == '{}' ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv|jq -c -S`" = '{}' ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-6:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv -d 3 ${SUFFIX}
-	@${CHECK} [ "`${EXE} dummy.csv|jq -c -S`" == '{"header-row-span":3}' ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv|jq -c -S`" = '{"header-row-span":3}' ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-7:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv --clear ${SUFFIX}
-	@${CHECK} [ "`${EXE} dummy.csv`" == "{}" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv`" = "{}" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-8:
 	@${TEST_INIT}
 	@${CHECK} ${EXE} detect.csv --clear
 	@${PREFIX} ${EXE} detect.csv --auto --save ${SUFFIX}
-	@${CHECK} [ "`${EXE} detect.csv|jq -c -S`" == '{"header-row-span":2,"skip-head":2}' ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} detect.csv --list-files`" = "props.json" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} detect.csv|jq -c -S`" = '{"header-row-span":2,"skip-head":2}' ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${EXE} detect.csv --clear
 
 test-copy:

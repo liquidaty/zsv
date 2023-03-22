@@ -516,7 +516,7 @@ enum zsv_prop_mode {
   zsv_prop_mode_export = 'e',
   zsv_prop_mode_import = 'i',
   zsv_prop_mode_copy = 'c',
-  zsv_prop_mode_clear = 'l'
+  zsv_prop_mode_clear = 'r'
 };
 
 static enum zsv_prop_mode zsv_prop_get_mode(const char *opt) {
