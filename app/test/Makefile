@@ -126,6 +126,12 @@ worldcitiespop_mil.csv:
 
 test-count test-count-pull: test-% : test-1-% test-2-%
 
+test-cli: ${CLI}
+	@${TEST_INIT}
+	@[ "${CLI}" = "" ] && echo 1>&2 'test-cli: missing CLI env var' && exit 1 || exit 0 
+	@$< help select 2>&1 > ${TMP_DIR}/$@.out
+	@[ "`head -1 ${TMP_DIR}/$@.out`" = "select: streaming CSV parser" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "35" ] && ${TEST_PASS} || ${TEST_FAIL}
+
 test-1-count test-1-count-pull: test-1-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
 	@cat worldcitiespop_mil.csv | ${PREFIX} $< ${REDIRECT} ${TMP_DIR}/$@.out
