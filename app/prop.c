@@ -1267,10 +1267,9 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
           unsigned char *cache_path = zsv_cache_path(filepath, NULL, 0);
           if(!cache_path)
             err = ENOMEM;
-          else {
+          else if(zsv_dir_exists((const char *)cache_path))
             err = zsv_remove_dir_recursive(cache_path);
-            free(cache_path);
-          }
+          free(cache_path);
         }
       }
       return err;
