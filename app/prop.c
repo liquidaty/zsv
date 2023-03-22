@@ -37,12 +37,13 @@ const char *zsv_property_usage_msg[] = {
   "Usage: " APPNAME " <filepath> [options]",
   "  where filepath is the path to the input CSV file, or",
   "    when using --auto: input CSV file or - for stdin",
-  "    when using --clean: directory to clean from (. for current directory)",
+  "    when using --clean: directory to clean from (use '.' for current directory)",
   "  and options may be one or more of:",
   "    -d,--header-row-span <value>: set/unset/auto-detect header depth (see below)",
   "    -R,--skip-head <value>      : set/unset/auto-detect initial rows to skip (see below)",
   "    --list-files                : list all property sets associted with the given file", // output a list of all cache files
-  "    --clear                     : delete all properties of given files",
+  "    --clear                     : delete all properties of the specified file",
+  // TO DO: --clear-file relative-path
   "    --clean                     : delete all files / dirs in the property cache of the given directory",
   "                                  that do not have a corresponding file in that directory",
   "      --dry                     : dry run, outputs files/dirs to remove. only for use with --clean",
@@ -80,6 +81,8 @@ static int zsv_property_usage(FILE *target) {
 
 static int show_all_properties(const unsigned char *filepath) {
   int err = 0;
+  // to do: show all files, not just prop file
+
   if(!zsv_file_readable((const char *)filepath, &err, NULL)) {
     perror((const char *)filepath);
     return err;
@@ -512,7 +515,8 @@ enum zsv_prop_mode {
   zsv_prop_mode_clean = 'K',
   zsv_prop_mode_export = 'e',
   zsv_prop_mode_import = 'i',
-  zsv_prop_mode_copy = 'c'
+  zsv_prop_mode_copy = 'c',
+  zsv_prop_mode_clear = 'l'
 };
 
 static enum zsv_prop_mode zsv_prop_get_mode(const char *opt) {
@@ -521,6 +525,7 @@ static enum zsv_prop_mode zsv_prop_get_mode(const char *opt) {
   if(!strcmp(opt, "--copy")) return zsv_prop_mode_copy;
   if(!strcmp(opt, "--export")) return zsv_prop_mode_export;
   if(!strcmp(opt, "--import")) return zsv_prop_mode_import;
+  if(!strcmp(opt, "--clear")) return zsv_prop_mode_clear;
   return zsv_prop_mode_default;
 }
 
@@ -870,6 +875,8 @@ static int zsv_prop_execute_clean(const char *dirpath, unsigned char dry, unsign
   if(!dirpath_len)
     return 0;
 
+  // TO DO: if NO_STDIN, require --force, else prompt user
+
   char *cache_parent;
   if(!strcmp(dirpath, "."))
     cache_parent = strdup(ZSV_CACHE_DIR);
@@ -1201,9 +1208,6 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
     if(m_argc == 2)
       return show_all_properties(filepath);
 
-    if(m_argc == 3 && !strcmp("--clear", m_argv[2]))
-      return zsv_cache_remove(filepath, zsv_cache_type_property);
-
     enum zsv_prop_mode mode = zsv_prop_mode_default;
     unsigned char dry = 0;
     const char *mode_arg = NULL;   // e.g. "--export"
@@ -1229,9 +1233,7 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
               err = fprintf(stderr, "Option %s requires a value\n", opt);
           }
         }
-      } else if(!strcmp(opt, "--clear"))
-        err = fprintf(stderr, "--clear cannot be used in conjunction with any other options\n");
-      else if(!strcmp(opt, "--auto")) {
+      } else if(!strcmp(opt, "--auto")) {
         if(opts.d != ZSV_PROP_ARG_NONE && opts.R != ZSV_PROP_ARG_NONE)
           err = fprintf(stderr, "--auto specified, but all other properties also specified");
         else {
@@ -1250,6 +1252,27 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
         fprintf(stderr, "Unrecognized option: %s\n", opt);
         err = 1;
       }
+    }
+
+    if(mode == zsv_prop_mode_clear) { // m_argc == 3 && !strcmp("--clear", m_argv[2])) {
+      if(!(filepath && *filepath))
+        err = fprintf(stderr, "--clear: please specify an input file\n");
+      else {
+        struct prop_opts opts2 = { 0 };
+        opts2.d = ZSV_PROP_ARG_NONE;
+        opts2.R = ZSV_PROP_ARG_NONE;
+        if(memcmp(&opts, &opts2, sizeof(opts)))
+          err = fprintf(stderr, "--clear cannot be used in conjunction with any other options\n");
+        else {
+          unsigned char *cache_path = zsv_cache_path(filepath, NULL, 0);
+          if(!cache_path)
+            err = ENOMEM;
+          else if(zsv_dir_exists((const char *)cache_path))
+            err = zsv_remove_dir_recursive(cache_path);
+          free(cache_path);
+        }
+      }
+      return err;
     }
 
     // check if option combination is invalid
