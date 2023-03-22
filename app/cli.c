@@ -478,9 +478,11 @@ int ZSV_CLI_MAIN(int argc, const char *argv[]) {
         };
         if(help_builtin->main)
           return help_builtin->main(2, argv_tmp);
-        else if(help_builtin->cmd)
-          return help_builtin->cmd(2, argv_tmp, NULL, NULL);
-        else
+        else if(help_builtin->cmd) {
+          char opts_used[ZSV_OPTS_SIZE_MAX] = { 0 };
+          struct zsv_opts opts = { 0 };
+          return help_builtin->cmd(2, argv_tmp, &opts, opts_used);
+        } else
           return fprintf(stderr, "Unexpected syntax!\n");
       } else {
         const char *ext_cmd = extension_cmd_from_arg(argv[2]);
