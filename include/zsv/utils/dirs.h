@@ -9,6 +9,8 @@
 #ifndef ZSV_DIRS_H
 #define ZSV_DIRS_H
 
+#include <stdio.h>
+
 /* Maximum length of file name */
 #if !defined(FILENAME_MAX)
 #   define FILENAME_MAX MAX_PATH
@@ -88,5 +90,48 @@ int zsv_foreach_dirent(const char *dir_path,
                        void *ctx,
                        char verbose
                        );
+
+struct zsv_dir_filter {
+  zsv_foreach_dirent_handler handler;
+  size_t max_depth;
+};
+
+/**
+ * Convert directory contents into a single JSON file
+ * Output schema is a dictionary where key = path and value = contents
+ * Files named with .json suffix will be exported as JSON (content must be valid JSON)
+ * Files named with any other suffix will be exported as a single string value (do not try with large files)
+ *
+ * @param parent_dir : directory to export
+ * @param dest       : file path to output to, or NULL to output to stdout
+ * @param file_filter:
+ */
+int zsv_dir_to_json(const unsigned char *parent_dir, const char *dest,
+                    struct zsv_dir_filter *file_filter,
+                    unsigned char verbose
+                    );
+
+/**
+ * Convert a JSON stream into file and directory contents
+ * This function is the inverse of zsv_dir_to_json()
+ * Output schema is a dictionary where key = path and value = contents
+ * Files named with .json suffix will be exported as JSON (content must be valid JSON)
+ * Files named with any other suffix will be exported as a single string value (do not try with large files)
+ *
+ * @param target_dir : directory to create / import into
+ * @param        : file path to output to, or NULL to output to stdout
+ * @flags        : ZSV_DIR_FLAG_xxx values as defined below
+ *
+ * Returns 0 on success, non-zero on error
+ */
+
+#define ZSV_DIR_FLAG_FORCE 1 /* overwrite target files if they already exist */
+#define ZSV_DIR_FLAG_DRY   2 /* dry run, output names of files that would be created/overwritten */
+
+int zsv_dir_from_json(const unsigned char *target_dir,
+                      FILE *fsrc,
+                      unsigned int flags, // ZSV_DIR_FLAG_XX
+                      unsigned char verbose
+                      );
 
 #endif
