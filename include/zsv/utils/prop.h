@@ -81,8 +81,8 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
  */
 #include "dirs.h"
 
-struct is_property_ctx; /* opaque structure for internal use */
-struct is_property_ctx *
+struct zsv_dir_filter; /* opaque structure for internal use */
+struct zsv_dir_filter *
 zsv_prop_get_or_set_is_prop_file(
                                  int (*is_prop_file)(struct zsv_foreach_dirent_handle *, size_t),
                                  int max_depth,

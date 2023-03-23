@@ -11,8 +11,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <dirent.h>
+#include <errno.h>
 #include <zsv/utils/os.h>
+#include <zsv/utils/json.h>
+#include <zsv/utils/jq.h>
 #include <zsv/utils/dirs.h>
+#include <zsv/utils/string.h>
 #include <unistd.h> // unlink
 #include <sys/stat.h>
 
@@ -307,3 +311,7 @@ int zsv_remove_dir_recursive(const unsigned char *path) {
 
   return err;
 }
+
+#include "dirs_to_json.c"
+
+#include "dirs_from_json.c"
