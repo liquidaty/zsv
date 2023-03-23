@@ -156,7 +156,6 @@ int zsv_dir_from_json(const unsigned char *target_dir,
     if(src == stdin) {
       src = NULL;
       tmp_fn = zsv_get_temp_filename("zsv_prop_XXXXXXXX");
-      src = (const char *)tmp_fn;
       FILE *tmp_f;
       if(!tmp_fn) {
         err = errno = ENOMEM;

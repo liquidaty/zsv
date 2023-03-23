@@ -154,23 +154,8 @@ static void zsv_2db_delete(zsv_2db_handle data) {
   free(data->json_parser.row_values);
 
   yajl_helper_parse_state_free(&data->json_parser.st);
-//  if(data->json_parser.handle)
-//    yajl_free(data->json_parser.handle);
 
   free(data);
-}
-
-static int zsv_2db_json_parse_err(struct zsv_2db_data *data,
-                                  unsigned char *last_parsed_buff,
-                                  size_t last_parsed_buff_len
-                                  ) {
-  unsigned char *str = yajl_get_error(data->json_parser.st.yajl, 1,
-                                      last_parsed_buff, last_parsed_buff_len);
-  if(str) {
-    fprintf(stderr, "Error parsing JSON: %s", (const char *)str);
-    yajl_free_error(data->json_parser.st.yajl, str);
-  }
-  return 1;
 }
 
 /* sqlite3 helper functions */
@@ -768,13 +753,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
             break;
           yajl_status stat = yajl_parse(zsv_2db_yajl_handle(data), buff, bytes_read);
           if(stat != yajl_status_ok)
-            // err = zsv_2db_json_parse_err(data, buff, bytes_read);
             err = yajl_helper_print_err(data->json_parser.st.yajl, buff, bytes_read);
         }
 
         if(!err) {
           if(yajl_complete_parse(zsv_2db_yajl_handle(data)) != yajl_status_ok)
-            // err = zsv_2db_json_parse_err(data, buff, bytes_read);
             err = yajl_helper_print_err(data->json_parser.st.yajl, buff, bytes_read);
           else if(zsv_2db_err(data) || zsv_2db_finish(data))
             err = 1;

@@ -92,8 +92,9 @@ int zsv_foreach_dirent(const char *dir_path,
                        );
 
 struct zsv_dir_filter {
-  zsv_foreach_dirent_handler handler;
-  size_t max_depth;
+  zsv_foreach_dirent_handler filter; /* filter function; return 1 to process this node */
+  size_t max_depth;                  /* max depth to recurse */
+  void *ctx;                         /* pointer to pass to filter function */
 };
 
 /**
@@ -102,11 +103,12 @@ struct zsv_dir_filter {
  * Files named with .json suffix will be exported as JSON (content must be valid JSON)
  * Files named with any other suffix will be exported as a single string value (do not try with large files)
  *
- * @param parent_dir : directory to export
- * @param dest       : file path to output to, or NULL to output to stdout
- * @param file_filter:
+ * @param parent_dir      : directory to export
+ * @param output_filename : file path to output to, or NULL to output to stdout
+ * @param file_filter     : filter determining which files to export
  */
-int zsv_dir_to_json(const unsigned char *parent_dir, const char *dest,
+int zsv_dir_to_json(const unsigned char *parent_dir,
+                    const unsigned char *output_filename,
                     struct zsv_dir_filter *file_filter,
                     unsigned char verbose
                     );

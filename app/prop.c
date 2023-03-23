@@ -576,9 +576,9 @@ zsv_prop_get_or_set_is_prop_file(
                                  ) {
   static struct zsv_dir_filter ctx = {
 #ifndef ZSV_IS_PROP_FILE_HANDLER
-    .handler = zsv_is_prop_file,
+    .filter = zsv_is_prop_file,
 #else
-    .handler = ZSV_IS_PROP_FILE_HANDLER,
+    .filter = ZSV_IS_PROP_FILE_HANDLER,
 #endif
 #ifndef ZSV_IS_PROP_FILE_DEPTH
     .max_depth = 1
@@ -588,8 +588,8 @@ zsv_prop_get_or_set_is_prop_file(
   };
 
   if(set) {
-    if(!(ctx.handler = custom_is_prop_file)) {
-      ctx.handler = zsv_is_prop_file;
+    if(!(ctx.filter = custom_is_prop_file)) {
+      ctx.filter = zsv_is_prop_file;
       max_depth = 1;
     } else
       ctx.max_depth = max_depth;
@@ -600,8 +600,10 @@ zsv_prop_get_or_set_is_prop_file(
 static int zsv_prop_foreach_list(struct zsv_foreach_dirent_handle *h, size_t depth) {
   if(!h->is_dir) {
     struct zsv_dir_filter *ctx = (struct zsv_dir_filter *)h->ctx;
-    if(ctx->handler(h, depth))
+    h->ctx = ctx->ctx;
+    if(ctx->filter(h, depth))
       printf("%s\n", h->entry);
+    h->ctx = ctx;
   }
   return 0;
 }
@@ -689,7 +691,8 @@ struct zsv_prop_foreach_copy_ctx {
 static int zsv_prop_foreach_copy(struct zsv_foreach_dirent_handle *h, size_t depth) {
   if(!h->is_dir) {
     struct zsv_prop_foreach_copy_ctx *ctx = h->ctx;
-    if(ctx->zsv_dir_filter.handler(h, depth)) {
+    h->ctx = ctx->zsv_dir_filter.ctx;
+    if(ctx->zsv_dir_filter.filter(h, depth)) {
       char *dest_prop_filepath;
       asprintf(&dest_prop_filepath, "%s%s", ctx->dest_cache_dir, h->parent_and_entry + strlen((const char *)ctx->src_cache_dir));
       if(!dest_prop_filepath) {
@@ -743,6 +746,7 @@ static int zsv_prop_foreach_copy(struct zsv_foreach_dirent_handle *h, size_t dep
         free(dest_prop_filepath);
       }
     }
+    h->ctx = ctx;
   }
   return 0;
 }
@@ -829,13 +833,11 @@ static int zsv_prop_execute_export(const char *src, const char *dest, unsigned c
     err = errno = ENOMEM, perror(NULL);
   else {
     struct zsv_dir_filter zsv_dir_filter = *zsv_prop_get_or_set_is_prop_file(NULL, 0, 0);
-    err = zsv_dir_to_json(parent_dir, dest, &zsv_dir_filter, verbose);
+    err = zsv_dir_to_json(parent_dir, (const unsigned char *)dest, &zsv_dir_filter, verbose);
   }
   free(parent_dir);
   return err;
 }
-
-
 
 static int zsv_prop_execute_import(const char *dest, const char *src, unsigned char force,
                                    unsigned char dry, unsigned char verbose) {

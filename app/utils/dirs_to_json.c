@@ -10,7 +10,8 @@ struct zsv_dir_foreach_to_json_ctx {
 static int zsv_dir_foreach_to_json(struct zsv_foreach_dirent_handle *h, size_t depth) {
   if(!h->is_dir) {
     struct zsv_dir_foreach_to_json_ctx *ctx = h->ctx;
-    if(ctx->zsv_dir_filter.handler(h, depth) && !ctx->err) {
+    h->ctx = ctx->zsv_dir_filter.ctx;
+    if(ctx->zsv_dir_filter.filter(h, depth) && !ctx->err) {
       char suffix = 0;
       if(strlen(h->parent_and_entry) > 5 && !zsv_stricmp((const unsigned char *)h->parent_and_entry + strlen(h->parent_and_entry) - 5, (const unsigned char *)".json"))
         suffix = 'j'; // json
@@ -62,6 +63,7 @@ static int zsv_dir_foreach_to_json(struct zsv_foreach_dirent_handle *h, size_t d
         }
       }
     }
+    h->ctx = ctx;
   }
   return 0;
 }
@@ -75,14 +77,15 @@ static int zsv_dir_foreach_to_json(struct zsv_foreach_dirent_handle *h, size_t d
  * @param parent_dir : directory to export
  * @param dest       : file path to output to, or NULL to output to stdout
  */
-int zsv_dir_to_json(const unsigned char *parent_dir, const char *dest,
+int zsv_dir_to_json(const unsigned char *parent_dir,
+                    const unsigned char *output_filename,
                     struct zsv_dir_filter *zsv_dir_filter,
                     unsigned char verbose
                     ) {
   int err = 0;
-  FILE *fdest = dest ? fopen(dest, "wb") : stdout;
+  FILE *fdest = output_filename ? fopen((const char *)output_filename, "wb") : stdout;
   if(!fdest)
-    err = errno, perror(dest);
+    err = errno, perror((const char *)output_filename);
   else {
     struct zsv_dir_foreach_to_json_ctx ctx = { 0 };
     ctx.zsv_dir_filter = *zsv_dir_filter;
