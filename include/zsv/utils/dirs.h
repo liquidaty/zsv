@@ -92,7 +92,7 @@ int zsv_foreach_dirent(const char *dir_path,
                        );
 
 struct zsv_dir_filter {
-  zsv_foreach_dirent_handler filter; /* filter function; return 1 to process this node */
+  zsv_foreach_dirent_handler filter; /* filter function; return 1 to process this node. if node is dir, return 0 to skip entirely */
   size_t max_depth;                  /* max depth to recurse */
   void *ctx;                         /* pointer to pass to filter function */
 };
