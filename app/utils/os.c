@@ -6,7 +6,13 @@
  * https://opensource.org/licenses/MIT
  */
 
-#ifdef _WIN32
+#ifndef _WIN32
+
+void zsv_perror(const char *s) {
+  perror(s);
+}
+
+#else
 #include <zsv/utils/os.h>
 #include <windows.h>
 #include <strsafe.h>
@@ -54,15 +60,19 @@ void zsv_win_to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len) {
 
 int zsv_replace_file(const void *src, const void *dest) {
   wchar_t wdest[PATH_MAX], wsrc[PATH_MAX];
+
   zsv_win_to_unicode(dest, wdest, ARRAY_SIZE(wdest));
   zsv_win_to_unicode(src, wsrc, ARRAY_SIZE(wsrc));
 
   if(ReplaceFileW(wdest, wsrc, NULL, REPLACEFILE_IGNORE_MERGE_ERRORS, 0, 0)) // success
     return 0;
-  else if(GetLastError() == 2) // file not found, could be target. use simple rename
+
+  if(GetLastError() == 2) // file not found, could be target. use simple rename
     return _wrename(wsrc, wdest); // returns 0 on success
+
   return 1; // fail
 }
+
 
 void zsv_win_printLastError() {
   DWORD dw = GetLastError();
@@ -86,6 +96,12 @@ void zsv_win_printLastError() {
   fprintf(stderr, "%s\r\n", (LPCTSTR)lpDisplayBuf);
   LocalFree(lpMsgBuf);
   LocalFree(lpDisplayBuf);
+}
+
+void zsv_perror(const char *s) {
+  if(s && *s)
+    fwrite(s, 1, strlen(s), stderr);
+  zsv_win_printLastError(0);
 }
 
 #endif
