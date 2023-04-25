@@ -6,6 +6,7 @@
  * https://opensource.org/licenses/MIT
  */
 
+#include <zsv/utils/os.h>
 #ifndef _WIN32
 
 void zsv_perror(const char *s) {
@@ -13,7 +14,6 @@ void zsv_perror(const char *s) {
 }
 
 #else
-#include <zsv/utils/os.h>
 #include <windows.h>
 #include <strsafe.h>
 

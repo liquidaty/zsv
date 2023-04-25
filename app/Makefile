@@ -134,12 +134,9 @@ CFLAGS+= -I${PREFIX}/include
 THIS_LIB_BASE=$(shell cd .. && pwd)
 INCLUDE_DIR=${THIS_LIB_BASE}/include
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
-UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq
+UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os
 
 ZSV_EXTRAS ?=
-ifneq ($(WIN),0)
- UTILS1+= os
-endif
 
 ifneq ($(findstring emcc,$(CC)),) # emcc
   ZSV_EXTRAS=1
