@@ -9,9 +9,10 @@
 #ifndef ZSV_OS_H
 #define ZSV_OS_H
 
+void zsv_perror(const char *);
+
 #ifndef _WIN32
 # define zsv_replace_file(src, dest) (rename((const char *)src, (const char *)dest))
-
 
 #else
 

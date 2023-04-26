@@ -184,9 +184,17 @@ int zsv_modify_cache_file(const unsigned char *filepath,
       }
     }
     zsv_jq_delete(jqh);
-    if(!jqstat && zsv_replace_file(cache_tmp_fn, cache_fn))
-      err = zsv_printerr(-1, "Unable to save %s", cache_fn);
+
+    if(cache_data) {
+      fclose(cache_data);
+      cache_data = NULL;
+    }
     fclose(tmp);
+
+    if(!jqstat && zsv_replace_file(cache_tmp_fn, cache_fn)) {
+      err = zsv_printerr(-1, "Unable to save %s: ", cache_fn);
+      zsv_perror(NULL);
+    }
   }
 
   if(cache_data)
