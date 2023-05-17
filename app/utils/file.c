@@ -16,7 +16,12 @@
 #include <zsv/utils/dirs.h>
 #include <zsv/utils/file.h>
 
-
+/**
+ * Get a temp file name. The returned value, if any, will have been allocated
+ * on the heap, and the caller should `free()`
+ *
+ * @param prefix string with which the resulting file name will be prefixed
+ */
 #if defined(_WIN32) || defined(WIN32) || defined(WIN)
 #include <windows.h>
 
@@ -37,12 +42,6 @@ char *zsv_get_temp_filename(const char *prefix) {
 }
 #else
 
-/**
- * Get a temp file name. The returned value, if any, will have been allocated
- * on the heap, and the caller should `free()`
- *
- * @param prefix string with which the resulting file name will be prefixed
- */
 char *zsv_get_temp_filename(const char *prefix) {
   char *s = NULL;
   char *tmpdir = getenv("TMPDIR");

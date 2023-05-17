@@ -704,7 +704,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
      "  ["
      "    {",
      "      \"columns\":[{\"name\":\"column 1\"}],",
-     "      \"indexes\":[\"on\":\"column 1\",\"unique\":true]",
+     "      \"indexes\":{\"ix1\":{\"on\":\"[column 1]\",\"unique\":true}}",
      "    },",
      "    [",
      "      [\"row 1 cell 1\"],",
