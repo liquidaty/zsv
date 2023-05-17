@@ -7,6 +7,7 @@
  */
 
 #include <zsv/utils/os.h>
+#include <stdio.h>
 #ifndef _WIN32
 
 void zsv_perror(const char *s) {
@@ -55,7 +56,6 @@ void zsv_win_to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len) {
   }
 }
 
-#include <stdio.h>
 #include <wchar.h>
 
 int zsv_replace_file(const void *src, const void *dest) {

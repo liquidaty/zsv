@@ -683,6 +683,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
      "",
      "Usage: " APPNAME " -o <output path> [-t <table name>] [input.json]\n",
      "",
+     "Alternatively, --output may be used in lieu of -o",
+     "",
      "Options:",
      "  -h,--help",
      "  --table <table_name> : save as specified table name",
@@ -691,8 +693,24 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
      // --sql to output sql statements
      // --append: append to existing db
      "",
-     "Miscellaneous:",
-     "  Alternatively, --output may be used in lieu of -o",
+     "Converts a json representation of a database table to an sqlite3 file.",
+     "",
+
+     // TO DO: add output examples and schema descriptions
+     "The input should conform to the schema defined at:",
+     "  https://github.com/liquidaty/zsv/blob/main/app/schema/database-table.json",
+     "",
+     "For example:",
+     "  ["
+     "    {",
+     "      \"columns\":[{\"name\":\"column 1\"}],",
+     "      \"indexes\":{\"ix1\":{\"on\":\"[column 1]\",\"unique\":true}}",
+     "    },",
+     "    [",
+     "      [\"row 1 cell 1\"],",
+     "      [\"row 2 cell 1\"]",
+     "    ]",
+     "  ]",
      NULL
     };
 

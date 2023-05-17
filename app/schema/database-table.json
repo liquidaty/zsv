@@ -1,0 +1,103 @@
+{
+  "description": "Table that can be indexed and queried via SQL",
+  "type": "array",
+  "items": [
+    {
+      "description": "Table metadata",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "description": "description of this table",
+          "type": "string"
+        },
+        "indexes": {
+          "description": "Map of indexes on this table",
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "$comment": "to do: add auto-generated description to documentation",
+            "properties": {
+              "on": {
+                "type": "array",
+                "items": {
+                  "description": "expression to index on, usually a column name such as 'ID' or '[Row ID]'",
+                  "type": "string"
+                }
+              },
+              "unique": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "column name",
+                "type": "string"
+              },
+              "description": {
+                "description": "description of this column",
+                "type": "string"
+              },
+              "collate": {
+                "type": "string",
+                "enum": [
+                  "nocase",
+                  "rtrim",
+                  "binary"
+                ]
+              },
+              "datatype": {
+                "type": "string",
+                "enum": [
+                  "int",
+                  "real",
+                  "text"
+                ]
+              },
+              "normalize": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "description": "table data: array of rows",
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
