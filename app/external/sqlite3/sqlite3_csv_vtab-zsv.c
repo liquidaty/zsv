@@ -250,7 +250,7 @@ static void zsv_row_header(void *ctx) {
   zsvTable *t = ctx;
   if(!t->header.rows)
     add_row_to_cache(t->parser, &t->header, 0);
-  zsv_set_row_handler(t->parser, zsv_row_data);
+//  zsv_set_row_handler(t->parser, zsv_row_data);
 }
 
 #include "vtab_helper.c"
@@ -330,8 +330,8 @@ static int zsvtabConnect(
     goto zsvtab_connect_error;
   }
 
-  pNew->parser_opts.row_handler = zsv_row_header;
-  pNew->parser_opts.ctx = pNew;
+//  pNew->parser_opts.row_handler = zsv_row_header;
+//  pNew->parser_opts.ctx = pNew;
   pNew->zFilename = CSV_FILENAME;
   pNew->opts_used = ZSV_OPTS_USED;
   CSV_FILENAME = ZSV_OPTS_USED = 0; // in use; don't free
@@ -339,17 +339,25 @@ static int zsvtabConnect(
                              &pNew->parser) != zsv_status_ok)
     goto zsvtab_connect_error;
 
+/*
   pNew->parser_status = zsv_parse_more(pNew->parser);
   if(pNew->parser_status != zsv_status_ok &&
      pNew->parser_status != zsv_status_no_more_input) {
+*/
+  if((pNew->parser_status = zsv_next_row(pNew->parser)) != zsv_status_row) {
     asprintf(&errmsg, "%s", zsv_parse_status_desc(pNew->parser_status));
     goto zsvtab_connect_error;
+  } else {
+    zsv_row_header(pNew);
+    pNew->parser_status = zsv_next_row(pNew->parser);
   }
 
+/*
   if(!(pNew->header.rows && pNew->header.rows->column_count)) {
     asprintf(&errmsg, "No rows of data parsed (first row is too large? Try using a larger max_row_size)\n");
     goto zsvtab_connect_error;
   }
+*/
 
   // check that we have no "blank" column names
   struct zsv_vtab_cache_row *header = pNew->header.rows;
@@ -487,10 +495,15 @@ static int zsvtabFilter(
   zsvTable_clear(pTab);
   fseek(pTab->parser_opts.stream, 0, SEEK_SET);
 
-  pTab->parser_opts.row_handler = zsv_row_header;
-  if(!(pTab->parser = zsv_new(&pTab->parser_opts)))
+//  pTab->parser_opts.row_handler = zsv_row_header;
+//  if(!(pTab->parser = zsv_new(&pTab->parser_opts)))
+  if(zsv_new_with_properties(&pTab->parser_opts, pTab->zFilename, pTab->opts_used,
+                             &pTab->parser) != zsv_status_ok
+     || (pTab->parser_status = zsv_next_row(pTab->parser)) != zsv_status_row)
     return SQLITE_ERROR;
-  pTab->parser_status = zsv_parse_more(pTab->parser);
+  pTab->parser_status = zsv_next_row(pTab->parser);
+//  else
+//  pTab->parser_status = zsv_parse_more(pTab->parser);
   return SQLITE_OK;
 }
 
@@ -501,13 +514,15 @@ static int zsvtabFilter(
 */
 static int zsvtabNext(sqlite3_vtab_cursor *cur){
   zsvTable *pTab = (zsvTable*)cur->pVtab;
-
+  pTab->parser_status = zsv_next_row(pTab->parser);
+/*
   remove_row_from_cache(&pTab->data);
   if(!pTab->data.rows && pTab->parser_status != zsv_status_no_more_input) {
     pTab->parser_status = zsv_parse_more(pTab->parser);
     if(pTab->parser_status == zsv_status_no_more_input)
       zsv_finish(pTab->parser);
   }
+*/
   return SQLITE_OK;
 }
 
@@ -516,8 +531,15 @@ static int zsvtabNext(sqlite3_vtab_cursor *cur){
 ** row of output.
 */
 static int zsvtabEof(sqlite3_vtab_cursor *cur){
+//  fprintf(stderr, "zsvtabEof\n");
   zsvTable *pTab = (zsvTable*)cur->pVtab;
-  return !pTab->data.rows && pTab->parser_status == zsv_status_no_more_input;
+/*
+
+  if(!pTab->data.rows || pTab->parser_status == zsv_status_no_more_input)
+    fprintf(stderr, "EOF!\n");
+  return !pTab->data.rows || pTab->parser_status == zsv_status_no_more_input;
+*/
+  return pTab->parser_status != zsv_status_row;
 }
 
 /*
@@ -529,9 +551,11 @@ static int zsvtabColumn(
   sqlite3_context *ctx,       /* First argument to sqlite3_result_...() */
   int i                       /* Which column to return */
 ){
-  zsvTable *pTab = (zsvTable*)cur->pVtab;
+//  fprintf(stderr, "zsvtabColumn\n");
 
-  struct zsv_cell c = get_cell_from_cache(&pTab->data, i);
+  zsvTable *pTab = (zsvTable*)cur->pVtab;
+  //struct zsv_cell c = get_cell_from_cache(&pTab->data, i);
+  struct zsv_cell c = zsv_get_cell(pTab->parser, i);
   sqlite3_result_text(ctx, (char *)c.str, c.len, SQLITE_STATIC);
   return SQLITE_OK;
 }
