@@ -231,7 +231,7 @@ static void zsvTable_delete(struct zsvTable *z) {
 
 static struct zsv_cell get_cell_from_cache(struct zsv_vtab_cache *cache, int n) {
   struct zsv_vtab_cache_row *r = cache->rows;
-  if(n >= 0) {
+  if(n >= 0 && r != NULL) {
     if((size_t)n < r->column_count)
       return r->cells[n];
   }
