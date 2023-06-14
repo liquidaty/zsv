@@ -129,7 +129,7 @@ test-cli: ${CLI}
 	@${TEST_INIT}
 	@[ "${CLI}" = "" ] && echo 1>&2 'test-cli: missing CLI env var' && exit 1 || exit 0
 	@$< help select 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out`" = "select: streaming CSV parser" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "35" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ "`head -1 ${TMP_DIR}/$@.out`" = "select: streaming CSV parser" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "36" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@$< help count 2>&1 > ${TMP_DIR}/$@.out
 	@[ "`head -1 ${TMP_DIR}/$@.out`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "5" ] && ${TEST_PASS} || ${TEST_FAIL}
 
