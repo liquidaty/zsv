@@ -114,7 +114,8 @@ struct zsv_select_data {
 #define ZSV_SELECT_DISTINCT_MERGE 2
   unsigned char distinct:2; // 1 = ignore subsequent cols, ZSV_SELECT_DISTINCT_MERGE = merge subsequent cols (first non-null value)
   unsigned char unescape:1;
-  unsigned char _:4;
+  unsigned char no_header:1;
+  unsigned char _:3;
 };
 
 enum zsv_select_column_index_selection_type {
@@ -458,6 +459,8 @@ static void zsv_select_data_row(void *ctx) {
 }
 
 static void zsv_select_print_header_row(struct zsv_select_data *data) {
+  if(data->no_header)
+    return;
   if(data->prepend_line_number)
     zsv_writer_cell_s(data->csv_writer, 1, (const unsigned char *)"#", 0);
   for(unsigned int i = 0; i < data->output_cols_count; i++) {
@@ -527,6 +530,7 @@ const char *zsv_select_usage_msg[] = {
 #ifndef ZSV_CLI
   "  -v,--verbose                : verbose output",
 #endif
+  "  --no-header                 : do not output a header row",
   "  -H,--head <n>               : (head) only process the first n rows of data",
   "                                selected from all rows in the input",
   "  -s,--search <value>         : only output rows with at least one cell containing"
@@ -818,6 +822,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         stat = zsv_printerr(-1, "--sample-pct value should be a number between 0 and 100 (e.g. 1.5 for a sample of 1.5% of the data");
       else
         data.sample_pct = d;
+    } else if(!strcmp(argv[arg_i], "--no-header")) {
+        data.no_header = 1;
     } else if(!strcmp(argv[arg_i], "-H") || !strcmp(argv[arg_i], "--head")) {
       if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) >= 0))
         stat = zsv_printerr(1, "%s option value invalid: should be positive integer; got %s", argv[arg_i], arg_i + 1 < argc ? argv[arg_i+1] : "");
