@@ -128,7 +128,7 @@ test-count test-count-pull: test-% : test-1-% test-2-%
 
 test-cli: ${CLI}
 	@${TEST_INIT}
-	@[ "${CLI}" = "" ] && echo 1>&2 'test-cli: missing CLI env var' && exit 1 || exit 0 
+	@[ "${CLI}" = "" ] && echo 1>&2 'test-cli: missing CLI env var' && exit 1 || exit 0
 	@$< help select 2>&1 > ${TMP_DIR}/$@.out
 	@[ "`head -1 ${TMP_DIR}/$@.out`" = "select: streaming CSV parser" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "35" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@$< help count 2>&1 > ${TMP_DIR}/$@.out
@@ -271,7 +271,7 @@ test-blank-leading-rows-4: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${PREFIX} $< -R 2 ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2>&1
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-stack: test-stack1 test-stack2
+test-stack: test-stack1 test-stack2 test-stack3
 
 test-stack1: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${TEST_INIT}
@@ -281,6 +281,12 @@ test-stack1: ${BUILD_DIR}/bin/zsv_stack${EXE}
 test-stack2: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${TEST_INIT}
 	@${PREFIX} $< ${TEST_DATA_DIR}/stack2-[12].csv ${REDIRECT} ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-stack3: ${BUILD_DIR}/bin/zsv_stack${EXE}
+	@${TEST_INIT}
+	@echo 'a,b,c' > /tmp/1.csv
+	@${PREFIX} $< /tmp/1.csv ${REDIRECT1} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-sql test-flatten : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}

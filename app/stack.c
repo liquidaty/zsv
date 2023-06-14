@@ -347,6 +347,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     }
     zsv_delete(input->parser);
+    input->parser = NULL;
   }
 
   // not necessary, but free up unused memory by resizing each input's output_column_map
