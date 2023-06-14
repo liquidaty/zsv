@@ -74,6 +74,8 @@ struct zsv_select_data {
   unsigned int header_name_count;
   unsigned char **header_names;
 
+  const char *prepend_header; // --prepend-header
+
   char header_finished;
 
   char embedded_lineend;
@@ -450,12 +452,14 @@ static void zsv_select_data_row(struct zsv_select_data *data, zsv_parser p) {
 static void zsv_select_print_header_row(struct zsv_select_data *data) {
   if(data->no_header)
     return;
+  zsv_writer_cell_prepend(data->csv_writer, (const unsigned char *)data->prepend_header);
   if(data->prepend_line_number)
     zsv_writer_cell_s(data->csv_writer, 1, (const unsigned char *)"#", 0);
   for(unsigned int i = 0; i < data->output_cols_count; i++) {
     unsigned char *header_name = zsv_select_get_header_name(data, data->out2in[i].ix);
     zsv_writer_cell_s(data->csv_writer, i == 0 && !data->prepend_line_number, header_name, 1);
   }
+  zsv_writer_cell_prepend(data->csv_writer, NULL);
 }
 
 static void zsv_select_header_finish(struct zsv_select_data *data) {
@@ -515,11 +519,9 @@ const char *zsv_select_usage_msg[] = {
 #ifndef ZSV_CLI
   "  -v, --verbose: verbose output",
 #endif
+  "  -H,--head <n>               : (head) only process the first n rows of data from all rows (including header) in the input",
   "  --no-header                 : do not output a header row",
-  "  -H, --head <n>: (head) only process the first n rows of data",
-  "                                selected from all rows in the input",
-  "  --header-row <header row>: insert the provided CSV as the first row",
-  "        e.g. --header-row 'colname1,colname2,\"my column 3\"'",
+  "  --prepend-header <value>    : prepend each column header with the given text value",
   "  -s, --search <value>: only output rows with at least one cell containing value",
   // to do: " -s, --search /<pattern>/modifiers: search on regex pattern; modifiers include 'g' (global) and 'i' (case-insensitive)",
   "  --sample-every <num of rows>: output a sample consisting of the first row, then every nth row",
@@ -676,6 +678,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         stat = zsv_printerr(-1, "--sample-pct value should be a number between 0 and 100 (e.g. 1.5 for a sample of 1.5% of the data");
       else
         data.sample_pct = d;
+    } else if(!strcmp(argv[arg_i], "--prepend-header")) {
+      if(!(arg_i + 1 < argc))
+        stat = zsv_printerr(1, "%s option requires a value");
+      else
+        data.prepend_header = argv[++arg_i];
     } else if(!strcmp(argv[arg_i], "--no-header")) {
       data.no_header = 1;
     } else if(!strcmp(argv[arg_i], "-H") || !strcmp(argv[arg_i], "--head")) {

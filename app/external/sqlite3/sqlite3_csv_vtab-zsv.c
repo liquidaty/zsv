@@ -234,7 +234,7 @@ static int zsvtabConnect(
     goto zsvtab_connect_error;
 
   if((pNew->parser_status = zsv_next_row(pNew->parser)) != zsv_status_row) {
-    asprintf(&errmsg, "%s", zsv_parse_status_desc(pNew->parser_status));
+    asprintf(&errmsg, "Could not fetch header row: %s", zsv_parse_status_desc(pNew->parser_status));
     goto zsvtab_connect_error;
   }
 

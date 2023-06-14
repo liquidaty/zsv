@@ -7,6 +7,7 @@
  */
 
 #include <zsv/utils/writer.h>
+#include <zsv/utils/compiler.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
@@ -116,6 +117,8 @@ struct zsv_writer_data {
   void (*table_init)(void *);
   void *table_init_ctx;
 
+  const char *cell_prepend;
+
   unsigned char with_bom:1;
   unsigned char started:1;
   unsigned char _:6;
@@ -198,21 +201,10 @@ enum zsv_writer_status zsv_writer_delete(zsv_csv_writer w) {
   return zsv_writer_status_ok;
 }
 
-enum zsv_writer_status zsv_writer_cell(zsv_csv_writer w, char new_row,
+static inline
+enum zsv_writer_status zsv_writer_cell_aux(zsv_csv_writer w,
                                            const unsigned char *s, size_t len,
                                            char check_if_needs_quoting) {
-  if(!w) return zsv_writer_status_missing_handle;
-  if(!w->started) {
-    if(w->table_init)
-      w->table_init(w->table_init_ctx);
-    if(w->with_bom)
-      zsv_output_buff_write(&w->out, (const unsigned char *)"\xef\xbb\xbf", 3);
-    w->started = 1;
-  } else if(new_row)
-    zsv_output_buff_write(&w->out, (const unsigned char *)"\n", 1);
-  else
-    zsv_output_buff_write(&w->out, (const unsigned char *)",", 1);
-
   if(len) {
     if(check_if_needs_quoting) {
       unsigned char *quoted_s = zsv_csv_quote(s, len, w->buff, w->buffsize);
@@ -227,6 +219,39 @@ enum zsv_writer_status zsv_writer_cell(zsv_csv_writer w, char new_row,
       zsv_output_buff_write(&w->out, s, len);
   }
   return zsv_writer_status_ok;
+}
+
+enum zsv_writer_status zsv_writer_cell(zsv_csv_writer w, char new_row,
+                                       const unsigned char *s, size_t len,
+                                       char check_if_needs_quoting) {
+  if(!w) return zsv_writer_status_missing_handle;
+  if(!w->started) {
+    if(w->table_init)
+      w->table_init(w->table_init_ctx);
+    if(w->with_bom)
+      zsv_output_buff_write(&w->out, (const unsigned char *)"\xef\xbb\xbf", 3);
+    w->started = 1;
+  } else if(new_row)
+    zsv_output_buff_write(&w->out, (const unsigned char *)"\n", 1);
+  else
+    zsv_output_buff_write(&w->out, (const unsigned char *)",", 1);
+
+  if(VERY_UNLIKELY(w->cell_prepend && *w->cell_prepend)) {
+    char *tmp = NULL;
+    asprintf(&tmp, "%s%.*s", w->cell_prepend, (int)len, s);
+    if(!tmp)
+      return zsv_writer_status_error; // zsv_writer_status_memory;
+    s = (const char *)tmp;
+    len = len + strlen(w->cell_prepend);
+    enum zsv_writer_status stat = zsv_writer_cell_aux(w, s, len, 1);
+    free(tmp);
+    return stat;
+  }
+  return zsv_writer_cell_aux(w, s, len, check_if_needs_quoting);
+}
+
+void zsv_writer_cell_prepend(zsv_csv_writer w, const unsigned char *s) {
+  w->cell_prepend = (const char *)s;
 }
 
 enum zsv_writer_status zsv_writer_cell_Lf(zsv_csv_writer w, char new_row, const char *fmt_spec,
@@ -260,8 +285,8 @@ enum zsv_writer_status zsv_writer_cell_zu(zsv_csv_writer w, char new_row, size_t
 }
 
 enum zsv_writer_status zsv_writer_cell_s(zsv_csv_writer w, char new_row,
-                                             const unsigned char *s,
-                                             char check_if_needs_quoting) {
+                                         const unsigned char *s,
+                                         char check_if_needs_quoting) {
   return zsv_writer_cell(w, new_row, s, s ? strlen((const char *)s) : 0,
                            check_if_needs_quoting);
 }

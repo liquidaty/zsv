@@ -74,4 +74,12 @@ enum zsv_writer_status zsv_writer_cell_Lf(zsv_csv_writer w, char new_row,
 // write a blank cell
 enum zsv_writer_status zsv_writer_cell_blank(zsv_csv_writer w, char new_row);
 
+/**
+ * set a value to be prepended to the next cell value that is written
+ *
+ * @param w  handle to the writer
+ * @param s  text value to write (can be NULL)
+ */
+void zsv_writer_cell_prepend(zsv_csv_writer w, const unsigned char *s);
+
 #endif
