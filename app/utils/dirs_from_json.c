@@ -1,4 +1,4 @@
-#include <yajl_helper.h>
+#include <yajl_helper/yajl_helper.h>
 #include <zsv/utils/file.h>
 
 struct zsv_dir_from_json_ctx {
