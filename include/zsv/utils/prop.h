@@ -1,10 +1,18 @@
 #ifndef ZSV_PROP_H
 #define ZSV_PROP_H
 
+#include <yajl_helper.h>
+
 struct zsv_file_properties {
   unsigned int skip;
   unsigned int header_span;
   int err;
+
+  /* to process custom properties, you can provide your own handler and context */
+  struct {
+    int (*handler)(void *ctx, const char *path, struct json_value *value);
+    void *ctx;
+  } custom_property;
 
   /* flags used by parser only to indicate whether property was specified */
   unsigned int skip_specified:1;
@@ -79,6 +87,19 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
  * @param max_depth   : maximum depth of any property file. if is_prop_file was NULL,
  *                      max_depth is set to 1
  */
+
+/**
+ * zsv_new_with_custom_properties(): same as zsv_new_with_properties(), but
+ * with a custom-provided `struct zsv_file_properties` (for example, with a non-NULL
+ * custom_property.handler and custom_property.ctx)
+ */
+enum zsv_status zsv_new_with_custom_properties(struct zsv_opts *opts,
+                                               struct zsv_file_properties *fp,
+                                               const char *input_path,
+                                               const char *opts_used,
+                                               zsv_parser *handle_out
+                                        );
+
 #include "dirs.h"
 
 struct zsv_dir_filter; /* opaque structure for internal use */

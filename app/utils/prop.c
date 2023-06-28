@@ -155,8 +155,13 @@ static int zsv_properties_parse_process_value(struct yajl_helper_parse_state *st
       fp->header_span_specified = 1;
     }
     if(!target) {
-      fprintf(stderr, "Unrecognized property: %s\n", prop_name);
-      fp->err = 1;
+      int rc = 0;
+      if(fp->custom_property.handler)
+        rc = fp->custom_property.handler(fp->custom_property.ctx, prop_name, value);
+      if(!rc) {
+        fprintf(stderr, "Unrecognized property: %s\n", prop_name);
+        fp->err = 1;
+      }
     } else {
       long long i = json_value_long(value, &fp->err);
       if(fp->err || i < 0 || i > UINT_MAX)
@@ -180,10 +185,25 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
                                         const char *opts_used,
                                         zsv_parser *handle_out
                                         ) {
+  return zsv_new_with_custom_properties(opts, NULL, input_path, opts_used, handle_out);
+}
+
+
+/**
+ * zsv_new_with_custom_properties(): same as zsv_new_with_properties(), but
+ * with a custom-provided `struct zsv_file_properties` (for example, with a non-NULL
+ * custom_property.handler and custom_property.ctx)
+ */
+enum zsv_status zsv_new_with_custom_properties(struct zsv_opts *opts,
+                                               struct zsv_file_properties *fp,
+                                               const char *input_path,
+                                               const char *opts_used,
+                                               zsv_parser *handle_out
+                                        ) {
   enum zsv_status stat = zsv_status_ok;
   *handle_out = NULL;
   if(input_path) {
-    stat = zsv_cache_load_props(input_path, opts, NULL, opts_used);
+    stat = zsv_cache_load_props(input_path, opts, fp, opts_used);
     if(stat != zsv_status_ok)
       return stat;
   }
