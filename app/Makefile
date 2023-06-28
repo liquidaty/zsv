@@ -407,7 +407,7 @@ ${YAJL_OBJ}: ${BUILD_DIR}-external/yajl/%.o : external/yajl/src/%.c
 
 ${YAJL_HELPER_OBJ}: external/yajl_helper/yajl_helper.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${BASEDIR} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -c $< -o $@
+	${CC} ${CFLAGS} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -c $< -o $@
 
 test:	test-standalone test-cli
 
