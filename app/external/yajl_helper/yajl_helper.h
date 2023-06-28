@@ -5,7 +5,7 @@
 
 #include <stdio.h>
 
-#include "json_value.h"
+#include "yajl_helper/json_value.h"
 
 enum yajl_helper_option {
   yajl_helper_option_use_number_strings = 1

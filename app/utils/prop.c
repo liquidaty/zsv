@@ -6,7 +6,7 @@
 #include <zsv/utils/prop.h>
 #include <zsv/utils/cache.h>
 #include <zsv/utils/file.h>
-#include <yajl_helper.h>
+#include <yajl_helper/yajl_helper.h>
 
 // to do: import these through a proper header
 static int zsv_properties_parse_process_value(struct yajl_helper_parse_state *st, struct json_value *value);
