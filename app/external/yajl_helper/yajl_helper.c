@@ -11,7 +11,7 @@ static inline void *yh_memdup(const void *src, size_t n) {
 }
 
 #include "yajl_helper.h"
-#include "json_value.h"
+#include "yajl_helper/json_value.h"
 
 #define YAJL_HELPER_LEVEL(st) (st->level - st->level_offset)
 
@@ -251,6 +251,7 @@ void yajl_helper_parse_state_free(struct yajl_helper_parse_state *st) {
     free(st->item_ind);
     if(st->yajl)
       yajl_free(st->yajl);
+    memset(st, 0, sizeof(*st));
   }
 }
 
@@ -403,8 +404,8 @@ static int yajl_helper_null(void *ctx) {
   return process_value(st, ctx, &value);
 }
 
-static int yajl_helper_error(void * ctx, const char *buf,
-                             size_t bufLen, int err_no) {
+static int yajl_helper_error(void * ctx, const unsigned char *buf,
+                             unsigned bufLen, int err_no) {
   (void)(err_no);
   struct yajl_helper_parse_state *st = ctx;
 

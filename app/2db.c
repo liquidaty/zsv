@@ -19,7 +19,7 @@
 #include <zsv/utils/mem.h>
 #include <zsv/utils/string.h>
 
-#include <yajl_helper.h>
+#include <yajl_helper/yajl_helper.h>
 
 #define ZSV_2DB_DEFAULT_TABLE_NAME "mytable"
 

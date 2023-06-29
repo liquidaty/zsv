@@ -211,7 +211,9 @@ YAJL_OBJ=$(addprefix ${BUILD_DIR}-external/yajl/,$(addsuffix .o,${YAJL_OBJ1}))
 YAJL_INCLUDE=-I${YAJL_SRC_DIR}/build/yajl-2.1.1/include
 
 YAJL_HELPER_OBJ=${BUILD_DIR}-external/yajl_helper/yajl_helper.o
-YAJL_HELPER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/yajl_helper
+# YAJL_HELPER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/yajl_helper
+YAJL_HELPER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external
+CFLAGS+=${YAJL_HELPER_INCLUDE} ${YAJL_INCLUDE}
 
 # jq
 JQ_TARBALL=${THIS_MAKEFILE_DIR}/external/jq-1.6.tar.bz2
@@ -406,7 +408,7 @@ ${YAJL_OBJ}: ${BUILD_DIR}-external/yajl/%.o : external/yajl/src/%.c
 
 ${YAJL_HELPER_OBJ}: external/yajl_helper/yajl_helper.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${BASEDIR}/yajl_helper ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -c $< -o $@
+	${CC} ${CFLAGS} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -c $< -o $@
 
 test:	test-standalone test-cli
 
