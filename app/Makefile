@@ -299,7 +299,7 @@ ${CLEANS}: clean-%:
 	rm -f ${STANDALONE_PFX}$*${EXE}
 	rm -f ${BUILD_DIR}/*/*$*.o
 
-.PHONY: all install cli build build-% clean clean-% test test-% lib-%
+.PHONY: all install cli build build-% clean clean-% test test-% lib-% check
 
 .SECONDARY: ${OBJECTS}
 
@@ -410,7 +410,7 @@ ${YAJL_HELPER_OBJ}: external/yajl_helper/yajl_helper.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -c $< -o $@
 
-test:	test-standalone test-cli
+check test:	test-standalone test-cli
 
 test-standalone:
 	@${MAKE} -C test test QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}

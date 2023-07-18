@@ -26,31 +26,6 @@ static int zsv_compare_sort_prep_table(struct zsv_compare_data *data,
   return rc;
 }
 
-/*
-static
-struct zsv_compare_sort **zsv_compare_sort_add(struct zsv_compare_sort **next,
-                                               const char *by,
-                                               enum zsv_compare_status *stat) {
-  struct zsv_compare_sort *e = calloc(1, sizeof(*e));
-  if(!e)
-    *stat = zsv_compare_status_memory;
-  else {
-    e->by = by;
-    *next = e;
-    next = &e->next;
-  }
-  return next;
-}
-
-static void zsv_compare_sort_delete(struct zsv_compare_sort *sort) {
-  for(struct zsv_compare_sort *next; sort; sort = next) {
-    next = sort->next;
-    free(sort);
-  }
-}
-
-*/
-
 static int zsv_compare_sort_stmt_prep(sqlite3 *db, sqlite3_stmt **stmtp,
                                       // struct zsv_compare_sort *sort,
                                       struct zsv_compare_key *keys,
@@ -62,7 +37,6 @@ static int zsv_compare_sort_stmt_prep(sqlite3 *db, sqlite3_stmt **stmtp,
   }
 
   sqlite3_str_appendf(select_clause, "select * from data%i order by ", ix);
-//  for(struct zsv_compare_sort *tmp = sort; tmp; tmp = tmp->next)
   for(struct zsv_compare_key *key = keys; key; key = key->next)
     sqlite3_str_appendf(select_clause, "%s\"%w\"", key == keys ? "" : ", ", key->name);
 
@@ -88,7 +62,7 @@ input_init_sorted(struct zsv_compare_data *data,
   }
   if(rc == SQLITE_OK)
     rc = zsv_compare_sort_stmt_prep(data->sort_db, &input->sort_stmt,
-                                    data->keys, // data->sort,
+                                    data->keys,
                                     input->index);
   return rc == SQLITE_OK ? zsv_compare_status_ok : zsv_compare_status_error;
 }

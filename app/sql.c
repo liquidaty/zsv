@@ -33,23 +33,26 @@ struct string_list {
 const char *zsv_sql_usage_msg[] =
   {
    APPNAME ": run ad hoc sql on a CSV file",
+   "          or join multiple CSV files on one or more common column(s)",
    "",
 #ifdef NO_STDIN
    "Usage: " APPNAME " <filename> [filename ...] <sql | @file.sql>",
 #else
-   "Usage: " APPNAME " [filename, or - for stdin] [filename ...] <sql | @file.sql>",
+   "Usage: " APPNAME " [filename, or - for stdin] [filename ...] <sql | @file.sql | --join-indexes <N,...>>",
 #endif
    "  e.g. " APPNAME " myfile.csv \"select * from data\"",
    "  e.g. " APPNAME " myfile.csv myfile2.csv \"select * from data inner join data2\"",
+   "  e.g. " APPNAME " myfile.csv myfile2.csv --join-indexes 1,2",
    "",
    "Loads your CSV file into a table named 'data', then runs your sql, which must start with 'select '.",
    "If multiple files are specified, tables will be named data, data2, data3, ...",
    "",
    "Options:",
    "  --join-indexes <n1...>: specify one or more column names to join multiple files by",
-   "     each n is treated as an index in the first input file that determines a column"
+   "     each n is treated as an index in the first input file that determines a column",
    "     of the join. For example, if joining two files that, respectively, have columns",
-   "     A,B,C,D and X,B,C,A,Y then `--join-indexes 1,3` will join on columns A and C",
+   "     A,B,C,D and X,B,C,A,Y then `--join-indexes 1,3` will join on columns A and C.",
+   "     When using this option, do not include an sql statement",
    "  -b: output with BOM",
    "  -C, --max-cols <n>    : change the maximum allowable columns. must be > 0 and < 2000",
    "  -o <output filename>  : name of file to save output to",
@@ -352,10 +355,31 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         // sql template:
         // select t1.*, t2.*, t3.* from t1 left join (select * from t2 group by a) t2 left join (select * from t3 group by a) t3 using(a);
         sqlite3_stmt *stmt = NULL;
-        rc = sqlite3_prepare_v2(db, "select * from data", -1, &stmt, NULL);
-        if(rc != SQLITE_OK)
-          fprintf(stderr, "%s:\n  %s\n (or bad CSV/utf8 input)\n\n", sqlite3_errstr(err), "select * from data");
-        else {
+        const char *prefix_search = NULL;
+        const char *prefix_end = NULL;
+        if(my_sql) {
+          prefix_search = " from data ";
+          prefix_end = strstr(my_sql, prefix_search);
+          if(!prefix_end) {
+            prefix_search = " from data";
+            prefix_end = strstr(my_sql, prefix_search);
+            if(prefix_end && (prefix_end + strlen(prefix_search) != my_sql + strlen(my_sql)))
+              prefix_end = NULL;
+          }
+          if(!prefix_end || !prefix_search) {
+            err = 1;
+            fprintf(stderr, "Invalid sql: must contain 'from data'");
+          }
+        }
+
+        if(!err) {
+          rc = sqlite3_prepare_v2(db, "select * from data", -1, &stmt, NULL);
+          if(rc != SQLITE_OK) {
+            fprintf(stderr, "%s:\n  %s\n (or bad CSV/utf8 input)\n\n", sqlite3_errstr(err), "select * from data");
+            err = 1;
+          }
+        }
+        if(!err) {
           struct string_list **next_joined_column_name = &data.join_column_names;
           int col_count = sqlite3_column_count(stmt);
           for(char *ix_str = data.join_indexes; !err && ix_str && *ix_str && *(++ix_str); ix_str = strchr(ix_str + 1, ',')) {
@@ -399,13 +423,24 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
             int i = 2;
             for(struct string_list *sl = data.more_input_filenames; sl; sl = sl->next, i++) {
               sqlite3_str_appendf(select_clause, ", data%i.*", i);
-              // left join (select * from t2 group by a) t2
+              // left join (select * from t2 group by a) t2 using(x,...)
               sqlite3_str_appendf(from_clause, " left join (select * from data%i group by %s) data%i", i,
                                   sqlite3_str_value(group_by_clause), i);
+              sqlite3_str_appendf(from_clause, " using (%s)",
+                                  sqlite3_str_value(group_by_clause));
             }
-            asprintf(&data.sql_dynamic, "select %s from %s using (%s)",
-                     sqlite3_str_value(select_clause), sqlite3_str_value(from_clause),
-                     sqlite3_str_value(group_by_clause));
+
+            if(!prefix_end || !prefix_search)
+              asprintf(&data.sql_dynamic, "select %s from %s",
+                       sqlite3_str_value(select_clause), sqlite3_str_value(from_clause));
+            else {
+              asprintf(&data.sql_dynamic, "%.*s from %s%s%s", prefix_end - my_sql, my_sql,
+                       sqlite3_str_value(from_clause),
+                       strlen(prefix_end + strlen(prefix_search)) ? " " : "",
+                       strlen(prefix_end + strlen(prefix_search)) ?
+                       prefix_end + strlen(prefix_search) : "");
+            }
+
             my_sql = data.sql_dynamic;
             if(opts->verbose)
               fprintf(stderr, "Join sql:\n%s\n", my_sql);
