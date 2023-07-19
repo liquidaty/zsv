@@ -334,8 +334,7 @@ static void zsv_compare_output_begin(struct zsv_compare_data *data) {
 
     // write additional column names
     for(struct zsv_compare_added_column *ac = data->added_columns; ac; ac = ac->next)
-      zsv_compare_header_str(data, ac->colname->name, // ac->colname->name_len,
-                             ZSV_WRITER_SAME_ROW, 1);
+      zsv_compare_header_str(data, ac->colname->name, ZSV_WRITER_SAME_ROW, 1);
 
     if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON && !data->writer.object)
       jsonwriter_end_array(data->writer.handle.jsw);
@@ -591,7 +590,7 @@ static int compare_usage() {
   return 0;
 }
 
-// TO DO: consolidate common code w sql.c-- move to utils/db.c?
+// TO DO: consolidate w sql.c, move common code to utils/db.c
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
                                const char *opts_used) {
   /**

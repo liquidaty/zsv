@@ -53,7 +53,7 @@ help:
 lib:
 	@${MAKE} -C src install CONFIGFILE=${CONFIGFILEPATH}
 
-test:
+check test:
 	@${MAKE} -C app test CONFIGFILE=${CONFIGFILEPATH}
 	@${MAKE} -C examples/lib test CONFIGFILE=${CONFIGFILEPATH}
 
@@ -78,4 +78,4 @@ uninstall-app:
 uninstall-lib:
 	${MAKE} -C src uninstall CONFIGFILE=${CONFIGFILEPATH}
 
-.PHONY: help install uninstall uninstall-app uninstall-lib
+.PHONY: help install uninstall uninstall-app uninstall-lib check
