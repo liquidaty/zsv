@@ -710,9 +710,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       arg_i++;
       if(!(arg_i < argc))
         stat = zsv_printerr(1, "%s option requires a value", argv[arg_i-1]);
-      else if(zsv_select_column_index_selection((const unsigned char *)argv[arg_i], NULL, NULL) ==
-              zsv_select_column_index_selection_type_none)
-        stat = zsv_printerr(1, "%s option: invalid value %s (expected number or number range e.g. 8 or 8-12)", argv[arg_i-1], argv[arg_i]);
       else
         zsv_select_add_exclusion(&data, argv[arg_i]);
     } else if(*argv[arg_i] == '-')
