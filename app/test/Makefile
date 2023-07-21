@@ -162,6 +162,9 @@ test-n-select test-n-select-pull: test-n-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv -u "?" -R 4 -d 2 ${REDIRECT} ${TMP_DIR}/test-n-$*.out
 	@${CMP} ${TMP_DIR}/test-n-$*.out expected/test-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
+	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv -u "?" -H 10 -R 4 -d 2 -x 'Cash Out Amount' ${REDIRECT} ${TMP_DIR}/test-n-$*-x.out
+	@${CMP} ${TMP_DIR}/test-n-$*-x.out expected/test-select-x.out && ${TEST_PASS} || ${TEST_FAIL}
+
 	@${PREFIX} $< ${TEST_DATA_DIR}/test/embedded.csv -e 'X' ${REDIRECT} ${TMP_DIR}/test-2-$*.out
 	@${CMP} ${TMP_DIR}/test-2-$*.out expected/test-2-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
