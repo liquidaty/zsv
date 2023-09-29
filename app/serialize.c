@@ -38,6 +38,7 @@ struct serialize_data {
 
   struct output_header_name *header_names;
   unsigned int col_count;
+  unsigned int id_column_position;
 
   char *err_msg;
 
@@ -124,10 +125,10 @@ static void serialize_header(void *hook) {
     asprintf(&data->err_msg, "No columns read in first row; aborting\n");
   else {
     // write header
-    struct zsv_cell firstCell = zsv_get_cell(data->parser, 0);
-    if(firstCell.len == 0) {
-      firstCell.str = (unsigned char *)"(Blank)";
-      firstCell.len = strlen((const char *)firstCell.str);
+    struct zsv_cell idCell = zsv_get_cell(data->parser, data->id_column_position);
+    if(idCell.len == 0) {
+      idCell.str = (unsigned char *)"(Blank)";
+      idCell.len = strlen((const char *)idCell.str);
     }
     // if we have additional columns, find them and output their header names
     if(data->additional_columns) {
@@ -173,24 +174,26 @@ static void serialize_header(void *hook) {
 
     if(!data->err_msg) {
       // print the output table header
-      serialize_write_tuple(data, firstCell.str, firstCell.len, firstCell.quoted,
+      serialize_write_tuple(data, idCell.str, idCell.len, idCell.quoted,
                             (const unsigned char *)"Column", strlen("Column"),
                             (const unsigned char *)"Value", strlen("Value"), 0);
 
       if(data->use_column_position) {
         // process the header row as if it was a data row
         // output ID cell
-        struct zsv_cell cell = zsv_get_cell(data->parser, 0);
+        struct zsv_cell cell = zsv_get_cell(data->parser, data->id_column_position);
         serialize_write_tuple(data, (const unsigned char *)"Header", strlen("Header"), 0,
                               (const unsigned char *)"0", 1,
                               cell.str, cell.len, cell.quoted);
 
         // output other cells
-        for(unsigned i = 1; i < data->col_count; i++) {
-          cell = zsv_get_cell(data->parser, i);
-          serialize_write_tuple(data, (const unsigned char *)"Header", strlen("Header"), 0,
-                                data->header_names[i].str, data->header_names[i].len,
-                                cell.str, cell.len, cell.quoted);
+        for(unsigned i = 0; i < data->col_count; i++) {
+          if(i != data->id_column_position) {
+            cell = zsv_get_cell(data->parser, i);
+            serialize_write_tuple(data, (const unsigned char *)"Header", strlen("Header"), 0,
+                                  data->header_names[i].str, data->header_names[i].len,
+                                  cell.str, cell.len, cell.quoted);
+          }
         }
       }
     }
@@ -202,12 +205,13 @@ static void serialize_row(void *hook) {
   if(data->err_msg)
     return;
 
-  // the first cell is the row ID
-  struct zsv_cell id = zsv_get_cell(data->parser, 0);
+  // get the row id
+  struct zsv_cell id = zsv_get_cell(data->parser, data->id_column_position);
 
   unsigned j = zsv_cell_count(data->parser);
-  for(unsigned i = 1; i < j && i < data->col_count; i++)
-    serialize_cell(data, id, i);
+  for(unsigned i = 0; i < j && i < data->col_count; i++)
+    if(i != data->id_column_position)
+      serialize_cell(data, id, i);
 }
 
 const char *serialize_usage_msg[] =
@@ -222,6 +226,7 @@ const char *serialize_usage_msg[] =
    "  -f,--filter <value>    : only output cells with text that contains the given value",
    "  -e,--entire            : match the entire cell's content (only applicable with -f)",
    "  -i,--case-insensitive  : use case-insensitive match for the filter value",
+   "  --id-column <n>        : the 1-based position of the column to use as the identifer (default=1, max=2000)",
    "  -p,--position          : output column position instead of name; the second column",
    "                           will be position 1, and the first row will be treated as a",
    "                           normal data row",
@@ -301,6 +306,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         }
       } else if(!strcmp(arg, "-i") || !strcmp(arg, "--case-insensitive"))
         data.filter.case_insensitive = 1;
+      else if(!strcmp(arg, "--id-column")) {
+        if(arg_i + 1 < argc && atoi(argv[arg_i+1]) > 0 && atoi(argv[arg_i+1]) <= 2000)
+          data.id_column_position = atoi(argv[++arg_i]) - 1;
+        else {
+          fprintf(stderr, "%s option requires a value between 1 and 2000\n", argv[arg_i]);
+          err = 1;
+        }
+      }
       else if(!strcmp(arg, "-p") || !strcmp(arg, "--position"))
         data.use_column_position = 1;
       else if(!strcmp(arg, "-e") || !strcmp(arg, "--entire"))
