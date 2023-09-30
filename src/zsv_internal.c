@@ -530,6 +530,14 @@ static void collate_header_row(void *ctx) {
     --scanner->opts.header_span;
 
     // save this row
+
+    // first, make sure this row has at least as many cells as the largest prior row
+    if(scanner->collate_header) {
+      for(size_t i = zsv_cell_count(scanner); i < scanner->row.allocated && i < scanner->collate_header->column_count; i++)
+        memset(&scanner->row.cells[i], 0, sizeof(scanner->row.cells[i]));
+      scanner->row.used = scanner->collate_header->column_count;
+    }
+
     if(collate_header_append(scanner, &scanner->collate_header))
       scanner->abort = 1;
   }
