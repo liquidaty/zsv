@@ -142,10 +142,30 @@ static inline unsigned char *zsv_select_get_header_name(struct zsv_select_data *
 static inline char zsv_select_excluded_current_header_name(struct zsv_select_data *data, unsigned in_ix) {
   if(data->exclusion_count) {
     unsigned char *header_name = zsv_select_get_header_name(data, in_ix);
-    if(header_name) {
-      for(unsigned int i = 0; i < data->exclusion_count; i++)
-        if(!zsv_stricmp(header_name, data->exclusions[i]))
-          return 1;
+    if(data->use_header_indexes) {
+      for(unsigned int ix = 0; ix < data->exclusion_count; ix++) {
+        unsigned i, j;
+        switch(zsv_select_column_index_selection(data->exclusions[ix], &i, &j)) {
+        case zsv_select_column_index_selection_type_none:
+          // not expected!
+          break;
+        case zsv_select_column_index_selection_type_single:
+          if(in_ix + 1 == i) return 1;
+          break;
+        case zsv_select_column_index_selection_type_range:
+          if(i <= in_ix + 1 && in_ix + 1 <= j) return 1;
+          break;
+        case zsv_select_column_index_selection_type_lower_bounded:
+          if(i <= in_ix + 1) return 1;
+          break;
+        }
+      }
+    } else {
+      if(header_name) {
+        for(unsigned int i = 0; i < data->exclusion_count; i++)
+          if(!zsv_stricmp(header_name, data->exclusions[i]))
+            return 1;
+      }
     }
   }
   return 0;
