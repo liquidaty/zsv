@@ -229,6 +229,10 @@ test-12-select test-12-select-pull: test-12-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${PREFIX} $< -n -x 1-2 -x 6 -x 8-10 -x 13- ${TEST_DATA_DIR}/test/desc.csv > /tmp/$@.out
 	@${CMP} /tmp/$@.out expected/test-12-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
+test-13-select test-13-select-pull: test-13-% : ${BUILD_DIR}/bin/zsv_%${EXE}
+	@${TEST_INIT}
+	@${PREFIX} [ "$$(echo 'aaa,bb,c\na,bb\nx,y,z' | $< --header-row-span 2 | head -1)" = "aaa a,bb bb,c" ] && ${TEST_PASS} || ${TEST_FAIL}
+
 test-fixed-1-select test-fixed-1-select-pull: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
 	@${PREFIX} $< ${TEST_DATA_DIR}/fixed.csv --fixed 3,7,12,18,20,21,22 ${REDIRECT} ${TMP_DIR}/$@.out
