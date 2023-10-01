@@ -57,15 +57,18 @@ static int zsv_paste_load_row(struct zsv_paste_input_file *inputs) {
 static void zsv_paste_print_row(zsv_csv_writer w, struct zsv_paste_input_file *inputs) {
   char first = 1;
   for(struct zsv_paste_input_file *pf = inputs; pf; pf = pf->next) {
-    unsigned int j = zsv_cell_count(pf->parser);
+    unsigned int j = pf->zsv_status == zsv_status_row ? zsv_cell_count(pf->parser) : 0;
     unsigned int k = pf->col_count;
+
     for(unsigned int i = 0; i < j && i < k; i++) {
       struct zsv_cell cell = zsv_get_cell(pf->parser, i);
       zsv_writer_cell(w, first, cell.str, cell.len, cell.quoted);
       first = 0;
     }
-    for(unsigned int i = j; i < k; i++)
+    for(unsigned int i = j; i < k; i++) {
       zsv_writer_cell(w, first, (const unsigned char *)"", 0, 0);
+      first = 0;
+    }
   }
 }
 
