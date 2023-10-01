@@ -22,7 +22,7 @@ It achieves high performance using SIMD operations,
 [efficient memory use](docs/memory.md) and other optimization techniques, and
 can also parse generic-delimited and fixed-width formats, as well as multi-row-span headers
 
-The ZSV CLI can be compiled to virtually any target, including [web assembly](examples/js), and offers features including `select`, `count`, direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3 conversion, `stack`, `pretty`, `2tsv`, `compare` and more.
+The ZSV CLI can be compiled to virtually any target, including [web assembly](examples/js), and offers features including `select`, `count`, direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3 conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste` and more.
 
 Pre-built CLI packages are available via brew and nuget
 
@@ -85,7 +85,7 @@ that implements the expected
 * Easy to use as a library in a few lines of code, via either pull or push parsing
 * Includes the `zsv` CLI with the following built-in commands:
   * `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
-    `2db`, `stack`, `pretty`, `2tsv`, `compare`, `jq`, `prop`, `rm`
+    `2db`, `stack`, `pretty`, `2tsv`, `paste`, `compare`, `jq`, `prop`, `rm`
   * easily [convert between CSV/JSON/sqlite3](docs/csv_json_sqlite.md)
   * [compare multiple files](docs/compare.md)
 
@@ -237,6 +237,8 @@ for speed and ease of development for extending and/or customizing to your needs
 * `2json`: convert CSV to JSON. Optionally, output in [database schema](docs/db.schema.json)
 * `2tsv`: convert CSV to TSV
 * `compare`: compare two or more tables of data and output the differences
+* `paste` (alpha): horizontally paste two tables together (given inputs X and Y,
+   output 1...N rows where each row all columns of X in row N, followed by all columns of Y in row N)
 * `serialize` (inverse of flatten): convert an NxM table to a single 3x (Nx(M-1))
   table with columns: Row, Column Name, Column Value
 * `flatten` (inverse of serialize): flatten a table by combining rows that share
