@@ -89,6 +89,24 @@ struct zsv_scan_fixed_regs {
   char xx; // to do
 };
 
+#ifdef ZSV_EXTRAS
+#include <inttypes.h>
+
+struct zsv_overwrite {
+  size_t row_ix; // 1-based
+  size_t col_ix; // 1-based
+  unsigned char *str;
+  size_t len;
+  char have; // 1 = we have unprocessed overwrites
+
+  void *ctx;
+  int (*close_ctx)(void *);
+
+  void *reader;
+  int (*close_reader)(void *);
+};
+#endif
+
 struct zsv_scanner {
   char last;
   struct {
@@ -162,6 +180,10 @@ struct zsv_scanner {
     size_t row_used;
     unsigned char now;
   } pull;
+
+#ifdef ZSV_EXTRAS
+  struct zsv_overwrite overwrite;
+#endif
 };
 
 void collate_header_destroy(struct collate_header **chp) {

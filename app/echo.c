@@ -81,11 +81,14 @@ void zsv_echo_get_next_overwrite(struct zsv_echo_data *data) {
   }
 }
 
+struct zsv_cell zsv_get_cell_with_overwrite(zsv_parser parser, size_t row_ix, size_t col_ix);
+
 static void zsv_echo_row(void *hook) {
   struct zsv_echo_data *data = hook;
   if(VERY_UNLIKELY(data->row_ix == 0)) { // header
     for(size_t i = 0, j = zsv_cell_count(data->parser); i < j; i++) {
-      struct zsv_cell cell = zsv_get_cell(data->parser, i);
+      struct zsv_cell cell = zsv_get_cell_with_overwrite(data->parser, data->row_ix, i);
+//      struct zsv_cell cell = zsv_get_cell(data->parser, i);
       zsv_writer_cell(data->csv_writer, i == 0, cell.str, cell.len, cell.quoted);
     }
   } else {
@@ -94,7 +97,8 @@ static void zsv_echo_row(void *hook) {
         zsv_writer_cell(data->csv_writer, i == 0, data->overwrite.str, data->overwrite.len, 1);
         zsv_echo_get_next_overwrite(data);
       } else {
-        struct zsv_cell cell = zsv_get_cell(data->parser, i);
+//        struct zsv_cell cell = zsv_get_cell(data->parser, i);
+        struct zsv_cell cell = zsv_get_cell_with_overwrite(data->parser, data->row_ix, i);
         zsv_writer_cell(data->csv_writer, i == 0, cell.str, cell.len, cell.quoted);
       }
     }
@@ -134,8 +138,9 @@ static void zsv_echo_cleanup(struct zsv_echo_data *data) {
     sqlite3_close(data->o.sqlite3.db);
 }
 
-static int zsv_echo_parse_overwrite_source(struct zsv_echo_data *data, const char *source, size_t len) {
 #define zsv_echo_sqlite3_prefix "sqlite3://"
+
+static int zsv_echo_parse_overwrite_source(struct zsv_echo_data *data, const char *source, size_t len) {
   size_t pfx_len;
   if(len > (pfx_len = strlen(zsv_echo_sqlite3_prefix)) && !memcmp(source, zsv_echo_sqlite3_prefix, pfx_len)) {
     data->o.sqlite3.filename = zsv_memdup(source + pfx_len, len - pfx_len);
@@ -149,7 +154,9 @@ static int zsv_echo_parse_overwrite_source(struct zsv_echo_data *data, const cha
         data->o.sqlite3.sql = sql + strlen(zsv_echo_sql_prefix);
     }
     // open the sql connection
-    if(!(data->o.sqlite3.filename && *data->o.sqlite3.filename)) {
+    if(!(data->o.sqlite3.filename && *data->o.sqlite3.filename
+         && data->o.sqlite3.sql && *data->o.sqlite3.sql)) {
+      free(data->o.sqlite3.filename);
       fprintf(stderr, "Invalid query string");
       return 1;
     }
@@ -194,6 +201,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   int err = 0;
 
+  const char *overwrites_csv = NULL;
+
   data.overwrite.eof = 1;
   for(int arg_i = 1; !err && arg_i < argc; arg_i++) {
     const char *arg = argv[arg_i];
@@ -205,7 +214,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         err = 1;
       } else {
         const char *src = argv[++arg_i];
-        err = zsv_echo_parse_overwrite_source(&data, src, strlen(src));
+        if(strlen(src) > strlen(zsv_echo_sqlite3_prefix) &&
+           !memcmp(zsv_echo_sqlite3_prefix, src, strlen(zsv_echo_sqlite3_prefix)))
+          err = zsv_echo_parse_overwrite_source(&data, src, strlen(src));
+        else {
+          overwrites_csv = src;
+        }
       }
     } else if(!data.in) {
 #ifndef NO_STDIN
@@ -247,6 +261,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
      || !data.csv_writer) {
     zsv_echo_cleanup(&data);
     return 1;
+  }
+
+  if(overwrites_csv) {
+    if(zsv_init_overwrites(data.parser, overwrites_csv) != zsv_status_ok) {
+      fprintf(stderr, "XXXDD\n");
+      zsv_echo_cleanup(&data);
+      return 1;
+    }
   }
 
   // create a local csv writer buff for faster performance

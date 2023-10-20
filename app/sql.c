@@ -434,7 +434,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
               asprintf(&data.sql_dynamic, "select %s from %s",
                        sqlite3_str_value(select_clause), sqlite3_str_value(from_clause));
             else {
-              asprintf(&data.sql_dynamic, "%.*s from %s%s%s", prefix_end - my_sql, my_sql,
+              asprintf(&data.sql_dynamic, "%.*s from %s%s%s", (int)(prefix_end - my_sql), my_sql,
                        sqlite3_str_value(from_clause),
                        strlen(prefix_end + strlen(prefix_search)) ? " " : "",
                        strlen(prefix_end + strlen(prefix_search)) ?

@@ -271,10 +271,102 @@ char zsv_quoted(zsv_parser parser) {
   return parser->quoted || parser->opts.no_quotes;
 }
 
+#ifdef ZSV_EXTRAS
+// TO DO: consolidate with zsv_echo_get_next_overwrite()
+static
+void zsv_next_overwrite(struct zsv_overwrite *overwrite) {
+  if(overwrite->have) {
+    if(zsv_next_row(overwrite->reader) != zsv_status_row)
+      overwrite->have = 0;
+    else {
+      // row, column, value
+      struct zsv_cell row = zsv_get_cell(overwrite->reader, 0);
+      struct zsv_cell col = zsv_get_cell(overwrite->reader, 1);
+      struct zsv_cell val = zsv_get_cell(overwrite->reader, 2);
+      if(row.len && col.len) {
+        char *end = (char *)(row.str + row.len);
+        char **endp = &end;
+        overwrite->row_ix = strtoumax((char *)row.str, endp, 10);
+        end = (char *)(col.str + col.len);
+        overwrite->col_ix = strtoumax((char *)col.str, endp, 10);
+        overwrite->str = val.str;
+        overwrite->len = val.len;
+      } else {
+        overwrite->row_ix = 0;
+        overwrite->col_ix = 0;
+        overwrite->len = 0;
+      }
+    }
+  }
+}
+
+static int fclose_v(void *f) {
+  return fclose((FILE *)f);
+}
+
+static int zsv_delete_v(void *p) {
+  return zsv_delete((zsv_parser)p);
+}
+
+static int zsv_have_overwrite(struct zsv_overwrite *overwrite, size_t row_ix, size_t col_ix) {
+  while(overwrite->have && overwrite->row_ix < row_ix)
+    zsv_next_overwrite(overwrite);
+  while(overwrite->have && overwrite->row_ix == row_ix && overwrite->col_ix < col_ix)
+    zsv_next_overwrite(overwrite);
+  return overwrite->have && overwrite->row_ix == row_ix && overwrite->col_ix == col_ix;
+}
+
+ZSV_EXPORT enum zsv_status zsv_init_overwrites(zsv_parser parser, const char *overwrites_file_path) {
+  struct zsv_overwrite *overwrite = &parser->overwrite;
+  struct zsv_opts opts = { 0 };
+  if(!(overwrite->ctx = opts.stream = fopen(overwrites_file_path, "rb")))
+    return zsv_status_no_more_input;
+  overwrite->close_ctx = fclose_v;
+
+  if(!(overwrite->reader = zsv_new(&opts)))
+    return zsv_status_memory;
+  overwrite->close_reader = zsv_delete_v;
+  overwrite->have = 0;
+  if(zsv_next_row(overwrite->reader) == zsv_status_row) {
+    // to do: check that column names are row, col, value
+    struct zsv_cell row = zsv_get_cell(overwrite->reader, 0);
+    struct zsv_cell col = zsv_get_cell(overwrite->reader, 1);
+    struct zsv_cell val = zsv_get_cell(overwrite->reader, 2);
+    if(row.len < 3 || memcmp(row.str, "row", 3)
+       || col.len < 3 || memcmp(col.str, "col", 3)
+       || val.len < 3 || memcmp(val.str, "val", 3))
+      fprintf(stderr, "Warning! override file %s expects 'row,col,value' header, got '%.*s,%.*s,%.*s'\n",
+              overwrites_file_path,
+              (int)row.len, row.str,
+              (int)col.len, col.str,
+              (int)val.len, val.str
+              );
+    overwrite->have = 1;
+    zsv_next_overwrite(overwrite);
+  }
+  return overwrite->have ? zsv_status_ok : zsv_status_error;
+}
+
+ZSV_EXPORT
+struct zsv_cell zsv_get_cell_with_overwrite(zsv_parser parser, size_t row_ix, size_t col_ix) {
+  if(VERY_LIKELY(col_ix < parser->row.used)) {
+    if(!zsv_have_overwrite(&parser->overwrite, row_ix, col_ix))
+      return parser->row.cells[col_ix];
+
+    struct zsv_cell c = { 0, 0, 0 };
+    c.str = parser->overwrite.str;
+    c.len = parser->overwrite.len;
+    return c;
+  }
+  struct zsv_cell c = { 0, 0, 0 };
+  return c;
+}
+#endif
+
 // to do: benchmark returning zsv_cell struct vs just a zsv_cell pointer
 ZSV_EXPORT
 struct zsv_cell zsv_get_cell(zsv_parser parser, size_t ix) {
-  if(ix < parser->row.used)
+  if(VERY_LIKELY(ix < parser->row.used))
     return parser->row.cells[ix];
 
   struct zsv_cell c = { 0, 0, 0 };
@@ -388,14 +480,14 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
     }
 
     if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED)
-       && scanner->partial_row_length > scanner->cell_start + 1) {
+       && scanner->partial_row_length > scanner->cell_start) {
       int quote = '"';
       scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
       scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
       if(scanner->last == quote)
         scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start;
       else {
-        scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start + 1;
+        scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start;
         scanner->scanned_length++;
       }
     }
@@ -431,6 +523,14 @@ enum zsv_status zsv_delete(zsv_parser parser) {
     free(parser->fixed.offsets);
     collate_header_destroy(&parser->collate_header);
     free(parser->pull.regs);
+
+#ifdef ZSV_EXTRAS
+  if(parser->overwrite.ctx && parser->overwrite.close_ctx)
+    parser->overwrite.close_ctx(parser->overwrite.ctx);
+  if(parser->overwrite.reader && parser->overwrite.close_reader)
+    parser->overwrite.close_reader(parser->overwrite.reader);
+#endif
+
     free(parser);
   }
   return zsv_status_ok;
