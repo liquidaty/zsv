@@ -81,14 +81,11 @@ void zsv_echo_get_next_overwrite(struct zsv_echo_data *data) {
   }
 }
 
-struct zsv_cell zsv_get_cell_with_overwrite(zsv_parser parser, size_t row_ix, size_t col_ix);
-
 static void zsv_echo_row(void *hook) {
   struct zsv_echo_data *data = hook;
   if(VERY_UNLIKELY(data->row_ix == 0)) { // header
     for(size_t i = 0, j = zsv_cell_count(data->parser); i < j; i++) {
-      struct zsv_cell cell = zsv_get_cell_with_overwrite(data->parser, data->row_ix, i);
-//      struct zsv_cell cell = zsv_get_cell(data->parser, i);
+      struct zsv_cell cell = zsv_get_cell(data->parser, i);
       zsv_writer_cell(data->csv_writer, i == 0, cell.str, cell.len, cell.quoted);
     }
   } else {
@@ -97,8 +94,7 @@ static void zsv_echo_row(void *hook) {
         zsv_writer_cell(data->csv_writer, i == 0, data->overwrite.str, data->overwrite.len, 1);
         zsv_echo_get_next_overwrite(data);
       } else {
-//        struct zsv_cell cell = zsv_get_cell(data->parser, i);
-        struct zsv_cell cell = zsv_get_cell_with_overwrite(data->parser, data->row_ix, i);
+        struct zsv_cell cell = zsv_get_cell(data->parser, i);
         zsv_writer_cell(data->csv_writer, i == 0, cell.str, cell.len, cell.quoted);
       }
     }

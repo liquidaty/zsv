@@ -17,6 +17,8 @@
 #include <zsv/utils/arg.h>
 #endif
 
+static struct zsv_cell zsv_get_cell_1(zsv_parser parser, size_t ix);
+static struct zsv_cell zsv_get_cell_with_overwrite(zsv_parser parser, size_t col_ix);
 #include "zsv_internal.c"
 
 #ifndef ZSV_VERSION
@@ -271,6 +273,14 @@ char zsv_quoted(zsv_parser parser) {
   return parser->quoted || parser->opts.no_quotes;
 }
 
+static struct zsv_cell zsv_get_cell_1(zsv_parser parser, size_t ix) {
+  if(VERY_LIKELY(ix < parser->row.used))
+    return parser->row.cells[ix];
+
+  struct zsv_cell c = { 0, 0, 0 };
+  return c;
+}
+
 #ifdef ZSV_EXTRAS
 // TO DO: consolidate with zsv_echo_get_next_overwrite()
 static
@@ -280,9 +290,9 @@ void zsv_next_overwrite(struct zsv_overwrite *overwrite) {
       overwrite->have = 0;
     else {
       // row, column, value
-      struct zsv_cell row = zsv_get_cell(overwrite->reader, 0);
-      struct zsv_cell col = zsv_get_cell(overwrite->reader, 1);
-      struct zsv_cell val = zsv_get_cell(overwrite->reader, 2);
+      struct zsv_cell row = zsv_get_cell_1(overwrite->reader, 0);
+      struct zsv_cell col = zsv_get_cell_1(overwrite->reader, 1);
+      struct zsv_cell val = zsv_get_cell_1(overwrite->reader, 2);
       if(row.len && col.len) {
         char *end = (char *)(row.str + row.len);
         char **endp = &end;
@@ -308,11 +318,14 @@ static int zsv_delete_v(void *p) {
   return zsv_delete((zsv_parser)p);
 }
 
-static int zsv_have_overwrite(struct zsv_overwrite *overwrite, size_t row_ix, size_t col_ix) {
+static int zsv_have_overwrite(zsv_parser parser, size_t row_ix, size_t col_ix) {
+  struct zsv_overwrite *overwrite = &parser->overwrite;
   while(overwrite->have && overwrite->row_ix < row_ix)
     zsv_next_overwrite(overwrite);
   while(overwrite->have && overwrite->row_ix == row_ix && overwrite->col_ix < col_ix)
     zsv_next_overwrite(overwrite);
+  if(!overwrite->have)
+    parser->get_cell = zsv_get_cell_1;
   return overwrite->have && overwrite->row_ix == row_ix && overwrite->col_ix == col_ix;
 }
 
@@ -329,9 +342,9 @@ ZSV_EXPORT enum zsv_status zsv_init_overwrites(zsv_parser parser, const char *ov
   overwrite->have = 0;
   if(zsv_next_row(overwrite->reader) == zsv_status_row) {
     // to do: check that column names are row, col, value
-    struct zsv_cell row = zsv_get_cell(overwrite->reader, 0);
-    struct zsv_cell col = zsv_get_cell(overwrite->reader, 1);
-    struct zsv_cell val = zsv_get_cell(overwrite->reader, 2);
+    struct zsv_cell row = zsv_get_cell_1(overwrite->reader, 0);
+    struct zsv_cell col = zsv_get_cell_1(overwrite->reader, 1);
+    struct zsv_cell val = zsv_get_cell_1(overwrite->reader, 2);
     if(row.len < 3 || memcmp(row.str, "row", 3)
        || col.len < 3 || memcmp(col.str, "col", 3)
        || val.len < 3 || memcmp(val.str, "val", 3))
@@ -347,10 +360,10 @@ ZSV_EXPORT enum zsv_status zsv_init_overwrites(zsv_parser parser, const char *ov
   return overwrite->have ? zsv_status_ok : zsv_status_error;
 }
 
-ZSV_EXPORT
-struct zsv_cell zsv_get_cell_with_overwrite(zsv_parser parser, size_t row_ix, size_t col_ix) {
+static struct zsv_cell zsv_get_cell_with_overwrite(zsv_parser parser, size_t col_ix) {
   if(VERY_LIKELY(col_ix < parser->row.used)) {
-    if(!zsv_have_overwrite(&parser->overwrite, row_ix, col_ix))
+    size_t row_ix = parser->data_row_count;
+    if(!zsv_have_overwrite(parser, row_ix, col_ix))
       return parser->row.cells[col_ix];
 
     struct zsv_cell c = { 0, 0, 0 };
@@ -366,11 +379,7 @@ struct zsv_cell zsv_get_cell_with_overwrite(zsv_parser parser, size_t row_ix, si
 // to do: benchmark returning zsv_cell struct vs just a zsv_cell pointer
 ZSV_EXPORT
 struct zsv_cell zsv_get_cell(zsv_parser parser, size_t ix) {
-  if(VERY_LIKELY(ix < parser->row.used))
-    return parser->row.cells[ix];
-
-  struct zsv_cell c = { 0, 0, 0 };
-  return c;
+  return parser->get_cell(parser, ix);
 }
 
 /**
@@ -386,7 +395,7 @@ size_t zsv_get_cell_len(zsv_parser parser, size_t ix) {
 
 ZSV_EXPORT
 unsigned char *zsv_get_cell_str(zsv_parser parser, size_t ix) {
-  struct zsv_cell c = zsv_get_cell(parser, ix);
+  struct zsv_cell c = zsv_get_cell_1(parser, ix);
   return c.len ? c.str : NULL;
 }
 
