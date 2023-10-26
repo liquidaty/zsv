@@ -10,7 +10,7 @@ static inline char row_fx(struct zsv_scanner *scanner,
     unsigned char *s = buff + cell_start;
     if(UNLIKELY(scanner->opts.cell_handler != NULL))
       scanner->opts.cell_handler(scanner->opts.ctx, s, cell_length);
-    struct zsv_cell c = { s, cell_length, 1 };
+    struct zsv_cell c = { s, cell_length, 1, 0 };
     scanner->row.cells[scanner->row.used++] = c;
 
     cell_start = cell_end;

@@ -185,7 +185,7 @@ static int zsv_echo_parse_overwrite_source(struct zsv_echo_data *data, const cha
   return 1;
 }
 
-int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
   if(argc < 1 || (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))) {
     zsv_echo_usage();
     return 0;
@@ -253,17 +253,20 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   opts->stream = data.in;
   opts->ctx = &data;
   data.csv_writer = zsv_writer_new(&writer_opts);
-  if(zsv_new_with_properties(opts, data.input_path, opts_used, &data.parser) != zsv_status_ok
+  if(zsv_new_with_properties(opts, custom_prop_handler, data.input_path, opts_used, &data.parser) != zsv_status_ok
      || !data.csv_writer) {
     zsv_echo_cleanup(&data);
     return 1;
   }
 
   if(overwrites_csv) {
-    if(zsv_init_overwrites(data.parser, overwrites_csv) != zsv_status_ok) {
-      fprintf(stderr, "XXXDD\n");
+    if(!(opts->overwrite.data.csv.ctx = fopen(overwrites_csv, "rb"))) {
+      fprintf(stderr, "Unable to open for write: %s\n", overwrites_csv);
       zsv_echo_cleanup(&data);
       return 1;
+    } else {
+      opts->overwrite.type = zsv_overwrite_type_csv;
+      opts->overwrite.data.csv.close_ctx = (int (*)(void *))fclose;
     }
   }
 

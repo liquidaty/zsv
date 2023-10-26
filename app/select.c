@@ -742,8 +742,7 @@ static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struc
   return stat;
 }
 
-
-int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
   if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     zsv_select_usage();
     return zsv_status_ok;
@@ -936,7 +935,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     else {
       data.opts->row_handler = zsv_select_header_row;
       data.opts->ctx = &data;
-      if(zsv_new_with_properties(data.opts, input_path, opts_used, &data.parser)
+      if(zsv_new_with_properties(data.opts, custom_prop_handler, input_path, opts_used, &data.parser)
          == zsv_status_ok) {
         // all done with
         data.any_clean =

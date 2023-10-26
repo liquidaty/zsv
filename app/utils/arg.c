@@ -73,6 +73,7 @@ void zsv_set_default_opts(struct zsv_opts opts) {
   *zsv_with_default_opts(0) = opts;
 }
 
+
 /**
  * str_array_index_of: return index in list, or size of list if not found
  */

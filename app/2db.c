@@ -669,7 +669,7 @@ static yajl_handle zsv_2db_yajl_handle(zsv_2db_handle data) {
   return data->json_parser.st.yajl;
 }
 
-int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zsv_opts, const char *opts_used) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zsv_opts, struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
   (void)(zsv_opts);
   (void)(opts_used);
   FILE *f_in = NULL;

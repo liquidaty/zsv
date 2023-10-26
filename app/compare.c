@@ -369,6 +369,7 @@ static enum zsv_compare_status
 input_init_unsorted(struct zsv_compare_data *data,
                     struct zsv_compare_input *input,
                     struct zsv_opts *opts,
+                    struct zsv_prop_handler *custom_prop_handler,
                     const char *opts_used) {
   (void)(opts_used);
   if(!(input->stream = fopen(input->path, "rb"))) {
@@ -377,7 +378,7 @@ input_init_unsorted(struct zsv_compare_data *data,
   }
   struct zsv_opts these_opts = *opts;
   these_opts.stream = input->stream;
-  enum zsv_status stat = zsv_new_with_properties(&these_opts, input->path, NULL, &input->parser);
+  enum zsv_status stat = zsv_new_with_properties(&these_opts, custom_prop_handler, input->path, NULL, &input->parser);
   if(stat != zsv_status_ok)
     return zsv_compare_status_error;
 
@@ -591,8 +592,7 @@ static int compare_usage() {
 }
 
 // TO DO: consolidate w sql.c, move common code to utils/db.c
-int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               const char *opts_used) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
   /**
    * See sql.c re passing options to sqlite3 when sorting is used
    */
@@ -660,6 +660,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   struct zsv_opts original_default_opts;
+  struct zsv_prop_handler original_default_custom_prop_handler;
   if(data->sort) {
     if(!data->key_count) {
       fprintf(stderr, "Error: --sort requires one or more keys\n");
@@ -667,6 +668,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else {
       original_default_opts = zsv_get_default_opts();
       zsv_set_default_opts(*opts);
+
+      if(custom_prop_handler) {
+        original_default_custom_prop_handler = zsv_get_default_custom_prop_handler();
+        zsv_set_default_custom_prop_handler(*custom_prop_handler);
+      }
 
       if(data->status == zsv_compare_status_ok)
         data->status = zsv_compare_init_sorted(data);
@@ -683,7 +689,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       for(unsigned ix = 0; data->status == zsv_compare_status_ok && ix < input_count; ix++) {
         struct zsv_compare_input *input = &data->inputs[ix];
         input->path = input_filenames[ix];
-        data->status = data->input_init(data, input, opts, opts_used);
+        data->status = data->input_init(data, input, opts, custom_prop_handler, opts_used);
       }
     }
 
@@ -839,8 +845,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   err = data->status == zsv_compare_status_ok ? 0 : 1;
 
-  if(data->sort)
+  if(data->sort) {
     zsv_set_default_opts(original_default_opts); // restore default options
+    if(custom_prop_handler)
+      zsv_set_default_custom_prop_handler(original_default_custom_prop_handler);
+  }
 
   zsv_compare_delete(data);
   return err;
