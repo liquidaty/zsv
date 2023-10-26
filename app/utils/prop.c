@@ -150,49 +150,45 @@ enum zsv_status zsv_properties_parser_destroy(struct zsv_properties_parser *pars
  * @param cmd_opts_used (optional) cmd option codes to skip + warn if found
  * @return zsv_status_ok on success
  */
-enum zsv_status zsv_cache_load_props(const char *data_filepath,
-                                     struct zsv_opts *opts,
-                                     struct zsv_prop_handler *custom_prop_handler,
-                                     const char *cmd_opts_used) {
+struct zsv_file_properties zsv_cache_load_props(const char *data_filepath,
+                                                struct zsv_opts *opts,
+                                                struct zsv_prop_handler *custom_prop_handler,
+                                                const char *cmd_opts_used) {
   // we need some memory to save the parsed properties
   // if the caller did not provide that, use our own
   struct zsv_file_properties tmp = { 0 };
+  if(!(data_filepath && *data_filepath)) return tmp; // e.g. input = stdin
+
   struct zsv_file_properties *fp = &tmp;
-  if(!fp)
-    fp = &tmp;
-
-  if(!(data_filepath && *data_filepath)) return 0; // e.g. input = stdin
-
-  enum zsv_status stat = zsv_status_ok;
   struct zsv_properties_parser *p = NULL;
   unsigned char *fn = zsv_cache_filepath((const unsigned char *)data_filepath,
                                          zsv_cache_type_property, 0, 0);
   if(!fn)
-    stat = zsv_status_memory;
+    tmp.stat = zsv_status_memory;
   else {
     FILE *f;
     int err;
     if(!zsv_file_readable((char *)fn, &err, &f)) {
       if(err != ENOENT) {
         perror((const char *)fn);
-        stat = zsv_status_error;
+        tmp.stat = zsv_status_error;
       }
     } else {
       p = zsv_properties_parser_new(fn, custom_prop_handler, fp, opts);
       if(!p)
-        stat = zsv_status_memory;
+        tmp.stat = zsv_status_memory;
       else if(p->stat != yajl_status_ok)
-        stat = zsv_status_error;
+        tmp.stat = zsv_status_error;
       else {
         unsigned char buff[1024];
         size_t bytes_read;
         while((bytes_read = fread(buff, 1, sizeof(buff), f))) {
           if((p->stat = yajl_parse(p->st.yajl, buff, bytes_read)) != yajl_status_ok) {
-            stat = zsv_status_error;
+            tmp.stat = zsv_status_error;
             break;
           }
         }
-        if(stat == zsv_status_ok)
+        if(tmp.stat == zsv_status_ok)
           zsv_properties_parse_complete(p);
       }
       fclose(f);
@@ -200,7 +196,7 @@ enum zsv_status zsv_cache_load_props(const char *data_filepath,
     free(fn);
   }
 
-  if(stat == zsv_status_ok) {
+  if(tmp.stat == zsv_status_ok) {
     // warn if the loaded properties conflict with command-line options
     if(fp->skip_specified) {
       if(cmd_opts_used && strchr(cmd_opts_used, 'R'))
@@ -215,11 +211,11 @@ enum zsv_status zsv_cache_load_props(const char *data_filepath,
         opts->header_span = fp->header_span;
     }
   }
-  if(p && stat == zsv_status_ok
+  if(p && tmp.stat == zsv_status_ok
      && zsv_properties_parser_destroy(p) != zsv_status_ok
      )
-    stat = zsv_status_error;
-  return stat;
+    tmp.stat = zsv_status_error;
+  return tmp;
 }
 
 static int zsv_properties_parse_process_value(struct yajl_helper_parse_state *st, struct json_value *value) {
@@ -243,13 +239,15 @@ static int zsv_properties_parse_process_value(struct yajl_helper_parse_state *st
         rc = custom_prop_handler->handler(parser, prop_name, value);
       if(rc) {
         fprintf(stderr, "Unrecognized property: %s\n", prop_name);
-        fp->err = 1;
+        fp->stat = zsv_status_error;
       }
     } else {
-      long long i = json_value_long(value, &fp->err);
-      if(fp->err || i < 0 || i > UINT_MAX)
+      int err = 0;
+      long long i = json_value_long(value, &err);
+      if(err || i < 0 || i > UINT_MAX) {
+        fp->stat = zsv_status_error;
         fprintf(stderr, "Invalid %s property value: should be an integer between 0 and %u", prop_name, UINT_MAX);
-      else
+      } else
         *target = (unsigned int) i;
     }
   }
@@ -274,9 +272,10 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
   enum zsv_status stat = zsv_status_ok;
   *handle_out = NULL;
   if(input_path) {
-    stat = zsv_cache_load_props(input_path, opts, custom_prop_handler, opts_used);
-    if(stat != zsv_status_ok)
-      return stat;
+    struct zsv_file_properties fp =
+      zsv_cache_load_props(input_path, opts, custom_prop_handler, opts_used);
+    if(fp.stat != zsv_status_ok)
+      return fp.stat;
   }
   if((*handle_out = zsv_new(opts)))
     return zsv_status_ok;

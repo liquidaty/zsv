@@ -455,9 +455,10 @@ static int merge_and_save_properties(const unsigned char *filepath,
   if(!props_fn)
     err = 1;
   else {
-    struct zsv_file_properties fp = { 0 };
     struct zsv_opts zsv_opts = { 0 };
-    err = zsv_cache_load_props((const char *)filepath, &zsv_opts, &fp, NULL);
+    struct zsv_prop_handler custom_prop_handler = { 0 };
+    struct zsv_file_properties fp = zsv_cache_load_props((const char *)filepath, &zsv_opts, &custom_prop_handler, NULL);
+    err = fp.stat;
     if(!err) {
       if(save && !overwrite) {
         if((fp.header_span_specified && d)
@@ -862,8 +863,6 @@ static int zsv_prop_execute_import(const char *dest, const char *src, unsigned c
   free(target_dir);
   return err;
 }
-
-
 
 int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
   int err = 0;

@@ -253,11 +253,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   opts->stream = data.in;
   opts->ctx = &data;
   data.csv_writer = zsv_writer_new(&writer_opts);
-  if(zsv_new_with_properties(opts, custom_prop_handler, data.input_path, opts_used, &data.parser) != zsv_status_ok
-     || !data.csv_writer) {
-    zsv_echo_cleanup(&data);
-    return 1;
-  }
 
   if(overwrites_csv) {
     if(!(opts->overwrite.data.csv.ctx = fopen(overwrites_csv, "rb"))) {
@@ -268,6 +263,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       opts->overwrite.type = zsv_overwrite_type_csv;
       opts->overwrite.data.csv.close_ctx = (int (*)(void *))fclose;
     }
+  }
+
+  if(zsv_new_with_properties(opts, custom_prop_handler, data.input_path, opts_used, &data.parser) != zsv_status_ok
+     || !data.csv_writer) {
+    zsv_echo_cleanup(&data);
+    return 1;
   }
 
   // create a local csv writer buff for faster performance

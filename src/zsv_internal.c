@@ -672,15 +672,17 @@ static enum zsv_status zsv_init_overwrites(zsv_parser parser, struct zsv_opt_ove
   if(overwrite_opts->type == zsv_overwrite_type_none)
     return zsv_status_ok;
   struct zsv_overwrite *overwrite = &parser->overwrite;
-  struct zsv_opts opts = { 0 };
   switch(overwrite_opts->type) {
   case zsv_overwrite_type_csv:
-    overwrite->ctx = overwrite_opts->data.csv.ctx;
-    overwrite->close_ctx = overwrite_opts->data.csv.close_ctx;
-    if(!(overwrite->reader = zsv_new(&opts)))
-      return zsv_status_memory;
-    overwrite->close_reader = zsv_delete_v;
-    overwrite->next = zsv_next_overwrite_csv;
+    {
+      struct zsv_opts opts = { 0 };
+      overwrite->ctx = opts.stream = overwrite_opts->data.csv.ctx;
+      overwrite->close_ctx = overwrite_opts->data.csv.close_ctx;
+      if(!(overwrite->reader = zsv_new(&opts)))
+        return zsv_status_memory;
+      overwrite->close_reader = zsv_delete_v;
+      overwrite->next = zsv_next_overwrite_csv;
+    }
     break;
   default:
     fprintf(stderr, "Unrecognized overwrite type\n");

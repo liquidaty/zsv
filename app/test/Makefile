@@ -100,7 +100,7 @@ test: ${TESTS}
 test-prop:
 	EXE=${BUILD_DIR}/bin/zsv_prop${EXE} make -C prop test
 
-test-echo : test-echo1 test-echo-overwrite test-echo-eol
+test-echo : test-echo1 test-echo-overwrite test-echo-eol test-echo-overwrite-csv
 
 test-echo1: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}

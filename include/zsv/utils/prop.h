@@ -4,9 +4,9 @@
 #include <yajl_helper/yajl_helper.h>
 
 struct zsv_file_properties {
+  enum zsv_status stat;
   unsigned int skip;
   unsigned int header_span;
-  int err;
 
   /* flags used by parser only to indicate whether property was specified */
   unsigned int skip_specified:1;
@@ -44,12 +44,12 @@ void zsv_clear_default_custom_prop_handler(void);
  * @param opts (optional)          parser options to load
  * @param custom_prop              custom property handler
  * @param cmd_opts_used (optional) cmd option codes to skip + warn if found
- * @return zsv_status_ok on success
+ * @return struct zsv_file_properties, with .stat set to zsv_status_ok on success
  */
-enum zsv_status zsv_cache_load_props(const char *data_filepath,
-                                     struct zsv_opts *opts,
-                                     struct zsv_prop_handler *custom_prop,
-                                     const char *cmd_opts_used);
+struct zsv_file_properties zsv_cache_load_props(const char *data_filepath,
+                                                struct zsv_opts *opts,
+                                                struct zsv_prop_handler *custom_prop,
+                                                const char *cmd_opts_used);
 
 /**
  * Create a new properties parser
