@@ -354,9 +354,11 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
             scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
     scanner->row.overflow = 0;
   }
-  if(VERY_LIKELY(scanner->opts.row_handler != NULL))
+  if(VERY_LIKELY(scanner->opts.row_handler != NULL)) // TO DO: disallow row_handler to be null; if null, set to dummy
     scanner->opts.row_handler(scanner->opts.ctx);
-  scanner->data_row_count++; // will be reset by set_callbacks()
+  // Note: scanner->data_row_count will be incremented AFTER this call
+  //       in order to accommodate pull parsing, in which case incrementing here
+  //       would be too early
 # ifdef ZSV_EXTRAS
   scanner->progress.cum_row_count++;
   if(VERY_UNLIKELY(scanner->opts.progress.rows_interval
@@ -669,15 +671,15 @@ static void zsv_next_overwrite(struct zsv_overwrite *overwrite) {
 }
 
 static enum zsv_status zsv_init_overwrites(zsv_parser parser, struct zsv_opt_overwrite *overwrite_opts) {
-  if(overwrite_opts->type == zsv_overwrite_type_none)
+  if(overwrite_opts->type <= zsv_overwrite_type_none)
     return zsv_status_ok;
   struct zsv_overwrite *overwrite = &parser->overwrite;
   switch(overwrite_opts->type) {
   case zsv_overwrite_type_csv:
     {
       struct zsv_opts opts = { 0 };
-      overwrite->ctx = opts.stream = overwrite_opts->data.csv.ctx;
-      overwrite->close_ctx = overwrite_opts->data.csv.close_ctx;
+      overwrite->ctx = opts.stream = overwrite_opts->ctx;
+      overwrite->close_ctx = overwrite_opts->close_ctx;
       if(!(overwrite->reader = zsv_new(&opts)))
         return zsv_status_memory;
       overwrite->close_reader = zsv_delete_v;

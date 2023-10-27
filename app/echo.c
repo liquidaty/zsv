@@ -114,6 +114,8 @@ const char *zsv_echo_usage_msg[] = {
   "  --overwrite <source>: overwrite cells using given source. Source may be:",
   "                        - sqlite3://<filename>[?sql=<query>]",
   "                          ex: sqlite3://overwrites.db?sql=select row, column, value from overwrites order by row, column",
+  "                        - /path/to/file.csv",
+  "                          path to CSV file with columns row,col,val (in that order) and rows pre-sorted by row and column",
   NULL
 };
 
@@ -255,13 +257,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   data.csv_writer = zsv_writer_new(&writer_opts);
 
   if(overwrites_csv) {
-    if(!(opts->overwrite.data.csv.ctx = fopen(overwrites_csv, "rb"))) {
+    if(!(opts->overwrite.ctx = fopen(overwrites_csv, "rb"))) {
       fprintf(stderr, "Unable to open for write: %s\n", overwrites_csv);
       zsv_echo_cleanup(&data);
       return 1;
     } else {
       opts->overwrite.type = zsv_overwrite_type_csv;
-      opts->overwrite.data.csv.close_ctx = (int (*)(void *))fclose;
+      opts->overwrite.close_ctx = (int (*)(void *))fclose;
     }
   }
 

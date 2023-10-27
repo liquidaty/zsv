@@ -269,7 +269,6 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
                                         const char *opts_used,
                                         zsv_parser *handle_out
                                         ) {
-  enum zsv_status stat = zsv_status_ok;
   *handle_out = NULL;
   if(input_path) {
     struct zsv_file_properties fp =

@@ -1,6 +1,7 @@
 #ifndef ZSV_PROP_H
 #define ZSV_PROP_H
 
+#include <zsv/common.h>
 #include <yajl_helper/yajl_helper.h>
 
 struct zsv_file_properties {

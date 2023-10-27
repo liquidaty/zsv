@@ -95,19 +95,16 @@ typedef void (*zsv_completed_callback)(void *ctx, int code);
  * Supported source formats are CSV and SQLITE3
  */
 enum zsv_overwrite_type {
-  zsv_overwrite_type_none = 0,
+  zsv_overwrite_type_unknown = 0, // do not change
+  zsv_overwrite_type_none = 1, // do not change
   zsv_overwrite_type_csv
   // to do: zsv_overwrite_type_sqlite3
 };
 
 struct zsv_opt_overwrite {
   enum zsv_overwrite_type type;
-  union {
-    struct {
-      void *ctx;
-      int (*close_ctx)(void *);
-    } csv;
-  } data;
+  void *ctx;
+  int (*close_ctx)(void *);
 };
 
 # endif
