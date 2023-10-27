@@ -14,7 +14,7 @@
 
 /* macros for commands that use common zsv parsing */
 #define ZSV_MAIN_FUNC(x) ZSV_MAIN_FUNC1(x)
-#define ZSV_MAIN_DECL(x) int ZSV_MAIN_FUNC(x)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used)
+#define ZSV_MAIN_DECL(x) int ZSV_MAIN_FUNC(x)(int argc, const char *argv[], struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler, const char *opts_used)
 
 /* macros for commands that do not use common zsv parsing */
 #define ZSV_MAIN_NO_OPTIONS_FUNC(x) ZSV_MAIN_NO_OPTIONS_FUNC1(x)

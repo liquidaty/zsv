@@ -17,6 +17,8 @@
 #include <zsv/utils/arg.h>
 #endif
 
+static struct zsv_cell zsv_get_cell_1(zsv_parser parser, size_t ix);
+static struct zsv_cell zsv_get_cell_with_overwrite(zsv_parser parser, size_t col_ix);
 #include "zsv_internal.c"
 
 #ifndef ZSV_VERSION
@@ -271,14 +273,18 @@ char zsv_quoted(zsv_parser parser) {
   return parser->quoted || parser->opts.no_quotes;
 }
 
+static struct zsv_cell zsv_get_cell_1(zsv_parser parser, size_t ix) {
+  if(VERY_LIKELY(ix < parser->row.used))
+    return parser->row.cells[ix];
+
+  struct zsv_cell c = { 0, 0, 0, 0 };
+  return c;
+}
+
 // to do: benchmark returning zsv_cell struct vs just a zsv_cell pointer
 ZSV_EXPORT
 struct zsv_cell zsv_get_cell(zsv_parser parser, size_t ix) {
-  if(ix < parser->row.used)
-    return parser->row.cells[ix];
-
-  struct zsv_cell c = { 0, 0, 0 };
-  return c;
+  return parser->get_cell(parser, ix);
 }
 
 /**
@@ -294,7 +300,7 @@ size_t zsv_get_cell_len(zsv_parser parser, size_t ix) {
 
 ZSV_EXPORT
 unsigned char *zsv_get_cell_str(zsv_parser parser, size_t ix) {
-  struct zsv_cell c = zsv_get_cell(parser, ix);
+  struct zsv_cell c = zsv_get_cell_1(parser, ix);
   return c.len ? c.str : NULL;
 }
 
@@ -388,14 +394,14 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
     }
 
     if((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED)
-       && scanner->partial_row_length > scanner->cell_start + 1) {
+       && scanner->partial_row_length > scanner->cell_start) {
       int quote = '"';
       scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
       scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
       if(scanner->last == quote)
         scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start;
       else {
-        scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start + 1;
+        scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start;
         scanner->scanned_length++;
       }
     }
@@ -431,6 +437,14 @@ enum zsv_status zsv_delete(zsv_parser parser) {
     free(parser->fixed.offsets);
     collate_header_destroy(&parser->collate_header);
     free(parser->pull.regs);
+
+#ifdef ZSV_EXTRAS
+  if(parser->overwrite.ctx && parser->overwrite.close_ctx)
+    parser->overwrite.close_ctx(parser->overwrite.ctx);
+  if(parser->overwrite.reader && parser->overwrite.close_reader)
+    parser->overwrite.close_reader(parser->overwrite.reader);
+#endif
+
     free(parser);
   }
   return zsv_status_ok;

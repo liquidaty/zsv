@@ -89,6 +89,31 @@ struct zsv_scan_fixed_regs {
   char xx; // to do
 };
 
+#ifdef ZSV_EXTRAS
+#include <inttypes.h>
+
+struct zsv_overwrite_data {
+  struct zsv_cell row;
+  struct zsv_cell col;
+  struct zsv_cell val;
+};
+
+struct zsv_overwrite {
+  void (*next)(struct zsv_overwrite *overwrite, struct zsv_overwrite_data *data);
+
+  size_t row_ix; // 0-based
+  size_t col_ix; // 0-based
+  struct zsv_cell val;
+  char have; // 1 = we have unprocessed overwrites
+
+  void *ctx;
+  int (*close_ctx)(void *);
+
+  void *reader;
+  int (*close_reader)(void *);
+};
+#endif
+
 struct zsv_scanner {
   char last;
   struct {
@@ -143,6 +168,8 @@ struct zsv_scanner {
   } fixed;
 
   struct collate_header *collate_header;
+  size_t data_row_count; /* 0 = in header row; 1 = first data row */
+  struct zsv_cell (*get_cell)(zsv_parser parser, size_t ix);
 
 #ifdef ZSV_EXTRAS
   struct {
@@ -162,6 +189,10 @@ struct zsv_scanner {
     size_t row_used;
     unsigned char now;
   } pull;
+
+#ifdef ZSV_EXTRAS
+  struct zsv_overwrite overwrite;
+#endif
 };
 
 void collate_header_destroy(struct collate_header **chp) {
@@ -189,7 +220,7 @@ static int collate_header_append(struct zsv_scanner *scanner, struct collate_hea
   size_t this_row_size = 0;
   size_t column_count = zsv_cell_count(scanner);
   for(size_t i = 0, j = column_count; i < j; i++) {
-    struct zsv_cell c = zsv_get_cell(scanner, i);
+    struct zsv_cell c = zsv_get_cell_1(scanner, i);
     if(c.len)
       this_row_size += c.len + 1; // +1: terminating null or delim
   }
@@ -217,7 +248,7 @@ static int collate_header_append(struct zsv_scanner *scanner, struct collate_hea
   ch->buff.used += this_row_size;
   ch->buff.buff = new_row;
   for(size_t i = column_count; i > 0; i--) {
-    struct zsv_cell c = zsv_get_cell(scanner, i-1);
+    struct zsv_cell c = zsv_get_cell_1(scanner, i-1);
     // copy new row's cell value to end
     if(c.len) {
       memcpy(new_row + new_row_end - c.len - 1, c.str, c.len);
@@ -308,7 +339,7 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner * s
     scanner->opts.cell_handler(scanner->opts.ctx, s, n);
   if(VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
     struct zsv_row *row = &scanner->row;
-    struct zsv_cell c = { s, n, scanner->opts.no_quotes ? 1 : scanner->quoted };
+    struct zsv_cell c = { s, n, scanner->opts.no_quotes ? 1 : scanner->quoted, 0 };
     row->cells[row->used++] = c;
   } else
     scanner->row.overflow++;
@@ -323,8 +354,11 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
             scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
     scanner->row.overflow = 0;
   }
-  if(VERY_LIKELY(scanner->opts.row_handler != NULL))
+  if(VERY_LIKELY(scanner->opts.row_handler != NULL)) // TO DO: disallow row_handler to be null; if null, set to dummy
     scanner->opts.row_handler(scanner->opts.ctx);
+  // Note: scanner->data_row_count will be incremented AFTER this call
+  //       in order to accommodate pull parsing, in which case incrementing here
+  //       would be too early
 # ifdef ZSV_EXTRAS
   scanner->progress.cum_row_count++;
   if(VERY_UNLIKELY(scanner->opts.progress.rows_interval
@@ -481,7 +515,7 @@ static void apply_callbacks(struct zsv_scanner *scanner) {
     // call the user-provided cell() callback on each cell
     unsigned char saved_quoted = scanner->quoted;
     for(size_t i = 0, j = zsv_cell_count(scanner); i < j; i++) {
-      struct zsv_cell c = zsv_get_cell(scanner, i);
+      struct zsv_cell c = zsv_get_cell_1(scanner, i);
       scanner->quoted = c.quoted;
       scanner->opts.cell_handler(scanner->opts.ctx, c.str, c.len);
     }
@@ -579,6 +613,11 @@ static void set_callbacks(struct zsv_scanner *scanner) {
     scanner->opts.cell_handler = NULL;
     scanner->opts.ctx = scanner;
   } else {
+    if(scanner->overwrite.have)
+      scanner->get_cell = zsv_get_cell_with_overwrite;
+    else
+      scanner->get_cell = zsv_get_cell_1;
+    scanner->data_row_count = 0;
     scanner->opts.row_handler = scanner->opts_orig.row_handler;
     scanner->opts.cell_handler = scanner->opts_orig.cell_handler;
     scanner->opts.ctx = scanner->opts_orig.ctx;
@@ -588,11 +627,114 @@ static void set_callbacks(struct zsv_scanner *scanner) {
 static void zsv_throwaway_row(void *ctx) {
   struct zsv_scanner *scanner = ctx;
   if(scanner->opts.overflow_row_handler != NULL) {
-    if(zsv_cell_count(scanner) > 1 || zsv_get_cell(scanner, 0).len > 0)
+    if(zsv_cell_count(scanner) > 1 || zsv_get_cell_1(scanner, 0).len > 0)
       scanner->opts.overflow_row_handler(ctx);
   }
   set_callbacks(ctx);
 }
+
+#ifdef ZSV_EXTRAS
+static int zsv_delete_v(void *p) {
+  return zsv_delete((zsv_parser)p);
+}
+
+static void zsv_next_overwrite_csv(struct zsv_overwrite *overwrite,
+                                   struct zsv_overwrite_data *data) {
+  // row, column, value
+  data->row = zsv_get_cell_1(overwrite->reader, 0);
+  data->col = zsv_get_cell_1(overwrite->reader, 1);
+  data->val = zsv_get_cell_1(overwrite->reader, 2);
+}
+
+// TO DO: consolidate with zsv_echo_get_next_overwrite()
+static void zsv_next_overwrite(struct zsv_overwrite *overwrite) {
+  if(overwrite->have) {
+    if(zsv_next_row(overwrite->reader) != zsv_status_row)
+      overwrite->have = 0;
+    else {
+      struct zsv_overwrite_data data;
+      overwrite->next(overwrite, &data);
+      if(data.row.len && data.col.len) {
+        char *end = (char *)(data.row.str + data.row.len);
+        char **endp = &end;
+        overwrite->row_ix = strtoumax((char *)data.row.str, endp, 10);
+        end = (char *)(data.col.str + data.col.len);
+        overwrite->col_ix = strtoumax((char *)data.col.str, endp, 10);
+        overwrite->val = data.val;
+      } else {
+        overwrite->row_ix = 0;
+        overwrite->col_ix = 0;
+        overwrite->val.len = 0;
+      }
+    }
+  }
+}
+
+static enum zsv_status zsv_init_overwrites(zsv_parser parser, struct zsv_opt_overwrite *overwrite_opts) {
+  if(overwrite_opts->type <= zsv_overwrite_type_none)
+    return zsv_status_ok;
+  struct zsv_overwrite *overwrite = &parser->overwrite;
+  switch(overwrite_opts->type) {
+  case zsv_overwrite_type_csv:
+    {
+      struct zsv_opts opts = { 0 };
+      overwrite->ctx = opts.stream = overwrite_opts->ctx;
+      overwrite->close_ctx = overwrite_opts->close_ctx;
+      if(!(overwrite->reader = zsv_new(&opts)))
+        return zsv_status_memory;
+      overwrite->close_reader = zsv_delete_v;
+      overwrite->next = zsv_next_overwrite_csv;
+    }
+    break;
+  default:
+    fprintf(stderr, "Unrecognized overwrite type\n");
+    return zsv_status_error;
+  }
+
+  overwrite->have = 0;
+  if(zsv_next_row(overwrite->reader) == zsv_status_row) {
+    // to do: check that column names are row, col, value
+    struct zsv_overwrite_data data;
+    overwrite->next(overwrite, &data);
+    if(data.row.len < 3 || memcmp(data.row.str, "row", 3)
+       || data.col.len < 3 || memcmp(data.col.str, "col", 3)
+       || data.val.len < 3 || memcmp(data.val.str, "val", 3))
+      fprintf(stderr, "Warning! overwrite expects 'row,col,value' header, got '%.*s,%.*s,%.*s'\n",
+              (int)data.row.len, data.row.str,
+              (int)data.col.len, data.col.str,
+              (int)data.val.len, data.val.str
+              );
+    overwrite->have = 1;
+    zsv_next_overwrite(overwrite);
+  }
+  return overwrite->have ? zsv_status_ok : zsv_status_error;
+}
+
+static int zsv_have_overwrite(zsv_parser parser, size_t row_ix, size_t col_ix) {
+  struct zsv_overwrite *overwrite = &parser->overwrite;
+  while(overwrite->have && overwrite->row_ix < row_ix)
+    zsv_next_overwrite(overwrite);
+  while(overwrite->have && overwrite->row_ix == row_ix && overwrite->col_ix < col_ix)
+    zsv_next_overwrite(overwrite);
+  if(!overwrite->have)
+    parser->get_cell = zsv_get_cell_1;
+  return overwrite->have && overwrite->row_ix == row_ix && overwrite->col_ix == col_ix;
+}
+
+static struct zsv_cell zsv_get_cell_with_overwrite(zsv_parser parser, size_t col_ix) {
+  if(VERY_LIKELY(col_ix < parser->row.used)) {
+    size_t row_ix = parser->data_row_count;
+    if(!zsv_have_overwrite(parser, row_ix, col_ix))
+      return parser->row.cells[col_ix];
+
+    struct zsv_cell c = parser->overwrite.val;
+    c.overwritten = 1;
+    return c;
+  }
+  struct zsv_cell c = { 0, 0, 0, 0 };
+  return c;
+}
+#endif
 
 static int zsv_scanner_init(struct zsv_scanner *scanner,
                               struct zsv_opts *opts) {
@@ -619,7 +761,6 @@ static int zsv_scanner_init(struct zsv_scanner *scanner,
     opts->max_row_size = opts->buffsize / 2;
     fprintf(stderr, "Warning: max row size set to %u due to buffer size %zu\n", opts->max_row_size, opts->buffsize);
   }
-
   scanner->in = opts->stream;
   if(!opts->read) {
     scanner->read = (zsv_generic_read)fread;
@@ -649,8 +790,11 @@ static int zsv_scanner_init(struct zsv_scanner *scanner,
     set_callbacks(scanner);
     if((scanner->row.allocated = scanner->opts.max_columns)
        && (scanner->row.cells = calloc(scanner->row.allocated, sizeof(*scanner->row.cells))))
-      return 0;
+# ifdef ZSV_EXTRAS
+      // initialize overwrites
+      if(zsv_init_overwrites(scanner, &scanner->opts.overwrite) == zsv_status_ok)
+# endif
+        return 0;
   }
-
   return 1;
 }

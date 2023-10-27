@@ -11,6 +11,7 @@
 #include <string.h>
 #include <zsv/utils/arg.h>
 #include <zsv/utils/dl.h>
+#include <zsv/utils/prop.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/dirs.h>
 #include <zsv/utils/signal.h>
@@ -32,7 +33,7 @@ static struct zsv_ext *zsv_ext_new(const char *dl_name, const char *id, char ver
 #include "cli_ini.c"
 
 typedef int (cmd_main)(int argc, const char *argv[]);
-typedef int (zsv_cmd)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used);
+typedef int (zsv_cmd)(int argc, const char *argv[], struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler, const char *opts_used);
 typedef int (*cmd_reserved)();
 
 struct builtin_cmd {
@@ -292,9 +293,12 @@ static enum zsv_ext_status ext_add_command(zsv_execution_context ctx,
 static enum zsv_ext_status ext_parse_all(zsv_execution_context ctx,
                                          void *user_context,
                                          void (*row_handler)(void *ctx),
-                                         struct zsv_opts *const custom
+                                         struct zsv_opts *const custom,
+                                         struct zsv_prop_handler *custom_prop
                                          ) {
   struct zsv_opts opts = custom ? *custom : ext_parser_opts(ctx);
+  struct zsv_prop_handler custom_prop_handler = custom_prop ? *custom_prop : zsv_get_default_custom_prop_handler();
+
   if(row_handler)
     opts.row_handler = row_handler;
   zsv_parser parser = zsv_new(&opts);
@@ -403,6 +407,7 @@ static enum zsv_ext_status run_extension(int argc, const char *argv[], struct zs
       struct zsv_opts opts;
       zsv_args_to_opts(argc, argv, &argc, argv, &opts, NULL);
       zsv_set_default_opts(opts);
+      // need a corresponding zsv_set_default_custom_prop_handler?
       stat = cmd->main(&ctx, ctx.argc - 1, &ctx.argv[1]);
     }
 
@@ -483,7 +488,7 @@ int ZSV_CLI_MAIN(int argc, const char *argv[]) {
         else if(help_builtin->cmd) {
           char opts_used[ZSV_OPTS_SIZE_MAX] = { 0 };
           struct zsv_opts opts = { 0 };
-          return help_builtin->cmd(2, argv_tmp, &opts, opts_used);
+          return help_builtin->cmd(2, argv_tmp, &opts, NULL, opts_used);
         } else
           return fprintf(stderr, "Unexpected syntax!\n");
       } else {
@@ -509,7 +514,7 @@ int ZSV_CLI_MAIN(int argc, const char *argv[]) {
       struct zsv_opts opts;
       enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used);
       if(stat == zsv_status_ok)
-        return builtin->cmd(argc - 1, argc > 1 ? &argv[1] : NULL, &opts, opts_used);
+        return builtin->cmd(argc - 1, argc > 1 ? &argv[1] : NULL, &opts, NULL, opts_used);
       return stat;
     }
   }

@@ -86,6 +86,7 @@ static enum zsv_paste_status zsv_paste_add_input(
                                                  struct zsv_paste_input_file **next,
                                                  struct zsv_paste_input_file ***next_next,
                                                  struct zsv_opts *opts,
+                                                 struct zsv_prop_handler *custom_prop_handler,
                                                  const char *opts_used
                                                  ) {
   FILE *f = fopen(fname, "rb");
@@ -105,7 +106,7 @@ static enum zsv_paste_status zsv_paste_add_input(
   *next = pf;
   *next_next = &pf->next;
 
-  if(zsv_new_with_properties(&pf->opts, fname, opts_used, &pf->parser) != zsv_status_ok) {
+  if(zsv_new_with_properties(&pf->opts, custom_prop_handler, fname, opts_used, &pf->parser) != zsv_status_ok) {
     fprintf(stderr, "Unable to initialize parser for %s\n", fname);
     return zsv_paste_status_error;
   } else {
@@ -117,7 +118,7 @@ static enum zsv_paste_status zsv_paste_add_input(
   return zsv_paste_status_ok;
 }
 
-int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
   struct zsv_paste_input_file *inputs = NULL;
   struct zsv_paste_input_file **next_input = &inputs;
   enum zsv_paste_status status = zsv_paste_status_ok;
@@ -138,7 +139,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
     if(0) { // !strcmp(arg, "-x") || !strcmp(arg, "--my-arg")) { ...
     } else {
-      status = zsv_paste_add_input(arg, next_input, &next_input, opts, opts_used);
+      status = zsv_paste_add_input(arg, next_input, &next_input, opts, custom_prop_handler, opts_used);
     }
   }
 

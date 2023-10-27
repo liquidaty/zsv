@@ -99,6 +99,7 @@ struct zsv_compare_data {
   enum zsv_compare_status (*input_init)(struct zsv_compare_data *data,
                                         struct zsv_compare_input *input,
                                         struct zsv_opts *opts,
+                                        struct zsv_prop_handler *custom_prop_handler,
                                         const char *opts_used);
 
   sqlite3 *sort_db; // used when --sort option was specified

@@ -53,6 +53,7 @@ struct zsv_cell {
   /**
    * bitfield values for `quoted` flags
    */
+#  define ZSV_PARSER_QUOTE_NONE     0 /* content does not need to be quoted */
 #  define ZSV_PARSER_QUOTE_UNCLOSED 1 /* only used internally by parser */
 #  define ZSV_PARSER_QUOTE_CLOSED   2 /* value was quoted */
 #  define ZSV_PARSER_QUOTE_NEEDED   4 /* value contains delimiter or dbl-quote */
@@ -66,6 +67,7 @@ struct zsv_cell {
    * quoting or escaping will be required
    */
   char quoted;
+  unsigned char overwritten:1;
 };
 
 typedef size_t (*zsv_generic_write)(const void * restrict,  size_t,  size_t,  void * restrict);
@@ -86,6 +88,25 @@ typedef int (*zsv_progress_callback)(void *ctx, size_t cumulative_row_count);
  * @param exit code
  */
 typedef void (*zsv_completed_callback)(void *ctx, int code);
+
+/**
+ * Data can be "overwritten" on-the-fly by providing a source for
+ *   (row, column, value) tuples
+ * Supported source formats are CSV and SQLITE3
+ */
+enum zsv_overwrite_type {
+  zsv_overwrite_type_unknown = 0, // do not change
+  zsv_overwrite_type_none = 1, // do not change
+  zsv_overwrite_type_csv
+  // to do: zsv_overwrite_type_sqlite3
+};
+
+struct zsv_opt_overwrite {
+  enum zsv_overwrite_type type;
+  void *ctx;
+  int (*close_ctx)(void *);
+};
+
 # endif
 
 struct zsv_opts {
@@ -268,6 +289,11 @@ struct zsv_opts {
    * maximum number of rows to parse (including any header rows)
    */
   size_t max_rows;
+
+  /**
+   * Optional cell-level values that overwrite data returned to the caller by the API
+   */
+  struct zsv_opt_overwrite overwrite;
 
 # endif
 };

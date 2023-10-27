@@ -136,8 +136,7 @@ static char is_select_sql(const char *s) {
                      );
 }
 
-int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               const char *opts_used) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
   /**
    * We need to pass the following data to the sqlite3 virtual table code:
    * a. zsv parser options indicated in the cmd line
@@ -163,9 +162,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
     // save current default opts so that we can restore them later
     struct zsv_opts original_default_opts = zsv_get_default_opts();
+    struct zsv_prop_handler original_default_custom_prop_handler = zsv_get_default_custom_prop_handler();
 
     // set parser opts that the sql module will get via zsv_get_default_opts()
     zsv_set_default_opts(*opts);
+    if(custom_prop_handler) zsv_set_default_custom_prop_handler(*custom_prop_handler);
 
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
     int err = 0;
@@ -291,7 +292,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
     if(err) {
       zsv_sql_cleanup(&data);
-      zsv_set_default_opts(original_default_opts); // restore default options
+      if(custom_prop_handler) {
+        zsv_set_default_opts(original_default_opts); // restore default options
+        zsv_set_default_custom_prop_handler(original_default_custom_prop_handler);
+      }
       return 1;
     }
 
@@ -434,7 +438,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
               asprintf(&data.sql_dynamic, "select %s from %s",
                        sqlite3_str_value(select_clause), sqlite3_str_value(from_clause));
             else {
-              asprintf(&data.sql_dynamic, "%.*s from %s%s%s", prefix_end - my_sql, my_sql,
+              asprintf(&data.sql_dynamic, "%.*s from %s%s%s", (int)(prefix_end - my_sql), my_sql,
                        sqlite3_str_value(from_clause),
                        strlen(prefix_end + strlen(prefix_search)) ? " " : "",
                        strlen(prefix_end + strlen(prefix_search)) ?
@@ -500,6 +504,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       free(tmpfn);
     }
     zsv_set_default_opts(original_default_opts); // restore default options
+    if(custom_prop_handler) zsv_set_default_custom_prop_handler(original_default_custom_prop_handler);
   }
   return 0;
 }

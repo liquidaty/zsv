@@ -12,6 +12,6 @@ int main(int argc, const char *argv[]) {
   enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used);
   if(stat != zsv_status_ok)
     return stat;
-  return ZSV_MAIN_FUNC(ZSV_COMMAND)(argc, argv, &opts, opts_used);
+  return ZSV_MAIN_FUNC(ZSV_COMMAND)(argc, argv, &opts, NULL, opts_used);
 #endif
 }

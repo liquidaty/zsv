@@ -158,7 +158,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
         if(VERY_UNLIKELY(stat))
           return stat;
 #ifdef ZSV_SUPPORT_PULL_PARSER
-        if(VERY_LIKELY(scanner->pull.now)) {
+        if(scanner->pull.now) {
           scanner->pull.now = 0;
           scanner->row.used = scanner->pull.row_used;
           zsv_internal_save_regs(1);
@@ -170,6 +170,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
 #endif
         scanner->cell_start = i + 1;
         scanner->row_start = i + 1;
+        scanner->data_row_count++;
         continue; // this char is not part of the cell content
       } else
         // we are inside an open quote, which is needed to escape this char
@@ -187,7 +188,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
           if(VERY_UNLIKELY(stat))
             return stat;
 #ifdef ZSV_SUPPORT_PULL_PARSER
-          if(VERY_LIKELY(scanner->pull.now)) {
+          if(scanner->pull.now) {
             scanner->pull.now = 0;
             scanner->row.used = scanner->pull.row_used;
             zsv_internal_save_regs(2);
@@ -199,6 +200,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
 #endif
           scanner->cell_start = i + 1;
           scanner->row_start = i + 1;
+          scanner->data_row_count++;
         }
         continue; // this char is not part of the cell content
       } else
