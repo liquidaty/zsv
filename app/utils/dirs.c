@@ -19,6 +19,7 @@
 #include <zsv/utils/string.h>
 #include <unistd.h> // unlink
 #include <sys/stat.h>
+#include <yajl_helper/yajl_helper.h>
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -245,7 +246,7 @@ int zsv_foreach_dirent_aux(const char *dir_path,
   if(!dir_path)
     return 1;
 
-  if(max_depth > 0 && depth > max_depth)
+  if(max_depth > 0 && depth >= max_depth)
     return 0;
 
   DIR *dr;
@@ -269,11 +270,11 @@ int zsv_foreach_dirent_aux(const char *dir_path,
         char is_dir = h.stat.st_mode & S_IFDIR ? 1 : 0;
         h.is_dir = is_dir;
         if(handler)
-          err = handler(&h, depth + 1);
+          handler(&h, depth + 1);
 
         if(is_dir && !h.no_recurse)
           // recurse!
-          zsv_foreach_dirent_aux(tmp, depth + 1, max_depth, handler, ctx, verbose);
+          err = zsv_foreach_dirent_aux(tmp, depth + 1, max_depth, handler, ctx, verbose);
         free(tmp);
       }
     }
@@ -312,6 +313,9 @@ int zsv_remove_dir_recursive(const unsigned char *path) {
   return err;
 }
 
+#ifndef  ZSV_NO_JQ
 #include "dirs_to_json.c"
 
 #include "dirs_from_json.c"
+
+#endif
