@@ -11,7 +11,6 @@
 #endif
 
 #include "zsv.h"
-// #include <zsv/utils/utf8.h>
 #include <zsv/utils/compiler.h>
 #ifdef ZSV_EXTRAS
 #include <zsv/utils/arg.h>

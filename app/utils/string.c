@@ -16,6 +16,10 @@
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/string.h>
 
+#ifdef ZSV_UTILS_STRING_STANDALONE
+#include "../../src/zsv_strencode.c"
+#endif
+
 #ifndef NO_UTF8PROC
 #include <utf8proc.h>
 
