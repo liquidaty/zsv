@@ -326,8 +326,10 @@ size_t zsv_strunescape_backslash(unsigned char *s, size_t len) {
   return j;
 }
 
+#ifndef ZSV_STRING_LIB_ONLY
 struct zsv_cell zsv_get_cell_trimmed(zsv_parser parser, size_t ix) {
   struct zsv_cell c = zsv_get_cell(parser, ix);
   c.str = (unsigned char *)zsv_strtrim(c.str, &c.len);
   return c;
 }
+#endif

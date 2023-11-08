@@ -41,6 +41,10 @@ static int zsv_dir_from_json_map_key(struct yajl_helper_parse_state *st,
       asprintf(&fn, "%s%c%.*s", ctx->filepath_prefix, FILESLASH, (int)len, s);
     else
       asprintf(&fn, "%.*s", (int)len, s);
+
+    // if we have any backslashes, replace with fwd slash
+    if(fn)
+      for(int i = 0, j = strlen(fn); i < j; i++) if(fn[i] == '\\') fn[i] = '/';
     if(!fn) {
       errno = ENOMEM;
       perror(NULL);
