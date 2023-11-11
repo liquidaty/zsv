@@ -138,7 +138,8 @@ static void zsv_compare_json_row_end(struct zsv_compare_data *data) {
 static void zsv_compare_output_tuple(struct zsv_compare_data *data,
                                      struct zsv_compare_input *key_input,
                                      const unsigned char *colname,
-                                     struct zsv_cell *values // in original input order
+                                     struct zsv_cell *values, // in original input order
+                                     char is_key
                                      ) {
   // print ID | Column | Value 1 | ... | Value N
   if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON)
@@ -159,7 +160,7 @@ static void zsv_compare_output_tuple(struct zsv_compare_data *data,
 
   for(unsigned i = 0; i < data->input_count; i++) {
     struct zsv_compare_input *input = &data->inputs[i];
-    if(input->done || !input->row_loaded) { // no data for this input
+    if((input->done || !input->row_loaded) && !is_key) { // no data for this input
       zsv_compare_output_str(data, NULL, ZSV_WRITER_SAME_ROW, 0);
     } else {
       struct zsv_cell *value = &values[i];
@@ -182,6 +183,34 @@ static void zsv_compare_output_tuple(struct zsv_compare_data *data,
     zsv_compare_json_row_end(data);
 }
 
+static const unsigned char *zsv_compare_combined_key_names(struct zsv_compare_data *data) {
+  if(!data->combined_key_names) {
+    size_t len = 2;
+
+    for(unsigned key_ix = 0; key_ix < data->key_count; key_ix++) {
+      struct zsv_compare_key *key = &data->keys[key_ix];
+      if(key && key->name)
+        len += strlen(key->name) + 1;
+    }
+    if((data->combined_key_names = calloc(1, len))) {
+      unsigned char *start = NULL;
+      for(unsigned key_ix = 0; key_ix < data->key_count; key_ix++) {
+        struct zsv_compare_key *key = &data->keys[key_ix];
+        if(key && key->name) {
+          if(start) {
+            *start = (unsigned char)'|';
+            start++;
+          } else
+            start = data->combined_key_names;
+          strcpy((char *)start, key->name);
+          start += strlen((char *)start);
+        }
+      }
+    }
+  }
+  return data->combined_key_names;
+}
+
 static void zsv_compare_print_row(struct zsv_compare_data *data,
                                   const unsigned last_ix   // last input ix in inputs_to_sort
                                   ) {
@@ -198,19 +227,25 @@ static void zsv_compare_print_row(struct zsv_compare_data *data,
 
 #define ZSV_COMPARE_MISSING "Missing"
 
-  if(last_ix + 1 < data->input_count) {
+//  if(last_ix + 1 < data->input_count) {
     // if we don't have data from every input, then output "Missing" for missing inputs
-    for(unsigned i = last_ix + 1; i < data->input_count; i++) {
+    char got_missing = 0;
+    for(unsigned i = 0; i < data->input_count; i++) {
       struct zsv_compare_input *input = data->inputs_to_sort[i];
-      unsigned input_ix = input->index;
-      values[input_ix].str = (unsigned char *)ZSV_COMPARE_MISSING;
-      values[input_ix].len = strlen(ZSV_COMPARE_MISSING);
+      if(i > last_ix) {
+        got_missing = 1;
+        unsigned input_ix = input->index;
+        values[input_ix].str = (unsigned char *)ZSV_COMPARE_MISSING;
+        values[input_ix].len = strlen(ZSV_COMPARE_MISSING);
+      }
     }
-    zsv_compare_output_tuple(data, key_input, (unsigned char *)"<key>", values);
-
-    // reset values
-    memset(values, 0, data->input_count * sizeof(*values));
-  }
+    if(got_missing) {
+      const unsigned char *key_names = data->print_key_col_names ? zsv_compare_combined_key_names(data) : (const unsigned char *)"<key>";
+      zsv_compare_output_tuple(data, key_input, key_names, values, 1);
+      // reset values
+      memset(values, 0, data->input_count * sizeof(*values));
+    }
+//  }
 
   // for each output column
   zsv_compare_unique_colname *output_col = data->output_colnames_first;
@@ -237,13 +272,13 @@ static void zsv_compare_print_row(struct zsv_compare_data *data,
         if(!output_col)
           output_col = input->output_colnames[input_col_ix];
         values[input_ix] = data->get_cell(input, input_col_ix);
-        if(i > 0 && !different && data->cmp(data->cmp_ctx, values[first_input_ix], values[input_ix]))
+        if(i > 0 && !different && data->cmp(data->cmp_ctx, values[first_input_ix], values[input_ix], data, input_col_ix))
           different = 1;
       }
     }
 
     if(different)
-      zsv_compare_output_tuple(data, key_input, output_col->name, values);
+      zsv_compare_output_tuple(data, key_input, output_col->name, values, 0);
   }
   free(values);
 }
@@ -283,7 +318,8 @@ static enum zsv_compare_status zsv_compare_set_inputs(struct zsv_compare_data *d
   return zsv_compare_status_ok;
 }
 
-static int zsv_compare_cell(void *ctx, struct zsv_cell c1, struct zsv_cell c2);
+static int zsv_compare_cell(void *ctx, struct zsv_cell c1, struct zsv_cell c2,
+                            void *data, unsigned col_ix);
 
 static void zsv_compare_output_begin(struct zsv_compare_data *data) {
   if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
@@ -390,7 +426,11 @@ input_init_unsorted(struct zsv_compare_data *data,
 
 zsv_compare_handle zsv_compare_new() {
   zsv_compare_handle z = calloc(1, sizeof(*z));
-  zsv_compare_set_comparison(z, zsv_compare_cell, z);
+#if defined(ZSV_COMPARE_CMP_FUNC) && defined(ZSV_COMPARE_CMP_CTX)
+  zsv_compare_set_comparison(z, ZSV_COMPARE_CMP_FUNC, ZSV_COMPARE_CMP_CTX);
+#else
+  zsv_compare_set_comparison(z, zsv_compare_cell, NULL);
+#endif
   z->output_colnames_next = &z->output_colnames;
 
   z->next_row = zsv_compare_next_unsorted_row;
@@ -431,6 +471,7 @@ static void zsv_compare_data_free(struct zsv_compare_data *data) {
   for(unsigned i = 0; i < data->input_count; i++)
     zsv_compare_input_free(&data->inputs[i]);
   free(data->inputs);
+  free(data->combined_key_names);
   free(data->inputs_to_sort);
   for(unsigned i = 0; i < data->writer.properties.used; i++)
     free(data->writer.properties.names[i]);
@@ -466,8 +507,11 @@ void zsv_compare_set_comparison(struct zsv_compare_data *data,
   data->cmp_ctx = cmp_ctx;
 }
 
-static int zsv_compare_cell(void *ctx, struct zsv_cell c1, struct zsv_cell c2) {
+static int zsv_compare_cell(void *ctx, struct zsv_cell c1, struct zsv_cell c2,
+                            void *data, unsigned col_ix) {
   (void)(ctx);
+  (void)(data);
+  (void)(col_ix);
   return zsv_strincmp(c1.str, c1.len,
                       c2.str, c2.len);
 }
@@ -478,7 +522,11 @@ static enum zsv_compare_status zsv_compare_advance(struct zsv_compare_data *data
   for(unsigned i = 0; i < data->input_count; i++) {
     struct zsv_compare_input *input = &data->inputs[i];
     if(input->done) continue;
-    if(input->row_loaded) continue;
+
+    if(input->row_loaded) {
+      got = 1;
+      continue;
+    }
     if(data->next_row(input) != zsv_status_row)
       input->done = 1;
     else {
@@ -563,6 +611,8 @@ static int compare_usage() {
     "  --json           : output as JSON",
     "  --json-compact   : output as compact JSON",
     "  --json-object    : output as an array of objects",
+    "  --print-key-colname : when outputting key column diffs,",
+    "                        print column name instead of <key>",
     "",
     "NOTES",
     "",
@@ -655,6 +705,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if(!strcmp(arg, "--json-compact")) {
       data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
       data->writer.compact = 1;
+    } else if(!strcmp(arg, "--print-key-colname")) {
+      data->print_key_col_names = 1;
     } else
       input_filenames[input_count++] = arg;
   }

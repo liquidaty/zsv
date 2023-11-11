@@ -12,7 +12,9 @@ enum zsv_compare_status {
 
 typedef struct zsv_compare_data *zsv_compare_handle;
 
-typedef int (*zsv_compare_cell_func)(void *ctx, struct zsv_cell, struct zsv_cell);
+typedef int (*zsv_compare_cell_func)(void *ctx, struct zsv_cell, struct zsv_cell,
+                                     void *struct_zsv_compare_data,
+                                     unsigned input_col_ix);
 
 zsv_compare_handle zsv_compare_new();
 // enum zsv_compare_status zsv_compare_set_inputs(zsv_compare_handle, unsigned input_count, unsigned key_count);

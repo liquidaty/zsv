@@ -51,8 +51,9 @@ struct zsv_compare_input {
   sqlite3_stmt *sort_stmt;
 
   unsigned char row_loaded:1;
+  unsigned char missing:1;
   unsigned char done:1;
-  unsigned char _:6;
+  unsigned char _:5;
 };
 
 struct zsv_compare_key {
@@ -77,6 +78,7 @@ struct zsv_compare_data {
 
   unsigned key_count;
   struct zsv_compare_key *keys;
+  unsigned char *combined_key_names;
 
   size_t row_count; // only matters if no ID columns are specified
 
@@ -125,7 +127,8 @@ struct zsv_compare_data {
 
   unsigned char sort:1;
   unsigned char sort_in_memory:1;
-  unsigned char _:6;
+  unsigned char print_key_col_names:1;
+  unsigned char _:5;
 };
 
 #endif

@@ -2,5 +2,5 @@ C,Column,compare/t1.csv,compare/t5.csv,compare/t6-unsorted.csv
 C1,<key>,,,Missing
 C9-NONMATCHING,<key>,Missing,,Missing
 X2,B,B2,BB,BB
-C9-NONMATCHING,<key>,,,
-C1,<key>,,,
+C9-NONMATCHING,<key>,Missing,Missing,
+C1,<key>,Missing,Missing,

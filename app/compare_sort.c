@@ -50,10 +50,12 @@ static int zsv_compare_sort_stmt_prep(sqlite3 *db, sqlite3_stmt **stmtp,
 static enum zsv_compare_status
 input_init_sorted(struct zsv_compare_data *data,
                   struct zsv_compare_input *input,
-                  struct zsv_opts *opts,
+                  struct zsv_opts *_opts,
+                  struct zsv_prop_handler *_prop_handler,
                   const char *opts_used
                   ) {
-  (void)(opts);
+  (void)(_opts);
+  (void)(_prop_handler);
   char *err_msg = NULL;
   int rc = zsv_compare_sort_prep_table(data, input->path, opts_used, 0, &err_msg, input->index);
   if(err_msg) {
