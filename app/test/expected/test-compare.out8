@@ -16,5 +16,11 @@
     "Column": "B",
     "compare/t7.csv": "",
     "compare/t3.csv": "BB"
+  },
+  {
+    "c": "X2",
+    "Column": "<key>",
+    "compare/t7.csv": "Missing",
+    "compare/t3.csv": "Missing"
   }
 ]

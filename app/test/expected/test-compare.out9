@@ -1,0 +1,5 @@
+c,Column,compare/t1.csv,compare/t7.csv,compare/t3.csv
+C1,B,X1,B1,X1
+C2,c,Missing,,
+C2,B,,,BB
+X2,c,,Missing,Missing
