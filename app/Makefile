@@ -266,6 +266,8 @@ help:
 
 install: ${ZSV}
 
+uninstall-all: uninstall uninstall-util-lib
+
 uninstall:
 	rm -rf ${ZSV}
 
@@ -274,13 +276,19 @@ ${ZSV_UTIL_A}: ${BUILD_DIR}/objs/utils/util.a
 	@mkdir -p `dirname $@`
 	cp -p $< $@
 
-${BUILD_DIR}/objs/utils/util.a: ${BUILD_DIR}/objs/utils/writer.o
-	$(AR) rcv $@ $?
+UTIL_A_OBJ:=writer file dirs-no-jq
+UTIL_A_OBJ:=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTIL_A_OBJ}))
+
+${BUILD_DIR}/objs/utils/util.a: ${UTIL_A_OBJ}
+	$(AR) rcv $@ $^ # $?
 	$(RANLIB) $@
 	$(AR) -t $@ # check it is there
 	@echo Built $@
 
-install-utils: ${ZSV_UTIL_A}
+uninstall-util-lib:
+	@rm -f ${ZSV_UTIL_A}
+
+install-util-lib: ${ZSV_UTIL_A}
 
 build: all
 
@@ -312,7 +320,7 @@ ${CLEANS}: clean-%:
 	rm -f ${STANDALONE_PFX}$*${EXE}
 	rm -f ${BUILD_DIR}/*/*$*.o
 
-.PHONY: all install cli build build-% clean clean-% test test-% lib-% check install-utils
+.PHONY: all install cli build build-% clean clean-% test test-% lib-% check install-util-lib uninstall-util-lib clean-util-lib
 
 .SECONDARY: ${OBJECTS}
 
@@ -323,6 +331,10 @@ ${CLEANS}: clean-%:
 ${BUILD_DIR}/objs/utils/%.o : utils/%.c ${INCLUDE_DIR}/zsv/utils/%.h ${JQ_LIB}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/$*.c ${MORE_SOURCE}
+
+${BUILD_DIR}/objs/utils/dirs-no-jq.o : utils/dirs.c ${INCLUDE_DIR}/zsv/utils/dirs.h
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/dirs-no-jq.c ${MORE_SOURCE}
 
 ${BUILD_DIR}/objs/zsv_%.o: %.c
 	@mkdir -p `dirname "$@"`
@@ -431,10 +443,13 @@ test-standalone:
 test-cli:  ${CLI}
 	@${MAKE} -C test $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} CLI=${CLI}
 
-clean-all: clean clean-external clean-obj clean-lib
+clean-all: clean clean-external clean-obj clean-lib clean-util-lib
 
 clean-external:
 	@rm -rf ${JQ_SRC}
+
+clean-util-lib:
+	@rm -f ${BUILD_DIR}/objs/utils/util.a
 
 clean-lib:
 	@rm -rf ${BUILD_DIR}-external
