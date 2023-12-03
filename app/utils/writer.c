@@ -35,7 +35,7 @@ void zsv_writer_set_default_opts(struct zsv_csv_writer_options opts) {
   zsv_csv_writer_default_opts = opts;
 }
 
-struct zsv_csv_writer_options zsv_writer_get_default_opts() {
+struct zsv_csv_writer_options zsv_writer_get_default_opts(void) {
   if(!zsv_writer_default_opts_initd) {
     zsv_writer_default_opts_initd = 1;
     zsv_csv_writer_default_opts.write = (size_t (*)(const void * restrict,  size_t,  size_t,  void * restrict))fwrite;
@@ -238,10 +238,10 @@ enum zsv_writer_status zsv_writer_cell(zsv_csv_writer w, char new_row,
 
   if(VERY_UNLIKELY(w->cell_prepend && *w->cell_prepend)) {
     char *tmp = NULL;
-    asprintf(&tmp, "%s%.*s", w->cell_prepend, (int)len, s);
+    asprintf(&tmp, "%s%.*s", w->cell_prepend, (int)len, s ? s : (const unsigned char *)"");
     if(!tmp)
       return zsv_writer_status_error; // zsv_writer_status_memory;
-    s = (const char *)tmp;
+    s = (const unsigned char *)tmp;
     len = len + strlen(w->cell_prepend);
     enum zsv_writer_status stat = zsv_writer_cell_aux(w, s, len, 1);
     free(tmp);

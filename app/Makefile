@@ -269,6 +269,19 @@ install: ${ZSV}
 uninstall:
 	rm -rf ${ZSV}
 
+ZSV_UTIL_A=${LIBDIR}/libzsvutil.a
+${ZSV_UTIL_A}: ${BUILD_DIR}/objs/utils/util.a
+	@mkdir -p `dirname $@`
+	cp -p $< $@
+
+${BUILD_DIR}/objs/utils/util.a: ${BUILD_DIR}/objs/utils/writer.o
+	$(AR) rcv $@ $?
+	$(RANLIB) $@
+	$(AR) -t $@ # check it is there
+	@echo Built $@
+
+install-utils: ${ZSV_UTIL_A}
+
 build: all
 
 all: ${TARGETS}
@@ -299,7 +312,7 @@ ${CLEANS}: clean-%:
 	rm -f ${STANDALONE_PFX}$*${EXE}
 	rm -f ${BUILD_DIR}/*/*$*.o
 
-.PHONY: all install cli build build-% clean clean-% test test-% lib-% check
+.PHONY: all install cli build build-% clean clean-% test test-% lib-% check install-utils
 
 .SECONDARY: ${OBJECTS}
 
