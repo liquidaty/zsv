@@ -276,7 +276,7 @@ ${ZSV_UTIL_A}: ${BUILD_DIR}/objs/utils/util.a
 	@mkdir -p `dirname $@`
 	cp -p $< $@
 
-UTIL_A_OBJ:=writer file dirs-no-jq
+UTIL_A_OBJ:=writer file dirs-no-jq os
 UTIL_A_OBJ:=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTIL_A_OBJ}))
 
 ${BUILD_DIR}/objs/utils/util.a: ${UTIL_A_OBJ}
