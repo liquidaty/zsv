@@ -290,7 +290,7 @@ uninstall-util-lib:
 
 install-util-lib: ${ZSV_UTIL_A}
 
-build: all
+build: ${CLI}
 
 all: ${TARGETS}
 

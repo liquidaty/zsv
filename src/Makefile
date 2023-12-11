@@ -112,11 +112,14 @@ endif
 
 
 help:
-	@echo "${MAKE} [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VERBOSE=1] [LIBDIR=${LIBDIR}] [INCLUDEDIR=${INCLUDEDIR}] [LIB_SUFFIX=]"
+	@echo "Make options:"
+	@echo "  `basename ${MAKE}` build|install|uninstall|clean"
+	@echo
+	@echo "Optional ake variables:"
+	@echo "  [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VERBOSE=1] [LIBDIR=${LIBDIR}] [INCLUDEDIR=${INCLUDEDIR}] [LIB_SUFFIX=]"
+	@echo
 
-lib: ${LIBZSV}
-
-all: lib
+build: ${LIBZSV}
 
 ${LIBZSV}: ${ZSV_OBJ}
 	@mkdir -p `dirname "$@"`
@@ -126,12 +129,10 @@ ${LIBZSV}: ${ZSV_OBJ}
 	$(AR) -t $@ # check it is there
 	@echo Built $@
 
-
 install: ${LIBZSV_INSTALL}
 	@mkdir -p  $(INCLUDEDIR)
 	@cp -pR ../include/* $(INCLUDEDIR)
 	@echo "include files copied to $(INCLUDEDIR)"
-
 
 ${LIBZSV_INSTALL}: ${LIBZSV}
 	@mkdir -p `dirname "$@"`
@@ -145,7 +146,7 @@ uninstall:
 clean:
 	rm -rf ${BUILD_DIR}/objs ${LIBZSV}
 
-.PHONY: all install clean lib ${LIBZSV_INSTALL}
+.PHONY: build install uninstall clean  ${LIBZSV_INSTALL}
 
 ${BUILD_DIR}/objs/zsv.o: zsv.c zsv_internal.c
 	@mkdir -p `dirname "$@"`
