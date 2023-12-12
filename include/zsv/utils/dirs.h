@@ -44,6 +44,12 @@ size_t zsv_get_executable_path(char* buff, size_t buffsize);
 int zsv_dir_exists(const char *path);
 
 /**
+ * mkdir that works with UNC paths on Win
+ * if fail, use zsv_perror() instead of perror()
+ */
+int zsv_mkdir(const char *path);
+
+/**
  * Make a directory, as well as any intermediate dirs
  * return zero on success
  */

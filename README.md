@@ -65,7 +65,7 @@ that implements the expected
 
 ## Key highlights
 
-* Available as BOTH a library and an application
+* Available as BOTH a library and an application (coming soon: standalone zsvutil library for common helper functions such as csv writer)
 * Open-source, permissively licensed
 * Handles real-world CSV the same way that spreadsheet programs do (*including
   edge cases*). Gracefully handles (and can "clean") real-world data that may be

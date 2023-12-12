@@ -72,9 +72,7 @@ struct zsv_2db_data {
   char *connection_string;
 
   struct {
-//    yajl_handle handle;
     struct yajl_helper_parse_state st;
-//    yajl_callbacks callbacks;
     yajl_status yajl_stat;
     enum zsv_2db_state state;
 
@@ -701,7 +699,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
      "  https://github.com/liquidaty/zsv/blob/main/app/schema/database-table.json",
      "",
      "For example:",
-     "  ["
+     "  [",
      "    {",
      "      \"columns\":[{\"name\":\"column 1\"}],",
      "      \"indexes\":{\"ix1\":{\"on\":\"[column 1]\",\"unique\":true}}",
