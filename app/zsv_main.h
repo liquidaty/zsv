@@ -13,6 +13,7 @@
 #define ZSV_MAIN_NO_OPTIONS_FUNC1(x) zsv_ ## x ## _main_no_options
 
 struct zsv_opts;
+struct zsv_prop_handler;
 
 /* macros for commands that use common zsv parsing */
 #define ZSV_MAIN_FUNC(x) ZSV_MAIN_FUNC1(x)
