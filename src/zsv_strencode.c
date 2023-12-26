@@ -20,7 +20,7 @@ size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace,
     clen = ZSV_UTF8_CHARLEN(s[i2]);
     if(LIKELY(clen == 1))
       s[new_len++] = s[i2];
-    else if(UNLIKELY(clen < 0) || UNLIKELY(i2 + clen >= n)) {
+    else if(UNLIKELY(clen < 0) || UNLIKELY(i2 + clen > n)) {
       if(malformed_handler)
         malformed_handler(handler_ctx, s, n, new_len);
       if(replace)
