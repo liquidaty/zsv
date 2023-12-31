@@ -1,0 +1,9 @@
+country,city,AccentCity,Column,../../data/compare/t1.csv,../../data/compare/t2.csv
+cn,fulongling,Placken,<key>,Missing,
+de,placken,Placken,Longitude,8.433333,10.4
+ie,burtown cross roads,Oggal,<key>,Missing,
+kr,chusamdong,Cvetovo,<key>,Missing,
+pl,ciesle male,Ciesle Male,AccentCity,Ciesle Male,Ciesle XXX
+ru,chishmabash,Chishmabash,<key>,,Missing
+tr,yenioe,Lituhi Mission,<key>,Missing,
+zr,kakova,Kakova,Region,9,XX
