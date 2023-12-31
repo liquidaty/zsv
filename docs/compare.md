@@ -60,8 +60,7 @@ Row matching and sorting is handled as follows:
 
 Imagine we want to compare the following two tables:
 
-### Table 1 [t1.csv](../data/compare/t1.csv)
-
+### Table 1 ([t1.csv](../data/compare/t1.csv))
 
 |Country|City|AccentCity|Region|Population|Latitude|Longitude|
 |--|--|--|--|--|--|--|
@@ -77,7 +76,7 @@ Imagine we want to compare the following two tables:
 |za|hota|Hota|05||-31.640685|27.681357|
 |zr|kakova|Kakova|09||0.7333333|29.0166667|
 
-### Table 2 [t2.csv](../data/compare/t2.csv)
+### Table 2 ([t2.csv](../data/compare/t2.csv))
 
 |Region|Population|Latitude|Longitude|Country|City|AccentCity|
 |--|--|--|--|--|--|--|
@@ -178,6 +177,25 @@ to get:
 ]
 ```
 
+and in each case if we wanted to include additional data in the output for context, we can
+do so using `--add`, e.g.:
+```
+zsv compare --add accentcity t1.csv t2.csv --sort -k country -k city
+```
+
+which outputs:
+
+|country|city|accentcity|Column|t1.csv|t2.csv|
+|--|--|--|--|--|--|
+|cn|fulongling|Placken|<key>|Missing||
+|de|placken|Placken|Longitude|8.433333|10.4|
+|ie|burtown cross roads|Oggal|<key>|Missing||
+|kr|chusamdong|Cvetovo|<key>|Missing||
+|pl|ciesle male|Ciesle Male|AccentCity|Ciesle Male|Ciesle XXX|
+|ru|chishmabash|Chishmabash|<key>||Missing|
+|tr|yenioe|Lituhi Mission|<key>|Missing||
+|zr|kakova|Kakova|Region|9|XX|
+
 ## Performance
 
 No rigorous benchmarking has yet been performed, but preliminary testing yields reasonable performance and memory usage.
@@ -186,3 +204,42 @@ Using a 2019 MBA, running a comparison of two 40MB CSV files, each a table of 10
 60,000 differences, took about 5.5 seconds and used a maximum about 1.8MB of RAM on a 2019 MBA.
 
 The same test with sorting used significantly more memory (up to ~40MB) and took about 7.8 seconds to complete.
+
+## Usage details
+
+```
+Usage: compare [options] [file1.csv] [file2.csv] [...]
+Options:
+  -h,--help          : show usage
+  -k,--key <colname> : specify a column to match rows on
+                       can be specified multiple times
+  -a,--add <colname> : specify an additional column to output
+                       will use the [first input] source
+  --sort             : sort on keys before comparing
+  --sort-in-memory   : for sorting,  use in-memory instead of temporary db
+                       (see https://www.sqlite.org/inmemorydb.html)
+  --json             : output as JSON
+  --json-compact     : output as compact JSON
+  --json-object      : output as an array of objects
+  --print-key-colname: when outputting key column diffs,
+                       print column name instead of <key>
+
+NOTES
+
+    If no keys are specified, each row from each input is compared to the
+    row in the corresponding position in each other input (all the first rows
+    from each input are compared to each other, all the second rows are compared to
+    each other, etc).
+
+    If one or more key is specified, each input is assumed to already be
+    lexicographically sorted in ascending order; this is a necessary condition
+    for the output to be correct (unless the --sort option is used). However, it
+    is not required for each input to contain the same population of row keys
+
+    The --sort option uses sqlite3 (unindexed) sort and is intended to be a
+    convenience rather than performance feature. If you need high performance
+    sorting, other solutions, such as a multi-threaded parallel sort, are likely
+    superior. For handling quoted data, `2tsv` can be used to convert to a delimited
+    format without quotes, that can be directly parsed with common UNIX utilities
+    (such as `sort`), and `select --unescape` can be used to convert back
+```
