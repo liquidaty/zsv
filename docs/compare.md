@@ -60,7 +60,8 @@ Row matching and sorting is handled as follows:
 
 Imagine we want to compare the following two tables:
 
-### Table 1 (t1.csv)
+### Table 1 [t1.csv](../data/compare/t1.csv)
+
 
 |Country|City|AccentCity|Region|Population|Latitude|Longitude|
 |--|--|--|--|--|--|--|
@@ -76,7 +77,7 @@ Imagine we want to compare the following two tables:
 |za|hota|Hota|05||-31.640685|27.681357|
 |zr|kakova|Kakova|09||0.7333333|29.0166667|
 
-### Table 2 (t2.csv)
+### Table 2 [t2.csv](../data/compare/t2.csv)
 
 |Region|Population|Latitude|Longitude|Country|City|AccentCity|
 |--|--|--|--|--|--|--|

@@ -494,3 +494,9 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 
 	@(${PREFIX} $< compare/t1.csv compare/t7.csv compare/t3.csv --print-key-colname -k c ${REDIRECT1} ${TMP_DIR}/$@.out9 && \
 	${CMP} ${TMP_DIR}/$@.out9 expected/$@.out9 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< compare/t1.csv compare/t7.csv compare/t3.csv --print-key-colname -k c ${REDIRECT1} ${TMP_DIR}/$@.out9 && \
+	${CMP} ${TMP_DIR}/$@.out9 expected/$@.out9 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< ../../data/compare/t1.csv ../../data/compare/t2.csv --add AccentCity --sort -k country -k city ${REDIRECT1} ${TMP_DIR}/$@.out10 && \
+	${CMP} ${TMP_DIR}/$@.out10 expected/$@.out10 && ${TEST_PASS} || ${TEST_FAIL})

@@ -155,6 +155,17 @@ static void zsv_compare_output_tuple(struct zsv_compare_data *data,
     }
   }
 
+  // output additional columns
+  for(struct zsv_compare_added_column *ac = data->added_columns; ac; ac = ac->next) {
+    if(!ac->input) {
+      if(data->writer.type != ZSV_COMPARE_OUTPUT_TYPE_JSON)
+        zsv_compare_output_str(data, NULL, ZSV_WRITER_SAME_ROW, 0);
+    } else {
+      struct zsv_cell c = data->get_cell(ac->input, ac->col_ix);
+      zsv_compare_output_strn(data, c.str, c.len, ZSV_WRITER_SAME_ROW, c.quoted);
+    }
+  }
+
   // output column name of this cell
   zsv_compare_output_str(data, colname, ZSV_WRITER_SAME_ROW, 1);
 
@@ -165,17 +176,6 @@ static void zsv_compare_output_tuple(struct zsv_compare_data *data,
     } else {
       struct zsv_cell *value = &values[i];
       zsv_compare_output_strn(data, value->str, value->len, ZSV_WRITER_SAME_ROW, value->quoted);
-    }
-  }
-
-  // output additional columns
-  for(struct zsv_compare_added_column *ac = data->added_columns; ac; ac = ac->next) {
-    if(!ac->input) {
-      if(data->writer.type != ZSV_COMPARE_OUTPUT_TYPE_JSON)
-        zsv_compare_output_str(data, NULL, ZSV_WRITER_SAME_ROW, 0);
-    } else {
-      struct zsv_cell c = data->get_cell(ac->input, ac->col_ix);
-      zsv_compare_output_strn(data, c.str, c.len, ZSV_WRITER_SAME_ROW, c.quoted);
     }
   }
 
@@ -359,6 +359,10 @@ static void zsv_compare_output_begin(struct zsv_compare_data *data) {
                                1);
     }
 
+    // write additional column names
+    for(struct zsv_compare_added_column *ac = data->added_columns; ac; ac = ac->next)
+      zsv_compare_header_str(data, ac->colname->name, ZSV_WRITER_SAME_ROW, 1);
+
     // write "Column"
     zsv_compare_header_str(data, (const unsigned char *)"Column", ZSV_WRITER_SAME_ROW, 0);
 
@@ -367,10 +371,6 @@ static void zsv_compare_output_begin(struct zsv_compare_data *data) {
       struct zsv_compare_input *input = &data->inputs[i];
       zsv_compare_header_str(data, (const unsigned char *)input->path, ZSV_WRITER_SAME_ROW, 1);
     }
-
-    // write additional column names
-    for(struct zsv_compare_added_column *ac = data->added_columns; ac; ac = ac->next)
-      zsv_compare_header_str(data, ac->colname->name, ZSV_WRITER_SAME_ROW, 1);
 
     if(data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON && !data->writer.object)
       jsonwriter_end_array(data->writer.handle.jsw);
@@ -600,19 +600,19 @@ static int compare_usage() {
   static const char *usage[] = {
     "Usage: compare [options] [file1.csv] [file2.csv] [...]",
     "Options:",
-    "  -h,--help        : show usage",
-    "  -k,--key <field> : specify a field to match rows on",
-    "                     can be specified multiple times",
-    "  -a,--add <field> : specify an additional field to output",
-    "                     will use the [first input] source",
-    "  --sort           : sort on keys before comparing",
-    "  --sort-in-memory : for sorting,  use in-memory instead of temporary db",
-    "                     (see https://www.sqlite.org/inmemorydb.html)",
-    "  --json           : output as JSON",
-    "  --json-compact   : output as compact JSON",
-    "  --json-object    : output as an array of objects",
-    "  --print-key-colname : when outputting key column diffs,",
-    "                        print column name instead of <key>",
+    "  -h,--help          : show usage",
+    "  -k,--key <colname> : specify a column to match rows on",
+    "                       can be specified multiple times",
+    "  -a,--add <colname> : specify an additional column to output",
+    "                       will use the [first input] source",
+    "  --sort             : sort on keys before comparing",
+    "  --sort-in-memory   : for sorting,  use in-memory instead of temporary db",
+    "                       (see https://www.sqlite.org/inmemorydb.html)",
+    "  --json             : output as JSON",
+    "  --json-compact     : output as compact JSON",
+    "  --json-object      : output as an array of objects",
+    "  --print-key-colname: when outputting key column diffs,",
+    "                       print column name instead of <key>",
     "",
     "NOTES",
     "",
