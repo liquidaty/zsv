@@ -64,7 +64,7 @@ int zsv_replace_file(const void *src, const void *dest) {
   zsv_win_to_unicode(dest, wdest, ARRAY_SIZE(wdest));
   zsv_win_to_unicode(src, wsrc, ARRAY_SIZE(wsrc));
 
-  if(ReplaceFileW(wdest, wsrc, NULL, REPLACEFILE_IGNORE_MERGE_ERRORS, 0, 0)) // success
+  if(MoveFileExW(wdest, wsrc, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) // success
     return 0;
 
   if(GetLastError() == 2) // file not found, could be target. use simple rename
