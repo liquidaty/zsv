@@ -208,6 +208,8 @@ The same test with sorting used significantly more memory (up to ~40MB) and took
 ## Usage details
 
 ```
+zsv compare -h
+
 Usage: compare [options] [file1.csv] [file2.csv] [...]
 Options:
   -h,--help          : show usage
