@@ -100,9 +100,20 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
 #ifdef WIN32
   if(len > 1) {
     // starts with two slashes
-    if(strchr("/\\", tmp[0]) && strchr("/\\", tmp[1]))
+    if(strchr("/\\", tmp[0]) && strchr("/\\", tmp[1])) {
       offset = 2;
-
+      // find the next slash
+      char *path_end = tmp + 3;
+      while(*path_end && !strchr("/\\", *path_end))
+        path_end++;
+      if(*path_end) path_end++;
+      if(*path_end)
+        offset = path_end - tmp;
+      else {
+        fprintf(stderr, "Invalid path: %s\n", path);
+        return -1;
+      }
+    }
     // starts with *:
     else if(tmp[1] == ':')
       offset = 2;
@@ -116,13 +127,16 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
       char tmp_c = p[1];
       p[0] = FILESLASH;
       p[1] = '\0';
-      if(*tmp && !zsv_dir_exists(tmp) && mkdir(tmp
+      if(*tmp && !zsv_dir_exists(tmp)
+         && mkdir(tmp
 #ifndef WIN32
-               , S_IRWXU
+                  , S_IRWXU
 #endif
-               ))
+                  )) {
         rc = -1;
-      else
+        fprintf(stderr, "Error creating directory: ");
+        perror(tmp);
+      } else
         p[1] = tmp_c;
     }
 
