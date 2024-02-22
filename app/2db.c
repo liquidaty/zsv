@@ -18,6 +18,7 @@
 
 #include <zsv/utils/mem.h>
 #include <zsv/utils/string.h>
+#include <zsv/utils/os.h>
 
 #include <yajl_helper/yajl_helper.h>
 
@@ -651,9 +652,10 @@ static int zsv_2db_finish(zsv_2db_handle data) {
 
        // rename tmp to target
       unlink(data->opts.db_fn);
-      if(rename(data->db_fn_tmp, data->opts.db_fn)) {
+      if(zsv_replace_file(data->db_fn_tmp, data->opts.db_fn)) {
         fprintf(stderr, "Unable to rename %s to %s\n",
                 data->db_fn_tmp, data->opts.db_fn);
+        zsv_perror(NULL);
         err = 1;
       } else
         fprintf(stderr, "Database %s created\n", data->opts.db_fn);

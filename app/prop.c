@@ -733,9 +733,10 @@ static int zsv_prop_foreach_copy(struct zsv_foreach_dirent_handle *h, size_t dep
               else {
                 if(h->verbose)
                   fprintf(stderr, "Renaming: %s => %s\n", dest_prop_filepath_tmp, dest_prop_filepath);
-                if(rename(dest_prop_filepath_tmp, dest_prop_filepath)) {
+                if(zsv_replace_file(dest_prop_filepath_tmp, dest_prop_filepath)) {
                   const char *msg = strerror(errno);
-                  fprintf(stderr, "Unable to rename %s -> %s: %s\n", dest_prop_filepath_tmp, dest_prop_filepath, msg ? msg : "Unknown error");
+                  fprintf(stderr, "Unable to rename %s -> %s: ", dest_prop_filepath_tmp, dest_prop_filepath);
+                  zsv_perror(NULL);
                   ctx->err = errno;
                 }
               }
