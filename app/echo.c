@@ -49,6 +49,9 @@ struct zsv_echo_data {
       const char *sql;
     } sqlite3;
   } o;
+
+  unsigned char trim_white:1;
+  unsigned char _:7;
 };
 
 /**
@@ -86,15 +89,19 @@ static void zsv_echo_row(void *hook) {
   if(VERY_UNLIKELY(data->row_ix == 0)) { // header
     for(size_t i = 0, j = zsv_cell_count(data->parser); i < j; i++) {
       struct zsv_cell cell = zsv_get_cell(data->parser, i);
+      if(UNLIKELY(data->trim_white))
+        cell.str = (unsigned char *)zsv_strtrim(cell.str, &cell.len);
       zsv_writer_cell(data->csv_writer, i == 0, cell.str, cell.len, cell.quoted);
     }
   } else {
     for(size_t i = 0, j = zsv_cell_count(data->parser); i < j; i++) {
-      if(data->overwrite.row_ix == data->row_ix && data->overwrite.col_ix == i) {
+      if(VERY_UNLIKELY(data->overwrite.row_ix == data->row_ix && data->overwrite.col_ix == i)) {
         zsv_writer_cell(data->csv_writer, i == 0, data->overwrite.str, data->overwrite.len, 1);
         zsv_echo_get_next_overwrite(data);
       } else {
         struct zsv_cell cell = zsv_get_cell(data->parser, i);
+        if(UNLIKELY(data->trim_white))
+          cell.str = (unsigned char *)zsv_strtrim(cell.str, &cell.len);
         zsv_writer_cell(data->csv_writer, i == 0, cell.str, cell.len, cell.quoted);
       }
     }
@@ -111,6 +118,7 @@ const char *zsv_echo_usage_msg[] = {
   "",
   "Options:",
   "  -b                  : output with BOM",
+  "  --trim              : trim whitespace",
   "  --overwrite <source>: overwrite cells using given source. Source may be:",
   "                        - sqlite3://<filename>[?sql=<query>]",
   "                          ex: sqlite3://overwrites.db?sql=select row, column, value from overwrites order by row, column",
@@ -206,6 +214,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     const char *arg = argv[arg_i];
     if(!strcmp(arg, "-b"))
       writer_opts.with_bom = 1;
+    else if(!strcmp(arg, "--trim"))
+      data.trim_white = 1;
     else if(!strcmp(arg, "--overwrite")) {
       if(arg_i+1 >= argc) {
         fprintf(stderr, "Option %s requires a value\n", arg);
