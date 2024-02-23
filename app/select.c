@@ -557,8 +557,7 @@ const char *zsv_select_usage_msg[] = {
   "  -H,--head <n>               : (head) only process the first n rows of data from all rows (including header) in the input",
   "  --no-header                 : do not output a header row",
   "  --prepend-header <value>    : prepend each column header with the given text value",
-  "  -s,--search <value>         : only output rows with at least one cell containing"
-  "                                value",
+  "  -s,--search <value>         : only output rows with at least one cell containing value",
   // to do: " -s,--search /<pattern>/modifiers: search on regex pattern; modifiers include 'g' (global) and 'i' (case-insensitive)",
   "  --sample-every <num of rows>: output a sample consisting of the first row, then every nth row",
   "  --sample-pct <percentage>   : output a randomly-selected sample (32 bits of randomness) of n percent of the input rows",

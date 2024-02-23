@@ -100,7 +100,7 @@ test: ${TESTS}
 test-prop:
 	EXE=${BUILD_DIR}/bin/zsv_prop${EXE} make -C prop test
 
-test-echo : test-echo1 test-echo-overwrite test-echo-eol test-echo-overwrite-csv test-echo-chars test-echo-trim
+test-echo : test-echo1 test-echo-overwrite test-echo-eol test-echo-overwrite-csv test-echo-chars test-echo-trim test-echo-skip-until
 
 test-echo1: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
@@ -116,7 +116,12 @@ test-echo-eol-%: ${BUILD_DIR}/bin/zsv_echo${EXE}
 
 test-echo-trim: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
-	@${PREFIX} $< ${TEST_DATA_DIR}/test/echo-trim.csv ${REDIRECT} ${TMP_DIR}/$@.out
+	@${PREFIX} $< --trim ${TEST_DATA_DIR}/test/echo-trim.csv ${REDIRECT} ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-echo-skip-until: ${BUILD_DIR}/bin/zsv_echo${EXE}
+	@${TEST_INIT}
+	@${PREFIX} $< --skip-until ASF ${TEST_DATA_DIR}/test/echo-skip-until.csv ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-echo-chars: ${BUILD_DIR}/bin/zsv_echo${EXE}
