@@ -48,7 +48,7 @@ TEST_DATA_DIR=${THIS_LIB_BASE}/data
 SOURCES= echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
-TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv
+TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help
 
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
@@ -463,6 +463,10 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} 
 
 #	ajv validate --strict-tuples=false -s ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json -d expected/$@.out7.json [suffix must be json]
 
+test-2json-help: test-%-help: ${BUILD_DIR}/bin/zsv_%${EXE}
+	@${TEST_INIT}
+	@[ "`$< -h | wc -l`" -gt 17 ] && ${TEST_PASS} || ${TEST_FAIL} # check output nonempty
+	@$< -h >/dev/null && ${TEST_PASS} || ${TEST_FAIL} # check exit code
 
 test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
