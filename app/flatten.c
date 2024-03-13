@@ -526,6 +526,20 @@ const char *flatten_usage_msg[] =
    "  (future: -a <Aggregation method>: aggregation method to use for the select-all placeholder)",
    "  -o <output filename>: name of file to save output to",
    NULL
+   /*
+     EXAMPLE
+     echo 'row,col,val
+> A,ltv,100
+> A,loanid,A
+> A,hi,there
+> B,loanid,B
+> B,ltv,90
+> B,hi,you
+> B,xxx,zzz' | zsv flatten --row-id row --col-name col -V val
+row,ltv,loanid,hi,xxx
+A,100,A,there,
+B,90,B,you,zzz
+   */
 };
 
 static void flatten_usage() {

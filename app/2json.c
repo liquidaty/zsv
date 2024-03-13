@@ -230,36 +230,37 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   const char *usage[] =
     {
-     APPNAME ": streaming CSV to json converter, or sqlite3 db to JSON converter",
-     "",
-     "Usage: ",
-     "   " APPNAME " [input.csv] [options]",
-     "   " APPNAME " --from-db <sqlite3_filename> [options]",
-     "",
-     "Options:",
-     "  -h, --help",
-     "  -o, --output <filename>       : output to specified filename",
-     "  --compact                     : output compact JSON",
-     "  --from-db                     : input is sqlite3 database",
-     "  --db-table <table_name>       : name of table in input database to convert",
-     "  --object                      : output as array of objects",
-     "  --no-empty                    : omit empty properties (only with --object)",
-     "  --database                    : output in database schema",
-     "  --no-header                   : treat the header row as a data row",
-     "  --index <name on expr>        : add index to database schema",
-     "  --unique-index <name on expr> : add unique index to database schema",
-     NULL
+      APPNAME ": streaming CSV to json converter, or sqlite3 db to JSON converter",
+      "",
+      "Usage: ",
+      "   " APPNAME " [input.csv] [options]",
+      "   " APPNAME " --from-db <sqlite3_filename> [options]",
+      "",
+      "Options:",
+      "  -h, --help",
+      "  -o, --output <filename>       : output to specified filename",
+      "  --compact                     : output compact JSON",
+      "  --from-db                     : input is sqlite3 database",
+      "  --db-table <table_name>       : name of table in input database to convert",
+      "  --object                      : output as array of objects",
+      "  --no-empty                    : omit empty properties (only with --object)",
+      "  --database                    : output in database schema",
+      "  --no-header                   : treat the header row as a data row",
+      "  --index <name on expr>        : add index to database schema",
+      "  --unique-index <name on expr> : add unique index to database schema",
+      NULL
     };
 
   FILE *out = NULL;
   const char *input_path = NULL;
   enum zsv_status err = zsv_status_ok;
-
-  for(int i = 1; !err && i < argc; i++) {
+  int done = 0;
+  
+  for(int i = 1; !err && !done && i < argc; i++) {
     if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       for(int j = 0; usage[j]; j++)
         fprintf(stdout, "%s\n", usage[j]);
-      err = zsv_status_error;
+      done = 1;
     } else if(!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if(++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i-1]), err = zsv_status_error;
@@ -320,27 +321,27 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
   }
 
-  if(err)
-    ;
-  else if(data.indexes.count && data.schema != ZSV_JSON_SCHEMA_DATABASE)
-    fprintf(stderr, "--index/--unique-index can only be used with --database\n"), err = zsv_status_error;
-  else if(data.no_header && data.schema)
-    fprintf(stderr, "--no-header cannot be used together with --object or --database\n"), err = zsv_status_error;
-  else if(data.no_empty && data.schema != ZSV_JSON_SCHEMA_OBJECT)
-    fprintf(stderr, "--no-empty can only be used with --object\n"), err = zsv_status_error;
-  else if(!opts->stream) {
-    if(data.from_db)
-      fprintf(stderr, "Database input specified, but no input file provided\n"), err = zsv_status_error;
-    else {
+  if(!(err || done)) {
+    if(data.indexes.count && data.schema != ZSV_JSON_SCHEMA_DATABASE)
+      fprintf(stderr, "--index/--unique-index can only be used with --database\n"), err = zsv_status_error;
+    else if(data.no_header && data.schema)
+      fprintf(stderr, "--no-header cannot be used together with --object or --database\n"), err = zsv_status_error;
+    else if(data.no_empty && data.schema != ZSV_JSON_SCHEMA_OBJECT)
+      fprintf(stderr, "--no-empty can only be used with --object\n"), err = zsv_status_error;
+    else if(!opts->stream) {
+      if(data.from_db)
+        fprintf(stderr, "Database input specified, but no input file provided\n"), err = zsv_status_error;
+      else {
 #ifdef NO_STDIN
-      fprintf(stderr, "Please specify an input file\n"), err = zsv_status_error;
+        fprintf(stderr, "Please specify an input file\n"), err = zsv_status_error;
 #else
-      opts->stream = stdin;
+        opts->stream = stdin;
 #endif
+      }
     }
   }
 
-  if(!err) {
+  if(!(err || done)) {
     if(!out)
       out = stdout;
     if(!(data.jsw = jsonwriter_new(out)))
