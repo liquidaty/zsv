@@ -70,7 +70,7 @@ jobs:
         MAKE: gmake
         RUN_TESTS: false
 #      uses: vmactions/freebsd-vm@v0   # https://github.com/vmactions/freebsd-vm
-      uses: cross-platform-actions/action@v0.21.0
+      uses: cross-platform-actions/action@v0.23.0
       with:
 #        mem: 2048
 #        release: 12.3
