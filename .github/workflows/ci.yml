@@ -45,7 +45,7 @@ jobs:
         echo "TAG=$TAG" >> $GITHUB_ENV
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Linux
       if: runner.os == 'Linux'
@@ -129,7 +129,6 @@ jobs:
         AR: x86_64-w64-mingw32-ar
         NM: x86_64-w64-mingw32-nm
         WINDRES: x86_64-w64-mingw32-windres
-
       shell: bash
       run: |
         ./scripts/ci-build.sh
