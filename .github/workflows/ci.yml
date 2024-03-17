@@ -62,25 +62,15 @@ jobs:
 
     # --- Build ---
 
-    - name: Build on macOS-12 (${{ env.AMD64_FREEBSD_GCC }})
-      if: matrix.os == 'macos-12'
+    - name: Build on Linux (${{ env.AMD64_FREEBSD_GCC }})
+      if: matrix.os == 'Linux'
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc
         MAKE: gmake
         RUN_TESTS: false
-#      uses: vmactions/freebsd-vm@v0   # https://github.com/vmactions/freebsd-vm
       uses: cross-platform-actions/action@v0.23.0
       with:
-#        mem: 2048
-#        release: 12.3
-#        envs: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
-#        usesh: true
-#        prepare: pkg install -y tree zip git autotools gmake lang/gcc
-#        run: |
-#          ./scripts/ci-build.sh
-
-### valid inputs are ['run', 'operating_system', 'architecture', 'version', 'shell', 'environment_variables', 'memory', 'cpu_count', 'hypervisor', 'image_url', 'sync_files']
         memory: 2048
         shell: sh
         operating_system: freebsd
@@ -251,7 +241,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip)
-      if: matrix.os == 'macos-12'
+      if: matrix.os == 'Linux'
       uses: actions/upload-artifact@v4
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip
@@ -306,7 +296,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz)
-      if: matrix.os == 'macos-12'
+      if: matrix.os == 'Linux'
       uses: actions/upload-artifact@v4
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz
