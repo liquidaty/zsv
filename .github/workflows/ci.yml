@@ -63,13 +63,13 @@ jobs:
     # --- Build ---
 
     - name: Build on Linux (${{ env.AMD64_FREEBSD_GCC }})
-      if: matrix.os == 'Linux'
+      if: runner.os == 'Linux'
+      uses: cross-platform-actions/action@v0.23.0
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc
         MAKE: gmake
         RUN_TESTS: false
-      uses: cross-platform-actions/action@v0.23.0
       with:
         memory: 2048
         shell: sh
@@ -241,7 +241,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip)
-      if: matrix.os == 'Linux'
+      if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip
@@ -296,7 +296,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz)
-      if: matrix.os == 'Linux'
+      if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz
