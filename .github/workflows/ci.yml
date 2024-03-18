@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         # os: [ubuntu-20.04, macos-12]
-        os: [macos-13-xlarge]
+        os: [macos-14]
 
     runs-on: ${{ matrix.os }}
 
@@ -137,7 +137,7 @@ jobs:
         ./$PREFIX/bin/zsv version
 
     - name: Build on macOS (${{ env.ARM64_MACOSX_GCC }})
-      if: matrix.os == 'macos-13-xlarge'
+      if: matrix.os == 'macos-14'
       env:
         PREFIX: ${{ env.ARM64_MACOSX_GCC }}
         CC: gcc-11
@@ -253,7 +253,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.ARM64_MACOSX_GCC }}.zip)
-      if: matrix.os == 'macos-13-xlarge'
+      if: matrix.os == 'macos-14'
       uses: actions/upload-artifact@v4
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.ARM64_MACOSX_GCC }}.zip
@@ -319,7 +319,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.ARM64_MACOSX_GCC }}.tar.gz)
-      if: matrix.os == 'macos-13-xlarge'
+      if: matrix.os == 'macos-14'
       uses: actions/upload-artifact@v4
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.ARM64_MACOSX_GCC }}.tar.gz
