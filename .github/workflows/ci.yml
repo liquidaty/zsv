@@ -15,8 +15,7 @@ jobs:
     name: ci
     strategy:
       matrix:
-        # os: [ubuntu-20.04, macos-12]
-        os: [macos-14]
+        os: [ubuntu-20.04, macos-12, macos-14]
 
     runs-on: ${{ matrix.os }}
 
@@ -54,7 +53,7 @@ jobs:
         sudo apt install -y mingw-w64 rpm alien nuget
         sudo apt remove -y jq
 
-    - name: Set up macOS
+    - name: Set up macOS (AMD64 and ARM64)
       if: runner.os == 'macOS'
       run: |
         brew install coreutils tree autoconf automake libtool
@@ -125,7 +124,7 @@ jobs:
         ./scripts/ci-create-nuget-package.sh
 
     - name: Build on macOS (${{ env.AMD64_MACOSX_GCC }})
-      if: runner.os == 'macOS'
+      if: matrix.os == 'macos-12'
       env:
         PREFIX: ${{ env.AMD64_MACOSX_GCC }}
         CC: gcc-11
@@ -242,7 +241,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.zip)
-      if: runner.os == 'macOS'
+      if: matrix.os == 'macos-12'
       uses: actions/upload-artifact@v4
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.zip
@@ -308,7 +307,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.tar.gz)
-      if: runner.os == 'macOS'
+      if: matrix.os == 'macos-12'
       uses: actions/upload-artifact@v4
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.tar.gz
@@ -356,7 +355,7 @@ jobs:
     # --- Update homebrew tap ---
 
     - name: Update homebrew tap (liquidaty/homebrew-zsv)
-      if: ${{ startsWith(github.ref, 'refs/tags/v') && runner.os == 'macOS' }}
+      if: ${{ startsWith(github.ref, 'refs/tags/v') && matrix.os == 'macos-12' }}
       env:
         HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
         TAG: ${{ env.TAG }}
