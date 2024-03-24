@@ -60,9 +60,10 @@ const char *zsv_sql_usage_msg[] =
    NULL
 };
 
-static void zsv_sql_usage() {
+static int zsv_sql_usage(FILE *f) {
   for(int i = 0; zsv_sql_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", zsv_sql_usage_msg[i]);
+    fprintf(f, "%s\n", zsv_sql_usage_msg[i]);
+  return f == stderr ? 1 : 0;
 }
 
 struct zsv_sql_data {
@@ -151,8 +152,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
    * zsv_set_default_opts() here to effectively pass the options when the sql
    * module calls zsv_get_default_opts()
    */
+  int err = 0;
   if(argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
-    zsv_sql_usage();
+    err = zsv_sql_usage(argc < 2 ? stderr : stdout);
   else {
     struct zsv_sql_data data = { 0 };
     int max_cols = 0; // to do: remove this; use parser_opts.max_columns
@@ -481,6 +483,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           sqlite3_finalize(stmt);
         }
       }
+      err = 1;
       if(err_msg) {
         fprintf(stderr, "Error: %s\n", err_msg);
         sqlite3_free(err_msg);
@@ -488,6 +491,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         fprintf(stderr, "Error (unable to open db, code %i): %s\n", rc, sqlite3_errstr(rc));
       else if(rc)
         fprintf(stderr, "Error (code %i): %s\n", rc, sqlite3_errstr(rc));
+      else
+        err = 0;
 
       if(db)
         sqlite3_close(db);
@@ -506,5 +511,5 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     zsv_set_default_opts(original_default_opts); // restore default options
     if(custom_prop_handler) zsv_set_default_custom_prop_handler(original_default_custom_prop_handler);
   }
-  return 0;
+  return err;
 }
