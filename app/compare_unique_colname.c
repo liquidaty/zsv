@@ -1,6 +1,6 @@
 static int zsv_compare_unique_colname_cmp(zsv_compare_unique_colname *x, zsv_compare_unique_colname *y) {
   return x->instance_num == y->instance_num ?
-    zsv_stricmp(x->name, y->name) : x->instance_num > y->instance_num ? 1 : 0;
+    zsv_stricmp(x->name, y->name) : x->instance_num > y->instance_num ? 1 : x->instance_num < y->instance_num ? -1 : 0;
 }
 
 SGLIB_DEFINE_RBTREE_FUNCTIONS(zsv_compare_unique_colname, left, right, color, zsv_compare_unique_colname_cmp);
@@ -75,8 +75,12 @@ zsv_compare_unique_colname_add(zsv_compare_unique_colname **tree,
     _new_col =
       zsv_compare_unique_colname_add_if_not_found(tree, s, len,
                                                   instance_num, &added);
-    if(!added) // should not happen
+    if(!added) { // should not happen
+#ifndef NDEBUG
+      fprintf(stderr, "Unexpected error! %s: %i\n", __FILE__, __LINE__);
+#endif
       return zsv_compare_status_error;
+    }
   }
   *new_col = _new_col;
   return zsv_compare_status_ok;
