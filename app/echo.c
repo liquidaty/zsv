@@ -53,7 +53,8 @@ struct zsv_echo_data {
   unsigned char *skip_until_prefix;
   size_t skip_until_prefix_len;
   unsigned char trim_white:1;
-  unsigned char _:7;
+  unsigned char contiguous:1;
+  unsigned char _:6;
 };
 
 /**
@@ -95,6 +96,8 @@ static void zsv_echo_row(void *hook) {
         cell.str = (unsigned char *)zsv_strtrim(cell.str, &cell.len);
       zsv_writer_cell(data->csv_writer, i == 0, cell.str, cell.len, cell.quoted);
     }
+  } else if(VERY_UNLIKELY(data->contiguous && zsv_row_is_blank(data->parser))) {
+    zsv_abort(data->parser);
   } else {
     for(size_t i = 0, j = zsv_cell_count(data->parser); i < j; i++) {
       if(VERY_UNLIKELY(data->overwrite.row_ix == data->row_ix && data->overwrite.col_ix == i)) {
@@ -132,6 +135,7 @@ const char *zsv_echo_usage_msg[] = {
   "Options:",
   "  -b                  : output with BOM",
   "  --trim              : trim whitespace",
+  "  --contiguous        : stop output upon scanning an entire row of blank values",
   "  --skip-until <value>: ignore all leading rows until the first row whose first column starts with the given value ",
   "  --overwrite <source>: overwrite cells using given source. Source may be:",
   "                        - sqlite3://<filename>[?sql=<query>]",
@@ -229,6 +233,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     const char *arg = argv[arg_i];
     if(!strcmp(arg, "-b"))
       writer_opts.with_bom = 1;
+    else if(!strcmp(arg, "--contiguous"))
+      data.contiguous = 1;
     else if(!strcmp(arg, "--trim"))
       data.trim_white = 1;
     else if(!strcmp(arg, "--skip-until")) {
