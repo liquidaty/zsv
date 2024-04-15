@@ -18,6 +18,7 @@
 
 #include <zsv/utils/compiler.h>
 #include <zsv/utils/writer.h>
+#include <zsv/utils/file.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/mem.h>
 
@@ -52,9 +53,13 @@ struct zsv_echo_data {
 
   unsigned char *skip_until_prefix;
   size_t skip_until_prefix_len;
+
+  char *tmp_fn;
+  unsigned max_nonempty_cols;
   unsigned char trim_white:1;
+  unsigned char trim_columns:1;
   unsigned char contiguous:1;
-  unsigned char _:6;
+  unsigned char _:5;
 };
 
 /**
@@ -87,10 +92,28 @@ void zsv_echo_get_next_overwrite(struct zsv_echo_data *data) {
   }
 }
 
+static void zsv_echo_get_max_nonempty_cols(void *hook) {
+  struct zsv_echo_data *data = hook;
+  unsigned row_nonempty_col_count = 0;
+  for(size_t i = 0, j = zsv_cell_count(data->parser); i < j; i++) {
+    struct zsv_cell cell = zsv_get_cell(data->parser, i);
+    if(UNLIKELY(data->trim_white))
+      cell.str = (unsigned char *)zsv_strtrim(cell.str, &cell.len);
+    if(cell.len)
+      row_nonempty_col_count = i+1;
+  }
+  if(data->max_nonempty_cols < row_nonempty_col_count)
+    data->max_nonempty_cols = row_nonempty_col_count;
+}
+
 static void zsv_echo_row(void *hook) {
   struct zsv_echo_data *data = hook;
+  size_t j = zsv_cell_count(data->parser);
+  if(UNLIKELY(data->trim_columns && j > data->max_nonempty_cols))
+    j = data->max_nonempty_cols;
+  
   if(VERY_UNLIKELY(data->row_ix == 0)) { // header
-    for(size_t i = 0, j = zsv_cell_count(data->parser); i < j; i++) {
+    for(size_t i = 0; i < j; i++) {
       struct zsv_cell cell = zsv_get_cell(data->parser, i);
       if(UNLIKELY(data->trim_white))
         cell.str = (unsigned char *)zsv_strtrim(cell.str, &cell.len);
@@ -99,7 +122,7 @@ static void zsv_echo_row(void *hook) {
   } else if(VERY_UNLIKELY(data->contiguous && zsv_row_is_blank(data->parser))) {
     zsv_abort(data->parser);
   } else {
-    for(size_t i = 0, j = zsv_cell_count(data->parser); i < j; i++) {
+    for(size_t i = 0; i < j; i++) {
       if(VERY_UNLIKELY(data->overwrite.row_ix == data->row_ix && data->overwrite.col_ix == i)) {
         zsv_writer_cell(data->csv_writer, i == 0, data->overwrite.str, data->overwrite.len, 1);
         zsv_echo_get_next_overwrite(data);
@@ -135,6 +158,7 @@ const char *zsv_echo_usage_msg[] = {
   "Options:",
   "  -b                  : output with BOM",
   "  --trim              : trim whitespace",
+  "  --trim-columns      : trim blank columns",
   "  --contiguous        : stop output upon scanning an entire row of blank values",
   "  --skip-until <value>: ignore all leading rows until the first row whose first column starts with the given value ",
   "  --overwrite <source>: overwrite cells using given source. Source may be:",
@@ -161,6 +185,11 @@ static void zsv_echo_cleanup(struct zsv_echo_data *data) {
     fclose(data->in);
   if(data->o.sqlite3.db)
     sqlite3_close(data->o.sqlite3.db);
+
+  if(data->tmp_fn) {
+    remove(data->tmp_fn);
+    free(data->tmp_fn);
+  }
 }
 
 #define zsv_echo_sqlite3_prefix "sqlite3://"
@@ -235,6 +264,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       writer_opts.with_bom = 1;
     else if(!strcmp(arg, "--contiguous"))
       data.contiguous = 1;
+    else if(!strcmp(arg, "--trim-columns"))
+      data.trim_columns = 1;
     else if(!strcmp(arg, "--trim"))
       data.trim_white = 1;
     else if(!strcmp(arg, "--skip-until")) {
@@ -294,10 +325,57 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return 1;
   }
 
+  unsigned char buff[4096];
   if(data.skip_until_prefix)
     opts->row_handler = zsv_echo_row_skip_until;
-  else
+  else {
+    if(data.trim_columns) {
+      // first, save the file if it is stdin
+      if(data.in == stdin) {
+        if(!(data.tmp_fn = zsv_get_temp_filename("zsv_echo_XXXXXXXX"))) {
+          zsv_echo_cleanup(&data);
+          return 1;
+        }
+          
+        FILE *f = fopen(data.tmp_fn, "wb");
+        if(!f) {
+          perror(data.tmp_fn);
+          zsv_echo_cleanup(&data);
+          return 1;
+        } else {
+          size_t bytes_read;
+          while((bytes_read = fread(buff, 1, sizeof(buff), data.in)) > 0)
+            fwrite(buff, 1, bytes_read, f);
+          fclose(f);
+          if(!(data.in = fopen(data.tmp_fn, "rb"))) {
+            perror(data.tmp_fn);
+            zsv_echo_cleanup(&data);
+            return 1;
+          }
+        }
+      }
+      // next, determine the max number of columns from the left that contains data
+      struct zsv_opts tmp_opts = *opts;
+      tmp_opts.row_handler = zsv_echo_get_max_nonempty_cols;
+      tmp_opts.stream = data.in;
+      tmp_opts.ctx = &data;
+      if(zsv_new_with_properties(&tmp_opts, custom_prop_handler, data.input_path, opts_used, &data.parser) != zsv_status_ok) {
+        zsv_echo_cleanup(&data);
+        return 1;
+      } else {
+        // find the max nonempty col count
+        enum zsv_status status;
+        while(!zsv_signal_interrupted && (status = zsv_parse_more(data.parser)) == zsv_status_ok) ;
+        zsv_finish(data.parser);
+        zsv_delete(data.parser);
+        data.parser = NULL;
+
+        // re-open the input again
+        data.in = fopen(data.tmp_fn ? data.tmp_fn : data.input_path, "rb");
+      }
+    }
     opts->row_handler = zsv_echo_row;
+  }
   opts->stream = data.in;
   opts->ctx = &data;
   data.csv_writer = zsv_writer_new(&writer_opts);
@@ -320,8 +398,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   // create a local csv writer buff for faster performance
-  unsigned char writer_buff[64];
-  zsv_writer_set_temp_buff(data.csv_writer, writer_buff, sizeof(writer_buff));
+  //  unsigned char writer_buff[64];
+  zsv_writer_set_temp_buff(data.csv_writer, buff, sizeof(buff));
 
   // process the input data.
   zsv_handle_ctrl_c_signal();
