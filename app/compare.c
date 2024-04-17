@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 #include <jsonwriter.h>
 
 #include <sqlite3.h>
@@ -227,25 +228,23 @@ static void zsv_compare_print_row(struct zsv_compare_data *data,
 
 #define ZSV_COMPARE_MISSING "Missing"
 
-//  if(last_ix + 1 < data->input_count) {
-    // if we don't have data from every input, then output "Missing" for missing inputs
-    char got_missing = 0;
-    for(unsigned i = 0; i < data->input_count; i++) {
-      struct zsv_compare_input *input = data->inputs_to_sort[i];
-      if(i > last_ix) {
-        got_missing = 1;
-        unsigned input_ix = input->index;
-        values[input_ix].str = (unsigned char *)ZSV_COMPARE_MISSING;
-        values[input_ix].len = strlen(ZSV_COMPARE_MISSING);
-      }
+  // if we don't have data from every input, then output "Missing" for missing inputs
+  char got_missing = 0;
+  for(unsigned i = 0; i < data->input_count; i++) {
+    struct zsv_compare_input *input = data->inputs_to_sort[i];
+    if(i > last_ix) {
+      got_missing = 1;
+      unsigned input_ix = input->index;
+      values[input_ix].str = (unsigned char *)ZSV_COMPARE_MISSING;
+      values[input_ix].len = strlen(ZSV_COMPARE_MISSING);
     }
-    if(got_missing) {
-      const unsigned char *key_names = data->print_key_col_names ? zsv_compare_combined_key_names(data) : (const unsigned char *)"<key>";
-      zsv_compare_output_tuple(data, key_input, key_names, values, 1);
-      // reset values
-      memset(values, 0, data->input_count * sizeof(*values));
-    }
-//  }
+  }
+  if(got_missing) {
+    const unsigned char *key_names = data->print_key_col_names ? zsv_compare_combined_key_names(data) : (const unsigned char *)"<key>";
+    zsv_compare_output_tuple(data, key_input, key_names, values, 1);
+    // reset values
+    memset(values, 0, data->input_count * sizeof(*values));
+  }
 
   // for each output column
   zsv_compare_unique_colname *output_col = data->output_colnames_first;
@@ -272,8 +271,23 @@ static void zsv_compare_print_row(struct zsv_compare_data *data,
         if(!output_col)
           output_col = input->output_colnames[input_col_ix];
         values[input_ix] = data->get_cell(input, input_col_ix);
-        if(i > 0 && !different && data->cmp(data->cmp_ctx, values[first_input_ix], values[input_ix], data, input_col_ix))
+        if(i > 0 && !different && data->cmp(data->cmp_ctx, values[first_input_ix], values[input_ix], data, input_col_ix)) {
           different = 1;
+          if(data->tolerance.value
+             && values[first_input_ix].len < ZSV_COMPARE_MAX_NUMBER_BUFF_LEN
+             && values[input_ix].len < ZSV_COMPARE_MAX_NUMBER_BUFF_LEN) {
+            // check if both are numbers with a difference less than the given tolerance            
+            double d1, d2;
+            memcpy(data->tolerance.str1, values[first_input_ix].str, values[first_input_ix].len);
+            data->tolerance.str1[values[first_input_ix].len] = '\0';
+            memcpy(data->tolerance.str2, values[input_ix].str, values[input_ix].len);
+            data->tolerance.str2[values[input_ix].len] = '\0';
+            if(!zsv_strtod_exact(data->tolerance.str1, &d1)
+               && !zsv_strtod_exact(data->tolerance.str2, &d2)
+               && fabs(d1 - d2) < data->tolerance.value)
+              different = 0;
+          }
+        }
       }
     }
 
@@ -608,6 +622,10 @@ static int compare_usage() {
     "  --sort             : sort on keys before comparing",
     "  --sort-in-memory   : for sorting,  use in-memory instead of temporary db",
     "                       (see https://www.sqlite.org/inmemorydb.html)",
+    "  --tolerance <value>: ignore differences where both values are numeric",
+    "                       strings with values differing by less than the given",
+    "                       amount e.g. --tolerance 0.01 will ignore differences",
+    "                       of numeric strings such as 123.45 vs 123.44",
     "  --json             : output as JSON",
     "  --json-compact     : output as compact JSON",
     "  --json-object      : output as an array of objects",
@@ -694,6 +712,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           if(data->status == zsv_compare_status_ok)
             data->added_colcount++;
         }
+      }
+    } else if(!strcmp(arg, "--tolerance")) {
+      const char *next_arg = zsv_next_arg(++arg_i, argc, argv, &err);
+      if(next_arg) {
+        if(zsv_strtod_exact(next_arg, &data->tolerance.value))
+          fprintf(stderr, "Invalid numeric value: %s\n", next_arg), err = 1;
+        else if(data->tolerance.value < 0)
+          fprintf(stderr, "Tolerance must be greater than zero (got %s)\n", next_arg), err = 1;
+        else
+          data->tolerance.value = nextafterf(data->tolerance.value, INFINITY);
       }
     } else if(!strcmp(arg, "--sort")) {
       data->sort = 1;

@@ -107,6 +107,12 @@ struct zsv_compare_data {
   sqlite3 *sort_db; // used when --sort option was specified
 
   struct {
+    double value;
+#define ZSV_COMPARE_MAX_NUMBER_BUFF_LEN 128
+    char   str1[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
+    char   str2[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
+  } tolerance;
+  struct {
     char type; // 'j' for json
     union {
       zsv_csv_writer csv;

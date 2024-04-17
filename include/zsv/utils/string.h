@@ -118,8 +118,20 @@ size_t zsv_strnext_is_sign(const unsigned char *s, size_t len);
  */
 size_t zsv_strnext_is_currency(const unsigned char *s, size_t len);
 
+
+/*
+ * Convert a string to a double. must convert entire string, else returns error
+ * @param s     string to convert
+ * @param d     pointer to converted value, on success
+ *  
+ * @returns     0 on success, non-zero on error
+ */
+int zsv_strtod_exact(const char *s, double *d);
+
 /*
  * `zsv_get_cell_trimmed` is equivalent to `zsv_get_cell`, except that it
+ * @param s     string to convert
+ * @param len   length of input string
  * returns a value with leading and trailing whitespace removed
  */
 #include <zsv.h>
