@@ -330,6 +330,16 @@ size_t zsv_strunescape_backslash(unsigned char *s, size_t len) {
   return j;
 }
 
+// zsv_strtod_exact(const char *s): return error; if 0, set value of *d
+int zsv_strtod_exact(const char *s, double *d) {
+  if(!*s) return 1;
+  char *end;
+  *d = strtod(s, &end);
+  if(*end) return 1;
+  return 0;
+}
+
+
 #ifndef ZSV_STRING_LIB_ONLY
 struct zsv_cell zsv_get_cell_trimmed(zsv_parser parser, size_t ix) {
   struct zsv_cell c = zsv_get_cell(parser, ix);

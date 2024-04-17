@@ -70,7 +70,13 @@ returns `zsv_status_row` until no more rows are left to parse
 ```
 zsv_parser parser = zsv_new(...);
 while(zsv_next_row(parser) == zsv_status_row) { /* for each row */
-    // do something
+  // do something
+  size_t cell_count = zsv_cell_count(parser);
+  for(size_t i = 0; i < cell_count; i++) {
+    struct zsv_cell c = zsv_get_cell(parser, i);
+    fprintf(stderr, "Cell: %.*s\n", c.len, c.str);
+    ...
+  }
 }
 ```
 

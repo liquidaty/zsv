@@ -225,17 +225,20 @@ for speed and ease of development for extending and/or customizing to your needs
 
 * `echo`: read CSV from stdin and write it back out to stdout. This is mostly
   useful for demonstrating how to use the API and also how to create a plug-in,
-  and has some limited utility beyond that e.g. for adding/removing the UTF8
-  BOM, or cleaning up bad UTF8
+  and has several uses beyond that including adding/removing BOM,
+  cleaning up bad UTF8,
+  whitespace or blank column trimming,
+  limiting output to a contiguous data block, skipping leading garbage, and even
+  proving substitution values without modifying the underlying source
 * `select`: re-shape CSV by skipping leading garbage, combining header rows into
   a single header, selecting or excluding specified columns, removing duplicate
-  columns, sampling, searching and more
-* `sql`: run ad-hoc SQL query on a CSV file
+  columns, sampling, converting from fixed-width input, searching and more
+* `sql`: treat one or more CSV files like database tables and query with SQL
 * `desc`: provide a quick description of your table data
 * `pretty`: format for console (fixed-width) display, or convert to markdown
   format
 * `2json`: convert CSV to JSON. Optionally, output in [database schema](docs/db.schema.json)
-* `2tsv`: convert CSV to TSV
+* `2tsv`: convert to TSV (tab-delimited) format
 * `compare`: compare two or more tables of data and output the differences
 * `paste` (alpha): horizontally paste two tables together (given inputs X and Y,
    output 1...N rows where each row all columns of X in row N, followed by all columns of Y in row N)
@@ -263,6 +266,41 @@ zsv sql my_population_data.csv "select * from data where population > 100000"
 ```
 
 ### Using the API
+
+Simple API usage examples include:
+
+Pull parsing:
+```
+zsv_parser parser = zsv_new(...);
+while(zsv_next_row(parser) == zsv_status_row) { /* for each row */
+    // do something
+  size_t cell_count = zsv_cell_count(parser);
+  for(size_t i = 0; i < cell_count; i++) {
+    struct zsv_cell c = zsv_get_cell(parser, i);
+    fprintf(stderr, "Cell: %.*s\n", c.len, c.str);
+    ...
+  }
+```
+
+Push parsing:
+```
+static void my_row_handler(void *ctx) {
+  zsv_parser p = ctx;
+  size_t cell_count = zsv_cell_count(p);
+  for(size_t i = 0, j = zsv_cell_count(p); i < j; i++) {
+    ...
+  }
+}
+
+int main() {
+  zsv_parser p = zsv_new(NULL);
+  zsv_set_row_handler(p, my_row_handler);
+  zsv_set_context(p, p);
+
+  enum zsv_status stat;
+  while((stat = zsv_parse_more(data.parser)) == zsv_status_ok) ;
+
+```
 
 Full application code examples can be found at [examples/lib/README.md](examples/lib/README.md).
 
