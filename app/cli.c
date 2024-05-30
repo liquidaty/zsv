@@ -116,9 +116,14 @@ struct zsv_execution_data {
 
   int argc;
   const char **argv;
-
+  char opts_used[ZSV_OPTS_SIZE_MAX];
   void *custom_context; // user-defined
 };
+
+static const char *ext_opts_used(zsv_execution_context ctx) {
+  struct zsv_execution_data *d = ctx;
+  return d->opts_used;
+}
 
 static struct zsv_opts ext_parser_opts(zsv_execution_context ctx) {
   (void)(ctx);
@@ -344,6 +349,7 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
 
     e->ext_parse_all = ext_parse_all;
     e->ext_parser_opts = ext_parser_opts;
+    e->ext_opts_used = ext_opts_used;
   }
   return e;
 }
@@ -401,14 +407,14 @@ static enum zsv_ext_status run_extension(int argc, const char *argv[], struct zs
       return zsv_ext_status_unrecognized_cmd;
     }
 
-    struct zsv_execution_data ctx;
+    struct zsv_execution_data ctx = { 0 };
 
     if((stat = execution_context_init(&ctx, argc, argv)) == zsv_ext_status_ok) {
       struct zsv_opts opts;
-      zsv_args_to_opts(argc, argv, &argc, argv, &opts, NULL);
+      zsv_args_to_opts(argc, argv, &argc, argv, &opts, ctx.opts_used);
       zsv_set_default_opts(opts);
       // need a corresponding zsv_set_default_custom_prop_handler?
-      stat = cmd->main(&ctx, ctx.argc - 1, &ctx.argv[1]);
+      stat = cmd->main(&ctx, ctx.argc - 1, &ctx.argv[1], &opts, ctx.opts_used);
     }
 
     if(stat != zsv_ext_status_ok)

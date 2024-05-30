@@ -553,12 +553,19 @@ if [ "$FORCE_SSE2" = "no" ]; then
     tryflag CFLAGS -mno-sse2
 elif [ "$FORCE_SSE2" = "yes" ] ; then
     CFLAGS_SSE=-msse2
+    if ! "$CC" --version | grep -i emcc >/dev/null; then
+        CFLAGS_SSE+= -msimd128 -experimental-wasm-simd
+    fi
     if [ "$CROSS_COMPILING" = "no" ] ; then
         trycpusupport sse2 || echo "warning: sse2 forced but not supported on native CPU"
     fi
 elif [ "$FORCE_SSE2" = "auto" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     if [ "$CFLAGS_SSE" = "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
-        trycpusupport sse2 && tryflag CFLAGS_SSE -msse2
+        if trycpusupport sse2 && tryflag CFLAGS_SSE -msse2 ; then
+            if ! "$CC" --version | grep -i emcc >/dev/null; then
+               CFLAGS_SSE+= -msimd128 -experimental-wasm-simd
+            fi
+        fi
     fi
 fi
 

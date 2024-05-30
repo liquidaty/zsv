@@ -10,6 +10,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
+#include <limits.h>
+
 #include <jsonwriter.h>
 
 #include <sqlite3.h>
@@ -291,8 +293,11 @@ static void zsv_compare_print_row(struct zsv_compare_data *data,
       }
     }
 
-    if(different)
+    if(different) {
       zsv_compare_output_tuple(data, key_input, output_col->name, values, 0);
+      if(data->diff_count < INT_MAX)
+        data->diff_count++;
+    }
   }
   free(values);
 }
@@ -438,7 +443,7 @@ input_init_unsorted(struct zsv_compare_data *data,
   return zsv_compare_status_ok;
 }
 
-zsv_compare_handle zsv_compare_new() {
+zsv_compare_handle zsv_compare_new(void) {
   zsv_compare_handle z = calloc(1, sizeof(*z));
 #if defined(ZSV_COMPARE_CMP_FUNC) && defined(ZSV_COMPARE_CMP_CTX)
   zsv_compare_set_comparison(z, ZSV_COMPARE_CMP_FUNC, ZSV_COMPARE_CMP_CTX);
@@ -610,7 +615,7 @@ static enum zsv_compare_status zsv_compare_next(struct zsv_compare_data *data) {
   return zsv_compare_status_ok;
 }
 
-static int compare_usage() {
+static int compare_usage(void) {
   static const char *usage[] = {
     "Usage: compare [options] [file1.csv] [file2.csv] [...]",
     "Options:",
@@ -631,6 +636,7 @@ static int compare_usage() {
     "  --json-object      : output as an array of objects",
     "  --print-key-colname: when outputting key column diffs,",
     "                       print column name instead of <key>",
+    "  -e,--exit-code     : return < 0 on error, else the number of differences found",
     "",
     "NOTES",
     "",
@@ -725,6 +731,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     } else if(!strcmp(arg, "--sort")) {
       data->sort = 1;
+    } else if(!strcmp(arg, "--exit-code") || !strcmp(arg, "-e")) {
+      data->return_count = 1;
     } else if(!strcmp(arg, "--json")) {
       data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
     } else if(!strcmp(arg, "--json-object")) {
@@ -931,6 +939,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       zsv_set_default_custom_prop_handler(original_default_custom_prop_handler);
   }
 
+  if(data->return_count) {
+    if(err)
+      err = -1;
+    else
+      err = data->diff_count;
+  }
   zsv_compare_delete(data);
   return err;
 }

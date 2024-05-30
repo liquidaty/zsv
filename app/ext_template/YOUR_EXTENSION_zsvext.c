@@ -234,22 +234,18 @@ static enum zsv_ext_status YOUR_COMMAND_main(zsv_execution_context ctx, int argc
   /**
    * Alternatively, for more granular control we could use the following:
    * ```
-   * struct zsv_opts opts;
-   * memset(&opts, 0, sizeof(opts));
-   * enum zsv_ext_status stat = zsv_cb.ext_parser_opts(ctx, &opts);
-   * if(stat == zsv_ext_status_ok) {
-   *   zsv_parser parser = new_with_context(ctx, &opts);
-   *   if(!parser)
-   *     stat = zsv_ext_status_memory;
-   *   else {
-   *     opts.row = YOUR_COMMAND_rowhandler;
-   *     // ... set other options here ...
-   *     zsv_parser p = new_with_context(ctx, &opts);
-   *     while((stat = zsv_parse_more(parser)) == zsv_status_ok) ;
-   *     if(stat == zsv_status_ok)
-   *       stat = zsv_finish(p);
-   *     zsv_delete(p);
-   *   }
+   * struct zsv_opts opts = zsv_cb.ext_parser_opts(ctx);
+   * zsv_parser parser = new_with_context(ctx, &opts);
+   * if(!parser)
+   *   stat = zsv_ext_status_memory;
+   * else {
+   *   opts.row = YOUR_COMMAND_rowhandler;
+   *   // ... set other options here ...
+   *   zsv_parser p = new_with_context(ctx, &opts);
+   *   while((stat = zsv_parse_more(parser)) == zsv_status_ok) ;
+   *   if(stat == zsv_status_ok)
+   *     stat = zsv_finish(p);
+   *   zsv_delete(p);
    * }
    * ```
    */

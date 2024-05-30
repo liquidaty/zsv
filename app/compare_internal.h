@@ -90,6 +90,7 @@ struct zsv_compare_data {
   struct zsv_compare_added_column *added_columns;
   zsv_compare_unique_colname *added_colnames;
   unsigned added_colcount;
+  int diff_count; // total number of differences; will use this as return code if -e option is specified
 
   zsv_compare_cell_func cmp;
   void *cmp_ctx;
@@ -134,7 +135,8 @@ struct zsv_compare_data {
   unsigned char sort:1;
   unsigned char sort_in_memory:1;
   unsigned char print_key_col_names:1;
-  unsigned char _:5;
+  unsigned char return_count:1;
+  unsigned char _:4;
 };
 
 #endif
