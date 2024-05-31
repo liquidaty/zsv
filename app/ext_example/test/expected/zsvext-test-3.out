@@ -1,6 +1,6 @@
 Extension my registered
-Exiting dl example!
-Exiting dl example!
+Exiting extension example!
+Exiting extension example!
 Extension my unregistered
 Extension my was not already registered
 zsv: streaming csv processor
@@ -59,8 +59,8 @@ Other commands:
 
 (No extended commands)
 Extension my registered
-Exiting dl example!
-Exiting dl example!
+Exiting extension example!
+Exiting extension example!
 zsv: streaming csv processor
 
 Usage:

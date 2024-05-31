@@ -100,7 +100,7 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
  * previously called
  */
 enum zsv_ext_status zsv_ext_exit() {
-  fprintf(stderr, "Exiting dl example!\n");
+  fprintf(stderr, "Exiting extension example!\n");
   return zsv_ext_status_ok;
 }
 /**
