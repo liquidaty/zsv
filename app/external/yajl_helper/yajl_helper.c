@@ -87,7 +87,7 @@ int yajl_helper_set_level_offset(struct yajl_helper_parse_state *st, unsigned in
 
 unsigned int yajl_helper_item_ind_at(struct yajl_helper_parse_state *st, unsigned int level) {
   if(level < st->max_level)
-    return st->stack[level];
+    return st->item_ind[level];
   return 0;
 }
 
