@@ -31,10 +31,10 @@ static void zsv_dir_from_json_close_out(struct zsv_dir_from_json_ctx *ctx) {
   }
 }
 
-static int zsv_dir_from_json_map_key(struct yajl_helper_parse_state *st,
+static int zsv_dir_from_json_map_key(yajl_helper_t yh,
                                const unsigned char *s, size_t len) {
-  if(yajl_helper_level(st) == 1 && len) { // new property file entry
-    struct zsv_dir_from_json_ctx *ctx = yajl_helper_data(st);
+  if(yajl_helper_level(yh) == 1 && len) { // new property file entry
+    struct zsv_dir_from_json_ctx *ctx = yajl_helper_ctx(yh);
 
     char *fn = NULL;
     if(ctx->filepath_prefix)
@@ -82,11 +82,11 @@ static int zsv_dir_from_json_map_key(struct yajl_helper_parse_state *st,
   return 1;
 }
 
-static int zsv_dir_from_json_start_obj(struct yajl_helper_parse_state *st) {
-  if(yajl_helper_level(st) == 2) {
-    struct zsv_dir_from_json_ctx *ctx = yajl_helper_data(st);
+static int zsv_dir_from_json_start_obj(yajl_helper_t yh) {
+  if(yajl_helper_level(yh) == 2) {
+    struct zsv_dir_from_json_ctx *ctx = yajl_helper_ctx(yh);
     ctx->in_obj = 1;
-    ctx->content_start = yajl_get_bytes_consumed(st->yajl) - 1;
+    ctx->content_start = yajl_get_bytes_consumed(yajl_helper_yajl(yh)) - 1;
   }
   return 1;
 }
@@ -105,20 +105,20 @@ static int zsv_dir_from_json_flush(yajl_handle yajl, struct zsv_dir_from_json_ct
   return 0;
 }
 
-static int zsv_dir_from_json_end_obj(struct yajl_helper_parse_state *st) {
-  if(yajl_helper_level(st) == 1) { // just finished level 2
-    struct zsv_dir_from_json_ctx *ctx = yajl_helper_data(st);
-    zsv_dir_from_json_flush(st->yajl, yajl_helper_data(st));
+static int zsv_dir_from_json_end_obj(yajl_helper_t yh) {
+  if(yajl_helper_level(yh) == 1) { // just finished level 2
+    struct zsv_dir_from_json_ctx *ctx = yajl_helper_ctx(yh);
+    zsv_dir_from_json_flush(yajl_helper_yajl(yh), yajl_helper_ctx(yh));
     zsv_dir_from_json_close_out(ctx);
     ctx->in_obj = 0;
   }
   return 1;
 }
 
-static int zsv_dir_from_json_process_value(struct yajl_helper_parse_state *st,
+static int zsv_dir_from_json_process_value(yajl_helper_t yh,
                                      struct json_value *value) {
-  if(yajl_helper_level(st) == 1) { // just finished level 2
-    struct zsv_dir_from_json_ctx *ctx = yajl_helper_data(st);
+  if(yajl_helper_level(yh) == 1) { // just finished level 2
+    struct zsv_dir_from_json_ctx *ctx = yajl_helper_ctx(yh);
     const unsigned char *jsstr;
     size_t len;
     json_value_default_string(value, &jsstr, &len);
@@ -190,12 +190,12 @@ int zsv_dir_from_json(const unsigned char *target_dir,
       do_check = i == 0;
 
       size_t bytes_read;
-      struct yajl_helper_parse_state st;
+      yajl_helper_t yh;
       struct zsv_dir_from_json_ctx ctx = { 0 };
       ctx.filepath_prefix = (const char *)target_dir;
 
-      int (*start_obj)(struct yajl_helper_parse_state *st) = NULL;
-      int (*end_obj)(struct yajl_helper_parse_state *st) = NULL;
+      int (*start_obj)(yajl_helper_t yh) = NULL;
+      int (*end_obj)(yajl_helper_t yh) = NULL;
       int (*process_value)(struct yajl_helper_parse_state *, struct json_value *) = NULL;
 
       if(do_check)
@@ -209,30 +209,32 @@ int zsv_dir_from_json(const unsigned char *target_dir,
         }
       }
 
-      if(yajl_helper_parse_state_init(&st, 32,
-                                      start_obj, end_obj, // map start/end
-                                      zsv_dir_from_json_map_key,
-                                      start_obj, end_obj, // array start/end
-                                      process_value,
-                                      &ctx) != yajl_status_ok) {
+      yh = yajl_helper_new(32,
+                           start_obj, end_obj, // map start/end
+                           zsv_dir_from_json_map_key,
+                           start_obj, end_obj, // array start/end
+                           process_value,
+                           &ctx);
+      if(!yh) {
         err = errno = ENOMEM;
         perror(NULL);
       } else {
+        yajl_handle y = yajl_helper_yajl(yh);
         while((bytes_read = fread(ctx.buff, 1, sizeof(ctx.buff), src)) > 0) {
-          if(yajl_parse(st.yajl, ctx.buff, bytes_read) != yajl_status_ok)
-            yajl_helper_print_err(st.yajl, ctx.buff, bytes_read);
+          if(yajl_parse(y, ctx.buff, bytes_read) != yajl_status_ok)
+            yajl_helper_print_err(y, ctx.buff, bytes_read);
           if(ctx.in_obj)
-            zsv_dir_from_json_flush(st.yajl, &ctx);
+            zsv_dir_from_json_flush(y, &ctx);
         }
-        if(yajl_complete_parse(st.yajl) != yajl_status_ok)
-          yajl_helper_print_err(st.yajl, ctx.buff, bytes_read);
+        if(yajl_complete_parse(y) != yajl_status_ok)
+          yajl_helper_print_err(y, ctx.buff, bytes_read);
 
         if(ctx.out) { // e.g. if bad JSON and parse failed
           fclose(ctx.out);
           free(ctx.out_filepath);
         }
+        yajl_helper_delete(yh);
       }
-      yajl_helper_parse_state_free(&st);
 
       if(ctx.err)
         err = ctx.err;

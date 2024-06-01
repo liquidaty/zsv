@@ -7,6 +7,8 @@
 
 #include "yajl_helper/json_value.h"
 
+typedef struct yajl_helper_parse_state *yajl_helper_t;
+
 enum yajl_helper_option {
   yajl_helper_option_use_number_strings = 1
 } ;
@@ -62,39 +64,50 @@ void *linkedlist_reverse(void *p);
   } while(0)
 #endif
 
-struct yajl_helper_parse_state {
-  unsigned int level;
-  unsigned int max_level;
 
-  unsigned int level_offset; // for nested parsing. when > 0, yajl_helper_got_path() will skip the specified number of levels. use yajl_helper_level_offset() to set
 
-  char *stack;
-  char **map_keys;
-  unsigned int *item_ind;
+yajl_helper_t yajl_helper_new(
+                              unsigned int max_level,
+                              int (*start_map)(yajl_helper_t),
+                              int (*end_map)(yajl_helper_t),
+                              int (*map_key)(yajl_helper_t,
+                                             const unsigned char *, size_t),
+                              int (*start_array)(yajl_helper_t),
+                              int (*end_array)(yajl_helper_t),
+                              int (*value)(yajl_helper_t,
+                                           struct json_value *),
+                              void *ctx // caller-provided pointer that is available to callbacks via yajl_helper_ctx()
+                              );
+void yajl_helper_delete(yajl_helper_t yh);
 
-  yajl_callbacks callbacks;
-  yajl_handle yajl;
+void yajl_helper_set_ctx(yajl_helper_t yh, void *ctx);
+void *yajl_helper_ctx(yajl_helper_t yh);
 
-  void *data; // user-defined
+// get the yajl handle
+yajl_handle yajl_helper_yajl(yajl_helper_t yh);
 
-  int (*start_map)(struct yajl_helper_parse_state *);
-  int (*end_map)(struct yajl_helper_parse_state *);
-  int (*map_key)(struct yajl_helper_parse_state *, const unsigned char *, size_t);
-  int (*start_array)(struct yajl_helper_parse_state *);
-  int (*end_array)(struct yajl_helper_parse_state *);
-  int (*value)(struct yajl_helper_parse_state *, struct json_value *);
-};
+unsigned int yajl_helper_level(yajl_helper_t yh);
 
-void yajl_helper_set_data(struct yajl_helper_parse_state *st, void *data);
-void *yajl_helper_data(struct yajl_helper_parse_state *st);
+// return '[' or '{' to indicate the object type at the given level
+char yajl_helper_stack_at(yajl_helper_t st, unsigned level);
 
-unsigned int yajl_helper_level(struct yajl_helper_parse_state *st);
+// return map key at given level
+const char *yajl_helper_map_key_at(yajl_helper_t st, unsigned int level);
 
-// yajl_helper_level_offset(): return error
-int yajl_helper_level_offset(struct yajl_helper_parse_state *st, unsigned int offset);
+// 
+unsigned int yajl_helper_item_ind_plus_1_at(yajl_helper_t yh, unsigned int level);
 
-unsigned int yajl_helper_array_index_plus_1(struct yajl_helper_parse_state *, unsigned int offset);
-unsigned int yajl_helper_element_index_plus_1(struct yajl_helper_parse_state *st, unsigned int offset);
+// get the raw level, without any offset
+unsigned int yajl_helper_level_raw(yajl_helper_t yh);
+
+// yajl_helper_set_level_offset(): return error
+int yajl_helper_set_level_offset(yajl_helper_t yh, unsigned int offset);
+
+// retrieve a previously-set offset
+unsigned int yajl_helper_level_offset(yajl_helper_t yh);
+
+unsigned int yajl_helper_array_index_plus_1(yajl_helper_t, unsigned int offset);
+unsigned int yajl_helper_element_index_plus_1(yajl_helper_t yh, unsigned int offset);
 
 /* json_str_dup_if_len: return a dupe of the string value, or null if none */
 unsigned char *json_str_dup_if_len(struct json_value *value);
@@ -108,31 +121,14 @@ unsigned char *json_str_dup_if_len_buff(struct json_value *value, unsigned char 
  * requires that the current level is equal to the level argument, and the latter only requires
  * that the current level is greater than or equal to the level argument
  */
-char yajl_helper_got_path(struct yajl_helper_parse_state *st, unsigned int level, const char *path);
-char yajl_helper_got_path_prefix(struct yajl_helper_parse_state *st, unsigned int level, const char *path);
+char yajl_helper_got_path(yajl_helper_t yh, unsigned int level, const char *path);
+char yajl_helper_got_path_prefix(yajl_helper_t yh, unsigned int level, const char *path);
 
-char yajl_helper_path_is(struct yajl_helper_parse_state *st, const char *path);
+char yajl_helper_path_is(yajl_helper_t yh, const char *path);
 
-const char *yajl_helper_get_map_key(struct yajl_helper_parse_state *st, unsigned int offset);
+const char *yajl_helper_get_map_key(yajl_helper_t yh, unsigned int offset);
 
-yajl_status yajl_helper_parse_state_init(
-                                         struct yajl_helper_parse_state *st,
-                                         unsigned int max_level,
-                                         int (*start_map)(struct yajl_helper_parse_state *),
-                                         int (*end_map)(struct yajl_helper_parse_state *),
-                                         int (*map_key)(struct yajl_helper_parse_state *,
-                                                        const unsigned char *, size_t),
-                                         int (*start_array)(struct yajl_helper_parse_state *),
-                                         int (*end_array)(struct yajl_helper_parse_state *),
-                                         int (*value)(struct yajl_helper_parse_state *,
-                                                      struct json_value *),
-                                         void *data
-                                         );
-
-void yajl_helper_callbacks_init(yajl_callbacks *callbacks, char nums_as_strings);
-
-void yajl_helper_parse_state_free(struct yajl_helper_parse_state *st);
-
+// void yajl_helper_callbacks_init(yajl_callbacks *callbacks, char nums_as_strings);
 
 size_t json_value_default_string(struct json_value *value, const unsigned char **target,
                                  size_t *len);
@@ -163,7 +159,20 @@ void int_list_free(struct int_list *e);
 /**
  * Print the current path for e.g. error reporting
  */
-void yajl_helper_dump_path(struct yajl_helper_parse_state *st, FILE *out);
+void yajl_helper_dump_path(yajl_helper_t yh, FILE *out);
+
+/**
+ * Walk the path and apply a user-defined function to each ancestor
+ *
+ */
+void yajl_helper_walk_path(yajl_helper_t yh,
+                           void *ctx,
+                           void (*func)(void *ctx,
+                                        unsigned depth,      // 0-based
+                                        char type,           // '[' or '{'
+                                        unsigned item_index, // 0-based
+                                        const char *map_key) // non-null if type == '{'
+                           );
 
 /**
  * Print any error from the yajl parser

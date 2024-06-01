@@ -73,7 +73,7 @@ struct zsv_2db_data {
   char *connection_string;
 
   struct {
-    struct yajl_helper_parse_state st;
+    yajl_helper_t yh;
     yajl_status yajl_stat;
     enum zsv_2db_state state;
 
@@ -152,7 +152,7 @@ static void zsv_2db_delete(zsv_2db_handle data) {
 
   free(data->json_parser.row_values);
 
-  yajl_helper_parse_state_free(&data->json_parser.st);
+  yajl_helper_delete(data->json_parser.yh);
 
   free(data);
 }
@@ -401,14 +401,14 @@ static int zsv_2db_insert_row(struct zsv_2db_data *data) {
   return 1;
 }
 
-static int json_start_map(struct yajl_helper_parse_state *st) {
-  (void)(st);
+static int json_start_map(yajl_helper_t yh) {
+  (void)(yh);
   return 1;
 }
 
-static int json_end_map(struct yajl_helper_parse_state *st) {
-  struct zsv_2db_data *data = yajl_helper_data(st);
-  if(data->json_parser.state == zsv_2db_state_header && yajl_helper_got_path(st, 3, "[{columns[")) { // exiting a column header
+static int json_end_map(yajl_helper_t yh) {
+  struct zsv_2db_data *data = yajl_helper_ctx(yh);
+  if(data->json_parser.state == zsv_2db_state_header && yajl_helper_got_path(yh, 3, "[{columns[")) { // exiting a column header
     if(!data->json_parser.current_column.name) {
       fprintf(stderr, "Name missing from column spec!\n");
       return 0;
@@ -425,7 +425,7 @@ static int json_end_map(struct yajl_helper_parse_state *st) {
       memset(&data->json_parser.current_column, 0, sizeof(data->json_parser.current_column));
     }
   } else if(data->json_parser.state == zsv_2db_state_header &&
-            yajl_helper_got_path(st, 3, "[{indexes{")) { // exiting an index
+            yajl_helper_got_path(yh, 3, "[{indexes{")) { // exiting an index
     if(!data->json_parser.current_index.name) {
       fprintf(stderr, "Name missing from index spec\n");
       return 0;
@@ -447,11 +447,11 @@ static int json_end_map(struct yajl_helper_parse_state *st) {
   return 1;
 }
 
-static int json_map_key(struct yajl_helper_parse_state *st,
+static int json_map_key(yajl_helper_t yh,
                         const unsigned char *s, size_t len) {
-  struct zsv_2db_data *data = yajl_helper_data(st);
+  struct zsv_2db_data *data = yajl_helper_ctx(yh);
   if(data->json_parser.state == zsv_2db_state_header &&
-     yajl_helper_got_path(st, 3, "[{indexes{")) {
+     yajl_helper_got_path(yh, 3, "[{indexes{")) {
     free(data->json_parser.current_index.name);
     if(len)
       data->json_parser.current_index.name = zsv_memdup(s, len);
@@ -461,12 +461,12 @@ static int json_map_key(struct yajl_helper_parse_state *st,
   return 1;
 }
 
-static int json_start_array(struct yajl_helper_parse_state *st) {
-  if(yajl_helper_level(st) == 2) {
-    struct zsv_2db_data *data = yajl_helper_data(st);
+static int json_start_array(yajl_helper_t yh) {
+  if(yajl_helper_level(yh) == 2) {
+    struct zsv_2db_data *data = yajl_helper_ctx(yh);
     if(data->json_parser.state == zsv_2db_state_header &&
-       yajl_helper_got_path(st, 2, "[[")
-       && yajl_helper_array_index_plus_1(st, 1) == 2)
+       yajl_helper_got_path(yh, 2, "[[")
+       && yajl_helper_array_index_plus_1(yh, 1) == 2)
       return zsv_2db_finish_header(data);
   }
   return 1;
@@ -482,11 +482,11 @@ static void reset_row_values(struct zsv_2db_data *data) {
   data->json_parser.have_row_data = 0;
 }
 
-static int json_end_array(struct yajl_helper_parse_state *st) {
-  if(yajl_helper_level(st) == 2) {
-    struct zsv_2db_data *data = yajl_helper_data(st);
+static int json_end_array(yajl_helper_t yh) {
+  if(yajl_helper_level(yh) == 2) {
+    struct zsv_2db_data *data = yajl_helper_ctx(yh);
     if(data->json_parser.state == zsv_2db_state_data &&
-       yajl_helper_got_path(st, 2, "[[")) { // finished a row of data
+       yajl_helper_got_path(yh, 2, "[[")) { // finished a row of data
       zsv_2db_insert_row(data);
       reset_row_values(data);
     }
@@ -494,23 +494,23 @@ static int json_end_array(struct yajl_helper_parse_state *st) {
   return 1;
 }
 
-static int json_process_value(struct yajl_helper_parse_state *st,
+static int json_process_value(yajl_helper_t yh,
                               struct json_value *value) {
   const unsigned char *jsstr;
   size_t len;
-  struct zsv_2db_data *data = yajl_helper_data(st);
+  struct zsv_2db_data *data = yajl_helper_ctx(yh);
   if(data->json_parser.state == zsv_2db_state_data) {
-    if(yajl_helper_got_path(st, 3, "[[[")) {
+    if(yajl_helper_got_path(yh, 3, "[[[")) {
       json_value_default_string(value, &jsstr, &len);
       if(jsstr && len) {
-        unsigned int j = yajl_helper_array_index_plus_1(st, 0);
+        unsigned int j = yajl_helper_array_index_plus_1(yh, 0);
         if(j && j-1 < data->json_parser.col_count) {
           data->json_parser.row_values[j-1] = zsv_memdup(jsstr, len);
           data->json_parser.have_row_data = 1;
         }
       }
     }
-  } else if(yajl_helper_got_path(st, 2, "[{name")) {
+  } else if(yajl_helper_got_path(yh, 2, "[{name")) {
     json_value_default_string(value, &jsstr, &len);
     if(len) {
       if(data->opts.table_name)
@@ -519,33 +519,33 @@ static int json_process_value(struct yajl_helper_parse_state *st,
       else
         data->opts.table_name = zsv_memdup(jsstr, len);
     }
-  } else if(yajl_helper_got_path(st, 4, "[{columns[{name")) {
+  } else if(yajl_helper_got_path(yh, 4, "[{columns[{name")) {
     free(data->json_parser.current_column.name);
     data->json_parser.current_column.name = NULL;
     json_value_default_string(value, &jsstr, &len);
     if(jsstr && len)
       data->json_parser.current_column.name = zsv_memdup(jsstr, len);
-  } else if(yajl_helper_got_path(st, 4, "[{columns[{datatype")) {
+  } else if(yajl_helper_got_path(yh, 4, "[{columns[{datatype")) {
     free(data->json_parser.current_column.datatype);
     data->json_parser.current_column.datatype = NULL;
     json_value_default_string(value, &jsstr, &len);
     if(jsstr && len)
       data->json_parser.current_column.datatype = zsv_memdup(jsstr, len);
-  } else if(yajl_helper_got_path(st, 4, "[{columns[{collate")) {
+  } else if(yajl_helper_got_path(yh, 4, "[{columns[{collate")) {
     free(data->json_parser.current_column.collate);
     data->json_parser.current_column.collate = NULL;
     json_value_default_string(value, &jsstr, &len);
     if(jsstr && len)
       data->json_parser.current_column.collate = zsv_memdup(jsstr, len);
-  } else if(yajl_helper_got_path(st, 4, "[{indexes{*{delete")) {
+  } else if(yajl_helper_got_path(yh, 4, "[{indexes{*{delete")) {
     data->json_parser.current_index.delete = json_value_truthy(value);
-  } else if(yajl_helper_got_path(st, 4, "[{indexes{*{unique")) {
+  } else if(yajl_helper_got_path(yh, 4, "[{indexes{*{unique")) {
     data->json_parser.current_index.unique = json_value_truthy(value);
-  } else if(yajl_helper_got_path(st, 4, "[{indexes{*{on")
-            || yajl_helper_got_path(st, 5, "[{indexes{*{on[")) {
+  } else if(yajl_helper_got_path(yh, 4, "[{indexes{*{on")
+            || yajl_helper_got_path(yh, 5, "[{indexes{*{on[")) {
     json_value_default_string(value, &jsstr, &len);
     if(len) {
-      if(yajl_helper_level(st) == 4 || !data->json_parser.current_index.on) {
+      if(yajl_helper_level(yh) == 4 || !data->json_parser.current_index.on) {
         free(data->json_parser.current_index.on);
         data->json_parser.current_index.on = zsv_memdup(jsstr, len);
       } else {
@@ -609,17 +609,14 @@ static zsv_2db_handle zsv_2db_new(struct zsv_2db_options *opts) {
       sqlite3_exec(data->db, "PRAGMA journal_mode = OFF", NULL, NULL, NULL);
 
       // parse the input and create & populate the database table
-      if(yajl_helper_parse_state_init(&data->json_parser.st, 32,
-                                      json_start_map, json_end_map, json_map_key,
-                                      json_start_array, json_end_array,
-                                      json_process_value,
-                                      data) != yajl_status_ok) {
+      if(!(data->json_parser.yh =
+           yajl_helper_new(32,
+                           json_start_map, json_end_map, json_map_key,
+                           json_start_array, json_end_array,
+                           json_process_value,
+                           data))) {
         fprintf(stderr, "Unable to get yajl parser\n");
         err = 1;
-      } else {
-//        yajl_helper_callbacks_init(&data->json_parser.callbacks, 32);
-//        data->json_parser.handle = st->yajl; // yajl_alloc(&data->json_parser.callbacks, NULL,
-        // &data->json_parser.st);
       }
     }
   }
@@ -666,7 +663,7 @@ static int zsv_2db_finish(zsv_2db_handle data) {
 
 // exportable
 static yajl_handle zsv_2db_yajl_handle(zsv_2db_handle data) {
-  return data->json_parser.st.yajl;
+  return yajl_helper_yajl(data->json_parser.yh);
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zsv_opts, struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
@@ -765,18 +762,19 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
         err = 1;
       else {
         size_t bytes_read = 0;
+        yajl_handle y = zsv_2db_yajl_handle(data);
         while(!err && !zsv_2db_err(data)) {
           bytes_read = fread(buff, 1, chunk_size, f_in);
           if(bytes_read == 0)
             break;
-          yajl_status stat = yajl_parse(zsv_2db_yajl_handle(data), buff, bytes_read);
+          yajl_status stat = yajl_parse(y, buff, bytes_read);
           if(stat != yajl_status_ok)
-            err = yajl_helper_print_err(data->json_parser.st.yajl, buff, bytes_read);
+            err = yajl_helper_print_err(y, buff, bytes_read);
         }
 
         if(!err) {
-          if(yajl_complete_parse(zsv_2db_yajl_handle(data)) != yajl_status_ok)
-            err = yajl_helper_print_err(data->json_parser.st.yajl, buff, bytes_read);
+          if(yajl_complete_parse(y) != yajl_status_ok)
+            err = yajl_helper_print_err(y, buff, bytes_read);
           else if(zsv_2db_err(data) || zsv_2db_finish(data))
             err = 1;
         }
