@@ -58,13 +58,13 @@ void zsv_set_default_custom_prop_handler(struct zsv_prop_handler custom_prop_han
 
 
 // to do: import these through a proper header
-static int zsv_properties_parse_process_value(struct yajl_helper_parse_state *st, struct json_value *value);
+static int zsv_properties_parse_process_value(yajl_helper_t yh, struct json_value *value);
 unsigned char *zsv_cache_filepath(const unsigned char *data_filepath,
                                   enum zsv_cache_type type, char create_dir,
                                   char temp_file);
 
 struct zsv_properties_parser {
-  struct yajl_helper_parse_state st;
+  yajl_helper_t yh;
   yajl_status stat;
 
   // queryable data
@@ -98,40 +98,44 @@ struct zsv_properties_parser *zsv_properties_parser_new(const unsigned char *pat
                                                         struct zsv_file_properties *fp,
                                                         struct zsv_opts *opts) {
   struct zsv_properties_parser *parser = calloc(1, sizeof(*parser));
-  parser->custom_prop_handler = custom_prop_handler;
   if(parser) {
-    parser->fp = fp;
-    parser->filepath = path;
-    parser->opts = opts;
-    parser->stat =
-      yajl_helper_parse_state_init(&parser->st, 32,
-                                   NULL, // start_map,
-                                   NULL, // end_map,
-                                   NULL, // map_key,
-                                   NULL, // start_array,
-                                   NULL, // end_array,
-                                   zsv_properties_parse_process_value,
-                                   parser);
+    parser->yh = yajl_helper_new(32,
+                                 NULL, // start_map,
+                                 NULL, // end_map,
+                                 NULL, // map_key,
+                                 NULL, // start_array,
+                                 NULL, // end_array,
+                                 zsv_properties_parse_process_value,
+                                 parser);
+    if(!parser->yh)
+      free(parser);
+    else {
+      parser->custom_prop_handler = custom_prop_handler;
+      parser->fp = fp;
+      parser->filepath = path;
+      parser->opts = opts;
+      parser->stat = yajl_status_ok;
+      return parser;
+    }
   }
-  return parser;
+  // error
+  return NULL;
 }
 
 /**
  * Finished parsing
  */
 enum zsv_status zsv_properties_parse_complete(struct zsv_properties_parser *parser) {
-  if(parser && parser->st.yajl) {
-    if(parser->stat == yajl_status_ok)
-      parser->stat = yajl_complete_parse(parser->st.yajl);
-  }
-  return parser->stat == yajl_status_ok ? zsv_status_ok : zsv_status_error;
+  if(parser && parser->stat == yajl_status_ok)
+    parser->stat = yajl_complete_parse(yajl_helper_yajl(parser->yh));
+  return parser && parser->stat == yajl_status_ok ? zsv_status_ok : zsv_status_error;
 }
 
 /**
  * Clean up
  */
 enum zsv_status zsv_properties_parser_destroy(struct zsv_properties_parser *parser) {
-  yajl_helper_parse_state_free(&parser->st);
+  yajl_helper_delete(parser->yh);
   yajl_status stat = parser->stat;
   free(parser);
   return stat == yajl_status_ok ? zsv_status_ok : zsv_status_error;
@@ -183,7 +187,7 @@ struct zsv_file_properties zsv_cache_load_props(const char *data_filepath,
         unsigned char buff[1024];
         size_t bytes_read;
         while((bytes_read = fread(buff, 1, sizeof(buff), f))) {
-          if((p->stat = yajl_parse(p->st.yajl, buff, bytes_read)) != yajl_status_ok) {
+          if((p->stat = yajl_parse(yajl_helper_yajl(p->yh), buff, bytes_read)) != yajl_status_ok) {
             tmp.stat = zsv_status_error;
             break;
           }
@@ -218,11 +222,11 @@ struct zsv_file_properties zsv_cache_load_props(const char *data_filepath,
   return tmp;
 }
 
-static int zsv_properties_parse_process_value(struct yajl_helper_parse_state *st, struct json_value *value) {
-  struct zsv_properties_parser *parser = st->data;
+static int zsv_properties_parse_process_value(yajl_helper_t yh, struct json_value *value) {
+  struct zsv_properties_parser *parser = yajl_helper_ctx(yh);
   struct zsv_file_properties *fp = parser->fp;
-  if(st->level == 1) {
-    const char *prop_name = yajl_helper_get_map_key(st, 0);
+  if(yajl_helper_level_raw(yh) == 1) {
+    const char *prop_name = yajl_helper_get_map_key(yh, 0);
     unsigned int *target = NULL;
     if(!strcmp(prop_name, "skip-head")) {
       target = &fp->skip;
