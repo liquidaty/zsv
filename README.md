@@ -174,7 +174,7 @@ npm install zsv-lib
 ```
 
 Please note:
-* this pacakge is still in alpha and currently only exposes a small subset of the zsv library capabilities.
+* this package is still in alpha and currently only exposes a small subset of the zsv library capabilities.
   More to come!
 * The CLI is not yet available as a Node package
 * If you'd like to use additional parser features, or use the CLI as a Node package,
