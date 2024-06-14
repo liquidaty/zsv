@@ -122,7 +122,8 @@ struct zsv_scanner {
   } buff;
 
   size_t cell_start;
-  unsigned char quoted; // bitfield of ZSV_PARSER_QUOTE_XXX flags
+  unsigned char quoted:7; // bitfield of ZSV_PARSER_QUOTE_XXX flags
+  unsigned char buffer_exceeded:1;
 
   unsigned char waiting_for_end:1;
   unsigned char checked_bom:1;
@@ -630,6 +631,7 @@ static void zsv_throwaway_row(void *ctx) {
     if(zsv_cell_count(scanner) > 1 || zsv_get_cell_1(scanner, 0).len > 0)
       scanner->opts.overflow_row_handler(ctx);
   }
+  scanner->buffer_exceeded = 0;
   set_callbacks(ctx);
 }
 
@@ -752,15 +754,23 @@ static int zsv_scanner_init(struct zsv_scanner *scanner,
   if(opts->insert_header_row)
     scanner->insert_string = opts->insert_header_row;
 
+  if(need_buff_size < ZSV_MIN_SCANNER_BUFFSIZE)
+    need_buff_size = ZSV_MIN_SCANNER_BUFFSIZE;
+  if(opts->buffsize < need_buff_size) {
+    if(opts->buffsize > 0) {
+      if(need_buff_size == ZSV_MIN_SCANNER_BUFFSIZE)
+        fprintf(stderr, "Increasing --buff-size to minimum %zu\n", need_buff_size);
+      else
+        fprintf(stderr, "Increasing --buff-size to %zu to accommmodate max-row-size of %u\n",
+                need_buff_size, opts->max_row_size);
+    }
+    opts->buffsize = need_buff_size;
+  }
   if(opts->buffsize == 0)
     opts->buffsize = ZSV_DEFAULT_SCANNER_BUFFSIZE;
   else if(opts->buffsize < ZSV_MIN_SCANNER_BUFFSIZE)
     opts->buffsize = ZSV_MIN_SCANNER_BUFFSIZE;
 
-  if(opts->buffsize < need_buff_size) {
-    opts->max_row_size = opts->buffsize / 2;
-    fprintf(stderr, "Warning: max row size set to %u due to buffer size %zu\n", opts->max_row_size, opts->buffsize);
-  }
   scanner->in = opts->stream;
   if(!opts->read) {
     scanner->read = (zsv_generic_read)fread;

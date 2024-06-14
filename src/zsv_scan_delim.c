@@ -207,7 +207,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner,
         // we are inside an open quote, which is needed to escape this char
         scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
     } else if(LIKELY(c == quote)) {
-      if(i == scanner->cell_start) {
+      if(i == scanner->cell_start && !scanner->buffer_exceeded) {
         scanner->quoted = ZSV_PARSER_QUOTE_UNCLOSED;
         scanner->quote_close_position = 0;
         c = 0;
