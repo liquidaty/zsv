@@ -258,7 +258,7 @@ enum zsv_writer_status zsv_writer_cell_Lf(zsv_csv_writer w, char new_row, const 
                                               long double ldbl) {
   char s[128];
   char fmt[64];
-  int n = snprintf(fmt, sizeof(fmt), "%%%sLf", fmt_spec);
+  int n = snprintf(fmt, sizeof(fmt), "%%%sLf", fmt_spec ? fmt_spec : "");
   if(!(n > 0 && n < (int)sizeof(fmt)))
     fprintf(stderr, "Invalid format specifier, should be X for format %%XLf e.g. '.2'\n");
   else {
