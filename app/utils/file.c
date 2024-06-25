@@ -133,7 +133,6 @@ FILE* zsv_fopen_x(const char *filename, const char *mode) {
   return NULL;
 }
 
-
 /**
  * Copy a file, given source and destination paths
  * On error, output error message and return non-zero
