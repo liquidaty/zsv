@@ -466,7 +466,6 @@ _ACEOF
 tryflag   CFLAGS_TRY  -Werror=unknown-warning-option
 tryflag   CFLAGS_TRY  -Werror=unused-command-line-argument
 tryflag   CFLAGS_TRY  -Werror=ignored-optimization-argument
-tryldflag LDFLAGS_STATIC -static
 tryldflag LDFLAGS_TRY -Werror=unknown-warning-option
 tryldflag LDFLAGS_TRY -Werror=unused-command-line-argument
 tryldflag LDFLAGS_TRY -Werror=ignored-optimization-argument
@@ -730,7 +729,6 @@ CFLAGS_PIC = $CFLAGS_PIC
 LDFLAGS_PIC = $LDFLAGS_PIC
 CFLAGS_PIE = $CFLAGS_PIE
 LDFLAGS_PIE = $LDFLAGS_PIE
-LDFLAGS_STATIC = $LDFLAGS_STATIC
 USE_DEBUG_STDERR = $USE_DEBUG_STDERR
 CFLAGS_VECTORIZE = $CFLAGS_VECTORIZE
 CFLAGS_VECTORIZE_OPTIMIZED = $CFLAGS_VECTORIZE_OPTIMIZED
