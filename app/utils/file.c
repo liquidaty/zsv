@@ -120,26 +120,19 @@ int zsv_file_exists(const char* filename) {
 #endif
 
 /**
- * Open a file for exclusive write (same as fopen() but opens exclusively)
- * mode must be 'w' or 'wb'
+ * Same as fopen() but opens exclusively
  */
-FILE* zsv_fopen_wx(const char *filename, const char *mode) {
-  if(!mode || (strcmp(mode, "w") && strcmp(mode, "wb"))) {
-    fprintf(stderr, "fopen_wbx mode must be 'w' or 'wb'; got %s\n", mode ? mode : "(none)");
-    return NULL;
-  }
+FILE* zsv_fopen_x(const char *filename, const char *mode) {
+  FILE *f = fopen(filename, mode);
+  if(f && flock(fileno(f), LOCK_EX | LOCK_NB) != -1)
+    return f;
 
-  int fd = open(filename, O_WRONLY | O_CREAT | O_EXCL, 0644); // exclusive binary write
-  if(fd == -1) {
-    return NULL;
-  }
-
-  FILE *file = fdopen(fd, "wb"); // Convert to FILE*
-  if(file == NULL)
-    close(fd);
-
-  return file;
+  // either could not open, or could not lock
+  if(f)
+    fclose(f);
+  return NULL;
 }
+
 
 /**
  * Copy a file, given source and destination paths
@@ -159,7 +152,7 @@ int zsv_copy_file(const char *src, const char *dest) {
     err = errno ? errno : -1;
     perror(src);
   } else {
-    FILE *fdest = zsv_fopen_wx(dest, "wb");
+    FILE *fdest = zsv_fopen_x(dest, "wb");
     if(!fdest) {
       err = errno ? errno : -1;
       perror(dest);
