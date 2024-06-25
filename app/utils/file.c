@@ -120,28 +120,6 @@ int zsv_file_exists(const char* filename) {
 #endif
 
 /**
- * Open a file for exclusive write (same as fopen() but opens exclusively)
- * mode must be 'w' or 'wb'
- */
-FILE* zsv_fopen_wx(const char *filename, const char *mode) {
-  if(!mode || (strcmp(mode, "w") && strcmp(mode, "wb"))) {
-    fprintf(stderr, "fopen_wbx mode must be 'w' or 'wb'; got %s\n", mode ? mode : "(none)");
-    return NULL;
-  }
-
-  int fd = open(filename, O_WRONLY | O_CREAT | O_EXCL, 0644); // exclusive binary write
-  if(fd == -1) {
-    return NULL;
-  }
-
-  FILE *file = fdopen(fd, "wb"); // Convert to FILE*
-  if(file == NULL)
-    close(fd);
-
-  return file;
-}
-
-/**
  * Copy a file, given source and destination paths
  * On error, output error message and return non-zero
  */
@@ -155,22 +133,16 @@ int zsv_copy_file(const char *src, const char *dest) {
   // copy the file
   int err = 0;
   FILE *fsrc = fopen(src, "rb");
-  if(!fsrc) {
-    err = errno ? errno : -1;
-    perror(src);
-  } else {
-    FILE *fdest = zsv_fopen_wx(dest, "wb");
-    if(!fdest) {
-      err = errno ? errno : -1;
-      perror(dest);
-    } else {
+  if(!fsrc)
+    err = errno ? errno : -1, perror(src);
+  else {
+    FILE *fdest = fopen(dest, "wb");
+    if(!fdest)
+      err = errno ? errno : -1, perror(dest);
+    else {
       err = zsv_copy_file_ptr(fsrc, fdest);
-      if(err) {
-        if(err < 0)
-          fprintf(stderr, "Unknown error copying %s to %s\n", src, dest);
-        else
-          perror(dest);
-      }
+      if(err)
+        perror(dest);
       fclose(fdest);
     }
     fclose(fsrc);
@@ -183,14 +155,16 @@ int zsv_copy_file(const char *src, const char *dest) {
  * Return error number per errno.h
  */
 int zsv_copy_file_ptr(FILE *src, FILE *dest) {
-  errno = 0;
+  int err = 0;
   char buffer[4096];
   size_t bytes_read;
   while((bytes_read = fread(buffer, 1, sizeof(buffer), src)) > 0) {
-    if(fwrite(buffer, 1, bytes_read, dest) != bytes_read)
-      return errno ? errno : -1;
+    if(fwrite(buffer, 1, bytes_read, dest) != bytes_read) {
+      err = errno ? errno : -1;
+      break;
+    }
   }
-  return errno;
+  return err;
 }
 
 size_t zsv_dir_len_basename(const char *filepath, const char **basename) {
