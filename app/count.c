@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sys/errno.h>
+#include <errno.h>
 
 #define ZSV_COMMAND count
 #include "zsv_command.h"
@@ -50,10 +50,15 @@ static int count_usage(void) {
 static size_t unquoted_chunk_end(size_t start, FILE *f) {
   char minibuff[1024];
   size_t bytes_read;
-  if (fseeko(f, start, SEEK_SET) == -1) {
+  if (
+#ifdef _WIN32
+      _fseeki64
+#else
+      fseeko
+#endif
+      (f, start, SEEK_SET) == -1) {
     perror("fseeko"); fflush(stderr);
     return 0;
-    //    exit(EXIT_FAILURE);
   }
 
   while ((bytes_read = fread(minibuff, 1, sizeof(minibuff), f)) > 0) {
@@ -68,11 +73,19 @@ static size_t unquoted_chunk_end(size_t start, FILE *f) {
 }
 
 size_t get_filesize(const char *filename) {
+#ifdef _WIN32
+    struct _stat64 st;
+    if (_stat64(filename, &st) != 0) {
+        perror("stat");
+        return EXIT_FAILURE;
+    }
+#else  
   struct stat st; // to do: 64-bit for win
   if (stat(filename, &st) == -1) {
     perror("stat");
     return 0;
   }
+#endif
   return st.st_size;
 }
 
@@ -116,7 +129,11 @@ struct csvindex_file *csvindex_file_new(const char *filename, size_t start, size
 
 int csvindex_file_prepare(struct csvindex_file *csvif) {
   // somewhere around here we should get the header
+#ifdef _WIN32
+  _fseeki64(csvif->f, csvif->start, SEEK_SET);
+#else
   fseeko(csvif->f, csvif->start, SEEK_SET);
+#endif
   return 0;
 }
 
