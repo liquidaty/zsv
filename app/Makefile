@@ -97,12 +97,14 @@ ifeq ($(WIN),0)
     endif
   endif
   CONFIGURE_HOST=
+  CFLAGS_SETENV=
 else
   BUILD_SUBDIR=win/${DBG_SUBDIR}
   EXE=.exe
   CFLAGS+= -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE
   CFLAGS+= -Wl,--strip-all
   CONFIGURE_HOST=--host=x86_64-w64-mingw32
+  CFLAGS_SETENV=-Dsetenv\(a,b,c\)=_putenv_s\(a,b\)
 endif
 
 CFLAGS+=-std=gnu11
@@ -386,7 +388,7 @@ lib-jq: ${JQ_LIB}
 
 ${JQ_BUNDLE_LIB}: ${JQ_SRC} # -D_REENTRANT needed for clang to not break
 	cd ${JQ_SRC} \
-	&& CC="${CC}" CFLAGS="${CFLAGS} -D_REENTRANT" ./configure \
+	&& CC="${CC}" CFLAGS="${CFLAGS} -D_REENTRANT ${CFLAGS_SETENV}" ./configure \
 	    --prefix="${JQ_PREFIX}" \
 	    --disable-maintainer-mode \
 	    --without-oniguruma \
@@ -395,7 +397,7 @@ ${JQ_BUNDLE_LIB}: ${JQ_SRC} # -D_REENTRANT needed for clang to not break
 	    --disable-shared \
 	    --enable-static \
 	    ${CONFIGURE_HOST} \
-	&& (${MAKE} install -k || echo)
+	&& (${MAKE} install -k)
 
 ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 	@mkdir -p `dirname "$@"`
