@@ -211,7 +211,7 @@ static int zsv_echo_parse_overwrite_source(struct zsv_echo_data *data, const cha
     if(!(data->o.sqlite3.filename && *data->o.sqlite3.filename
          && data->o.sqlite3.sql && *data->o.sqlite3.sql)) {
       free(data->o.sqlite3.filename);
-      fprintf(stderr, "Invalid query string");
+      fprintf(stderr, "Invalid query string\n");
       return 1;
     }
 

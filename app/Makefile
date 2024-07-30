@@ -395,7 +395,7 @@ ${JQ_BUNDLE_LIB}: ${JQ_SRC} # -D_REENTRANT needed for clang to not break
 	    --disable-shared \
 	    --enable-static \
 	    ${CONFIGURE_HOST} \
-	&& ${MAKE} install
+	&& (${MAKE} install -k || echo)
 
 ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 	@mkdir -p `dirname "$@"`

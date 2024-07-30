@@ -17,6 +17,7 @@ Optional configuration:
   --minimal=yes           do not include extra features (default=no)
   --arch=ARCH             use -march=ARCH. Set to 'none' for none, else defaults to 'native'
   --jq-prefix=JQ_PREFIX   specify directory containing lib/libjq and include/jq.h
+                          defaults to PREFIX if not specified and PREFIX/include/jq.h exists
 
 Installation directories:
   --prefix=PREFIX         main installation prefix [\$PREFIX or /usr/local]
@@ -482,6 +483,7 @@ case "$host" in
     *-*mingw32|*-*msys*|*-windows-gnu)
 	CFLAGS_STD="$CFLAGS_STD -D__USE_MINGW_ANSI_STDIO"
 	MINGW=1
+    ARCH=none
 	usepie=no
 	usepic=no
 	;;
@@ -643,6 +645,10 @@ if [ "$usetermcap" = "yes" ] || [ "$usetermcap" = "auto" ] ; then
                 echo "Error: --enable-termcap specified, but not found"
                 exit 1
             fi
+fi
+
+if [ "$JQ_PREFIX" == "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/jq.h" ] ; then
+    JQ_PREFIX="$PREFIX"
 fi
 
 if [ "$JQ_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
