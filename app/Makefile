@@ -38,6 +38,11 @@ ifneq ($(ZSV_CACHE_PREFIX),)
 endif
 
 CFLAGS+=-fsigned-char
+ifneq ($(WIN),)
+  CFLAGS+= -Wno-incompatible-pointer-types
+  LIBS+=-lShlwapi
+endif
+
 ifneq ($(ZSV_IS_PROP_FILE_HANDLER),)
 	CFLAGS+=-DZSV_IS_PROP_FILE_HANDLER=${ZSV_IS_PROP_FILE_HANDLER}
 endif
