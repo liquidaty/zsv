@@ -10,6 +10,11 @@
 #include <windows.h>
 #include <zsv/utils/os.h>
 
+#define RTLD_LAZY 0
+void *dlsym(void* handle, const char* symbol) {
+  return (void *)GetProcAddress((HINSTANCE)(handle), (symbol));
+}
+
 void *dlopen(const char *dll_name, int flags) {
   (void)flags;
   wchar_t wbuf[PATH_MAX];
