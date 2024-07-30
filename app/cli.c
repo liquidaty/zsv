@@ -298,11 +298,9 @@ static enum zsv_ext_status ext_add_command(zsv_execution_context ctx,
 static enum zsv_ext_status ext_parse_all(zsv_execution_context ctx,
                                          void *user_context,
                                          void (*row_handler)(void *ctx),
-                                         struct zsv_opts *const custom,
-                                         struct zsv_prop_handler *custom_prop
+                                         struct zsv_opts *const custom
                                          ) {
   struct zsv_opts opts = custom ? *custom : ext_parser_opts(ctx);
-  struct zsv_prop_handler custom_prop_handler = custom_prop ? *custom_prop : zsv_get_default_custom_prop_handler();
 
   if(row_handler)
     opts.row_handler = row_handler;

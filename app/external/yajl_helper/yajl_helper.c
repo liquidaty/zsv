@@ -59,6 +59,7 @@ void yajl_helper_walk_path(struct yajl_helper_parse_state *st,
 
 static void dump_path(void *ctx, unsigned depth, char type,
                       unsigned item_index, const char *map_key) {
+  (void)(depth);
   FILE *out = ctx;
   fwrite(&type,1,1,out);
   if(type == '[')
@@ -442,8 +443,8 @@ static int yajl_helper_null(void *ctx) {
   return process_value(st, ctx, &value);
 }
 
-static int yajl_helper_error(void * ctx, const unsigned char *buf,
-                             unsigned bufLen, int err_no) {
+static int yajl_helper_error(void * ctx, const char *buf,
+                             size_t bufLen, int err_no) {
   (void)(err_no);
   struct yajl_helper_parse_state *st = ctx;
 
