@@ -33,7 +33,7 @@ jobs:
         CC: gcc
         MAKE: make
         ARTIFACT_DIR: .artifacts
-        RUN_TESTS: false
+        RUN_TESTS: true
       shell: bash
       run: ./scripts/ci-build.sh
 
