@@ -21,10 +21,10 @@ achieves high performance using SIMD operations, [efficient memory
 use](docs/memory.md) and other optimization techniques, and can also parse
 generic-delimited and fixed-width formats, as well as multi-row-span headers
 
-The ZSV CLI can be compiled to virtually any target, including [web
-assembly](examples/js), and offers features including `select`, `count`, direct
-CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3 conversion,
-`stack`, `pretty`, `2tsv`, `compare`, `paste` and more.
+The ZSV CLI can be compiled to virtually any target, including
+[WebAssembly](examples/js), and offers features including `select`, `count`,
+direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3
+conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste` and more.
 
 Pre-built CLI packages are available via `brew` and `nuget`.
 
