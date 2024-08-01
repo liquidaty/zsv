@@ -32,6 +32,7 @@ jobs:
         PREFIX: amd64-linux-gcc
         CC: gcc
         MAKE: make
+        ARTIFACT_DIR: .artifacts
         RUN_TESTS: false
       shell: bash
       run: ./scripts/ci-build.sh
