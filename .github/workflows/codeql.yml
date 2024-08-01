@@ -1,0 +1,40 @@
+name: codeql
+
+on:
+  # push:
+  #   branches: [main]
+  #   paths-ignore: ['**.md']
+  # pull_request:
+  #   branches: [main]
+  #   paths-ignore: ['**.md']
+  # schedule:
+  #   - cron: '40 12 * * 6'
+  workflow_dispatch:
+
+jobs:
+  codeql:
+    runs-on: ubuntu-20.04
+    permissions:
+      security-events: write
+
+    steps:
+    - name: Checkout [${{ github.repository }}]
+      uses: actions/checkout@v4
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: c
+        build-mode: manual
+
+    - name: Build
+      env:
+        PREFIX: amd64-linux-gcc
+        CC: gcc
+        MAKE: make
+        RUN_TESTS: false
+      shell: bash
+      run: ./scripts/ci-build.sh
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
