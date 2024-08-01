@@ -121,7 +121,7 @@ help:
 	@echo "  [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VERBOSE=1] [LIBDIR=${LIBDIR}] [INCLUDEDIR=${INCLUDEDIR}] [LIB_SUFFIX=]"
 	@echo
 
-build: ${LIBZSV}
+build: ../include/zsv.h ${LIBZSV}
 
 ${LIBZSV}: ${ZSV_OBJ}
 	@mkdir -p `dirname "$@"`
@@ -131,9 +131,17 @@ ${LIBZSV}: ${ZSV_OBJ}
 	$(AR) -t $@ # check it is there
 	@echo Built $@
 
-install: ${LIBZSV_INSTALL}
+../include/zsv.h:
+ifeq ($(ZSV_EXTRAS),1)
+	@sed 's/__ZSV_EXTRAS__DEFINE__/#ifndef ZSV_EXTRAS\n#define ZSV_EXTRAS\n#endif/' < ../include/zsv.h.in > $@
+else
+	@sed 's/__ZSV_EXTRAS__DEFINE__//' < ../include/zsv.h.in > $@
+endif
+
+install: ../include/zsv.h ${LIBZSV_INSTALL}
 	@mkdir -p  $(INCLUDEDIR)
-	@cp -pR ../include/* $(INCLUDEDIR)
+	@cp -p ../include/*.h $(INCLUDEDIR)
+	@cp -pR ../include/zsv $(INCLUDEDIR)/
 	@echo "include files copied to $(INCLUDEDIR)"
 
 ${LIBZSV_INSTALL}: ${LIBZSV}
@@ -147,6 +155,7 @@ uninstall:
 
 clean:
 	rm -rf ${BUILD_DIR}/objs ${LIBZSV}
+	rm -f ../include/zsv.h
 
 .PHONY: build install uninstall clean  ${LIBZSV_INSTALL}
 

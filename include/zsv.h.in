@@ -9,6 +9,8 @@
 #ifndef ZSV_H
 #define ZSV_H
 
+__ZSV_EXTRAS__DEFINE__
+
 #include <stddef.h>
 #include "zsv/common.h"
 #include "zsv/api.h"
