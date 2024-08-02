@@ -19,6 +19,9 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    permissions:
+      contents: write
+
     env:
       TAG: "0.3.6"
       AMD64_LINUX_GCC: amd64-linux-gcc
