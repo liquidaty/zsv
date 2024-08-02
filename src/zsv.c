@@ -446,7 +446,14 @@ size_t zsv_scanned_length(zsv_parser parser) {
 
 ZSV_EXPORT
 size_t zsv_cum_scanned_length(zsv_parser parser) {
-  return parser->cum_scanned_length + parser->scanned_length + (parser->had_bom ? strlen(ZSV_BOM) : 0);
+  return parser->cum_scanned_length +
+    (parser->finished ? 0 : parser->scanned_length) +
+    (parser->had_bom ? strlen(ZSV_BOM) : 0);
+}
+
+ZSV_EXPORT
+size_t zsv_row_length_raw_bytes(zsv_parser parser) {
+  return parser->scanned_length - parser->row_start;
 }
 
 /**
