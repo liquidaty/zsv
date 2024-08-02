@@ -16,20 +16,21 @@ lib only:
 [npm-url]: https://npmjs.org/package/zsv-lib
 [npm-version-image]: https://badgen.net/npm/v/zsv-lib
 
+zsv+lib is a fast CSV parser library and extensible command-line utility. It
+achieves high performance using SIMD operations, [efficient memory
+use](docs/memory.md) and other optimization techniques, and can also parse
+generic-delimited and fixed-width formats, as well as multi-row-span headers
 
-zsv+lib is a fast CSV parser library and extensible command-line utility.
-It achieves high performance using SIMD operations,
-[efficient memory use](docs/memory.md) and other optimization techniques, and
-can also parse generic-delimited and fixed-width formats, as well as multi-row-span headers
+The ZSV CLI can be compiled to virtually any target, including
+[WebAssembly](examples/js), and offers features including `select`, `count`,
+direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3
+conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste` and more.
 
-The ZSV CLI can be compiled to virtually any target, including [web assembly](examples/js), and offers features including `select`, `count`, direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3 conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste` and more.
+Pre-built CLI packages are available via `brew` and `nuget`.
 
-Pre-built CLI packages are available via brew and nuget
-
-
-A pre-built library package is available for Node (`npm install zsv-lib`). Please note, this package
-is still in alpha and currently only exposes a small subset of the zsv library capabilities. More
-to come
+A pre-built library package is available for Node (`npm install zsv-lib`).
+Please note, this package is still in alpha and currently only exposes a small
+subset of the zsv library capabilities. More to come.
 
 If you like zsv+lib, do not forget to give it a star! 🌟
 
@@ -43,11 +44,18 @@ was smaller e.g. 15-25%) (below, mlr not shown as it was about 25x slower):
 <img src="https://user-images.githubusercontent.com/26302468/146497899-48174114-3b18-49b0-97da-35754ab56e48.png" alt="count speed" height="150px"><img src="https://user-images.githubusercontent.com/26302468/146498211-afc77ce6-4229-4599-bf33-81bf00c725a8.png" alt="select speed" height="150px">
 
 ** See 12/19 update re M1 processor at
-https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md
+<https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md>
 
-#### Which "CSV"
+### Which "CSV"
 
-"CSV" is an ambiguous term. This library uses the same definition as Excel. In addition, it provides a *row-level* (as well as cell-level) API and provides "normalized" CSV output (e.g. input of `this"iscell1,"thisis,"cell2` becomes `"this""iscell1","thisis,cell2"`). Each of these three objectives (Excel compatibility, row-level API and normalized output) has a measurable performance impact; conversely, it is possible to achieve-- which a number of other CSV parsers do-- much faster parsing speeds if any of these requirements (especially Excel compatibility) are dropped.
+"CSV" is an ambiguous term. This library uses the same definition as Excel. In
+addition, it provides a *row-level* (as well as cell-level) API and provides
+"normalized" CSV output (e.g. input of `this"iscell1,"thisis,"cell2` becomes
+`"this""iscell1","thisis,cell2"`). Each of these three objectives (Excel
+compatibility, row-level API and normalized output) has a measurable performance
+impact; conversely, it is possible to achieve-- which a number of other CSV
+parsers do-- much faster parsing speeds if any of these requirements (especially
+Excel compatibility) are dropped.
 
 ## Built-in and extensible features
 
@@ -65,34 +73,34 @@ that implements the expected
 
 ## Key highlights
 
-* Available as BOTH a library and an application (coming soon: standalone zsvutil library for common helper functions such as csv writer)
+* Available as BOTH a library and an application (coming soon: standalone
+  zsvutil library for common helper functions such as csv writer)
 * Open-source, permissively licensed
 * Handles real-world CSV the same way that spreadsheet programs do (*including
   edge cases*). Gracefully handles (and can "clean") real-world data that may be
-  "dirty"
-* Runs on macOS (tested on clang/gcc), Linux (gcc), Windows (mingw),
-  BSD (gcc-only) and in-browser (emscripten/wasm)
-* Fastest (at least, vs all alternatives and on all platforms we've benchmarked where
-  256-bit SIMD operations are available). See
+  "dirty".
+* Runs on macOS (tested on clang/gcc), Linux (gcc), Windows (mingw), BSD
+  (gcc-only) and in-browser (emscripten/wasm)
+* Fastest (at least, vs all alternatives and on all platforms we've benchmarked
+  where 256-bit SIMD operations are available). See
   [app/benchmark/README.md](app/benchmark/README.md)
 * Low memory usage (regardless of how big your data is) and size footprint for
   both lib (~20k) and CLI executable (< 1MB)
 * Handles general delimited data (e.g. pipe-delimited) and fixed-with input
   (with specified widths or auto-detected widths)
 * Handles multi-row headers
-* Handles input from any stream, including caller-defined streams accessed via
-  a single caller-defined `fread`-like function
-* Easy to use as a library in a few lines of code, via either pull or push parsing
+* Handles input from any stream, including caller-defined streams accessed via a
+  single caller-defined `fread`-like function
+* Easy to use as a library in a few lines of code, via either pull or push
+  parsing
 * Includes the `zsv` CLI with the following built-in commands:
   * `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
     `2db`, `stack`, `pretty`, `2tsv`, `paste`, `compare`, `jq`, `prop`, `rm`
   * easily [convert between CSV/JSON/sqlite3](docs/csv_json_sqlite.md)
   * [compare multiple files](docs/compare.md)
-
-* CLI is easy to extend/customize with a few lines of code via modular plug-in framework.
-  Just write a few custom functions and compile into a distributable DLL that any existing zsv
-  installation can use
-* zsvlib and `zsv` are permissively licensed
+* CLI is easy to extend/customize with a few lines of code via modular plug-in
+  framework. Just write a few custom functions and compile into a distributable
+  DLL that any existing zsv installation can use.
 
 ## Installing
 
@@ -169,16 +177,18 @@ choco.exe uninstall zsv
 #### Node
 
 The zsv parser library is available for node:
-```
+
+```shell
 npm install zsv-lib
 ```
 
 Please note:
-* this package is still in alpha and currently only exposes a small subset of the zsv library capabilities.
-  More to come!
+
+* This package is still in alpha and currently only exposes a small subset of
+  the zsv library capabilities. More to come!
 * The CLI is not yet available as a Node package
-* If you'd like to use additional parser features, or use the CLI as a Node package,
-  please feel free to post a request in an issue here
+* If you'd like to use additional parser features, or use the CLI as a Node
+  package, please feel free to post a request in an issue here.
 
 ### From source
 
@@ -211,13 +221,14 @@ addition to the fact that they were written in Rust and D, respectively, which
 happen to be languages with which we lacked deep experience, especially for web
 assembly targeting).
 
-Others we considered were Miller (mlr), csvkit and Go (csv module), which did
-not meet our performance objective. We also considered various other libraries
-using SIMD for CSV parsing, but none that we tried met the "real-world CSV"
-objective.
+Others we considered were Miller (`mlr`), `csvkit` and Go (csv module), which
+did not meet our performance objective. We also considered various other
+libraries using SIMD for CSV parsing, but none that we tried met the "real-world
+CSV" objective.
 
-Hence zsv was created as a library and a versatile application, both optimized
-for speed and ease of development for extending and/or customizing to your needs
+Hence, zsv was created as a library and a versatile application, both optimized
+for speed and ease of development for extending and/or customizing to your
+needs.
 
 ## Batteries included
 
@@ -225,11 +236,10 @@ for speed and ease of development for extending and/or customizing to your needs
 
 * `echo`: read CSV from stdin and write it back out to stdout. This is mostly
   useful for demonstrating how to use the API and also how to create a plug-in,
-  and has several uses beyond that including adding/removing BOM,
-  cleaning up bad UTF8,
-  whitespace or blank column trimming,
-  limiting output to a contiguous data block, skipping leading garbage, and even
-  proving substitution values without modifying the underlying source
+  and has several uses beyond that including adding/removing BOM, cleaning up
+  bad UTF8, whitespace or blank column trimming, limiting output to a contiguous
+  data block, skipping leading garbage, and even proving substitution values
+  without modifying the underlying source
 * `select`: re-shape CSV by skipping leading garbage, combining header rows into
   a single header, selecting or excluding specified columns, removing duplicate
   columns, sampling, converting from fixed-width input, searching and more
@@ -237,21 +247,23 @@ for speed and ease of development for extending and/or customizing to your needs
 * `desc`: provide a quick description of your table data
 * `pretty`: format for console (fixed-width) display, or convert to markdown
   format
-* `2json`: convert CSV to JSON. Optionally, output in [database schema](docs/db.schema.json)
+* `2json`: convert CSV to JSON. Optionally, output in
+  [database schema](docs/db.schema.json)
 * `2tsv`: convert to TSV (tab-delimited) format
 * `compare`: compare two or more tables of data and output the differences
 * `paste` (alpha): horizontally paste two tables together (given inputs X and Y,
-   output 1...N rows where each row all columns of X in row N, followed by all columns of Y in row N)
+   output 1...N rows where each row all columns of X in row N, followed by all
+   columns of Y in row N)
 * `serialize` (inverse of flatten): convert an NxM table to a single 3x (Nx(M-1))
   table with columns: Row, Column Name, Column Value
 * `flatten` (inverse of serialize): flatten a table by combining rows that share
   a common value in a specified identifier column
 * `stack`: merge CSV files vertically
-* `jq`: run a jq filter
+* `jq`: run a `jq` filter
 * `2db`: [convert from JSON to sqlite3 db](docs/csv_json_sqlite.md)
 * `prop`: view or save parsing options associated with a file, such as initial
-          rows to ignore, or header row span. Saved options are be applied by
-          default when processing that file
+  rows to ignore, or header row span. Saved options are be applied by default
+  when processing that file.
 
 Each of these can also be built as an independent executable named `zsv_xxx`
 where `xxx` is the command name.
@@ -270,25 +282,28 @@ zsv sql my_population_data.csv "select * from data where population > 100000"
 Simple API usage examples include:
 
 Pull parsing:
-```
+
+```c
 zsv_parser parser = zsv_new(...);
-while(zsv_next_row(parser) == zsv_status_row) { /* for each row */
-    // do something
+while(zsv_next_row(parser) == zsv_status_row) { // for each row
+  // ...
   size_t cell_count = zsv_cell_count(parser);
-  for(size_t i = 0; i < cell_count; i++) {
+  for(size_t i = 0; i < cell_count; i++) { // for each cell
     struct zsv_cell c = zsv_get_cell(parser, i);
     fprintf(stderr, "Cell: %.*s\n", c.len, c.str);
-    ...
+    // ...
   }
+}
 ```
 
 Push parsing:
-```
+
+```c
 static void my_row_handler(void *ctx) {
   zsv_parser p = ctx;
   size_t cell_count = zsv_cell_count(p);
   for(size_t i = 0, j = zsv_cell_count(p); i < j; i++) {
-    ...
+    // ...
   }
 }
 
@@ -296,20 +311,20 @@ int main() {
   zsv_parser p = zsv_new(NULL);
   zsv_set_row_handler(p, my_row_handler);
   zsv_set_context(p, p);
-
-  enum zsv_status stat;
-  while((stat = zsv_parse_more(data.parser)) == zsv_status_ok) ;
-
+  while(zsv_parse_more(data.parser) == zsv_status_ok);
+  return 0;
+}
 ```
 
-Full application code examples can be found at [examples/lib/README.md](examples/lib/README.md).
+Full application code examples can be found at
+[examples/lib/README.md](examples/lib/README.md).
 
-An example of using the API, compiled to wasm and called via Javascript,
-is in [examples/js/README.md](examples/js/README.md).
+An example of using the API, compiled to wasm and called via Javascript, is in
+[examples/js/README.md](examples/js/README.md).
 
-For more sophisticated (but at this time, only sporadically commented/documented) use cases,
-see the various CLI C source files in the app/ directory such as app/serialize.c
-
+For more sophisticated (but at this time, only sporadically
+commented/documented) use cases, see the various CLI C source files in the `app`
+directory such as `app/serialize.c`.
 
 ### Creating your own extension
 
@@ -342,10 +357,10 @@ helping, please post an issue.
 * online "playground" (soon to be released)
 * optimize search; add search with hyperscan or re2 regex matching, possibly
   parallelize?
-* optional openmp or other multi-threading for row processing
+* optional OpenMP or other multi-threading for row processing
 * auto-generated documentation, and better documentation in general
 * Additional benchmarking. Would be great to use
-  https://bitbucket.org/ewanhiggs/csv-game/src/master/ as a springboard to
+  <https://bitbucket.org/ewanhiggs/csv-game/src/master/> as a springboard to
   benchmarking a number of various tasks
 * encoding conversion e.g. UTF16 to UTF8
 
