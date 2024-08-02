@@ -1,15 +1,6 @@
 name: codeql
 
-on:
-  # push:
-  #   branches: [main]
-  #   paths-ignore: ['**.md']
-  # pull_request:
-  #   branches: [main]
-  #   paths-ignore: ['**.md']
-  # schedule:
-  #   - cron: '40 12 * * 6'
-  workflow_dispatch:
+on: workflow_dispatch
 
 jobs:
   codeql:
