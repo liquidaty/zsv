@@ -259,6 +259,11 @@ ZSV_EXPORT size_t zsv_scanned_length(zsv_parser);
 ZSV_EXPORT size_t zsv_cum_scanned_length(zsv_parser parser);
 
 /**
+ * @return number of raw bytes scanned from the beginning to the end of this row
+ */
+ZSV_EXPORT size_t zsv_row_length_raw_bytes(zsv_parser parser);
+
+/**
  * Check the quoted status of the last cell that was read. This function is only
  * applicable when called from within a cell_handler() callback. Furthermore, this
  * function is generally only useful when the cell value will subsequent be
