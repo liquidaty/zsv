@@ -73,7 +73,7 @@ struct zsv_foreach_dirent_handle {
 
   unsigned char verbose:1;
   unsigned char is_dir:1;       /* non-zero if this entry is a directory */
-  unsigned char no_recurse:1;        /* set to 1 when handling a dir to prevent recursing into it */
+  unsigned char no_recurse:1;   /* set to 1 when handling a dir to prevent recursing into it */
   unsigned char _:5;
 };
 

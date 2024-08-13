@@ -405,8 +405,8 @@ test -n "$MAKE" || fail "$0: cannot find a MAKE tool"
 # Find a C compiler to use
 #
 printf "checking for C compiler... "
-for c in cc gcc gcc-11 gcc-10 gcc-9 gcc-8 gcc-7 clang; do trycc1 "$c"; done
-for c in cc gcc gcc-11 gcc-10 gcc-9 gcc-8 gcc-7 clang; do trycc2 "$c"; done
+for c in cc gcc gcc-14 gcc-13 gcc-12 gcc-11 gcc-10 gcc-9 gcc-8 gcc-7 clang; do trycc1 "$c"; done
+for c in cc gcc gcc-14 gcc-13 gcc-12 gcc-11 gcc-10 gcc-9 gcc-8 gcc-7 clang; do trycc2 "$c"; done
 printf "%s\n" "$CC"
 test -n "$CC" || fail "$0: cannot find a C compiler"
 

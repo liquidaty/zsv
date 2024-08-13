@@ -41,6 +41,9 @@
  * - zsv_delete(): dispose the parser
  ******************************************************************************/
 
+ZSV_EXPORT
+int zsv_peek(zsv_parser);
+
 /**
  * Create a zsv parser. Typically, passed options will at least include a
  * a `row_handler()` callback. Many, but not all, options can be subsequently

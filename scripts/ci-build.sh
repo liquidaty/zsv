@@ -56,6 +56,7 @@ if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Tests completed successfully!"
 
   echo "[INF] Configuring example extension and running example extension tests"
+  echo "[INF] (cd app/ext_example && $MAKE CONFIGFILE=../../config.mk test)"
   (cd app/ext_example && "$MAKE" CONFIGFILE=../../config.mk test)
   echo "[INF] Tests completed successfully!"
 fi

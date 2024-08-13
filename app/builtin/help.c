@@ -35,7 +35,7 @@ static int main_help(int argc, const char *argv[]) {
     "",
     "Options common to all commands except `prop`, `rm` and `jq`:",
 #ifdef ZSV_EXTRAS
-    "  -L,--limit-rows <n>: limit processing to the given number of rows (including any header row(s))",
+    "  -L,--limit-rows <n>      : limit processing to the given number of rows (including any header row(s))",
 #endif
     "  -c,--max-column-count <n>: set the maximum number of columns parsed per row. defaults to 1024",
     "  -r,--max-row-size <n>    : set the minimum supported maximum row size. defaults to 64k",

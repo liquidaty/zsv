@@ -52,7 +52,7 @@ endif
 
 DEBUG=0
 ifeq ($(DEBUG),0)
-  CFLAGS+= -O3 -DNDEBUG -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -lm -mavx2 -ftree-vectorize -flto
+  CFLAGS+= -O3 -DNDEBUG -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -lm -ftree-vectorize -flto
 else
   CFLAGS += -g
 endif

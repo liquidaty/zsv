@@ -58,10 +58,11 @@ inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
     scanner->old_bytes_read = 0;
   }
 
-  scanner->cum_scanned_length += scanner->scanned_length;
+  scanner->cum_scanned_length += scanner->scanned_length - scanner->partial_row_length;
 
   size_t capacity = scanner->buff.size - scanner->partial_row_length;
-  if(VERY_UNLIKELY(capacity == 0)) { // our row size was too small to fit a single row of data
+  if(VERY_UNLIKELY(capacity == 0)) {
+    // our row size was too small to fit a single row of data
     fprintf(stderr, "Warning: row %zu truncated\n", scanner->data_row_count);
     if(scanner->mode == ZSV_MODE_FIXED) {
       if(VERY_UNLIKELY(row_fx(scanner, scanner->buff.buff, 0, scanner->buff.size)))
@@ -308,6 +309,13 @@ ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count
   set_callbacks(parser);
 
   return zsv_status_ok;
+}
+
+ZSV_EXPORT
+int zsv_peek(zsv_parser z) {
+  if(z->scanned_length + 1 < z->buff.size)
+    return z->buff.buff[z->scanned_length+1];
+  return -1;
 }
 
 /**
