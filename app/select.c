@@ -962,7 +962,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         while(status == zsv_status_ok
               && !zsv_signal_interrupted && !data.cancelled)
           status = zsv_parse_more(data.parser);
-        zsv_finish(data.parser);
+        if(status == zsv_status_no_more_input)
+          status = zsv_finish(data.parser);
         zsv_delete(data.parser);
       }
     }
