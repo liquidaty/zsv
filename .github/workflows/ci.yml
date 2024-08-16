@@ -66,7 +66,7 @@ jobs:
 
     - name: Build on Linux (${{ env.AMD64_FREEBSD_GCC }})
       if: runner.os == 'Linux'
-      uses: cross-platform-actions/action@v0.23.0
+      uses: cross-platform-actions/action@v0.25.0
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc
