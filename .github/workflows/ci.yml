@@ -15,7 +15,7 @@ jobs:
     name: ci
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-12, macos-14]
+        os: [ubuntu-20.04, macos-13, macos-14]
 
     runs-on: ${{ matrix.os }}
 
@@ -127,7 +127,7 @@ jobs:
         ./scripts/ci-create-nuget-package.sh
 
     - name: Build on macOS (${{ env.AMD64_MACOSX_GCC }})
-      if: matrix.os == 'macos-12'
+      if: matrix.os == 'macos-13'
       env:
         PREFIX: ${{ env.AMD64_MACOSX_GCC }}
         CC: gcc-11
@@ -244,7 +244,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.zip)
-      if: matrix.os == 'macos-12'
+      if: matrix.os == 'macos-13'
       uses: actions/upload-artifact@v4
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.zip
@@ -310,7 +310,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.tar.gz)
-      if: matrix.os == 'macos-12'
+      if: matrix.os == 'macos-13'
       uses: actions/upload-artifact@v4
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.tar.gz
@@ -358,7 +358,7 @@ jobs:
     # --- Update homebrew tap ---
 
     - name: Update homebrew tap (liquidaty/homebrew-zsv)
-      if: ${{ startsWith(github.ref, 'refs/tags/v') && matrix.os == 'macos-12' }}
+      if: ${{ startsWith(github.ref, 'refs/tags/v') && matrix.os == 'macos-13' }}
       env:
         HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
         TAG: ${{ env.TAG }}
