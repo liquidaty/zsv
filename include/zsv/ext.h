@@ -28,7 +28,8 @@ ZSV_BEGIN_DECL
  * zsv_ext_status_error, then furthermore, `zsv_ext_errstr()` will be called
  * and any non-null result displayed as an error message
  */
-enum zsv_ext_status {
+enum zsv_ext_status
+{
   zsv_ext_status_ok = 0,
   zsv_ext_status_memory,
   zsv_ext_status_unrecognized_cmd,

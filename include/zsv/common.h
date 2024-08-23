@@ -17,7 +17,8 @@
 #define ZSV_END_DECL /* empty */
 #endif
 
-enum zsv_status {
+enum zsv_status
+{
   zsv_status_ok = 0,
   zsv_status_cancelled,
   zsv_status_no_more_input,
@@ -95,7 +96,8 @@ typedef void (*zsv_completed_callback)(void *ctx, int code);
  *   (row, column, value) tuples
  * Supported source formats are CSV and SQLITE3
  */
-enum zsv_overwrite_type {
+enum zsv_overwrite_type
+{
   zsv_overwrite_type_unknown = 0, // do not change
   zsv_overwrite_type_none = 1,    // do not change
   zsv_overwrite_type_csv
