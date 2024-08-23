@@ -17,7 +17,7 @@ static int main_help(int argc, const char *argv[]) {
     "Usage:",
     "  zsv version: display version info (and if applicable, extension info)",
 #ifndef __EMSCRIPTEN__
-    "  zsv (un)register [<extension_id>]: (un)register an extension",
+    "  zsv (un)register [<extension_id>]    : (un)register an extension",
     "      Registration info is saved in zsv.ini located in a directory determined as:",
     "        ZSV_CONFIG_DIR environment variable value, if set",
 #if defined(_WIN32)
@@ -28,9 +28,9 @@ static int main_help(int argc, const char *argv[]) {
 #endif
 #endif
     "  zsv help [<command>]",
-    "  zsv <command> <options> <arguments>: run a command on data (see below for details)",
-    "  zsv <id>-<cmd> <options> <arguments>: invoke command 'cmd' of extension 'id'",
-    "  zsv thirdparty: view third-party licenses & acknowledgements",
+    "  zsv <command> <options> <arguments>  : run a command on data (see below for details)",
+    "  zsv <id>-<cmd> <options> <arguments> : invoke command 'cmd' of extension 'id'",
+    "  zsv thirdparty                       : view third-party licenses & acknowledgements",
     "  zsv license [<extension_id>]",
     "",
     "Options common to all commands except `prop`, `rm` and `jq`:",
@@ -45,13 +45,12 @@ static int main_help(int argc, const char *argv[]) {
     "  -q,--no-quote            : turn off quote handling",
     "  -R,--skip-head <n>       : skip specified number of initial rows",
     "  -d,--header-row-span <n> : apply header depth (rowspan) of n",
-    "  -u,--malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed "
-    "UTF8 input",
+    "  -u,--malformed-utf8-replacement <string>: replacement string (can be empty) in case of malformed UTF8 input",
     "       (default for \"desc\" command is '?')",
     "  -S,--keep-blank-headers  : disable default behavior of ignoring leading blank rows",
     "  -0,--header-row <header> : insert the provided CSV as the first row (in position 0)",
     "                             e.g. --header-row 'col1,col2,\"my col 3\"'",
-    "  -v,--verbose: verbose output",
+    "  -v,--verbose             : verbose output",
     "",
     "Commands that parse CSV or other tabular data:",
     "  select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations",
@@ -77,9 +76,10 @@ static int main_help(int argc, const char *argv[]) {
 #ifdef USE_JQ
     "  jq       : run a jq filter on json input",
 #endif
-    NULL};
+    NULL,
+  };
 
-  for (int i = 0; usage[i]; i++)
+  for (size_t i = 0; usage[i]; i++)
     fprintf(f, "%s\n", usage[i]);
 
   char printed_init = 0;

@@ -498,7 +498,8 @@ static int merge_and_save_properties(const unsigned char *filepath, char save, c
   return err;
 }
 
-enum zsv_prop_mode {
+enum zsv_prop_mode
+{
   zsv_prop_mode_default = 0,
   zsv_prop_mode_list_files = 'l',
   zsv_prop_mode_clean = 'K',
@@ -658,7 +659,8 @@ static int zsv_prop_foreach_clean(struct zsv_foreach_dirent_handle *h, size_t de
   return err;
 }
 
-enum zsv_prop_foreach_copy_mode {
+enum zsv_prop_foreach_copy_mode
+{
   zsv_prop_foreach_copy_mode_check = 1,
   zsv_prop_foreach_copy_mode_copy
 };

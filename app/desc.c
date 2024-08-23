@@ -152,7 +152,8 @@ static void zsv_desc_column_names_delete(struct zsv_desc_column_name **p) {
   }
 }
 
-enum zsv_desc_status {
+enum zsv_desc_status
+{
   zsv_desc_status_ok = 0,
   zsv_desc_status_error, // generic error
   zsv_desc_status_memory,

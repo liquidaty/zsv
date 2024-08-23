@@ -120,7 +120,7 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx) {
  *     -q,--no-quote
  *     -R,--skip-head <n>: skip specified number of initial rows
  *     -d,--header-row-span <n> : apply header depth (rowspan) of n
- *     -u,--malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8
+ *     -u,--malformed-utf8-replacement <string>: replacement string (can be empty) in case of malformed UTF8
  * input (default for "desc" command is '?') -S,--keep-blank-headers  : disable default behavior of ignoring leading
  * blank rows -0,--header-row <header> : insert the provided CSV as the first row (in position 0) e.g. --header-row
  * 'col1,col2,\"my col 3\"'", -v,--verbose

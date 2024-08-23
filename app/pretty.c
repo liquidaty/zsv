@@ -37,7 +37,8 @@ struct zsv_pretty_opts {
   unsigned char dummy : 4;
 };
 
-enum zsv_pretty_status {
+enum zsv_pretty_status
+{
   zsv_pretty_status_ok = 0,
   zsv_pretty_status_error,
   zsv_pretty_status_memory,

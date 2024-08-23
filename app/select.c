@@ -69,7 +69,7 @@ struct zsv_select_data {
     struct {         // merge data: only used with --merge
       struct zsv_select_uint_list *indexes, **last_index;
     } merge;
-  } *out2in; // array of .output_cols_count length; out2in[x] = y where x = output ix, y = input info
+  } * out2in; // array of .output_cols_count length; out2in[x] = y where x = output ix, y = input info
 
   unsigned int output_cols_count; // total count of output columns
 
@@ -121,7 +121,8 @@ struct zsv_select_data {
   unsigned char _ : 3;
 };
 
-enum zsv_select_column_index_selection_type {
+enum zsv_select_column_index_selection_type
+{
   zsv_select_column_index_selection_type_none = 0,
   zsv_select_column_index_selection_type_single,
   zsv_select_column_index_selection_type_range,

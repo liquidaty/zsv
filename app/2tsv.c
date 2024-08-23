@@ -14,7 +14,8 @@
 
 #include <zsv/utils/utf8.h>
 
-enum zsv_2tsv_status {
+enum zsv_2tsv_status
+{
   zsv_2tsv_status_ok = 0,
   zsv_2tsv_status_out_of_memory
 };
