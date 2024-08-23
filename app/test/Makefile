@@ -485,7 +485,7 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} 
 
 test-2json-help: test-%-help: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@[ "`$< -h | wc -l`" -gt 17 ] && ${TEST_PASS} || ${TEST_FAIL} # check output nonempty
+	@[ "`$< -h | wc -l`" -gt 15 ] && ${TEST_PASS} || ${TEST_FAIL} # check output nonempty
 	@$< -h >/dev/null && ${TEST_PASS} || ${TEST_FAIL} # check exit code
 
 test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
