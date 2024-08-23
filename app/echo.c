@@ -169,7 +169,7 @@ const char *zsv_echo_usage_msg[] = {
   "",
   "- /path/to/file.csv",
   "  path to CSV file with columns row,col,val (in that order) and rows pre-sorted by row and column",
-  "" NULL,
+  NULL,
 };
 
 static int zsv_echo_usage() {
