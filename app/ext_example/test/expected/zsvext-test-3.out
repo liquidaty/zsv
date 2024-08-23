@@ -28,7 +28,7 @@ Options common to all commands except `prop`, `rm` and `jq`:
   -R,--skip-head <n>       : skip specified number of initial rows
   -d,--header-row-span <n> : apply header depth (rowspan) of n
   -u,--malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8 input
-       (default for "desc" commamnd is '?')
+       (default for "desc" command is '?')
   -S,--keep-blank-headers  : disable default behavior of ignoring leading blank rows
   -0,--header-row <header> : insert the provided CSV as the first row (in position 0)
                              e.g. --header-row 'col1,col2,"my col 3"'
@@ -86,7 +86,7 @@ Options common to all commands except `prop`, `rm` and `jq`:
   -R,--skip-head <n>       : skip specified number of initial rows
   -d,--header-row-span <n> : apply header depth (rowspan) of n
   -u,--malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8 input
-       (default for "desc" commamnd is '?')
+       (default for "desc" command is '?')
   -S,--keep-blank-headers  : disable default behavior of ignoring leading blank rows
   -0,--header-row <header> : insert the provided CSV as the first row (in position 0)
                              e.g. --header-row 'col1,col2,"my col 3"'
