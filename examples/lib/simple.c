@@ -99,7 +99,8 @@ int main(int argc, const char *argv[]) {
    * Continuously parse our input until we have no more input
    */
   enum zsv_status stat;
-  while ((stat = zsv_parse_more(data.parser)) == zsv_status_ok);
+  while ((stat = zsv_parse_more(data.parser)) == zsv_status_ok)
+    ;
 
   /**
    * Clean up
