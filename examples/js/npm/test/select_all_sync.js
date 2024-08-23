@@ -1,15 +1,17 @@
-const process= require('node:process');
+const process = require('node:process');
 const { PerformanceObserver, performance } = require('node:perf_hooks');
 const fs = require('fs');
 const zsvParser = require('zsv-lib');
 
 /**
- * Example using libzsv to parse CSV input and execute a custom row handler function as each row is parsed
+ * Example using libzsv to parse CSV input and execute a custom row handler
+ * function as each row is parsed
  */
 
 /**
- * We will use a separate context for each parser, which is a pattern that allows us to run multiple
- * parsers at the same time independently, although this example only runs one at a time
+ * We will use a separate context for each parser, which is a pattern that
+ * allows us to run multiple parsers at the same time independently, although
+ * this example only runs one at a time
  */
 function createContext() {
   return {
@@ -20,8 +22,8 @@ function createContext() {
 }
 
 /**
- * Define a row handler which will be called each time a row is parsed, and which
- * accesses all data through a context object
+ * Define a row handler which will be called each time a row is parsed, and
+ * which accesses all data through a context object
  */
 function rowHandler(row, ctx, z) {
   ctx.rowcount++;
@@ -40,18 +42,18 @@ function rowHandler(row, ctx, z) {
  * Define the steps to take after all parsing has completed
  */
 function finish(ctx, parser) {
-  if(parser) {
+  if (parser) {
     parser.finish();                  /* finish parsing */
     let endTime = performance.now()   /* check the time */
 
     /* output a message describing the parse volume and performance */
     console.error('Parsed ' + parser.getBytesRead() + ' bytes; ' + ctx.rowcount +
-                  ' rows in ' + (endTime - ctx.startTime) + 'ms\n' +
-                  'You can view the parsed data in your browser dev tools console (rt-click and select Inspect)');
+      ' rows in ' + (endTime - ctx.startTime) + 'ms\n' +
+      'You can view the parsed data in your browser dev tools console (rt-click and select Inspect)');
 
     /**
-     * output the parsed data (we could have also done this while we parsed, and not
-     * bothered to accumulate it, to save memory)
+     * output the parsed data (we could have also done this while we parsed, and
+     * not bothered to accumulate it, to save memory)
      */
     console.log(ctx.data);
 
@@ -64,7 +66,7 @@ function finish(ctx, parser) {
  * After the zsv-lib module has loaded, read from stdin or the specified file,
  * parse the input, apply the row handler for each parsed row and finish
  */
-zsvParser.runOnLoad(function() {
+zsvParser.runOnLoad(function () {
 
   /* get a new context */
   let ctx = createContext();
@@ -79,7 +81,7 @@ zsvParser.runOnLoad(function() {
   parser.syncInput(readFile);
 
   /* parse */
-  while(parser.parseMore() == 0);
+  while (parser.parseMore() == 0);
 
   /* finish */
   finish(ctx, parser);

@@ -30,12 +30,12 @@
  * the buffer size should be FILENAME_MAX
  */
 
-static size_t chop_slash(char* buff, size_t len) {
-  if(buff[len-1] == '\\' || buff[len-1] == '/') {
-    buff[len-1] = '\0';
+static size_t chop_slash(char *buff, size_t len) {
+  if (buff[len - 1] == '\\' || buff[len - 1] == '/') {
+    buff[len - 1] = '\0';
     len--;
   }
-  return (size_t) len;
+  return (size_t)len;
 }
 
 /**
@@ -43,15 +43,15 @@ static size_t chop_slash(char* buff, size_t len) {
  * prefix should be determined at compile time e.g. /usr/local or ""
  * @return length written to buff, or 0 if failed
  */
-size_t zsv_get_config_dir(char* buff, size_t buffsize, const char *prefix) {
+size_t zsv_get_config_dir(char *buff, size_t buffsize, const char *prefix) {
 #if defined(_WIN32)
   const char *env_val = getenv("ZSV_CONFIG_DIR");
   (void)(prefix);
   //  if(!(env_val && *env_val))
   //    env_val = getenv(prefix);
-  if(!(env_val && *env_val))
+  if (!(env_val && *env_val))
     env_val = getenv("LOCALAPPDATA");
-  if(!(env_val && *env_val))
+  if (!(env_val && *env_val))
     env_val = "C:\\temp";
   int written = snprintf(buff, buffsize, "%s", env_val);
 #elif defined(__EMSCRIPTEN__)
@@ -59,12 +59,12 @@ size_t zsv_get_config_dir(char* buff, size_t buffsize, const char *prefix) {
 #else
   int written;
   const char *env_val = getenv("ZSV_CONFIG_DIR");
-  if(env_val && *env_val)
+  if (env_val && *env_val)
     written = snprintf(buff, buffsize, "%s", env_val);
   else
     written = snprintf(buff, buffsize, "%s/etc", prefix ? prefix : "");
 #endif
-  if(written > 0 && ((size_t)written) < buffsize)
+  if (written > 0 && ((size_t)written) < buffsize)
     return chop_slash(buff, written);
   return 0;
 }
@@ -75,7 +75,7 @@ size_t zsv_get_config_dir(char* buff, size_t buffsize, const char *prefix) {
  */
 int zsv_dir_exists(const char *path) {
   struct stat path_stat;
-  if(!stat(path, &path_stat))
+  if (!stat(path, &path_stat))
     return S_ISDIR(path_stat.st_mode);
   return 0;
 }
@@ -89,25 +89,26 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
   int rc = 0;
 
   size_t len = strlen(path);
-  if(len < 1 || len > FILENAME_MAX)
+  if (len < 1 || len > FILENAME_MAX)
     return -1;
 
   char *tmp = strdup(path);
-  if(len && strchr("/\\", tmp[len - 1]))
+  if (len && strchr("/\\", tmp[len - 1]))
     tmp[--len] = 0;
 
   int offset = 0;
 #ifdef WIN32
-  if(len > 1) {
+  if (len > 1) {
     // starts with two slashes
-    if(strchr("/\\", tmp[0]) && strchr("/\\", tmp[1])) {
+    if (strchr("/\\", tmp[0]) && strchr("/\\", tmp[1])) {
       offset = 2;
       // find the next slash
       char *path_end = tmp + 3;
-      while(*path_end && !strchr("/\\", *path_end))
+      while (*path_end && !strchr("/\\", *path_end))
         path_end++;
-      if(*path_end) path_end++;
-      if(*path_end)
+      if (*path_end)
+        path_end++;
+      if (*path_end)
         offset = path_end - tmp;
       else {
         fprintf(stderr, "Invalid path: %s\n", path);
@@ -115,24 +116,25 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
       }
     }
     // starts with *:
-    else if(tmp[1] == ':')
+    else if (tmp[1] == ':')
       offset = 2;
   }
 #else
   offset = 1;
 #endif
 
-  for(p = tmp + offset; !rc && *p; p++)
-    if(strchr("/\\", *p)) {
+  for (p = tmp + offset; !rc && *p; p++)
+    if (strchr("/\\", *p)) {
       char tmp_c = p[1];
       p[0] = FILESLASH;
       p[1] = '\0';
-      if(*tmp && !zsv_dir_exists(tmp)
-         && mkdir(tmp
+      if (*tmp && !zsv_dir_exists(tmp) &&
+          mkdir(tmp
 #ifndef WIN32
-                  , S_IRWXU
+                ,
+                S_IRWXU
 #endif
-                  )) {
+                )) {
         rc = -1;
         fprintf(stderr, "Error creating directory: ");
         perror(tmp);
@@ -140,31 +142,31 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
         p[1] = tmp_c;
     }
 
-  if(!rc && path_is_filename == 0 && *tmp && !zsv_dir_exists(tmp)
-     && mkdir(tmp
+  if (!rc && path_is_filename == 0 && *tmp && !zsv_dir_exists(tmp) &&
+      mkdir(tmp
 #ifndef WIN32
-              , S_IRWXU
+            ,
+            S_IRWXU
 #endif
-              ))
+            ))
     rc = -1;
 
   free(tmp);
   return rc;
 }
 
-
 #if defined(_WIN32)
-size_t zsv_get_executable_path(char* buff, size_t buffsize) {
+size_t zsv_get_executable_path(char *buff, size_t buffsize) {
   return GetModuleFileNameA(NULL, buff, (DWORD)buffsize);
 }
 
 #elif defined(__APPLE__)
-  #include <mach-o/dyld.h>
-size_t zsv_get_executable_path(char* buff, size_t bufflen) {
+#include <mach-o/dyld.h>
+size_t zsv_get_executable_path(char *buff, size_t bufflen) {
   uint32_t pathlen = bufflen;
-  if(!_NSGetExecutablePath(buff, &pathlen)) {
+  if (!_NSGetExecutablePath(buff, &pathlen)) {
     char real[FILENAME_MAX];
-    if(realpath(buff, real) != NULL && strlen(real) < bufflen) {
+    if (realpath(buff, real) != NULL && strlen(real) < bufflen) {
       bufflen = strlen(real);
       memcpy(buff, real, bufflen);
       buff[bufflen] = '\0';
@@ -175,8 +177,8 @@ size_t zsv_get_executable_path(char* buff, size_t bufflen) {
   return 0;
 }
 #elif defined(__linux__) || defined(__EMSCRIPTEN__)
-  #include <unistd.h>
-size_t zsv_get_executable_path(char* buff, size_t buffsize) {
+#include <unistd.h>
+size_t zsv_get_executable_path(char *buff, size_t buffsize) {
   buffsize = readlink("/proc/self/exe", buff, buffsize - 1);
   buff[buffsize] = '\0';
   return buffsize;
@@ -184,7 +186,7 @@ size_t zsv_get_executable_path(char* buff, size_t buffsize) {
 #elif defined(__FreeBSD__)
 #include <sys/stat.h>
 #include <sys/sysctl.h>
-size_t zsv_get_executable_path(char* buff, size_t buffsize) {
+size_t zsv_get_executable_path(char *buff, size_t buffsize) {
   int mib[4];
   mib[0] = CTL_KERN;
   mib[1] = KERN_PROC;
@@ -211,12 +213,12 @@ struct dir_path {
  */
 static int rmdir_w_msg(const char *path, int *err) {
 #ifdef WIN32
-  if(!RemoveDirectoryA(path)) {
+  if (!RemoveDirectoryA(path)) {
     zsv_win_printLastError();
     *err = 1;
   }
 #else
-  if(remove(path)) {
+  if (remove(path)) {
     perror(path);
     *err = 1;
   }
@@ -226,20 +228,20 @@ static int rmdir_w_msg(const char *path, int *err) {
 
 static int zsv_foreach_dirent_remove(struct zsv_foreach_dirent_handle *h, size_t depth) {
   (void)(depth);
-  if(!h->is_dir) { // file
-    if(h->parent_and_entry) {
-      if(unlink(h->parent_and_entry)) {
+  if (!h->is_dir) { // file
+    if (h->parent_and_entry) {
+      if (unlink(h->parent_and_entry)) {
         perror(h->parent_and_entry); // "Unable to remove file");
         return 1;
       }
     }
-  } else {           // dir
+  } else { // dir
     struct dir_path *dn = calloc(1, sizeof(*dn));
-    if(!dn) {
+    if (!dn) {
       fprintf(stderr, "Out of memory!\n");
       return 1;
     }
-    if(h->parent_and_entry) {
+    if (h->parent_and_entry) {
       dn->path = strdup(h->parent_and_entry);
       dn->next = *((struct dir_path **)h->ctx);
       *((struct dir_path **)h->ctx) = dn;
@@ -249,32 +251,27 @@ static int zsv_foreach_dirent_remove(struct zsv_foreach_dirent_handle *h, size_t
 }
 
 // return error
-static
-int zsv_foreach_dirent_aux(const char *dir_path,
-                           size_t depth,
-                           size_t max_depth,
-                           zsv_foreach_dirent_handler handler, void *ctx,
-                           char verbose
-                           ) {
+static int zsv_foreach_dirent_aux(const char *dir_path, size_t depth, size_t max_depth,
+                                  zsv_foreach_dirent_handler handler, void *ctx, char verbose) {
   int err = 0;
-  if(!dir_path)
+  if (!dir_path)
     return 1;
 
-  if(max_depth > 0 && depth >= max_depth)
+  if (max_depth > 0 && depth >= max_depth)
     return 0;
 
   DIR *dr;
-  if((dr = opendir(dir_path))) {
+  if ((dr = opendir(dir_path))) {
     struct dirent *de;
-    while((de = readdir(dr)) != NULL) {
-      if(!*de->d_name || !strcmp(de->d_name, ".") || !strcmp(de->d_name, ".."))
+    while ((de = readdir(dr)) != NULL) {
+      if (!*de->d_name || !strcmp(de->d_name, ".") || !strcmp(de->d_name, ".."))
         continue;
       char *tmp;
       asprintf(&tmp, "%s%c%s", dir_path, FILESLASH, de->d_name);
-      if(!tmp)
+      if (!tmp)
         fprintf(stderr, "Out of memory!\n"), err = 1;
       else {
-        struct zsv_foreach_dirent_handle h = { 0 };
+        struct zsv_foreach_dirent_handle h = {0};
         h.verbose = verbose;
         stat(tmp, (struct stat *)&h.stat);
         h.parent = dir_path;
@@ -283,10 +280,10 @@ int zsv_foreach_dirent_aux(const char *dir_path,
         h.ctx = ctx;
         char is_dir = h.stat.st_mode & S_IFDIR ? 1 : 0;
         h.is_dir = is_dir;
-        if(handler)
+        if (handler)
           handler(&h, depth + 1);
 
-        if(is_dir && !h.no_recurse)
+        if (is_dir && !h.no_recurse)
           // recurse!
           err = zsv_foreach_dirent_aux(tmp, depth + 1, max_depth, handler, ctx, verbose);
         free(tmp);
@@ -297,11 +294,8 @@ int zsv_foreach_dirent_aux(const char *dir_path,
   return err;
 }
 
-int zsv_foreach_dirent(const char *dir_path,
-                       size_t max_depth,
-                       zsv_foreach_dirent_handler handler, void *ctx,
-                       char verbose
-                       ) {
+int zsv_foreach_dirent(const char *dir_path, size_t max_depth, zsv_foreach_dirent_handler handler, void *ctx,
+                       char verbose) {
   return zsv_foreach_dirent_aux(dir_path, 0, max_depth, handler, ctx, verbose);
 }
 
@@ -312,22 +306,21 @@ int zsv_remove_dir_recursive(const unsigned char *path) {
   // we will delete all files first, then
   // delete directories in the reverse order we received them
   struct dir_path *reverse_dirs = NULL;
-  int err = zsv_foreach_dirent((const char *)path, 0,
-                               zsv_foreach_dirent_remove, &reverse_dirs, 0);
+  int err = zsv_foreach_dirent((const char *)path, 0, zsv_foreach_dirent_remove, &reverse_dirs, 0);
   // unlink and free each dir
-  for(struct dir_path *next, *dn = reverse_dirs; !err && dn; dn = next) {
+  for (struct dir_path *next, *dn = reverse_dirs; !err && dn; dn = next) {
     next = dn->next;
     rmdir_w_msg(dn->path, &err);
     free(dn->path);
     free(dn);
   }
-  if(!err)
+  if (!err)
     rmdir_w_msg((const char *)path, &err);
 
   return err;
 }
 
-#ifndef  ZSV_NO_JQ
+#ifndef ZSV_NO_JQ
 #include "dirs_to_json.c"
 
 #include "dirs_from_json.c"

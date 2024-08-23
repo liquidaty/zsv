@@ -50,10 +50,10 @@ struct zsv_compare_input {
 
   sqlite3_stmt *sort_stmt;
 
-  unsigned char row_loaded:1;
-  unsigned char missing:1;
-  unsigned char done:1;
-  unsigned char _:5;
+  unsigned char row_loaded : 1;
+  unsigned char missing : 1;
+  unsigned char done : 1;
+  unsigned char _ : 5;
 };
 
 struct zsv_compare_key {
@@ -99,10 +99,8 @@ struct zsv_compare_data {
   struct zsv_cell (*get_cell)(struct zsv_compare_input *input, unsigned ix);
   struct zsv_cell (*get_column_name)(struct zsv_compare_input *input, unsigned ix);
   unsigned (*get_column_count)(struct zsv_compare_input *input);
-  enum zsv_compare_status (*input_init)(struct zsv_compare_data *data,
-                                        struct zsv_compare_input *input,
-                                        struct zsv_opts *opts,
-                                        struct zsv_prop_handler *custom_prop_handler,
+  enum zsv_compare_status (*input_init)(struct zsv_compare_data *data, struct zsv_compare_input *input,
+                                        struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler,
                                         const char *opts_used);
 
   sqlite3 *sort_db; // used when --sort option was specified
@@ -110,8 +108,8 @@ struct zsv_compare_data {
   struct {
     double value;
 #define ZSV_COMPARE_MAX_NUMBER_BUFF_LEN 128
-    char   str1[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
-    char   str2[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
+    char str1[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
+    char str2[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
   } tolerance;
   struct {
     char type; // 'j' for json
@@ -126,17 +124,17 @@ struct zsv_compare_data {
       char **names;
     } properties;
 
-    unsigned cell_ix;        // only used for json + object output
-    unsigned char compact:1; // whether to output compact JSON
-    unsigned char object:1;  // whether to output JSON as objects
-    unsigned char _:6;
+    unsigned cell_ix;          // only used for json + object output
+    unsigned char compact : 1; // whether to output compact JSON
+    unsigned char object : 1;  // whether to output JSON as objects
+    unsigned char _ : 6;
   } writer;
 
-  unsigned char sort:1;
-  unsigned char sort_in_memory:1;
-  unsigned char print_key_col_names:1;
-  unsigned char return_count:1;
-  unsigned char _:4;
+  unsigned char sort : 1;
+  unsigned char sort_in_memory : 1;
+  unsigned char print_key_col_names : 1;
+  unsigned char return_count : 1;
+  unsigned char _ : 4;
 };
 
 #endif

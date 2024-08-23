@@ -20,12 +20,12 @@ static int main_help(int argc, const char *argv[]) {
     "  zsv (un)register [<extension_id>]: (un)register an extension",
     "      Registration info is saved in zsv.ini located in a directory determined as:",
     "        ZSV_CONFIG_DIR environment variable value, if set",
-# if defined(_WIN32)
+#if defined(_WIN32)
     "        LOCALAPPDATA environment variable value, if set",
     "        otherwise, C:\\temp",
 #else
     "        otherwise, " PREFIX "/etc",
-# endif
+#endif
 #endif
     "  zsv help [<command>]",
     "  zsv <command> <options> <arguments>: run a command on data (see below for details)",
@@ -45,8 +45,9 @@ static int main_help(int argc, const char *argv[]) {
     "  -q,--no-quote            : turn off quote handling",
     "  -R,--skip-head <n>       : skip specified number of initial rows",
     "  -d,--header-row-span <n> : apply header depth (rowspan) of n",
-    "  -u,--malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed UTF8 input",
-    "       (default for \"desc\" commamnd is '?')",
+    "  -u,--malformed-utf8-replacement <replacement_string>: replacement string (can be empty) in case of malformed "
+    "UTF8 input",
+    "       (default for \"desc\" command is '?')",
     "  -S,--keep-blank-headers  : disable default behavior of ignoring leading blank rows",
     "  -0,--header-row <header> : insert the provided CSV as the first row (in position 0)",
     "                             e.g. --header-row 'col1,col2,\"my col 3\"'",
@@ -76,31 +77,30 @@ static int main_help(int argc, const char *argv[]) {
 #ifdef USE_JQ
     "  jq       : run a jq filter on json input",
 #endif
-    NULL
-  };
+    NULL};
 
-  for(int i = 0; usage[i]; i++)
+  for (int i = 0; usage[i]; i++)
     fprintf(f, "%s\n", usage[i]);
 
   char printed_init = 0;
   struct cli_config config;
-  if(!config_init(&config, 1, 1, 0)) {
-    for(struct zsv_ext *ext = config.extensions; ext; ext = ext->next) {
-      if(ext->inited == zsv_init_ok) {
-        if(!printed_init) {
+  if (!config_init(&config, 1, 1, 0)) {
+    for (struct zsv_ext *ext = config.extensions; ext; ext = ext->next) {
+      if (ext->inited == zsv_init_ok) {
+        if (!printed_init) {
           printed_init = 1;
           fprintf(f, "\nExtended commands:\n");
         } else
           fprintf(f, "\n");
-        if(ext->help)
+        if (ext->help)
           fprintf(f, "  Extension '%s': %s\n", ext->id, ext->help);
-        for(struct zsv_ext_command *cmd = ext->commands; cmd; cmd = cmd->next)
+        for (struct zsv_ext_command *cmd = ext->commands; cmd; cmd = cmd->next)
           fprintf(f, "    %s-%s%s%s\n", ext->id, cmd->id, cmd->help ? ": " : "", cmd->help ? cmd->help : "");
       }
     }
     config_free(&config);
   }
-  if(!printed_init)
+  if (!printed_init)
     fprintf(f, "\n(No extended commands)\n");
 
   return 0;

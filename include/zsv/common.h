@@ -10,11 +10,11 @@
 #define ZSV_COMMON_H
 
 #ifdef __cplusplus
-# define ZSV_BEGIN_DECL extern "C" {
-# define ZSV_END_DECL	}
+#define ZSV_BEGIN_DECL extern "C" {
+#define ZSV_END_DECL }
 #else
-# define ZSV_BEGIN_DECL
-# define ZSV_END_DECL	/* empty */
+#define ZSV_BEGIN_DECL
+#define ZSV_END_DECL /* empty */
 #endif
 
 enum zsv_status {
@@ -27,14 +27,15 @@ enum zsv_status {
   zsv_status_row,
   zsv_status_done = 100
 #ifdef ZSV_EXTRAS
-  ,zsv_status_max_rows_read = 999
+    ,
+  zsv_status_max_rows_read = 999
 #endif
 };
 
 /**
  * `zsv_parser` is the type of a zsv parser handle
  */
-typedef struct zsv_scanner * zsv_parser;
+typedef struct zsv_scanner *zsv_parser;
 
 /**
  * Structure returned by `zsv_get_cell()` for fetching a parsed CSV cell value
@@ -53,12 +54,12 @@ struct zsv_cell {
   /**
    * bitfield values for `quoted` flags
    */
-#  define ZSV_PARSER_QUOTE_NONE     0 /* content does not need to be quoted */
-#  define ZSV_PARSER_QUOTE_UNCLOSED 1 /* only used internally by parser */
-#  define ZSV_PARSER_QUOTE_CLOSED   2 /* value was quoted */
-#  define ZSV_PARSER_QUOTE_NEEDED   4 /* value contains delimiter or dbl-quote */
-#  define ZSV_PARSER_QUOTE_EMBEDDED 8 /* value contains dbl-quote */
-#  define ZSV_PARSER_QUOTE_PENDING 16 /* only used internally by parser */
+#define ZSV_PARSER_QUOTE_NONE 0     /* content does not need to be quoted */
+#define ZSV_PARSER_QUOTE_UNCLOSED 1 /* only used internally by parser */
+#define ZSV_PARSER_QUOTE_CLOSED 2   /* value was quoted */
+#define ZSV_PARSER_QUOTE_NEEDED 4   /* value contains delimiter or dbl-quote */
+#define ZSV_PARSER_QUOTE_EMBEDDED 8 /* value contains dbl-quote */
+#define ZSV_PARSER_QUOTE_PENDING 16 /* only used internally by parser */
   /**
    * quoted flags enable additional efficiency, in particular when input data will
    * be output as text (csv, json etc), by indicating whether the cell contents may
@@ -67,13 +68,13 @@ struct zsv_cell {
    * quoting or escaping will be required
    */
   char quoted;
-  unsigned char overwritten:1;
+  unsigned char overwritten : 1;
 };
 
-typedef size_t (*zsv_generic_write)(const void * restrict,  size_t,  size_t,  void * restrict);
-typedef size_t (*zsv_generic_read)(void * restrict, size_t n, size_t size, void * restrict);
+typedef size_t (*zsv_generic_write)(const void *restrict, size_t, size_t, void *restrict);
+typedef size_t (*zsv_generic_read)(void *restrict, size_t n, size_t size, void *restrict);
 
-# ifdef ZSV_EXTRAS
+#ifdef ZSV_EXTRAS
 /**
  * progress callback function signature
  * @param context pointer set in parser opts.progress.ctx
@@ -96,7 +97,7 @@ typedef void (*zsv_completed_callback)(void *ctx, int code);
  */
 enum zsv_overwrite_type {
   zsv_overwrite_type_unknown = 0, // do not change
-  zsv_overwrite_type_none = 1, // do not change
+  zsv_overwrite_type_none = 1,    // do not change
   zsv_overwrite_type_csv
   // to do: zsv_overwrite_type_sqlite3
 };
@@ -107,7 +108,7 @@ struct zsv_opt_overwrite {
   int (*close_ctx)(void *);
 };
 
-# endif
+#endif
 
 struct zsv_opts {
   /**
@@ -251,7 +252,7 @@ struct zsv_opts {
 #define ZSV_MALFORMED_UTF8_REMOVE -1
   char malformed_utf8_replace;
 
-# ifdef ZSV_EXTRAS
+#ifdef ZSV_EXTRAS
   struct {
     /**
      * min number of rows between progress callback calls
@@ -295,7 +296,7 @@ struct zsv_opts {
    */
   struct zsv_opt_overwrite overwrite;
 
-# endif
+#endif
 };
 
 #endif

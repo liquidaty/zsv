@@ -28,7 +28,7 @@ struct zsv_ext {
 #define zsv_init_ok 2
   char inited;
   struct {
-# include "cli_internal.h.in"
+#include "cli_internal.h.in"
   } module;
 };
 

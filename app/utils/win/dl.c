@@ -11,7 +11,7 @@
 #include <zsv/utils/os.h>
 
 #define RTLD_LAZY 0
-void *dlsym(void* handle, const char* symbol) {
+void *dlsym(void *handle, const char *symbol) {
   return (void *)GetProcAddress((HINSTANCE)(handle), (symbol));
 }
 

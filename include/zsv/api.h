@@ -18,7 +18,7 @@
 #define ZSV_ROW_MAX_SIZE_MIN_S "1024"
 
 #define ZSV_MIN_SCANNER_BUFFSIZE 4096
-#define ZSV_DEFAULT_SCANNER_BUFFSIZE (1<<18) // 256k
+#define ZSV_DEFAULT_SCANNER_BUFFSIZE (1 << 18) // 256k
 
 #include "zsv_export.h"
 /*****************************************************************************
@@ -78,7 +78,6 @@ ZSV_EXPORT enum zsv_status zsv_finish(zsv_parser);
  * Dispose of a parser that was created with `zsv_new()` or `zsv_new_with_properties()`
  */
 ZSV_EXPORT enum zsv_status zsv_delete(zsv_parser);
-
 
 /******************************************************************************
  * minimal access functions:
@@ -154,8 +153,7 @@ const char *zsv_lib_version(void);
  * @param parser
  * @param row_handler new callback value
  */
-ZSV_EXPORT void zsv_set_row_handler(zsv_parser,
-                                    void (*row_handler)(void *ctx));
+ZSV_EXPORT void zsv_set_row_handler(zsv_parser, void (*row_handler)(void *ctx));
 
 /**
  * Check if the row we just parsed consisted entirely of blank data
@@ -183,8 +181,7 @@ void zsv_set_context(zsv_parser parser, void *ctx);
  * @param stream        value that is passed to read_function when it is called
  */
 ZSV_EXPORT
-void zsv_set_read(zsv_parser parser,
-                  size_t (*read_func)(void * restrict, size_t n, size_t size, void * restrict));
+void zsv_set_read(zsv_parser parser, size_t (*read_func)(void *restrict, size_t n, size_t size, void *restrict));
 
 /**
  * Set the input stream our parser reads from. If not explicity set, defaults to
@@ -209,9 +206,7 @@ void zsv_set_input(zsv_parser, void *in);
  *               does not exceed the bufflen it was passed
  */
 ZSV_EXPORT enum zsv_status zsv_set_scan_filter(zsv_parser parser,
-                                               size_t (*filter)(void *ctx,
-                                                                unsigned char *buff,
-                                                                size_t bufflen),
+                                               size_t (*filter)(void *ctx, unsigned char *buff, size_t bufflen),
                                                void *ctx);
 
 /**
@@ -233,9 +228,7 @@ ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count
  *               the parser buffer!
  * @param len    length of the input to parse
  */
-ZSV_EXPORT enum zsv_status zsv_parse_bytes(zsv_parser parser,
-                                           const unsigned char *restrict buff,
-                                           size_t len);
+ZSV_EXPORT enum zsv_status zsv_parse_bytes(zsv_parser parser, const unsigned char *restrict buff, size_t len);
 
 /**
  * Get a text description of a status code
@@ -288,23 +281,16 @@ char zsv_quoted(zsv_parser parser);
  * Each argument to `zsv_opts_new()` corresponds to the same-named `struct zsv_opts` element
  * See common.h for details
  */
-ZSV_EXPORT struct zsv_opts *
-zsv_opts_new(
-               void (*row_handler)(void *ctx),
-               void (*cell_handler)(void *ctx, unsigned char *utf8_value, size_t len),
-               void *ctx,
-               zsv_generic_read read,
-               void *stream,
-               unsigned char *buff,
-               size_t buffsize,
-               unsigned max_columns,
-               unsigned max_row_size,
-               char delimiter,
-               char no_quotes
+ZSV_EXPORT struct zsv_opts *zsv_opts_new(void (*row_handler)(void *ctx),
+                                         void (*cell_handler)(void *ctx, unsigned char *utf8_value, size_t len),
+                                         void *ctx, zsv_generic_read read, void *stream, unsigned char *buff,
+                                         size_t buffsize, unsigned max_columns, unsigned max_row_size, char delimiter,
+                                         char no_quotes
 #ifdef ZSV_EXTRAS
-               , size_t max_rows
+                                         ,
+                                         size_t max_rows
 #endif
-             );
+);
 
 /**
  * Destroy an option structure that was created by zsv_opts_new()
@@ -323,7 +309,6 @@ ZSV_EXPORT void zsv_opts_delete(struct zsv_opts *);
  */
 ZSV_EXPORT
 enum zsv_status zsv_next_row(zsv_parser parser);
-
 
 /******************************************************************************
  * Miscellaneous functions used by the parser that may have standalone utility

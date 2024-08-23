@@ -1,15 +1,17 @@
-const process= require('node:process');
+const process = require('node:process');
 const { PerformanceObserver, performance } = require('node:perf_hooks');
 const fs = require('fs');
 const csv = require('csv-parser')
 
 /**
- * Example using libzsv to parse CSV input and execute a custom row handler function as each row is parsed
+ * Example using libzsv to parse CSV input and execute a custom row handler
+ * function as each row is parsed
  */
 
 /**
- * We will use a separate context for each parser, which is a pattern that allows us to run multiple
- * parsers at the same time independently, although this example only runs one at a time
+ * We will use a separate context for each parser, which is a pattern that
+ * allows us to run multiple parsers at the same time independently, although
+ * this example only runs one at a time
  */
 function createContext() {
   return {
@@ -27,7 +29,7 @@ function finish(ctx) {
 
   /* output a message describing the parse volume and performance */
   console.error('Parsed ' + ctx.rowcount +
-                ' rows in ' + (endTime - ctx.startTime) + 'ms\n');
+    ' rows in ' + (endTime - ctx.startTime) + 'ms\n');
 }
 
 

@@ -3,7 +3,9 @@
   "items": [
     {
       "type": "object",
-      "required": ["columns"],
+      "required": [
+        "columns"
+      ],
       "properties": {
         "name": {
           "description": "table name",
@@ -14,24 +16,40 @@
           "description": "ordered array of column specifications",
           "items": {
             "type": "object",
-            "required": ["name"],
+            "required": [
+              "name"
+            ],
             "properties": {
               "name": {
                 "type": "string",
-                "examples": ["City", "State", "My Column"]
+                "examples": [
+                  "City",
+                  "State",
+                  "My Column"
+                ]
               },
               "datatype": {
-                "enum": ["int", "text", "real"]
+                "enum": [
+                  "int",
+                  "text",
+                  "real"
+                ]
               },
               "collate": {
-                "enum": [ "nocase", "binary", "rtrim" ]
+                "enum": [
+                  "nocase",
+                  "binary",
+                  "rtrim"
+                ]
               }
             }
           }
         },
         "indexes": {
           "type": "object",
-          "required": ["on"],
+          "required": [
+            "on"
+          ],
           "description": "map of table indexes; property name is the index name",
           "additionalProperties": {
             "type": "object",
@@ -40,19 +58,26 @@
                 "oneOf": [
                   {
                     "type": "string",
-                    "examples": ["[My Column 1], lower([My Column 2])"]
+                    "examples": [
+                      "[My Column 1], lower([My Column 2])"
+                    ]
                   },
                   {
                     "description": "array of indexed expressions (not yet supported by `zsv 2db`)",
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "examples": ["My Column 1", "lower([My Column 2])"]
+                      "examples": [
+                        "My Column 1",
+                        "lower([My Column 2])"
+                      ]
                     }
                   }
                 ]
               },
-              "unique": { "type": "boolean" }
+              "unique": {
+                "type": "boolean"
+              }
             }
           }
         }
@@ -63,18 +88,44 @@
       "description": "2x2 table of data",
       "items": {
         "type": "array",
-        "examples": [["A1 value", 22, true],
-                     ["Abc", "def", "ghi"],
-                     ["abc", "Def", ""]
-                    ],
+        "examples": [
+          [
+            "A1 value",
+            22,
+            true
+          ],
+          [
+            "Abc",
+            "def",
+            "ghi"
+          ],
+          [
+            "abc",
+            "Def",
+            ""
+          ]
+        ],
         "items": {
-          "examples": ["Hi there", 123],
+          "examples": [
+            "Hi there",
+            123
+          ],
           "oneOf": [
-            { "type": "null" },
-            { "type": "integer" },
-            { "type": "number" },
-            { "type": "string" },
-            { "type": "boolean" }
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            }
           ]
         }
       }

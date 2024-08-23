@@ -18,7 +18,8 @@ struct data {
   zsv_parser parser;
 };
 
-static void error(void *ctx, enum zsv_status status, const unsigned char *err_msg, size_t err_msg_len, unsigned char error_c, size_t cum_scanned_length) {
+static void error(void *ctx, enum zsv_status status, const unsigned char *err_msg, size_t err_msg_len,
+                  unsigned char error_c, size_t cum_scanned_length) {
   (void)(ctx);
   (void)(status);
   (void)(err_msg);
@@ -46,27 +47,27 @@ static void row(void *ctx) {
 int main(int argc, const char *argv[]) {
   FILE *f = NULL;
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
-  struct data data = { 0 };
+  struct data data = {0};
 
-  for(int i = 1; i < argc; i++) {
-    if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       fprintf(stdout, "Usage: noop [filename]\n");
       fprintf(stdout, "  Reads CSV input and does nothing. For performance testing\n\n");
       return 0;
-    } else if(!f) {
-      if(!(f = fopen(argv[i], "rb"))) {
+    } else if (!f) {
+      if (!(f = fopen(argv[i], "rb"))) {
         fprintf(stderr, "Unable to open %s for writing\n", argv[i]);
         return 1;
       }
     } else {
       fprintf(stderr, "Input file specified more than once (second was %s)\n", argv[i]);
-      if(f)
+      if (f)
         fclose(f);
       return 1;
     }
   }
 
-  if(!f)
+  if (!f)
     f = stdin;
 
   struct zsv_opts opts = zsv_get_default_opts();
@@ -77,10 +78,9 @@ int main(int argc, const char *argv[]) {
   opts.error = error;
 
   opts.stream = f;
-  if((data.parser = zsv_new(&opts))) {
+  if ((data.parser = zsv_new(&opts))) {
     zsv_handle_ctrl_c_signal();
-    enum zsv_status status;
-    while(!zsv_signal_interrupted && (status = zsv_parse_more(data.parser)) == zsv_status_ok)
+    while (!zsv_signal_interrupted && zsv_parse_more(data.parser) == zsv_status_ok)
       ;
     zsv_finish(data.parser);
     zsv_delete(data.parser);

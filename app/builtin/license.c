@@ -19,15 +19,15 @@ static int main_license(int argc, const char *argv[]) {
   fwrite(zsv_license_text_MIT, 1, strlen(zsv_license_text_MIT), stdout);
 
   struct cli_config config;
-  if(!config_init(&config, 0, 1, 0)) {
-    for(struct zsv_ext *ext = config.extensions; ext; ext = ext->next) {
+  if (!config_init(&config, 0, 1, 0)) {
+    for (struct zsv_ext *ext = config.extensions; ext; ext = ext->next) {
       printf("\n====================================================\n");
       printf("License for extension '%s'", ext->id);
       printf("\n====================================================\n");
-      if(ext->license && *ext->license) {
+      if (ext->license && *ext->license) {
         size_t len = strlen(ext->license);
         fwrite(ext->license, 1, len, stdout);
-        if(ext->license[len-1] != '\n')
+        if (ext->license[len - 1] != '\n')
           printf("\n");
       } else
         printf("Unknown\n");

@@ -52,12 +52,13 @@ enum zsv_ext_status {
  *   `set_ext_context()`
  *   `get_ext_context()`
  */
-typedef void * zsv_execution_context;
+typedef void *zsv_execution_context;
 
 /**
  * Signature of the function called for each implemented sub-command
  */
-typedef enum zsv_ext_status (*zsv_ext_main)(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *opts, const char *opts_used);
+typedef enum zsv_ext_status (*zsv_ext_main)(zsv_execution_context ctx, int argc, const char *argv[],
+                                            struct zsv_opts *opts, const char *opts_used);
 
 /**
  * ZSV callbacks structure
@@ -94,8 +95,7 @@ struct zsv_ext_callbacks {
    * To add an extension command, invoke `ext_add_command`, passing it your command's
    * handler function as a callback with a `zsv_ext_main` signature
    */
-  enum zsv_ext_status (*ext_add_command)(zsv_execution_context ctx,
-                                         const char *id, const char *help,
+  enum zsv_ext_status (*ext_add_command)(zsv_execution_context ctx, const char *id, const char *help,
                                          zsv_ext_main main);
   void (*ext_set_help)(zsv_execution_context ctx, const char *help);
   void (*ext_set_license)(zsv_execution_context ctx, const char *license);
@@ -126,9 +126,7 @@ struct zsv_ext_callbacks {
    * convenience function that calls ext_args_to_opts, allocates parser,
    * sets custom ctx, runs parser, and de-allocates parser
    */
-  enum zsv_ext_status (*ext_parse_all)(zsv_execution_context ctx,
-                                       void *user_context,
-                                       void (*row_handler)(void *ctx),
+  enum zsv_ext_status (*ext_parse_all)(zsv_execution_context ctx, void *user_context, void (*row_handler)(void *ctx),
                                        struct zsv_opts *const custom);
   /**
    * As an alternative to `ext_parse_all()`, for more granular control:

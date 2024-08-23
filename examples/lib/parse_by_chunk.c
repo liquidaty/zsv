@@ -39,8 +39,8 @@ static void chunk_parse_row(void *dat) {
  * otherwise will read from stdin and run through the CSV parser
  */
 int main(int argc, const char *argv[]) {
-  if(argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
-    printf("Usage: parse_by_chunk < myfile.csv\n\n");
+  if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
+    printf("Usage: parse_by_chunk < file.csv\n\n");
     printf("Reads stdin in chunks, parses each chunk using `zsv_parse_bytes()`,\n");
     printf("and outputs the number of rows parsed.\n");
     return 0;
@@ -52,14 +52,14 @@ int main(int argc, const char *argv[]) {
    * create a vanilla parser
    */
   zsv_parser p = zsv_new(NULL);
-  if(!p)
+  if (!p)
     fprintf(stderr, "Out of memory!");
   else {
     /**
      * Configure the parser to use our row handler, and to pass
      * it our data when it's called
      */
-    struct chunk_parse_data d = { 0 };
+    struct chunk_parse_data d = {0};
     zsv_set_row_handler(p, chunk_parse_row);
     zsv_set_context(p, &d);
 
@@ -74,9 +74,9 @@ int main(int argc, const char *argv[]) {
     /**
      * Read and parse each chunk until the end of the stream is reached
      */
-    while(1) {
+    while (1) {
       size_t bytes_read = fread(buff, 1, chunk_size, f);
-      if(!bytes_read)
+      if (!bytes_read)
         break;
       zsv_parse_bytes(p, buff, bytes_read);
     }
