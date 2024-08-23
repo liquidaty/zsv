@@ -183,7 +183,7 @@ struct zsv_scanner {
     union {
       struct zsv_scan_delim_regs delim;
       struct zsv_scan_fixed_regs fixed;
-    } *regs;
+    } * regs;
     enum zsv_status stat; // last status
     unsigned char *buff;
     size_t bytes_read;
@@ -420,8 +420,8 @@ __attribute__((always_inline)) static inline enum zsv_status cell_and_row_dl(str
 #include <arm_neon.h>
 static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
   // see https://stackoverflow.com/questions/11870910/
-  static const uint8_t
-    __attribute__((aligned(16))) _powers[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
+  static const uint8_t __attribute__((aligned(16)))
+  _powers[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
   uint8x16_t mm_powers = vld1q_u8(_powers);
 
   // compute the mask from the input
