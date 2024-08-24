@@ -11,6 +11,27 @@ on:
     types: [published]
 
 jobs:
+  tag:
+    name: tag
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    outputs:
+      TAG: ${{ steps.tag.outputs.TAG }}
+
+    steps:
+    - name: Set TAG on release
+      id: tag
+      shell: bash
+      run: |
+        TAG="$GITHUB_REF_NAME"
+        echo "TAG: $TAG"
+        if [[ $TAG == "v"* ]]; then
+          TAG="${TAG:1}"
+        fi
+        echo "TAG: $TAG"
+        echo "TAG=$TAG" >> "$GITHUB_OUTPUT"
+
   format:
     name: format
     runs-on: ubuntu-latest
@@ -24,7 +45,7 @@ jobs:
 
   ci:
     name: ci
-    needs: [format]
+    needs: [format, tag]
 
     strategy:
       matrix:
@@ -36,7 +57,7 @@ jobs:
       contents: write
 
     env:
-      TAG: "0.3.6"
+      TAG: ${{ needs.tag.outputs.TAG || '0.3.6' }}
       AMD64_LINUX_GCC: amd64-linux-gcc
       AMD64_LINUX_CLANG: amd64-linux-clang
       AMD64_WINDOWS_MINGW: amd64-windows-mingw
@@ -47,18 +68,6 @@ jobs:
       ARTIFACT_RETENTION_DAYS: 5
 
     steps:
-    - name: Get tag if tagged/released and set TAG env var
-      if: startsWith(github.ref, 'refs/tags/v')
-      shell: bash
-      run: |
-        TAG="$GITHUB_REF_NAME"
-        echo "TAG: $TAG"
-        if [[ $TAG == "v"* ]]; then
-          TAG="${TAG:1}"
-        fi
-        echo "TAG: $TAG"
-        echo "TAG=$TAG" >> "$GITHUB_ENV"
-
     - name: Checkout
       uses: actions/checkout@v4
 
