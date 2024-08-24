@@ -11,8 +11,21 @@ on:
     types: [published]
 
 jobs:
+  format:
+    name: format
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Run clang-format
+      run: ./scripts/ci-run-clang-format.sh
+
   ci:
     name: ci
+    needs: [format]
+
     strategy:
       matrix:
         os: [ubuntu-20.04, macos-13, macos-14]
