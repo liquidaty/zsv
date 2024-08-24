@@ -33,8 +33,7 @@ struct zsv_paste_input_file {
   enum zsv_status zsv_status; // parser status
 };
 
-enum zsv_paste_status
-{
+enum zsv_paste_status {
   zsv_paste_status_ok = 0,
   zsv_paste_status_file,
   zsv_paste_status_memory,

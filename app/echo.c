@@ -22,8 +22,7 @@
 #include <zsv/utils/string.h>
 #include <zsv/utils/mem.h>
 
-enum zsv_echo_overwrite_input_type
-{ zsv_echo_overwrite_input_type_sqlite3 = 0 };
+enum zsv_echo_overwrite_input_type { zsv_echo_overwrite_input_type_sqlite3 = 0 };
 
 struct zsv_echo_data {
   FILE *in;

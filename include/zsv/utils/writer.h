@@ -26,8 +26,7 @@ struct zsv_csv_writer_options {
 void zsv_writer_set_default_opts(struct zsv_csv_writer_options opts);
 struct zsv_csv_writer_options zsv_writer_get_default_opts(void);
 
-enum zsv_writer_status
-{
+enum zsv_writer_status {
   zsv_writer_status_ok = 0,
   zsv_writer_status_error,
   zsv_writer_status_missing_handle,

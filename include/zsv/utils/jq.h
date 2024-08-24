@@ -4,8 +4,7 @@
 #include <ctype.h>
 #include <jq.h>
 
-enum zsv_jq_status
-{
+enum zsv_jq_status {
   zsv_jq_status_ok = 0,
   zsv_jq_status_compile,
   zsv_jq_status_memory,

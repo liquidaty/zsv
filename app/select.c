@@ -121,8 +121,7 @@ struct zsv_select_data {
   unsigned char _ : 3;
 };
 
-enum zsv_select_column_index_selection_type
-{
+enum zsv_select_column_index_selection_type {
   zsv_select_column_index_selection_type_none = 0,
   zsv_select_column_index_selection_type_single,
   zsv_select_column_index_selection_type_range,

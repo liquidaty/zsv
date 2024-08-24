@@ -2,8 +2,7 @@
 #define ZSV_COMPARE_H
 
 // public
-enum zsv_compare_status
-{
+enum zsv_compare_status {
   zsv_compare_status_ok = 0,
   zsv_compare_status_memory,
   zsv_compare_status_no_data,
