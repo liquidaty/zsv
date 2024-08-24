@@ -14,13 +14,13 @@ jobs:
   tag:
     name: tag
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
 
     outputs:
-      TAG: ${{ steps.tag.outputs.TAG }}
+      TAG: ${{ steps.tag.outputs.TAG || '0.3.6' }}
 
     steps:
     - name: Set TAG on release
+      if: startsWith(github.ref, 'refs/tags/v')
       id: tag
       shell: bash
       run: |
@@ -57,7 +57,7 @@ jobs:
       contents: write
 
     env:
-      TAG: ${{ needs.tag.outputs.TAG || '0.3.6' }}
+      TAG: ${{ needs.tag.outputs.TAG }}
       AMD64_LINUX_GCC: amd64-linux-gcc
       AMD64_LINUX_CLANG: amd64-linux-clang
       AMD64_WINDOWS_MINGW: amd64-windows-mingw
