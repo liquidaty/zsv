@@ -5,18 +5,20 @@ set -e
 echo "[INF] Running $0"
 
 VERSION=$(clang-format --version | cut -d ' ' -f4 | tr -d '\n')
+MAJOR_VERSION=$(echo "$VERSION" | cut -d '.' -f1)
+REQUIRED_VERSION="14"
+
 if [ "$VERSION" = "" ]; then
   echo "[ERR] clang-format is not installed!"
+  echo "[ERR] Make sure clang-format $REQUIRED_VERSION or later is installed."
   exit 1
-fi
-
-echo "[INF] clang-format version [$VERSION]"
-
-MAJOR_VERSION=$(echo "$VERSION" | cut -d '.' -f1)
-if [ "$MAJOR_VERSION" -lt "13" ]; then
-  echo "[ERR] Installed clang-format version is $VERSION."
-  echo "[ERR] clang-format 13 or later is required!"
-  exit 1
+else
+  echo "[INF] clang-format version [$VERSION]"
+  if [ "$MAJOR_VERSION" -lt "$REQUIRED_VERSION" ]; then
+    echo "[ERR] Installed clang-format version is $VERSION."
+    echo "[ERR] clang-format $REQUIRED_VERSION or later is required!"
+    exit 1
+  fi
 fi
 
 for DIR in app examples include src; do
