@@ -9,7 +9,7 @@
 - zsv performed faster than all other utilities tested; on our test system (OSX)
   by ~1.5x-27x, by similar or smaller margins (in each case we tested, by at
   least 20%) on other operating systems
-- Four utilities were tested: zsv, xsv, tsv-utils and mlr
+- Four utilities were tested: `zsv`, `xsv`, `tsv-utils` and `mlr`
 - The below figured were based on results from runs on OSX (Intel). Similar
   results were observed on other operating systems, but in some cases the
   difference was significantly smaller (for example, `zsv`)
