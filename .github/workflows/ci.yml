@@ -152,7 +152,7 @@ jobs:
       if: matrix.os == 'macos-13'
       env:
         PREFIX: ${{ env.AMD64_MACOSX_GCC }}
-        CC: gcc-12
+        CC: gcc-13
         MAKE: make
         RUN_TESTS: false
       shell: bash
@@ -164,7 +164,7 @@ jobs:
       if: matrix.os == 'macos-14'
       env:
         PREFIX: ${{ env.ARM64_MACOSX_GCC }}
-        CC: clang
+        CC: gcc-13
         MAKE: make
         RUN_TESTS: false
       shell: bash
