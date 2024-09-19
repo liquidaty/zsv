@@ -1,4 +1,5 @@
 // from musl 1.37.5 system/lib/libc/musl/src/string/memmem.c
+// clang-format off
 #include <string.h>
 #include <stdint.h>
 static char *twobyte_memmem(const unsigned char *h, size_t k, const unsigned char *n)

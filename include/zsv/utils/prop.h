@@ -9,10 +9,10 @@ struct zsv_file_properties {
   unsigned int skip;
   unsigned int header_span;
 
-  /* flags used by parser only to indicate whether property was specified */
-  unsigned int skip_specified:1;
-  unsigned int header_span_specified:1;
-  unsigned int _:6;
+  // flags used by parser only to indicate whether property was specified
+  unsigned int skip_specified : 1;
+  unsigned int header_span_specified : 1;
+  unsigned int _ : 6;
 };
 
 struct zsv_prop_handler {
@@ -20,6 +20,7 @@ struct zsv_prop_handler {
   int (*handler)(void *property_parser, const char *property_name, struct json_value *value);
   void *ctx;
 };
+
 void *zsv_properties_parser_get_custom_ctx(void *property_parser);
 const unsigned char *zsv_properties_parser_get_filepath(void *property_parser);
 struct zsv_opts *zsv_properties_parser_get_opts(void *property_parser_);
@@ -33,8 +34,6 @@ struct zsv_prop_handler zsv_get_default_custom_prop_handler(void);
 
 void zsv_clear_default_custom_prop_handler(void);
 
-
-
 /**
  * Load cached file properties into a zsp_opts and/or zsv_file_properties struct
  * If cmd_opts_used is provided, then do not set any zsv_opts values, if the
@@ -47,10 +46,8 @@ void zsv_clear_default_custom_prop_handler(void);
  * @param cmd_opts_used (optional) cmd option codes to skip + warn if found
  * @return struct zsv_file_properties, with .stat set to zsv_status_ok on success
  */
-struct zsv_file_properties zsv_cache_load_props(const char *data_filepath,
-                                                struct zsv_opts *opts,
-                                                struct zsv_prop_handler *custom_prop,
-                                                const char *cmd_opts_used);
+struct zsv_file_properties zsv_cache_load_props(const char *data_filepath, struct zsv_opts *opts,
+                                                struct zsv_prop_handler *custom_prop, const char *cmd_opts_used);
 
 /**
  * Create a new properties parser
@@ -58,8 +55,7 @@ struct zsv_file_properties zsv_cache_load_props(const char *data_filepath,
 struct zsv_properties_parser;
 struct zsv_properties_parser *zsv_properties_parser_new(const unsigned char *path,
                                                         struct zsv_prop_handler *custom_prop_handler,
-                                                        struct zsv_file_properties *fp,
-                                                        struct zsv_opts *opts);
+                                                        struct zsv_file_properties *fp, struct zsv_opts *opts);
 
 /**
  * Finished parsing
@@ -84,17 +80,13 @@ enum zsv_status zsv_properties_parser_destroy(struct zsv_properties_parser *pars
  *                   param is used solely for loading properties and has no
  *                   impact on the data that is actually parsed, which is
  *                   determined by opts->stream
- * @param opts_used  string specifyig which other command-line options were
+ * @param opts_used  string specifying which other command-line options were
  *                   already used (may be useful to differentiate between
  *                   unspecified default values vs specified values)
  * @param handle_out returns zsv parser handle, or NULL on fail
  */
-enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
-                                        struct zsv_prop_handler *custom_prop,
-                                        const char *input_path,
-                                        const char *opts_used,
-                                        zsv_parser *handle_out
-                                        );
+enum zsv_status zsv_new_with_properties(struct zsv_opts *opts, struct zsv_prop_handler *custom_prop,
+                                        const char *input_path, const char *opts_used, zsv_parser *handle_out);
 
 /**
  * If you are building your own CLI and incorporating zsv CLI commands into it,
@@ -111,12 +103,8 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts,
 #include "dirs.h"
 
 struct zsv_dir_filter; /* opaque structure for internal use */
-struct zsv_dir_filter *
-zsv_prop_get_or_set_is_prop_file(
-                                 int (*is_prop_file)(struct zsv_foreach_dirent_handle *, size_t),
-                                 int max_depth,
-                                 char set
-                                 );
+struct zsv_dir_filter *zsv_prop_get_or_set_is_prop_file(int (*is_prop_file)(struct zsv_foreach_dirent_handle *, size_t),
+                                                        int max_depth, char set);
 
 /**
  * If you provide your own is_prop_file() function and you also want to include any

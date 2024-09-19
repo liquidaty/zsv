@@ -9,6 +9,8 @@
 #ifndef CLI_LICENSE_H
 #define CLI_LICENSE_H
 
+// clang-format off
+
 const char *zsv_license_text_MIT =
   "Permission is hereby granted, free of charge, to any person obtaining a copy of\n"
   "this software and associated documentation files (the \"Software\"), to deal in\n"
@@ -29,9 +31,11 @@ const char *zsv_license_text_MIT =
   "SOFTWARE.\n"
   ;
 
+// clang-format on
+
 const char *zsv_thirdparty[] = {
   "See https://github.com/liquidaty/zsv/blob/main/misc/THIRDPARTY.md",
-  NULL
+  NULL,
 };
 
 #endif

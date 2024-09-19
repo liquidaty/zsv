@@ -168,9 +168,9 @@ test-cli: ${CLI}
 	@${TEST_INIT}
 	@[ "${CLI}" = "" ] && echo 1>&2 'test-cli: missing CLI env var' && exit 1 || exit 0
 	@$< help select 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out`" = "select: streaming CSV parser" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "36" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ "`head -1 ${TMP_DIR}/$@.out`" = "select: extracts and outputs specified columns" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "38" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@$< help count 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "5" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ "`head -1 ${TMP_DIR}/$@.out`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "6" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-1-count test-1-count-pull: test-1-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
@@ -485,7 +485,7 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} 
 
 test-2json-help: test-%-help: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@[ "`$< -h | wc -l`" -gt 17 ] && ${TEST_PASS} || ${TEST_FAIL} # check output nonempty
+	@[ "`$< -h | wc -l`" -gt 15 ] && ${TEST_PASS} || ${TEST_FAIL} # check output nonempty
 	@$< -h >/dev/null && ${TEST_PASS} || ${TEST_FAIL} # check exit code
 
 test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}

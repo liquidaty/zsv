@@ -7,12 +7,15 @@ Summary:
   - more API-friendly than CSV
   - more git- and diff-friendly than binary formats (like sqlite3)
   - can hold metadata as well as data
-  - can be converted to other formats (e.g. parquet) with other existing utilities
+  - can be converted to other formats (e.g. parquet) with other existing
+    utilities
   - with an appropriate schema, can be efficiently processed as a stream
 - Many common approaches to converting CSV or sqlite3 to JSON use a JSON Schema
-  with unnecessarily limits to utility, extensibility and/or performance efficiency.
-  With a few tweaks to the target schema, however, you can have your cake and eat it
-- [`zsv`](../README.md) provides high-performance conversion between CSV (or similar), JSON and sqlite3 (and for running SQL queries against CSV)
+  with unnecessarily limits to utility, extensibility and/or performance
+  efficiency. With a few tweaks to the target schema, however, you can have your
+  cake and eat it
+- [`zsv`](../README.md) provides high-performance conversion between CSV (or
+  similar), JSON and sqlite3 (and for running SQL queries against CSV)
 
 ## Background
 
@@ -50,7 +53,7 @@ including:
 - JSON (as arrays, objects, or [database-friendly table schema](db.schema.json))
 - sqlite3
 
-To install `zsv`, see https://github.com/liquidaty/zsv/blob/main/BUILD.md
+To install `zsv`, see <https://github.com/liquidaty/zsv/blob/main/BUILD.md>.
 
 `zsv`'s `2json`, `2db` and `jq` commands provide conversion between delimited,
 json and sqlite3 formats. A streamlined JSON schema is used to retain metadata
@@ -59,7 +62,9 @@ when converting between JSON and sqlite3 formats, using the
 and [sqlite3](https://www.sqlite.org) libraries.
 
 ### Getting some sample data
+
 Let's get some sample data to work with:
+
 ```
 curl -LO https://raw.githubusercontent.com/datasets/world-cities/master/data/world-cities.csv
 ```
@@ -124,22 +129,26 @@ it does not allow for table-level metadata.
 
 #### Adding table metadata
 
-To support both table and column metadata, `zsv` uses a 
-[database-friendly approach](db.schema.json) this supports table metadata
-(such as table name and indexes) through a tuple (ordered list)
-containing two elements (metadata followed by data).
-At the table level, this approach could also be merged with the aforementioned [row-based
-schema](csv.schema.json) to support row-level or cell-level metadata, to
-represent spreadsheet data such as cell-level formatting.
+To support both table and column metadata, `zsv` uses a [database-friendly
+approach](db.schema.json) this supports table metadata (such as table name and
+indexes) through a tuple (ordered list) containing two elements (metadata
+followed by data). At the table level, this approach could also be merged with
+the aforementioned [row-based schema](csv.schema.json) to support row-level or
+cell-level metadata, to represent spreadsheet data such as cell-level
+formatting.
 
-The `zsv` conversion implementations as of this writing are limited; future improvements under consideration include:
-* automatic determination / suggestion of column data type
-* conversion/coercion of text to the specified data type for the corresponding column
-* load to other database back-end e.g. mssql or redshift
+The `zsv` conversion implementations as of this writing are limited; future
+improvements under consideration include:
 
-Future enhancements to both the schema and the conversion implementation under consideration
-include support for other table-level features such as validations/constraints, other database object types
-such as views, and whole-database conversion.
+- automatic determination / suggestion of column data type
+- conversion/coercion of text to the specified data type for the corresponding
+  column
+- load to other database back-end e.g. mssql or redshift
+
+Future enhancements to both the schema and the conversion implementation under
+consideration include support for other table-level features such as
+validations/constraints, other database object types such as views, and
+whole-database conversion.
 
 ```shell
 # Convert CSV to JSON
@@ -178,6 +187,7 @@ zsv jq '.[]|if (.|type) == "object" then (.columns|[.[]|.name]) else . end|.[]' 
 ### Sqlite to JSON
 
 Now let's go the other way:
+
 ```shell
 # sqlite3 to JSON
 zsv 2json --from-db world-cities.db > world-cities.from-db.json
@@ -185,7 +195,6 @@ zsv 2json --from-db world-cities.db > world-cities.from-db.json
 # verify it's the same as what we generated above
 cmp world-cities.from-db.json world-cities.db.json && echo "It's the same"'!' || echo "Uh oh"
 ```
-
 
 ## Questions
 
@@ -316,5 +325,6 @@ breaking change in order to leverage for extended purposes
 
 ### Can you extend the `zsv 2db` command and/or related JSON schema to support the sqlite3 feature XYZ
 
-If it's supported in the sqlite3 library, the answer is generally yes. Please [open an issue](https://github.com/liquidaty/zsv/issues/new/choose) with
-your request.
+If it's supported in the sqlite3 library, the answer is generally yes. Please
+[open an issue](https://github.com/liquidaty/zsv/issues/new/choose) with your
+request.

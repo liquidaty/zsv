@@ -12,7 +12,7 @@
 /* zsv_memdup(): return copy with double-NULL terminator. caller must free() */
 void *zsv_memdup(const void *src, size_t n) {
   void *m = calloc(1, n + 2);
-  if(n)
+  if (n)
     memcpy(m, src, n);
   return m;
 }

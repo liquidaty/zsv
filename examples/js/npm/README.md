@@ -1,21 +1,24 @@
 # zsv-lib
 
-zsv-lib is a node package of the high-performance zsv parser library for CSV and other delimited
-or fixed-width tabular text data
+zsv-lib is a node package of the high-performance zsv parser library for CSV and
+other delimited or fixed-width tabular text data
 
-This is a low-level library for "unopinionated" CSV parsing. Note that the related zsv CLI,
-which offers additional features such as ad hoc SQL, header manipulation, serializing, flattening,
-converting to JSON or SQLITE3 etc, is not part of this package, but may in the future be offered
-as part of a separate npm package.
+This is a low-level library for "unopinionated" CSV parsing. Note that the
+related zsv CLI, which offers additional features such as ad hoc SQL, header
+manipulation, serializing, flattening, converting to JSON or SQLITE3 etc, is not
+part of this package, but may in the future be offered as part of a separate npm
+package.
 
-Note: the zsv C library supports a very wide range of options; not all are yet exposed in this
-package. Please feel free to post a ticket at https://github.com/liquidaty/zsv/issues
-if you'd like to request any feature that is available in the underlying library but
-not exposed in this package (or that does not yet exist in the underlying library at all)
+Note: the zsv C library supports a very wide range of options; not all are yet
+exposed in this package. Please feel free to post a ticket at
+<https://github.com/liquidaty/zsv/issues> if you'd like to request any feature
+that is available in the underlying library but not exposed in this package (or
+that does not yet exist in the underlying library at all).
 
-Please (see here for further notes re performance)[../README.md#Performance].
+Please [see here for further notes re performance](../README.md#Performance).
 
-For more information about zsv+lib, please visit https://github.com/liquidaty/zsv
+For more information about zsv+lib, please visit
+<https://github.com/liquidaty/zsv>.
 
 ## Installation
 
@@ -26,26 +29,28 @@ npm install zsv-lib
 ## Usage
 
 libzsv works generally as follows:
+
 1. Create a custom a row handler function and create a parser with that function
 2. Push chunks of data through the parser
 3. The parser calls your custom function for each row that is parsed
-4. Your row handler extracts data from the parser and processes it however you want
+4. Your row handler extracts data from the parser and processes it however you
+   want
 
-See the source for a (simple example that counts rows)[test/count.js]
-or (another simple example that outputs row data as json)[test/select_all.js]
+See the source for a [simple example that counts rows](test/count.js) or
+[another simple example that outputs row data as json](test/select_all.js)
 
-THIS PACKAGE IS STILL IN ALPHA. THE API USED IN THE EXAMPLES IS EXPECTED TO CHANGE.
+THIS PACKAGE IS STILL IN ALPHA. THE API USED IN THE EXAMPLES IS EXPECTED TO
+CHANGE.
 
 ### API
 
 Note: libzsv supports a wide range of options; not all are yet exposed in this
-package. Please feel free to post a ticket at https://github.com/liquidaty/zsv/issues
-if you'd like to request any feature
-that is either unexposed from the underlying library, or does not yet exist in the
-underlying library
+package. Please feel free to post a ticket at
+<https://github.com/liquidaty/zsv/issues> if you'd like to request any feature
+that is either unexposed from the underlying library, or does not yet exist in
+the underlying library
 
-
-```
+```js
 /**
  * Create a parser
  * @param  rowHandler callback that takes a single (optional) argument
@@ -101,11 +106,12 @@ runOnLoad(callback)
  * @param  parser
  */
 abort(z)
-
 ```
 
 ## Contributing
+
 Pull requests are welcome. Please make sure to update tests as appropriate.
 
 ## License
+
 [MIT](https://choosealicense.com/licenses/mit/)
