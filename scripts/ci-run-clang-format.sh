@@ -16,7 +16,7 @@ else
   echo "[INF] clang-format version [$VERSION]"
   if [ "$MAJOR_VERSION" -lt "$REQUIRED_VERSION" ]; then
     echo "[ERR] Installed clang-format version is $VERSION."
-    echo "[ERR] clang-format $REQUIRED_VERSION or later is required!"
+    echo "[ERR] clang-format-$REQUIRED_VERSION or later is required!"
     exit 1
   fi
 fi
@@ -27,7 +27,7 @@ for DIR in app examples include src; do
     ! -path "$DIR/external/*" \
     -type f \
     -regex '.*\.\(c\|h\|h\.in\)' \
-    -exec sh -c 'clang-format-15 -style=file -i "$1" &' - '{}' \;
+    -exec sh -c 'clang-format -style=file -i "$1" &' - '{}' \;
 done
 
 wait
