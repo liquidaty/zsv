@@ -807,6 +807,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
             }
           }
         }
+      }
     } else if (!strcmp(argv[arg_i], "--distinct"))
       data.distinct = 1;
     else if (!strcmp(argv[arg_i], "--merge"))
