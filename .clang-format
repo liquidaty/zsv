@@ -5,4 +5,3 @@ IndentWidth: 2
 SortIncludes: false
 TabWidth: 2
 UseTab: Never
-PointerAlignment: Right

@@ -6,7 +6,7 @@ echo "[INF] Running $0"
 
 VERSION=$(clang-format --version | cut -d ' ' -f4 | tr -d '\n')
 MAJOR_VERSION=$(echo "$VERSION" | cut -d '.' -f1)
-REQUIRED_VERSION="14"
+REQUIRED_VERSION="15"
 
 if [ "$VERSION" = "" ]; then
   echo "[ERR] clang-format is not installed!"
@@ -27,7 +27,7 @@ for DIR in app examples include src; do
     ! -path "$DIR/external/*" \
     -type f \
     -regex '.*\.\(c\|h\|h\.in\)' \
-    -exec sh -c 'clang-format -style=file -i "$1" &' - '{}' \;
+    -exec sh -c 'clang-format-15 -style=file -i "$1" &' - '{}' \;
 done
 
 wait
