@@ -70,7 +70,7 @@ struct zsv_select_data {
     struct {         // merge data: only used with --merge
       struct zsv_select_uint_list *indexes, **last_index;
     } merge;
-  } * out2in; // array of .output_cols_count length; out2in[x] = y where x = output ix, y = input info
+  } *out2in; // array of .output_cols_count length; out2in[x] = y where x = output ix, y = input info
 
   unsigned int output_cols_count; // total count of output columns
 
@@ -362,13 +362,13 @@ static enum zsv_select_column_index_selection_type zsv_select_column_index_selec
       result = zsv_select_column_index_selection_type_range;
   } else {
     k = sscanf((const char *)arg, "%u%n", &i, &n);
-    if(k == 2 && n == (int)strlen((const char *)arg)) {
-      if(i > 0)
+    if (k == 2 && n == (int)strlen((const char *)arg)) {
+      if (i > 0)
         result = zsv_select_column_index_selection_type_single;
     } else {
       k = sscanf((const char *)arg, "%u-%n", &i, &n);
-      if(k == 2 && n == (int)strlen((const char *)arg)) {
-        if(i > 0) {
+      if (k == 2 && n == (int)strlen((const char *)arg)) {
+        if (i > 0) {
           result = zsv_select_column_index_selection_type_lower_bounded;
           j = 0;
         }
@@ -784,15 +784,15 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           if (*s == ',')
             data.fixed.count++;
         free(data.fixed.offsets);
-        if(!(data.fixed.offsets = malloc(data.fixed.count * sizeof(*data.fixed.offsets)))) {
+        if (!(data.fixed.offsets = malloc(data.fixed.count * sizeof(*data.fixed.offsets)))) {
           stat = zsv_printerr(1, "Out of memory!\n");
           break;
         }
         size_t count = 0;
         const char *start = argv[arg_i];
-        for(const char *end = argv[arg_i]; ; end++) {
-          if(*end == ',' || *end == '\0') {
-            if(sscanf(start, "%zu,", &data.fixed.offsets[count++]) != 1) {
+        for (const char *end = argv[arg_i];; end++) {
+          if (*end == ',' || *end == '\0') {
+            if (sscanf(start, "%zu,", &data.fixed.offsets[count++]) != 1) {
               stat = zsv_printerr(1, "Invalid offset: %.*s\n", end - start, start);
               break;
             } else if (*end == '\0')
@@ -852,17 +852,19 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       double d;
       if (!(arg_i < argc))
         stat = zsv_printerr(1, "--sample-pct option requires a value");
-      else if(!(d = atof(argv[arg_i])) && d > 0 && d < 100)
-        stat = zsv_printerr(-1, "--sample-pct value should be a number between 0 and 100 (e.g. 1.5 for a sample of 1.5%% of the data");
+      else if (!(d = atof(argv[arg_i])) && d > 0 && d < 100)
+        stat = zsv_printerr(
+          -1, "--sample-pct value should be a number between 0 and 100 (e.g. 1.5 for a sample of 1.5%% of the data");
       else
         data.sample_pct = d;
-    } else if(!strcmp(argv[arg_i], "--prepend-header"))
+    } else if (!strcmp(argv[arg_i], "--prepend-header"))
       data.prepend_header = zsv_next_arg(++arg_i, argc, argv, &err);
-    else if(!strcmp(argv[arg_i], "--no-header"))
+    else if (!strcmp(argv[arg_i], "--no-header"))
       data.no_header = 1;
-    else if(!strcmp(argv[arg_i], "-H") || !strcmp(argv[arg_i], "--head")) {
-      if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) >= 0))
-        stat = zsv_printerr(1, "%s option value invalid: should be positive integer; got %s", argv[arg_i], arg_i + 1 < argc ? argv[arg_i+1] : "");
+    else if (!strcmp(argv[arg_i], "-H") || !strcmp(argv[arg_i], "--head")) {
+      if (!(arg_i + 1 < argc && atoi(argv[arg_i + 1]) >= 0))
+        stat = zsv_printerr(1, "%s option value invalid: should be positive integer; got %s", argv[arg_i],
+                            arg_i + 1 < argc ? argv[arg_i + 1] : "");
       else
         data.data_rows_limit = atoi(argv[++arg_i]) + 1;
     } else if (!strcmp(argv[arg_i], "-D") || !strcmp(argv[arg_i], "--skip-data")) {
@@ -897,16 +899,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       input_path = argv[arg_i];
   }
 
-  if(stat == zsv_status_ok) {
-    if(data.sample_pct)
+  if (stat == zsv_status_ok) {
+    if (data.sample_pct)
       srand(time(0));
 
-    if(data.use_header_indexes && stat == zsv_status_ok)
+    if (data.use_header_indexes && stat == zsv_status_ok)
       stat = zsv_select_check_exclusions_are_indexes(&data);
   }
 
-  if(stat == zsv_status_ok) {
-    if(!data.opts->stream) {
+  if (stat == zsv_status_ok) {
+    if (!data.opts->stream) {
 #ifdef NO_STDIN
       stat = zsv_printerr(1, "Please specify an input file");
 #else
@@ -914,18 +916,19 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #endif
     }
 
-    if(stat == zsv_status_ok && fixed_auto) {
-      if(data.fixed.offsets)
+    if (stat == zsv_status_ok && fixed_auto) {
+      if (data.fixed.offsets)
         stat = zsv_printerr(zsv_status_error, "Please specify either --fixed-auto or --fixed, but not both");
-      else if(data.opts->insert_header_row)
+      else if (data.opts->insert_header_row)
         stat = zsv_printerr(zsv_status_error, "--fixed-auto can not be specified together with --header-row");
       else {
-        size_t buffsize = 1024*256; // read the first
+        size_t buffsize = 1024 * 256; // read the first
         preview_buff = calloc(buffsize, sizeof(*preview_buff));
-        if(!preview_buff)
+        if (!preview_buff)
           stat = zsv_printerr(zsv_status_memory, "Out of memory!");
         else
-          stat = auto_detect_fixed_column_sizes(&data.fixed, data.opts, preview_buff, buffsize, &preview_buff_len, opts->verbose);
+          stat = auto_detect_fixed_column_sizes(&data.fixed, data.opts, preview_buff, buffsize, &preview_buff_len,
+                                                opts->verbose);
       }
     }
   }
