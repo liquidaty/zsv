@@ -786,7 +786,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           if (*s == ',')
             data.fixed.count++;
         free(data.fixed.offsets);
-        if (!(data.fixed.offsets = malloc(data.fixed.count * sizeof(*data.fixed.offsets)))) {
+        data.fixed.offsets = malloc(data.fixed.count * sizeof(*data.fixed.offsets));
+        if (!data.fixed.offsets) {
           stat = zsv_printerr(1, "Out of memory!\n");
           break;
         }
@@ -806,7 +807,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
             }
           }
         }
-      }
     } else if (!strcmp(argv[arg_i], "--distinct"))
       data.distinct = 1;
     else if (!strcmp(argv[arg_i], "--merge"))
