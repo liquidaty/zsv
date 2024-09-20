@@ -24,6 +24,7 @@
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/mem.h>
+#include <zsv/utils/arg.h>
 
 struct zsv_select_search_str {
   struct zsv_select_search_str *next;
@@ -348,12 +349,12 @@ zsv_select_column_index_selection(const unsigned char *arg, unsigned *lo, unsign
       result = zsv_select_column_index_selection_type_range;
   } else {
     k = sscanf((const char *)arg, "%u%n", &i, &n);
-    if(k && n == (int)strlen((const char *)arg)) {
+    if(k == 2 && n == (int)strlen((const char *)arg)) {
       if(i > 0)
         result = zsv_select_column_index_selection_type_single;
     } else {
       k = sscanf((const char *)arg, "%u-%n", &i, &n);
-      if(k && n == (int)strlen((const char *)arg)) {
+      if(k == 2 && n == (int)strlen((const char *)arg)) {
         if(i > 0) {
           result = zsv_select_column_index_selection_type_lower_bounded;
           j = 0;
@@ -695,17 +696,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       if(!(arg_i < argc))
         stat = zsv_printerr(1, "--sample-pct option requires a value");
       else if(!(d = atof(argv[arg_i])) && d > 0 && d < 100)
-        stat = zsv_printerr(-1, "--sample-pct value should be a number between 0 and 100 (e.g. 1.5 for a sample of 1.5% of the data");
+        stat = zsv_printerr(-1, "--sample-pct value should be a number between 0 and 100 (e.g. 1.5 for a sample of 1.5%% of the data");
       else
         data.sample_pct = d;
-    } else if(!strcmp(argv[arg_i], "--prepend-header")) {
-      if(!(arg_i + 1 < argc))
-        stat = zsv_printerr(1, "%s option requires a value");
-      else
-        data.prepend_header = argv[++arg_i];
-    } else if(!strcmp(argv[arg_i], "--no-header")) {
+    } else if(!strcmp(argv[arg_i], "--prepend-header"))
+      data.prepend_header = zsv_next_arg(++arg_i, argc, argv, &err);
+    else if(!strcmp(argv[arg_i], "--no-header"))
       data.no_header = 1;
-    } else if(!strcmp(argv[arg_i], "-H") || !strcmp(argv[arg_i], "--head")) {
+    else if(!strcmp(argv[arg_i], "-H") || !strcmp(argv[arg_i], "--head")) {
       if(!(arg_i + 1 < argc && atoi(argv[arg_i+1]) >= 0))
         stat = zsv_printerr(1, "%s option value invalid: should be positive integer; got %s", argv[arg_i], arg_i + 1 < argc ? argv[arg_i+1] : "");
       else
