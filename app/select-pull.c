@@ -352,12 +352,12 @@ static enum zsv_select_column_index_selection_type zsv_select_column_index_selec
       result = zsv_select_column_index_selection_type_range;
   } else {
     k = sscanf((const char *)arg, "%u%n", &i, &n);
-    if (k == 2 && n == (int)strlen((const char *)arg)) {
+    if (k && n == (int)strlen((const char *)arg)) {
       if (i > 0)
         result = zsv_select_column_index_selection_type_single;
     } else {
       k = sscanf((const char *)arg, "%u-%n", &i, &n);
-      if (k == 2 && n == (int)strlen((const char *)arg)) {
+      if (k && n == (int)strlen((const char *)arg)) {
         if (i > 0) {
           result = zsv_select_column_index_selection_type_lower_bounded;
           j = 0;
