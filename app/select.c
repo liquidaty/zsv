@@ -354,20 +354,21 @@ static enum zsv_select_column_index_selection_type zsv_select_column_index_selec
                                                                                      unsigned *lo, unsigned *hi) {
   enum zsv_select_column_index_selection_type result = zsv_select_column_index_selection_type_none;
 
-  unsigned int i, j, k;
-  int n = 0;
-  k = sscanf((const char *)arg, "%u-%u%n", &i, &j, &n);
+  unsigned int i = 0;
+  unsigned int j = 0;
+  size_t n = 0;
+  int k = sscanf((const char *)arg, "%u-%u%n", &i, &j, &n);
   if (k == 2) {
-    if (n == (int)strlen((const char *)arg) && i > 0 && j >= i)
+    if (n == strlen((const char *)arg) && i > 0 && j >= i)
       result = zsv_select_column_index_selection_type_range;
   } else {
     k = sscanf((const char *)arg, "%u%n", &i, &n);
-    if (k && n == (int)strlen((const char *)arg)) {
+    if (k == 1 && n == strlen((const char *)arg)) {
       if (i > 0)
         result = zsv_select_column_index_selection_type_single;
     } else {
       k = sscanf((const char *)arg, "%u-%n", &i, &n);
-      if (k && n == (int)strlen((const char *)arg)) {
+      if (k == 1 && n == strlen((const char *)arg)) {
         if (i > 0) {
           result = zsv_select_column_index_selection_type_lower_bounded;
           j = 0;
