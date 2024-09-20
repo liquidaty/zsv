@@ -1,0 +1,7 @@
+BasedOnStyle: Microsoft
+BreakBeforeBraces: Attach
+ContinuationIndentWidth: 2
+IndentWidth: 2
+SortIncludes: false
+TabWidth: 2
+UseTab: Never

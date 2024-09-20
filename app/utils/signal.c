@@ -16,8 +16,8 @@ volatile sig_atomic_t zsv_signal_interrupted = 0;
 #include <windows.h>
 
 static int consoleHandler(DWORD signal) {
-  if(signal == CTRL_C_EVENT) {
-    if(!zsv_signal_interrupted) {
+  if (signal == CTRL_C_EVENT) {
+    if (!zsv_signal_interrupted) {
       zsv_signal_interrupted = 1;
       fclose(stdin);
       return 1;
@@ -27,7 +27,7 @@ static int consoleHandler(DWORD signal) {
 }
 
 void zsv_handle_ctrl_c_signal() {
-  if(!SetConsoleCtrlHandler(consoleHandler, 1))
+  if (!SetConsoleCtrlHandler(consoleHandler, 1))
     fprintf(stderr, "Warning: unable to set signal handler\n");
 }
 
@@ -38,7 +38,7 @@ void zsv_handle_ctrl_c_signal() {
 
 static void INThandler(int sig) {
   signal(sig, SIG_IGN); // ignore
-  if(!zsv_signal_interrupted) {
+  if (!zsv_signal_interrupted) {
     zsv_signal_interrupted = 1;
     signal(SIGINT, NULL); // restore default handler
   }

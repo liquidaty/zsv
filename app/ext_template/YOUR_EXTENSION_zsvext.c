@@ -12,23 +12,22 @@
 #include <zsv/ext/implementation.h>
 
 /**
- * `zsv` can easily be extended by simply creating a shared library
- * that implements the interface specified in zsv/ext/implementation.h
+ * `zsv` can easily be extended by simply creating a shared library that
+ * implements the interface specified in zsv/ext/implementation.h
  *
- * This file is a template you can use to implement your own extension.
- * All you need to do is customize the sections marked with the word
- *   `YOUR`
+ * This file is a template you can use to implement your own extension. All you
+ * need to do is customize the sections marked with the word `YOUR`
  *
  * e.g. `YOUR_COMMAND` or `... YOUR CODE GOES HERE ...`
  *
- * replace any occurrences of "YOUR_COMMAND" with your (first) command, and
- * dupe any occurrences of "YOUR_COMMAND" for any additional commands
+ * replace any occurrences of "YOUR_COMMAND" with your (first) command, and dupe
+ * any occurrences of "YOUR_COMMAND" for any additional commands
  */
 
 /**
- * Define our extension ID. You canm make this anything you want, so long
- * as it is comprised of two ascii characters. In the rest of this file
- * commentary, XX refers to this extension ID
+ * Define our extension ID. You can make this anything you want, so long as it
+ * is comprised of two ascii characters. In the rest of this file commentary, XX
+ * refers to this extension ID
  */
 #define ZSV_THIS_EXT_ID "xx" /* YOUR EXTENSION ID GOES HERE */
 
@@ -72,9 +71,7 @@ static struct zsv_ext_callbacks zsv_cb;
  * but with an additional preceding zsv_execution_context parameter.
  * Here, we just declare the functions; we fully define them further below
  */
-static enum zsv_ext_status YOUR_COMMAND_main(
-  zsv_execution_context ctx, int argc, const char *argv[]
-);
+static enum zsv_ext_status YOUR_COMMAND_main(zsv_execution_context ctx, int argc, const char *argv[]);
 
 /*
   static enum zsv_ext_status YOUR_COMMAND2_main(...);
@@ -85,7 +82,7 @@ static enum zsv_ext_status YOUR_COMMAND_main(
 /**
  * *Required*. Initialization is called when our extension is loaded. Our
  * initialization routine uses `ext_add_command` to register our commands and
- * `ext_set_help` to set the help text. For each registerd command, we provide a
+ * `ext_set_help` to set the help text. For each registered command, we provide a
  * `*_main()` callback for zsv to invoke when a user runs our command
  *
  * @param callbacks pointers to zsvlib functions that we must save for later use
@@ -102,10 +99,7 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
    * the related licenses and acknowledgements here, which `zsv` will display whenever
    * `zsv thirdparty` is invoked
    */
-  static const char *third_party_licenses[] = {
-    "YOUR third-party licenses & acknowledgements go here",
-    NULL
-  };
+  static const char *third_party_licenses[] = {"YOUR third-party licenses & acknowledgements go here", NULL};
   zsv_cb.ext_set_thirdparty(ctx, third_party_licenses);
   zsv_cb.ext_add_command(ctx, "YOUR_COMMAND", "YOUR command description", YOUR_COMMAND_main);
 
@@ -167,7 +161,7 @@ static void YOUR_COMMAND_rowhandler(void *ctx) {
   /* get our private data */
   struct xx_data *data = zsv_cb.ext_get_context(ctx);
   data->rows++; /* replace this line with YOUR CODE */
-  
+
   /**
    * In most cases, we will want to do something with the row that was just parsed,
    * in which case we can use ext_get_parser(), column_count() and get_cell()
@@ -176,7 +170,7 @@ static void YOUR_COMMAND_rowhandler(void *ctx) {
    */
   zsv_parser parser = zsv_cb.ext_get_parser(ctx);
   unsigned cell_count = zsv_cb.column_count(parser);
-  for(unsigned i = 0; i < cell_count; i++) {
+  for (unsigned i = 0; i < cell_count; i++) {
     /**
      * get_cell() returns a zsv_cell structure that holds a pointer to the text,
      * the length (in bytes) of the data,
@@ -251,7 +245,7 @@ static enum zsv_ext_status YOUR_COMMAND_main(zsv_execution_context ctx, int argc
    */
 
   /* done parsing */
-  if(stat == zsv_ext_status_ok) {
+  if (stat == zsv_ext_status_ok) {
     /* Successful run. Replace the below line with YOUR CODE */
     printf("Rows: %zu\n", data.rows > 0 ? data.rows - 1 : 0);
   }

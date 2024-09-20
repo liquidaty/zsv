@@ -26,7 +26,7 @@ static void str2hex(unsigned char *to, const unsigned char *p, size_t len) {
 static inline unsigned json_esc_char(unsigned char c, char replace[]) {
   unsigned replacelen;
   char hex = 0;
-  switch(c) {
+  switch (c) {
   case '"':
     replace[1] = '"';
     break;
@@ -49,16 +49,16 @@ static inline unsigned json_esc_char(unsigned char c, char replace[]) {
     replace[1] = 't';
     break;
   default:
-    hex=1;
+    hex = 1;
   }
 
   replace[0] = '\\';
-  if(hex) {
+  if (hex) {
     // unicode-hex: but 2/3 are not always zeroes...
     replace[1] = 'u';
     replace[2] = '0';
     replace[3] = '0';
-    str2hex((unsigned char *)replace+4, &c, 1);
+    str2hex((unsigned char *)replace + 4, &c, 1);
     replacelen = 6;
     replace[6] = '\0';
   } else {
@@ -70,7 +70,7 @@ static inline unsigned json_esc_char(unsigned char c, char replace[]) {
 
 static unsigned json_escaped_str_len(const unsigned char *s, size_t len) {
   unsigned count = 0;
-  for(size_t i = 0; i < len; i++, count++) {
+  for (size_t i = 0; i < len; i++, count++) {
     switch (s[i]) {
     case '"':
     case '\\':
@@ -93,14 +93,14 @@ static unsigned json_escaped_str_len(const unsigned char *s, size_t len) {
 unsigned char *zsv_json_from_str_n(const unsigned char *s, size_t len) {
   size_t new_len = json_escaped_str_len(s, len);
   unsigned char *new_s = calloc(new_len + 2, sizeof(*new_s));
-  if(new_s) {
-    new_s[0] = new_s[new_len-1] = (unsigned char) '"';
-    if(new_len == len + 2)
+  if (new_s) {
+    new_s[0] = new_s[new_len - 1] = (unsigned char)'"';
+    if (new_len == len + 2)
       memcpy(new_s + 1, s, len);
     else {
       char replace[8];
-      for(size_t i = 0, j = 1; i < len && j < new_len - 1; i++) {
-        if(!is_json_esc_char(s[i]))
+      for (size_t i = 0, j = 1; i < len && j < new_len - 1; i++) {
+        if (!is_json_esc_char(s[i]))
           new_s[j++] = s[i];
         else {
           size_t rlen = json_esc_char(s[i], replace);
@@ -114,7 +114,7 @@ unsigned char *zsv_json_from_str_n(const unsigned char *s, size_t len) {
 }
 
 unsigned char *zsv_json_from_str(const unsigned char *s) {
-  if(!s)
+  if (!s)
     return (unsigned char *)strdup("null");
   return zsv_json_from_str_n(s, strlen((const char *)s));
 }

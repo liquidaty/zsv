@@ -45,16 +45,16 @@ static void find_my_column(void *ctx) {
   /* iterate through each cell */
   size_t cell_count = zsv_cell_count(data->parser);
   char found = 0;
-  for(size_t i = 0; i < cell_count; i++) {
+  for (size_t i = 0; i < cell_count; i++) {
     struct zsv_cell c = zsv_get_cell(data->parser, i);
-    if(c.len == target_column_name_len && !memcmp(data->target_column_name, c.str, c.len)) {
+    if (c.len == target_column_name_len && !memcmp(data->target_column_name, c.str, c.len)) {
       data->target_column_position = i;
       found = 1;
       break;
     }
   }
 
-  if(!found) {
+  if (!found) {
     /**
      * We couldn't find the target column name in our header row. Output a message and abort
      */
@@ -98,23 +98,25 @@ static void print_my_column(void *ctx) {
  * name, read from stdin, and output, for each row, the specified column
  */
 int main(int argc, const char *argv[]) {
-  if(argc < 2) {
+  if (argc < 2) {
     fprintf(stderr, "Usage: print_my_column column_name < input.csv\n");
-    fprintf(stderr, "Example:\n"
-            "  echo \"A,B,C\\nA1,B1,C1\\nA2,B2,\\nA3,,C3\\n,,C3\" | %s B\n\n", argv[0]);
+    fprintf(stderr,
+            "Example:\n"
+            "  echo \"A,B,C\\nA1,B1,C1\\nA2,B2,\\nA3,,C3\\n,,C3\" | %s B\n\n",
+            argv[0]);
     return 0;
   }
 
   /**
    * Initialize context data
    */
-  struct my_data data = { 0 };
+  struct my_data data = {0};
   data.target_column_name = argv[1];
 
   /**
    * Initialize parser options
    */
-  struct zsv_opts opts = { 0 };
+  struct zsv_opts opts = {0};
   opts.row_handler = find_my_column;
   opts.ctx = &data;
 
@@ -128,7 +130,7 @@ int main(int argc, const char *argv[]) {
    * or an error has occurred (such as not finding the specified
    * column name in the first row)
    */
-  while(zsv_parse_more(data.parser) == zsv_status_ok)
+  while (zsv_parse_more(data.parser) == zsv_status_ok)
     ;
 
   /**

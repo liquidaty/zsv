@@ -12,11 +12,11 @@
 void zsv_perror(const char *);
 
 #ifndef _WIN32
-# define zsv_replace_file(src, dest) (rename((const char *)src, (const char *)dest))
+#define zsv_replace_file(src, dest) (rename((const char *)src, (const char *)dest))
 
 #else
 
-# include <windows.h>
+#include <windows.h>
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))

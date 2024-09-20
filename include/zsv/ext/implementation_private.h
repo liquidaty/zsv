@@ -94,7 +94,7 @@ enum zsv_ext_status zsv_ext_exit(void);
  * @param argv Arguments
  */
 ZSV_EXT_EXPORT
-const char * const *zsv_ext_help(int argc, const char *argv[]);
+const char *const *zsv_ext_help(int argc, const char *argv[]);
 
 /**
  * License message. Displayed when user enters any command beginning with
@@ -102,7 +102,7 @@ const char * const *zsv_ext_help(int argc, const char *argv[]);
  *
  */
 ZSV_EXT_EXPORT
-const char * const *zsv_ext_license(void);
+const char *const *zsv_ext_license(void);
 
 /**
  * Version message. Displayed when user enters any command beginning with
@@ -110,4 +110,4 @@ const char * const *zsv_ext_license(void);
  *
  */
 ZSV_EXT_EXPORT
-const char * const *zsv_ext_version(void);
+const char *const *zsv_ext_version(void);

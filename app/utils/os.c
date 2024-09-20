@@ -49,8 +49,7 @@ void zsv_win_to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len) {
    * match the original, something is fishy, reject. */
   memset(wbuf, 0, wbuf_len * sizeof(wchar_t));
   MultiByteToWideChar(CP_UTF8, 0, buf, -1, wbuf, (int)wbuf_len);
-  WideCharToMultiByte(CP_UTF8, 0, wbuf, (int)wbuf_len, buf2,
-                      sizeof(buf2), NULL, NULL);
+  WideCharToMultiByte(CP_UTF8, 0, wbuf, (int)wbuf_len, buf2, sizeof(buf2), NULL, NULL);
   if (strcmp(buf, buf2) != 0) {
     wbuf[0] = L'\0';
   }
@@ -64,42 +63,31 @@ int zsv_replace_file(const void *src, const void *dest) {
   zsv_win_to_unicode(dest, wdest, ARRAY_SIZE(wdest));
   zsv_win_to_unicode(src, wsrc, ARRAY_SIZE(wsrc));
 
-  if(MoveFileExW(wsrc, wdest, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) // success
+  if (MoveFileExW(wsrc, wdest, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) // success
     return 0;
 
-  if(GetLastError() == 2) // file not found, could be target. use simple rename
+  if (GetLastError() == 2)        // file not found, could be target. use simple rename
     return _wrename(wsrc, wdest); // returns 0 on success
 
   return 1; // fail
 }
 
-
 void zsv_win_printLastError() {
   DWORD dw = GetLastError();
   LPVOID lpMsgBuf;
   LPVOID lpDisplayBuf;
-  FormatMessage(
-                FORMAT_MESSAGE_ALLOCATE_BUFFER |
-                FORMAT_MESSAGE_FROM_SYSTEM |
-                FORMAT_MESSAGE_IGNORE_INSERTS,
-                NULL,
-                dw,
-                MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                (LPTSTR) &lpMsgBuf,
-                0, NULL );
+  FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dw,
+                MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&lpMsgBuf, 0, NULL);
   // Display the error message and exit the process
-  lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT,
-                                    (lstrlen((LPCTSTR)lpMsgBuf) + 40) * sizeof(TCHAR));
-  StringCchPrintf((LPTSTR)lpDisplayBuf,
-                  LocalSize(lpDisplayBuf) / sizeof(TCHAR),
-                  TEXT("%s\r\n"), lpMsgBuf);
+  lpDisplayBuf = (LPVOID)LocalAlloc(LMEM_ZEROINIT, (lstrlen((LPCTSTR)lpMsgBuf) + 40) * sizeof(TCHAR));
+  StringCchPrintf((LPTSTR)lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(TCHAR), TEXT("%s\r\n"), lpMsgBuf);
   fprintf(stderr, "%s\r\n", (LPCTSTR)lpDisplayBuf);
   LocalFree(lpMsgBuf);
   LocalFree(lpDisplayBuf);
 }
 
 void zsv_perror(const char *s) {
-  if(s && *s)
+  if (s && *s)
     fwrite(s, 1, strlen(s), stderr);
   zsv_win_printLastError(0);
 }

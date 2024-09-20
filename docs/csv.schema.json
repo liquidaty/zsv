@@ -7,40 +7,78 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "properties": {
           "name": {
             "type": "string",
-            "examples": ["City", "State", "My Column"]
+            "examples": [
+              "City",
+              "State",
+              "My Column"
+            ]
           },
           "datatype": {
-            "enum": ["int", "text", "real"]
+            "enum": [
+              "int",
+              "text",
+              "real"
+            ]
           },
           "collate": {
-            "enum": [ "nocase", "binary", "rtrim" ]
+            "enum": [
+              "nocase",
+              "binary",
+              "rtrim"
+            ]
           }
         }
       }
     }
   ],
-  "additionalItems": 
-  {
-      "type": "array",
-      "description": "row of data",
-      "examples": [["A1 value", 22, true],
-                   ["Abc", "def", "ghi"],
-                   ["abc", "Def", ""]
-                  ],
-      "items": {
-        "examples": ["Hi there", 123],
-        "oneOf": [
-          { "type": "null" },
-          { "type": "integer" },
-          { "type": "number" },
-          { "type": "string" },
-          { "type": "boolean" }
-        ]
-      }
+  "additionalItems": {
+    "type": "array",
+    "description": "row of data",
+    "examples": [
+      [
+        "A1 value",
+        22,
+        true
+      ],
+      [
+        "Abc",
+        "def",
+        "ghi"
+      ],
+      [
+        "abc",
+        "Def",
+        ""
+      ]
+    ],
+    "items": {
+      "examples": [
+        "Hi there",
+        123
+      ],
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "boolean"
+        }
+      ]
     }
-
+  }
 }

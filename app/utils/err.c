@@ -9,8 +9,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-int zsv_app_printerr(const char *appname, int eno, const char *fmt, ... ) {
-  if(appname && *appname)
+int zsv_app_printerr(const char *appname, int eno, const char *fmt, ...) {
+  if (appname && *appname)
     fprintf(stderr, "(%s) %i: ", appname, eno);
   else
     fprintf(stderr, "%i: ", eno);

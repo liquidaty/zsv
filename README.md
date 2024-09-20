@@ -73,32 +73,32 @@ that implements the expected
 
 ## Key highlights
 
-* Available as BOTH a library and an application (coming soon: standalone
+- Available as BOTH a library and an application (coming soon: standalone
   zsvutil library for common helper functions such as csv writer)
-* Open-source, permissively licensed
-* Handles real-world CSV the same way that spreadsheet programs do (*including
+- Open-source, permissively licensed
+- Handles real-world CSV the same way that spreadsheet programs do (*including
   edge cases*). Gracefully handles (and can "clean") real-world data that may be
   "dirty".
-* Runs on macOS (tested on clang/gcc), Linux (gcc), Windows (mingw), BSD
+- Runs on macOS (tested on clang/gcc), Linux (gcc), Windows (mingw), BSD
   (gcc-only) and in-browser (emscripten/wasm)
-* Fastest (at least, vs all alternatives and on all platforms we've benchmarked
+- Fastest (at least, vs all alternatives and on all platforms we've benchmarked
   where 256-bit SIMD operations are available). See
   [app/benchmark/README.md](app/benchmark/README.md)
-* Low memory usage (regardless of how big your data is) and size footprint for
+- Low memory usage (regardless of how big your data is) and size footprint for
   both lib (~20k) and CLI executable (< 1MB)
-* Handles general delimited data (e.g. pipe-delimited) and fixed-with input
+- Handles general delimited data (e.g. pipe-delimited) and fixed-with input
   (with specified widths or auto-detected widths)
-* Handles multi-row headers
-* Handles input from any stream, including caller-defined streams accessed via a
+- Handles multi-row headers
+- Handles input from any stream, including caller-defined streams accessed via a
   single caller-defined `fread`-like function
-* Easy to use as a library in a few lines of code, via either pull or push
+- Easy to use as a library in a few lines of code, via either pull or push
   parsing
-* Includes the `zsv` CLI with the following built-in commands:
-  * `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
+- Includes the `zsv` CLI with the following built-in commands:
+  - `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
     `2db`, `stack`, `pretty`, `2tsv`, `paste`, `compare`, `jq`, `prop`, `rm`
-  * easily [convert between CSV/JSON/sqlite3](docs/csv_json_sqlite.md)
-  * [compare multiple files](docs/compare.md)
-* CLI is easy to extend/customize with a few lines of code via modular plug-in
+  - easily [convert between CSV/JSON/sqlite3](docs/csv_json_sqlite.md)
+  - [compare multiple files](docs/compare.md)
+- CLI is easy to extend/customize with a few lines of code via modular plug-in
   framework. Just write a few custom functions and compile into a distributable
   DLL that any existing zsv installation can use.
 
@@ -184,10 +184,10 @@ npm install zsv-lib
 
 Please note:
 
-* This package is still in alpha and currently only exposes a small subset of
+- This package is still in alpha and currently only exposes a small subset of
   the zsv library capabilities. More to come!
-* The CLI is not yet available as a Node package
-* If you'd like to use additional parser features, or use the CLI as a Node
+- The CLI is not yet available as a Node package
+- If you'd like to use additional parser features, or use the CLI as a Node
   package, please feel free to post a request in an issue here.
 
 ### From source
@@ -198,19 +198,19 @@ See [BUILD.md](BUILD.md) for more details.
 
 Our objectives, which we were unable to find in a pre-existing project, are:
 
-* Reasonably high performance
-* Runs on any platform, including web assembly
-* Available as both a library and a standalone executable / command-line
+- Reasonably high performance
+- Runs on any platform, including web assembly
+- Available as both a library and a standalone executable / command-line
   interface utility (CLI)
-* Memory-efficient, configurable resource limits
-* Handles real-world CSV cases the same way that Excel does, including all edge
+- Memory-efficient, configurable resource limits
+- Handles real-world CSV cases the same way that Excel does, including all edge
   cases (quote handling, newline handling (either `\n` or `\r`), embedded
   newlines, abnormal quoting (e.g. aaa"aaa,bbb...)
-* Handles other "dirty" data issues:
-  * Assumes valid UTF8, but does not misbehave if input contains bad UTF8
-  * Option to specify multi-row headers
-  * Does not assume or stop working in case of inconsistent numbers of columns
-* Easy to use library or extend/customize CLI
+- Handles other "dirty" data issues:
+  - Assumes valid UTF8, but does not misbehave if input contains bad UTF8
+  - Option to specify multi-row headers
+  - Does not assume or stop working in case of inconsistent numbers of columns
+- Easy to use library or extend/customize CLI
 
 There are several excellent tools that achieve high performance. Among those we
 considered were xsv and tsv-utils. While they met our performance objective,
@@ -234,34 +234,34 @@ needs.
 
 `zsv` comes with several built-in commands:
 
-* `echo`: read CSV from stdin and write it back out to stdout. This is mostly
+- `echo`: read CSV from stdin and write it back out to stdout. This is mostly
   useful for demonstrating how to use the API and also how to create a plug-in,
   and has several uses beyond that including adding/removing BOM, cleaning up
   bad UTF8, whitespace or blank column trimming, limiting output to a contiguous
   data block, skipping leading garbage, and even proving substitution values
   without modifying the underlying source
-* `select`: re-shape CSV by skipping leading garbage, combining header rows into
+- `select`: re-shape CSV by skipping leading garbage, combining header rows into
   a single header, selecting or excluding specified columns, removing duplicate
   columns, sampling, converting from fixed-width input, searching and more
-* `sql`: treat one or more CSV files like database tables and query with SQL
-* `desc`: provide a quick description of your table data
-* `pretty`: format for console (fixed-width) display, or convert to markdown
+- `sql`: treat one or more CSV files like database tables and query with SQL
+- `desc`: provide a quick description of your table data
+- `pretty`: format for console (fixed-width) display, or convert to markdown
   format
-* `2json`: convert CSV to JSON. Optionally, output in
+- `2json`: convert CSV to JSON. Optionally, output in
   [database schema](docs/db.schema.json)
-* `2tsv`: convert to TSV (tab-delimited) format
-* `compare`: compare two or more tables of data and output the differences
-* `paste` (alpha): horizontally paste two tables together (given inputs X and Y,
+- `2tsv`: convert to TSV (tab-delimited) format
+- `compare`: compare two or more tables of data and output the differences
+- `paste` (alpha): horizontally paste two tables together (given inputs X and Y,
    output 1...N rows where each row all columns of X in row N, followed by all
    columns of Y in row N)
-* `serialize` (inverse of flatten): convert an NxM table to a single 3x (Nx(M-1))
+- `serialize` (inverse of flatten): convert an NxM table to a single 3x (Nx(M-1))
   table with columns: Row, Column Name, Column Value
-* `flatten` (inverse of serialize): flatten a table by combining rows that share
+- `flatten` (inverse of serialize): flatten a table by combining rows that share
   a common value in a specified identifier column
-* `stack`: merge CSV files vertically
-* `jq`: run a `jq` filter
-* `2db`: [convert from JSON to sqlite3 db](docs/csv_json_sqlite.md)
-* `prop`: view or save parsing options associated with a file, such as initial
+- `stack`: merge CSV files vertically
+- `jq`: run a `jq` filter
+- `2db`: [convert from JSON to sqlite3 db](docs/csv_json_sqlite.md)
+- `prop`: view or save parsing options associated with a file, such as initial
   rows to ignore, or header row span. Saved options are be applied by default
   when processing that file.
 
@@ -332,10 +332,10 @@ You can extend `zsv` by providing a pre-compiled shared or static library that
 defines the functions specified in `extension_template.h` and which `zsv` loads
 in one of three ways:
 
-* as a static library that is statically linked at compile time
-* as a dynamic library that is linked at compile time and located in any library
+- as a static library that is statically linked at compile time
+- as a dynamic library that is linked at compile time and located in any library
   search path
-* as a dynamic library that is located in the same folder as the `zsv`
+- as a dynamic library that is located in the same folder as the `zsv`
   executable and loaded at runtime if/as/when the custom mode is invoked
 
 #### Example and template
@@ -354,24 +354,26 @@ helping, please post an issue.
 
 ### Possible enhancements and related developments
 
-* online "playground" (soon to be released)
-* optimize search; add search with hyperscan or re2 regex matching, possibly
+- online "playground" (soon to be released)
+- optimize search; add search with hyperscan or re2 regex matching, possibly
   parallelize?
-* optional OpenMP or other multi-threading for row processing
-* auto-generated documentation, and better documentation in general
-* Additional benchmarking. Would be great to use
+- optional OpenMP or other multi-threading for row processing
+- auto-generated documentation, and better documentation in general
+- Additional benchmarking. Would be great to use
   <https://bitbucket.org/ewanhiggs/csv-game/src/master/> as a springboard to
   benchmarking a number of various tasks
-* encoding conversion e.g. UTF16 to UTF8
+- encoding conversion e.g. UTF16 to UTF8
 
 ## Contribute
 
-* [Fork](https://github.com/liquidaty/zsv/fork) the project.
-* Check out the latest [`main`](https://github.com/liquidaty/zsv/tree/main)
+- [Fork](https://github.com/liquidaty/zsv/fork) the project.
+- Check out the latest [`main`](https://github.com/liquidaty/zsv/tree/main)
   branch.
-* Create a feature or bugfix branch from `main`.
-* Commit and push your changes.
-* Submit the PR.
+- Create a feature or bugfix branch from `main`.
+- Update your required changes.
+- Make sure to run `clang-format` (version 14 or later) for C source updates.
+- Commit and push your changes.
+- Submit the PR.
 
 ## License
 
