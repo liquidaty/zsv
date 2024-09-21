@@ -238,7 +238,7 @@ static size_t is_newline(const unsigned char *utf8, int wchar_len) {
 }
 
 // utf8_bytes_up_to_max_width: return number of bytes used up to a maximum screen width
-// max will be set to the actual width used
+// set to the actual width used
 static size_t utf8_bytes_up_to_max_width_and_replace_newlines(unsigned char *str1, size_t len1, size_t max_width,
                                                               size_t *used_width, int *err) {
   utf8proc_int32_t codepoint1;

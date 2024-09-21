@@ -41,7 +41,9 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Run clang-format
-      run: ./scripts/ci-run-clang-format.sh
+      run: |
+        sudo ln -sf /usr/bin/clang-format-15 /usr/bin/clang-format
+        ./scripts/ci-run-clang-format.sh
 
   ci:
     name: ci

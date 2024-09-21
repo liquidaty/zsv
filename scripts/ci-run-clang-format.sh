@@ -4,9 +4,9 @@ set -e
 
 echo "[INF] Running $0"
 
-VERSION=$(clang-format --version | cut -d ' ' -f4 | tr -d '\n')
+VERSION=$(clang-format --version | sed 's/^[^0-9]*//g' | sed 's/ .*$//g')
 MAJOR_VERSION=$(echo "$VERSION" | cut -d '.' -f1)
-REQUIRED_VERSION="14"
+REQUIRED_VERSION="15"
 
 if [ "$VERSION" = "" ]; then
   echo "[ERR] clang-format is not installed!"
@@ -16,7 +16,7 @@ else
   echo "[INF] clang-format version [$VERSION]"
   if [ "$MAJOR_VERSION" -lt "$REQUIRED_VERSION" ]; then
     echo "[ERR] Installed clang-format version is $VERSION."
-    echo "[ERR] clang-format $REQUIRED_VERSION or later is required!"
+    echo "[ERR] clang-format-$REQUIRED_VERSION or later is required!"
     exit 1
   fi
 fi

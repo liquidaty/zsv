@@ -392,7 +392,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           for (char *ix_str = data.join_indexes; !err && ix_str && *ix_str && *(++ix_str);
                ix_str = strchr(ix_str + 1, ',')) {
             unsigned int next_ix;
-            if (sscanf(ix_str, "%u,", &next_ix)) {
+            if (sscanf(ix_str, "%u,", &next_ix) == 1) {
               if (next_ix == 0)
                 fprintf(stderr, "--join-indexes index must be greater than zero\n");
               else if (next_ix > (unsigned)col_count)

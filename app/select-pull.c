@@ -24,6 +24,7 @@
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/mem.h>
+#include <zsv/utils/arg.h>
 
 struct zsv_select_search_str {
   struct zsv_select_search_str *next;
@@ -63,7 +64,7 @@ struct zsv_select_data {
     struct {         // merge data: only used with --merge
       struct zsv_select_uint_list *indexes, **last_index;
     } merge;
-  } * out2in; // array of .output_cols_count length; out2in[x] = y where x = output ix, y = input info
+  } *out2in; // array of .output_cols_count length; out2in[x] = y where x = output ix, y = input info
 
   unsigned int output_cols_count; // total count of output columns
 
@@ -343,23 +344,23 @@ static enum zsv_select_column_index_selection_type zsv_select_column_index_selec
                                                                                      unsigned *lo, unsigned *hi) {
   enum zsv_select_column_index_selection_type result = zsv_select_column_index_selection_type_none;
 
-  unsigned int i, j, k;
+  unsigned int i = 0;
+  unsigned int j = 0;
   int n = 0;
-  k = sscanf((const char *)arg, "%u-%u%n", &i, &j, &n);
+  int k = sscanf((const char *)arg, "%u-%u%n", &i, &j, &n);
   if (k == 2) {
-    if (n == (int)strlen((const char *)arg) && i > 0 && j >= i)
+    if (n >= 0 && (size_t)n == strlen((const char *)arg) && i > 0 && j >= i)
       result = zsv_select_column_index_selection_type_range;
   } else {
     k = sscanf((const char *)arg, "%u%n", &i, &n);
-    if (k && n == (int)strlen((const char *)arg)) {
+    if (k == 1 && n >= 0 && (size_t)n == strlen((const char *)arg)) {
       if (i > 0)
         result = zsv_select_column_index_selection_type_single;
     } else {
       k = sscanf((const char *)arg, "%u-%n", &i, &n);
-      if (k && n == (int)strlen((const char *)arg)) {
+      if (k == 1 && n >= 0 && (size_t)n == strlen((const char *)arg)) {
         if (i > 0) {
           result = zsv_select_column_index_selection_type_lower_bounded;
-          j = 0;
         }
       }
     }
@@ -616,6 +617,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return zsv_status_ok;
   }
 
+  int err = 0;
   struct zsv_select_data data = {0};
   data.opts = opts;
   const char *input_path = NULL;
@@ -708,14 +710,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           -1, "--sample-pct value should be a number between 0 and 100 (e.g. 1.5 for a sample of 1.5%% of the data");
       else
         data.sample_pct = d;
-    } else if (!strcmp(argv[arg_i], "--prepend-header")) {
-      if (!(arg_i + 1 < argc))
-        stat = zsv_printerr(1, "%s option requires a value");
-      else
-        data.prepend_header = argv[++arg_i];
-    } else if (!strcmp(argv[arg_i], "--no-header")) {
+    } else if (!strcmp(argv[arg_i], "--prepend-header"))
+      data.prepend_header = zsv_next_arg(++arg_i, argc, argv, &err);
+    else if (!strcmp(argv[arg_i], "--no-header"))
       data.no_header = 1;
-    } else if (!strcmp(argv[arg_i], "-H") || !strcmp(argv[arg_i], "--head")) {
+    else if (!strcmp(argv[arg_i], "-H") || !strcmp(argv[arg_i], "--head")) {
       if (!(arg_i + 1 < argc && atoi(argv[arg_i + 1]) >= 0))
         stat = zsv_printerr(1, "%s option value invalid: should be positive integer; got %s", argv[arg_i],
                             arg_i + 1 < argc ? argv[arg_i + 1] : "");
