@@ -865,7 +865,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if (!strcmp(argv[arg_i], "--prepend-header")) {
       int err = 0;
       data.prepend_header = zsv_next_arg(++arg_i, argc, argv, &err);
-      if(err)
+      if (err)
         stat = zsv_status_error;
     } else if (!strcmp(argv[arg_i], "--no-header"))
       data.no_header = 1;
