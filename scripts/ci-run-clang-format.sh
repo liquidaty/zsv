@@ -4,7 +4,7 @@ set -e
 
 echo "[INF] Running $0"
 
-VERSION=$(clang-format --version | cut -d ' ' -f4 | tr -d '\n')
+VERSION=$(clang-format --version | sed 's/^[^0-9]*//g' | sed 's/ .*$//g')
 MAJOR_VERSION=$(echo "$VERSION" | cut -d '.' -f1)
 REQUIRED_VERSION="15"
 

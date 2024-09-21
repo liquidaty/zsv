@@ -356,19 +356,19 @@ static enum zsv_select_column_index_selection_type zsv_select_column_index_selec
 
   unsigned int i = 0;
   unsigned int j = 0;
-  size_t n = 0;
+  int n = 0;
   int k = sscanf((const char *)arg, "%u-%u%n", &i, &j, &n);
   if (k == 2) {
-    if (n == strlen((const char *)arg) && i > 0 && j >= i)
+    if (n >= 0 && (size_t)n == strlen((const char *)arg) && i > 0 && j >= i)
       result = zsv_select_column_index_selection_type_range;
   } else {
     k = sscanf((const char *)arg, "%u%n", &i, &n);
-    if (k == 1 && n == strlen((const char *)arg)) {
+    if (k == 1 && n >= 0 && (size_t)n == strlen((const char *)arg)) {
       if (i > 0)
         result = zsv_select_column_index_selection_type_single;
     } else {
       k = sscanf((const char *)arg, "%u-%n", &i, &n);
-      if (k == 1 && n == strlen((const char *)arg)) {
+      if (k == 1 && n >= 0 && (size_t)n == strlen((const char *)arg)) {
         if (i > 0) {
           result = zsv_select_column_index_selection_type_lower_bounded;
           j = 0;
@@ -708,7 +708,8 @@ static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struc
 
   // allocate offsets
   free(fixed->offsets);
-  fixed->offsets = malloc(fixed->count * sizeof(*fixed->offsets));
+  fixed->offsets = NULL; // unnecessary line to silence codeQL false positive
+  fixed->offsets = calloc(fixed->count, sizeof(*fixed->offsets));
   if (!fixed->offsets) {
     stat = zsv_status_memory;
     goto auto_detect_fixed_column_sizes_exit;
@@ -786,7 +787,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           if (*s == ',')
             data.fixed.count++;
         free(data.fixed.offsets);
-        data.fixed.offsets = malloc(data.fixed.count * sizeof(*data.fixed.offsets));
+        data.fixed.offsets = NULL; // unnecessary line to silence codeQL false positive
+        data.fixed.offsets = calloc(data.fixed.count, sizeof(*data.fixed.offsets));
         if (!data.fixed.offsets) {
           stat = zsv_printerr(1, "Out of memory!\n");
           break;
@@ -860,9 +862,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           -1, "--sample-pct value should be a number between 0 and 100 (e.g. 1.5 for a sample of 1.5%% of the data");
       else
         data.sample_pct = d;
-    } else if (!strcmp(argv[arg_i], "--prepend-header"))
+    } else if (!strcmp(argv[arg_i], "--prepend-header")) {
+      int err = 0;
       data.prepend_header = zsv_next_arg(++arg_i, argc, argv, &err);
-    else if (!strcmp(argv[arg_i], "--no-header"))
+      if(err)
+        stat = zsv_status_error;
+    } else if (!strcmp(argv[arg_i], "--no-header"))
       data.no_header = 1;
     else if (!strcmp(argv[arg_i], "-H") || !strcmp(argv[arg_i], "--head")) {
       if (!(arg_i + 1 < argc && atoi(argv[arg_i + 1]) >= 0))
