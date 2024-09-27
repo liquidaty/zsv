@@ -190,7 +190,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        for ARTIFACT in "$ARTIFACT_DIR"; do
+        for ARTIFACT in "$ARTIFACT_DIR"/*; do
           echo "[INF] Veriyfing artifact... [$ARTIFACT]"
           gh attestation verify "$ARTIFACT" --repo "$GITHUB_REPOSITORY"
           echo "[INF] Verified successfully! [$ARTIFACT]"
