@@ -186,6 +186,16 @@ jobs:
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
+    - name: Verify attested artifacts
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        for ARTIFACT in "$ARTIFACT_DIR"; do
+          echo "[INF] Veriyfing artifact... [$ARTIFACT]"
+          gh attestation verify "$ARTIFACT" --repo "$GITHUB_REPOSITORY"
+          echo "[INF] Verified successfully! [$ARTIFACT]"
+        done
+
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.zip)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
