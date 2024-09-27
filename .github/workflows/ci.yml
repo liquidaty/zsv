@@ -57,6 +57,8 @@ jobs:
 
     permissions:
       contents: write
+      id-token: write
+      attestations: write
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -178,6 +180,21 @@ jobs:
 
     - name: Prepare build artifacts for upload
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
+
+    - name: Attest build artifacts
+      uses: actions/attest-build-provenance@v1
+      with:
+        subject-path: ${{ env.ARTIFACT_DIR }}/*
+
+    - name: Verify attested artifacts
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        for ARTIFACT in "$ARTIFACT_DIR"/*; do
+          echo "[INF] Veriyfing artifact... [$ARTIFACT]"
+          gh attestation verify "$ARTIFACT" --repo "$GITHUB_REPOSITORY"
+          echo "[INF] Verified successfully! [$ARTIFACT]"
+        done
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.zip)
       if: runner.os == 'Linux'
