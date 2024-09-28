@@ -197,9 +197,7 @@ size_t zsv_get_executable_path(char *buff, size_t buffsize) {
   return buffsize;
 }
 #else
-
-to do: add support for this OS!;
-
+// TODO: Add support for this OS!
 #endif /* end of: #if defined(_WIN32) */
 
 struct dir_path {

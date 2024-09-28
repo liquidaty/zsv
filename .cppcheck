@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="1">
+    <builddir>cppcheck-build-dir</builddir>
+    <analyze-all-vs-configs>false</analyze-all-vs-configs>
+    <check-headers>true</check-headers>
+    <check-unused-templates>false</check-unused-templates>
+    <max-ctu-depth>2</max-ctu-depth>
+    <includedir>
+        <dir name="include/" />
+    </includedir>
+    <paths>
+        <dir name="src" />
+        <dir name="app" />
+        <dir name="examples" />
+    </paths>
+    <exclude>
+        <path name="app/external/" />
+    </exclude>
+    <libraries>
+        <library>cppcheck-lib</library>
+        <library>emscripten</library>
+        <library>posix</library>
+        <library>sqlite3</library>
+        <library>windows</library>
+    </libraries>
+    <suppressions>
+        <suppression>missingInclude</suppression>
+        <suppression>missingIncludeSystem</suppression>
+        <suppression>unmatchedSuppression</suppression>
+    </suppressions>
+</project>
