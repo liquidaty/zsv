@@ -68,4 +68,4 @@ clean:
 	@${MAKE} -C app clean-all CONFIGFILE=${CONFIGFILEPATH}
 	@rm -rf ${THIS_MAKEFILE_DIR}/build
 
-.PHONY: help build install uninstall uninstall clean check test
+.PHONY: help build install uninstall clean check test
