@@ -42,8 +42,8 @@ cppcheck-htmlreport \
 
 # GitHub Actions
 if [ "$CI" = true ]; then
-  CPPCHECK_XML_ARTIFACT_NAME="zsv-cppcheck-xml-report-$(date "+%s").zip"
-  CPPCHECK_HTML_ARTIFACT_NAME="zsv-cppcheck-html-report-$(date "+%s").zip"
+  CPPCHECK_XML_ARTIFACT_NAME="zsv-cppcheck-xml-report-$GITHUB_RUN_ID.zip"
+  CPPCHECK_HTML_ARTIFACT_NAME="zsv-cppcheck-html-report-$GITHUB_RUN_ID.zip"
 
   echo "[INF] Generating ZIP archive (XML)... [$CPPCHECK_XML_ARTIFACT_NAME]"
   zip "$CPPCHECK_XML_ARTIFACT_NAME" "$CPPCHECK_XML_OUTPUT_FILE"
