@@ -57,11 +57,11 @@ if [ "$CI" = true ]; then
   } >>"$GITHUB_ENV"
 
   echo "[INF] Generating Markdown step summary..."
-  SOURCE_LINK="[{file}:{line}](https://github.com/liquidaty/zsv/blob/$GITHUB_REF_NAME/{file}#L{line}):{column}"
+  SOURCE_LINK="[{file}:{line}](https://github.com/liquidaty/zsv/blob/$GITHUB_HEAD_REF/{file}#L{line}):{column}"
   CWE_LINK="[{cwe}](https://cwe.mitre.org/data/definitions/{cwe}.html)"
-  TEMPLATE="| $SOURCE_LINK | {severity} | \`{id}\` | {message} | $CWE_LINK |"
+  TEMPLATE="| $SOURCE_LINK | {severity} | {id} | {message} | $CWE_LINK |"
   {
-    echo "### Cppcheck Static Analysis Summary"
+    echo "# Cppcheck Static Analysis Summary"
     echo "| File:Line:Column | Severity |  ID   | Message |  CWE  |"
     echo "| :--------------: | :------: | :---: | :-----: | :---: |"
     cppcheck \
