@@ -55,6 +55,21 @@ if [ "$CI" = true ]; then
     echo "CPPCHECK_XML_ARTIFACT_NAME=$CPPCHECK_XML_ARTIFACT_NAME"
     echo "CPPCHECK_HTML_ARTIFACT_NAME=$CPPCHECK_HTML_ARTIFACT_NAME"
   } >>"$GITHUB_ENV"
+
+  echo "[INF] Generating Markdown step summary..."
+  SOURCE_LINK="[{file}:{line}](https://github.com/liquidaty/zsv/blob/$GITHUB_REF_NAME/{file}#L{line}):{column}"
+  CWE_LINK="[{cwe}](https://cwe.mitre.org/data/definitions/{cwe}.html)"
+  TEMPLATE="| $SOURCE_LINK | {severity} | \`{id}\` | {message} | $CWE_LINK |"
+  {
+    echo "### Cppcheck Static Analysis Summary"
+    echo "| File:Line:Column | Severity |  ID   | Message |  CWE  |"
+    echo "| :--------------: | :------: | :---: | :-----: | :---: |"
+    cppcheck \
+      --quiet \
+      --enable=all \
+      --project="$CPPCHECK_PROJECT_FILE" \
+      --template="$TEMPLATE"
+  } 2>>"$GITHUB_STEP_SUMMARY"
 fi
 
 echo "[INF] --- [DONE] ---"
