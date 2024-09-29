@@ -68,8 +68,9 @@ if [ "$CI" = true ]; then
       --quiet \
       --enable=all \
       --project="$CPPCHECK_PROJECT_FILE" \
-      --template="$TEMPLATE"
-  } 2>>"$GITHUB_STEP_SUMMARY"
+      --template="$TEMPLATE" \
+      2>&1
+  } >>"$GITHUB_STEP_SUMMARY"
 fi
 
 echo "[INF] --- [DONE] ---"
