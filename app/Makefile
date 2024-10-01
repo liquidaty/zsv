@@ -82,6 +82,11 @@ ifeq ($(NO_STDIN),1)
 endif
 
 CFLAGS+= ${CFLAGS_PIC}
+
+CONFIGURE_HOST=
+ifneq ($(HOST),)
+  CONFIGURE_HOST=$(HOST)
+endif
 ifeq ($(WIN),0)
   BUILD_SUBDIR=$(shell uname)/${DBG_SUBDIR}
   EXE=
@@ -96,15 +101,19 @@ ifeq ($(WIN),0)
       CFLAGS_EXE+= -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2 -s PTHREAD_POOL_SIZE=8
     endif
   endif
-  CONFIGURE_HOST=
   CFLAGS_SETENV=
 else
   BUILD_SUBDIR=win/${DBG_SUBDIR}
   EXE=.exe
   CFLAGS+= -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE
   CFLAGS+= -Wl,--strip-all
-  CONFIGURE_HOST=--host=x86_64-w64-mingw32
+  CONFIGURE_HOST=x86_64-w64-mingw32
   CFLAGS_SETENV=-Dsetenv\(a,b,c\)=_putenv_s\(a,b\)
+endif
+
+JQ_CONFIGURE_HOST=
+ifneq ($(CONFIGURE_HOST),)
+  JQ_CONFIGURE_HOST=--host=$(CONFIGURE_HOST)
 endif
 
 CFLAGS+=-std=gnu11
@@ -171,6 +180,7 @@ OBJECTS=${UTILS}
 ifeq ($(NO_MEMMEM),1)
   OBJECTS+= ${BUILD_DIR}/objs/utils/memmem.o
   CFLAGS+=-DNO_MEMMEM
+  UTIL_A_OBJ_WIN=memmem
 endif
 
 ZSV=$(BINDIR)/zsv${EXE}
@@ -284,7 +294,7 @@ ${ZSV_UTIL_A}: ${BUILD_DIR}/objs/utils/util.a
 	@mkdir -p `dirname $@`
 	cp -p $< $@
 
-UTIL_A_OBJ:=writer file dirs-no-jq os
+UTIL_A_OBJ:=writer file dirs-no-jq os ${UTIL_A_OBJ_WIN}
 UTIL_A_OBJ:=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTIL_A_OBJ}))
 
 ${BUILD_DIR}/objs/utils/util.a: ${UTIL_A_OBJ}
@@ -396,7 +406,7 @@ ${JQ_BUNDLE_LIB}: ${JQ_SRC} # -D_REENTRANT needed for clang to not break
 	    --disable-docs \
 	    --disable-shared \
 	    --enable-static \
-	    ${CONFIGURE_HOST} \
+	    ${JQ_CONFIGURE_HOST} \
 	&& (${MAKE} install -k)
 
 ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
