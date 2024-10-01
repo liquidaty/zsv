@@ -10,9 +10,11 @@ on:
   release:
     types: [published]
 
+env:
+  ARTIFACT_RETENTION_DAYS: 5
+
 jobs:
   tag:
-    name: tag
     runs-on: ubuntu-latest
 
     outputs:
@@ -32,8 +34,7 @@ jobs:
         echo "TAG: $TAG"
         echo "TAG=$TAG" >> "$GITHUB_OUTPUT"
 
-  format:
-    name: format
+  clang-format:
     runs-on: ubuntu-latest
 
     steps:
@@ -45,9 +46,40 @@ jobs:
         sudo ln -sf /usr/bin/clang-format-15 /usr/bin/clang-format
         ./scripts/ci-run-clang-format.sh
 
+  cppcheck:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install cppcheck
+      run: |
+        sudo apt update
+        sudo apt install -y cppcheck
+        cppcheck --version
+
+    - name: Run cppcheck
+      run: ./scripts/ci-run-cppcheck.sh
+
+    - name: Upload (${{ env.CPPCHECK_XML_ARTIFACT_NAME }})
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.CPPCHECK_XML_ARTIFACT_NAME }}
+        path: ${{ env.CPPCHECK_XML_ARTIFACT_NAME }}
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (${{ env.CPPCHECK_HTML_ARTIFACT_NAME }})
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.CPPCHECK_HTML_ARTIFACT_NAME }}
+        path: ${{ env.CPPCHECK_HTML_ARTIFACT_NAME }}
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
   ci:
-    name: ci
-    needs: [format, tag]
+    needs: [tag, clang-format, cppcheck]
 
     strategy:
       matrix:
@@ -69,7 +101,6 @@ jobs:
       ARM64_MACOSX_GCC: arm64-macosx-gcc
       AMD64_FREEBSD_GCC: amd64-freebsd-gcc
       ARTIFACT_DIR: .artifacts
-      ARTIFACT_RETENTION_DAYS: 5
 
     steps:
     - name: Checkout
@@ -191,7 +222,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         for ARTIFACT in "$ARTIFACT_DIR"/*; do
-          echo "[INF] Veriyfing artifact... [$ARTIFACT]"
+          echo "[INF] Verifying artifact... [$ARTIFACT]"
           gh attestation verify "$ARTIFACT" --repo "$GITHUB_REPOSITORY"
           echo "[INF] Verified successfully! [$ARTIFACT]"
         done

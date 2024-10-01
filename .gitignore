@@ -58,3 +58,4 @@ amd64-freebsd-gcc
 jq
 nuget-feed
 homebrew-zsv
+cppcheck*
