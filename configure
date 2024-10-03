@@ -514,10 +514,14 @@ if [ "$TRY_SHEET" != "no" ]; then
     if tryldflag LDFLAGS_NCURSES -lncurses -L${PREFIX}/lib ; then
         NCLIB=ncurses
         CFLAGS_NCURSES=-DHAVE_NCURSES
-    elif tryldflag LDFLAGS_NCURSES -lncursesw -L${PREFIX}/lib ; then
-        NCLIB=ncursesw
-        CFLAGS_NCURSES=-DHAVE_NCURSESW
     fi 
+    if tryldflag LDFLAGS_NCURSESW -lncursesw -L${PREFIX}/lib ; then
+        LDFLAGS_NCURSES="$LDFLAGS_NCURSES -lncursesw"
+        NCLIB="$NCLIB ncursesw"
+        if [ "$CFLAGS_NCURSES" = "" ]; then
+           CFLAGS_NCURSES=-DHAVE_NCURSESW
+        fi
+    fi
     ZSV_BUILD_SHEET=1
 
     if [ "$TRY_SHEET" = "yes" ] ; then
