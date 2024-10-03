@@ -511,8 +511,13 @@ tryflag CFLAGS_VECTORIZE_ALL -fopt-info-vec-all
 tryflag CFLAGS_OPENMP -fopenmp
 
 if [ "$TRY_SHEET" != "no" ]; then
-    tryldflag LDFLAGS_NCURSES -lncurses -L${PREFIX}/lib && CFLAGS+=-DHAVE_NCURSES || \
-    tryldflag LDFLAGS_NCURSES -lncursesw -L${PREFIX}/lib && CFLAGS+=-DHAVE_NCURSESW
+    if tryldflag LDFLAGS_NCURSES -lncurses -L${PREFIX}/lib ; then
+        NCLIB=ncurses
+        CFLAGS+=-DHAVE_NCURSES
+    elif tryldflag LDFLAGS_NCURSES -lncursesw -L${PREFIX}/lib ; then
+        NCLIB=ncursesw
+        CFLAGS+=-DHAVE_NCURSESW
+    fi 
     ZSV_BUILD_SHEET=1
 
     if [ "$TRY_SHEET" = "yes" ] ; then
@@ -796,6 +801,7 @@ fi
 
 if [ "$ZSV_BUILD_SHEET" = "1" ]; then
     echo "*  - build sheet feature: yes                                    *"
+    echo "*    ncurses library:     $NCLIB                                 *"
 else
     echo "*  - build sheet feature: no                                     *"
 fi
