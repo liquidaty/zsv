@@ -511,15 +511,15 @@ tryflag CFLAGS_VECTORIZE_ALL -fopt-info-vec-all
 tryflag CFLAGS_OPENMP -fopenmp
 
 if [ "$TRY_SHEET" != "no" ]; then
-    tryldflag LDFLAGS_NCURSES -lncurses -L${PREFIX}/lib && CFLAGS+=-DHAVE_NCURSES
-    tryldflag LDFLAGS_NCURSESW -lncursesw -L${PREFIX}/lib && CFLAGS+=-DHAVE_NCURSESW
+    tryldflag LDFLAGS_NCURSES -lncurses -L${PREFIX}/lib && CFLAGS+=-DHAVE_NCURSES || \
+    tryldflag LDFLAGS_NCURSES -lncursesw -L${PREFIX}/lib && CFLAGS+=-DHAVE_NCURSESW
     ZSV_BUILD_SHEET=1
 
     if [ "$TRY_SHEET" = "yes" ] ; then
         echo "Error: could not find either ncurses or ncursesw library; cannot build 'sheet' feature"
         exit 1
     fi
-    if [ "$LDFLAGS_NCURSES" = "" ] && [ "$LDFLAGS_NCURSESW" = "" ] ; then
+    if [ "$LDFLAGS_NCURSES" = "" ] ; then
         echo "Warning: could not find either ncurses or ncursesw library; cannot build 'sheet' feature"
         ZSV_BUILD_SHEET=0
     fi
@@ -766,7 +766,6 @@ CFLAGS_VECTORIZE_ALL = $CFLAGS_VECTORIZE_ALL
 CFLAGS_OPENMP = $CFLAGS_OPENMP
 
 LDFLAGS_NCURSES = $LDFLAGS_NCURSES
-LDFLAGS_NCURSESW = $LDFLAGS_NCURSESW
 
 ZSV_EXTRAS = $ZSV_EXTRAS
 
