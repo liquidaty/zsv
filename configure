@@ -33,6 +33,7 @@ Optional features:
   --force-avx2            force compile with (no CPU check) or without -mavx2 [auto]
   --force-avx             force compile with (no CPU check) or without -mavx [auto]
   --force-sse2            force compile with (no CPU check) or without -msse2 [auto]
+  --enable-sheet          compile with 'sheet' feature (requires ncurses) [yes]
   --enable-lto            compile with LTO (works with some but not all platforms/compilers) [no]
   --enable-whole-program  compile without -fwhole-program even if no -flto [yes]
   --enable-pie            build with position independent executables [auto]
@@ -293,6 +294,7 @@ MANDIR='$(PREFIX)/share/man'
 
 MINIMAL=no
 
+TRY_SHEET=auto
 TRY_LTO=no
 TRY_WHOLE_PROGRAM=auto
 FORCE_AVX2=auto
@@ -334,6 +336,10 @@ for arg ; do
         --force-sse2|--force-sse2=yes) FORCE_SSE2=yes;;
         --force-sse2=no) FORCE_SSE2=no;;
 
+        --enable-sheet|--enable-sheet=yes) TRY_SHEET=yes;;
+        --enable-sheet=auto) TRY_SHEET=auto;;
+        --disable-sheet|--enable-sheet=no) TRY_SHEET=no;;
+        
         --enable-lto|--enable-lto=yes) TRY_LTO=yes;;
         --enable-lto|--enable-lto=auto) TRY_LTO=auto;;
         --disable-lto|--enable-lto=no) TRY_LTO=no;;
@@ -503,6 +509,21 @@ tryflag CFLAGS_VECTORIZE_OPTIMIZED -fopt-info-vec-optimized
 tryflag CFLAGS_VECTORIZE_MISSED -fopt-info-vec-missed
 tryflag CFLAGS_VECTORIZE_ALL -fopt-info-vec-all
 tryflag CFLAGS_OPENMP -fopenmp
+
+if [ "$TRY_SHEET" != "no" ]; then
+    tryldflag LDFLAGS_NCURSES -lncurses -L${PREFIX}/lib && CFLAGS+=-DHAVE_NCURSES
+    tryldflag LDFLAGS_NCURSESW -lncursesw -L${PREFIX}/lib && CFLAGS+=-DHAVE_NCURSESW
+    ZSV_BUILD_SHEET=1
+
+    if [ "$TRY_SHEET" = "yes" ] ; then
+        echo "Error: could not find either ncurses or ncursesw library; cannot build 'sheet' feature"
+        exit 1
+    fi
+    if [ "$LDFLAGS_NCURSES" = "" ] && [ "$LDFLAGS_NCURSESW" = "" ] ; then
+        echo "Warning: could not find either ncurses or ncursesw library; cannot build 'sheet' feature"
+        ZSV_BUILD_SHEET=0
+    fi
+fi
 
 if test "$usepie" = "yes" ; then
     tryflag CFLAGS_PIE -fpie || tryflag CFLAGS_PIE -fPIE
@@ -744,7 +765,12 @@ CFLAGS_VECTORIZE_MISSED = $CFLAGS_VECTORIZE_MISSED
 CFLAGS_VECTORIZE_ALL = $CFLAGS_VECTORIZE_ALL
 CFLAGS_OPENMP = $CFLAGS_OPENMP
 
+LDFLAGS_NCURSES = $LDFLAGS_NCURSES
+LDFLAGS_NCURSESW = $LDFLAGS_NCURSESW
+
 ZSV_EXTRAS = $ZSV_EXTRAS
+
+ZSV_BUILD_SHEET = $ZSV_BUILD_SHEET
 
 $NO_HAVE
 $USE_LIBS
@@ -767,6 +793,12 @@ if [ "$LDFLAGS_TERMCAP" = "" ]; then
     echo "*  - termcap: no. \`pretty\` will use default width assumption   *"
 else
     echo "*  - termcap: yes                                                *"
+fi
+
+if [ "$ZSV_BUILD_SHEET" = "1" ]; then
+    echo "*  - build sheet feature: yes                                    *"
+else
+    echo "*  - build sheet feature: no                                     *"
 fi
 
 if [ "$HAVE_AVX512" = "1" ]; then
