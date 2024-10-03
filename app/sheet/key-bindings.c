@@ -1,7 +1,7 @@
 #include "key-bindings.h"
 
 #ifndef ZTV_CTRL
-#define ZTV_CTRL(c) ((c) & 037)
+#define ZTV_CTRL(c) ((c)&037)
 #endif
 
 // to do: support customizable bindings
