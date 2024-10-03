@@ -33,6 +33,8 @@ Optional features:
   --force-avx2            force compile with (no CPU check) or without -mavx2 [auto]
   --force-avx             force compile with (no CPU check) or without -mavx [auto]
   --force-sse2            force compile with (no CPU check) or without -msse2 [auto]
+  --enable-sheet          compile with 'sheet' feature (requires ncurses) [yes]
+  --ncurses-dynamic       compile without NCURSES_STATIC or NCURSESW_STATIC defines
   --enable-lto            compile with LTO (works with some but not all platforms/compilers) [no]
   --enable-whole-program  compile without -fwhole-program even if no -flto [yes]
   --enable-pie            build with position independent executables [auto]
@@ -221,7 +223,7 @@ tryflag () {
 }
 
 tryldflag () { # var, flag, other_arguments (optional)
-    printf "checking whether linker accepts %s... " "$2"
+    printf "checking whether linker accepts %s %s... " "$2" "$3"
     echo "int main(){return 0;}" > "$tmpc"
     if $CC $LDFLAGS "$2" $3 -o "$tmpo" "$tmpc" >/dev/null 2>&1 ; then
         printf "yes\n"
@@ -293,6 +295,7 @@ MANDIR='$(PREFIX)/share/man'
 
 MINIMAL=no
 
+TRY_SHEET=auto
 TRY_LTO=no
 TRY_WHOLE_PROGRAM=auto
 FORCE_AVX2=auto
@@ -304,6 +307,7 @@ usepie=auto
 usepic=auto
 usetermcap=auto
 
+NCURSES_DYNAMIC=
 for arg ; do
     case "$arg" in
         --help|-h) usage ;;
@@ -334,6 +338,12 @@ for arg ; do
         --force-sse2|--force-sse2=yes) FORCE_SSE2=yes;;
         --force-sse2=no) FORCE_SSE2=no;;
 
+        --ncurses-dynamic) NCURSES_DYNAMIC=1;;
+
+        --enable-sheet|--enable-sheet=yes) TRY_SHEET=yes;;
+        --enable-sheet=auto) TRY_SHEET=auto;;
+        --disable-sheet|--enable-sheet=no) TRY_SHEET=no;;
+        
         --enable-lto|--enable-lto=yes) TRY_LTO=yes;;
         --enable-lto|--enable-lto=auto) TRY_LTO=auto;;
         --disable-lto|--enable-lto=no) TRY_LTO=no;;
@@ -473,7 +483,6 @@ tryldflag LDFLAGS_TRY -Werror=unused-command-line-argument
 tryldflag LDFLAGS_TRY -Werror=ignored-optimization-argument
 
 CFLAGS_STD="-std=gnu11 -D_POSIX_C_SOURCE=200809L -U_XOPEN_SOURCE -D_XOPEN_SOURCE=700"
-# CFLAGS_OPT="-DNDEBUG"
 MINGW=0
 case "$host" in
     *-*freebsd*) CFLAGS_STD="$CFLAGS_STD -D_BSD_SOURCE -D__BSD_VISIBLE=1" ;;
@@ -503,6 +512,38 @@ tryflag CFLAGS_VECTORIZE_OPTIMIZED -fopt-info-vec-optimized
 tryflag CFLAGS_VECTORIZE_MISSED -fopt-info-vec-missed
 tryflag CFLAGS_VECTORIZE_ALL -fopt-info-vec-all
 tryflag CFLAGS_OPENMP -fopenmp
+
+if [ "$TRY_SHEET" != "no" ]; then
+    if tryldflag LDFLAGS_NCURSES -lncurses -L${PREFIX}/lib ; then
+        NCLIB=ncurses
+        if [ "NCURSES_DYNAMIC" != "" ] ; then
+            CFLAGS_NCURSES="-DHAVE_NCURSES -DNCURSES_STATIC"
+        else
+            CFLAGS_NCURSES=-DHAVE_NCURSES
+        fi
+    fi 
+    if tryldflag LDFLAGS_NCURSESW -lncursesw -L${PREFIX}/lib ; then
+        LDFLAGS_NCURSES="$LDFLAGS_NCURSES -lncursesw"
+        NCLIB="$NCLIB ncursesw"
+        if [ "$CFLAGS_NCURSES" = "" ]; then
+            if [ "NCURSES_DYNAMIC" != "" ] ; then
+                CFLAGS_NCURSES="-DHAVE_NCURSESW -DNCURSESW_STATIC"
+            else
+                CFLAGS_NCURSES="-DHAVE_NCURSESW"
+            fi
+        fi
+    fi
+    ZSV_BUILD_SHEET=1
+
+    if [ "$TRY_SHEET" = "yes" ] ; then
+        echo "Error: could not find either ncurses or ncursesw library; cannot build 'sheet' feature"
+        exit 1
+    fi
+    if [ "$LDFLAGS_NCURSES" = "" ] ; then
+        echo "Warning: could not find either ncurses or ncursesw library; cannot build 'sheet' feature"
+        ZSV_BUILD_SHEET=0
+    fi
+fi
 
 if test "$usepie" = "yes" ; then
     tryflag CFLAGS_PIE -fpie || tryflag CFLAGS_PIE -fPIE
@@ -556,8 +597,8 @@ if [ "$FORCE_SSE2" = "no" ]; then
     tryflag CFLAGS -mno-sse2
 elif [ "$FORCE_SSE2" = "yes" ] ; then
     CFLAGS_SSE=-msse2
-    if ! "$CC" --version | grep -i emcc >/dev/null; then
-        CFLAGS_SSE+= -msimd128 -experimental-wasm-simd
+    if "$CC" --version | grep -i emcc >/dev/null; then
+        CFLAGS_SSE="$CFLAGS_SSE -msimd128 -experimental-wasm-simd"
     fi
     if [ "$CROSS_COMPILING" = "no" ] ; then
         trycpusupport sse2 || echo "warning: sse2 forced but not supported on native CPU"
@@ -565,8 +606,8 @@ elif [ "$FORCE_SSE2" = "yes" ] ; then
 elif [ "$FORCE_SSE2" = "auto" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     if [ "$CFLAGS_SSE" = "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
         if trycpusupport sse2 && tryflag CFLAGS_SSE -msse2 ; then
-            if ! "$CC" --version | grep -i emcc >/dev/null; then
-               CFLAGS_SSE+= -msimd128 -experimental-wasm-simd
+            if "$CC" --version | grep -i emcc >/dev/null; then
+               CFLAGS_SSE="$CFLAGS_SSE -msimd128 -experimental-wasm-simd"
             fi
         fi
     fi
@@ -647,7 +688,7 @@ if [ "$usetermcap" = "yes" ] || [ "$usetermcap" = "auto" ] ; then
             fi
 fi
 
-if [ "$JQ_PREFIX" == "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/jq.h" ] ; then
+if [ "$JQ_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/jq.h" ] ; then
     JQ_PREFIX="$PREFIX"
 fi
 
@@ -744,7 +785,12 @@ CFLAGS_VECTORIZE_MISSED = $CFLAGS_VECTORIZE_MISSED
 CFLAGS_VECTORIZE_ALL = $CFLAGS_VECTORIZE_ALL
 CFLAGS_OPENMP = $CFLAGS_OPENMP
 
+LDFLAGS_NCURSES = $LDFLAGS_NCURSES
+CFLAGS_NCURSES = $CFLAGS_NCURSES
+
 ZSV_EXTRAS = $ZSV_EXTRAS
+
+ZSV_BUILD_SHEET = $ZSV_BUILD_SHEET
 
 $NO_HAVE
 $USE_LIBS
@@ -767,6 +813,13 @@ if [ "$LDFLAGS_TERMCAP" = "" ]; then
     echo "*  - termcap: no. \`pretty\` will use default width assumption   *"
 else
     echo "*  - termcap: yes                                                *"
+fi
+
+if [ "$ZSV_BUILD_SHEET" = "1" ]; then
+    echo "*  - build sheet feature: yes                                    *"
+    echo "*    ncurses library:     $NCLIB                                 *"
+else
+    echo "*  - build sheet feature: no                                     *"
 fi
 
 if [ "$HAVE_AVX512" = "1" ]; then

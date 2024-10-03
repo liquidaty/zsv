@@ -3,7 +3,6 @@
  * This file is part of zsv/lib, distributed under the license defined at
  * https://opensource.org/licenses/MIT
  */
-
 #include <zsv/utils/string.h>
 #include <zsv/utils/os.h>
 #include <zsv/utils/dirs.h>

@@ -758,7 +758,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return zsv_status_ok;
   }
 
-  int err = 0;
   char fixed_auto = 0;
   struct zsv_select_data data = {0};
   data.opts = opts;
@@ -863,9 +862,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       else
         data.sample_pct = d;
     } else if (!strcmp(argv[arg_i], "--prepend-header")) {
-      int err = 0;
-      data.prepend_header = zsv_next_arg(++arg_i, argc, argv, &err);
-      if (err)
+      int err1 = 0;
+      data.prepend_header = zsv_next_arg(++arg_i, argc, argv, &err1);
+      if (err1)
         stat = zsv_status_error;
     } else if (!strcmp(argv[arg_i], "--no-header"))
       data.no_header = 1;

@@ -26,6 +26,9 @@ The ZSV CLI can be compiled to virtually any target, including
 direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3
 conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste` and more.
 
+The ZSV CLI also includes `sheet`, an in-console interactive grid viewer
+that can be extended with your custom code for manipulating and viewing data.
+
 Pre-built CLI packages are available via `brew` and `nuget`.
 
 A pre-built library package is available for Node (`npm install zsv-lib`).
@@ -94,6 +97,7 @@ that implements the expected
 - Easy to use as a library in a few lines of code, via either pull or push
   parsing
 - Includes the `zsv` CLI with the following built-in commands:
+  - `sheet`, an in-console interactive and extendable grid viewer
   - `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
     `2db`, `stack`, `pretty`, `2tsv`, `paste`, `compare`, `jq`, `prop`, `rm`
   - easily [convert between CSV/JSON/sqlite3](docs/csv_json_sqlite.md)
@@ -244,6 +248,7 @@ needs.
 
 `zsv` comes with several built-in commands:
 
+- `sheet`: an in-console, interactive grid viewer
 - `echo`: read CSV from stdin and write it back out to stdout. This is mostly
   useful for demonstrating how to use the API and also how to create a plug-in,
   and has several uses beyond that including adding/removing BOM, cleaning up
