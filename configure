@@ -34,6 +34,7 @@ Optional features:
   --force-avx             force compile with (no CPU check) or without -mavx [auto]
   --force-sse2            force compile with (no CPU check) or without -msse2 [auto]
   --enable-sheet          compile with 'sheet' feature (requires ncurses) [yes]
+  --ncurses-dynamic       compile without NCURSES_STATIC or NCURSESW_STATIC defines
   --enable-lto            compile with LTO (works with some but not all platforms/compilers) [no]
   --enable-whole-program  compile without -fwhole-program even if no -flto [yes]
   --enable-pie            build with position independent executables [auto]
@@ -222,7 +223,7 @@ tryflag () {
 }
 
 tryldflag () { # var, flag, other_arguments (optional)
-    printf "checking whether linker accepts %s... " "$2"
+    printf "checking whether linker accepts %s %s... " "$2" "$3"
     echo "int main(){return 0;}" > "$tmpc"
     if $CC $LDFLAGS "$2" $3 -o "$tmpo" "$tmpc" >/dev/null 2>&1 ; then
         printf "yes\n"
@@ -306,6 +307,7 @@ usepie=auto
 usepic=auto
 usetermcap=auto
 
+NCURSES_DYNAMIC=
 for arg ; do
     case "$arg" in
         --help|-h) usage ;;
@@ -335,6 +337,8 @@ for arg ; do
 
         --force-sse2|--force-sse2=yes) FORCE_SSE2=yes;;
         --force-sse2=no) FORCE_SSE2=no;;
+
+        --ncurses-dynamic) NCURSES_DYNAMIC=1;;
 
         --enable-sheet|--enable-sheet=yes) TRY_SHEET=yes;;
         --enable-sheet=auto) TRY_SHEET=auto;;
@@ -479,7 +483,6 @@ tryldflag LDFLAGS_TRY -Werror=unused-command-line-argument
 tryldflag LDFLAGS_TRY -Werror=ignored-optimization-argument
 
 CFLAGS_STD="-std=gnu11 -D_POSIX_C_SOURCE=200809L -U_XOPEN_SOURCE -D_XOPEN_SOURCE=700"
-# CFLAGS_OPT="-DNDEBUG"
 MINGW=0
 case "$host" in
     *-*freebsd*) CFLAGS_STD="$CFLAGS_STD -D_BSD_SOURCE -D__BSD_VISIBLE=1" ;;
@@ -513,13 +516,21 @@ tryflag CFLAGS_OPENMP -fopenmp
 if [ "$TRY_SHEET" != "no" ]; then
     if tryldflag LDFLAGS_NCURSES -lncurses -L${PREFIX}/lib ; then
         NCLIB=ncurses
-        CFLAGS_NCURSES=-DHAVE_NCURSES
+        if [ "NCURSES_DYNAMIC" != "" ] ; then
+            CFLAGS_NCURSES="-DHAVE_NCURSES -DNCURSES_STATIC"
+        else
+            CFLAGS_NCURSES=-DHAVE_NCURSES
+        fi
     fi 
     if tryldflag LDFLAGS_NCURSESW -lncursesw -L${PREFIX}/lib ; then
         LDFLAGS_NCURSES="$LDFLAGS_NCURSES -lncursesw"
         NCLIB="$NCLIB ncursesw"
         if [ "$CFLAGS_NCURSES" = "" ]; then
-           CFLAGS_NCURSES=-DHAVE_NCURSESW
+            if [ "NCURSES_DYNAMIC" != "" ] ; then
+                CFLAGS_NCURSES="-DHAVE_NCURSESW -DNCURSESW_STATIC"
+            else
+                CFLAGS_NCURSES="-DHAVE_NCURSESW"
+            fi
         fi
     fi
     ZSV_BUILD_SHEET=1

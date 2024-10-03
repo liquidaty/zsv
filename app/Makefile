@@ -101,14 +101,13 @@ ifeq ($(WIN),0)
       CFLAGS_EXE+= -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2 -s PTHREAD_POOL_SIZE=8
     endif
   endif
-  CFLAGS_SETENV=
 else
   BUILD_SUBDIR=win/${DBG_SUBDIR}
   EXE=.exe
-  CFLAGS+= -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE
+  CFLAGS+= -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE
   CFLAGS+= -Wl,--strip-all
   CONFIGURE_HOST=x86_64-w64-mingw32
-  CFLAGS_SETENV=-Dsetenv\(a,b,c\)=_putenv_s\(a,b\)
+  CFLAGS+=-Dsetenv\(a,b,c\)=_putenv_s\(a,b\)
 endif
 
 JQ_CONFIGURE_HOST=
@@ -191,6 +190,7 @@ CLI_SOURCES=echo select desc count paste 2tsv pretty sql flatten 2json serialize
 ifeq ($(ZSV_BUILD_SHEET),1)
   SOURCES+=sheet
   CLI_SOURCES+=sheet
+  CFLAGS+=-DZSV_BUILD_SHEET
   CFLAGS+=${CFLAGS_NCURSES}
   LDFLAGS+=${LDFLAGS_NCURSES}
 endif
@@ -405,7 +405,7 @@ lib-jq: ${JQ_LIB}
 
 ${JQ_BUNDLE_LIB}: ${JQ_SRC} # -D_REENTRANT needed for clang to not break
 	cd ${JQ_SRC} \
-	&& CC="${CC}" CFLAGS="${CFLAGS} -D_REENTRANT ${CFLAGS_SETENV}" ./configure \
+	&& CC="${CC}" CFLAGS="${CFLAGS} -D_REENTRANT" ./configure \
 	    --prefix="${JQ_PREFIX}" \
 	    --disable-maintainer-mode \
 	    --without-oniguruma \
