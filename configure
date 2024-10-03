@@ -513,10 +513,10 @@ tryflag CFLAGS_OPENMP -fopenmp
 if [ "$TRY_SHEET" != "no" ]; then
     if tryldflag LDFLAGS_NCURSES -lncurses -L${PREFIX}/lib ; then
         NCLIB=ncurses
-        CFLAGS+=-DHAVE_NCURSES
+        CFLAGS_NCURSES=-DHAVE_NCURSES
     elif tryldflag LDFLAGS_NCURSES -lncursesw -L${PREFIX}/lib ; then
         NCLIB=ncursesw
-        CFLAGS+=-DHAVE_NCURSESW
+        CFLAGS_NCURSES=-DHAVE_NCURSESW
     fi 
     ZSV_BUILD_SHEET=1
 
@@ -583,7 +583,7 @@ if [ "$FORCE_SSE2" = "no" ]; then
 elif [ "$FORCE_SSE2" = "yes" ] ; then
     CFLAGS_SSE=-msse2
     if ! "$CC" --version | grep -i emcc >/dev/null; then
-        CFLAGS_SSE+= -msimd128 -experimental-wasm-simd
+        CFLAGS_SSE="$CFLAGS_SSE -msimd128 -experimental-wasm-simd"
     fi
     if [ "$CROSS_COMPILING" = "no" ] ; then
         trycpusupport sse2 || echo "warning: sse2 forced but not supported on native CPU"
@@ -592,7 +592,7 @@ elif [ "$FORCE_SSE2" = "auto" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     if [ "$CFLAGS_SSE" = "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
         if trycpusupport sse2 && tryflag CFLAGS_SSE -msse2 ; then
             if ! "$CC" --version | grep -i emcc >/dev/null; then
-               CFLAGS_SSE+= -msimd128 -experimental-wasm-simd
+               CFLAGS_SSE="$CFLAGS_SSE -msimd128 -experimental-wasm-simd"
             fi
         fi
     fi
@@ -673,7 +673,7 @@ if [ "$usetermcap" = "yes" ] || [ "$usetermcap" = "auto" ] ; then
             fi
 fi
 
-if [ "$JQ_PREFIX" == "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/jq.h" ] ; then
+if [ "$JQ_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/jq.h" ] ; then
     JQ_PREFIX="$PREFIX"
 fi
 
@@ -771,6 +771,7 @@ CFLAGS_VECTORIZE_ALL = $CFLAGS_VECTORIZE_ALL
 CFLAGS_OPENMP = $CFLAGS_OPENMP
 
 LDFLAGS_NCURSES = $LDFLAGS_NCURSES
+CFLAGS_NCURSES = $CFLAGS_NCURSES
 
 ZSV_EXTRAS = $ZSV_EXTRAS
 

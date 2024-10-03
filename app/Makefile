@@ -191,7 +191,8 @@ CLI_SOURCES=echo select desc count paste 2tsv pretty sql flatten 2json serialize
 ifeq ($(ZSV_BUILD_SHEET),1)
   SOURCES+=sheet
   CLI_SOURCES+=sheet
-  LDFLAGS += ${LDFLAGS_NCURSES}
+  CFLAGS+=${CFLAGS_NCURSES}
+  LDFLAGS+=${LDFLAGS_NCURSES}
 endif
 
 CFLAGS+= -DUSE_JQ
