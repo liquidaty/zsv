@@ -50,12 +50,12 @@ app/external
 install.sh
 .artifacts
 .rpmbuild
-amd64-linux-gcc
-amd64-linux-clang
-amd64-windows-mingw
-amd64-macosx-clang
-amd64-freebsd-gcc
+amd64-linux-*
+amd64-windows-*
+amd64-macosx-*
+amd64-freebsd-*
 jq
 nuget-feed
 homebrew-zsv
 cppcheck*
+tmp
