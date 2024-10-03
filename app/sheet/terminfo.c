@@ -12,13 +12,7 @@ static int terminfo_ok() {
 
   // Check some default locations
   const char *default_paths[] = {
-    "/usr/share/terminfo",
-    "/lib/terminfo",
-    "/usr/lib/terminfo",
-    "/etc/terminfo",
-    "/usr/local/share/terminfo",
-    NULL
-  };
+    "/usr/share/terminfo", "/lib/terminfo", "/usr/lib/terminfo", "/etc/terminfo", "/usr/local/share/terminfo", NULL};
 
   for (int i = 0; default_paths[i] != NULL; i++) {
     if (access(default_paths[i], R_OK) == 0) {

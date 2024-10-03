@@ -29,18 +29,15 @@ static size_t is_newline(const unsigned char *utf8, int wchar_len) {
   // add multibyte newline check?
 }
 
-static size_t
-utf8_bytes_up_to_max_width_and_replace_newlines(unsigned char *str1,
-                                                size_t len1, size_t max_width,
-                                                size_t *used_width, int *err) {
+static size_t utf8_bytes_up_to_max_width_and_replace_newlines(unsigned char *str1, size_t len1, size_t max_width,
+                                                              size_t *used_width, int *err) {
   utf8proc_int32_t codepoint1;
   utf8proc_ssize_t bytes_read1;
   size_t width_so_far = *used_width = 0;
   int this_char_width = 0;
   size_t bytes_so_far = 0;
   while (bytes_so_far < len1) {
-    bytes_read1 = utf8proc_iterate((utf8proc_uint8_t *)str1 + bytes_so_far,
-                                   len1, &codepoint1);
+    bytes_read1 = utf8proc_iterate((utf8proc_uint8_t *)str1 + bytes_so_far, len1, &codepoint1);
     if (!bytes_read1) {
       bytes_read1 = 1;
       *err = 1;

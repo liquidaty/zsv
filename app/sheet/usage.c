@@ -1,10 +1,6 @@
 
 const char *zsv_sheet_usage_msg[] = {
-  APPNAME ": opens interactive spreadsheet-like viewer in the console",
-  "",
-  "Usage: " APPNAME " filename",
-  "",
-  NULL,
+  APPNAME ": opens interactive spreadsheet-like viewer in the console", "", "Usage: " APPNAME " filename", "", NULL,
 };
 
 static void zsv_sheet_usage() {

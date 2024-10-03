@@ -11,13 +11,13 @@
 
 #define _XOPEN_SOURCE_EXTENDED
 #if defined(WIN32) || defined(_WIN32)
-# include <ncurses/ncurses.h>
+#include <ncurses/ncurses.h>
 #else
-# ifdef HAVE_NCURSES
-#  include <curses.h>
-# else
-#  include <ncursesw/curses.h>
-# endif
+#ifdef HAVE_NCURSES
+#include <curses.h>
+#else
+#include <ncursesw/curses.h>
+#endif
 #endif
 
 #include <locale.h>
@@ -49,23 +49,15 @@ read_data(char dest[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN],
           struct ztv_opts *opts);
 */
 
-void display_buffer_subtable(
-    char buffer[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN],
-    size_t start_row,
-    size_t buffer_used_row_count,
-    size_t start_col,
-    size_t max_col_count,
-    size_t cursor_row,
-    size_t cursor_col,
-    size_t input_header_span,
-    struct display_dims *ddims
-                             );
+void display_buffer_subtable(char buffer[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN], size_t start_row,
+                             size_t buffer_used_row_count, size_t start_col, size_t max_col_count, size_t cursor_row,
+                             size_t cursor_col, size_t input_header_span, struct display_dims *ddims);
 
 #include "sheet/utf8-width.c"
 #include "sheet/read-data.c"
 #include "sheet/key-bindings.c"
 
-char ztv_status_text[256] = { 0 };
+char ztv_status_text[256] = {0};
 void ztv_set_status(struct display_dims *ddims, const char *fmt, ...);
 
 void get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row) {
@@ -83,13 +75,12 @@ void get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_
   while (1) {
     ch = getch(); // Read a character from the user
     if (ch == 27) {
-      buff[0] = '\0'; // Clear the buffer or handle as needed
-      break;          // Exit the loop
-    } else if (ch == '\n' || ch == '\r') { // ENTER key
-      buff[idx] = '\0';                    // Null-terminate the string
-      break;                               // Exit the loop
-    } else if (ch == KEY_BACKSPACE || ch == 127 ||
-               ch == '\b') { // BACKSPACE key
+      buff[0] = '\0';                                            // Clear the buffer or handle as needed
+      break;                                                     // Exit the loop
+    } else if (ch == '\n' || ch == '\r') {                       // ENTER key
+      buff[idx] = '\0';                                          // Null-terminate the string
+      break;                                                     // Exit the loop
+    } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') { // BACKSPACE key
       if (idx > 0) {
         idx--;
         buff[idx] = '\0';
@@ -106,8 +97,7 @@ void get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_
   }
 }
 
-size_t ztv_get_input_raw_row(struct ztv_rowcol *input_offset, struct ztv_rowcol *buff_offset,
-                             size_t cursor_row) {
+size_t ztv_get_input_raw_row(struct ztv_rowcol *input_offset, struct ztv_rowcol *buff_offset, size_t cursor_row) {
   return input_offset->row + buff_offset->row + cursor_row;
 }
 
@@ -116,22 +106,15 @@ size_t ztv_get_input_raw_row(struct ztv_rowcol *input_offset, struct ztv_rowcol 
 char input_data[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN] = {0};
 
 // ztv_handle_find_next: return non-zero if a result was found
-char ztv_handle_find_next(const char *filename, const char *row_filter, const char *needle,
-                          struct zsv_opts *zsv_opts, struct ztv_opts *ztv_opts,
-                          size_t header_span, struct ztv_rowcol *input_offset, struct ztv_rowcol *buff_offset,
-                          struct input_dimensions *input_dims, size_t *cursor_rowp, struct display_dims *ddims, int *update_buffer,
-                          struct zsv_prop_handler *custom_prop_handler,
-                          const char *opts_used
-                          ) {
-  if(ztv_find_next(filename, row_filter, needle, zsv_opts, ztv_opts,
-                   header_span, input_offset, buff_offset, *cursor_rowp, input_dims,
-                   custom_prop_handler, opts_used) > 0) {
-    *update_buffer = ztv_goto_input_raw_row(ztv_opts->found_rownum,
-                                            header_span, input_offset, buff_offset,
-                                            input_dims, cursor_rowp,
-                                            ddims,
-                                            (size_t)-1
-                                            );
+char ztv_handle_find_next(const char *filename, const char *row_filter, const char *needle, struct zsv_opts *zsv_opts,
+                          struct ztv_opts *ztv_opts, size_t header_span, struct ztv_rowcol *input_offset,
+                          struct ztv_rowcol *buff_offset, struct input_dimensions *input_dims, size_t *cursor_rowp,
+                          struct display_dims *ddims, int *update_buffer, struct zsv_prop_handler *custom_prop_handler,
+                          const char *opts_used) {
+  if (ztv_find_next(filename, row_filter, needle, zsv_opts, ztv_opts, header_span, input_offset, buff_offset,
+                    *cursor_rowp, input_dims, custom_prop_handler, opts_used) > 0) {
+    *update_buffer = ztv_goto_input_raw_row(ztv_opts->found_rownum, header_span, input_offset, buff_offset, input_dims,
+                                            cursor_rowp, ddims, (size_t)-1);
     return 1;
   }
   ztv_set_status(ddims, "Not found");
@@ -139,7 +122,7 @@ char ztv_handle_find_next(const char *filename, const char *row_filter, const ch
 }
 
 struct display_dims get_display_dimensions(size_t header_span, size_t footer_span) {
-  struct display_dims dims = { 0 };
+  struct display_dims dims = {0};
   int max_y, max_x;
   getmaxyx(stdscr, max_y, max_x);
 
@@ -162,10 +145,10 @@ size_t display_data_rowcount(struct display_dims *dims) {
 
 void ztv_set_status(struct display_dims *ddims, const char *fmt, ...) {
   va_list argv;
-  va_start( argv, fmt );
+  va_start(argv, fmt);
   int n = vsnprintf(ztv_status_text, sizeof(ztv_status_text), fmt, argv);
-  va_end( argv );
-  if(n < (int)sizeof(ztv_status_text)) {
+  va_end(argv);
+  if (n < (int)sizeof(ztv_status_text)) {
     // clear the entire line
     mvprintw(ddims->rows - ddims->footer_span, 0, "%-*s", sizeof(ztv_status_text), "");
 
@@ -196,7 +179,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   assert(ZTV_MAX_CELL_LEN > ZTV_CELL_DISPLAY_WIDTH);
   setlocale(LC_ALL, "");
-  if(!terminfo_ok()) {
+  if (!terminfo_ok()) {
     fprintf(stderr, "Warning: unable to set or detect TERMINFO\n");
     return 1;
   }
@@ -204,9 +187,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   const char *filename = argv[1];
   char *row_filter = NULL;
   char *find = NULL;
-  struct input_dimensions file_dimensions = { 0 };
-  struct input_dimensions input_dimensions = { 0 };
-  struct input_dimensions filter_dimensions = { 0 };
+  struct input_dimensions file_dimensions = {0};
+  struct input_dimensions input_dimensions = {0};
+  struct input_dimensions filter_dimensions = {0};
 #ifdef ZTV_USE_THREADS
   pthread_mutex_t input_mutex = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_t filter_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -219,16 +202,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   // buff_offset: location within the buffer from which the data is
   // displayed on the screen
-  struct ztv_rowcol buff_offset = { 0 };
+  struct ztv_rowcol buff_offset = {0};
 
   size_t buff_used_rows = 0;
   size_t header_span = 0; // number of rows that comprise the header
-  struct ztv_opts ztv_opts = { 0 };
+  struct ztv_opts ztv_opts = {0};
   int err;
-  if((err = read_data(input_data, filename, &opts, &file_dimensions.col_count,
-                      NULL, 0, 0, 0, NULL, &ztv_opts, custom_prop_handler, opts_used, &buff_used_rows)) != 0
-     || !buff_used_rows) {
-    if(err)
+  if ((err = read_data(input_data, filename, &opts, &file_dimensions.col_count, NULL, 0, 0, 0, NULL, &ztv_opts,
+                       custom_prop_handler, opts_used, &buff_used_rows)) != 0 ||
+      !buff_used_rows) {
+    if (err)
       perror(filename);
     else
       fprintf(stderr, "%s: no data found", filename);
@@ -242,9 +225,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   cbreak();
   struct display_dims display_dims = get_display_dimensions(1, 1);
 
-  get_data_index_async(&file_dimensions.index, filename, &opts, NULL,
-                       &file_dimensions.row_count,
-                       custom_prop_handler, opts_used
+  get_data_index_async(&file_dimensions.index, filename, &opts, NULL, &file_dimensions.row_count, custom_prop_handler,
+                       opts_used
 #ifdef ZTV_USE_THREADS
                        ,
                        &input_mutex
@@ -264,20 +246,20 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   while ((ztvch = ztv_key_binding(getch())) != ztv_key_quit) {
     ztv_set_status(&display_dims, "");
     int update_buffer = 0;
-    switch(ztvch) {
+    switch (ztvch) {
     case ztv_key_move_top:
-      update_buffer = ztv_goto_input_raw_row(1, header_span, &input_offset, &buff_offset,
-                                             &input_dimensions, &cursor_row,
-                                             &display_dims, display_dims.header_span);
+      update_buffer = ztv_goto_input_raw_row(1, header_span, &input_offset, &buff_offset, &input_dimensions,
+                                             &cursor_row, &display_dims, display_dims.header_span);
       break;
     case ztv_key_move_bottom:
-      if(input_dimensions.row_count == 0) continue;
-      if(input_dimensions.row_count <= display_dims.rows - display_dims.footer_span)
+      if (input_dimensions.row_count == 0)
+        continue;
+      if (input_dimensions.row_count <= display_dims.rows - display_dims.footer_span)
         cursor_row = input_dimensions.row_count - 1;
       else {
-        update_buffer = ztv_goto_input_raw_row(input_dimensions.row_count-1, header_span, &input_offset, &buff_offset,
-                                               &input_dimensions, &cursor_row,
-                                               &display_dims, display_dims.rows - display_dims.header_span - 1);
+        update_buffer = ztv_goto_input_raw_row(input_dimensions.row_count - 1, header_span, &input_offset, &buff_offset,
+                                               &input_dimensions, &cursor_row, &display_dims,
+                                               display_dims.rows - display_dims.header_span - 1);
       }
       break;
     case ztv_key_move_first_col:
@@ -285,35 +267,31 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       buff_offset.col = 0;
       break;
     case ztv_key_pg_up:
-      if(input_dimensions.row_count <= header_span)
+      if (input_dimensions.row_count <= header_span)
         continue; // no data
       else {
         size_t current = ztv_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
-        if(current <= display_data_rowcount(&display_dims) + header_span)
+        if (current <= display_data_rowcount(&display_dims) + header_span)
           continue; // already at top
         else {
           size_t target = current - display_data_rowcount(&display_dims);
-          if(target >= input_dimensions.row_count)
+          if (target >= input_dimensions.row_count)
             target = input_dimensions.row_count > 0 ? input_dimensions.row_count - 1 : 0;
-          update_buffer = ztv_goto_input_raw_row(target, header_span, &input_offset, &buff_offset,
-                                                 &input_dimensions, &cursor_row,
-                                                 &display_dims, cursor_row);
+          update_buffer = ztv_goto_input_raw_row(target, header_span, &input_offset, &buff_offset, &input_dimensions,
+                                                 &cursor_row, &display_dims, cursor_row);
         }
       }
       break;
-    case ztv_key_pg_down:
-      {
-        size_t current = ztv_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
-        if(current >= input_dimensions.row_count - display_data_rowcount(&display_dims))
-          continue; // already at bottom
-        else {
-          size_t target = current + display_data_rowcount(&display_dims);
-          update_buffer = ztv_goto_input_raw_row(target, header_span, &input_offset, &buff_offset,
-                                                 &input_dimensions, &cursor_row,
-                                                 &display_dims, cursor_row);
-        }
+    case ztv_key_pg_down: {
+      size_t current = ztv_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
+      if (current >= input_dimensions.row_count - display_data_rowcount(&display_dims))
+        continue; // already at bottom
+      else {
+        size_t target = current + display_data_rowcount(&display_dims);
+        update_buffer = ztv_goto_input_raw_row(target, header_span, &input_offset, &buff_offset, &input_dimensions,
+                                               &cursor_row, &display_dims, cursor_row);
       }
-      break;
+    } break;
     case ztv_key_move_last_col:
       // to do: directly set cursor_col and buff_offset.col
       while (cursor_right(display_dims.columns, ZTV_CELL_DISPLAY_WIDTH,
@@ -321,29 +299,22 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
                           &cursor_col, &buff_offset.col) > 0)
         ;
       break;
-    case ztv_key_move_up:
-      {
-        size_t current = ztv_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
-        if(current > header_span) {
-          update_buffer = ztv_goto_input_raw_row(current-1, header_span,
-                                                 &input_offset, &buff_offset, &input_dimensions,
-                                                 &cursor_row, &display_dims,
-                                                 cursor_row > 0 ? cursor_row - 1 : 0);
-        } else if(cursor_row > 0) {
-          cursor_row--;
-        }
+    case ztv_key_move_up: {
+      size_t current = ztv_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
+      if (current > header_span) {
+        update_buffer = ztv_goto_input_raw_row(current - 1, header_span, &input_offset, &buff_offset, &input_dimensions,
+                                               &cursor_row, &display_dims, cursor_row > 0 ? cursor_row - 1 : 0);
+      } else if (cursor_row > 0) {
+        cursor_row--;
       }
-      break;
-    case ztv_key_move_down:
-      {
-        size_t current = ztv_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
-        if(current >= input_dimensions.row_count - 1)
-          continue; // already at bottom
-        update_buffer = ztv_goto_input_raw_row(current+1, header_span,
-                                               &input_offset, &buff_offset, &input_dimensions, &cursor_row,
-                                               &display_dims, cursor_row + 1);
-      }
-      break;
+    } break;
+    case ztv_key_move_down: {
+      size_t current = ztv_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
+      if (current >= input_dimensions.row_count - 1)
+        continue; // already at bottom
+      update_buffer = ztv_goto_input_raw_row(current + 1, header_span, &input_offset, &buff_offset, &input_dimensions,
+                                             &cursor_row, &display_dims, cursor_row + 1);
+    } break;
     case ztv_key_move_left:
       if (cursor_col > 0) {
         cursor_col--;
@@ -353,8 +324,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       break;
     case ztv_key_move_right:
       cursor_right(display_dims.columns, ZTV_CELL_DISPLAY_WIDTH,
-                   input_dimensions.col_count > ZTV_MAX_COLS ? ZTV_MAX_COLS : input_dimensions.col_count,
-                   &cursor_col, &buff_offset.col);
+                   input_dimensions.col_count > ZTV_MAX_COLS ? ZTV_MAX_COLS : input_dimensions.col_count, &cursor_col,
+                   &buff_offset.col);
       break;
     case ztv_key_escape: // escape
       if (row_filter) {
@@ -369,11 +340,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
       continue;
     case ztv_key_find_next:
-      if(find) {
-        if(!ztv_handle_find_next(filename, row_filter, find, &opts, &ztv_opts,
-                                 header_span, &input_offset, &buff_offset,
-                                 &input_dimensions, &cursor_row, &display_dims, &update_buffer,
-                                 custom_prop_handler, opts_used))
+      if (find) {
+        if (!ztv_handle_find_next(filename, row_filter, find, &opts, &ztv_opts, header_span, &input_offset,
+                                  &buff_offset, &input_dimensions, &cursor_row, &display_dims, &update_buffer,
+                                  custom_prop_handler, opts_used))
           continue;
       }
       break;
@@ -382,10 +352,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       if (*cmdbuff != '\0') {
         free(find);
         find = strdup(cmdbuff);
-        if(!ztv_handle_find_next(filename, row_filter, find, &opts, &ztv_opts,
-                                 header_span, &input_offset, &buff_offset,
-                                 &input_dimensions, &cursor_row, &display_dims, &update_buffer,
-                                 custom_prop_handler, opts_used))
+        if (!ztv_handle_find_next(filename, row_filter, find, &opts, &ztv_opts, header_span, &input_offset,
+                                  &buff_offset, &input_dimensions, &cursor_row, &display_dims, &update_buffer,
+                                  custom_prop_handler, opts_used))
           continue;
       }
       break;
@@ -397,23 +366,22 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           free(row_filter);
           row_filter = NULL;
         }
-        if(row_filter) {
+        if (row_filter) {
           size_t found = 0;
-          if(read_data(input_data, filename, &opts, &filter_dimensions.col_count, row_filter,
-                       0, 0, header_span, NULL, &ztv_opts, custom_prop_handler, opts_used, &found)) {
+          if (read_data(input_data, filename, &opts, &filter_dimensions.col_count, row_filter, 0, 0, header_span, NULL,
+                        &ztv_opts, custom_prop_handler, opts_used, &found)) {
             filter_dimensions.row_count = 0;
             ztv_set_status(&display_dims, "Unexpected error!"); // to do: better error message
             continue;
           } else if (found > 1) {
             buff_used_rows = found;
-            get_data_index_async(&filter_dimensions.index, filename, &opts, row_filter,
-                                 &filter_dimensions.row_count,
+            get_data_index_async(&filter_dimensions.index, filename, &opts, row_filter, &filter_dimensions.row_count,
                                  custom_prop_handler, opts_used
 #ifdef ZTV_USE_THREADS
                                  ,
                                  &filter_mutex
 #endif
-                                 );
+            );
             memcpy(&input_dimensions, &filter_dimensions, sizeof(input_dimensions));
             // input_offset.row = header_span;
             input_offset.row = 0;
@@ -429,23 +397,21 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       break;
     }
     if (update_buffer) {
-      if(read_data(input_data, filename, &opts, NULL, row_filter,
-                input_offset.row, input_offset.col, header_span,
-                row_filter ? filter_dimensions.index : file_dimensions.index, &ztv_opts,
-                   custom_prop_handler, opts_used, &buff_used_rows)) {
+      if (read_data(input_data, filename, &opts, NULL, row_filter, input_offset.row, input_offset.col, header_span,
+                    row_filter ? filter_dimensions.index : file_dimensions.index, &ztv_opts, custom_prop_handler,
+                    opts_used, &buff_used_rows)) {
         ztv_set_status(&display_dims, "Unexpected error!"); // to do: better error message
         continue;
-      } else if(row_filter)
+      } else if (row_filter)
         memcpy(&input_dimensions, &filter_dimensions, sizeof(input_dimensions));
       else
         memcpy(&input_dimensions, &file_dimensions, sizeof(input_dimensions));
     }
-    if(filter_dimensions.row_count)
+    if (filter_dimensions.row_count)
       ztv_set_status(&display_dims, "(%zu filtered rows) ", filter_dimensions.row_count - 1);
     display_buffer_subtable(input_data, buff_offset.row, buff_used_rows, buff_offset.col,
                             input_dimensions.col_count > ZTV_MAX_COLS ? ZTV_MAX_COLS : input_dimensions.col_count,
-                            cursor_row, cursor_col, header_span,
-                            &display_dims);
+                            cursor_row, cursor_col, header_span, &display_dims);
   }
 
   endwin();
@@ -459,17 +425,15 @@ void display_cell(char *str, int row, int col) {
   size_t len = strlen(str);
   if (has_multibyte_char(str, ZTV_CELL_DISPLAY_WIDTH) == 0) {
     int ch = str[ZTV_CELL_DISPLAY_WIDTH - 1];
-    str[ZTV_CELL_DISPLAY_WIDTH - 1] =
-        '\0'; // ensure a blank space between cells
-    mvprintw(row, col * ZTV_CELL_DISPLAY_WIDTH, "%-*s", ZTV_CELL_DISPLAY_WIDTH,
-             str);
+    str[ZTV_CELL_DISPLAY_WIDTH - 1] = '\0'; // ensure a blank space between cells
+    mvprintw(row, col * ZTV_CELL_DISPLAY_WIDTH, "%-*s", ZTV_CELL_DISPLAY_WIDTH, str);
     str[ZTV_CELL_DISPLAY_WIDTH - 1] = ch;
   } else {
     size_t used_width;
     int err = 0;
     unsigned char *s = (unsigned char *)str;
-    size_t nbytes = utf8_bytes_up_to_max_width_and_replace_newlines(
-        s, len, ZTV_CELL_DISPLAY_WIDTH - 2, &used_width, &err);
+    size_t nbytes =
+      utf8_bytes_up_to_max_width_and_replace_newlines(s, len, ZTV_CELL_DISPLAY_WIDTH - 2, &used_width, &err);
     // extract the substring up to nbytes
     char *substring = malloc(nbytes + 1);
     if (!substring) {
@@ -485,8 +449,7 @@ void display_cell(char *str, int row, int col) {
     mbstate_t state;
     memset(&state, 0, sizeof(state));
     const char *p = substring;
-    size_t wlen =
-        mbsrtowcs(wsubstring, &p, sizeof(wsubstring) / sizeof(wchar_t), &state);
+    size_t wlen = mbsrtowcs(wsubstring, &p, sizeof(wsubstring) / sizeof(wchar_t), &state);
     if (wlen == (size_t)-1) {
       fprintf(stderr, "Unable to convert to wide chars: %s\n", str);
       free(substring);
@@ -505,17 +468,9 @@ void display_cell(char *str, int row, int col) {
   }
 }
 
-void display_buffer_subtable(
-    char buffer[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN],
-    size_t start_row,
-    size_t buffer_used_row_count,
-    size_t start_col,
-    size_t max_col_count,
-    size_t cursor_row,
-    size_t cursor_col,
-    size_t input_header_span,
-    struct display_dims *ddims
-                             ) {
+void display_buffer_subtable(char buffer[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN], size_t start_row,
+                             size_t buffer_used_row_count, size_t start_col, size_t max_col_count, size_t cursor_row,
+                             size_t cursor_col, size_t input_header_span, struct display_dims *ddims) {
   erase(); // use erase() instead of clear() to avoid changes being saved to
            // screen buffer history
   const size_t DATA_START_ROW = input_header_span;
@@ -560,13 +515,13 @@ void display_buffer_subtable(
     }
   }
 
-  if(cursor_value) {
-    if(!*ztv_status_text)
+  if (cursor_value) {
+    if (!*ztv_status_text)
       sprintf(ztv_status_text, "? for help ");
     ztv_set_status(ddims, ztv_status_text);
     mvprintw(ddims->rows - ddims->footer_span, strlen(ztv_status_text), "%s", cursor_value);
   } else {
-    if(!*ztv_status_text)
+    if (!*ztv_status_text)
       sprintf(ztv_status_text, "? for help ");
     ztv_set_status(ddims, ztv_status_text);
   }
