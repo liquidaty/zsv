@@ -113,6 +113,16 @@ You can also download pre-built binaries and packages from
 [Actions](https://github.com/liquidaty/zsv/actions) for the latest commits and
 PRs but these are retained only for limited days.
 
+> [!NOTE]
+>
+> After `v0.3.9-alpha`, all package artifacts will be properly
+> [attested](https://github.blog/news-insights/product-news/introducing-artifact-attestations-now-in-public-beta/).
+> To verify, you can use [GitHub CLI](https://cli.github.com/) like this:
+>
+> ```shell
+> gh attestation verify <downloaded-artifact> --repo liquidaty/zsv
+> ```
+
 #### macOS
 
 ...via Homebrew:
