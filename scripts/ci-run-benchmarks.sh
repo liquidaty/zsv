@@ -55,6 +55,11 @@ done
 
 ls -Gghl "$TOOLS_DIR"
 
+COUNT_OUTPUT="count.out"
+SELECT_OUTPUT="select.out"
+
+rm -f "$COUNT_OUTPUT" "$SELECT_OUTPUT"
+
 RUNS=6
 
 echo "[INF] Running count benchmarks..."
@@ -69,9 +74,11 @@ for TOOL in zsv xsv tsv; do
   fi
 
   I=1
-  while [ "$I" -ne "$RUNS" ]; do
-    printf "%d | %s : " "$I" "$TOOL"
-    (time $CMD <"$CSV" >/dev/null) 2>&1 | xargs
+  while [ "$I" -le "$RUNS" ]; do
+    {
+      printf "%d | %s : " "$I" "$TOOL"
+      (time $CMD <"$CSV" >/dev/null) 2>&1 | xargs
+    } | tee -a "$COUNT_OUTPUT"
     I=$((I + 1))
   done
 done
@@ -88,13 +95,32 @@ for TOOL in zsv xsv tsv; do
   fi
 
   I=1
-  while [ "$I" -ne "$RUNS" ]; do
-    printf "%d | %s : " "$I" "$TOOL"
-    (time $CMD <"$CSV" >/dev/null) 2>&1 | xargs
+  while [ "$I" -le "$RUNS" ]; do
+    {
+      printf "%d | %s : " "$I" "$TOOL"
+      (time $CMD <"$CSV" >/dev/null) 2>&1 | xargs
+    } | tee -a "$SELECT_OUTPUT"
     I=$((I + 1))
   done
 done
 
 cd ..
+
+# GitHub Actions
+if [ "$CI" = true ]; then
+  {
+    echo '# Benchmarks'
+    echo
+    echo '## count'
+    echo '```'
+    cat "$COUNT_OUTPUT"
+    echo '```'
+    echo
+    echo '## select'
+    echo '```'
+    cat "$SELECT_OUTPUT"
+    echo '```'
+  } >>"$GITHUB_STEP_SUMMARY"
+fi
 
 echo "[INF] --- [DONE] ---"
