@@ -173,7 +173,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   if (argc < 2) {
-    fprintf(stderr, "TO DO! work with no input file\n");
+    fprintf(stderr, "Please specify an input file\n");
     return 1;
   }
 
