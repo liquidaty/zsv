@@ -694,15 +694,18 @@ if [ "$usetermcap" = "yes" ] || [ "$usetermcap" = "auto" ] ; then
             fi
 fi
 
-if [ "$JQ_PREFIX" = "" ] ; then
+if [ "$JQ_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/jq.h" ] ; then
     JQ_PREFIX="$PREFIX"
 fi
 
-if ! tryldflag LDFLAGS_JQ -ljq -L${JQ_PREFIX}/lib ; then
-    echo "Error: Failed to compile with -ljq and -L${JQ_PREFIX}/lib"
-    exit 1
-elif [ "$JQ_PREFIX" != "$PREFIX" ]; then
-    LDFLAGS_JQ="$LDFLAGS_JQ -L$JQ_PREFIX/lib"
+if [ "$JQ_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
+    echo "checking --prefix-jq ${JQ_PREFIX}"
+    if ! tryldflag LDFLAGS_JQ -ljq -L${JQ_PREFIX}/lib ; then
+        echo "Error: Failed to compile with -ljq and -L${JQ_PREFIX}/lib"
+        exit 1
+    elif [ "$JQ_PREFIX" != "$PREFIX" ]; then
+        LDFLAGS_JQ="$LDFLAGS_JQ -L$JQ_PREFIX/lib"
+    fi
 fi
 
 tryldflag LDFLAGS_JQ -lm
