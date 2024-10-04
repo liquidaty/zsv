@@ -198,8 +198,12 @@ endif
 CFLAGS+= -DUSE_JQ
 
 STATIC_LIB_FLAGS=
-ifneq ($(STATIC_LIBS),)
+ifeq ($(STATIC_BUILD),1)
   STATIC_LIB_FLAGS=${LDFLAGS_STATIC}
+else
+  ifneq ($(STATIC_LIBS),)
+    STATIC_LIB_FLAGS=${LDFLAGS_STATIC}
+  endif
 endif
 
 STANDALONE_PFX=${BUILD_DIR}/bin/zsv_
@@ -277,9 +281,10 @@ MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -I${JQ_INCLUDE_DIR}
 MORE_LIBS+=${JQ_LIB} ${LDFLAGS_JQ}
 
 help:
-	@echo "To build: ${MAKE} [DEBUG=1] [clean] [clean-all] [BINDIR=${BINDIR}] [JQ_PREFIX=/usr/local] <install|all|install-util-lib|test>"
+	@echo "To build: ${MAKE} [DEBUG=1] [STATIC_BUILD=1] [clean] [clean-all] [BINDIR=${BINDIR}] [JQ_PREFIX=/usr/local] <install|all|install-util-lib|test>"
 	@echo
 	@echo "If JQ_PREFIX is not defined, libjq will be built in the build dir"
+	@echo "If STATIC_BUILD is set to 1, will build with -static flag, if the compiler supports it"
 	@echo
 	@echo "To build and test individual apps, run:"
 	@echo "  ${MAKE} test"
