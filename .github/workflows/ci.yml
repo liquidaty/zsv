@@ -473,15 +473,17 @@ jobs:
     # --- Upload release artifacts ---
 
     - name: Upload release artifacts
-      uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/v')
-      with:
-        files: |
-          ${{ env.ARTIFACT_DIR }}/*.zip
-          ${{ env.ARTIFACT_DIR }}/*.tar.gz
-          ${{ env.ARTIFACT_DIR }}/*.deb
-          ${{ env.ARTIFACT_DIR }}/*.rpm
-          ${{ env.ARTIFACT_DIR }}/*.nupkg
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        for ARTIFACT in "$ARTIFACT_DIR"/*.{zip,tar.gz,deb,rpm,nupkg}; do
+          if [[ -f $ARTIFACT ]]; then
+            echo "[INF] Uploading $ARTIFACT"
+            gh release upload "$GITHUB_REF_NAME" "$ARTIFACT"
+            echo "[INF] Artifact uploaded successfully! [$ARTIFACT]"
+          fi
+        done
 
     # --- Update homebrew tap ---
 
