@@ -10,7 +10,7 @@
   by ~1.5x-27x, by similar or smaller margins (in each case we tested, by at
   least 20%) on other operating systems
 - Four utilities were tested: `zsv`, `xsv`, `tsv-utils` and `mlr`
-- The below figured were based on results from runs on OSX (Intel). Similar
+- The below figures were based on results from runs on OSX (Intel). Similar
   results were observed on other operating systems, but in some cases the
   difference was significantly smaller (for example, `zsv`)
 - On most platforms, `zsv` performed about 2x as fast as xsv, 1.5-2x as fast as
@@ -66,30 +66,30 @@ Below are reported from tests run on OSX (Intel). Similar results were achieved
 on Windows, Linux and FreeBSD. See above note for results on M1.
 
 In some cases, especially on Windows, compiler settings had a significant
-impact. If you observe results that materially differ, in terms of zsv vs other
-utility performance, from what shown below, please let us know.
+impact. If you observe results that materially differ, in terms of `zsv` vs
+other utility performance, from what shown below, please let us know.
 
 ## Utilities compared
 
 The following utilities were compared:
 
-- `xsv`: version 0.13.0, installed via brew
+- `xsv` (0.13.0): installed via brew
 - `tsv-utils` (v2.2.1): installed via download of pre-built PGO-optimized binaries
-- `mlr` (5.10.2): installed via brew (not shown in graph-- very slow compared to others)
+- `mlr` (5.10.2): installed via brew (not shown in graph - very slow compared to others)
 - `zsv` (alpha): built from source using the default `configure` settings
-- `csvcut` (1.0.6) (not shown in graph-- very slow compared to others)
+- `csvcut` (1.0.6): (not shown in graph - very slow compared to others)
 
 ## Further notes
 
-- `tsv-util` using a comma delimiter does *not* handle quoted data, unlike `xsv`
-  (and `zsv`), and thus its output may be incorrect. For this reason, these
-  tests ran `tsv-utils` both using a custom delimiter, and also on TSV data that
-  had been converted from the original CSV data. The performance in either case
-  was effectively the same
+- `tsv-utils` using a comma delimiter does *not* handle quoted data, unlike
+  `xsv` (and `zsv`), and thus its output may be incorrect. For this reason,
+  these tests ran `tsv-utils` both using a custom delimiter, and also on TSV
+  data that had been converted from the original CSV data. The performance in
+  either case was effectively the same
 
 - `mlr` and `csvcut` are not shown in the graph since their performance was well
   over 10x slower than the others. `mlr` was included in the test was to compare
-  with another solution written in the same language (i.e. C) as zsv, since
+  with another solution written in the same language (i.e. C) as `zsv`, since
   `tsv-utils`, `xsv` and `zsv` are all written in different languages, and
   `csvcut` was included since `csvcut`/`csvkit` seem to be fairly commonly used
   for CSV processing.

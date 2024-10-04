@@ -1,0 +1,25 @@
+name: benchmarks
+
+on: workflow_dispatch
+
+jobs:
+  codeql:
+    runs-on: [macos-13]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          scripts/ci-run-benchmarks.sh
+
+    - name: Cache
+      uses: actions/cache@v4
+      with:
+        key: ${{ runner.os }}-benchmarks
+        path: |
+          **/*.csv
+          **/*.tar.gz
+
+    - name: Run benchmarks
+      run: ./scripts/ci-run-benchmarks.sh
