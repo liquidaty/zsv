@@ -104,20 +104,40 @@ for TOOL in zsv xsv tsv; do
   done
 done
 
+MARKDOWN_OUTPUT="benchmarks.md"
+TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+{
+  echo '# Benchmarks'
+  echo
+  echo "- Timestamp: $TIMESTAMP"
+  echo
+  echo "## Releases Used"
+  echo
+  echo "- <$ZSV_TAR_URL>"
+  echo "- <$TSV_TAR_URL>"
+  echo "- <$XSV_TAR_URL>"
+  echo
+  echo '## Results'
+  echo
+  echo '### count'
+  echo
+  echo '```'
+  cat "$COUNT_OUTPUT_FILE"
+  echo '```'
+  echo
+  echo '### select'
+  echo
+  echo '```'
+  cat "$SELECT_OUTPUT_FILE"
+  echo '```'
+  echo
+} | tee "$MARKDOWN_OUTPUT"
+
 # GitHub Actions
 if [ "$CI" = true ]; then
+  echo "[INF] Generating step summary..."
   {
-    echo '# Benchmarks'
-    echo
-    echo '## count'
-    echo '```'
-    cat "$COUNT_OUTPUT_FILE"
-    echo '```'
-    echo
-    echo '## select'
-    echo '```'
-    cat "$SELECT_OUTPUT_FILE"
-    echo '```'
+    cat "$MARKDOWN_OUTPUT"
   } >>"$GITHUB_STEP_SUMMARY"
 fi
 
