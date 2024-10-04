@@ -57,7 +57,7 @@ ls -Gghl "$TOOLS_DIR"
 
 RUNS=6
 
-echo "[INF] Running count test..."
+echo "[INF] Running count benchmarks..."
 for TOOL in zsv xsv tsv; do
   CMD=
   if [ "$TOOL" = "zsv" ]; then
@@ -68,16 +68,15 @@ for TOOL in zsv xsv tsv; do
     CMD="$TOOLS_DIR/number-lines -d,"
   fi
 
-  I=0
-  while [ "$I" -lt "$RUNS" ]; do
-    printf "%s : " "$CMD"
+  I=1
+  while [ "$I" -ne "$RUNS" ]; do
+    printf "%d | %s : " "$I" "$TOOL"
     (time $CMD <"$CSV" >/dev/null) 2>&1 | xargs
     I=$((I + 1))
   done
-  echo
 done
 
-echo "[INF] Running select test..."
+echo "[INF] Running select benchmarks..."
 for TOOL in zsv xsv tsv; do
   CMD=
   if [ "$TOOL" = "zsv" ]; then
@@ -88,13 +87,12 @@ for TOOL in zsv xsv tsv; do
     CMD="$TOOLS_DIR/tsv-select -d, -f 1-7"
   fi
 
-  I=0
-  while [ "$I" -lt "$RUNS" ]; do
-    printf "%s : " "$CMD"
+  I=1
+  while [ "$I" -ne "$RUNS" ]; do
+    printf "%d | %s : " "$I" "$TOOL"
     (time $CMD <"$CSV" >/dev/null) 2>&1 | xargs
     I=$((I + 1))
   done
-  echo
 done
 
 cd ..
