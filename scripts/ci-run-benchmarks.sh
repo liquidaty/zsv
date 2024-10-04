@@ -55,10 +55,10 @@ done
 
 ls -Gghl "$TOOLS_DIR"
 
-COUNT_OUTPUT="count.out"
-SELECT_OUTPUT="select.out"
+COUNT_OUTPUT_FILE="count.out"
+SELECT_OUTPUT_FILE="select.out"
 
-rm -f "$COUNT_OUTPUT" "$SELECT_OUTPUT"
+rm -f "$COUNT_OUTPUT_FILE" "$SELECT_OUTPUT_FILE"
 
 RUNS=6
 
@@ -78,7 +78,7 @@ for TOOL in zsv xsv tsv; do
     {
       printf "%d | %s : " "$I" "$TOOL"
       (time $CMD <"$CSV" >/dev/null) 2>&1 | xargs
-    } | tee -a "$COUNT_OUTPUT"
+    } | tee -a "$COUNT_OUTPUT_FILE"
     I=$((I + 1))
   done
 done
@@ -99,12 +99,10 @@ for TOOL in zsv xsv tsv; do
     {
       printf "%d | %s : " "$I" "$TOOL"
       (time $CMD <"$CSV" >/dev/null) 2>&1 | xargs
-    } | tee -a "$SELECT_OUTPUT"
+    } | tee -a "$SELECT_OUTPUT_FILE"
     I=$((I + 1))
   done
 done
-
-cd ..
 
 # GitHub Actions
 if [ "$CI" = true ]; then
@@ -113,14 +111,16 @@ if [ "$CI" = true ]; then
     echo
     echo '## count'
     echo '```'
-    cat "$COUNT_OUTPUT"
+    cat "$COUNT_OUTPUT_FILE"
     echo '```'
     echo
     echo '## select'
     echo '```'
-    cat "$SELECT_OUTPUT"
+    cat "$SELECT_OUTPUT_FILE"
     echo '```'
   } >>"$GITHUB_STEP_SUMMARY"
 fi
+
+cd ..
 
 echo "[INF] --- [DONE] ---"
