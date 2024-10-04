@@ -105,11 +105,12 @@ for TOOL in zsv xsv tsv; do
 done
 
 MARKDOWN_OUTPUT="benchmarks.md"
+echo "[INF] Generating Markdown output... [$MARKDOWN_OUTPUT]"
 TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 {
   echo '# Benchmarks'
   echo
-  echo "- Timestamp: $TIMESTAMP"
+  echo "- Timestamp UTC: \`$TIMESTAMP\`"
   echo
   echo "## Releases Used"
   echo
@@ -131,7 +132,8 @@ TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   cat "$SELECT_OUTPUT_FILE"
   echo '```'
   echo
-} | tee "$MARKDOWN_OUTPUT"
+} >"$MARKDOWN_OUTPUT"
+echo "[INF] Generated Markdown output successfully!"
 
 # GitHub Actions
 if [ "$CI" = true ]; then
@@ -139,6 +141,7 @@ if [ "$CI" = true ]; then
   {
     cat "$MARKDOWN_OUTPUT"
   } >>"$GITHUB_STEP_SUMMARY"
+  echo "[INF] Generated step summary successfully!"
 fi
 
 cd ..
