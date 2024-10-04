@@ -251,7 +251,9 @@ trysharedldflag () {
 }
 
 # Beginning of actual script
-CROSS_COMPILING=no
+if [ "$CROSS_COMPILING" = "" ]; then
+    CROSS_COMPILING=no
+fi
 CFLAGS_AUTO=
 CFLAGS_TRY=
 LDFLAGS_AUTO=
@@ -261,8 +263,12 @@ if [ "$CONFIGFILE" = "" ]; then
     CONFIGFILE=config.mk
 fi
 
-if [ "$ARCH" = "" ] && [ "$CROSS_COMPILING" = "no" ]; then
-    ARCH=native
+if [ "$ARCH" = "" ] ; then
+    if [ "$CROSS_COMPILING" = "no" ]; then
+        ARCH=native
+    else
+        ARCH=none
+    fi
 fi
 
 # check prefixes first, since others may be derived from it unless overridden
@@ -688,18 +694,15 @@ if [ "$usetermcap" = "yes" ] || [ "$usetermcap" = "auto" ] ; then
             fi
 fi
 
-if [ "$JQ_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/jq.h" ] ; then
+if [ "$JQ_PREFIX" = "" ] ; then
     JQ_PREFIX="$PREFIX"
 fi
 
-if [ "$JQ_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
-    echo "checking --prefix-jq ${JQ_PREFIX}"
-    if ! tryldflag LDFLAGS_JQ -ljq -L${JQ_PREFIX}/lib ; then
-        echo "Error: Failed to compile with -ljq and -L${JQ_PREFIX}/lib"
-        exit 1
-    else
-        LDFLAGS_JQ="$LDFLAGS_JQ -L$JQ_PREFIX/lib"
-    fi
+if ! tryldflag LDFLAGS_JQ -ljq -L${JQ_PREFIX}/lib ; then
+    echo "Error: Failed to compile with -ljq and -L${JQ_PREFIX}/lib"
+    exit 1
+elif [ "$JQ_PREFIX" != "$PREFIX" ]; then
+    LDFLAGS_JQ="$LDFLAGS_JQ -L$JQ_PREFIX/lib"
 fi
 
 tryldflag LDFLAGS_JQ -lm
