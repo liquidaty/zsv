@@ -29,6 +29,7 @@ echo "[INF] Building and generating artifacts"
 echo "[INF] PWD:              $PWD"
 echo "[INF] PREFIX:           $PREFIX"
 echo "[INF] CC:               $CC"
+echo "[INF] LDFLAGS:          $LDFLAGS"
 echo "[INF] MAKE:             $MAKE"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
@@ -43,7 +44,7 @@ echo "[INF] Listing compiler version [$CC]"
 # ./scripts/ci-install-libjq.sh
 
 echo "[INF] Configuring zsv"
-# CFLAGS="-I$JQ_INCLUDE_DIR" LDFLAGS="-L$JQ_LIB_DIR" 
+# CFLAGS="-I$JQ_INCLUDE_DIR" LDFLAGS="-L$JQ_LIB_DIR"
 ./configure \
   --prefix="$PREFIX" \
   --disable-termcap
@@ -55,10 +56,14 @@ if [ "$RUN_TESTS" = true ]; then
   "$MAKE" test
   echo "[INF] Tests completed successfully!"
 
-  echo "[INF] Configuring example extension and running example extension tests"
-  echo "[INF] (cd app/ext_example && $MAKE CONFIGFILE=../../config.mk test)"
-  (cd app/ext_example && "$MAKE" CONFIGFILE=../../config.mk test)
-  echo "[INF] Tests completed successfully!"
+  if [ "$CC" = "musl-gcc" ] && [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ]; then
+    echo "[WRN] Dynamic extensions are not supported with static musl build! Skipping tests..."
+  else
+    echo "[INF] Configuring example extension and running example extension tests"
+    echo "[INF] (cd app/ext_example && $MAKE CONFIGFILE=../../config.mk test)"
+    (cd app/ext_example && "$MAKE" CONFIGFILE=../../config.mk test)
+    echo "[INF] Tests completed successfully!"
+  fi
 fi
 
 echo "[INF] Building"
