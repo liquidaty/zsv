@@ -812,30 +812,30 @@ echo "*  zsv configuration                                           *"
 echo "****************************************************************"
 
 if [ "$JQ_PREFIX" != "" ]; then
-    echo "*  - jq-prefix: $JQ_PREFIX                                       *"
+    echo "*  - jq-prefix: $JQ_PREFIX                                     *"
 fi
 
 if [ "$LDFLAGS_TERMCAP" = "" ]; then
     echo "*  - termcap: no. \`pretty\` will use default width assumption   *"
 else
-    echo "*  - termcap: yes                                                *"
+    echo "*  - termcap: yes                                              *"
 fi
 
 if [ "$ZSV_BUILD_SHEET" = "1" ]; then
-    echo "*  - build sheet feature: yes                                    *"
-    echo "*    ncurses library:     $NCLIB                                 *"
+    echo "*  - build sheet feature: yes                                  *"
+    echo "*    ncurses library:     $NCLIB                               *"
 else
-    echo "*  - build sheet feature: no                                     *"
+    echo "*  - build sheet feature: no                                   *"
 fi
 
 if [ "$HAVE_AVX512" = "1" ]; then
-    echo "*  - using 512-bit AVX instruction set"
+    echo "*  - using 512-bit AVX instruction set                         *"
 elif [ "$CFLAGS_AVX" = "-mavx2" ]; then
-    echo "*  - using 256-bit AVX2 instruction set"
+    echo "*  - using 256-bit AVX2 instruction set                        *"
 elif [ "$CFLAGS_AVX" = "-mavx" ]; then
-    echo "*  - using 128-bit + AVX instruction set"
+    echo "*  - using 128-bit + AVX instruction set                       *"
 else
-    echo "*  - using 128-bit vector size, no AVX"
+    echo "*  - using 128-bit vector size, no AVX                         *"
 fi
 
 echo "****************************************************************"

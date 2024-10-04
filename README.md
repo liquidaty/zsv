@@ -117,6 +117,11 @@ You can also download pre-built binaries and packages from
 [Actions](https://github.com/liquidaty/zsv/actions) for the latest commits and
 PRs but these are retained only for limited days.
 
+> [!IMPORTANT]
+>
+> For [musl libc](https://www.musl-libc.org/) static build, the dynamic
+> extensions are not supported!
+
 > [!NOTE]
 >
 > After `v0.3.9-alpha`, all package artifacts will be properly

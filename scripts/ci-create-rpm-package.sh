@@ -39,8 +39,10 @@ echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 echo "[INF] ARCH:             $ARCH"
 echo "[INF] VERSION:          $VERSION"
 
-echo "[INF] Listing linked libraries"
-ldd "$PREFIX/bin/zsv"
+if file -b "$PREFIX/bin/zsv" | grep "dynamically linked" >/dev/null; then
+  echo "[INF] Listing linked libraries"
+  ldd "$PREFIX/bin/zsv"
+fi
 
 echo "[INF] Setting up RPM buildtree [$RPM_DIR]"
 rm -rf "$RPM_DIR"
@@ -51,7 +53,7 @@ rm -rf "./$PREFIX/lib" "./$PREFIX/include"
 cp -rfa "$PREFIX/bin" "$RPM_DIR/BUILD/usr/"
 
 echo "[INF] Creating spec file [$RPM_SPEC_PATH]"
-cat << EOF > "$RPM_SPEC_PATH"
+cat <<EOF >"$RPM_SPEC_PATH"
 %define _build_id_links none
 %define _rpmfilename $RPM_PKG
 

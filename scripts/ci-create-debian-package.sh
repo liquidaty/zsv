@@ -38,8 +38,10 @@ echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 echo "[INF] ARCH:             $ARCH"
 echo "[INF] VERSION:          $VERSION"
 
-echo "[INF] Listing linked libraries"
-ldd "$PREFIX/bin/zsv"
+if file -b "$PREFIX/bin/zsv" | grep "dynamically linked" >/dev/null; then
+  echo "[INF] Listing linked libraries"
+  ldd "$PREFIX/bin/zsv"
+fi
 
 echo "[INF] Setting up debian package buildtree"
 mkdir -p "$DEBIAN_DIR" "$PREFIX/usr"
@@ -51,7 +53,7 @@ mv -f "./$PREFIX/bin" "./$PREFIX/usr/"
 echo "[INF] Creating control file [$DEBIAN_CONTROL_FILE]"
 
 INSTALLED_SIZE="$(echo $(du -s -c $PREFIX/usr/* | grep 'total') | cut -d ' ' -f1)"
-cat << EOF > "$DEBIAN_CONTROL_FILE"
+cat <<EOF >"$DEBIAN_CONTROL_FILE"
 Package: zsv
 Version: $VERSION
 Section: extras
@@ -72,7 +74,7 @@ echo "[INF] --- [$DEBIAN_CONTROL_FILE] ---"
 
 echo "[INF] Creating preinst script [$DEBIAN_CONTROL_FILE]"
 
-cat << EOF > "$DEBIAN_PREINST_SCRIPT"
+cat <<EOF >"$DEBIAN_PREINST_SCRIPT"
 #!/bin/sh
 
 rm -rf /usr/bin/zsv
