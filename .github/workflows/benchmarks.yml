@@ -1,11 +1,9 @@
 name: benchmarks
 
-on:
-  pull_request:
-  workflow_dispatch:
+on: workflow_dispatch
 
 jobs:
-  codeql:
+  benchmarks:
     runs-on: [macos-13]
 
     steps:

@@ -46,9 +46,11 @@ TOOLS_DIR="tools"
 rm -rf ./"$TOOLS_DIR"
 mkdir -p "$TOOLS_DIR"
 
-TOOLS="$(find . -type f -executable)"
-for TOOL in $TOOLS; do
-  cp "$TOOL" "$TOOLS_DIR"
+FILES="$(find . -type f)"
+for FILE in $FILES; do
+  if [ -x "$FILE" ]; then
+    cp "$FILE" "$TOOLS_DIR"
+  fi
 done
 
 ls -Gghl "$TOOLS_DIR"
