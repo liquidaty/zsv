@@ -49,6 +49,7 @@ build
 app/external
 install.sh
 .artifacts
+.benchmarks
 .rpmbuild
 amd64-linux-*
 amd64-windows-*
