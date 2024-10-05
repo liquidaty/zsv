@@ -245,7 +245,7 @@ YAJL_HELPER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/yajl_helper
 CFLAGS+=${YAJL_HELPER_INCLUDE} ${YAJL_INCLUDE}
 
 # jq
-JQ_TARBALL=${THIS_MAKEFILE_DIR}/external/jq-1.6.tar.bz2
+JQ_TARBALL=${THIS_MAKEFILE_DIR}/external/jq-1.6.tar.gz
 JQ_SRC=${BUILD_DIR}/external/jq-src
 
 JQ_PREFIX ?=
