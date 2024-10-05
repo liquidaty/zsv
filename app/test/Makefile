@@ -45,10 +45,17 @@ BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 TMP_DIR=${THIS_LIB_BASE}/tmp
 TEST_DATA_DIR=${THIS_LIB_BASE}/data
 
-SOURCES=echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare sheet
+SOURCES=echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
 TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help
+
+ifeq ($(ZSV_BUILD_SHEET),1)
+  SOURCES+=sheet
+  CFLAGS+=-DZSV_BUILD_SHEET
+  CFLAGS+=${CFLAGS_NCURSES}
+  LDFLAGS+=${LDFLAGS_NCURSES}
+endif
 
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
