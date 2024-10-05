@@ -114,7 +114,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt update
-        sudo apt install -y mingw-w64 rpm alien nuget musl-tools
+        sudo apt install -y mingw-w64 rpm alien nuget musl-tools tmux
         sudo apt remove -y jq
 
     - name: Set up macOS (AMD64 and ARM64)

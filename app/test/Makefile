@@ -549,3 +549,29 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@(${PREFIX} $< ../../data/compare/t1.csv ../../data/compare/t2.csv --add AccentCity --sort -k country -k city ${REDIRECT1} ${TMP_DIR}/$@.out10 && \
 	${CMP} ${TMP_DIR}/$@.out10 expected/$@.out10 && ${TEST_PASS} || ${TEST_FAIL})
 
+test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
+	@${TEST_INIT}
+	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux set-window-option -t test-sheet prefix none && \
+	sleep 0.5 && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@1.out && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@1.out expected/$@1.out && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux set-window-option -t test-sheet prefix none && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "C-F" && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@2.out && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@2.out expected/$@2.out && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux set-window-option -t test-sheet prefix none && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "C-F" && \
+	tmux send-keys -t $@ "C-F" && \
+	tmux send-keys -t $@ "C-B" && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@2.out && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@2.out expected/$@2.out && ${TEST_PASS} || ${TEST_FAIL})

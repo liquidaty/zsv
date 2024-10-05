@@ -470,7 +470,7 @@ check test:	test-standalone test-cli
 test-standalone:
 	@${MAKE} -C test test QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
-test-cli:  ${CLI}
+test-cli: ${CLI}
 	@${MAKE} -C test $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} CLI=${CLI}
 
 clean-all: clean clean-external clean-obj clean-lib clean-util-lib
