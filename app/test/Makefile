@@ -576,9 +576,16 @@ test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux set-window-option -t test-sheet prefix none && \
 	sleep 0.5 && \
-	tmux send-keys -t $@ "C-F" && \
-	tmux send-keys -t $@ "C-F" && \
-	tmux send-keys -t $@ "C-B" && \
+	tmux send-keys -t $@ "C-F" "C-F" "C-B" && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@2.out && \
 	tmux send-keys -t $@ "q" && \
 	${CMP} ${TMP_DIR}/$@2.out expected/$@2.out && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux set-window-option -t test-sheet prefix none && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "f" "sarmaj" Enter && \
+	sleep 0.5 && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@3.out && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@3.out expected/$@3.out && ${TEST_PASS} || ${TEST_FAIL})
