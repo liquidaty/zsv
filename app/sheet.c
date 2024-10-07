@@ -37,18 +37,6 @@ struct ztv_opts {
   size_t found_rownum;
 };
 
-/* read_table_into_buff: populate the given dest
-size_t
-read_data(char dest[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN],
-          const char *filename, struct zsv_opts *optsp, size_t *max_col_countp,
-          const char *filter,
-          size_t start_row,       // offset row of input to fetch
-          size_t start_col,       // offset column of input to fetch
-          size_t buff_row_offset, // offset row from which to start writing data
-          void *index,
-          struct ztv_opts *opts);
-*/
-
 void display_buffer_subtable(char buffer[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN], size_t start_row,
                              size_t buffer_used_row_count, size_t start_col, size_t max_col_count, size_t cursor_row,
                              size_t cursor_col, size_t input_header_span, struct display_dims *ddims);
@@ -237,8 +225,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   size_t cursor_row = 1; // first row is header
   size_t cursor_col = 0;
   char *help_suffix = NULL;
+  size_t rownum_col_offset = 1;
   display_buffer_subtable(input_data, buff_offset.row, buff_used_rows, buff_offset.col,
-                          input_dimensions.col_count > ZTV_MAX_COLS ? ZTV_MAX_COLS : input_dimensions.col_count,
+                          input_dimensions.col_count + rownum_col_offset > ZTV_MAX_COLS ? ZTV_MAX_COLS : input_dimensions.col_count + rownum_col_offset,
                           cursor_row, cursor_col, header_span, &display_dims);
 
   char cmdbuff[256]; // subcommand buffer
@@ -410,7 +399,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     if (filter_dimensions.row_count)
       ztv_set_status(&display_dims, "(%zu filtered rows) ", filter_dimensions.row_count - 1);
     display_buffer_subtable(input_data, buff_offset.row, buff_used_rows, buff_offset.col,
-                            input_dimensions.col_count > ZTV_MAX_COLS ? ZTV_MAX_COLS : input_dimensions.col_count,
+                            input_dimensions.col_count + rownum_col_offset > ZTV_MAX_COLS ? ZTV_MAX_COLS :
+                            input_dimensions.col_count + rownum_col_offset,
                             cursor_row, cursor_col, header_span, &display_dims);
   }
 
