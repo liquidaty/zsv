@@ -227,7 +227,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   char *help_suffix = NULL;
   size_t rownum_col_offset = 1;
   display_buffer_subtable(input_data, buff_offset.row, buff_used_rows, buff_offset.col,
-                          input_dimensions.col_count + rownum_col_offset > ZTV_MAX_COLS ? ZTV_MAX_COLS : input_dimensions.col_count + rownum_col_offset,
+                          input_dimensions.col_count + rownum_col_offset > ZTV_MAX_COLS
+                            ? ZTV_MAX_COLS
+                            : input_dimensions.col_count + rownum_col_offset,
                           cursor_row, cursor_col, header_span, &display_dims);
 
   char cmdbuff[256]; // subcommand buffer
@@ -284,8 +286,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     case ztv_key_move_last_col:
       // to do: directly set cursor_col and buff_offset.col
       while (cursor_right(display_dims.columns, ZTV_CELL_DISPLAY_WIDTH,
-                          input_dimensions.col_count + rownum_col_offset > ZTV_MAX_COLS ? ZTV_MAX_COLS :
-                          input_dimensions.col_count + rownum_col_offset,
+                          input_dimensions.col_count + rownum_col_offset > ZTV_MAX_COLS
+                            ? ZTV_MAX_COLS
+                            : input_dimensions.col_count + rownum_col_offset,
                           &cursor_col, &buff_offset.col) > 0)
         ;
       break;
@@ -314,10 +317,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       break;
     case ztv_key_move_right:
       cursor_right(display_dims.columns, ZTV_CELL_DISPLAY_WIDTH,
-                   input_dimensions.col_count + rownum_col_offset > ZTV_MAX_COLS ? ZTV_MAX_COLS :
-                   input_dimensions.col_count + rownum_col_offset,
-                   &cursor_col,
-                   &buff_offset.col);
+                   input_dimensions.col_count + rownum_col_offset > ZTV_MAX_COLS
+                     ? ZTV_MAX_COLS
+                     : input_dimensions.col_count + rownum_col_offset,
+                   &cursor_col, &buff_offset.col);
       break;
     case ztv_key_escape: // escape
       if (row_filter) {
@@ -406,8 +409,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     if (filter_dimensions.row_count)
       ztv_set_status(&display_dims, "(%zu filtered rows) ", filter_dimensions.row_count - 1);
     display_buffer_subtable(input_data, buff_offset.row, buff_used_rows, buff_offset.col,
-                            input_dimensions.col_count + rownum_col_offset > ZTV_MAX_COLS ? ZTV_MAX_COLS :
-                            input_dimensions.col_count + rownum_col_offset,
+                            input_dimensions.col_count + rownum_col_offset > ZTV_MAX_COLS
+                              ? ZTV_MAX_COLS
+                              : input_dimensions.col_count + rownum_col_offset,
                             cursor_row, cursor_col, header_span, &display_dims);
   }
 

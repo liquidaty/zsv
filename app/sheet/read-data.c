@@ -99,7 +99,8 @@ static int read_data(char dest[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN],
           }
         }
         if (!done) {
-          memcpy(dest[rows_read][i + rownum_column_offset], c.str, c.len < ZTV_MAX_CELL_LEN ? c.len : ZTV_MAX_CELL_LEN - 1);
+          memcpy(dest[rows_read][i + rownum_column_offset], c.str,
+                 c.len < ZTV_MAX_CELL_LEN ? c.len : ZTV_MAX_CELL_LEN - 1);
           dest[rows_read][i + rownum_column_offset][c.len] = '\0';
         }
       }
