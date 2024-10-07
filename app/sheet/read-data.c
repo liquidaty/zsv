@@ -73,17 +73,17 @@ static int read_data(char dest[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN],
     }
 
     // row number
-    size_t rownum_offset = 0;
+    size_t rownum_column_offset = 0;
     if (ztv_opts->hide_row_nums == 0) {
       if (rows_read == 0) // header
         snprintf(dest[rows_read][0], ZTV_MAX_CELL_LEN, "Row #");
       else if (snprintf(dest[rows_read][0], ZTV_MAX_CELL_LEN, "%zu", original_row_num - 1) >=
                ZTV_MAX_CELL_LEN) // unlikely!
         sprintf(dest[rows_read][0], "########");
-      rownum_offset = 1;
+      rownum_column_offset = 1;
     }
 
-    for (size_t i = start_col; i < col_count && i + rownum_offset < ZTV_MAX_COLS; i++) {
+    for (size_t i = start_col; i < col_count + rownum_column_offset && i < ZTV_MAX_COLS; i++) {
       struct zsv_cell c = zsv_get_cell(parser, i);
       if (c.len) {
         char done = 0;
@@ -93,14 +93,15 @@ static int read_data(char dest[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN],
           size_t bytes_to_copy =
             utf8_bytes_up_to_max_width_and_replace_newlines(c.str, c.len, ZTV_MAX_CELL_LEN, &used_width, &err);
           if (!err) {
-            memcpy(dest[rows_read][i + rownum_offset], c.str, bytes_to_copy);
-            dest[rows_read][i + rownum_offset][bytes_to_copy] = '\0';
+            memcpy(dest[rows_read][i + rownum_column_offset], c.str, bytes_to_copy);
+            dest[rows_read][i + rownum_column_offset][bytes_to_copy] = '\0';
             done = 1;
           }
         }
         if (!done) {
-          memcpy(dest[rows_read][i + rownum_offset], c.str, c.len < ZTV_MAX_CELL_LEN ? c.len : ZTV_MAX_CELL_LEN - 1);
-          dest[rows_read][i + rownum_offset][c.len] = '\0';
+          memcpy(dest[rows_read][i + rownum_column_offset], c.str,
+                 c.len < ZTV_MAX_CELL_LEN ? c.len : ZTV_MAX_CELL_LEN - 1);
+          dest[rows_read][i + rownum_column_offset][c.len] = '\0';
         }
       }
     }

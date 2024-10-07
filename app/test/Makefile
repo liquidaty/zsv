@@ -45,10 +45,17 @@ BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 TMP_DIR=${THIS_LIB_BASE}/tmp
 TEST_DATA_DIR=${THIS_LIB_BASE}/data
 
-SOURCES= echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare
+SOURCES=echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
 TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help
+
+ifeq ($(ZSV_BUILD_SHEET),1)
+  SOURCES+=sheet
+  CFLAGS+=-DZSV_BUILD_SHEET
+  CFLAGS+=${CFLAGS_NCURSES}
+  LDFLAGS+=${LDFLAGS_NCURSES}
+endif
 
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
@@ -549,3 +556,36 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@(${PREFIX} $< ../../data/compare/t1.csv ../../data/compare/t2.csv --add AccentCity --sort -k country -k city ${REDIRECT1} ${TMP_DIR}/$@.out10 && \
 	${CMP} ${TMP_DIR}/$@.out10 expected/$@.out10 && ${TEST_PASS} || ${TEST_FAIL})
 
+test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
+	@${TEST_INIT}
+	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux set-window-option -t test-sheet prefix none && \
+	sleep 0.5 && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@1.out && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@1.out expected/$@1.out && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux set-window-option -t test-sheet prefix none && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "C-F" && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@2.out && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@2.out expected/$@2.out && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux set-window-option -t test-sheet prefix none && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "C-F" "C-F" "C-B" && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@2.out && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@2.out expected/$@2.out && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux set-window-option -t test-sheet prefix none && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "f" "sarmaj" Enter && \
+	sleep 0.5 && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@3.out && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@3.out expected/$@3.out && ${TEST_PASS} || ${TEST_FAIL})

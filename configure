@@ -349,7 +349,7 @@ for arg ; do
         --enable-sheet|--enable-sheet=yes) TRY_SHEET=yes;;
         --enable-sheet=auto) TRY_SHEET=auto;;
         --disable-sheet|--enable-sheet=no) TRY_SHEET=no;;
-        
+
         --enable-lto|--enable-lto=yes) TRY_LTO=yes;;
         --enable-lto|--enable-lto=auto) TRY_LTO=auto;;
         --disable-lto|--enable-lto=no) TRY_LTO=no;;
@@ -522,17 +522,17 @@ tryflag CFLAGS_OPENMP -fopenmp
 if [ "$TRY_SHEET" != "no" ]; then
     if tryldflag LDFLAGS_NCURSES -lncurses -L${PREFIX}/lib ; then
         NCLIB=ncurses
-        if [ "NCURSES_DYNAMIC" != "" ] ; then
+        if [ "$NCURSES_DYNAMIC" != "" ] ; then
             CFLAGS_NCURSES="-DHAVE_NCURSES -DNCURSES_STATIC"
         else
             CFLAGS_NCURSES=-DHAVE_NCURSES
         fi
-    fi 
+    fi
     if tryldflag LDFLAGS_NCURSESW -lncursesw -L${PREFIX}/lib ; then
         LDFLAGS_NCURSES="$LDFLAGS_NCURSES -lncursesw"
         NCLIB="$NCLIB ncursesw"
         if [ "$CFLAGS_NCURSES" = "" ]; then
-            if [ "NCURSES_DYNAMIC" != "" ] ; then
+            if [ "$NCURSES_DYNAMIC" != "" ] ; then
                 CFLAGS_NCURSES="-DHAVE_NCURSESW -DNCURSESW_STATIC"
             else
                 CFLAGS_NCURSES="-DHAVE_NCURSESW"
