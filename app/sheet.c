@@ -364,7 +364,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         }
         if (row_filter) {
           size_t found = 0;
-          update_buffer = 0;
           if (read_data(input_data, filename, &opts, &filter_dimensions.col_count, row_filter, 0, 0, header_span, NULL,
                         &ztv_opts, custom_prop_handler, opts_used, &found)) {
             filter_dimensions.row_count = 0;
