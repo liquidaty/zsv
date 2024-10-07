@@ -284,7 +284,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     case ztv_key_move_last_col:
       // to do: directly set cursor_col and buff_offset.col
       while (cursor_right(display_dims.columns, ZTV_CELL_DISPLAY_WIDTH,
-                          input_dimensions.col_count > ZTV_MAX_COLS ? ZTV_MAX_COLS : input_dimensions.col_count,
+                          input_dimensions.col_count + rownum_col_offset > ZTV_MAX_COLS ? ZTV_MAX_COLS :
+                          input_dimensions.col_count + rownum_col_offset,
                           &cursor_col, &buff_offset.col) > 0)
         ;
       break;
@@ -313,7 +314,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       break;
     case ztv_key_move_right:
       cursor_right(display_dims.columns, ZTV_CELL_DISPLAY_WIDTH,
-                   input_dimensions.col_count > ZTV_MAX_COLS ? ZTV_MAX_COLS : input_dimensions.col_count, &cursor_col,
+                   input_dimensions.col_count + rownum_col_offset > ZTV_MAX_COLS ? ZTV_MAX_COLS :
+                   input_dimensions.col_count + rownum_col_offset,
+                   &cursor_col,
                    &buff_offset.col);
       break;
     case ztv_key_escape: // escape
@@ -352,11 +355,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       if (*cmdbuff != '\0') {
         row_filter = strdup(cmdbuff);
         if (row_filter && !*row_filter) {
+          // empty string
           free(row_filter);
           row_filter = NULL;
         }
         if (row_filter) {
           size_t found = 0;
+          update_buffer = 0;
           if (read_data(input_data, filename, &opts, &filter_dimensions.col_count, row_filter, 0, 0, header_span, NULL,
                         &ztv_opts, custom_prop_handler, opts_used, &found)) {
             filter_dimensions.row_count = 0;
@@ -372,10 +377,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #endif
             );
             memcpy(&input_dimensions, &filter_dimensions, sizeof(input_dimensions));
-            // input_offset.row = header_span;
             input_offset.row = 0;
             buff_offset.row = 0;
             cursor_row = 1;
+            // not sure why but using ncurses, erase() and refresh() needed for screen to properly redraw
+            erase();
+            refresh();
           } else {
             filter_dimensions.row_count = 0;
             ztv_set_status(&display_dims, "Not found");
