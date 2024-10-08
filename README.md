@@ -27,7 +27,9 @@ direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3
 conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste` and more.
 
 The ZSV CLI also includes `sheet`, an in-console interactive grid viewer
-that can be extended with your custom code for manipulating and viewing data.
+(TO DO: that can be extended with your custom code for manipulating and) for viewing data:
+
+<img src="https://github.com/user-attachments/assets/c2ae32a3-48c4-499d-8ef7-7748687bd24f" width="50%">
 
 Pre-built CLI packages are available via `brew` and `nuget`.
 
