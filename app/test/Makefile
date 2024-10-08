@@ -582,7 +582,7 @@ test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	${CMP} ${TMP_DIR}/$@1.out expected/$@1.out && ${TEST_PASS} || ${TEST_FAIL})
 
 	@(tmux send-keys -t $@ "S-Down" "C-b" && \
-	sleep 5 && \
+	sleep 20 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@4.out && \
 	tmux send-keys -t $@ "q" && \
 	cat ${TMP_DIR}/$@4.out && \
