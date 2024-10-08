@@ -585,6 +585,9 @@ test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@4.out && \
 	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@4.out expected/$@4.out && ${TEST_PASS} || ${TEST_FAIL})
+	cat ${TMP_DIR}/$@4.out && \
+	diff ${TMP_DIR}/$@4.out expected/$@4.out && \
+	${CMP} ${TMP_DIR}/$@4.out expected/$@4.out && \
+	${TEST_PASS} || ${TEST_FAIL})
 
 	@(! tmux kill-session -t $@ 2>/dev/null && ${TEST_PASS} || ${TEST_FAIL})
