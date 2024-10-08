@@ -129,7 +129,6 @@ struct get_data_index_data {
 
 // get_data_index(): to do: return an index for constant-time access
 static void *get_data_index(struct get_data_index_data *d) {
-  fprintf(stderr, "hoho\n");
 #ifdef ZTV_USE_THREADS
   pthread_mutex_t *mutexp = d->mutexp;
 #endif
