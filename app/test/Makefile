@@ -559,11 +559,9 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
-	tmux set-option default-terminal "tmux-256color" && \
-	tmux set-option prefix C-M-S-b && \
-	# tmux unbind-key C-b && \
-	sleep 0.5 && \
-	${TEST_PASS} || ${TEST_FAIL})
+	tmux set-option -g default-terminal "tmux-256color" && \
+	tmux set-option -g prefix C-M-S-b && \
+	sleep 0.5)
 
 	@(tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@1.out && \
 	${CMP} ${TMP_DIR}/$@1.out expected/$@1.out && ${TEST_PASS} || ${TEST_FAIL})
@@ -581,7 +579,7 @@ test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@(tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@1.out && \
 	${CMP} ${TMP_DIR}/$@1.out expected/$@1.out && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(tmux send-keys -t $@ "S-Down" "C-b" && \
+	@(tmux send-keys -t $@ "S-Down" Up Up Up Up Up Down Down && \
 	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@4.out && \
 	tmux send-keys -t $@ "q" && \
