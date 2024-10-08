@@ -561,7 +561,7 @@ test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux set-option default-terminal "tmux-256color" && \
 	tmux set-option prefix C-M-S-b && \
-	tmux unbind-key C-b && \
+	# tmux unbind-key C-b && \
 	sleep 0.5 && \
 	${TEST_PASS} || ${TEST_FAIL})
 
@@ -582,10 +582,10 @@ test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	${CMP} ${TMP_DIR}/$@1.out expected/$@1.out && ${TEST_PASS} || ${TEST_FAIL})
 
 	@(tmux send-keys -t $@ "S-Down" "C-b" && \
-	sleep 20 && \
+	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@4.out && \
 	tmux send-keys -t $@ "q" && \
-	cat ${TMP_DIR}/$@4.out && \
+	cat ${TMP_DIR}/$@4.out expected/$@4.out && \
 	diff ${TMP_DIR}/$@4.out expected/$@4.out && \
 	${CMP} ${TMP_DIR}/$@4.out expected/$@4.out && \
 	${TEST_PASS} || ${TEST_FAIL})
