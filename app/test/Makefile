@@ -558,19 +558,18 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 
 test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
-	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
-	tmux set-option -g default-terminal "tmux-256color" && \
-	tmux set-option -g prefix C-M-S-b && \
+	@(echo 'set-option default-terminal "tmux-256color"' > ~/.tmux.conf && \
+	tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	sleep 0.5)
 
 	@(tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@1.out && \
 	${CMP} ${TMP_DIR}/$@1.out expected/$@1.out && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(tmux send-keys -t $@ "C-f" "C-f" "C-b" && \
+	@(tmux send-keys -t $@ C-f C-f C-b && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@2.out && \
 	${CMP} ${TMP_DIR}/$@2.out expected/$@2.out && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(tmux send-keys -t $@ "f" "sarmaj" Enter && \
+	@(tmux send-keys -t $@ f sarmaj Enter && \
 	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@3.out && \
 	tmux send-keys -t $@ Escape Escape && \
@@ -579,12 +578,10 @@ test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@(tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@1.out && \
 	${CMP} ${TMP_DIR}/$@1.out expected/$@1.out && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(tmux send-keys -t $@ "S-Down" Up Up Up Up Up Down Down && \
+	@(tmux send-keys -t $@ S-Down C-b && \
 	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@4.out && \
 	tmux send-keys -t $@ "q" && \
-	cat ${TMP_DIR}/$@4.out expected/$@4.out && \
-	diff ${TMP_DIR}/$@4.out expected/$@4.out && \
 	${CMP} ${TMP_DIR}/$@4.out expected/$@4.out && \
 	${TEST_PASS} || ${TEST_FAIL})
 
