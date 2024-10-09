@@ -1,4 +1,6 @@
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 #ifndef _XOPEN_SOURCE_EXTENDED
 #define _XOPEN_SOURCE_EXTENDED
 #endif
@@ -448,18 +450,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 const char *display_cell(struct zsv_sheet_buffer *buff, size_t data_row, size_t data_col, int row, int col) {
   char *str = (char *)zsv_sheet_buffer_cell_display(buff, data_row, data_col);
   size_t len = str ? strlen(str) : 0;
-  if (len == 0 || has_multibyte_char(str, len < ZTV_CELL_DISPLAY_WIDTH ? len : ZTV_CELL_DISPLAY_WIDTH) == 0) {
-    // temporarily add a NULL delimiter
-    int ch = str[ZTV_CELL_DISPLAY_WIDTH - 1];
-    str[ZTV_CELL_DISPLAY_WIDTH - 1] = '\0'; // ensure a blank space between cells
-    mvprintw(row, col * ZTV_CELL_DISPLAY_WIDTH, "%-*s", ZTV_CELL_DISPLAY_WIDTH, str);
-    str[ZTV_CELL_DISPLAY_WIDTH - 1] = ch;
-    /*
-    mvprintw(row, col * ZTV_CELL_DISPLAY_WIDTH, "%-*.*s", ZTV_CELL_DISPLAY_WIDTH,
-             len < ZTV_CELL_DISPLAY_WIDTH ? len : ZTV_CELL_DISPLAY_WIDTH - 1,
-             str);
-    */
-  } else {
+  if (len == 0 || has_multibyte_char(str, len < ZTV_CELL_DISPLAY_WIDTH ? len : ZTV_CELL_DISPLAY_WIDTH) == 0)
+    mvprintw(row, col * ZTV_CELL_DISPLAY_WIDTH, "%-*.*s", ZTV_CELL_DISPLAY_WIDTH, ZTV_CELL_DISPLAY_WIDTH-1, str);
+  else {
     size_t used_width;
     int err = 0;
     unsigned char *s = (unsigned char *)str;
