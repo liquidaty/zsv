@@ -17,12 +17,12 @@
 #include <ncurses/ncurses.h>
 #else
 // #ifdef HAVE_NCURSES
-# if __has_include(<curses.h>)
-#  include <curses.h>
-# elif __has_include(<ncursesw/curses.h>)
+#if __has_include(<curses.h>)
+#include <curses.h>
+#elif __has_include(<ncursesw/curses.h>)
 //  #else
-#  include <ncursesw/curses.h>
-# endif
+#include <ncursesw/curses.h>
+#endif
 #endif
 
 #include <locale.h>
