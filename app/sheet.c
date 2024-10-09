@@ -138,7 +138,7 @@ size_t display_data_rowcount(struct display_dims *dims) {
 
 char ztv_status_text[256] = {0};
 void ztv_set_status(struct display_dims *ddims, int overwrite, const char *fmt, ...) {
-  if(overwrite || !*ztv_status_text) {
+  if (overwrite || !*ztv_status_text) {
     va_list argv;
     va_start(argv, fmt);
     // int n =
@@ -469,7 +469,7 @@ const char *display_cell(struct zsv_sheet_buffer *buff, size_t data_row, size_t 
 
     // convert the substring to wide characters
     wchar_t wsubstring[256] // Ensure this buffer is large enough
-      = { 0 }; // suppress 'uninitialized' lint warning
+      = {0};                // suppress 'uninitialized' lint warning
     mbstate_t state;
     memset(&state, 0, sizeof(state));
     const char *p = substring;
@@ -538,7 +538,7 @@ void display_buffer_subtable(struct zsv_sheet_buffer *buffer, size_t start_row, 
     }
   }
 
-  if(!(*ztv_status_text))
+  if (!(*ztv_status_text))
     ztv_set_status(ddims, 0, "? for help ");
   if (cursor_value)
     mvprintw(ddims->rows - ddims->footer_span, strlen(ztv_status_text), "%s", cursor_value);

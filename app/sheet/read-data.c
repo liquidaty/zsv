@@ -21,8 +21,8 @@ static char *ztv_found_in_row(zsv_parser parser, size_t col_count, const char *t
 static int read_data(
   zsv_sheet_buffer_t *bufferp,
   struct zsv_sheet_buffer_opts *buff_opts, // if buff_opts is provided, then a new *buffer will be allocated
-  const char *filename, const struct zsv_opts *zsv_optsp, size_t *max_col_countp, const char *row_filter, size_t start_row,
-  size_t start_col, size_t header_span, void *index, struct ztv_opts *ztv_opts,
+  const char *filename, const struct zsv_opts *zsv_optsp, size_t *max_col_countp, const char *row_filter,
+  size_t start_row, size_t start_col, size_t header_span, void *index, struct ztv_opts *ztv_opts,
   struct zsv_prop_handler *custom_prop_handler, const char *opts_used, size_t *rows_readp) {
   (void)(index); // to do
   FILE *fp = fopen(filename, "rb");
