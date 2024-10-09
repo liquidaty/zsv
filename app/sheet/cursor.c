@@ -49,14 +49,16 @@ static void set_window_to_cursor(struct ztv_rowcol *buff_offset, size_t target_r
     buff_offset->row = 0;
 }
 
-static int ztv_goto_input_raw_row(size_t input_raw_num, size_t input_header_span, struct ztv_rowcol *input_offset,
+static int ztv_goto_input_raw_row(zsv_sheet_buffer_t buffer,
+                                  size_t input_raw_num, size_t input_header_span, struct ztv_rowcol *input_offset,
                                   struct ztv_rowcol *buff_offset, struct input_dimensions *input_dims,
                                   size_t *cursor_rowp, struct display_dims *ddims, size_t final_cursor_position) {
+  size_t buffer_rows = zsv_sheet_buffer_rows(buffer);
   int update_buffer = 0;
   if (input_raw_num < input_offset->row                          // move the buffer up
-      || input_raw_num + input_header_span + 1 > ZTV_BUFFER_ROWS // move the buffer down
+      || input_raw_num + input_header_span + 1 > buffer_rows // move the buffer down
   ) {
-    input_offset->row = input_offset_centered(input_dims, ZTV_BUFFER_ROWS, input_raw_num);
+    input_offset->row = input_offset_centered(input_dims, buffer_rows, input_raw_num);
     update_buffer = 1;
   } else if (!(input_raw_num >= input_offset->row + buff_offset->row &&
                input_raw_num <=
