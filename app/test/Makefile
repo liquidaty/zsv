@@ -563,7 +563,7 @@ test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4
 
 test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
-  echo 'set-option default-terminal "tmux-256color"' > ~/.tmux.conf
+	@echo 'set-option default-terminal "tmux-256color"' > ~/.tmux.conf
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux set-window-option -t test-sheet prefix none && \
 	sleep 0.5 && \
