@@ -1,3 +1,7 @@
+#define _GNU_SOURCE
+#ifndef _XOPEN_SOURCE_EXTENDED
+#define _XOPEN_SOURCE_EXTENDED
+#endif
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -9,7 +13,6 @@
 #include <zsv.h>
 #include "sheet/sheet_internal.h"
 
-#define _XOPEN_SOURCE_EXTENDED
 #if defined(WIN32) || defined(_WIN32)
 #include <ncurses/ncurses.h>
 #else
@@ -49,8 +52,7 @@ void display_buffer_subtable(
 #include "sheet/read-data.c"
 #include "sheet/key-bindings.c"
 
-char ztv_status_text[256] = {0};
-void ztv_set_status(struct display_dims *ddims, const char *fmt, ...);
+void ztv_set_status(struct display_dims *ddims, int overwrite, const char *fmt, ...);
 
 void get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row) {
   *buff = '\0';
@@ -108,7 +110,7 @@ char ztv_handle_find_next(zsv_sheet_buffer_t buffer, const char *filename, const
                                             input_dims, cursor_rowp, ddims, (size_t)-1);
     return 1;
   }
-  ztv_set_status(ddims, "Not found");
+  ztv_set_status(ddims, 1, "Not found");
   return 0;
 }
 
@@ -134,20 +136,23 @@ size_t display_data_rowcount(struct display_dims *dims) {
   return dims->rows - dims->footer_span - dims->header_span;
 }
 
-void ztv_set_status(struct display_dims *ddims, const char *fmt, ...) {
-  va_list argv;
-  va_start(argv, fmt);
-  int n = vsnprintf(ztv_status_text, sizeof(ztv_status_text), fmt, argv);
-  va_end(argv);
-  if (n < (int)sizeof(ztv_status_text)) {
-    // clear the entire line
-    mvprintw(ddims->rows - ddims->footer_span, 0, "%-*s", sizeof(ztv_status_text), "");
-
-    // add status, highlighted
-    attron(A_REVERSE);
-    mvprintw(ddims->rows - ddims->footer_span, 0, "%s", ztv_status_text);
-    attroff(A_REVERSE);
+char ztv_status_text[256] = {0};
+void ztv_set_status(struct display_dims *ddims, int overwrite, const char *fmt, ...) {
+  if(overwrite || !*ztv_status_text) {
+    va_list argv;
+    va_start(argv, fmt);
+    // int n =
+    vsnprintf(ztv_status_text, sizeof(ztv_status_text), fmt, argv);
+    va_end(argv);
+    // note: if (n < (int)sizeof(ztv_status_text)), then we just ignore
   }
+  // clear the entire line
+  mvprintw(ddims->rows - ddims->footer_span, 0, "%-*s", (int)sizeof(ztv_status_text), "");
+
+  // add status, highlighted
+  attron(A_REVERSE);
+  mvprintw(ddims->rows - ddims->footer_span, 0, "%s", ztv_status_text);
+  attroff(A_REVERSE);
 }
 
 #include "sheet/terminfo.c"
@@ -243,7 +248,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   char cmdbuff[256]; // subcommand buffer
 
   while ((ztvch = ztv_key_binding(getch())) != ztv_key_quit) {
-    ztv_set_status(&display_dims, "");
+    ztv_set_status(&display_dims, 1, "");
     int update_buffer = 0;
     switch (ztvch) {
     case ztv_key_move_top:
@@ -377,7 +382,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           if (read_data(&buffer, &bopts, filename, &opts, &filter_dimensions.col_count, row_filter, 0, 0, header_span,
                         NULL, &ztv_opts, custom_prop_handler, opts_used, &found)) {
             filter_dimensions.row_count = 0;
-            ztv_set_status(&display_dims, "Unexpected error!"); // to do: better error message
+            ztv_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
             continue;
           } else if (found > 1) {
             buff_used_rows = found;
@@ -397,7 +402,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
             refresh();
           } else {
             filter_dimensions.row_count = 0;
-            ztv_set_status(&display_dims, "Not found");
+            ztv_set_status(&display_dims, 1, "Not found");
             continue;
           }
         }
@@ -408,7 +413,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       if (read_data(&buffer, &bopts, filename, &opts, NULL, row_filter, input_offset.row, input_offset.col, header_span,
                     row_filter ? filter_dimensions.index : file_dimensions.index, &ztv_opts, custom_prop_handler,
                     opts_used, &buff_used_rows)) {
-        ztv_set_status(&display_dims, "Unexpected error!"); // to do: better error message
+        ztv_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
         continue;
       } else if (row_filter)
         memcpy(&input_dimensions, &filter_dimensions, sizeof(input_dimensions));
@@ -416,7 +421,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         memcpy(&input_dimensions, &file_dimensions, sizeof(input_dimensions));
     }
     if (filter_dimensions.row_count)
-      ztv_set_status(&display_dims, "(%zu filtered rows) ", filter_dimensions.row_count - 1);
+      ztv_set_status(&display_dims, 1, "(%zu filtered rows) ", filter_dimensions.row_count - 1);
     display_buffer_subtable(buffer, buff_offset.row, buff_used_rows, buff_offset.col,
                             input_dimensions.col_count + rownum_col_offset > zsv_sheet_buffer_cols(buffer)
                               ? zsv_sheet_buffer_cols(buffer)
@@ -463,7 +468,8 @@ const char *display_cell(struct zsv_sheet_buffer *buff, size_t data_row, size_t 
     substring[nbytes] = '\0';
 
     // convert the substring to wide characters
-    wchar_t wsubstring[256]; // Ensure this buffer is large enough
+    wchar_t wsubstring[256] // Ensure this buffer is large enough
+      = { 0 }; // suppress 'uninitialized' lint warning
     mbstate_t state;
     memset(&state, 0, sizeof(state));
     const char *p = substring;
@@ -532,15 +538,9 @@ void display_buffer_subtable(struct zsv_sheet_buffer *buffer, size_t start_row, 
     }
   }
 
-  if (cursor_value) {
-    if (!*ztv_status_text)
-      sprintf(ztv_status_text, "? for help ");
-    ztv_set_status(ddims, ztv_status_text);
+  if(!(*ztv_status_text))
+    ztv_set_status(ddims, 0, "? for help ");
+  if (cursor_value)
     mvprintw(ddims->rows - ddims->footer_span, strlen(ztv_status_text), "%s", cursor_value);
-  } else {
-    if (!*ztv_status_text)
-      sprintf(ztv_status_text, "? for help ");
-    ztv_set_status(ddims, ztv_status_text);
-  }
   refresh();
 }
