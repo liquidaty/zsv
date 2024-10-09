@@ -570,6 +570,7 @@ test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-2: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux set-window-option -t test-sheet prefix none && \
 	sleep 0.5 && \
@@ -579,6 +580,7 @@ test-sheet-2: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-3: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux set-window-option -t test-sheet prefix none && \
 	sleep 0.5 && \
@@ -589,6 +591,7 @@ test-sheet-3: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-4: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux set-window-option -t test-sheet prefix none && \
 	sleep 0.5 && \
