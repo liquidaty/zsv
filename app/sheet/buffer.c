@@ -13,13 +13,23 @@ static inline size_t buffer_data_offset(zsv_sheet_buffer_t buff, size_t row, siz
   return row * buff->cols * buff->opts.cell_buff_len + col * buff->opts.cell_buff_len;
 }
 
-static inline int is_long_cell(const unsigned char *mem, size_t cell_buff_len) {
-  return *(mem + cell_buff_len - 1) != '\0';
+static void set_long_cell(zsv_sheet_buffer_t buff, size_t offset, char *heap) {
+  char **target = (char **)(buff->data + offset);
+  *target = heap;
+  // memcpy(buff->data + offset, heap, sizeof(heap));
+  // set flag indicating that this is long cell
+  *(buff->data + offset + buff->opts.cell_buff_len - 1) = (char)1;
 }
 
-static inline unsigned char *get_long_cell(zsv_sheet_buffer_t buff, size_t offset) {
-  unsigned char **mem = (unsigned char **)(buff->data + offset);
-  return *mem;
+static char *get_long_cell(zsv_sheet_buffer_t buff, size_t offset) {
+  char **valuep = (char **)(buff->data + offset);
+  if (valuep)
+    return *valuep;
+  return NULL;
+}
+
+static inline int is_long_cell(const unsigned char *mem, size_t cell_buff_len) {
+  return *(mem + cell_buff_len - 1) != '\0';
 }
 
 size_t zsv_sheet_buffer_cols(zsv_sheet_buffer_t buff) {
@@ -32,7 +42,7 @@ size_t zsv_sheet_buffer_rows(zsv_sheet_buffer_t buff) {
 
 static void free_long_cell(zsv_sheet_buffer_t buff, size_t offset) {
   if (is_long_cell(buff->data + offset, buff->opts.cell_buff_len)) {
-    unsigned char *value_copy = get_long_cell(buff, offset);
+    char *value_copy = get_long_cell(buff, offset);
     free(value_copy);
     memset(buff->data + offset, 0, buff->opts.cell_buff_len);
     buff->long_cell_count--;
@@ -42,7 +52,7 @@ static void free_long_cell(zsv_sheet_buffer_t buff, size_t offset) {
 void zsv_sheet_buffer_delete(zsv_sheet_buffer_t buff) {
   if (buff) {
     for (size_t i = 0; i < buff->opts.rows && buff->long_cell_count > 0; i++) {
-      for (size_t j = 0; j < buff->opts.rows && buff->long_cell_count > 0; j++) {
+      for (size_t j = 0; j < buff->cols && buff->long_cell_count > 0; j++) {
         size_t offset = buffer_data_offset(buff, i, j);
         free_long_cell(buff, offset);
       }
@@ -95,13 +105,13 @@ enum zsv_sheet_buffer_status zsv_sheet_buffer_write_cell_w_len(zsv_sheet_buffer_
                                                                const unsigned char *value, size_t len) {
   enum zsv_sheet_buffer_status stat = zsv_sheet_buffer_status_ok;
   size_t offset = buffer_data_offset(buff, row, col);
-  // free_long_cell(buff, offset);
+  free_long_cell(buff, offset);
   if (len < buff->opts.cell_buff_len) {
     if (len)
       // copy into fixed-size buff
       memcpy(buff->data + offset, value, len);
     *(buff->data + offset + len) = '\0';
-  } else if (0) {
+  } else {
     // we have a long cell
     if (len > buff->opts.max_cell_len) {
       len = buff->opts.max_cell_len;
@@ -109,15 +119,14 @@ enum zsv_sheet_buffer_status zsv_sheet_buffer_write_cell_w_len(zsv_sheet_buffer_
         // we are in the middle of a multibyte char, so back up
         len--;
     }
-    if (!len)
+    if (!len) // the only reason len could be 0 is if our input was not valid utf8, but check to make sure anyway
       stat = zsv_sheet_buffer_status_utf8;
-    else { // the only reason len could be 0 is if our input was not valid utf8, but check to make sure anyway
-      unsigned char *value_copy = malloc(1 + len);
+    else {
+      char *value_copy = malloc(1 + len);
       if (value_copy) {
         memcpy(value_copy, value, len);
         value_copy[len] = '\0';
-        unsigned char **target = (unsigned char **)&buff->data[offset];
-        *target = value_copy;
+        set_long_cell(buff, offset, value_copy);
         buff->long_cell_count++;
       } else
         stat = zsv_sheet_buffer_status_memory;
@@ -140,7 +149,7 @@ const unsigned char *zsv_sheet_buffer_cell_display(zsv_sheet_buffer_t buff, size
 
     // if the fixed-length cell memory does not end with NULL,
     // then the cell value is a pointer to memory holding the value
-    return get_long_cell(buff, offset);
+    return (unsigned char *)get_long_cell(buff, offset);
   }
   return NULL;
 }
