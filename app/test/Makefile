@@ -559,9 +559,11 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-sheet-all
 
 test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4
+	@(! tmux kill-session -t $@ 2>/dev/null && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
+  echo 'set-option default-terminal "tmux-256color"' > ~/.tmux.conf
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux set-window-option -t test-sheet prefix none && \
 	sleep 0.5 && \
@@ -599,4 +601,3 @@ test-sheet-4: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
-
