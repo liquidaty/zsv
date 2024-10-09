@@ -451,7 +451,7 @@ const char *display_cell(struct zsv_sheet_buffer *buff, size_t data_row, size_t 
   char *str = (char *)zsv_sheet_buffer_cell_display(buff, data_row, data_col);
   size_t len = str ? strlen(str) : 0;
   if (len == 0 || has_multibyte_char(str, len < ZTV_CELL_DISPLAY_WIDTH ? len : ZTV_CELL_DISPLAY_WIDTH) == 0)
-    mvprintw(row, col * ZTV_CELL_DISPLAY_WIDTH, "%-*.*s", ZTV_CELL_DISPLAY_WIDTH, ZTV_CELL_DISPLAY_WIDTH-1, str);
+    mvprintw(row, col * ZTV_CELL_DISPLAY_WIDTH, "%-*.*s", ZTV_CELL_DISPLAY_WIDTH, ZTV_CELL_DISPLAY_WIDTH - 1, str);
   else {
     size_t used_width;
     int err = 0;
