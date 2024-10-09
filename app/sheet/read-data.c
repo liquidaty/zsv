@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <zsv/utils/prop.h>
 #include "sheet_internal.h"
+#include "buffer.h"
 
 #if defined(WIN32) || defined(_WIN32)
 #define NO_MEMMEM
@@ -17,10 +18,12 @@ static char *ztv_found_in_row(zsv_parser parser, size_t col_count, const char *t
   return memmem(first_cell.str, last_cell.str - first_cell.str + last_cell.len, target, target_len);
 }
 
-static int read_data(char dest[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN], const char *filename,
-                     struct zsv_opts *zsv_optsp, size_t *max_col_countp, const char *row_filter, size_t start_row,
-                     size_t start_col, size_t header_span, void *index, struct ztv_opts *ztv_opts,
-                     struct zsv_prop_handler *custom_prop_handler, const char *opts_used, size_t *rows_readp) {
+static int read_data(
+  zsv_sheet_buffer_t *bufferp,
+  struct zsv_sheet_buffer_opts *buff_opts, // if buff_opts is provided, then a new *buffer will be allocated
+  const char *filename, const struct zsv_opts *zsv_optsp, size_t *max_col_countp, const char *row_filter,
+  size_t start_row, size_t start_col, size_t header_span, void *index, struct ztv_opts *ztv_opts,
+  struct zsv_prop_handler *custom_prop_handler, const char *opts_used, size_t *rows_readp) {
   (void)(index); // to do
   FILE *fp = fopen(filename, "rb");
   if (!fp)
@@ -35,6 +38,7 @@ static int read_data(char dest[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN],
   zsv_parser parser = {0};
   if (zsv_new_with_properties(&opts, custom_prop_handler, filename, opts_used, &parser) != zsv_status_ok) {
     fclose(fp);
+    zsv_delete(parser);
     return errno ? errno : -1;
   }
 
@@ -44,7 +48,18 @@ static int read_data(char dest[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN],
   size_t row_filter_len = row_filter ? strlen(row_filter) : 0;
   size_t find_len = ztv_opts->find ? strlen(ztv_opts->find) : 0;
   size_t rows_searched = 0;
-  while (zsv_next_row(parser) == zsv_status_row && rows_read < ZTV_BUFFER_ROWS) { // for each row
+  zsv_sheet_buffer_t buffer = bufferp ? *bufferp : NULL;
+  while (zsv_next_row(parser) == zsv_status_row &&
+         (rows_read == 0 || rows_read < zsv_sheet_buffer_rows(buffer))) { // for each row
+    if (buffer == NULL && buff_opts && zsv_cell_count(parser) > 0) {
+      enum zsv_sheet_buffer_status stat;
+      buffer = zsv_sheet_buffer_new(zsv_cell_count(parser), buff_opts, &stat);
+      if (buffer == NULL && stat != zsv_sheet_buffer_status_ok) {
+        zsv_delete(parser);
+        return -1;
+      }
+      *bufferp = buffer;
+    }
     original_row_num++;
     if (remaining_header_to_skip > 0) {
       remaining_header_to_skip--;
@@ -74,42 +89,31 @@ static int read_data(char dest[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN],
 
     // row number
     size_t rownum_column_offset = 0;
-    if (ztv_opts->hide_row_nums == 0) {
-      if (rows_read == 0) // header
-        snprintf(dest[rows_read][0], ZTV_MAX_CELL_LEN, "Row #");
-      else if (snprintf(dest[rows_read][0], ZTV_MAX_CELL_LEN, "%zu", original_row_num - 1) >=
-               ZTV_MAX_CELL_LEN) // unlikely!
-        sprintf(dest[rows_read][0], "########");
+    if (ztv_opts->hide_row_nums == 0) { // to do: merge w zsv_sheet_buffer_opts.no_rownum_column
+      if (rows_read == 0)               // header
+        zsv_sheet_buffer_write_cell(buffer, 0, 0, (const unsigned char *)"Row #");
+      /////
+      else {
+        char buff[32];
+        int n = snprintf(buff, sizeof(buff), "%zu", original_row_num - 1);
+        if (!(n > 0 && n < (int)sizeof(buff)))
+          sprintf(buff, "########");
+        zsv_sheet_buffer_write_cell(buffer, rows_read, 0, (unsigned char *)buff);
+      }
       rownum_column_offset = 1;
     }
 
-    for (size_t i = start_col; i < col_count + rownum_column_offset && i < ZTV_MAX_COLS; i++) {
+    for (size_t i = start_col; i < col_count && i + rownum_column_offset < zsv_sheet_buffer_cols(buffer); i++) {
       struct zsv_cell c = zsv_get_cell(parser, i);
-      if (c.len) {
-        char done = 0;
-        if (c.len >= ZTV_MAX_CELL_LEN && c.str[c.len - 1] >= 128) { // we may have to truncate a multi-byte char
-          int err = 0;
-          size_t used_width;
-          size_t bytes_to_copy =
-            utf8_bytes_up_to_max_width_and_replace_newlines(c.str, c.len, ZTV_MAX_CELL_LEN, &used_width, &err);
-          if (!err) {
-            memcpy(dest[rows_read][i + rownum_column_offset], c.str, bytes_to_copy);
-            dest[rows_read][i + rownum_column_offset][bytes_to_copy] = '\0';
-            done = 1;
-          }
-        }
-        if (!done) {
-          memcpy(dest[rows_read][i + rownum_column_offset], c.str,
-                 c.len < ZTV_MAX_CELL_LEN ? c.len : ZTV_MAX_CELL_LEN - 1);
-          dest[rows_read][i + rownum_column_offset][c.len] = '\0';
-        }
-      }
+      if (c.len)
+        zsv_sheet_buffer_write_cell_w_len(buffer, rows_read, i + rownum_column_offset, c.str, c.len);
     }
     rows_read++;
   }
   fclose(fp);
   if (rows_readp)
     *rows_readp = rows_read;
+  zsv_delete(parser);
   return 0;
 }
 
@@ -170,6 +174,7 @@ static void *get_data_index(struct get_data_index_data *d) {
 #ifdef ZTV_USE_THREADS
     pthread_mutex_unlock(mutexp);
 #endif
+    zsv_delete(parser);
     return NULL;
   }
 
@@ -196,6 +201,7 @@ static void *get_data_index(struct get_data_index_data *d) {
 #ifdef ZTV_USE_THREADS
   pthread_mutex_unlock(mutexp);
 #endif
+  zsv_delete(parser);
   return NULL;
 }
 
@@ -233,7 +239,7 @@ static size_t ztv_find_next(const char *filename, const char *row_filter, const 
   ztv_opts->find = needle;
   ztv_opts->found_rownum = 0;
   // TO DO: check if it exists in current row, later column (and change 'cursor_row - 1' below to 'cursor_row')
-  read_data(NULL, filename, zsv_opts, &input_dims->col_count, row_filter,
+  read_data(NULL, NULL, filename, zsv_opts, &input_dims->col_count, row_filter,
             input_offset->row + buff_offset->row + header_span + cursor_row - 1, 0, header_span, NULL, ztv_opts,
             custom_prop_handler, opts_used, NULL);
   ztv_opts->find = NULL;
