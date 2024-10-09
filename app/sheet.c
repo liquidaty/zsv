@@ -141,7 +141,6 @@ void ztv_set_status(struct display_dims *ddims, int overwrite, const char *fmt, 
   if (overwrite || !*ztv_status_text) {
     va_list argv;
     va_start(argv, fmt);
-    // int n =
     vsnprintf(ztv_status_text, sizeof(ztv_status_text), fmt, argv);
     va_end(argv);
     // note: if (n < (int)sizeof(ztv_status_text)), then we just ignore
@@ -176,7 +175,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return 1;
   }
 
-  setlocale(LC_ALL, "");
+  const char *locale = setlocale(LC_ALL, "C.UTF-8");
+  if (!locale || strstr(locale, "UTF-8") == NULL)
+    locale = setlocale(LC_ALL, "");
+  if (!locale || strstr(locale, "UTF-8") == NULL) {
+    fprintf(stderr, "Unable to set locale to UTF-8\n");
+    return 1; // TO DO: option to continue
+  }
+
   if (!terminfo_ok()) {
     fprintf(stderr, "Warning: unable to set or detect TERMINFO\n");
     return 1;
@@ -457,26 +463,13 @@ const char *display_cell(struct zsv_sheet_buffer *buff, size_t data_row, size_t 
     unsigned char *s = (unsigned char *)str;
     size_t nbytes =
       utf8_bytes_up_to_max_width_and_replace_newlines(s, len, ZTV_CELL_DISPLAY_WIDTH - 2, &used_width, &err);
-    // extract the substring up to nbytes
-    char *substring = malloc(nbytes + 1);
-    if (!substring) {
-      // Handle memory allocation error
-      fprintf(stderr, "Out of memoryx!\n");
-      return str;
-    }
-    memcpy(substring, str, nbytes);
-    substring[nbytes] = '\0';
 
     // convert the substring to wide characters
-    wchar_t wsubstring[256] // Ensure this buffer is large enough
-      = {0};                // suppress 'uninitialized' lint warning
-    mbstate_t state;
-    memset(&state, 0, sizeof(state));
-    const char *p = substring;
-    size_t wlen = mbsrtowcs(wsubstring, &p, sizeof(wsubstring) / sizeof(wchar_t), &state);
+    wchar_t wsubstring[256]; // Ensure this buffer is large enough
+    const char *p = str;
+    size_t wlen = mbsnrtowcs(wsubstring, &p, nbytes, sizeof(wsubstring) / sizeof(wchar_t), NULL);
     if (wlen == (size_t)-1) {
       fprintf(stderr, "Unable to convert to wide chars: %s\n", str);
-      free(substring);
       return str;
     }
 
@@ -487,8 +480,6 @@ const char *display_cell(struct zsv_sheet_buffer *buff, size_t data_row, size_t 
     addnwstr(wsubstring, wlen);
     for (size_t k = used_width; k < ZTV_CELL_DISPLAY_WIDTH; k++)
       addch(' ');
-
-    free(substring);
   }
   return str;
 }
@@ -538,8 +529,7 @@ void display_buffer_subtable(struct zsv_sheet_buffer *buffer, size_t start_row, 
     }
   }
 
-  if (!(*ztv_status_text))
-    ztv_set_status(ddims, 0, "? for help ");
+  ztv_set_status(ddims, 0, "? for help ");
   if (cursor_value)
     mvprintw(ddims->rows - ddims->footer_span, strlen(ztv_status_text), "%s", cursor_value);
   refresh();
