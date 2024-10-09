@@ -16,11 +16,13 @@
 #if defined(WIN32) || defined(_WIN32)
 #include <ncurses/ncurses.h>
 #else
-#ifdef HAVE_NCURSES
-#include <curses.h>
-#else
-#include <ncursesw/curses.h>
-#endif
+// #ifdef HAVE_NCURSES
+# if __has_include(<curses.h>)
+#  include <curses.h>
+# elif __has_include(<ncursesw/curses.h>)
+//  #else
+#  include <ncursesw/curses.h>
+# endif
 #endif
 
 #include <locale.h>
