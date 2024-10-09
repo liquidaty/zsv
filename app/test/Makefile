@@ -556,36 +556,44 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@(${PREFIX} $< ../../data/compare/t1.csv ../../data/compare/t2.csv --add AccentCity --sort -k country -k city ${REDIRECT1} ${TMP_DIR}/$@.out10 && \
 	${CMP} ${TMP_DIR}/$@.out10 expected/$@.out10 && ${TEST_PASS} || ${TEST_FAIL})
 
-test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
+test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-sheet-all
+
+test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4
+
+test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux set-window-option -t test-sheet prefix none && \
 	sleep 0.5 && \
-	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@1.out && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@1.out expected/$@1.out && ${TEST_PASS} || ${TEST_FAIL})
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
+test-sheet-2: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux set-window-option -t test-sheet prefix none && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "C-F" && \
-	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@2.out && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@2.out expected/$@2.out && ${TEST_PASS} || ${TEST_FAIL})
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
-	tmux set-window-option -t test-sheet prefix none && \
-	sleep 0.5 && \
-	tmux send-keys -t $@ "C-F" "C-F" "C-B" && \
-	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@2.out && \
-	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@2.out expected/$@2.out && ${TEST_PASS} || ${TEST_FAIL})
-
+test-sheet-3: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux set-window-option -t test-sheet prefix none && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "f" "sarmaj" Enter && \
 	sleep 0.5 && \
-	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@3.out && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@3.out expected/$@3.out && ${TEST_PASS} || ${TEST_FAIL})
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-4: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux set-window-option -t test-sheet prefix none && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "C-F" "C-F" "C-B" && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
