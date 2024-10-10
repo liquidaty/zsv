@@ -38,7 +38,7 @@ jobs:
         echo "TAG=$TAG" >> "$GITHUB_OUTPUT"
 
   clang-format:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout
@@ -46,9 +46,7 @@ jobs:
 
     - name: Run clang-format
       run: |
-        CLANG_FORMAT=$(apt list --installed clang-format* 2>/dev/null | grep clang-format | cut -d'/' -f1 | sort -r | head -n1)
-        sudo ln -sf "$(which "$CLANG_FORMAT")" /usr/bin/clang-format
-        clang-format --version
+        sudo ln -sf /usr/bin/clang-format-15 /usr/bin/clang-format
         ./scripts/ci-run-clang-format.sh
 
   cppcheck:
