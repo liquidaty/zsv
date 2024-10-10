@@ -40,8 +40,9 @@ ioff->3  |
       -------
  */
 
-static void set_window_to_cursor(struct zsvsheet_rowcol *buff_offset, size_t target_raw_row, struct zsvsheet_rowcol *input_offset,
-                                 size_t input_header_span, struct zsvsheet_display_dimensions *ddims, size_t cursor_row) {
+static void set_window_to_cursor(struct zsvsheet_rowcol *buff_offset, size_t target_raw_row,
+                                 struct zsvsheet_rowcol *input_offset, size_t input_header_span,
+                                 struct zsvsheet_display_dimensions *ddims, size_t cursor_row) {
   // assume that input_offset->row is fixed; set buff_offset->row
   if (target_raw_row + ddims->header_span >= input_offset->row + cursor_row + input_header_span)
     buff_offset->row = target_raw_row - input_offset->row - cursor_row + ddims->header_span - input_header_span;
@@ -50,9 +51,9 @@ static void set_window_to_cursor(struct zsvsheet_rowcol *buff_offset, size_t tar
 }
 
 static int zsvsheet_goto_input_raw_row(zsvsheet_buffer_t buffer, size_t input_raw_num, size_t input_header_span,
-                                  struct zsvsheet_rowcol *input_offset, struct zsvsheet_rowcol *buff_offset,
-                                  struct zsvsheet_input_dimensions *input_dims, size_t *cursor_rowp, struct zsvsheet_display_dimensions *ddims,
-                                  size_t final_cursor_position) {
+                                       struct zsvsheet_rowcol *input_offset, struct zsvsheet_rowcol *buff_offset,
+                                       struct zsvsheet_input_dimensions *input_dims, size_t *cursor_rowp,
+                                       struct zsvsheet_display_dimensions *ddims, size_t final_cursor_position) {
   size_t buffer_rows = zsvsheet_buffer_rows(buffer);
   int update_buffer = 0;
   if (input_raw_num < input_offset->row                      // move the buffer up

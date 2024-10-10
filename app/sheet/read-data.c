@@ -90,7 +90,7 @@ static int read_data(
     // row number
     size_t rownum_column_offset = 0;
     if (zsvsheet_opts->hide_row_nums == 0) { // to do: merge w zsvsheet_buffer_opts.no_rownum_column
-      if (rows_read == 0)               // header
+      if (rows_read == 0)                    // header
         zsvsheet_buffer_write_cell(buffer, 0, 0, (const unsigned char *)"Row #");
       /////
       else {
@@ -232,10 +232,11 @@ static void get_data_index_async(void **ix, const char *filename, struct zsv_opt
 #endif
 }
 
-static size_t zsvsheet_find_next(const char *filename, const char *row_filter, const char *needle, struct zsv_opts *zsv_opts,
-                            struct zsvsheet_opts *zsvsheet_opts, size_t header_span, struct zsvsheet_rowcol *input_offset,
-                            struct zsvsheet_rowcol *buff_offset, size_t cursor_row, struct zsvsheet_input_dimensions *input_dims,
-                            struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+static size_t zsvsheet_find_next(const char *filename, const char *row_filter, const char *needle,
+                                 struct zsv_opts *zsv_opts, struct zsvsheet_opts *zsvsheet_opts, size_t header_span,
+                                 struct zsvsheet_rowcol *input_offset, struct zsvsheet_rowcol *buff_offset,
+                                 size_t cursor_row, struct zsvsheet_input_dimensions *input_dims,
+                                 struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
   zsvsheet_opts->find = needle;
   zsvsheet_opts->found_rownum = 0;
   // TO DO: check if it exists in current row, later column (and change 'cursor_row - 1' below to 'cursor_row')

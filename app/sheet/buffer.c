@@ -63,7 +63,7 @@ void zsvsheet_buffer_delete(zsvsheet_buffer_t buff) {
 }
 
 zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *opts,
-                                        enum zsvsheet_buffer_status *stat) {
+                                      enum zsvsheet_buffer_status *stat) {
   if (opts->rows == 0)
     opts->rows = ZSVSHEET_BUFFER_DEFAULT_ROW_COUNT;
   else if (opts->rows < 256)
@@ -102,7 +102,7 @@ zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *
 #endif
 
 enum zsvsheet_buffer_status zsvsheet_buffer_write_cell_w_len(zsvsheet_buffer_t buff, size_t row, size_t col,
-                                                               const unsigned char *value, size_t len) {
+                                                             const unsigned char *value, size_t len) {
   enum zsvsheet_buffer_status stat = zsvsheet_buffer_status_ok;
   size_t offset = buffer_data_offset(buff, row, col);
   free_long_cell(buff, offset);
@@ -136,7 +136,7 @@ enum zsvsheet_buffer_status zsvsheet_buffer_write_cell_w_len(zsvsheet_buffer_t b
 }
 
 enum zsvsheet_buffer_status zsvsheet_buffer_write_cell(zsvsheet_buffer_t buff, size_t row, size_t col,
-                                                         const unsigned char *value) {
+                                                       const unsigned char *value) {
   return zsvsheet_buffer_write_cell_w_len(buff, row, col, value, strlen((void *)value));
 }
 
