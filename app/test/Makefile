@@ -559,12 +559,13 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-sheet-all
 
 test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4
-	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null; done && ${TEST_PASS} || ${TEST_FAIL})
+	@(! tmux kill-session -t $@ 2>/dev/null && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "tmux-256color"' > ~/.tmux.conf
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux set-window-option -t test-sheet prefix none && \
 	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
@@ -573,6 +574,7 @@ test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 test-sheet-2: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux set-window-option -t test-sheet prefix none && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "C-F" && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
@@ -582,6 +584,7 @@ test-sheet-2: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 test-sheet-3: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux set-window-option -t test-sheet prefix none && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "f" "sarmaj" Enter && \
 	sleep 0.5 && \
@@ -592,6 +595,7 @@ test-sheet-3: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 test-sheet-4: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@(tmux new-session -x 1000 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux set-window-option -t test-sheet prefix none && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "C-F" "C-F" "C-B" && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
