@@ -1,0 +1,10 @@
+/**
+!/app
+/app/cli_internal.*.in
+!/include
+!/scripts
+!/src
+!configure
+!AUTHORS
+!Makefile
+!LICENSE
