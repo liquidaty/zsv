@@ -48,6 +48,7 @@ jobs:
       run: |
         CLANG_FORMAT=$(apt list --installed clang-format* 2>/dev/null | grep clang-format | cut -d'/' -f1 | sort -r | head -n1)
         sudo ln -sf "$(which "$CLANG_FORMAT")" /usr/bin/clang-format
+        clang-format --version
         ./scripts/ci-run-clang-format.sh
 
   cppcheck:
