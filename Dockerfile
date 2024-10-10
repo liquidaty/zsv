@@ -4,7 +4,7 @@ LABEL maintainer="Liquidaty"
 LABEL description="zsv: tabular data swiss-army knife CLI + world's fastest (simd) CSV parser"
 LABEL url="https://github.com/liquidaty/zsv"
 
-RUN apk add --no-cache gcc make musl-dev
+RUN apk add --no-cache gcc make musl-dev perl
 
 WORKDIR /zsv
 COPY . .
@@ -24,6 +24,6 @@ FROM scratch
 
 WORKDIR /zsv
 COPY --from=build /zsv/amd64-linux-musl/bin/zsv .
-COPY AUTHORS LICENSE ./
+COPY --from=build /zsv/AUTHORS /zsv/LICENSE ./
 
 ENTRYPOINT [ "./zsv" ]

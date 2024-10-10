@@ -484,13 +484,16 @@ clean-util-lib:
 clean-lib:
 	@rm -rf ${BUILD_DIR}-external
 
-clean: clean-obj
+clean: clean-obj clean-internal
 	rm -rf ${BUILD_DIR}
 	${MAKE} -C test clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 clean-obj:
 	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT}
 	rm -rf external/utf8proc-2.6.1
+
+clean-internal:
+	$(RM) cli_internal.c.in cli_internal.h.in
 
 ${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: ${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1.tar.gz
 	@cd external && tar xf $< && chown -R `whoami` utf8proc-2.6.1
