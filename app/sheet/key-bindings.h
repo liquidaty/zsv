@@ -1,23 +1,23 @@
-#ifndef ZTV_KEY_BINDINGS_H
-#define ZTV_KEY_BINDINGS_H
+#ifndef ZSVSHEET_KEY_BINDINGS_H
+#define ZSVSHEET_KEY_BINDINGS_H
 
-enum ztv_key {
-  ztv_key_unknown = 0,
-  ztv_key_quit,
-  ztv_key_escape,
-  ztv_key_move_bottom,
-  ztv_key_move_top,
-  ztv_key_move_first_col,
-  ztv_key_pg_down,
-  ztv_key_pg_up,
-  ztv_key_move_last_col,
-  ztv_key_move_up,
-  ztv_key_move_down,
-  ztv_key_move_left,
-  ztv_key_move_right,
-  ztv_key_filter,
-  ztv_key_find,
-  ztv_key_find_next
+enum zsvsheet_key {
+  zsvsheet_key_unknown = 0,
+  zsvsheet_key_quit,
+  zsvsheet_key_escape,
+  zsvsheet_key_move_bottom,
+  zsvsheet_key_move_top,
+  zsvsheet_key_move_first_col,
+  zsvsheet_key_pg_down,
+  zsvsheet_key_pg_up,
+  zsvsheet_key_move_last_col,
+  zsvsheet_key_move_up,
+  zsvsheet_key_move_down,
+  zsvsheet_key_move_left,
+  zsvsheet_key_move_right,
+  zsvsheet_key_filter,
+  zsvsheet_key_find,
+  zsvsheet_key_find_next
 };
 
 #endif

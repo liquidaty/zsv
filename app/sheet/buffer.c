@@ -1,19 +1,19 @@
 #include "buffer.h"
 
-struct zsv_sheet_buffer {
+struct zsvsheet_buffer {
   size_t cols;
   size_t long_cell_count;
-  struct zsv_sheet_buffer_opts opts;
+  struct zsvsheet_buffer_opts opts;
   unsigned char *data;
   // to do: add hooks for extension
 };
 
-static inline size_t buffer_data_offset(zsv_sheet_buffer_t buff, size_t row, size_t col) {
+static inline size_t buffer_data_offset(zsvsheet_buffer_t buff, size_t row, size_t col) {
   assert(row < buff->opts.rows && col < buff->cols);
   return row * buff->cols * buff->opts.cell_buff_len + col * buff->opts.cell_buff_len;
 }
 
-static void set_long_cell(zsv_sheet_buffer_t buff, size_t offset, char *heap) {
+static void set_long_cell(zsvsheet_buffer_t buff, size_t offset, char *heap) {
   char **target = (char **)(buff->data + offset);
   *target = heap;
   // memcpy(buff->data + offset, heap, sizeof(heap));
@@ -21,7 +21,7 @@ static void set_long_cell(zsv_sheet_buffer_t buff, size_t offset, char *heap) {
   *(buff->data + offset + buff->opts.cell_buff_len - 1) = (char)1;
 }
 
-static char *get_long_cell(zsv_sheet_buffer_t buff, size_t offset) {
+static char *get_long_cell(zsvsheet_buffer_t buff, size_t offset) {
   char **valuep = (char **)(buff->data + offset);
   if (valuep)
     return *valuep;
@@ -32,15 +32,15 @@ static inline int is_long_cell(const unsigned char *mem, size_t cell_buff_len) {
   return *(mem + cell_buff_len - 1) != '\0';
 }
 
-size_t zsv_sheet_buffer_cols(zsv_sheet_buffer_t buff) {
+size_t zsvsheet_buffer_cols(zsvsheet_buffer_t buff) {
   return buff->cols;
 }
 
-size_t zsv_sheet_buffer_rows(zsv_sheet_buffer_t buff) {
+size_t zsvsheet_buffer_rows(zsvsheet_buffer_t buff) {
   return buff->opts.rows;
 }
 
-static void free_long_cell(zsv_sheet_buffer_t buff, size_t offset) {
+static void free_long_cell(zsvsheet_buffer_t buff, size_t offset) {
   if (is_long_cell(buff->data + offset, buff->opts.cell_buff_len)) {
     char *value_copy = get_long_cell(buff, offset);
     free(value_copy);
@@ -49,7 +49,7 @@ static void free_long_cell(zsv_sheet_buffer_t buff, size_t offset) {
   }
 }
 
-void zsv_sheet_buffer_delete(zsv_sheet_buffer_t buff) {
+void zsvsheet_buffer_delete(zsvsheet_buffer_t buff) {
   if (buff) {
     for (size_t i = 0; i < buff->opts.rows && buff->long_cell_count > 0; i++) {
       for (size_t j = 0; j < buff->cols && buff->long_cell_count > 0; j++) {
@@ -62,28 +62,28 @@ void zsv_sheet_buffer_delete(zsv_sheet_buffer_t buff) {
   }
 }
 
-zsv_sheet_buffer_t zsv_sheet_buffer_new(size_t cols, struct zsv_sheet_buffer_opts *opts,
-                                        enum zsv_sheet_buffer_status *stat) {
+zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *opts,
+                                        enum zsvsheet_buffer_status *stat) {
   if (opts->rows == 0)
-    opts->rows = ZSV_SHEET_BUFFER_DEFAULT_ROW_COUNT;
+    opts->rows = ZSVSHEET_BUFFER_DEFAULT_ROW_COUNT;
   else if (opts->rows < 256)
     opts->rows = 256;
   if (opts->cell_buff_len == 0)
-    opts->cell_buff_len = ZSV_SHEET_BUFFER_DEFAULT_CELL_BUFF_LEN;
+    opts->cell_buff_len = ZSVSHEET_BUFFER_DEFAULT_CELL_BUFF_LEN;
   if (opts->max_cell_len == 0)
-    opts->max_cell_len = ZSV_SHEET_BUFFER_DEFAULT_MAX_CELL_LEN;
+    opts->max_cell_len = ZSVSHEET_BUFFER_DEFAULT_MAX_CELL_LEN;
   if (opts->cell_buff_len < sizeof(void *) * 2)
-    *stat = zsv_sheet_buffer_status_error;
+    *stat = zsvsheet_buffer_status_error;
   else {
     if (!opts->no_rownum_column)
       cols++;
     void *data = calloc(opts->rows, cols * opts->cell_buff_len);
     if (!data)
-      *stat = zsv_sheet_buffer_status_memory;
+      *stat = zsvsheet_buffer_status_memory;
     else {
-      struct zsv_sheet_buffer *buff = calloc(1, sizeof(*buff));
+      struct zsvsheet_buffer *buff = calloc(1, sizeof(*buff));
       if (!buff)
-        *stat = zsv_sheet_buffer_status_memory;
+        *stat = zsvsheet_buffer_status_memory;
       else {
         buff->opts.rows = opts->rows;
         buff->cols = cols;
@@ -101,9 +101,9 @@ zsv_sheet_buffer_t zsv_sheet_buffer_new(size_t cols, struct zsv_sheet_buffer_opt
 #define UTF8_NOT_FIRST_CHAR(x) ((x & 0xC0) == 0x80)
 #endif
 
-enum zsv_sheet_buffer_status zsv_sheet_buffer_write_cell_w_len(zsv_sheet_buffer_t buff, size_t row, size_t col,
+enum zsvsheet_buffer_status zsvsheet_buffer_write_cell_w_len(zsvsheet_buffer_t buff, size_t row, size_t col,
                                                                const unsigned char *value, size_t len) {
-  enum zsv_sheet_buffer_status stat = zsv_sheet_buffer_status_ok;
+  enum zsvsheet_buffer_status stat = zsvsheet_buffer_status_ok;
   size_t offset = buffer_data_offset(buff, row, col);
   free_long_cell(buff, offset);
   if (len < buff->opts.cell_buff_len) {
@@ -120,7 +120,7 @@ enum zsv_sheet_buffer_status zsv_sheet_buffer_write_cell_w_len(zsv_sheet_buffer_
         len--;
     }
     if (!len) // the only reason len could be 0 is if our input was not valid utf8, but check to make sure anyway
-      stat = zsv_sheet_buffer_status_utf8;
+      stat = zsvsheet_buffer_status_utf8;
     else {
       char *value_copy = malloc(1 + len);
       if (value_copy) {
@@ -129,18 +129,18 @@ enum zsv_sheet_buffer_status zsv_sheet_buffer_write_cell_w_len(zsv_sheet_buffer_
         set_long_cell(buff, offset, value_copy);
         buff->long_cell_count++;
       } else
-        stat = zsv_sheet_buffer_status_memory;
+        stat = zsvsheet_buffer_status_memory;
     }
   }
   return stat;
 }
 
-enum zsv_sheet_buffer_status zsv_sheet_buffer_write_cell(zsv_sheet_buffer_t buff, size_t row, size_t col,
+enum zsvsheet_buffer_status zsvsheet_buffer_write_cell(zsvsheet_buffer_t buff, size_t row, size_t col,
                                                          const unsigned char *value) {
-  return zsv_sheet_buffer_write_cell_w_len(buff, row, col, value, strlen((void *)value));
+  return zsvsheet_buffer_write_cell_w_len(buff, row, col, value, strlen((void *)value));
 }
 
-const unsigned char *zsv_sheet_buffer_cell_display(zsv_sheet_buffer_t buff, size_t row, size_t col) {
+const unsigned char *zsvsheet_buffer_cell_display(zsvsheet_buffer_t buff, size_t row, size_t col) {
   if (row < buff->opts.rows && col < buff->cols) {
     size_t offset = row * buff->cols * buff->opts.cell_buff_len + col * buff->opts.cell_buff_len;
     const unsigned char *cell = &buff->data[offset];

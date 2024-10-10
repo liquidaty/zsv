@@ -69,7 +69,7 @@ ZSV_MAIN_DECL(desc);
 ZSV_MAIN_DECL(sql);
 ZSV_MAIN_DECL(2db);
 ZSV_MAIN_DECL(compare);
-#ifdef ZSV_BUILD_SHEET
+#ifdef ZSVSHEET_BUILD
 ZSV_MAIN_DECL(sheet);
 #endif
 ZSV_MAIN_DECL(echo);
@@ -111,7 +111,7 @@ struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_COMMAND(sql),
   CLI_BUILTIN_COMMAND(2db),
   CLI_BUILTIN_COMMAND(compare),
-#ifdef ZSV_BUILD_SHEET
+#ifdef ZSVSHEET_BUILD
 CLI_BUILTIN_COMMAND(sheet),
 #endif
   CLI_BUILTIN_COMMAND(echo),
