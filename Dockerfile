@@ -16,8 +16,8 @@ RUN \
     ARTIFACT_DIR=artifacts \
     RUN_TESTS=false \
     STATIC_BUILD=1 \
-    SKIP_ZIP_ARTIFACT=true \
-    SKIP_TAR_ARTIFACT=true \
+    SKIP_ZIP_ARCHIVE=true \
+    SKIP_TAR_ARCHIVE=true \
     ./scripts/ci-build.sh
 
 FROM scratch
