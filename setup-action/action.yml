@@ -1,0 +1,28 @@
+name: zsv/setup-action
+description: GitHub Action to set up zsv+zsvlib
+
+branding:
+  icon: download
+  color: green
+
+inputs:
+  version:
+    description: Version/tag of the release
+    required: false
+    default: latest
+
+outputs:
+  install-path:
+    description: Absolute path of the installation directory
+    value: ${{ steps.setup.outputs.install-path }}
+
+runs:
+  using: composite
+
+  steps:
+  - name: Setup
+    id: setup
+    env:
+      VERSION: '${{ inputs.version }}'
+    shell: bash
+    run: $GITHUB_ACTION_PATH/scripts/setup.bash
