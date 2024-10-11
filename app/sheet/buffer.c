@@ -16,7 +16,6 @@ static inline size_t buffer_data_offset(zsvsheet_buffer_t buff, size_t row, size
 static void set_long_cell(zsvsheet_buffer_t buff, size_t offset, char *heap) {
   char **target = (char **)(buff->data + offset);
   *target = heap;
-  // memcpy(buff->data + offset, heap, sizeof(heap));
   // set flag indicating that this is long cell
   *(buff->data + offset + buff->opts.cell_buff_len - 1) = (char)1;
 }
@@ -64,6 +63,7 @@ void zsvsheet_buffer_delete(zsvsheet_buffer_t buff) {
 
 zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *opts,
                                       enum zsvsheet_buffer_status *stat) {
+  *stat = zsvsheet_buffer_status_ok;
   if (opts->rows == 0)
     opts->rows = ZSVSHEET_BUFFER_DEFAULT_ROW_COUNT;
   else if (opts->rows < 256)
