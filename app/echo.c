@@ -21,6 +21,7 @@
 #include <zsv/utils/file.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/mem.h>
+#include <zsv/utils/arg.h>
 
 enum zsv_echo_overwrite_input_type {
   zsv_echo_overwrite_input_type_sqlite3 = 0
@@ -157,6 +158,7 @@ const char *zsv_echo_usage_msg[] = {
   "",
   "Options:",
   "  -b                   : output with BOM",
+  "  -o <filename>        : filename to save output to",
   "  --trim               : trim whitespace",
   "  --trim-columns       : trim blank columns",
   "  --contiguous         : stop output upon scanning an entire row of blank values",
@@ -265,7 +267,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     const char *arg = argv[arg_i];
     if (!strcmp(arg, "-b"))
       writer_opts.with_bom = 1;
-    else if (!strcmp(arg, "--contiguous"))
+    else if (!strcmp(arg, "-o")) {
+      const char *output_filename = zsv_next_arg(++arg_i, argc, argv, &err);
+      if (output_filename && !err) {
+        if (!(writer_opts.stream = fopen(output_filename, "wb")))
+          perror(output_filename);
+      }
+    } else if (!strcmp(arg, "--contiguous"))
       data.contiguous = 1;
     else if (!strcmp(arg, "--trim-columns"))
       data.trim_columns = 1;
@@ -383,6 +391,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
   opts->stream = data.in;
   opts->ctx = &data;
+
   data.csv_writer = zsv_writer_new(&writer_opts);
 
   if (overwrites_csv) {
