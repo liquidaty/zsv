@@ -19,12 +19,12 @@ struct zsvsheet_ui_buffer {
   char *status;
   char *row_filter;
 
-  unsigned char indexed:1;
-  unsigned char _:7;
+  unsigned char indexed : 1;
+  unsigned char _ : 7;
 };
 
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
-  if(ub) {
+  if (ub) {
     zsvsheet_buffer_delete(ub->buffer);
     free(ub->row_filter);
     free(ub->status);
@@ -42,8 +42,7 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(struct zsvsheet_ui_buffer_opts
 #ifdef ZSVSHEET_USE_THREADS
   uibuff->mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
-  if(uibopts->row_filter
-     && !(uib->row_filter = strdup(uibopts->row_filter))) {
+  if (uibopts->row_filter && !(uib->row_filter = strdup(uibopts->row_filter))) {
     zsvsheet_ui_buffer_delete(uib);
     return NULL;
   }
@@ -51,15 +50,15 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(struct zsvsheet_ui_buffer_opts
 }
 
 void zsvsheet_ui_buffers_delete(struct zsvsheet_ui_buffer *ub) {
-  for(struct zsvsheet_ui_buffer *prior; ub; ub = prior) {
+  for (struct zsvsheet_ui_buffer *prior; ub; ub = prior) {
     prior = ub->prior;
     zsvsheet_ui_buffer_delete(ub);
   }
 }
 
 void zsvsheet_ui_buffer_push(struct zsvsheet_ui_buffer **base, struct zsvsheet_ui_buffer **current,
-                                     struct zsvsheet_ui_buffer *element) {
-  if(*base == NULL)
+                             struct zsvsheet_ui_buffer *element) {
+  if (*base == NULL)
     *base = *current = element;
   else {
     element->prior = *current;
@@ -67,11 +66,11 @@ void zsvsheet_ui_buffer_push(struct zsvsheet_ui_buffer **base, struct zsvsheet_u
   }
 }
 
-
-struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_pop(struct zsvsheet_ui_buffer **base, struct zsvsheet_ui_buffer **current) {
-  if(*current) {
+struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_pop(struct zsvsheet_ui_buffer **base,
+                                                  struct zsvsheet_ui_buffer **current) {
+  if (*current) {
     struct zsvsheet_ui_buffer *old_current = *current;
-    if(old_current->prior)
+    if (old_current->prior)
       *current = old_current->prior;
     else
       *base = NULL;
