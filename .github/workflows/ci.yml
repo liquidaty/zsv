@@ -528,6 +528,6 @@ jobs:
       with:
         platforms: linux/amd64
         push: true
-        tags: |
+        tags: |-
           ghcr.io/liquidaty/zsv:${{ startsWith(github.ref, 'refs/tags/v') && env.TAG || github.sha }}
-          ${{ startsWith(github.ref, 'refs/tags/v') && 'ghcr.io/liquidaty/zsv:latest' }}
+          ${{ startsWith(github.ref, 'refs/tags/v') && 'ghcr.io/liquidaty/zsv:latest' || '' }}
