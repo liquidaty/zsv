@@ -211,6 +211,16 @@ Please note:
 - If you'd like to use additional parser features, or use the CLI as a Node
   package, please feel free to post a request in an issue here.
 
+#### GHCR (GitHub Containers Registry)
+
+`zsv` CLI is available as a docker image from
+[Packages](https://github.com/liquidaty?tab=packages).
+
+`zsv:latest` points to the latest released version.
+
+See its [Dockerfile](./Dockerfile) for more details. You may use this as a
+baseline to create your own version as needed.
+
 ### From source
 
 See [BUILD.md](BUILD.md) for more details.
