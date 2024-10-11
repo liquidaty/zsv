@@ -501,7 +501,6 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read
       packages: write
 
     env:
@@ -530,5 +529,5 @@ jobs:
         platforms: linux/amd64
         push: true
         tags: |
-          zsv:${{ startsWith(github.ref, 'refs/tags/v') && env.TAG || github.sha }}
-          ${{ startsWith(github.ref, 'refs/tags/v') && 'zsv:latest' }}
+          ghcr.io/liquidaty/zsv:${{ startsWith(github.ref, 'refs/tags/v') && env.TAG || github.sha }}
+          ${{ startsWith(github.ref, 'refs/tags/v') && 'ghcr.io/liquidaty/zsv:latest' }}
