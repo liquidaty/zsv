@@ -496,7 +496,8 @@ jobs:
       run: |
         ./scripts/ci-update-homebrew-tap.sh
 
-  docker:
+  ghcr:
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
     needs: [tag]
     runs-on: ubuntu-latest
 
@@ -528,6 +529,6 @@ jobs:
       with:
         platforms: linux/amd64
         push: true
-        tags: |-
-          ghcr.io/liquidaty/zsv:${{ startsWith(github.ref, 'refs/tags/v') && env.TAG || github.sha }}
-          ${{ startsWith(github.ref, 'refs/tags/v') && 'ghcr.io/liquidaty/zsv:latest' || '' }}
+        tags: |
+          ghcr.io/liquidaty/zsv:${{ env.TAG }}
+          ghcr.io/liquidaty/zsv:latest
