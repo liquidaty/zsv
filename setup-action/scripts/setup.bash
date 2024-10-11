@@ -14,81 +14,61 @@ AVAILABLE_VERSIONS=($(git ls-remote --tags --refs https://github.com/liquidaty/z
 
 TARGET_VERSION=
 if [[ $VERSION == "latest" ]]; then
-    TARGET_VERSION="${AVAILABLE_VERSIONS[0]}"
+  TARGET_VERSION="${AVAILABLE_VERSIONS[0]}"
 else
-    if [[ $VERSION != "v"* ]]; then
-        TARGET_VERSION="v$VERSION"
+  if [[ $VERSION != "v"* ]]; then
+    TARGET_VERSION="v$VERSION"
+  fi
+
+  echo "[INF] Validating version/tag..."
+  IS_VALID_VERSION=false
+  for AV in "${AVAILABLE_VERSIONS[@]}"; do
+    if [[ $TARGET_VERSION == "$AV" ]]; then
+      IS_VALID_VERSION=true
+      break
     fi
-
-    echo "[INF] Validating version/tag..."
-
-    IS_VALID_VERSION=false
+  done
+  if [[ $IS_VALID_VERSION == false ]]; then
+    echo "[ERR] Version/tag not found! [$VERSION]"
+    echo "[ERR] Available versions/tags are:"
     for AV in "${AVAILABLE_VERSIONS[@]}"; do
-        if [[ $TARGET_VERSION == "$AV" ]]; then
-            IS_VALID_VERSION=true
-            break
-        fi
+      echo "[ERR] - $AV"
     done
-    if [[ $IS_VALID_VERSION == false ]]; then
-        echo "[ERR] Version/tag not found! [$VERSION]"
-        echo "[ERR] Available versions/tags are:"
-        for AV in "${AVAILABLE_VERSIONS[@]}"; do
-            echo "[ERR] - $AV"
-        done
-        exit 1
-    fi
-
-    echo "[INF] Validated version/tag successfully!"
+    exit 1
+  fi
+  echo "[INF] Validated version/tag successfully!"
 fi
 
 TARGET_VERSION="${TARGET_VERSION:1}"
-TARGET_ARCH=
-TARGET_OS=
-TARGET_COMPILER=
 
+TRIPLET=
 if [[ $RUNNER_OS == "Linux" ]]; then
-    if [[ $RUNNER_ARCH == "X64" ]]; then
-        TARGET_ARCH="amd64"
-        TARGET_OS="linux"
-        TARGET_COMPILER="gcc"
-    fi
+  if [[ $RUNNER_ARCH == "X64" ]]; then
+    TRIPLET="amd64-linux-gcc"
+  fi
 elif [[ $RUNNER_OS == "macOS" ]]; then
-    if [[ $RUNNER_ARCH == "X64" ]]; then
-        TARGET_ARCH="amd64"
-        TARGET_OS="macosx"
-        TARGET_COMPILER="gcc"
-    elif [[ $RUNNER_ARCH == "ARM64" ]]; then
-        TARGET_ARCH="arm64"
-        TARGET_OS="macosx"
-        TARGET_COMPILER="gcc"
-    fi
+  if [[ $RUNNER_ARCH == "X64" ]]; then
+    TRIPLET="amd64-macosx-gcc"
+  elif [[ $RUNNER_ARCH == "ARM64" ]]; then
+    TRIPLET="arm64-macosx-gcc"
+  fi
 elif [[ $RUNNER_OS == "Windows" ]]; then
-    if [[ $RUNNER_ARCH == "X86" || $RUNNER_ARCH == "X64" ]]; then
-        TARGET_ARCH="amd64"
-        TARGET_OS="windows"
-        TARGET_COMPILER="mingw"
-    fi
+  if [[ $RUNNER_ARCH == "X86" || $RUNNER_ARCH == "X64" ]]; then
+    TRIPLET="amd64-windows-mingw"
+  fi
 
-    if ! which wget; then
-        echo "[INF] Installing wget..."
-        if ! choco install wget --no-progress >/dev/null; then
-            echo "[ERR] Failed to install wget!"
-            exit 1
-        fi
+  if ! which wget >/dev/null; then
+    echo "[INF] Installing wget..."
+    if ! choco install wget --no-progress >/dev/null; then
+      echo "[ERR] Failed to install wget!"
+      exit 1
     fi
-else
-    echo "[ERR] Unsupported OS! [$RUNNER_OS]"
-    exit 1
+  fi
 fi
 
-if [[ -z $TARGET_ARCH ]]; then
-    echo "[ERR] Runner architecture not supported! [$RUNNER_ARCH]"
-    exit 1
-fi
-
-if [[ -z $TARGET_OS ]]; then
-    echo "[ERR] Runner OS not supported! [$RUNNER_OS]"
-    exit 1
+if [[ -z $TRIPLET ]]; then
+  echo "[ERR] Architecture/OS not supported! [$RUNNER_ARCH $RUNNER_OS]"
+  exit 1
 fi
 
 INSTALL_DIR="$RUNNER_TEMP/zsv"
@@ -98,16 +78,15 @@ rm -rf "${INSTALL_DIR:?}"/{bin,include,lib}
 mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
 
-TRIPLET="$TARGET_ARCH-$TARGET_OS-$TARGET_COMPILER"
 ZIP="zsv-$TARGET_VERSION-$TRIPLET.zip"
 URL="https://github.com/liquidaty/zsv/releases/download/v$TARGET_VERSION/$ZIP"
 
 echo "[INF] Downloading... [$URL]"
 if [[ ! -f $ZIP ]]; then
-    wget --quiet "$URL"
-    echo "[INF] Downloaded successfully!"
+  wget --quiet "$URL"
+  echo "[INF] Downloaded successfully!"
 else
-    echo "[INF] Archive already exists! Skipping download..."
+  echo "[INF] Archive already exists! Skipping download..."
 fi
 
 echo "[INF] Extracting... [$ZIP]"
@@ -123,5 +102,5 @@ echo "$INSTALL_PATH/bin" >>"$GITHUB_PATH"
 echo "[INF] Setting output parameter... [install-path]"
 echo "install-path=$INSTALL_PATH" >>"$GITHUB_OUTPUT"
 
-echo "[INF] Set up successfully!"
+echo "[INF] zsv+zsvlib set up successfully!"
 echo "[INF] --- [DONE] ---"

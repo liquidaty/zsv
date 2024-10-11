@@ -11,7 +11,7 @@ Supports Linux, macOS, and Windows runners.
 ### Inputs
 
 |   Input   | Required | Default  | Description                |
-| :-------: | :------- | :------: | :------------------------- |
+| :-------: | :------: | :------: | :------------------------- |
 | `version` | `false`  | `latest` | Version/tag of the release |
 
 ### Outputs
