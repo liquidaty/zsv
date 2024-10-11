@@ -536,7 +536,7 @@ if [ "$TRY_SHEET" != "no" ]; then
             CFLAGS_NCURSES=-DHAVE_NCURSES
         fi
     fi
-    ZSV_BUILD_SHEET=1
+    ZSVSHEET_BUILD=1
 
     if [ "$TRY_SHEET" = "yes" ] ; then
         echo "Error: could not find either ncurses or ncursesw library; cannot build 'sheet' feature"
@@ -544,7 +544,7 @@ if [ "$TRY_SHEET" != "no" ]; then
     fi
     if [ "$LDFLAGS_NCURSES" = "" ] ; then
         echo "Warning: could not find either ncurses or ncursesw library; cannot build 'sheet' feature"
-        ZSV_BUILD_SHEET=0
+        ZSVSHEET_BUILD=0
     fi
 fi
 
@@ -793,7 +793,7 @@ CFLAGS_NCURSES = $CFLAGS_NCURSES
 
 ZSV_EXTRAS = $ZSV_EXTRAS
 
-ZSV_BUILD_SHEET = $ZSV_BUILD_SHEET
+ZSVSHEET_BUILD = $ZSVSHEET_BUILD
 
 $NO_HAVE
 $USE_LIBS
@@ -818,7 +818,7 @@ else
     echo "*  - termcap: yes                                              *"
 fi
 
-if [ "$ZSV_BUILD_SHEET" = "1" ]; then
+if [ "$ZSVSHEET_BUILD" = "1" ]; then
     echo "*  - build sheet feature: yes                                  *"
     echo "*    ncurses library:     $NCLIB                               *"
 else

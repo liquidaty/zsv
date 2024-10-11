@@ -29,34 +29,34 @@
 
 #include <locale.h>
 #include <wchar.h>
-#ifdef ZTV_USE_THREADS
+#ifdef ZSVSHEET_USE_THREADS
 #include <pthread.h>
 #endif
 
-// #define ZTV_BUFFER_ROWS 1000
-// #define ZTV_MAX_COLS 100
-// #define ZTV_MAX_CELL_LEN 256 /* must be a multiple of 16 */
+// #define ZSVSHEET_BUFFER_ROWS 1000
+// #define ZSVSHEET_MAX_COLS 100
+// #define ZSVSHEET_MAX_CELL_LEN 256 /* must be a multiple of 16 */
 #include "sheet/buffer.h"
 #include "sheet/buffer.c"
 
-#define ZTV_CELL_DISPLAY_WIDTH 10
+#define ZSVSHEET_CELL_DISPLAY_WIDTH 10
 
-struct ztv_opts {
+struct zsvsheet_opts {
   char hide_row_nums; // if 1, will load row nums
   const char *find;
   size_t found_rownum;
 };
 
 void display_buffer_subtable(
-  struct zsv_sheet_buffer *buffer, // char buffer[ZTV_BUFFER_ROWS][ZTV_MAX_COLS][ZTV_MAX_CELL_LEN],
+  struct zsvsheet_buffer *buffer, // char buffer[ZSVSHEET_BUFFER_ROWS][ZSVSHEET_MAX_COLS][ZSVSHEET_MAX_CELL_LEN],
   size_t start_row, size_t buffer_used_row_count, size_t start_col, size_t max_col_count, size_t cursor_row,
-  size_t cursor_col, size_t input_header_span, struct display_dims *ddims);
+  size_t cursor_col, size_t input_header_span, struct zsvsheet_display_dimensions *ddims);
 
 #include "sheet/utf8-width.c"
 #include "sheet/read-data.c"
 #include "sheet/key-bindings.c"
 
-void ztv_set_status(struct display_dims *ddims, int overwrite, const char *fmt, ...);
+void zsvsheet_set_status(struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt, ...);
 
 void get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row) {
   *buff = '\0';
@@ -96,30 +96,32 @@ void get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_
   }
 }
 
-size_t ztv_get_input_raw_row(struct ztv_rowcol *input_offset, struct ztv_rowcol *buff_offset, size_t cursor_row) {
+size_t zsvsheet_get_input_raw_row(struct zsvsheet_rowcol *input_offset, struct zsvsheet_rowcol *buff_offset,
+                                  size_t cursor_row) {
   return input_offset->row + buff_offset->row + cursor_row;
 }
 
 #include "sheet/cursor.c"
 
-// ztv_handle_find_next: return non-zero if a result was found
-char ztv_handle_find_next(zsv_sheet_buffer_t buffer, const char *filename, const char *row_filter, const char *needle,
-                          struct zsv_opts *zsv_opts, struct ztv_opts *ztv_opts, size_t header_span,
-                          struct ztv_rowcol *input_offset, struct ztv_rowcol *buff_offset,
-                          struct input_dimensions *input_dims, size_t *cursor_rowp, struct display_dims *ddims,
-                          int *update_buffer, struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
-  if (ztv_find_next(filename, row_filter, needle, zsv_opts, ztv_opts, header_span, input_offset, buff_offset,
-                    *cursor_rowp, input_dims, custom_prop_handler, opts_used) > 0) {
-    *update_buffer = ztv_goto_input_raw_row(buffer, ztv_opts->found_rownum, header_span, input_offset, buff_offset,
-                                            input_dims, cursor_rowp, ddims, (size_t)-1);
+// zsvsheet_handle_find_next: return non-zero if a result was found
+char zsvsheet_handle_find_next(zsvsheet_buffer_t buffer, const char *filename, const char *row_filter,
+                               const char *needle, struct zsv_opts *zsv_opts, struct zsvsheet_opts *zsvsheet_opts,
+                               size_t header_span, struct zsvsheet_rowcol *input_offset,
+                               struct zsvsheet_rowcol *buff_offset, struct zsvsheet_input_dimensions *input_dims,
+                               size_t *cursor_rowp, struct zsvsheet_display_dimensions *ddims, int *update_buffer,
+                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+  if (zsvsheet_find_next(filename, row_filter, needle, zsv_opts, zsvsheet_opts, header_span, input_offset, buff_offset,
+                         *cursor_rowp, input_dims, custom_prop_handler, opts_used) > 0) {
+    *update_buffer = zsvsheet_goto_input_raw_row(buffer, zsvsheet_opts->found_rownum, header_span, input_offset,
+                                                 buff_offset, input_dims, cursor_rowp, ddims, (size_t)-1);
     return 1;
   }
-  ztv_set_status(ddims, 1, "Not found");
+  zsvsheet_set_status(ddims, 1, "Not found");
   return 0;
 }
 
-struct display_dims get_display_dimensions(size_t header_span, size_t footer_span) {
-  struct display_dims dims = {0};
+struct zsvsheet_display_dimensions get_display_dimensions(size_t header_span, size_t footer_span) {
+  struct zsvsheet_display_dimensions dims = {0};
   int max_y, max_x;
   getmaxyx(stdscr, max_y, max_x);
 
@@ -136,25 +138,25 @@ struct display_dims get_display_dimensions(size_t header_span, size_t footer_spa
   return dims;
 }
 
-size_t display_data_rowcount(struct display_dims *dims) {
+size_t display_data_rowcount(struct zsvsheet_display_dimensions *dims) {
   return dims->rows - dims->footer_span - dims->header_span;
 }
 
-char ztv_status_text[256] = {0};
-void ztv_set_status(struct display_dims *ddims, int overwrite, const char *fmt, ...) {
-  if (overwrite || !*ztv_status_text) {
+char zsvsheet_status_text[256] = {0};
+void zsvsheet_set_status(struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt, ...) {
+  if (overwrite || !*zsvsheet_status_text) {
     va_list argv;
     va_start(argv, fmt);
-    vsnprintf(ztv_status_text, sizeof(ztv_status_text), fmt, argv);
+    vsnprintf(zsvsheet_status_text, sizeof(zsvsheet_status_text), fmt, argv);
     va_end(argv);
-    // note: if (n < (int)sizeof(ztv_status_text)), then we just ignore
+    // note: if (n < (int)sizeof(zsvsheet_status_text)), then we just ignore
   }
   // clear the entire line
-  mvprintw(ddims->rows - ddims->footer_span, 0, "%-*s", (int)sizeof(ztv_status_text), "");
+  mvprintw(ddims->rows - ddims->footer_span, 0, "%-*s", (int)sizeof(zsvsheet_status_text), "");
 
   // add status, highlighted
   attron(A_REVERSE);
-  mvprintw(ddims->rows - ddims->footer_span, 0, "%s", ztv_status_text);
+  mvprintw(ddims->rows - ddims->footer_span, 0, "%s", zsvsheet_status_text);
   attroff(A_REVERSE);
 }
 
@@ -170,7 +172,7 @@ void dobreak1() {
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
                                struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
-    zsv_sheet_usage();
+    zsvsheet_usage();
     return zsv_status_ok;
   }
 
@@ -195,10 +197,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   const char *filename = argv[1];
   char *row_filter = NULL;
   char *find = NULL;
-  struct input_dimensions file_dimensions = {0};
-  struct input_dimensions input_dimensions = {0};
-  struct input_dimensions filter_dimensions = {0};
-#ifdef ZTV_USE_THREADS
+  struct zsvsheet_input_dimensions file_dimensions = {0};
+  struct zsvsheet_input_dimensions input_dimensions = {0};
+  struct zsvsheet_input_dimensions filter_dimensions = {0};
+#ifdef ZSVSHEET_USE_THREADS
   pthread_mutex_t input_mutex = PTHREAD_MUTEX_INITIALIZER;
   pthread_mutex_t filter_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
@@ -206,26 +208,26 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   // input_offset: location within the input from which the buffer is read
   // i.e. if row = 5, col = 3, the buffer data starts from cell D6
-  struct ztv_rowcol input_offset = {0};
+  struct zsvsheet_rowcol input_offset = {0};
 
   // buff_offset: location within the buffer from which the data is
   // displayed on the screen
-  struct ztv_rowcol buff_offset = {0};
+  struct zsvsheet_rowcol buff_offset = {0};
 
   size_t buff_used_rows = 0;
   size_t header_span = 0; // number of rows that comprise the header
-  struct ztv_opts ztv_opts = {0};
+  struct zsvsheet_opts zsvsheet_opts = {0};
   int err;
-  zsv_sheet_buffer_t buffer = NULL;
-  struct zsv_sheet_buffer_opts bopts = {0};
-  if ((err = read_data(&buffer, &bopts, filename, &opts, &file_dimensions.col_count, NULL, 0, 0, 0, NULL, &ztv_opts,
-                       custom_prop_handler, opts_used, &buff_used_rows)) != 0 ||
+  zsvsheet_buffer_t buffer = NULL;
+  struct zsvsheet_buffer_opts bopts = {0};
+  if ((err = read_data(&buffer, &bopts, filename, &opts, &file_dimensions.col_count, NULL, 0, 0, 0, NULL,
+                       &zsvsheet_opts, custom_prop_handler, opts_used, &buff_used_rows)) != 0 ||
       !buff_used_rows) {
     if (err)
       perror(filename);
     else
       fprintf(stderr, "%s: no data found", filename);
-    zsv_sheet_buffer_delete(buffer);
+    zsvsheet_buffer_delete(buffer);
     return -1;
   }
 
@@ -234,120 +236,121 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   noecho();
   keypad(stdscr, TRUE);
   cbreak();
-  struct display_dims display_dims = get_display_dimensions(1, 1);
+  struct zsvsheet_display_dimensions display_dims = get_display_dimensions(1, 1);
 
   get_data_index_async(&file_dimensions.index, filename, &opts, NULL, &file_dimensions.row_count, custom_prop_handler,
                        opts_used
-#ifdef ZTV_USE_THREADS
+#ifdef ZSVSHEET_USE_THREADS
                        ,
                        &input_mutex
 #endif
   );
   memcpy(&input_dimensions, &file_dimensions, sizeof(input_dimensions));
-  int ztvch;
+  int zsvsheetch;
   size_t cursor_row = 1; // first row is header
   size_t cursor_col = 0;
   char *help_suffix = NULL;
   size_t rownum_col_offset = 1;
   display_buffer_subtable(buffer, buff_offset.row, buff_used_rows, buff_offset.col,
-                          input_dimensions.col_count + rownum_col_offset > zsv_sheet_buffer_cols(buffer)
-                            ? zsv_sheet_buffer_cols(buffer)
+                          input_dimensions.col_count + rownum_col_offset > zsvsheet_buffer_cols(buffer)
+                            ? zsvsheet_buffer_cols(buffer)
                             : input_dimensions.col_count + rownum_col_offset,
                           cursor_row, cursor_col, header_span, &display_dims);
 
   char cmdbuff[256]; // subcommand buffer
 
-  while ((ztvch = ztv_key_binding(getch())) != ztv_key_quit) {
-    ztv_set_status(&display_dims, 1, "");
+  while ((zsvsheetch = zsvsheet_key_binding(getch())) != zsvsheet_key_quit) {
+    zsvsheet_set_status(&display_dims, 1, "");
     int update_buffer = 0;
-    switch (ztvch) {
-    case ztv_key_move_top:
-      update_buffer = ztv_goto_input_raw_row(buffer, 1, header_span, &input_offset, &buff_offset, &input_dimensions,
-                                             &cursor_row, &display_dims, display_dims.header_span);
+    switch (zsvsheetch) {
+    case zsvsheet_key_move_top:
+      update_buffer =
+        zsvsheet_goto_input_raw_row(buffer, 1, header_span, &input_offset, &buff_offset, &input_dimensions, &cursor_row,
+                                    &display_dims, display_dims.header_span);
       break;
-    case ztv_key_move_bottom:
+    case zsvsheet_key_move_bottom:
       if (input_dimensions.row_count == 0)
         continue;
       if (input_dimensions.row_count <= display_dims.rows - display_dims.footer_span)
         cursor_row = input_dimensions.row_count - 1;
       else {
-        update_buffer = ztv_goto_input_raw_row(buffer, input_dimensions.row_count - 1, header_span, &input_offset,
-                                               &buff_offset, &input_dimensions, &cursor_row, &display_dims,
-                                               display_dims.rows - display_dims.header_span - 1);
+        update_buffer = zsvsheet_goto_input_raw_row(buffer, input_dimensions.row_count - 1, header_span, &input_offset,
+                                                    &buff_offset, &input_dimensions, &cursor_row, &display_dims,
+                                                    display_dims.rows - display_dims.header_span - 1);
       }
       break;
-    case ztv_key_move_first_col:
+    case zsvsheet_key_move_first_col:
       cursor_col = 0;
       buff_offset.col = 0;
       break;
-    case ztv_key_pg_up:
+    case zsvsheet_key_pg_up:
       if (input_dimensions.row_count <= header_span)
         continue; // no data
       else {
-        size_t current = ztv_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
+        size_t current = zsvsheet_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
         if (current <= display_data_rowcount(&display_dims) + header_span)
           continue; // already at top
         else {
           size_t target = current - display_data_rowcount(&display_dims);
           if (target >= input_dimensions.row_count)
             target = input_dimensions.row_count > 0 ? input_dimensions.row_count - 1 : 0;
-          update_buffer = ztv_goto_input_raw_row(buffer, target, header_span, &input_offset, &buff_offset,
-                                                 &input_dimensions, &cursor_row, &display_dims, cursor_row);
+          update_buffer = zsvsheet_goto_input_raw_row(buffer, target, header_span, &input_offset, &buff_offset,
+                                                      &input_dimensions, &cursor_row, &display_dims, cursor_row);
         }
       }
       break;
-    case ztv_key_pg_down: {
+    case zsvsheet_key_pg_down: {
       dobreak1();
-      size_t current = ztv_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
+      size_t current = zsvsheet_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
       if (current >= input_dimensions.row_count - display_data_rowcount(&display_dims))
         continue; // already at bottom
       else {
         size_t target = current + display_data_rowcount(&display_dims);
-        update_buffer = ztv_goto_input_raw_row(buffer, target, header_span, &input_offset, &buff_offset,
-                                               &input_dimensions, &cursor_row, &display_dims, cursor_row);
+        update_buffer = zsvsheet_goto_input_raw_row(buffer, target, header_span, &input_offset, &buff_offset,
+                                                    &input_dimensions, &cursor_row, &display_dims, cursor_row);
       }
     } break;
-    case ztv_key_move_last_col:
+    case zsvsheet_key_move_last_col:
       // to do: directly set cursor_col and buff_offset.col
-      while (cursor_right(display_dims.columns, ZTV_CELL_DISPLAY_WIDTH,
-                          input_dimensions.col_count + rownum_col_offset > zsv_sheet_buffer_cols(buffer)
-                            ? zsv_sheet_buffer_cols(buffer)
+      while (cursor_right(display_dims.columns, ZSVSHEET_CELL_DISPLAY_WIDTH,
+                          input_dimensions.col_count + rownum_col_offset > zsvsheet_buffer_cols(buffer)
+                            ? zsvsheet_buffer_cols(buffer)
                             : input_dimensions.col_count + rownum_col_offset,
                           &cursor_col, &buff_offset.col) > 0)
         ;
       break;
-    case ztv_key_move_up: {
-      size_t current = ztv_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
+    case zsvsheet_key_move_up: {
+      size_t current = zsvsheet_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
       if (current > header_span) {
         update_buffer =
-          ztv_goto_input_raw_row(buffer, current - 1, header_span, &input_offset, &buff_offset, &input_dimensions,
-                                 &cursor_row, &display_dims, cursor_row > 0 ? cursor_row - 1 : 0);
+          zsvsheet_goto_input_raw_row(buffer, current - 1, header_span, &input_offset, &buff_offset, &input_dimensions,
+                                      &cursor_row, &display_dims, cursor_row > 0 ? cursor_row - 1 : 0);
       } else if (cursor_row > 0) {
         cursor_row--;
       }
     } break;
-    case ztv_key_move_down: {
-      size_t current = ztv_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
+    case zsvsheet_key_move_down: {
+      size_t current = zsvsheet_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
       if (current >= input_dimensions.row_count - 1)
         continue; // already at bottom
-      update_buffer = ztv_goto_input_raw_row(buffer, current + 1, header_span, &input_offset, &buff_offset,
-                                             &input_dimensions, &cursor_row, &display_dims, cursor_row + 1);
+      update_buffer = zsvsheet_goto_input_raw_row(buffer, current + 1, header_span, &input_offset, &buff_offset,
+                                                  &input_dimensions, &cursor_row, &display_dims, cursor_row + 1);
     } break;
-    case ztv_key_move_left:
+    case zsvsheet_key_move_left:
       if (cursor_col > 0) {
         cursor_col--;
       } else if (buff_offset.col > 0) {
         buff_offset.col--;
       }
       break;
-    case ztv_key_move_right:
-      cursor_right(display_dims.columns, ZTV_CELL_DISPLAY_WIDTH,
-                   input_dimensions.col_count + rownum_col_offset > zsv_sheet_buffer_cols(buffer)
-                     ? zsv_sheet_buffer_cols(buffer)
+    case zsvsheet_key_move_right:
+      cursor_right(display_dims.columns, ZSVSHEET_CELL_DISPLAY_WIDTH,
+                   input_dimensions.col_count + rownum_col_offset > zsvsheet_buffer_cols(buffer)
+                     ? zsvsheet_buffer_cols(buffer)
                      : input_dimensions.col_count + rownum_col_offset,
                    &cursor_col, &buff_offset.col);
       break;
-    case ztv_key_escape: // escape
+    case zsvsheet_key_escape: // escape
       if (row_filter) {
         // remove filter
         free(row_filter);
@@ -359,26 +362,26 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         break;
       }
       continue;
-    case ztv_key_find_next:
+    case zsvsheet_key_find_next:
       if (find) {
-        if (!ztv_handle_find_next(buffer, filename, row_filter, find, &opts, &ztv_opts, header_span, &input_offset,
-                                  &buff_offset, &input_dimensions, &cursor_row, &display_dims, &update_buffer,
-                                  custom_prop_handler, opts_used))
+        if (!zsvsheet_handle_find_next(buffer, filename, row_filter, find, &opts, &zsvsheet_opts, header_span,
+                                       &input_offset, &buff_offset, &input_dimensions, &cursor_row, &display_dims,
+                                       &update_buffer, custom_prop_handler, opts_used))
           continue;
       }
       break;
-    case ztv_key_find:
+    case zsvsheet_key_find:
       get_subcommand("Find", cmdbuff, sizeof(cmdbuff), (int)(display_dims.rows - display_dims.footer_span));
       if (*cmdbuff != '\0') {
         free(find);
         find = strdup(cmdbuff);
-        if (!ztv_handle_find_next(buffer, filename, row_filter, find, &opts, &ztv_opts, header_span, &input_offset,
-                                  &buff_offset, &input_dimensions, &cursor_row, &display_dims, &update_buffer,
-                                  custom_prop_handler, opts_used))
+        if (!zsvsheet_handle_find_next(buffer, filename, row_filter, find, &opts, &zsvsheet_opts, header_span,
+                                       &input_offset, &buff_offset, &input_dimensions, &cursor_row, &display_dims,
+                                       &update_buffer, custom_prop_handler, opts_used))
           continue;
       }
       break;
-    case ztv_key_filter:
+    case zsvsheet_key_filter:
       get_subcommand("Filter", cmdbuff, sizeof(cmdbuff), (int)(display_dims.rows - display_dims.footer_span));
       if (*cmdbuff != '\0') {
         row_filter = strdup(cmdbuff);
@@ -390,15 +393,15 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         if (row_filter) {
           size_t found = 0;
           if (read_data(&buffer, &bopts, filename, &opts, &filter_dimensions.col_count, row_filter, 0, 0, header_span,
-                        NULL, &ztv_opts, custom_prop_handler, opts_used, &found)) {
+                        NULL, &zsvsheet_opts, custom_prop_handler, opts_used, &found)) {
             filter_dimensions.row_count = 0;
-            ztv_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
+            zsvsheet_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
             continue;
           } else if (found > 1) {
             buff_used_rows = found;
             get_data_index_async(&filter_dimensions.index, filename, &opts, row_filter, &filter_dimensions.row_count,
                                  custom_prop_handler, opts_used
-#ifdef ZTV_USE_THREADS
+#ifdef ZSVSHEET_USE_THREADS
                                  ,
                                  &filter_mutex
 #endif
@@ -412,7 +415,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
             refresh();
           } else {
             filter_dimensions.row_count = 0;
-            ztv_set_status(&display_dims, 1, "Not found");
+            zsvsheet_set_status(&display_dims, 1, "Not found");
             continue;
           }
         }
@@ -421,9 +424,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
     if (update_buffer) {
       if (read_data(&buffer, &bopts, filename, &opts, NULL, row_filter, input_offset.row, input_offset.col, header_span,
-                    row_filter ? filter_dimensions.index : file_dimensions.index, &ztv_opts, custom_prop_handler,
+                    row_filter ? filter_dimensions.index : file_dimensions.index, &zsvsheet_opts, custom_prop_handler,
                     opts_used, &buff_used_rows)) {
-        ztv_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
+        zsvsheet_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
         continue;
       } else if (row_filter)
         memcpy(&input_dimensions, &filter_dimensions, sizeof(input_dimensions));
@@ -431,10 +434,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         memcpy(&input_dimensions, &file_dimensions, sizeof(input_dimensions));
     }
     if (filter_dimensions.row_count)
-      ztv_set_status(&display_dims, 1, "(%zu filtered rows) ", filter_dimensions.row_count - 1);
+      zsvsheet_set_status(&display_dims, 1, "(%zu filtered rows) ", filter_dimensions.row_count - 1);
     display_buffer_subtable(buffer, buff_offset.row, buff_used_rows, buff_offset.col,
-                            input_dimensions.col_count + rownum_col_offset > zsv_sheet_buffer_cols(buffer)
-                              ? zsv_sheet_buffer_cols(buffer)
+                            input_dimensions.col_count + rownum_col_offset > zsvsheet_buffer_cols(buffer)
+                              ? zsvsheet_buffer_cols(buffer)
                               : input_dimensions.col_count + rownum_col_offset,
                             cursor_row, cursor_col, header_span, &display_dims);
   }
@@ -443,21 +446,22 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   free(help_suffix);
   free(row_filter);
   free(find);
-  zsv_sheet_buffer_delete(buffer);
+  zsvsheet_buffer_delete(buffer);
   return 0;
 }
 
-const char *display_cell(struct zsv_sheet_buffer *buff, size_t data_row, size_t data_col, int row, int col) {
-  char *str = (char *)zsv_sheet_buffer_cell_display(buff, data_row, data_col);
+const char *display_cell(struct zsvsheet_buffer *buff, size_t data_row, size_t data_col, int row, int col) {
+  char *str = (char *)zsvsheet_buffer_cell_display(buff, data_row, data_col);
   size_t len = str ? strlen(str) : 0;
-  if (len == 0 || has_multibyte_char(str, len < ZTV_CELL_DISPLAY_WIDTH ? len : ZTV_CELL_DISPLAY_WIDTH) == 0)
-    mvprintw(row, col * ZTV_CELL_DISPLAY_WIDTH, "%-*.*s", ZTV_CELL_DISPLAY_WIDTH, ZTV_CELL_DISPLAY_WIDTH - 1, str);
+  if (len == 0 || has_multibyte_char(str, len < ZSVSHEET_CELL_DISPLAY_WIDTH ? len : ZSVSHEET_CELL_DISPLAY_WIDTH) == 0)
+    mvprintw(row, col * ZSVSHEET_CELL_DISPLAY_WIDTH, "%-*.*s", ZSVSHEET_CELL_DISPLAY_WIDTH,
+             ZSVSHEET_CELL_DISPLAY_WIDTH - 1, str);
   else {
     size_t used_width;
     int err = 0;
     unsigned char *s = (unsigned char *)str;
     size_t nbytes =
-      utf8_bytes_up_to_max_width_and_replace_newlines(s, len, ZTV_CELL_DISPLAY_WIDTH - 2, &used_width, &err);
+      utf8_bytes_up_to_max_width_and_replace_newlines(s, len, ZSVSHEET_CELL_DISPLAY_WIDTH - 2, &used_width, &err);
 
     // convert the substring to wide characters
     wchar_t wsubstring[256]; // Ensure this buffer is large enough
@@ -469,19 +473,19 @@ const char *display_cell(struct zsv_sheet_buffer *buff, size_t data_row, size_t 
     }
 
     // move to the desired position
-    move(row, col * ZTV_CELL_DISPLAY_WIDTH);
+    move(row, col * ZSVSHEET_CELL_DISPLAY_WIDTH);
 
     // print the wide-character string with right padding
     addnwstr(wsubstring, wlen);
-    for (size_t k = used_width; k < ZTV_CELL_DISPLAY_WIDTH; k++)
+    for (size_t k = used_width; k < ZSVSHEET_CELL_DISPLAY_WIDTH; k++)
       addch(' ');
   }
   return str;
 }
 
-void display_buffer_subtable(struct zsv_sheet_buffer *buffer, size_t start_row, size_t buffer_used_row_count,
+void display_buffer_subtable(struct zsvsheet_buffer *buffer, size_t start_row, size_t buffer_used_row_count,
                              size_t start_col, size_t max_col_count, size_t cursor_row, size_t cursor_col,
-                             size_t input_header_span, struct display_dims *ddims) {
+                             size_t input_header_span, struct zsvsheet_display_dimensions *ddims) {
   erase(); // use erase() instead of clear() to avoid changes being saved to
            // screen buffer history
   const size_t DATA_START_ROW = input_header_span;
@@ -493,7 +497,7 @@ void display_buffer_subtable(struct zsv_sheet_buffer *buffer, size_t start_row, 
   if (end_row > buffer_used_row_count)
     end_row = buffer_used_row_count;
 
-  size_t end_col = start_col + ddims->columns / ZTV_CELL_DISPLAY_WIDTH;
+  size_t end_col = start_col + ddims->columns / ZSVSHEET_CELL_DISPLAY_WIDTH;
   if (end_col > max_col_count)
     end_col = max_col_count;
 
@@ -524,8 +528,8 @@ void display_buffer_subtable(struct zsv_sheet_buffer *buffer, size_t start_row, 
     }
   }
 
-  ztv_set_status(ddims, 0, "? for help ");
+  zsvsheet_set_status(ddims, 0, "? for help ");
   if (cursor_value)
-    mvprintw(ddims->rows - ddims->footer_span, strlen(ztv_status_text), "%s", cursor_value);
+    mvprintw(ddims->rows - ddims->footer_span, strlen(zsvsheet_status_text), "%s", cursor_value);
   refresh();
 }
