@@ -34,8 +34,7 @@ struct get_data_index_data {
 
 static void *get_data_index(struct get_data_index_data *d);
 
-static void get_data_index_async(void **ix, const char *filename,
-                                 const struct zsv_opts *optsp, const char *row_filter,
+static void get_data_index_async(void **ix, const char *filename, const struct zsv_opts *optsp, const char *row_filter,
                                  size_t *row_countp, struct zsv_prop_handler *custom_prop_handler, const char *opts_used
 #ifdef ZSVSHEET_USE_THREADS
                                  ,
@@ -62,12 +61,10 @@ static void get_data_index_async(void **ix, const char *filename,
 #endif
 }
 
-static int read_data(
-                     struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_ui_buffer will be allocated
+static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_ui_buffer will be allocated
                      struct zsvsheet_ui_buffer_opts *uibopts, // if *uibufferp == NULL and uibopts != NULL
-                     const char *filename, const struct zsv_opts *zsv_optsp,
-                     size_t start_row, size_t start_col, size_t header_span,
-                     void *index, struct zsvsheet_opts *zsvsheet_opts,
+                     const char *filename, const struct zsv_opts *zsv_optsp, size_t start_row, size_t start_col,
+                     size_t header_span, void *index, struct zsvsheet_opts *zsvsheet_opts,
                      struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
   (void)(index); // to do
   FILE *fp = fopen(filename, "rb");
@@ -100,9 +97,9 @@ static int read_data(
     if (uibuff == NULL && uibufferp && uibopts && zsv_cell_count(parser) > 0) {
       enum zsvsheet_buffer_status stat;
       struct zsvsheet_ui_buffer *tmp_uibuff = zsvsheet_ui_buffer_new(uibopts);
-      if(!tmp_uibuff
-         || !(tmp_uibuff->buffer = buffer = zsvsheet_buffer_new(zsv_cell_count(parser), uibopts->buff_opts, &stat))
-         || stat != zsvsheet_buffer_status_ok) {
+      if (!tmp_uibuff ||
+          !(tmp_uibuff->buffer = buffer = zsvsheet_buffer_new(zsv_cell_count(parser), uibopts->buff_opts, &stat)) ||
+          stat != zsvsheet_buffer_status_ok) {
         zsv_delete(parser);
         zsvsheet_ui_buffer_delete(tmp_uibuff);
         return -1;
@@ -111,14 +108,14 @@ static int read_data(
       row_filter = uibuff ? uibuff->row_filter : NULL;
       row_filter_len = row_filter ? strlen(row_filter) : 0;
     }
-    
+
     original_row_num++;
     if (remaining_header_to_skip > 0) {
       remaining_header_to_skip--;
       continue;
     }
     size_t col_count = zsv_cell_count(parser);
-    if(uibuff) {
+    if (uibuff) {
       if (col_count > uibuff->dimensions.col_count)
         uibuff->dimensions.col_count = col_count;
     }
@@ -166,25 +163,23 @@ static int read_data(
   }
   fclose(fp);
   zsv_delete(parser);
-  if(uibuff && !uibuff->indexed) {
+  if (uibuff && !uibuff->indexed) {
     uibuff->buff_used_rows = rows_read;
     uibuff->indexed = 1;
-    if(original_row_num > 1 &&
-       (row_filter == NULL || rows_read > 0))
+    if (original_row_num > 1 && (row_filter == NULL || rows_read > 0))
       get_data_index_async(&uibuff->dimensions.index, filename, zsv_optsp, row_filter, &uibuff->dimensions.row_count,
-                           custom_prop_handler,
-                           opts_used
+                           custom_prop_handler, opts_used
 #ifdef ZSVSHEET_USE_THREADS
                            ,
                            &uibuff->mutex
 #endif
-                           );
-    if(row_filter != NULL) {
+      );
+    if (row_filter != NULL) {
 #ifdef ZSVSHEET_USE_THREADS
       pthread_mutex_lock(uibuff->mutex);
 #endif
       free(uibuff->status);
-      if(uibuff->dimensions.row_count > 0)
+      if (uibuff->dimensions.row_count > 0)
         asprintf(&uibuff->status, "(%zu filtered rows) ", uibuff->dimensions.row_count - 1);
       else
         uibuff->status = NULL;
@@ -279,9 +274,8 @@ static size_t zsvsheet_find_next(struct zsvsheet_ui_buffer *uib, const char *fil
   zsvsheet_opts->find = needle;
   zsvsheet_opts->found_rownum = 0;
   // TO DO: check if it exists in current row, later column (and change 'cursor_row - 1' below to 'cursor_row')
-  read_data(&uib, NULL, filename, zsv_opts,
-            input_offset->row + buff_offset->row + header_span + cursor_row - 1, 0, header_span, NULL, zsvsheet_opts,
-            custom_prop_handler, opts_used);
+  read_data(&uib, NULL, filename, zsv_opts, input_offset->row + buff_offset->row + header_span + cursor_row - 1, 0,
+            header_span, NULL, zsvsheet_opts, custom_prop_handler, opts_used);
   zsvsheet_opts->find = NULL;
   return zsvsheet_opts->found_rownum;
 }
