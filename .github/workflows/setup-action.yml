@@ -1,0 +1,40 @@
+name: zsv/setup-action
+
+on:
+  push:
+    branches: [main]
+    paths: ['setup-action/**']
+  pull_request:
+    branches: [main]
+    paths: ['setup-action/**']
+  workflow_dispatch:
+
+jobs:
+  ci:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-13, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          setup-action
+
+    - name: Set up
+      id: setup
+      uses: ./setup-action
+      with:
+        version: '0.3.9-alpha'
+
+    - name: Check output parameter [install-path]
+      run: echo '${{ steps.setup.outputs.install-path }}'
+
+    - name: Check version
+      run: zsv version

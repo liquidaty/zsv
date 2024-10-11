@@ -233,6 +233,20 @@ $ cat worldcitiespop_mil.csv | docker run -i ghcr.io/liquidaty/zsv count
 For image details, see [Dockerfile](./Dockerfile). You may use this as a
 baseline for your own use cases as needed.
 
+#### GitHub Actions
+
+In a GitHub Actions workflow, you can use `zsv/setup-action` to install
+zsv+zsvlib:
+
+```yml
+- name: Set up zsv+zsvlib
+  uses: liquidaty/zsv/setup-action@main
+  with:
+    version: 'version'
+```
+
+See [zsv/setup-action](./setup-action) for more details.
+
 ### From source
 
 See [BUILD.md](BUILD.md) for more details.
