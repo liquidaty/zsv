@@ -235,17 +235,15 @@ baseline for your own use cases as needed.
 
 #### GitHub Actions
 
-In a GitHub Actions workflow, you can use `zsv/setup-action` to install
-zsv+zsvlib:
+In a GitHub Actions workflow, you can use [`zsv/setup-action`](./setup-action)
+to set up zsv+zsvlib:
 
 ```yml
 - name: Set up zsv+zsvlib
   uses: liquidaty/zsv/setup-action@main
-  with:
-    version: 'version'
 ```
 
-See [zsv/setup-action](./setup-action) for more details.
+See [zsv/setup-action/README](./setup-action/README.md) for more details.
 
 ### From source
 

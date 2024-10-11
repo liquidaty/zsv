@@ -30,8 +30,6 @@ jobs:
     - name: Set up
       id: setup
       uses: ./setup-action
-      with:
-        version: '0.3.9-alpha'
 
     - name: Check output parameter [install-path]
       run: echo '${{ steps.setup.outputs.install-path }}'

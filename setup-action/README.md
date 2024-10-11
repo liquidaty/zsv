@@ -10,9 +10,9 @@ Supports Linux, macOS, and Windows runners.
 
 ### Inputs
 
-|  Output   | Description                |
-| :-------: | :------------------------- |
-| `version` | Version/tag of the release |
+|   Input   | Required | Default  | Description                |
+| :-------: | :------- |
+| `version` | `false`  | `latest` | Version/tag of the release |
 
 ### Outputs
 
@@ -28,12 +28,18 @@ Under the installation directory, the subdirectories will include:
 
 ### Example
 
+Set up the latest version:
+
+```yml
+- name: Set up zsv+zsvlib
+  uses: liquidaty/zsv/setup-action@main
+```
+
+Set up a specific version:
+
 ```yml
 - name: Set up zsv+zsvlib
   uses: liquidaty/zsv/setup-action@main
   with:
     version: '0.3.9-alpha'
-
-- name: Check version
-  run: zsv version
 ```
