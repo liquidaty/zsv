@@ -26,8 +26,9 @@ The ZSV CLI can be compiled to virtually any target, including
 direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3
 conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste` and more.
 
-The ZSV CLI also includes `sheet`, an in-console interactive grid viewer
-(TO DO: that can be extended with your custom code for manipulating and) for viewing data:
+The ZSV CLI also includes `sheet`, an in-console interactive grid viewer (TO DO:
+that can be extended with your custom code for manipulating and) for viewing
+data:
 
 <img src="https://github.com/user-attachments/assets/c2ae32a3-48c4-499d-8ef7-7748687bd24f" width="50%">
 
@@ -213,7 +214,7 @@ Please note:
 
 #### GHCR (GitHub Container Registry)
 
-`zsv` CLI also is available as a container image from
+`zsv` CLI is also available as a container image from
 [Packages](https://github.com/liquidaty?tab=packages).
 
 The container image is published on every release. In addition to the specific
@@ -247,7 +248,7 @@ Our objectives, which we were unable to find in a pre-existing project, are:
 - Memory-efficient, configurable resource limits
 - Handles real-world CSV cases the same way that Excel does, including all edge
   cases (quote handling, newline handling (either `\n` or `\r`), embedded
-  newlines, abnormal quoting (e.g. aaa"aaa,bbb...)
+  newlines, abnormal quoting e.g. aaa"aaa,bbb...)
 - Handles other "dirty" data issues:
   - Assumes valid UTF8, but does not misbehave if input contains bad UTF8
   - Option to specify multi-row headers
@@ -328,10 +329,10 @@ Pull parsing:
 
 ```c
 zsv_parser parser = zsv_new(...);
-while(zsv_next_row(parser) == zsv_status_row) { // for each row
+while (zsv_next_row(parser) == zsv_status_row) { // for each row
   // ...
   size_t cell_count = zsv_cell_count(parser);
-  for(size_t i = 0; i < cell_count; i++) { // for each cell
+  for (size_t i = 0; i < cell_count; i++) { // for each cell
     struct zsv_cell c = zsv_get_cell(parser, i);
     fprintf(stderr, "Cell: %.*s\n", c.len, c.str);
     // ...
@@ -345,7 +346,7 @@ Push parsing:
 static void my_row_handler(void *ctx) {
   zsv_parser p = ctx;
   size_t cell_count = zsv_cell_count(p);
-  for(size_t i = 0, j = zsv_cell_count(p); i < j; i++) {
+  for (size_t i = 0, j = zsv_cell_count(p); i < j; i++) {
     // ...
   }
 }
@@ -354,7 +355,7 @@ int main() {
   zsv_parser p = zsv_new(NULL);
   zsv_set_row_handler(p, my_row_handler);
   zsv_set_context(p, p);
-  while(zsv_parse_more(data.parser) == zsv_status_ok);
+  while (zsv_parse_more(data.parser) == zsv_status_ok);
   return 0;
 }
 ```
@@ -414,7 +415,7 @@ helping, please post an issue.
   branch.
 - Create a feature or bugfix branch from `main`.
 - Update your required changes.
-- Make sure to run `clang-format` (version 14 or later) for C source updates.
+- Make sure to run `clang-format` (version 15 or later) for C source updates.
 - Commit and push your changes.
 - Submit the PR.
 
