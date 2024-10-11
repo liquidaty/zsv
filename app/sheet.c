@@ -33,9 +33,6 @@
 #include <pthread.h>
 #endif
 
-// #define ZSVSHEET_BUFFER_ROWS 1000
-// #define ZSVSHEET_MAX_COLS 100
-// #define ZSVSHEET_MAX_CELL_LEN 256 /* must be a multiple of 16 */
 #include "sheet/buffer.h"
 #include "sheet/buffer.c"
 
@@ -48,7 +45,7 @@ struct zsvsheet_opts {
 };
 
 void display_buffer_subtable(
-  struct zsvsheet_buffer *buffer, // char buffer[ZSVSHEET_BUFFER_ROWS][ZSVSHEET_MAX_COLS][ZSVSHEET_MAX_CELL_LEN],
+  struct zsvsheet_buffer *buffer,
   size_t start_row, size_t buffer_used_row_count, size_t start_col, size_t max_col_count, size_t cursor_row,
   size_t cursor_col, size_t input_header_span, struct zsvsheet_display_dimensions *ddims);
 
@@ -165,9 +162,6 @@ void zsvsheet_set_status(struct zsvsheet_display_dimensions *ddims, int overwrit
 #define ZSV_COMMAND sheet
 #include "zsv_command.h"
 #include "sheet/usage.c"
-
-void dobreak1() {
-}
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
                                struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
@@ -300,7 +294,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
       break;
     case zsvsheet_key_pg_down: {
-      dobreak1();
       size_t current = zsvsheet_get_input_raw_row(&input_offset, &buff_offset, cursor_row);
       if (current >= input_dimensions.row_count - display_data_rowcount(&display_dims))
         continue; // already at bottom
