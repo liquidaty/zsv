@@ -500,6 +500,10 @@ jobs:
     needs: [tag]
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+      packages: write
+
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
 
