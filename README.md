@@ -211,6 +211,27 @@ Please note:
 - If you'd like to use additional parser features, or use the CLI as a Node
   package, please feel free to post a request in an issue here.
 
+#### GHCR (GitHub Container Registry)
+
+`zsv` CLI also is available as a container image from
+[Packages](https://github.com/liquidaty?tab=packages).
+
+The container image is published on every release. In addition to the specific
+release tag, the image is also tagged as `latest` i.e. `zsv:latest` always
+points the latest released version.
+
+Example:
+
+```shell
+$ docker pull ghcr.io/liquidaty/zsv
+# ...
+$ cat worldcitiespop_mil.csv | docker run -i ghcr.io/liquidaty/zsv count
+1000000
+```
+
+For image details, see [Dockerfile](./Dockerfile). You may use this as a
+baseline for your own use cases as needed.
+
 ### From source
 
 See [BUILD.md](BUILD.md) for more details.
