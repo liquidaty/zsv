@@ -61,9 +61,11 @@ void zsvsheet_buffer_delete(zsvsheet_buffer_t buff) {
   }
 }
 
-zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *opts,
-                                      enum zsvsheet_buffer_status *stat) {
-  *stat = zsvsheet_buffer_status_ok;
+zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *opts, enum zsvsheet_status *stat) {
+  struct zsvsheet_buffer_opts bopts = {0};
+  if (!opts)
+    opts = &bopts;
+  *stat = zsvsheet_status_ok;
   if (opts->rows == 0)
     opts->rows = ZSVSHEET_BUFFER_DEFAULT_ROW_COUNT;
   else if (opts->rows < 256)
@@ -73,17 +75,17 @@ zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *
   if (opts->max_cell_len == 0)
     opts->max_cell_len = ZSVSHEET_BUFFER_DEFAULT_MAX_CELL_LEN;
   if (opts->cell_buff_len < sizeof(void *) * 2)
-    *stat = zsvsheet_buffer_status_error;
+    *stat = zsvsheet_status_error;
   else {
     if (!opts->no_rownum_column)
       cols++;
     void *data = calloc(opts->rows, cols * opts->cell_buff_len);
     if (!data)
-      *stat = zsvsheet_buffer_status_memory;
+      *stat = zsvsheet_status_memory;
     else {
       struct zsvsheet_buffer *buff = calloc(1, sizeof(*buff));
       if (!buff)
-        *stat = zsvsheet_buffer_status_memory;
+        *stat = zsvsheet_status_memory;
       else {
         buff->opts.rows = opts->rows;
         buff->cols = cols;
@@ -101,9 +103,9 @@ zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *
 #define UTF8_NOT_FIRST_CHAR(x) ((x & 0xC0) == 0x80)
 #endif
 
-enum zsvsheet_buffer_status zsvsheet_buffer_write_cell_w_len(zsvsheet_buffer_t buff, size_t row, size_t col,
-                                                             const unsigned char *value, size_t len) {
-  enum zsvsheet_buffer_status stat = zsvsheet_buffer_status_ok;
+enum zsvsheet_status zsvsheet_buffer_write_cell_w_len(zsvsheet_buffer_t buff, size_t row, size_t col,
+                                                      const unsigned char *value, size_t len) {
+  enum zsvsheet_status stat = zsvsheet_status_ok;
   size_t offset = buffer_data_offset(buff, row, col);
   free_long_cell(buff, offset);
   if (len < buff->opts.cell_buff_len) {
@@ -120,7 +122,7 @@ enum zsvsheet_buffer_status zsvsheet_buffer_write_cell_w_len(zsvsheet_buffer_t b
         len--;
     }
     if (!len) // the only reason len could be 0 is if our input was not valid utf8, but check to make sure anyway
-      stat = zsvsheet_buffer_status_utf8;
+      stat = zsvsheet_status_utf8;
     else {
       char *value_copy = malloc(1 + len);
       if (value_copy) {
@@ -129,14 +131,14 @@ enum zsvsheet_buffer_status zsvsheet_buffer_write_cell_w_len(zsvsheet_buffer_t b
         set_long_cell(buff, offset, value_copy);
         buff->long_cell_count++;
       } else
-        stat = zsvsheet_buffer_status_memory;
+        stat = zsvsheet_status_memory;
     }
   }
   return stat;
 }
 
-enum zsvsheet_buffer_status zsvsheet_buffer_write_cell(zsvsheet_buffer_t buff, size_t row, size_t col,
-                                                       const unsigned char *value) {
+enum zsvsheet_status zsvsheet_buffer_write_cell(zsvsheet_buffer_t buff, size_t row, size_t col,
+                                                const unsigned char *value) {
   return zsvsheet_buffer_write_cell_w_len(buff, row, col, value, strlen((void *)value));
 }
 
