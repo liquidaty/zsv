@@ -61,10 +61,9 @@ void zsvsheet_buffer_delete(zsvsheet_buffer_t buff) {
   }
 }
 
-zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *opts,
-                                      enum zsvsheet_status *stat) {
-  struct zsvsheet_buffer_opts bopts = { 0 };
-  if(!opts)
+zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *opts, enum zsvsheet_status *stat) {
+  struct zsvsheet_buffer_opts bopts = {0};
+  if (!opts)
     opts = &bopts;
   *stat = zsvsheet_status_ok;
   if (opts->rows == 0)
@@ -105,7 +104,7 @@ zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *
 #endif
 
 enum zsvsheet_status zsvsheet_buffer_write_cell_w_len(zsvsheet_buffer_t buff, size_t row, size_t col,
-                                                             const unsigned char *value, size_t len) {
+                                                      const unsigned char *value, size_t len) {
   enum zsvsheet_status stat = zsvsheet_status_ok;
   size_t offset = buffer_data_offset(buff, row, col);
   free_long_cell(buff, offset);
@@ -139,7 +138,7 @@ enum zsvsheet_status zsvsheet_buffer_write_cell_w_len(zsvsheet_buffer_t buff, si
 }
 
 enum zsvsheet_status zsvsheet_buffer_write_cell(zsvsheet_buffer_t buff, size_t row, size_t col,
-                                                       const unsigned char *value) {
+                                                const unsigned char *value) {
   return zsvsheet_buffer_write_cell_w_len(buff, row, col, value, strlen((void *)value));
 }
 

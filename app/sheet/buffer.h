@@ -14,14 +14,13 @@ struct zsvsheet_buffer_opts {
   char no_rownum_column; // reserved. TO DO: if set, omit row num column
 };
 
-zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *opts,
-                                      enum zsvsheet_status *stat);
+zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *opts, enum zsvsheet_status *stat);
 
 enum zsvsheet_status zsvsheet_buffer_write_cell(zsvsheet_buffer_t buff, size_t row, size_t col,
-                                                       const unsigned char *value);
+                                                const unsigned char *value);
 
 enum zsvsheet_status zsvsheet_buffer_write_cell_w_len(zsvsheet_buffer_t buff, size_t row, size_t col,
-                                                             const unsigned char *value, size_t len);
+                                                      const unsigned char *value, size_t len);
 
 const unsigned char *zsvsheet_buffer_cell_display(zsvsheet_buffer_t buff, size_t row, size_t col);
 
