@@ -95,13 +95,16 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   while (zsv_next_row(parser) == zsv_status_row &&
          (rows_read == 0 || rows_read < zsvsheet_buffer_rows(buffer))) { // for each row
     if (uibuff == NULL && uibufferp && uibopts && zsv_cell_count(parser) > 0) {
-      enum zsvsheet_buffer_status stat;
-      struct zsvsheet_ui_buffer *tmp_uibuff = zsvsheet_ui_buffer_new(uibopts);
-      if (!tmp_uibuff ||
-          !(tmp_uibuff->buffer = buffer = zsvsheet_buffer_new(zsv_cell_count(parser), uibopts->buff_opts, &stat)) ||
-          stat != zsvsheet_buffer_status_ok) {
+      enum zsvsheet_status stat;
+      struct zsvsheet_ui_buffer *tmp_uibuff = NULL;
+      if(!(buffer = zsvsheet_buffer_new(zsv_cell_count(parser), uibopts->buff_opts, &stat))
+         || stat != zsvsheet_status_ok
+         || !(tmp_uibuff = zsvsheet_ui_buffer_new(buffer, uibopts))) {
         zsv_delete(parser);
-        zsvsheet_ui_buffer_delete(tmp_uibuff);
+        if(tmp_uibuff)
+          zsvsheet_ui_buffer_delete(tmp_uibuff);
+        else
+          zsvsheet_buffer_delete(buffer);
         return -1;
       }
       *uibufferp = uibuff = tmp_uibuff;
@@ -266,7 +269,7 @@ static void *get_data_index(struct get_data_index_data *d) {
 }
 
 static size_t zsvsheet_find_next(struct zsvsheet_ui_buffer *uib, const char *filename, const char *needle,
-                                 struct zsv_opts *zsv_opts, struct zsvsheet_opts *zsvsheet_opts, size_t header_span,
+                                 const struct zsv_opts *zsv_opts, struct zsvsheet_opts *zsvsheet_opts, size_t header_span,
                                  struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
   struct zsvsheet_rowcol *input_offset = &uib->input_offset;
   struct zsvsheet_rowcol *buff_offset = &uib->buff_offset;

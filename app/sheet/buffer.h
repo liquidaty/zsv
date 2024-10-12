@@ -7,13 +7,6 @@
 
 typedef struct zsvsheet_buffer *zsvsheet_buffer_t;
 
-enum zsvsheet_buffer_status {
-  zsvsheet_buffer_status_ok = 0,
-  zsvsheet_buffer_status_memory,
-  zsvsheet_buffer_status_error, // generic error
-  zsvsheet_buffer_status_utf8
-};
-
 struct zsvsheet_buffer_opts {
   size_t cell_buff_len;  // default = 16. must be >= 2 * sizeof(void *)
   size_t max_cell_len;   // length in bytes; defaults to 32767
@@ -22,12 +15,12 @@ struct zsvsheet_buffer_opts {
 };
 
 zsvsheet_buffer_t zsvsheet_buffer_new(size_t cols, struct zsvsheet_buffer_opts *opts,
-                                      enum zsvsheet_buffer_status *stat);
+                                      enum zsvsheet_status *stat);
 
-enum zsvsheet_buffer_status zsvsheet_buffer_write_cell(zsvsheet_buffer_t buff, size_t row, size_t col,
+enum zsvsheet_status zsvsheet_buffer_write_cell(zsvsheet_buffer_t buff, size_t row, size_t col,
                                                        const unsigned char *value);
 
-enum zsvsheet_buffer_status zsvsheet_buffer_write_cell_w_len(zsvsheet_buffer_t buff, size_t row, size_t col,
+enum zsvsheet_status zsvsheet_buffer_write_cell_w_len(zsvsheet_buffer_t buff, size_t row, size_t col,
                                                              const unsigned char *value, size_t len);
 
 const unsigned char *zsvsheet_buffer_cell_display(zsvsheet_buffer_t buff, size_t row, size_t col);

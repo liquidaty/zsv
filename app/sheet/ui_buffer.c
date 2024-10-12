@@ -37,17 +37,31 @@ struct zsvsheet_ui_buffer_opts {
   const char *row_filter;
 };
 
-struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(struct zsvsheet_ui_buffer_opts *uibopts) {
+struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_buffer_t buffer, struct zsvsheet_ui_buffer_opts *uibopts) {
   struct zsvsheet_ui_buffer *uib = calloc(1, sizeof(*uib));
+  if(uib) {
+    uib->buffer = buffer;
 #ifdef ZSVSHEET_USE_THREADS
-  uibuff->mutex = PTHREAD_MUTEX_INITIALIZER;
+    uib->mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
-  if (uibopts->row_filter && !(uib->row_filter = strdup(uibopts->row_filter))) {
-    zsvsheet_ui_buffer_delete(uib);
-    return NULL;
+    if (uibopts && uibopts->row_filter && !(uib->row_filter = strdup(uibopts->row_filter))) {
+      zsvsheet_ui_buffer_delete(uib);
+      return NULL;
+    }
   }
   return uib;
 }
+
+enum zsvsheet_status zsvsheet_ui_buffer_new_blank(struct zsvsheet_ui_buffer **uibp) {
+  enum zsvsheet_status status;
+  zsvsheet_buffer_t buffer = zsvsheet_buffer_new(1, NULL, &status);
+  if(buffer) {
+    *uibp = zsvsheet_ui_buffer_new(buffer, NULL);
+    return zsvsheet_status_ok;
+  }
+  return zsvsheet_status_error;
+}
+
 
 void zsvsheet_ui_buffers_delete(struct zsvsheet_ui_buffer *ub) {
   for (struct zsvsheet_ui_buffer *prior; ub; ub = prior) {
@@ -78,3 +92,4 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_pop(struct zsvsheet_ui_buffer **ba
   }
   return NULL;
 }
+

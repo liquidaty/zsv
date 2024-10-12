@@ -8,6 +8,8 @@
 static enum zsvsheet_key zsvsheet_key_binding(int ch) {
   if (ch == 27) // escape
     return zsvsheet_key_escape;
+  if (ch == 'e') // edit / open
+    return zsvsheet_key_open_file;
   if (ch == KEY_SF) // shift + down
     return zsvsheet_key_move_bottom;
   if (ch == KEY_SR) // shift + up
