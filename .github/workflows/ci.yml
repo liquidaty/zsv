@@ -34,6 +34,12 @@ jobs:
       TAG: ${{ steps.tag.outputs.TAG }}
 
     steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          scripts/ci-set-tag-output-parameter.sh
+
     - name: Set TAG output parameter
       id: tag
       env:
