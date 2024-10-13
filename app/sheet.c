@@ -12,6 +12,7 @@
 #include <stdarg.h>
 #include <ctype.h>
 #include <errno.h>
+#include <signal.h>
 
 #include <zsv.h>
 #include "sheet/sheet_internal.h"
@@ -238,7 +239,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   keypad(stdscr, TRUE);
   cbreak();
   struct zsvsheet_display_dimensions display_dims = get_display_dimensions(1, 1);
-
   int zsvsheetch;
   size_t rownum_col_offset = 1;
   display_buffer_subtable(current_ui_buffer, rownum_col_offset, header_span, &display_dims);
@@ -248,6 +248,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     zsvsheet_set_status(&display_dims, 1, "");
     int update_buffer = 0;
     switch (zsvsheetch) {
+    case zsvsheet_key_resize:
+      display_dims = get_display_dimensions(1, 1);
+      break;
     case zsvsheet_key_move_top:
       update_buffer =
         zsvsheet_goto_input_raw_row(current_ui_buffer, 1, header_span, &display_dims, display_dims.header_span);
@@ -388,6 +391,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         zsvsheet_set_status(&display_dims, 1, "Not found: %s", cmdbuff);
       }
       break;
+    default:
+      continue;
     }
     if (update_buffer) {
       struct zsvsheet_opts zsvsheet_opts = {0};

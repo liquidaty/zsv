@@ -38,5 +38,7 @@ static enum zsvsheet_key zsvsheet_key_binding(int ch) {
     return zsvsheet_key_find;
   if (ch == 'q')
     return zsvsheet_key_quit;
+  if (ch == KEY_RESIZE)
+    return zsvsheet_key_resize;
   return zsvsheet_key_unknown;
 }
