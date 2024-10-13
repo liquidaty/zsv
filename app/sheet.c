@@ -249,7 +249,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     int update_buffer = 0;
     switch (zsvsheetch) {
     case zsvsheet_key_resize:
-      display_dims = get_display_dimensions(1,1);
+      display_dims = get_display_dimensions(1, 1);
       break;
     case zsvsheet_key_move_top:
       update_buffer =
