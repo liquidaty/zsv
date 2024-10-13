@@ -75,6 +75,7 @@ if [ "$CI" = true ]; then
   {
     echo "<details>"
     echo "<summary>Cppcheck Static Analysis Summary</summary>"
+    echo
     echo "| File:Line | Column | Severity |  ID   | Message |  CWE  |"
     echo "| :-------: | :----: | :------: | :---: | :-----: | :---: |"
     cppcheck \
