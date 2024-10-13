@@ -290,7 +290,7 @@ ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count
 
   free(parser->fixed.offsets);
   parser->fixed.offsets = calloc(count, sizeof(*parser->fixed.offsets));
-  if (!parser->fixed.offsets) {
+  if (parser->fixed.offsets == NULL) {
     fprintf(stderr, "Out of memory!\n");
     return zsv_status_memory;
   }
