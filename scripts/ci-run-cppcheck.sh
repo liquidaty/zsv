@@ -73,7 +73,8 @@ if [ "$CI" = true ]; then
   CWE_LINK="[{cwe}](https://cwe.mitre.org/data/definitions/{cwe}.html)"
   TEMPLATE="| $SOURCE_LINK | {column} | {severity} | {id} | {message} | $CWE_LINK |"
   {
-    echo "# Cppcheck Static Analysis Summary"
+    echo "<details>"
+    echo "<summary>Cppcheck Static Analysis Summary</summary>"
     echo "| File:Line | Column | Severity |  ID   | Message |  CWE  |"
     echo "| :-------: | :----: | :------: | :---: | :-----: | :---: |"
     cppcheck \
@@ -82,6 +83,7 @@ if [ "$CI" = true ]; then
       --project="$CPPCHECK_PROJECT_FILE" \
       --template="$TEMPLATE" \
       2>&1
+    echo "</details>"
   } >>"$GITHUB_STEP_SUMMARY"
 fi
 
