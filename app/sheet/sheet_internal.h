@@ -5,7 +5,8 @@ enum zsvsheet_status {
   zsvsheet_status_ok = 0,
   zsvsheet_status_memory,
   zsvsheet_status_error, // generic error
-  zsvsheet_status_utf8
+  zsvsheet_status_utf8,
+  zsvsheet_status_continue
 };
 
 struct zsvsheet_rowcol {

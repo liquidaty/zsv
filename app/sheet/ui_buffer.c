@@ -1,5 +1,6 @@
 struct zsvsheet_ui_buffer {
   char *filename;
+  struct zsv_opts zsv_opts;         // options to use when opening this file
   struct zsvsheet_ui_buffer *prior; // previous buffer in this stack. If null, this is the first buffer in the stack
   struct zsvsheet_buffer_opts *buff_opts;
   zsvsheet_buffer_t buffer;
@@ -38,6 +39,7 @@ struct zsvsheet_ui_buffer_opts {
   struct zsvsheet_buffer_opts *buff_opts;
   const char *row_filter;
   const char *filename;
+  struct zsv_opts zsv_opts; // options to use when opening this file
 };
 
 struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_buffer_t buffer, struct zsvsheet_ui_buffer_opts *uibopts) {
@@ -53,6 +55,7 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_buffer_t buffer, stru
         zsvsheet_ui_buffer_delete(uib);
         return NULL;
       }
+      uib->zsv_opts = uibopts->zsv_opts;
     }
   }
   return uib;
