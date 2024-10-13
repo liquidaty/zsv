@@ -4,7 +4,7 @@
 #include <unistd.h>
 
 // check_or_set_terminfo: return 1 if ok, 0 if not
-static int terminfo_ok() {
+static int terminfo_ok(void) {
   // Check if TERMINFO environment variable is set
   char *terminfo_env = getenv("TERMINFO");
   if (terminfo_env != NULL)
