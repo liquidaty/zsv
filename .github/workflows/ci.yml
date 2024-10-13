@@ -22,20 +22,21 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      TAG: ${{ steps.tag.outputs.TAG || '0.3.6' }}
+      TAG: ${{ steps.tag.outputs.TAG }}
 
     steps:
-    - name: Set TAG on release
-      if: startsWith(github.ref, 'refs/tags/v')
+    - name: Set TAG
       id: tag
+      env:
+        TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
       run: |
-        TAG="$GITHUB_REF_NAME"
-        echo "TAG: $TAG"
+        if [[ -z $TAG ]]; then
+          TAG="$(git ls-remote --tags --refs https://github.com/liquidaty/zsv | cut -d '/' -f3 | tail -n1)"
+        fi
         if [[ $TAG == "v"* ]]; then
           TAG="${TAG:1}"
         fi
-        echo "TAG: $TAG"
-        echo "TAG=$TAG" >> "$GITHUB_OUTPUT"
+        echo "TAG=$TAG" | tee -a "$GITHUB_OUTPUT"
 
   clang-format:
     runs-on: ubuntu-22.04
@@ -497,7 +498,6 @@ jobs:
         ./scripts/ci-update-homebrew-tap.sh
 
   ghcr:
-    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
     needs: [tag]
     runs-on: ubuntu-latest
 
@@ -518,17 +518,18 @@ jobs:
       uses: docker/setup-buildx-action@v3
 
     - name: Login to GitHub Container Registry
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build and push
+    - name: Build and push (on release)
       uses: docker/build-push-action@v6
       with:
         platforms: linux/amd64
-        push: true
+        push: ${{ startsWith(github.ref, 'refs/tags/v') }}
         tags: |
           ghcr.io/liquidaty/zsv:${{ env.TAG }}
           ghcr.io/liquidaty/zsv:latest
