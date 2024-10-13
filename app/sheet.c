@@ -185,24 +185,28 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
 
 #include "sheet/handlers.h"
 
-enum zsvsheet_status zsvsheet_key_handler(struct zsvsheet_key_handler_data *d, char ch, char *cmdbuff,
+enum zsvsheet_status zsvsheet_key_handler(struct zsvsheet_key_handler_data *khd, int ch, char *cmdbuff,
                                           size_t cmdbuff_sz, // subcommand buffer
                                           struct zsvsheet_ui_buffer **base_ui_buffer,
                                           struct zsvsheet_ui_buffer **current_ui_buffer,
                                           const struct zsvsheet_display_dimensions *display_dims,
                                           struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
-  if (d->subcommand_prompt) {
-    get_subcommand(d->subcommand_prompt, cmdbuff, cmdbuff_sz, (int)(display_dims->rows - display_dims->footer_span));
-    if (*cmdbuff == '\0')
-      return zsvsheet_status_continue;
-  }
+  char subcmd_prompt[256];
+  enum zsvsheet_status status =
+    khd->subcommand_handler(ch, *base_ui_buffer, *current_ui_buffer, subcmd_prompt, sizeof(subcmd_prompt));
+  if (status != zsvsheet_status_ok)
+    return status;
+  get_subcommand(subcmd_prompt, cmdbuff, cmdbuff_sz, (int)(display_dims->rows - display_dims->footer_span));
+  if (*cmdbuff == '\0')
+    return zsvsheet_status_continue;
+
   struct zsvsheet_handler_context ctx = {.subcommand_value = cmdbuff,
                                          .ch = ch,
                                          .ui_buffers = {.base = base_ui_buffer, .current = current_ui_buffer},
                                          .display_dims = display_dims,
                                          .custom_prop_handler = custom_prop_handler,
                                          .opts_used = opts_used};
-  return d->handler(&ctx);
+  return khd->handler(&ctx);
 }
 
 #include "sheet/handlers.c"
@@ -265,6 +269,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   size_t rownum_col_offset = 1;
   display_buffer_subtable(current_ui_buffer, rownum_col_offset, header_span, &display_dims);
   char cmdbuff[256]; // subcommand buffer
+
+  struct zsvsheet_key_handler_data builtin_key_handler_file = {.subcommand_handler = zsvsheet_file_subcommand_handler,
+                                                               .handler = zsvsheet_file_handler};
 
   int ch;
   while ((zsvsheetch = zsvsheet_key_binding((ch = getch()))) != zsvsheet_key_quit) {
@@ -394,11 +401,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       break;
     case zsvsheet_key_open_file:
     case zsvsheet_key_filter:
-      struct zsvsheet_key_handler_data d = {.subcommand_prompt =
-                                              zsvsheetch == zsvsheet_key_filter ? "Filter" : "File to open",
-                                            .handler = zsvsheet_file_handler};
-      if (zsvsheet_key_handler(&d, ch, cmdbuff, sizeof(cmdbuff), &ui_buffers, &current_ui_buffer, &display_dims,
-                               custom_prop_handler, opts_used) == zsvsheet_status_continue)
+      if (zsvsheet_key_handler(&builtin_key_handler_file, ch, cmdbuff, sizeof(cmdbuff), &ui_buffers, &current_ui_buffer,
+                               &display_dims, custom_prop_handler, opts_used) == zsvsheet_status_continue)
         continue;
       break;
     default:

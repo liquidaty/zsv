@@ -1,3 +1,18 @@
+enum zsvsheet_status zsvsheet_file_subcommand_handler(int ch, struct zsvsheet_ui_buffer *ui_buffers,
+                                                      struct zsvsheet_ui_buffer *current_ui_buffer, char *buff,
+                                                      size_t buff_sz) {
+  (void)(ui_buffers);
+  (void)(current_ui_buffer);
+  int zsvsheetch = zsvsheet_key_binding(ch);
+  int n;
+  if (zsvsheetch == zsvsheet_key_filter && (n = snprintf(buff, buff_sz, "Filter")) > 0 && (size_t)n < buff_sz)
+    return zsvsheet_status_ok;
+  if (zsvsheetch == zsvsheet_key_open_file && (n = snprintf(buff, buff_sz, "File to open")) > 0 && (size_t)n < buff_sz)
+    return zsvsheet_status_ok;
+  snprintf(buff, buff_sz, "Error! Unrecognized file command");
+  return zsvsheet_status_error;
+}
+
 enum zsvsheet_status zsvsheet_file_handler(struct zsvsheet_handler_context *ctx) {
   struct zsvsheet_ui_buffer *current_ui_buffer = *ctx->ui_buffers.current;
   int zsvsheetch = zsvsheet_key_binding(ctx->ch);
