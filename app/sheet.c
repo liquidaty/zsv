@@ -15,7 +15,6 @@
 #include <signal.h>
 
 #include <zsv.h>
-#include "sheet/sheet_internal.h"
 
 #if defined(WIN32) || defined(_WIN32)
 #include <ncurses/ncurses.h>
@@ -36,6 +35,8 @@
 #define ZSV_COMMAND sheet
 #include "zsv_command.h"
 
+#include "../include/zsv/ext/sheet.h"
+#include "sheet/sheet_internal.h"
 #include "sheet/buffer.h"
 #include "sheet/buffer.c"
 
@@ -183,7 +184,7 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
 
 #include "sheet/usage.c"
 
-#include "sheet/handlers.h"
+#include "sheet/handlers_internal.h"
 
 enum zsvsheet_status zsvsheet_key_handler(struct zsvsheet_key_handler_data *khd, int ch, char *cmdbuff,
                                           size_t cmdbuff_sz, // subcommand buffer
@@ -191,12 +192,14 @@ enum zsvsheet_status zsvsheet_key_handler(struct zsvsheet_key_handler_data *khd,
                                           struct zsvsheet_ui_buffer **current_ui_buffer,
                                           const struct zsvsheet_display_dimensions *display_dims,
                                           struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
-  char subcmd_prompt[256];
-  enum zsvsheet_status status =
-    khd->subcommand_handler(ch, *base_ui_buffer, *current_ui_buffer, subcmd_prompt, sizeof(subcmd_prompt));
+  struct zsvsheet_subcommand_handler_context sctx = {0};
+  sctx.ch = ch;
+  sctx.ui_buffers = *base_ui_buffer;
+  sctx.current_ui_buffer = *current_ui_buffer;
+  enum zsvsheet_status status = khd->subcommand_handler(&sctx);
   if (status != zsvsheet_status_ok)
     return status;
-  get_subcommand(subcmd_prompt, cmdbuff, cmdbuff_sz, (int)(display_dims->rows - display_dims->footer_span));
+  get_subcommand(sctx.prompt, cmdbuff, cmdbuff_sz, (int)(display_dims->rows - display_dims->footer_span));
   if (*cmdbuff == '\0')
     return zsvsheet_status_continue;
 
@@ -208,6 +211,9 @@ enum zsvsheet_status zsvsheet_key_handler(struct zsvsheet_key_handler_data *khd,
                                          .opts_used = opts_used};
   return khd->handler(&ctx);
 }
+
+struct zsvsheet_key_handler_data *zsvsheet_key_handlers = NULL;
+struct zsvsheet_key_handler_data **zsvsheet_next_key_handler = &zsvsheet_key_handlers;
 
 #include "sheet/handlers.c"
 
@@ -270,8 +276,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   display_buffer_subtable(current_ui_buffer, rownum_col_offset, header_span, &display_dims);
   char cmdbuff[256]; // subcommand buffer
 
-  struct zsvsheet_key_handler_data builtin_key_handler_file = {.subcommand_handler = zsvsheet_file_subcommand_handler,
-                                                               .handler = zsvsheet_file_handler};
+  // register built-in key handlers
+  zsvsheet_register_key_handler_internal(zsvsheet_key_open_file, zsvsheet_file_subcommand_handler,
+                                         zsvsheet_file_handler);
+  zsvsheet_register_key_handler_internal(zsvsheet_key_filter, zsvsheet_file_subcommand_handler, zsvsheet_file_handler);
 
   int ch;
   while ((zsvsheetch = zsvsheet_key_binding((ch = getch()))) != zsvsheet_key_quit) {
@@ -400,11 +408,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
       break;
     case zsvsheet_key_open_file:
-    case zsvsheet_key_filter:
-      if (zsvsheet_key_handler(&builtin_key_handler_file, ch, cmdbuff, sizeof(cmdbuff), &ui_buffers, &current_ui_buffer,
-                               &display_dims, custom_prop_handler, opts_used) == zsvsheet_status_continue)
+    case zsvsheet_key_filter: {
+      struct zsvsheet_key_handler_data *zkhd = zsvsheet_get_registered_key_handler(ch, zsvsheet_key_handlers);
+      if (!zkhd || zsvsheet_key_handler(zkhd, ch, cmdbuff, sizeof(cmdbuff), &ui_buffers, &current_ui_buffer,
+                                        &display_dims, custom_prop_handler, opts_used) == zsvsheet_status_continue)
         continue;
       break;
+    }
     default:
       continue;
     }
