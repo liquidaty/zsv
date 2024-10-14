@@ -164,7 +164,8 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
   struct zsvsheet_buffer_opts bopts = {0};
   struct zsvsheet_ui_buffer_opts uibopts = {0};
   uibopts.filename = filename;
-  uibopts.zsv_opts = *zsv_optsp;
+  if (zsv_optsp)
+    uibopts.zsv_opts = *zsv_optsp;
   uibopts.buff_opts = &bopts;
   struct zsvsheet_opts zsvsheet_opts = {0};
   int err = 0;
@@ -214,6 +215,16 @@ enum zsvsheet_status zsvsheet_key_handler(struct zsvsheet_key_handler_data *khd,
 
 struct zsvsheet_key_handler_data *zsvsheet_key_handlers = NULL;
 struct zsvsheet_key_handler_data **zsvsheet_next_key_handler = &zsvsheet_key_handlers;
+
+static void zsvsheet_key_handlers_delete(struct zsvsheet_key_handler_data **root,
+                                         struct zsvsheet_key_handler_data ***nextp) {
+  for (struct zsvsheet_key_handler_data *next, *e = *root; e; e = next) {
+    next = e->next;
+    free(e);
+  }
+  *root = NULL;
+  *nextp = &(*root)->next;
+}
 
 #include "sheet/handlers.c"
 
@@ -418,7 +429,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     default:
       continue;
     }
-    if (update_buffer) {
+    if (update_buffer && current_ui_buffer->filename) {
       struct zsvsheet_opts zsvsheet_opts = {0};
       if (read_data(&current_ui_buffer, NULL, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col,
                     header_span, current_ui_buffer->dimensions.index, &zsvsheet_opts, custom_prop_handler, opts_used)) {
@@ -434,6 +445,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   endwin();
   free(find);
   zsvsheet_ui_buffers_delete(ui_buffers);
+  zsvsheet_key_handlers_delete(&zsvsheet_key_handlers, &zsvsheet_next_key_handler);
   return 0;
 }
 
