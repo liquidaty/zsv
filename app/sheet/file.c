@@ -29,18 +29,14 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
 /**
  * Open a tabular file as a new buffer
  */
-zsvsheet_handler_status zsvsheet_handler_open_file(zsvsheet_handler_context_t h,
-                                                   const char *filepath, struct zsv_opts *zopts) {
+zsvsheet_handler_status zsvsheet_handler_open_file(zsvsheet_handler_context_t h, const char *filepath,
+                                                   struct zsv_opts *zopts) {
   struct zsvsheet_handler_context *ctx = h;
-  if(!ctx || !ctx->ui_buffers.base || !ctx->ui_buffers.current)
+  if (!ctx || !ctx->ui_buffers.base || !ctx->ui_buffers.current)
     return zsvsheet_handler_status_error;
-  int err = zsvsheet_ui_buffer_open_file(filepath, zopts,
-                                         NULL,
-                                         NULL,
-                                         NULL,
-                                         ctx->ui_buffers.base,
-                                         ctx->ui_buffers.current);
-  if(err)
+  int err =
+    zsvsheet_ui_buffer_open_file(filepath, zopts, NULL, NULL, NULL, ctx->ui_buffers.base, ctx->ui_buffers.current);
+  if (err)
     return zsvsheet_handler_status_error;
   return zsvsheet_handler_status_ok;
 }

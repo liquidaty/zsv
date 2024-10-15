@@ -84,12 +84,13 @@ ZSV_MAIN_NO_OPTIONS_DECL(mv);
 ZSV_MAIN_NO_OPTIONS_DECL(jq);
 #endif
 
+// clang-format off
+
 #define CLI_BUILTIN_CMD(x) {.name = #x, .main = main_##x, .cmd = NULL}
 #define CLI_BUILTIN_COMMAND(x) {.name = #x, .main = NULL, .cmd = ZSV_MAIN_FUNC(x)}
 #define CLI_BUILTIN_COMMANDEXT(x) {.name = #x, .main = NULL, .cmd = ZSV_MAINEXT_FUNC(x)}
 #define CLI_BUILTIN_NO_OPTIONS_COMMAND(x) {.name = #x, .main = ZSV_MAIN_NO_OPTIONS_FUNC(x), .cmd = NULL}
 
-// clang-format off
 ZSV_MAINEXT_FUNC_DEFINE(sheet);
 
 struct builtin_cmd builtin_cmds[] = {
