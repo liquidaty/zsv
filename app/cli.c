@@ -20,8 +20,10 @@
 #include "cli_internal.h"
 #include "cli_const.h"
 #include "cli_export.h"
+#ifdef ZSVSHEET_BUILD
 #include "sheet/sheet_internal.h"
 #include "sheet/handlers_internal.h"
+#endif
 
 struct cli_config {
   struct zsv_ext *extensions;
@@ -91,7 +93,9 @@ ZSV_MAIN_NO_OPTIONS_DECL(jq);
 #define CLI_BUILTIN_COMMANDEXT(x) {.name = #x, .main = NULL, .cmd = ZSV_MAINEXT_FUNC(x)}
 #define CLI_BUILTIN_NO_OPTIONS_COMMAND(x) {.name = #x, .main = ZSV_MAIN_NO_OPTIONS_FUNC(x), .cmd = NULL}
 
+#ifdef ZSVSHEET_BUILD
 ZSV_MAINEXT_FUNC_DEFINE(sheet);
+#endif
 
 struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_CMD(license),
@@ -360,6 +364,7 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->ext_parser_opts = ext_parser_opts;
     e->ext_opts_used = ext_opts_used;
 
+#ifdef ZSVSHEET_BUILD
     e->ext_sheet_handler_key = zsvsheet_handler_key;
     e->ext_sheet_subcommand_prompt = zsvsheet_subcommand_prompt;
     e->ext_sheet_handler_set_status = zsvsheet_handler_set_status;
@@ -368,6 +373,7 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->ext_sheet_handler_buffer_filename = zsvsheet_handler_buffer_filename;
     e->ext_sheet_handler_open_file = zsvsheet_handler_open_file;
     e->ext_sheet_register_command = zsvsheet_register_command;
+#endif
   }
   return e;
 }
