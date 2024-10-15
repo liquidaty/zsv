@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include "common.h"
+#include "ext/sheet.h"
 
 /**
  * @file ext.h
@@ -146,6 +147,57 @@ struct zsv_ext_callbacks {
    * }
    * ```
    */
+
+  /****************************************
+   * Registering a custom `sheet` command *
+   ****************************************/
+  zsvsheet_handler_status (*ext_sheet_register_command)(
+    int ch,               // keyboard shortcut
+    const char *longname, // long name that can be used via run-cmd to invoke
+    zsvsheet_handler_status (*subcommand_handler)(zsvsheet_subcommand_handler_context_t),
+    zsvsheet_handler_status (*handler)(zsvsheet_handler_context_t ctx));
+
+  /*** Custom command prompt ***/
+  /**
+   * Set the prompt for entering a subcommand
+   * @param  s text to set the subcommand prompt to. must be < 256 bytes in length
+   * returns zsvsheet_status_ok on success
+   */
+  zsvsheet_handler_status (*ext_sheet_subcommand_prompt)(zsvsheet_subcommand_handler_context_t ctx, const char *fmt,
+                                                         ...);
+
+  /*** Custom command handling ***/
+  /**
+   * Set a status message
+   */
+  zsvsheet_handler_status (*ext_sheet_handler_set_status)(zsvsheet_handler_context_t, const char *fmt, ...);
+
+  /**
+   * Get the key press that triggered this subcommand handler
+   */
+  int (*ext_sheet_handler_key)(zsvsheet_subcommand_handler_context_t ctx);
+
+  /****** Managing buffers ******/
+  /**
+   * Get the current buffer
+   */
+  zsvsheet_handler_buffer_t (*ext_sheet_handler_buffer_current)(zsvsheet_handler_context_t);
+
+  /**
+   * Get the prior buffer
+   */
+  zsvsheet_handler_buffer_t (*ext_sheet_handler_buffer_prior)(zsvsheet_handler_buffer_t b);
+
+  /**
+   * Get the filename associated with a buffer
+   */
+  const char *(*ext_sheet_handler_buffer_filename)(zsvsheet_handler_buffer_t);
+
+  /**
+   * Open a tabular file as a new buffer
+   */
+  zsvsheet_handler_status (*ext_sheet_handler_open_file)(zsvsheet_handler_context_t, const char *filepath,
+                                                         struct zsv_opts *zopts);
 };
 
 /** @} */

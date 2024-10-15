@@ -10,6 +10,7 @@
  */
 
 #define ZSV_MAIN_FUNC1(x) zsv_##x##_main
+#define ZSV_MAINEXT_FUNC1(x) zsv_##x##_mainext
 #define ZSV_MAIN_NO_OPTIONS_FUNC1(x) zsv_##x##_main_no_options
 
 struct zsv_opts;
@@ -17,6 +18,7 @@ struct zsv_prop_handler;
 
 /* macros for commands that use common zsv parsing */
 #define ZSV_MAIN_FUNC(x) ZSV_MAIN_FUNC1(x)
+#define ZSV_MAINEXT_FUNC(x) ZSV_MAINEXT_FUNC1(x)
 #define ZSV_MAIN_DECL(x)                                                                                               \
   int ZSV_MAIN_FUNC(x)(int argc, const char *argv[], struct zsv_opts *opts,                                            \
                        struct zsv_prop_handler *custom_prop_handler, const char *opts_used)
@@ -24,5 +26,20 @@ struct zsv_prop_handler;
 /* macros for commands that do not use common zsv parsing */
 #define ZSV_MAIN_NO_OPTIONS_FUNC(x) ZSV_MAIN_NO_OPTIONS_FUNC1(x)
 #define ZSV_MAIN_NO_OPTIONS_DECL(x) int ZSV_MAIN_NO_OPTIONS_FUNC(x)(int argc, const char *argv[])
+
+/* macros for commands that require loading extensions before running */
+#define ZSV_MAINEXT_FUNC_DEFINE(x)                                                                                     \
+  int ZSV_MAINEXT_FUNC(x)(int argc, const char *argv[], struct zsv_opts *optsp,                                        \
+                          struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {                       \
+    int ZSV_MAIN_FUNC(x)(int argc, const char *argv[], struct zsv_opts *optsp,                                         \
+                         struct zsv_prop_handler *custom_prop_handler, const char *opts_used);                         \
+    /* initialize extensions */                                                                                        \
+    struct cli_config config;                                                                                          \
+    config_init(&config, 1, 1, 0);                                                                                     \
+    return ZSV_MAIN_FUNC(sheet)(argc, argv, optsp, custom_prop_handler, opts_used);                                    \
+  }                                                                                                                    \
+  /* extra declaration to allow trailing semicolon */ int ZSV_MAIN_FUNC(x)(                                            \
+    int argc, const char *argv[], struct zsv_opts *optsp, struct zsv_prop_handler *custom_prop_handler,                \
+    const char *opts_used)
 
 #endif

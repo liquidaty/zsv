@@ -1,4 +1,4 @@
-static size_t input_offset_top() {
+static size_t input_offset_top(void) {
   return 0;
 }
 
