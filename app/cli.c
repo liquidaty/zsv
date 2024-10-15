@@ -20,6 +20,8 @@
 #include "cli_internal.h"
 #include "cli_const.h"
 #include "cli_export.h"
+#include "sheet/sheet_internal.h"
+#include "sheet/handlers_internal.h"
 
 struct cli_config {
   struct zsv_ext *extensions;
@@ -43,6 +45,7 @@ struct builtin_cmd {
   zsv_cmd *cmd;
 };
 
+static int config_init(struct cli_config *c, char err_if_dl_not_found, char do_init, char verbose);
 #include "zsv_main.h"
 
 #define CLI_BUILTIN_DECL(x) int main_##x(int argc, const char *argv[])
@@ -81,14 +84,13 @@ ZSV_MAIN_NO_OPTIONS_DECL(mv);
 ZSV_MAIN_NO_OPTIONS_DECL(jq);
 #endif
 
-#define CLI_BUILTIN_CMD(x)                                                                                             \
-  { .name = #x, .main = main_##x, .cmd = NULL }
-#define CLI_BUILTIN_COMMAND(x)                                                                                         \
-  { .name = #x, .main = NULL, .cmd = ZSV_MAIN_FUNC(x) }
-#define CLI_BUILTIN_NO_OPTIONS_COMMAND(x)                                                                              \
-  { .name = #x, .main = ZSV_MAIN_NO_OPTIONS_FUNC(x), .cmd = NULL }
+#define CLI_BUILTIN_CMD(x) {.name = #x, .main = main_##x, .cmd = NULL}
+#define CLI_BUILTIN_COMMAND(x) {.name = #x, .main = NULL, .cmd = ZSV_MAIN_FUNC(x)}
+#define CLI_BUILTIN_COMMANDEXT(x) {.name = #x, .main = NULL, .cmd = ZSV_MAINEXT_FUNC(x)}
+#define CLI_BUILTIN_NO_OPTIONS_COMMAND(x) {.name = #x, .main = ZSV_MAIN_NO_OPTIONS_FUNC(x), .cmd = NULL}
 
 // clang-format off
+ZSV_MAINEXT_FUNC_DEFINE(sheet);
 
 struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_CMD(license),
@@ -112,7 +114,7 @@ struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_COMMAND(2db),
   CLI_BUILTIN_COMMAND(compare),
 #ifdef ZSVSHEET_BUILD
-CLI_BUILTIN_COMMAND(sheet),
+  CLI_BUILTIN_COMMANDEXT(sheet),
 #endif
   CLI_BUILTIN_COMMAND(echo),
   CLI_BUILTIN_NO_OPTIONS_COMMAND(prop),
@@ -356,6 +358,15 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->ext_parse_all = ext_parse_all;
     e->ext_parser_opts = ext_parser_opts;
     e->ext_opts_used = ext_opts_used;
+
+    e->ext_sheet_handler_key = zsvsheet_handler_key;
+    e->ext_sheet_subcommand_prompt = zsvsheet_subcommand_prompt;
+    e->ext_sheet_handler_set_status = zsvsheet_handler_set_status;
+    e->ext_sheet_handler_buffer_current = zsvsheet_handler_buffer_current;
+    e->ext_sheet_handler_buffer_prior = zsvsheet_handler_buffer_prior;
+    e->ext_sheet_handler_buffer_filename = zsvsheet_handler_buffer_filename;
+    e->ext_sheet_handler_open_file = zsvsheet_handler_open_file;
+    e->ext_sheet_register_command = zsvsheet_register_command;
   }
   return e;
 }

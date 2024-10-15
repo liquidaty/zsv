@@ -138,14 +138,7 @@ size_t display_data_rowcount(struct zsvsheet_display_dimensions *dims) {
 }
 
 char zsvsheet_status_text[256] = {0};
-void zsvsheet_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt, ...) {
-  if (overwrite || !*zsvsheet_status_text) {
-    va_list argv;
-    va_start(argv, fmt);
-    vsnprintf(zsvsheet_status_text, sizeof(zsvsheet_status_text), fmt, argv);
-    va_end(argv);
-    // note: if (n < (int)sizeof(zsvsheet_status_text)), then we just ignore
-  }
+static void zsvsheet_display_status_text(const struct zsvsheet_display_dimensions *ddims) {
   // clear the entire line
   mvprintw(ddims->rows - ddims->footer_span, 0, "%-*s", (int)sizeof(zsvsheet_status_text), "");
 
@@ -155,37 +148,22 @@ void zsvsheet_set_status(const struct zsvsheet_display_dimensions *ddims, int ov
   attroff(A_REVERSE);
 }
 
-#include "sheet/terminfo.c"
-
-int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zsv_optsp, const char *row_filter,
-                                 struct zsv_prop_handler *custom_prop_handler, const char *opts_used,
-                                 struct zsvsheet_ui_buffer **ui_buffer_stack_bottom,
-                                 struct zsvsheet_ui_buffer **ui_buffer_stack_top) {
-  struct zsvsheet_buffer_opts bopts = {0};
-  struct zsvsheet_ui_buffer_opts uibopts = {0};
-  uibopts.filename = filename;
-  if (zsv_optsp)
-    uibopts.zsv_opts = *zsv_optsp;
-  uibopts.buff_opts = &bopts;
-  struct zsvsheet_opts zsvsheet_opts = {0};
-  int err = 0;
-  struct zsvsheet_ui_buffer *tmp_ui_buffer = NULL;
-  uibopts.row_filter = row_filter;
-  if ((err = read_data(&tmp_ui_buffer, &uibopts, 0, 0, 0, NULL, &zsvsheet_opts, custom_prop_handler, opts_used)) != 0 ||
-      !tmp_ui_buffer || !tmp_ui_buffer->buff_used_rows) {
-    zsvsheet_ui_buffer_delete(tmp_ui_buffer);
-    if (err)
-      return err;
-    return -1;
+void zsvsheet_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt, ...) {
+  if (overwrite || !*zsvsheet_status_text) {
+    va_list argv;
+    va_start(argv, fmt);
+    vsnprintf(zsvsheet_status_text, sizeof(zsvsheet_status_text), fmt, argv);
+    va_end(argv);
+    // note: if (n < (int)sizeof(zsvsheet_status_text)), then we just ignore
   }
-  tmp_ui_buffer->cursor_row = 1; // first row is header
-  zsvsheet_ui_buffer_push(ui_buffer_stack_bottom, ui_buffer_stack_top, tmp_ui_buffer);
-  return 0;
+  zsvsheet_display_status_text(ddims);
 }
 
-#include "sheet/usage.c"
-
+#include "sheet/terminfo.c"
 #include "sheet/handlers_internal.h"
+#include "sheet/handlers.c"
+#include "sheet/file.c"
+#include "sheet/usage.c"
 
 enum zsvsheet_status zsvsheet_key_handler(struct zsvsheet_key_handler_data *khd, int ch, char *cmdbuff,
                                           size_t cmdbuff_sz, // subcommand buffer
@@ -197,36 +175,28 @@ enum zsvsheet_status zsvsheet_key_handler(struct zsvsheet_key_handler_data *khd,
   sctx.ch = ch;
   sctx.ui_buffers = *base_ui_buffer;
   sctx.current_ui_buffer = *current_ui_buffer;
-  enum zsvsheet_status status = khd->subcommand_handler(&sctx);
-  if (status != zsvsheet_status_ok)
-    return status;
-  get_subcommand(sctx.prompt, cmdbuff, cmdbuff_sz, (int)(display_dims->rows - display_dims->footer_span));
-  if (*cmdbuff == '\0')
+  zsvsheet_handler_status status = khd->subcommand_handler(&sctx);
+  if (status == zsvsheet_handler_status_ok) {
+    get_subcommand(sctx.prompt, cmdbuff, cmdbuff_sz, (int)(display_dims->rows - display_dims->footer_span));
+    if (*cmdbuff == '\0')
+      return zsvsheet_status_continue;
+    struct zsvsheet_handler_context ctx = {.subcommand_value = cmdbuff,
+                                           .ch = ch,
+                                           .ui_buffers = {.base = base_ui_buffer, .current = current_ui_buffer},
+                                           .display_dims = display_dims,
+                                           .custom_prop_handler = custom_prop_handler,
+                                           .opts_used = opts_used};
+    status = khd->handler(&ctx);
+  }
+  if (status == zsvsheet_handler_status_ok)
+    return zsvsheet_status_ok;
+  if (status == zsvsheet_handler_status_ignore)
     return zsvsheet_status_continue;
-
-  struct zsvsheet_handler_context ctx = {.subcommand_value = cmdbuff,
-                                         .ch = ch,
-                                         .ui_buffers = {.base = base_ui_buffer, .current = current_ui_buffer},
-                                         .display_dims = display_dims,
-                                         .custom_prop_handler = custom_prop_handler,
-                                         .opts_used = opts_used};
-  return khd->handler(&ctx);
+  return zsvsheet_status_error;
 }
 
 struct zsvsheet_key_handler_data *zsvsheet_key_handlers = NULL;
 struct zsvsheet_key_handler_data **zsvsheet_next_key_handler = &zsvsheet_key_handlers;
-
-static void zsvsheet_key_handlers_delete(struct zsvsheet_key_handler_data **root,
-                                         struct zsvsheet_key_handler_data ***nextp) {
-  for (struct zsvsheet_key_handler_data *next, *e = *root; e; e = next) {
-    next = e->next;
-    free(e);
-  }
-  *root = NULL;
-  *nextp = &(*root)->next;
-}
-
-#include "sheet/handlers.c"
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
                                struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
@@ -288,9 +258,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   char cmdbuff[256]; // subcommand buffer
 
   // register built-in key handlers
-  zsvsheet_register_key_handler_internal(zsvsheet_key_open_file, zsvsheet_file_subcommand_handler,
-                                         zsvsheet_file_handler);
-  zsvsheet_register_key_handler_internal(zsvsheet_key_filter, zsvsheet_file_subcommand_handler, zsvsheet_file_handler);
+  zsvsheet_register_command_internal(zsvsheet_key_open_file, "open-file", zsvsheet_file_subcommand_handler,
+                                     zsvsheet_file_handler);
+  zsvsheet_register_command_internal(zsvsheet_key_filter, "filter", zsvsheet_file_subcommand_handler,
+                                     zsvsheet_file_handler);
 
   int ch;
   while ((zsvsheetch = zsvsheet_key_binding((ch = getch()))) != zsvsheet_key_quit) {
@@ -420,14 +391,19 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       break;
     case zsvsheet_key_open_file:
     case zsvsheet_key_filter: {
-      struct zsvsheet_key_handler_data *zkhd = zsvsheet_get_registered_key_handler(ch, zsvsheet_key_handlers);
+      struct zsvsheet_key_handler_data *zkhd = zsvsheet_get_registered_key_handler(ch, NULL, zsvsheet_key_handlers);
       if (!zkhd || zsvsheet_key_handler(zkhd, ch, cmdbuff, sizeof(cmdbuff), &ui_buffers, &current_ui_buffer,
                                         &display_dims, custom_prop_handler, opts_used) == zsvsheet_status_continue)
         continue;
       break;
     }
-    default:
+    default: {
+      struct zsvsheet_key_handler_data *zkhd = zsvsheet_get_registered_key_handler(ch, NULL, zsvsheet_key_handlers);
+      if (zkhd && zsvsheet_key_handler(zkhd, ch, cmdbuff, sizeof(cmdbuff), &ui_buffers, &current_ui_buffer,
+                                       &display_dims, custom_prop_handler, opts_used) != zsvsheet_status_continue)
+        break;
       continue;
+    }
     }
     if (update_buffer && current_ui_buffer->filename) {
       struct zsvsheet_opts zsvsheet_opts = {0};

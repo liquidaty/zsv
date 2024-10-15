@@ -1,6 +1,15 @@
 #ifndef ZSVSHEET_INTERNAL_H
 #define ZSVSHEET_INTERNAL_H
 
+enum zsvsheet_status {
+  zsvsheet_status_ok = 0,
+  zsvsheet_status_memory,
+  zsvsheet_status_error, // generic error
+  zsvsheet_status_utf8,
+  zsvsheet_status_continue // ignore / continue
+  //  zsvsheet_status_duplicate
+};
+
 struct zsvsheet_rowcol {
   size_t row;
   size_t col;

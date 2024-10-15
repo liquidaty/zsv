@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zsv/ext/implementation.h>
+// #include <zsv/ext/sheet.h>
+#include "../../include/zsv/ext/sheet.h"
 #include <zsv/utils/writer.h>
 
 /**
@@ -44,7 +46,7 @@
 /**
  * *Required*: define our extension id, which must be two characters in length
  */
-const char *zsv_ext_id() {
+const char *zsv_ext_id(void) {
   return "my";
 }
 
@@ -65,6 +67,41 @@ enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *
                                const char *opts_used);
 static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *opts,
                                      const char *opts_used);
+
+/**
+ * Here we define a custom command for the zsv `sheet` feature
+ */
+zsvsheet_handler_status my_sheet_subcommand_handler(zsvsheet_subcommand_handler_context_t ctx) {
+  int ch = zsv_cb.ext_sheet_handler_key(ctx);
+  zsv_cb.ext_sheet_subcommand_prompt(ctx, "You pressed %c. Now enter something here", (char)ch);
+  return zsvsheet_handler_status_ok;
+}
+
+zsvsheet_handler_status my_sheet_handler(zsvsheet_handler_context_t ctx) {
+  const char *temp_filename = "/tmp/zsvsheet_extension_example.csv";
+  FILE *f = fopen(temp_filename, "wb");
+  if (!f)
+    zsv_cb.ext_sheet_handler_set_status(ctx, "Unable to open for write: %s", temp_filename);
+  else {
+    fprintf(f, "buffer #,file name\n");
+    // get a count of open buffers
+    int i = 0;
+    for (zsvsheet_handler_buffer_t buff = zsv_cb.ext_sheet_handler_buffer_current(ctx); buff;
+         buff = zsv_cb.ext_sheet_handler_buffer_prior(buff), i++)
+      ;
+
+    // print a list of open buffers and filenames
+    for (zsvsheet_handler_buffer_t buff = zsv_cb.ext_sheet_handler_buffer_current(ctx); buff;
+         buff = zsv_cb.ext_sheet_handler_buffer_prior(buff), i--) {
+      const char *buff_filename = zsv_cb.ext_sheet_handler_buffer_filename(buff);
+      if (buff_filename)
+        fprintf(f, "%i,%s\n", i, buff_filename); // assumes no need for quoting or escaping buff_filename...
+    }
+    fclose(f);
+    return zsv_cb.ext_sheet_handler_open_file(ctx, temp_filename, NULL);
+  }
+  return zsvsheet_handler_status_ok;
+}
 
 /**
  * *Required*. Initialization is called when our extension is loaded. Our
@@ -92,6 +129,8 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
   zsv_cb.ext_set_thirdparty(ctx, third_party_licenses);
   zsv_cb.ext_add_command(ctx, "count", "print the number of rows", count_main);
   zsv_cb.ext_add_command(ctx, "echo", "print the input data back to stdout", echo_main);
+
+  zsv_cb.ext_sheet_register_command('t', "my-test-command", my_sheet_subcommand_handler, my_sheet_handler);
   return zsv_ext_status_ok;
 }
 
@@ -99,7 +138,7 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
  * exit: called once by zsv before the library is unloaded, if `zsv_ext_init()` was
  * previously called
  */
-enum zsv_ext_status zsv_ext_exit() {
+enum zsv_ext_status zsv_ext_exit(void) {
   fprintf(stderr, "Exiting extension example!\n");
   return zsv_ext_status_ok;
 }

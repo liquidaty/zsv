@@ -1,3 +1,4 @@
+
 struct zsvsheet_ui_buffer {
   char *filename;
   struct zsv_opts zsv_opts;         // options to use when opening this file
