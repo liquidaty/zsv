@@ -479,8 +479,10 @@ jobs:
           mingw-w64-x86_64-toolchain
           mingw-w64-x86_64-ncurses
 
-    - name: Update PATH
-      run: echo '/mingw64/bin' >>"$GITHUB_PATH"
+    - name: Update GITHUB_PATH and GITHUB_ENV
+      run: |
+        echo '/mingw64/bin' >>"$GITHUB_PATH"
+        echo 'MSYS=winsymlinks:lnk' >>"$GITHUB_ENV"
 
     - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
       env:
