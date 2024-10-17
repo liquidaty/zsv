@@ -455,7 +455,7 @@ jobs:
 
   ci-win:
     needs: [tag, clang-format, cppcheck]
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     permissions:
       contents: write
