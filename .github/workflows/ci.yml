@@ -483,6 +483,8 @@ jobs:
       run: |
         echo '/mingw64/bin' >>"$GITHUB_PATH"
         echo 'MSYS=winsymlinks:lnk' >>"$GITHUB_ENV"
+        cp -f /mingw64/bin/windres.exe /mingw64/bin/x86_64-w64-mingw32-windres.exe
+        cp -f /mingw64/bin/cpp.exe /mingw64/bin/x86_64-w64-mingw32-cpp.exe
 
     - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
       env:
