@@ -455,7 +455,7 @@ jobs:
 
   ci-win:
     needs: [tag, clang-format, cppcheck]
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     permissions:
       contents: write
@@ -492,6 +492,7 @@ jobs:
         AR: x86_64-w64-mingw32-ar
         NM: x86_64-w64-mingw32-nm
         WINDRES: x86_64-w64-mingw32-windres
+      shell: msys2 {0}
       run: |
         ./scripts/ci-build.sh
         ./scripts/ci-create-nuget-package.sh
