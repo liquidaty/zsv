@@ -208,10 +208,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   const char *locale = setlocale(LC_ALL, "C.UTF-8");
   if (!locale || strstr(locale, "UTF-8") == NULL)
     locale = setlocale(LC_ALL, "");
+#if !defined(WIN32) && !defined(_WIN32)
   if (!locale || strstr(locale, "UTF-8") == NULL) {
     fprintf(stderr, "Unable to set locale to UTF-8\n");
     return 1; // TO DO: option to continue
   }
+#endif
 
   if (!terminfo_ok()) {
     fprintf(stderr, "Warning: unable to set or detect TERMINFO\n");
