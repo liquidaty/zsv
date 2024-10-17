@@ -490,9 +490,9 @@ jobs:
         RUN_TESTS: false
         CXX: x86_64-w64-mingw32-g++
         CPP: x86_64-w64-mingw32-cpp
-        RANLIB: x86_64-w64-mingw32-ranlib
-        AR: x86_64-w64-mingw32-ar
-        NM: x86_64-w64-mingw32-nm
+        RANLIB: x86_64-w64-mingw32-gcc-ranlib
+        AR: x86_64-w64-mingw32-gcc-ar
+        NM: x86_64-w64-mingw32-gcc-nm
         WINDRES: x86_64-w64-mingw32-windres
       shell: msys2 {0}
       run: |
