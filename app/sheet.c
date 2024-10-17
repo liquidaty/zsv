@@ -225,7 +225,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   size_t header_span = 0; // number of rows that comprise the header
   int err;
   {
-    struct zsvsheet_ui_buffer *tmp_ui_buffer;
+    struct zsvsheet_ui_buffer *tmp_ui_buffer = NULL;
     zsvsheet_ui_buffer_new_blank(&tmp_ui_buffer);
     if (!tmp_ui_buffer) {
       fprintf(stderr, "Out of memory!\n");
@@ -440,8 +440,17 @@ const char *display_cell(struct zsvsheet_buffer *buff, size_t data_row, size_t d
 
     // convert the substring to wide characters
     wchar_t wsubstring[256]; // Ensure this buffer is large enough
+#if defined(WIN32) || defined(_WIN32)
+    // windows does not have mbsnrtowcs
+    char *p = (char *)str;
+    char tmp_ch = p[nbytes];
+    p[nbytes] = '\0';
+    size_t wlen = mbstowcs(wsubstring, p, sizeof(wsubstring) / sizeof(wchar_t));
+    p[nbytes] = tmp_ch;
+#else
     const char *p = str;
     size_t wlen = mbsnrtowcs(wsubstring, &p, nbytes, sizeof(wsubstring) / sizeof(wchar_t), NULL);
+#endif
     if (wlen == (size_t)-1) {
       fprintf(stderr, "Unable to convert to wide chars: %s\n", str);
       return str;
