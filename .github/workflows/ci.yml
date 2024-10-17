@@ -473,7 +473,6 @@ jobs:
       uses: msys2/setup-msys2@v2
       with:
         msystem: mingw64
-        release: false
         install: >-
           make
           mingw-w64-x86_64-toolchain
@@ -483,6 +482,7 @@ jobs:
       run: |
         echo '/mingw64/bin' >>"$GITHUB_PATH"
         echo 'MSYS=winsymlinks:lnk' >>"$GITHUB_ENV"
+        whereis windres cpp
         cp -f /mingw64/bin/windres.exe /mingw64/bin/x86_64-w64-mingw32-windres.exe
         cp -f /mingw64/bin/cpp.exe /mingw64/bin/x86_64-w64-mingw32-cpp.exe
 
