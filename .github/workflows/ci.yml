@@ -476,7 +476,7 @@ jobs:
         NCURSES_LIB_DIR: ${{ env.VCPKG_INSTALLATION_ROOT }}/installed/x86-mingw-static/lib
       run: |
         cd "$VCPKG_INSTALLATION_ROOT"
-        if ! grep "--enable-widec" "$NCURSES_PORTFILE" >/dev/null; then
+        if ! grep -- "--enable-widec" "$NCURSES_PORTFILE" >/dev/null; then
           sed 's|--enable-pc-files|--enable-pc-files\n--enable-widec|' -i "$NCURSES_PORTFILE"
         fi
         ./vcpkg install ncurses:x64-mingw-static
