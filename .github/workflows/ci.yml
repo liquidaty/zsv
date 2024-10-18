@@ -467,7 +467,10 @@ jobs:
 
     steps:
     - name: Install MinGW cross compiler
-      run: sudo apt install -y mingw-w64 nuget
+      run: |
+        sudo apt update
+        sudo apt install -y mingw-w64 nuget
+        sudo apt remove -y jq
 
     - name: Install ncurses with vcpkg
       run: |
@@ -478,9 +481,10 @@ jobs:
           cat "$NCURSES_PORTFILE"
         fi
         ./vcpkg install ncurses:x64-mingw-static
+        tree -h ./installed/x64-mingw-static
         {
-          echo "NCURSES_INC_DIR=$$PWD/installed/x64-mingw-static/include"
-          echo "NCURSES_LIB_DIR=$$PWD/installed/x64-mingw-static/lib"
+          echo "NCURSES_INC_DIR=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static/include"
+          echo "NCURSES_LIB_DIR=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static/lib"
         } >>"$GITHUB_ENV"
 
     - name: Checkout
