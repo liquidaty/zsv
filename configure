@@ -77,17 +77,17 @@ tryranlib () { test -z "$RANLIB" && cmdexists "$1" && RANLIB=$1 ; }
 tryawk () { test -z "$AWK" && "$1" 'function works () {return 0} BEGIN{exit works()}' && AWK=$1 ; }
 trymake() {
     if test -z "$MAKE" && cmdexists "$1" ; then
-	v=`$1 --version | grep 'GNU Make' | sed -e 's/.*Make //'`
-	if [ "$v" = "" ] ; then
-	    printf "Found but not using non-GNU make ($1)... "
-	else
-	    MAKE="$1"
-	    maj=`echo $v | cut -d. -f 1`
-	    min=`echo $v | cut -d. -f 2`
-	    if ! test $maj -gt 3 -o '(' $maj -eq 3 -a $min -ge 81 ')' ; then
-		printf "Warning: using make, but version $v < 3.81 has not been tested. "
-	    fi
-	fi
+    v=`$1 --version | grep 'GNU Make' | sed -e 's/.*Make //'`
+    if [ "$v" = "" ] ; then
+        printf "Found but not using non-GNU make ($1)... "
+    else
+        MAKE="$1"
+        maj=`echo $v | cut -d. -f 1`
+        min=`echo $v | cut -d. -f 2`
+        if ! test $maj -gt 3 -o '(' $maj -eq 3 -a $min -ge 81 ')' ; then
+        printf "Warning: using make, but version $v < 3.81 has not been tested. "
+        fi
+    fi
     fi
 }
 
@@ -100,14 +100,14 @@ trycchdr () {
     printf "checking whether there is a header called %s... " "$2"
     dn=`dirname "$2"`
     if [ "$dn" != "" ]; then
-	dn="/$dn"
-	bn=`basename "$2"`
-	for x in $CCSEARCHPATH ; do
-	    fnd=$fnd"$x$dn "
-	done
+    dn="/$dn"
+    bn=`basename "$2"`
+    for x in $CCSEARCHPATH ; do
+        fnd=$fnd"$x$dn "
+    done
     else
-	bn="$2"
-	fnd=$CCSEARCHPATH
+    bn="$2"
+    fnd=$CCSEARCHPATH
     fi
     upper2=$(echo "$2" | tr a-z A-Z | tr . _ | tr / _)
     if find $fnd -name "$bn" 2>/dev/null | grep "/$2$" >/dev/null 2>&1 ; then
@@ -351,7 +351,7 @@ for arg ; do
         --disable-sheet|--enable-sheet=no) TRY_SHEET=no;;
 
         --enable-lto|--enable-lto=yes) TRY_LTO=yes;;
-        --enable-lto|--enable-lto=auto) TRY_LTO=auto;;
+        --enable-lto=auto) TRY_LTO=auto;;
         --disable-lto|--enable-lto=no) TRY_LTO=no;;
 
         --enable-whole-program|--enable-whole-program=yes) TRY_WHOLE_PROGRAM=yes ;;
@@ -496,12 +496,12 @@ case "$host" in
     *-*bsd*) CFLAGS_STD="$CFLAGS_STD -D_BSD_SOURCE" ;;
     *-*darwin*) CFLAGS_STD="$CFLAGS_STD -D_DARWIN_C_SOURCE" ;;
     *-*mingw32|*-*msys*|*-windows-gnu)
-	CFLAGS_STD="$CFLAGS_STD -D__USE_MINGW_ANSI_STDIO"
-	MINGW=1
+    CFLAGS_STD="$CFLAGS_STD -D__USE_MINGW_ANSI_STDIO"
+    MINGW=1
     ARCH=none
-	usepie=no
-	usepic=no
-	;;
+    usepie=no
+    usepic=no
+    ;;
 esac
 
 if test "$usepie" = "auto" ; then
@@ -520,21 +520,21 @@ tryflag CFLAGS_VECTORIZE_ALL -fopt-info-vec-all
 tryflag CFLAGS_OPENMP -fopenmp
 
 if [ "$TRY_SHEET" != "no" ]; then
-    if tryldflag LDFLAGS_NCURSESW -lncursesw -L${PREFIX}/lib ; then
+    if tryldflag LDFLAGS_NCURSESW -lncursesw -L"$PREFIX"/lib ; then
         LDFLAGS_NCURSES=-lncursesw
         NCLIB=ncursesw
-        if [ "$NCURSES_DYNAMIC" == "" ] ; then
-            CFLAGS_NCURSES="-DHAVE_NCURSESW -DNCURSESW_STATIC"
+        if [ "$NCURSES_DYNAMIC" = "" ] ; then
+            CFLAGS_NCURSES="-DHAVE_NCURSESW -DNCURSES_STATIC"
         else
             CFLAGS_NCURSES="-DHAVE_NCURSESW"
         fi
     fi
-    if tryldflag LDFLAGS_NCURSES -lncurses -L${PREFIX}/lib ; then
+    if tryldflag LDFLAGS_NCURSES -lncurses -L"$PREFIX"/lib ; then
         NCLIB=ncurses
-        if [ "$NCURSES_DYNAMIC" == "" ] ; then
-            CFLAGS_NCURSES+="-DHAVE_NCURSES -DNCURSES_STATIC"
+        if [ "$NCURSES_DYNAMIC" = "" ] ; then
+            CFLAGS_NCURSES="$CFLAGS_NCURSES -DHAVE_NCURSES -DNCURSES_STATIC"
         else
-            CFLAGS_NCURSES+=-DHAVE_NCURSES
+            CFLAGS_NCURSES="$CFLAGS_NCURSES -DHAVE_NCURSES"
         fi
     fi
     ZSVSHEET_BUILD=1
@@ -655,17 +655,17 @@ tryldflag LDFLAGS_OPT -ldl
 if test "$usepie" = "yes" ; then
     case "$LDFLAGS_PIE" in
         *pie*)
-	    tryldflag LDFLAGS_PIE -Wl,-z,now
-	    tryldflag LDFLAGS_PIE -Wl,-z,relro
-	    ;;
+        tryldflag LDFLAGS_PIE -Wl,-z,now
+        tryldflag LDFLAGS_PIE -Wl,-z,relro
+        ;;
     esac
 fi
 if test "$usepic" = "yes" ; then
     case "$LDFLAGS_PIC" in
         *pic*)
-	    tryldflag LDFLAGS_PIC -Wl,-z,now
-	    tryldflag LDFLAGS_PIC -Wl,-z,relro
-	    ;;
+        tryldflag LDFLAGS_PIC -Wl,-z,now
+        tryldflag LDFLAGS_PIC -Wl,-z,relro
+        ;;
     esac
 fi
 
@@ -675,10 +675,10 @@ if [ "$TRY_AVX512" = "yes" ]; then
     HAVE_AVX512=
     tryccfn CFLAGS_AVX_512 "_mm512_movepi8_mask" "immintrin.h" && trycchdr CFLAGS_AVX_512 "immintrin.h" && ( tryccfn CFLAGS_AVX_512 "_blsr_u64" "immintrin.h" || tryccfn CFLAGS_AVX_512 "__blsr_u64" "immintrin.h" ) && tryflag CFLAGS_AVX_512 "-mbmi" && tryflag CFLAGS_AVX_512 "-mavx512bw" && CFLAGS_AVX_512="-mbmi -mavx512bw -DHAVE_AVX512=1" && HAVE_AVX512=1
     if [ "$HAVE_AVX512" = "1" ]; then
-	echo "yes"
+    echo "yes"
     else
-	echo "no"
-	echo "WARNING: --try-avx512 option enabled, but no avx512 instruction set available"
+    echo "no"
+    echo "WARNING: --try-avx512 option enabled, but no avx512 instruction set available"
     fi
 fi
 
