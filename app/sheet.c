@@ -17,7 +17,11 @@
 #include <zsv.h>
 
 #if defined(WIN32) || defined(_WIN32)
+#ifdef HAVE_NCURSESW
+#include <ncursesw/ncurses.h>
+#else
 #include <ncurses/ncurses.h>
+#endif // HAVE_NCURSESW
 #else
 #if __has_include(<curses.h>)
 #include <curses.h>
