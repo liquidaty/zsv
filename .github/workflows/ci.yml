@@ -508,8 +508,8 @@ jobs:
         AR: x86_64-w64-mingw32-gcc-ar
         NM: x86_64-w64-mingw32-gcc-nm
         WINDRES: x86_64-w64-mingw32-windres
-        CFLAGS: -I"${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include"
-        LDFLAGS: -L"${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib"
+        CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
+        LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
       run: |
         ./scripts/ci-build.sh
         ./scripts/ci-create-nuget-package.sh
