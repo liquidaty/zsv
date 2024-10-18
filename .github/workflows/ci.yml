@@ -471,9 +471,11 @@ jobs:
 
     - name: Install ncurses with vcpkg
       run: |
+        NCURSES_PORTFILE="$VCPKG_INSTALLATION_ROOT/ports/ncurses/portfile.cmake"
         cd "$VCPKG_INSTALLATION_ROOT"
-        if ! grep -- "--enable-widec" "./ports/ncurses/portfile.cmake" >/dev/null; then
+        if ! grep -- "--enable-widec" "$NCURSES_PORTFILE" >/dev/null; then
           sed 's|--enable-pc-files|--enable-pc-files --enable-widec|' -i "$NCURSES_PORTFILE"
+          cat "$NCURSES_PORTFILE"
         fi
         ./vcpkg install ncurses:x64-mingw-static
         {
