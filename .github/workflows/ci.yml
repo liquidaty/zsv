@@ -472,15 +472,15 @@ jobs:
         sudo apt install -y mingw-w64 nuget
         sudo apt remove -y jq
 
-    - name: Set VCPKG_MINGW_DEPS env var
-      run: echo "VCPKG_MINGW_DEPS=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static" >>"$GITHUB_ENV"
+    - name: Set VCPKG_MINGW_INSTALL_ROOT env var
+      run: echo "VCPKG_MINGW_INSTALL_ROOT=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static" >>"$GITHUB_ENV"
 
     - name: Cache ncurses
       uses: actions/cache@v4
       id: cache-ncurses
       with:
-        key: ${{ runner.os }}-ncurses:x64-mingw-static
-        path: ${{ env.VCPKG_MINGW_DEPS }}
+        key: ncurses:x64-mingw-static
+        path: ${{ env.VCPKG_MINGW_INSTALL_ROOT }}
 
     - name: Install ncurses with wide character support using vcpkg
       if: ${{ steps.cache-ncurses.outputs.cache-hit != 'true' }}
@@ -491,11 +491,7 @@ jobs:
           sed 's|--enable-pc-files|--enable-pc-files --enable-widec|' -i "$NCURSES_PORTFILE"
         fi
         ./vcpkg install ncurses:x64-mingw-static
-        tree -h "$VCPKG_INSTALLATION_ROOT"/installed/x64-mingw-static
-        {
-          echo "NCURSES_INC_DIR=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static/include"
-          echo "NCURSES_LIB_DIR=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static/lib"
-        } >>"$GITHUB_ENV"
+        tree -h ./installed/x64-mingw-static
 
     - name: Checkout
       uses: actions/checkout@v4
@@ -512,8 +508,8 @@ jobs:
         AR: x86_64-w64-mingw32-gcc-ar
         NM: x86_64-w64-mingw32-gcc-nm
         WINDRES: x86_64-w64-mingw32-windres
-        CFLAGS: -I${{ env.NCURSES_INC_DIR }}
-        LDFLAGS: -L${{ env.NCURSES_LIB_DIR }}
+        CFLAGS: -I"${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include"
+        LDFLAGS: -L"${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib"
       run: |
         ./scripts/ci-build.sh
         ./scripts/ci-create-nuget-package.sh
