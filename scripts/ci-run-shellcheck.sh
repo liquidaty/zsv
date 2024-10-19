@@ -22,10 +22,8 @@ shellcheck --format=tty \
 
 if [ "$CI" = true ]; then
   {
-    echo "# Shellcheck summary"
-    echo
     echo "<details>"
-    echo "<summary>tty format</summary>"
+    echo "<summary>Shellcheck Summary (tty format)</summary>"
     echo
     echo '```'
     shellcheck --format=tty \
@@ -38,7 +36,7 @@ if [ "$CI" = true ]; then
     echo "</details>"
     echo
     echo "<details>"
-    echo "<summary>diff format</summary>"
+    echo "<summary>Shellcheck Summary (diff format)</summary>"
     echo
     echo '```diff'
     shellcheck --format=diff \
