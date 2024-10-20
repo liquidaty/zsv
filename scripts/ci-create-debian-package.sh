@@ -52,7 +52,7 @@ mv -f "./$PREFIX/bin" "./$PREFIX/usr/"
 
 echo "[INF] Creating control file [$DEBIAN_CONTROL_FILE]"
 
-INSTALLED_SIZE="$(echo $(du -s -c $PREFIX/usr/* | grep 'total') | cut -d ' ' -f1)"
+INSTALLED_SIZE="$(du -s -c "$PREFIX"/usr/* | grep 'total' | xargs | cut -d ' ' -f1)"
 cat <<EOF >"$DEBIAN_CONTROL_FILE"
 Package: zsv
 Version: $VERSION
