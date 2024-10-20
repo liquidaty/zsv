@@ -60,3 +60,6 @@ nuget-feed
 homebrew-zsv
 cppcheck*
 tmp
+include/zsv.h
+app/test/worldcitiespop_mil.csv
+data/quoted5.csv
