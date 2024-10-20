@@ -90,8 +90,18 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
+  shellcheck:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Run shellcheck
+      run: ./scripts/ci-run-shellcheck.sh
+
   ci:
-    needs: [tag, clang-format, cppcheck]
+    needs: [tag, clang-format, cppcheck, shellcheck]
 
     strategy:
       matrix:
@@ -439,7 +449,7 @@ jobs:
       run: ./scripts/ci-update-homebrew-tap.sh
 
   ci-bsd:
-    needs: [tag, clang-format, cppcheck]
+    needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-latest
 
     permissions:

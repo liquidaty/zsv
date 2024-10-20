@@ -77,17 +77,17 @@ tryranlib () { test -z "$RANLIB" && cmdexists "$1" && RANLIB=$1 ; }
 tryawk () { test -z "$AWK" && "$1" 'function works () {return 0} BEGIN{exit works()}' && AWK=$1 ; }
 trymake() {
     if test -z "$MAKE" && cmdexists "$1" ; then
-	v=`$1 --version | grep 'GNU Make' | sed -e 's/.*Make //'`
-	if [ "$v" = "" ] ; then
-	    printf "Found but not using non-GNU make ($1)... "
-	else
-	    MAKE="$1"
-	    maj=`echo $v | cut -d. -f 1`
-	    min=`echo $v | cut -d. -f 2`
-	    if ! test $maj -gt 3 -o '(' $maj -eq 3 -a $min -ge 81 ')' ; then
-		printf "Warning: using make, but version $v < 3.81 has not been tested. "
-	    fi
-	fi
+    v=$($1 --version | grep 'GNU Make' | sed -e 's/.*Make //')
+        if [ "$v" = "" ] ; then
+            printf "Found but not using non-GNU make (%s)..." "$1"
+        else
+            MAKE="$1"
+            maj=$(echo "$v" | cut -d. -f 1)
+            min=$(echo "$v" | cut -d. -f 2)
+            if ! test "$maj" -gt 3 -o '(' "$maj" -eq 3 -a "$min" -ge 81 ')'; then
+                printf "Warning: using make, but version %s < 3.81 has not been tested. " "$v"
+            fi
+        fi
     fi
 }
 
@@ -98,19 +98,19 @@ stripdir () {
 NO_HAVE=
 trycchdr () {
     printf "checking whether there is a header called %s... " "$2"
-    dn=`dirname "$2"`
+    dn=$(dirname "$2")
     if [ "$dn" != "" ]; then
-	dn="/$dn"
-	bn=`basename "$2"`
-	for x in $CCSEARCHPATH ; do
-	    fnd=$fnd"$x$dn "
-	done
+    dn="/$dn"
+    bn=$(basename "$2")
+    for x in $CCSEARCHPATH ; do
+        fnd=$fnd"$x$dn "
+    done
     else
-	bn="$2"
-	fnd=$CCSEARCHPATH
+    bn="$2"
+    fnd=$CCSEARCHPATH
     fi
-    upper2=$(echo "$2" | tr a-z A-Z | tr . _ | tr / _)
-    if find $fnd -name "$bn" 2>/dev/null | grep "/$2$" >/dev/null 2>&1 ; then
+    upper2=$(echo "$2" | tr '[:lower:]' '[:upper:]' | tr . _ | tr / _)
+    if find "$fnd" -name "$bn" 2>/dev/null | grep "/$2$" >/dev/null 2>&1 ; then
         eval "$1=\"\${$1} -DHAVE_\${upper2}\""
         eval "$1=\${$1# }"
         printf "yes\n"
@@ -125,7 +125,7 @@ NO_$upper2 = 1"
 
 trycpusupport() {
     rm -f "$tmpc"
-    printf "checking whether CPU accepts $1... "
+    printf "checking whether CPU accepts %s... " "$1"
     cat >> "$tmpc" <<EOF
 int main() {
   if(__builtin_cpu_supports("$1"))
@@ -147,21 +147,22 @@ tryccfn () {
         printf "checking whether compiler accepts %s from %s..." "$2" "$3"
     fi
     if [ "$3" != "" ]; then
-        printf "%s\n" $3 | sed 's/\(.*\)/#include <\1>/' >> "$tmpc"
+        printf "%s\n" "$3" | sed 's/\(.*\)/#include <\1>/' >> "$tmpc"
     fi
     cat >> "$tmpc" <<EOF
 int main() {$2;}
 EOF
-    flag=$(echo "$2" | cut -d'(' -f1 | tr a-z A-Z)
+    flag=$(echo "$2" | cut -d'(' -f1 | tr '[:lower:]' '[:upper:]')
     if $CC -o "$tmpo" "$tmpc" >/dev/null 2>&1 ; then
         if [ "$4" != "" ] ; then
-            lib=$(echo "$4" | tr a-z A-Z | tr . _)
+            lib=$(echo "$4" | tr '[:lower:]' '[:upper:]' | tr . _)
             USE_LIBS="$USE_LIBS
 USE_LIB_$lib = 1"
         fi
 
         eval "vars=\$$1"
-        if ! printf "%s\n" ${vars} | grep "\-DHAVE_${flag}\$" >/dev/null 2>&1; then
+        # shellcheck disable=SC2154
+        if ! printf "%s\n" "${vars}" | grep "\-DHAVE_${flag}\$" >/dev/null 2>&1; then
             flag="-DHAVE_${flag}"
             eval "$1=\"\${vars} \${flag}\""
             eval "$1=\${$1# }"
@@ -172,10 +173,12 @@ USE_LIB_$lib = 1"
         printf "no\n"
         NO_HAVE="$NO_HAVE
 NO_$flag = 1"
-        echo "------" >> $CONFIGFILE.log
-        echo "Failed: $CC -o $tmpo tmp.c" >> $CONFIGFILE.log
-        cat "$tmpc" >> $CONFIGFILE.log
-        echo "------" >> $CONFIGFILE.log
+        {
+            echo "------"
+            echo "Failed: $CC -o $tmpo tmp.c"
+            cat "$tmpc"
+            echo "------"
+        }>> "$CONFIGFILE".log
         return 1
     fi
 }
@@ -186,8 +189,7 @@ tryccfn1 () {
     cat >> "$tmpc" <<EOF
 int main() {$2($3);}
 EOF
-    flag=$(echo "$2" | cut -d'(' -f1 | tr a-z A-Z)
-    eval "vars=\$$1"
+    flag=$(echo "$2" | cut -d'(' -f1 | tr '[:lower:]' '[:upper:]')
     if $CC -o "$tmpo" "$tmpc" >/dev/null 2>&1 ; then
         flag="-DHAVE_${flag}"
         have=1
@@ -195,7 +197,8 @@ EOF
         flag="-DNO_${flag}"
         have=0
     fi
-    if ! printf "%s\n" ${vars} | grep "\-D${flag}\$" >/dev/null 2>&1; then
+    eval "vars=\$$1"
+    if ! printf "%s\n" "${vars}" | grep "\-D${flag}\$" >/dev/null 2>&1; then
         eval "$1=\"\${vars} \${flag}\""
         eval "$1=\${$1# }"
     fi
@@ -211,6 +214,7 @@ EOF
 tryflag () {
     printf "checking whether compiler accepts %s... " "$2"
     echo "int main() {return 0;}" > "$tmpc"
+    # shellcheck disable=SC2086
     if $CC $CFLAGS_TRY $2 -c -o "$tmpo" "$tmpc" >/dev/null 2>&1 ; then
         printf "yes\n"
         eval "$1=\"\${$1} \$2\""
@@ -225,6 +229,7 @@ tryflag () {
 tryldflag () { # var, flag, other_arguments (optional)
     printf "checking whether linker accepts %s %s... " "$2" "$3"
     echo "int main(){return 0;}" > "$tmpc"
+    # shellcheck disable=SC2086
     if $CC $LDFLAGS "$2" $3 -o "$tmpo" "$tmpc" >/dev/null 2>&1 ; then
         printf "yes\n"
         eval "$1=\"\${$1} \$2\""
@@ -239,6 +244,7 @@ tryldflag () { # var, flag, other_arguments (optional)
 trysharedldflag () {
     printf "checking whether linker accepts %s... " "$2"
     echo "typedef int x;" > "$tmpc"
+    # shellcheck disable=SC2086
     if $CC $LDFLAGS -shared "$2" -o "$tmpo" "$tmpc" >/dev/null 2>&1 ; then
         printf "yes\n"
         eval "$1=\"\${$1} \$2\""
@@ -254,11 +260,15 @@ trysharedldflag () {
 if [ "$CROSS_COMPILING" = "" ]; then
     CROSS_COMPILING=no
 fi
+
 CFLAGS_AUTO=
 CFLAGS_TRY=
 LDFLAGS_AUTO=
+
+# shellcheck disable=SC2034
 LDFLAGS_TRY=
-CONFIGFILE=$CONFIGFILE
+
+# CONFIGFILE=$CONFIGFILE
 if [ "$CONFIGFILE" = "" ]; then
     CONFIGFILE=config.mk
 fi
@@ -272,7 +282,7 @@ if [ "$ARCH" = "" ] ; then
 fi
 
 # check prefixes first, since others may be derived from it unless overridden
-PREFIX=$PREFIX
+# PREFIX=$PREFIX
 for arg ; do
     case "$arg" in
         --prefix=*) PREFIX=${arg#*=} ;;
@@ -281,10 +291,10 @@ done
 if [ "$PREFIX" = "" ]; then
     PREFIX=/usr/local
 elif [ "$PREFIX" = "${PREFIX#/}" ]; then
-    PREFIX="`pwd`/$PREFIX"
+    PREFIX="$PWD/$PREFIX"
 fi
 
-EXEC_PREFIX=$EXEC_PREFIX
+# EXEC_PREFIX=$EXEC_PREFIX
 for arg ; do
     case "$arg" in
         --exec-prefix=*) EXEC_PREFIX=${arg#*=} ;;
@@ -293,11 +303,11 @@ done
 if [ "$EXEC_PREFIX" = "" ]; then
     EXEC_PREFIX=$PREFIX
 elif [ "$EXEC_PREFIX" = "${EXEC_PREFIX#/}" ]; then
-    EXEC_PREFIX="`pwd`/$EXEC_PREFIX"
+    EXEC_PREFIX="$PWD/$EXEC_PREFIX"
 fi
 
-DOCDIR='$(PREFIX)/share/doc'
-MANDIR='$(PREFIX)/share/man'
+DOCDIR="$PREFIX/share/doc"
+MANDIR="$PREFIX/share/man"
 
 MINIMAL=no
 
@@ -308,7 +318,6 @@ FORCE_AVX2=auto
 FORCE_AVX=auto
 FORCE_SSE2=auto
 
-help=yes
 usepie=auto
 usepic=auto
 usetermcap=auto
@@ -351,7 +360,7 @@ for arg ; do
         --disable-sheet|--enable-sheet=no) TRY_SHEET=no;;
 
         --enable-lto|--enable-lto=yes) TRY_LTO=yes;;
-        --enable-lto|--enable-lto=auto) TRY_LTO=auto;;
+        --enable-lto=auto) TRY_LTO=auto;;
         --disable-lto|--enable-lto=no) TRY_LTO=no;;
 
         --enable-whole-program|--enable-whole-program=yes) TRY_WHOLE_PROGRAM=yes ;;
@@ -390,12 +399,14 @@ done
 #
 i=0
 set -C
-while : ; do i=$(($i+1))
-             tmpc="./conf$$-$PPID-$i.c"
-             tmpo="./conf$$-$PPID-$i.o"
-             tmpe="./conf$$-$PPID-$i._"
-             2>|/dev/null > "$tmpc" && break
-             test "$i" -gt 50 && fail "$0: cannot create temporary file $tmpc"
+while : ; do
+    i=$((i+1))
+    tmpc="./conf$$-$PPID-$i.c"
+    tmpo="./conf$$-$PPID-$i.o"
+    tmpe="./conf$$-$PPID-$i._"
+    # shellcheck disable=SC2188
+    2>|/dev/null > "$tmpc" && break
+    test "$i" -gt 50 && fail "$0: cannot create temporary file $tmpc"
 done
 set +C
 trap 'rm -f "$tmpc" "$tmpo" "$tmpe"' EXIT QUIT TERM HUP
@@ -410,8 +421,8 @@ printf "%s\n" "$AWK"
 test -n "$AWK" || fail "$0: cannot find an AWK tool"
 
 #
-# Find a MAKE tool to use#
-
+# Find a MAKE tool to use
+#
 printf "checking for MAKE tool... "
 for a in make gmake ; do trymake "$a"; done
 printf "%s\n" "$MAKE"
@@ -428,6 +439,7 @@ test -n "$CC" || fail "$0: cannot find a C compiler"
 
 printf "checking whether C compiler works... "
 echo "typedef int x;" > "$tmpc"
+# shellcheck disable=SC2086
 if output=$($CC $CPPFLAGS $CFLAGS -c -o "$tmpo" "$tmpc" 2>&1) ; then
     printf "yes\n"
 else
@@ -437,14 +449,17 @@ fi
 #
 # Get compiler search paths
 #
+# shellcheck disable=SC2016
 CCSEARCHPATH=$(echo | ${CC} -E -Wp,-v - 2>&1 | ${AWK} '/ \//{print substr($0,2);}')
 
 #
 # Check if it is clang, and the llvm tools instead
+#
+# shellcheck disable=SC2016
 compiler=$(${CC} -v 2>&1 | ${AWK} '/ +version +/{for(i=1;i<=NF;i++){if($i=="version"){printf("%s\n",(last=="LLVM")?"clang":last);exit 0;}last=$i;}}')
 if test "$compiler" = "clang"; then
-    arlist="$CC-llvm-ar $host-llvm-ar $CC-ar $host-ar llvm-ar `ls /usr/bin/llvm-ar* 2>/dev/null` ar"
-    ranliblist="$CC-llvm-ranlib $host-llvm-ranlib $CC-ranlib $host-ranlib llvm-ranlib `ls /usr/bin/llvm-ranlib* 2>/dev/null` ranlib"
+    arlist="$CC-llvm-ar $host-llvm-ar $CC-ar $host-ar llvm-ar $(ls /usr/bin/llvm-ar* 2>/dev/null) ar"
+    ranliblist="$CC-llvm-ranlib $host-llvm-ranlib $CC-ranlib $host-ranlib llvm-ranlib $(ls /usr/bin/llvm-ranlib* 2>/dev/null) ranlib"
 else
     arlist="$CC-ar $host-$compiler-ar $host-ar $compiler-ar ar"
     ranliblist="$CC-ranlib $host-$compiler-ranlib $host-ranlib $compiler-ranlib $compiler-ranlib ranlib"
@@ -471,7 +486,7 @@ test -n "$host" || host=$($CC -dumpmachine 2>/dev/null) || fail "could not deter
 printf '%s\n' "$host"
 
 # start the log
-cat >$CONFIGFILE.log <<_ACEOF
+cat >"$CONFIGFILE".log <<_ACEOF
 Config log. Invocation command line was
   $ $0 $@
 
@@ -496,12 +511,12 @@ case "$host" in
     *-*bsd*) CFLAGS_STD="$CFLAGS_STD -D_BSD_SOURCE" ;;
     *-*darwin*) CFLAGS_STD="$CFLAGS_STD -D_DARWIN_C_SOURCE" ;;
     *-*mingw32|*-*msys*|*-windows-gnu)
-	CFLAGS_STD="$CFLAGS_STD -D__USE_MINGW_ANSI_STDIO"
-	MINGW=1
+    CFLAGS_STD="$CFLAGS_STD -D__USE_MINGW_ANSI_STDIO"
+    MINGW=1
     ARCH=none
-	usepie=no
-	usepic=no
-	;;
+    usepie=no
+    usepic=no
+    ;;
 esac
 
 if test "$usepie" = "auto" ; then
@@ -520,21 +535,21 @@ tryflag CFLAGS_VECTORIZE_ALL -fopt-info-vec-all
 tryflag CFLAGS_OPENMP -fopenmp
 
 if [ "$TRY_SHEET" != "no" ]; then
-    if tryldflag LDFLAGS_NCURSESW -lncursesw -L${PREFIX}/lib ; then
+    if tryldflag LDFLAGS_NCURSESW -lncursesw -L"$PREFIX"/lib ; then
         LDFLAGS_NCURSES=-lncursesw
         NCLIB=ncursesw
-        if [ "$NCURSES_DYNAMIC" == "" ] ; then
-            CFLAGS_NCURSES="-DHAVE_NCURSESW -DNCURSESW_STATIC"
+        if [ "$NCURSES_DYNAMIC" = "" ] ; then
+            CFLAGS_NCURSES="-DHAVE_NCURSESW -DNCURSES_STATIC"
         else
             CFLAGS_NCURSES="-DHAVE_NCURSESW"
         fi
     fi
-    if tryldflag LDFLAGS_NCURSES -lncurses -L${PREFIX}/lib ; then
+    if tryldflag LDFLAGS_NCURSES -lncurses -L"$PREFIX"/lib ; then
         NCLIB=ncurses
-        if [ "$NCURSES_DYNAMIC" == "" ] ; then
-            CFLAGS_NCURSES+="-DHAVE_NCURSES -DNCURSES_STATIC"
+        if [ "$NCURSES_DYNAMIC" = "" ] ; then
+            CFLAGS_NCURSES="$CFLAGS_NCURSES -DHAVE_NCURSES -DNCURSES_STATIC"
         else
-            CFLAGS_NCURSES+=-DHAVE_NCURSES
+            CFLAGS_NCURSES="$CFLAGS_NCURSES -DHAVE_NCURSES"
         fi
     fi
     ZSVSHEET_BUILD=1
@@ -575,8 +590,6 @@ tryflag CFLAGS -ffunction-sections
 tryflag CFLAGS -fdata-sections
 
 CFLAGS_AVX=
-
-HAVE_AVX=
 if [ "$FORCE_AVX2" = "no" ]; then
     tryflag CFLAGS -mno-avx2
 elif [ "$FORCE_AVX2" = "yes" ] ; then
@@ -644,7 +657,7 @@ tryflag CFLAGS_OPT -fvisibility=hidden
 tryldflag LDFLAGS_AUTO -Wl,--gc-sections
 
 if [ "$ARCH" != "none" ] ; then
-    if ! tryflag CFLAGS -march=$ARCH ; then
+    if ! tryflag CFLAGS -march="$ARCH" ; then
         echo "Flag -march=$ARCH failed!"
         exit 1
     fi
@@ -655,17 +668,17 @@ tryldflag LDFLAGS_OPT -ldl
 if test "$usepie" = "yes" ; then
     case "$LDFLAGS_PIE" in
         *pie*)
-	    tryldflag LDFLAGS_PIE -Wl,-z,now
-	    tryldflag LDFLAGS_PIE -Wl,-z,relro
-	    ;;
+        tryldflag LDFLAGS_PIE -Wl,-z,now
+        tryldflag LDFLAGS_PIE -Wl,-z,relro
+        ;;
     esac
 fi
 if test "$usepic" = "yes" ; then
     case "$LDFLAGS_PIC" in
         *pic*)
-	    tryldflag LDFLAGS_PIC -Wl,-z,now
-	    tryldflag LDFLAGS_PIC -Wl,-z,relro
-	    ;;
+        tryldflag LDFLAGS_PIC -Wl,-z,now
+        tryldflag LDFLAGS_PIC -Wl,-z,relro
+        ;;
     esac
 fi
 
@@ -673,19 +686,28 @@ fi
 if [ "$TRY_AVX512" = "yes" ]; then
     printf "checking whether avx512 instructions are available..."
     HAVE_AVX512=
-    tryccfn CFLAGS_AVX_512 "_mm512_movepi8_mask" "immintrin.h" && trycchdr CFLAGS_AVX_512 "immintrin.h" && ( tryccfn CFLAGS_AVX_512 "_blsr_u64" "immintrin.h" || tryccfn CFLAGS_AVX_512 "__blsr_u64" "immintrin.h" ) && tryflag CFLAGS_AVX_512 "-mbmi" && tryflag CFLAGS_AVX_512 "-mavx512bw" && CFLAGS_AVX_512="-mbmi -mavx512bw -DHAVE_AVX512=1" && HAVE_AVX512=1
+    tryccfn CFLAGS_AVX_512 "_mm512_movepi8_mask" "immintrin.h" && \
+        trycchdr CFLAGS_AVX_512 "immintrin.h" && \
+        ( tryccfn CFLAGS_AVX_512 "_blsr_u64" "immintrin.h" || tryccfn CFLAGS_AVX_512 "__blsr_u64" "immintrin.h" ) && \
+        tryflag CFLAGS_AVX_512 "-mbmi" && \
+        tryflag CFLAGS_AVX_512 "-mavx512bw" && \
+        CFLAGS_AVX_512="-mbmi -mavx512bw -DHAVE_AVX512=1" && \
+        HAVE_AVX512=1
     if [ "$HAVE_AVX512" = "1" ]; then
-	echo "yes"
+    echo "yes"
     else
-	echo "no"
-	echo "WARNING: --try-avx512 option enabled, but no avx512 instruction set available"
+    echo "no"
+    echo "WARNING: --try-avx512 option enabled, but no avx512 instruction set available"
     fi
 fi
 
 tryccfn CFLAGS_AUTO "memmem" "string.h"
 
 if [ "$usetermcap" = "yes" ] || [ "$usetermcap" = "auto" ] ; then
-    tryccfn TERMCAP_H "tgetent" "termcap.h" && tryldflag LDFLAGS_TERMCAP -ltermcap && tryccfn CFLAGS_AUTO "tgetent" "termcap.h" termcap || \
+    # shellcheck disable=SC2015
+    tryccfn TERMCAP_H "tgetent" "termcap.h" && \
+        tryldflag LDFLAGS_TERMCAP -ltermcap && \
+        tryccfn CFLAGS_AUTO "tgetent" "termcap.h" termcap || \
             if test "$usetermcap" = "yes"; then
                 echo "Error: --enable-termcap specified, but not found"
                 exit 1
@@ -698,8 +720,8 @@ fi
 
 if [ "$JQ_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     echo "checking --prefix-jq ${JQ_PREFIX}"
-    if ! tryldflag LDFLAGS_JQ -ljq -L${JQ_PREFIX}/lib ; then
-        echo "Error: Failed to compile with -ljq and -L${JQ_PREFIX}/lib"
+    if ! tryldflag LDFLAGS_JQ -ljq -L"$JQ_PREFIX"/lib ; then
+        echo "Error: Failed to compile with -ljq and -L$JQ_PREFIX/lib"
         exit 1
     elif [ "$JQ_PREFIX" != "$PREFIX" ]; then
         LDFLAGS_JQ="$LDFLAGS_JQ -L$JQ_PREFIX/lib"
@@ -719,6 +741,7 @@ tryccfn1 CFLAGS_AUTO "__builtin_expect" "0,0"
 tryccfn1 CFLAGS_AUTO "__builtin_expect_with_probability" "0,0,0.5"
 
 # Optional features
+# shellcheck disable=SC2154
 if test "$usedebugstderr" = "yes" ; then
     USE_DEBUG_STDERR=1
 else
@@ -730,12 +753,12 @@ if test "$MINIMAL" = "no" ; then
     ZSV_EXTRAS=1
 fi
 
-printf "creating $CONFIGFILE... "
+printf "creating %s... " "$CONFIGFILE"
 
 cmdline=$(quote "$0")
 for i ; do cmdline="$cmdline $(quote "$i")" ; done
 
-exec 3>&1 1> $CONFIGFILE
+exec 3>&1 1> "$CONFIGFILE"
 
 cat << EOF
 # This version of $CONFIGFILE was generated by:
@@ -839,19 +862,24 @@ fi
 echo "****************************************************************"
 
 if ! [ "$MAKE" = "" ]; then
-    echo ""
+    echo
     echo "To build and install, run"
-    echo "$MAKE install" > `pwd`/install.sh 2>/dev/null && chmod 755 `pwd`/install.sh 2>/dev/null &&
-        printf "  ./install.sh\nor\n"
+    {
+        echo "#!/bin/sh"
+        echo "$MAKE install"
+    } >"$PWD"/install.sh 2>/dev/null
+    chmod 755 "$PWD"/install.sh 2>/dev/null
+    echo "  ./install.sh"
+    echo "or"
     echo "  $MAKE install"
-    echo ""
+    echo
     echo "Other common commands:"
     echo "  $MAKE                     # print available make commands"
     echo "  (cd src && $MAKE install) # install library"
     echo "  (cd app && $MAKE install) # install library and zsv CLI"
     echo "  $MAKE uninstall           # uninstall library and zsv CLI"
     echo "  $MAKE clean               # remove build artifacts"
-    echo ""
+    echo
 fi
 
 if ! "$CC" --version | grep -i gcc >/dev/null && ! "$CC" --version | grep -i clang >/dev/null ; then
