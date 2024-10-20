@@ -96,6 +96,13 @@ void get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_
   }
 }
 
+void zsvsheet_replace_cell(zsvsheet_buffer_t buffer, size_t row, size_t col, char *str) {
+  size_t offset = row * buffer->cols * buffer->opts.cell_buff_len + col * buffer->opts.cell_buff_len;
+  memset(&buffer->data[offset], '\0', buffer->opts.cell_buff_len);
+  memcpy(&buffer->data[offset], str, strlen(str));
+}
+
+
 size_t zsvsheet_get_input_raw_row(struct zsvsheet_rowcol *input_offset, struct zsvsheet_rowcol *buff_offset,
                                   size_t cursor_row) {
   return input_offset->row + buff_offset->row + cursor_row;
@@ -267,8 +274,18 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   int ch;
   while ((zsvsheetch = zsvsheet_key_binding((ch = getch()))) != zsvsheet_key_quit) {
+
     zsvsheet_set_status(&display_dims, 1, "");
     int update_buffer = 0;
+
+    if(ch == 'r' && current_ui_buffer->cursor_col != 0) {
+      get_subcommand("Replace", cmdbuff, sizeof(cmdbuff), (int)(display_dims.rows - display_dims.footer_span));
+      if (*cmdbuff != '\0') {
+        zsvsheet_replace_cell(current_ui_buffer->buffer, current_ui_buffer->cursor_row, current_ui_buffer->cursor_col, cmdbuff);
+      }
+      goto skip;
+    }
+
     switch (zsvsheetch) {
     case zsvsheet_key_resize:
       display_dims = get_display_dimensions(1, 1);
@@ -407,6 +424,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       continue;
     }
     }
+skip:
     if (update_buffer && current_ui_buffer->filename) {
       struct zsvsheet_opts zsvsheet_opts = {0};
       if (read_data(&current_ui_buffer, NULL, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col,
@@ -421,6 +439,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   endwin();
+
   free(find);
   zsvsheet_ui_buffers_delete(ui_buffers);
   zsvsheet_key_handlers_delete(&zsvsheet_key_handlers, &zsvsheet_next_key_handler);
