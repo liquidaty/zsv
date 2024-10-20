@@ -464,7 +464,7 @@ jobs:
       run: ./scripts/ci-upload-release-artifacts.sh
 
   ci-mingw:
-    needs: [tag, clang-format, cppcheck]
+    needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-latest
 
     permissions:
