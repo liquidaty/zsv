@@ -14,26 +14,34 @@ echo "[INF] shellcheck version [$VERSION]"
 
 echo "[INF] Running shellcheck..."
 
-echo "[INF] Generating and dumping tty output..."
+echo "[INF] Generating tty output..."
 OUTPUT_TTY="$(shellcheck --format=tty \
   configure \
   app/test/*.sh \
   scripts/*.sh \
-  setup-action/scripts/*.bash 2>&1 | tee /dev/tty || true)"
+  setup-action/scripts/*.bash 2>&1 || true)"
 
-echo "[INF] Generating and dumping diff output..."
+echo "[INF] Generating diff output..."
 OUTPUT_DIFF="$(shellcheck --format=diff \
   configure \
   app/test/*.sh \
   scripts/*.sh \
-  setup-action/scripts/*.bash 2>&1 | tee /dev/tty || true)"
+  setup-action/scripts/*.bash 2>&1 || true)"
+
+if [ "$OUTPUT_TTY" != "" ] && [ "$OUTPUT_DIFF" != "" ]; then
+  echo "[ERR] Issues found!"
+  echo "[ERR] Dumping tty output..."
+  echo "$OUTPUT_TTY"
+  echo "[ERR] Dumping diff output..."
+  echo "$OUTPUT_DIFF"
+else
+  echo "[INF] No issues found!"
+fi
 
 if [ "$CI" = true ]; then
   echo "[INF] Generating Markdown step summary..."
   {
-    if [ "$OUTPUT_TTY" = "" ] && [ "$OUTPUT_DIFF" = "" ]; then
-      echo "No issues found!"
-    else
+    if [ "$OUTPUT_TTY" != "" ] && [ "$OUTPUT_DIFF" != "" ]; then
       echo "<details>"
       echo "<summary>Shellcheck Summary (tty format)</summary>"
       echo
@@ -50,6 +58,8 @@ if [ "$CI" = true ]; then
       echo "$OUTPUT_DIFF"
       echo '```'
       echo "</details>"
+    else
+      echo "No issues found!"
     fi
   } >>"$GITHUB_STEP_SUMMARY"
 fi
