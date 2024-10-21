@@ -26,6 +26,7 @@ static int zsvsheet_key_bindings[] = {
   zsvsheet_key_find, '/',
   zsvsheet_key_quit, 'q',
   zsvsheet_key_resize, KEY_RESIZE,
+  zsvsheet_key_replace, 'r',
   -1,
   -1
 };

@@ -19,7 +19,8 @@ enum zsvsheet_key {
   zsvsheet_key_find,
   zsvsheet_key_find_next,
   zsvsheet_key_open_file,
-  zsvsheet_key_resize
+  zsvsheet_key_resize,
+  zsvsheet_key_replace
 };
 
 #endif
