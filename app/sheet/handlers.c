@@ -46,6 +46,27 @@ zsvsheet_handler_status zsvsheet_file_handler(struct zsvsheet_handler_context *c
   return zsvsheet_handler_status_ok;
 }
 
+zsvsheet_handler_status zsvsheet_replace_subcommand_handler(zsvsheet_subcommand_handler_context_t ctx) {
+  int ch = zsvsheet_handler_key(ctx);
+  int zsvsheetch = zsvsheet_key_binding(ch);
+  if (zsvsheetch == zsvsheet_key_replace && ctx->current_ui_buffer->cursor_col != 0 &&
+      zsvsheet_subcommand_prompt(ctx, "Replace") == zsvsheet_handler_status_ok)
+    return zsvsheet_handler_status_ok;
+  return zsvsheet_handler_status_error;
+}
+
+zsvsheet_handler_status zsvsheet_replace_handler(struct zsvsheet_handler_context *ctx) {
+  struct zsvsheet_ui_buffer *current_ui_buffer = *ctx->ui_buffers.current;
+  if (current_ui_buffer->cursor_col == 0)
+    zsvsheet_set_status(ctx->display_dims, 1, "Cannot replace number column ");
+  if (zsvsheet_replace_cell(current_ui_buffer->buffer, current_ui_buffer->cursor_row, current_ui_buffer->cursor_col,
+                            ctx->subcommand_value) == 0) {
+    zsvsheet_set_status(ctx->display_dims, 1, "long-cells are not supported ");
+    return zsvsheet_handler_status_ignore;
+  }
+  return zsvsheet_handler_status_ok;
+}
+
 struct zsvsheet_key_handler_data *zsvsheet_get_registered_key_handler(int ch, const char *long_name,
                                                                       struct zsvsheet_key_handler_data *root) {
   for (struct zsvsheet_key_handler_data *kh = root; kh; kh = kh->next)
