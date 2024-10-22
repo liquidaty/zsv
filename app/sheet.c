@@ -280,6 +280,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
                                      zsvsheet_file_handler);
   zsvsheet_register_command_internal(zsvsheet_key_filter, "filter", zsvsheet_file_subcommand_handler,
                                      zsvsheet_file_handler);
+  zsvsheet_register_command_internal(zsvsheet_key_replace, "Replace", zsvsheet_replace_subcommand_handler,
+                                     zsvsheet_replace_handler);
 
   int ch;
   while ((zsvsheetch = zsvsheet_key_binding((ch = getch()))) != zsvsheet_key_quit) {
@@ -410,6 +412,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
       break;
     case zsvsheet_key_open_file:
+    case zsvsheet_key_replace:
     case zsvsheet_key_filter: {
       struct zsvsheet_key_handler_data *zkhd = zsvsheet_get_registered_key_handler(ch, NULL, zsvsheet_key_handlers);
       if (!zkhd || zsvsheet_key_handler(zkhd, ch, cmdbuff, sizeof(cmdbuff), &ui_buffers, &current_ui_buffer,
@@ -417,15 +420,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         continue;
       break;
     }
-    case zsvsheet_key_replace: {
-      if (current_ui_buffer->cursor_col > 0) {
-        get_subcommand("Replace", cmdbuff, sizeof(cmdbuff), (int)(display_dims.rows - display_dims.footer_span));
-        if (*cmdbuff != '\0')
-          if (!zsvsheet_replace_cell(current_ui_buffer->buffer, current_ui_buffer->cursor_row,
-                                     current_ui_buffer->cursor_col, cmdbuff))
-            zsvsheet_set_status(&display_dims, 1, "long-cells not supported ");
-      }
-    } break;
     default: {
       struct zsvsheet_key_handler_data *zkhd = zsvsheet_get_registered_key_handler(ch, NULL, zsvsheet_key_handlers);
       if (zkhd && zsvsheet_key_handler(zkhd, ch, cmdbuff, sizeof(cmdbuff), &ui_buffers, &current_ui_buffer,
