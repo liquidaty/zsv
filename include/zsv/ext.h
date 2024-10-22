@@ -61,6 +61,8 @@ typedef void *zsv_execution_context;
 typedef enum zsv_ext_status (*zsv_ext_main)(zsv_execution_context ctx, int argc, const char *argv[],
                                             struct zsv_opts *opts, const char *opts_used);
 
+struct zsvsheet_proc_context;
+
 /**
  * ZSV callbacks structure
  *
@@ -151,11 +153,14 @@ struct zsv_ext_callbacks {
   /****************************************
    * Registering a custom `sheet` command *
    ****************************************/
-  zsvsheet_handler_status (*ext_sheet_register_command)(
-    int ch,               // keyboard shortcut
-    const char *longname, // long name that can be used via run-cmd to invoke
-    zsvsheet_handler_status (*subcommand_handler)(zsvsheet_subcommand_handler_context_t),
-    zsvsheet_handler_status (*handler)(zsvsheet_handler_context_t ctx));
+  /* TODO: Technically the ints in the return of this function and the argument
+   *       of the next should be zsvsheet_proc_id_t but the includes in this
+   *       projects are quite messy at this moment.
+   */
+  int (*ext_sheet_register_proc)(const char *name, zsvsheet_handler_status (*handler)(struct zsvsheet_proc_context *ctx));
+
+  /* Use this one if you just need to call a procedure */
+  void (*ext_sheet_register_proc_key_binding)(char ch, int proc_id);
 
   /*** Custom command prompt ***/
   /**
@@ -163,14 +168,14 @@ struct zsv_ext_callbacks {
    * @param  s text to set the subcommand prompt to. must be < 256 bytes in length
    * returns zsvsheet_status_ok on success
    */
-  zsvsheet_handler_status (*ext_sheet_subcommand_prompt)(zsvsheet_subcommand_handler_context_t ctx, const char *fmt,
-                                                         ...);
+  zsvsheet_handler_status (*ext_sheet_prompt)(struct zsvsheet_proc_context *ctx, 
+      char *buffer, size_t bufsz, const char *fmt, ...);
 
   /*** Custom command handling ***/
   /**
    * Set a status message
    */
-  zsvsheet_handler_status (*ext_sheet_handler_set_status)(zsvsheet_handler_context_t, const char *fmt, ...);
+  zsvsheet_handler_status (*ext_sheet_handler_set_status)(struct zsvsheet_proc_context *ctx, const char *fmt, ...);
 
   /**
    * Get the key press that triggered this subcommand handler
@@ -181,7 +186,7 @@ struct zsv_ext_callbacks {
   /**
    * Get the current buffer
    */
-  zsvsheet_handler_buffer_t (*ext_sheet_handler_buffer_current)(zsvsheet_handler_context_t);
+  zsvsheet_handler_buffer_t (*ext_sheet_handler_buffer_current)(struct zsvsheet_proc_context *ctx);
 
   /**
    * Get the prior buffer
