@@ -31,7 +31,7 @@ struct zsvsheet_key_handler_data {
 /**
  * Open a tabular file as a new buffer
  */
-zsvsheet_handler_status zsvsheet_handler_open_file(zsvsheet_handler_context_t, const char *filepath,
+zsvsheet_handler_status zsvsheet_handler_open_file(struct zsvsheet_proc_context *ctx, const char *filepath,
                                                    struct zsv_opts *zopts);
 
 /** extension support **/
@@ -44,7 +44,8 @@ zsvsheet_handler_status zsvsheet_subcommand_prompt(zsvsheet_subcommand_handler_c
 /**
  * Set a status message
  */
-zsvsheet_handler_status zsvsheet_handler_set_status(zsvsheet_handler_context_t, const char *fmt, ...);
+
+zsvsheet_handler_status zsvsheet_handler_set_status(struct zsvsheet_proc_context *ctx, const char *fmt, ...);
 
 /**
  * Get the key press that triggered this subcommand handler
@@ -54,7 +55,7 @@ int zsvsheet_handler_key(zsvsheet_subcommand_handler_context_t ctx);
 /**
  * Get the current buffer
  */
-zsvsheet_handler_buffer_t zsvsheet_handler_buffer_current(zsvsheet_handler_context_t);
+zsvsheet_handler_buffer_t zsvsheet_handler_buffer_current(struct zsvsheet_proc_context *ctx);
 
 /**
  * Get the prior buffer

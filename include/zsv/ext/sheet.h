@@ -6,7 +6,8 @@ typedef enum zsvsheet_handler_status {
   zsvsheet_handler_status_error,
   zsvsheet_handler_status_ignore,
   zsvsheet_handler_status_duplicate,
-  zsvsheet_handler_status_memory
+  zsvsheet_handler_status_memory,
+  zsvsheet_handler_status_exit,
 } zsvsheet_handler_status;
 
 typedef struct zsvsheet_handler_context *zsvsheet_handler_context_t;
