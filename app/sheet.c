@@ -100,7 +100,7 @@ void get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_
   }
 }
 
-char zsvsheet_replace_cell(zsvsheet_buffer_t buffer, size_t row, size_t col, const char *str) {
+char zsvsheet_replace_cell(zsvsheet_buffer_t buffer, size_t row, size_t col, char *str) {
   size_t str_s = strlen(str);
   if (str_s >= buffer->opts.cell_buff_len) {
     // TO-DO: long-cell support
@@ -420,6 +420,15 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         continue;
       break;
     }
+    case zsvsheet_key_replace: {
+      if (current_ui_buffer->cursor_col > 0) {
+        get_subcommand("Replace", cmdbuff, sizeof(cmdbuff), (int)(display_dims.rows - display_dims.footer_span));
+        if (*cmdbuff != '\0')
+          if (!zsvsheet_replace_cell(current_ui_buffer->buffer, current_ui_buffer->cursor_row,
+                                     current_ui_buffer->cursor_col, cmdbuff))
+            zsvsheet_set_status(&display_dims, 1, "long-cells not supported ");
+      }
+    } break;
     default: {
       struct zsvsheet_key_handler_data *zkhd = zsvsheet_get_registered_key_handler(ch, NULL, zsvsheet_key_handlers);
       if (zkhd && zsvsheet_key_handler(zkhd, ch, cmdbuff, sizeof(cmdbuff), &ui_buffers, &current_ui_buffer,
