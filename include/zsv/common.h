@@ -91,24 +91,20 @@ typedef int (*zsv_progress_callback)(void *ctx, size_t cumulative_row_count);
 typedef void (*zsv_completed_callback)(void *ctx, int code);
 
 /**
- * Data can be "overwritten" on-the-fly by providing a source for
- *   (row, column, value) tuples
- * Supported source formats are CSV and SQLITE3
+ * Data can be "overwritten" on-the-fly by providing custom callbacks
  */
-enum zsv_overwrite_type {
-  zsv_overwrite_type_unknown = 0, // do not change
-  zsv_overwrite_type_none = 1,    // do not change
-  zsv_overwrite_type_csv,
-  zsv_overwrite_type_sqlite3
+struct zsv_overwrite_data {
+  size_t row_ix; // 0-based
+  size_t col_ix; // 0-based
+  struct zsv_cell val;
+  char have; // 1 = we have unprocessed overwrites
 };
 
 struct zsv_opt_overwrite {
-  const char *src;
-  /*
-  enum zsv_overwrite_type type;
   void *ctx;
-  int (*close_ctx)(void *);
-  */
+  enum zsv_status (*open)(void *ctx);
+  enum zsv_status (*next)(void *ctx, struct zsv_overwrite_data *odata);
+  enum zsv_status (*close)(void *ctx);
 };
 
 #endif
