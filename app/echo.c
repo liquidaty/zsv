@@ -206,8 +206,7 @@ static enum zsv_status zvs_overwrite_ctx_free(void *h) {
   return zsv_status_ok;
 }
 
-static enum zsv_status zsv_next_overwrite_csv(void *h,
-                                              struct zsv_overwrite_data *odata) {
+static enum zsv_status zsv_next_overwrite_csv(void *h, struct zsv_overwrite_data *odata) {
   struct zsv_overwrite_ctx *ctx = h;
   if (zsv_next_row(ctx->csv.parser) != zsv_status_row)
     odata->have = 0;
@@ -232,9 +231,8 @@ static enum zsv_status zsv_next_overwrite_csv(void *h,
   return zsv_status_ok;
 }
 
-static enum zsv_status zsv_next_overwrite_sqlite3(void *h,
-                                                  struct zsv_overwrite_data *odata) {
-    struct zsv_overwrite_ctx *ctx = h;
+static enum zsv_status zsv_next_overwrite_sqlite3(void *h, struct zsv_overwrite_data *odata) {
+  struct zsv_overwrite_ctx *ctx = h;
   if (odata->have) {
     sqlite3_stmt *stmt = ctx->sqlite3.stmt;
     if (stmt) {
@@ -263,8 +261,7 @@ enum zsv_status zsv_overwrites_next(void *h, struct zsv_overwrite_data *odata) {
 #define zsv_overwrite_sqlite3_prefix "sqlite3://"
 #define zsv_overwrite_sql_prefix "sql="
 
-static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx,
-                                                  const char *source, size_t len) {
+static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx, const char *source, size_t len) {
   size_t pfx_len;
   if (len > (pfx_len = strlen(zsv_overwrite_sqlite3_prefix)) &&
       !memcmp(source, zsv_overwrite_sqlite3_prefix, pfx_len)) {
@@ -361,7 +358,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   struct zsv_opts opts = *optsp;
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   struct zsv_echo_data data = {0};
-  struct zsv_overwrite_ctx overwrite_ctx = { 0 };
+  struct zsv_overwrite_ctx overwrite_ctx = {0};
 
   int err = 0;
 
@@ -505,7 +502,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
   */
 
-  if(overwrite_ctx.src) {
+  if (overwrite_ctx.src) {
     opts.overwrite.open = zsv_overwrites_open;
     opts.overwrite.next = zsv_overwrites_next;
     opts.overwrite.ctx = &overwrite_ctx;
