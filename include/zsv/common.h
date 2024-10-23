@@ -98,14 +98,17 @@ typedef void (*zsv_completed_callback)(void *ctx, int code);
 enum zsv_overwrite_type {
   zsv_overwrite_type_unknown = 0, // do not change
   zsv_overwrite_type_none = 1,    // do not change
-  zsv_overwrite_type_csv
-  // to do: zsv_overwrite_type_sqlite3
+  zsv_overwrite_type_csv,
+  zsv_overwrite_type_sqlite3
 };
 
 struct zsv_opt_overwrite {
+  const char *src;
+  /*
   enum zsv_overwrite_type type;
   void *ctx;
   int (*close_ctx)(void *);
+  */
 };
 
 #endif

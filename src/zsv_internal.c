@@ -91,15 +91,10 @@ struct zsv_scan_fixed_regs {
 
 #ifdef ZSV_EXTRAS
 #include <inttypes.h>
-
-struct zsv_overwrite_data {
-  struct zsv_cell row;
-  struct zsv_cell col;
-  struct zsv_cell val;
-};
+#include <sqlite3.h>
 
 struct zsv_overwrite {
-  void (*next)(struct zsv_overwrite *overwrite, struct zsv_overwrite_data *data);
+  void (*next)(struct zsv_overwrite *overwrite);
 
   size_t row_ix; // 0-based
   size_t col_ix; // 0-based
@@ -107,10 +102,21 @@ struct zsv_overwrite {
   char have; // 1 = we have unprocessed overwrites
 
   void *ctx;
-  int (*close_ctx)(void *);
+  int (*close)(void *);
 
-  void *reader;
-  int (*close_reader)(void *);
+  enum zsv_overwrite_type type;
+
+  struct {
+    FILE *f;
+    zsv_parser parser;
+  } csv;
+
+  struct {
+    char *filename;
+    sqlite3 *db;
+    sqlite3_stmt *stmt; // select row, column, overwrite
+    const char *sql;
+  } sqlite3;
 };
 #endif
 
@@ -420,8 +426,8 @@ __attribute__((always_inline)) static inline enum zsv_status cell_and_row_dl(str
 #include <arm_neon.h>
 static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
   // see https://stackoverflow.com/questions/11870910/
-  static const uint8_t __attribute__((aligned(16)))
-  _powers[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
+  static const uint8_t
+    __attribute__((aligned(16))) _powers[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
   uint8x16_t mm_powers = vld1q_u8(_powers);
 
   // compute the mask from the input
@@ -626,81 +632,163 @@ static void zsv_throwaway_row(void *ctx) {
 }
 
 #ifdef ZSV_EXTRAS
-static int zsv_delete_v(void *p) {
-  return zsv_delete((zsv_parser)p);
-}
 
-static void zsv_next_overwrite_csv(struct zsv_overwrite *overwrite, struct zsv_overwrite_data *data) {
-  // row, column, value
-  data->row = zsv_get_cell_1(overwrite->reader, 0);
-  data->col = zsv_get_cell_1(overwrite->reader, 1);
-  data->val = zsv_get_cell_1(overwrite->reader, 2);
-}
-
-// TO DO: consolidate with zsv_echo_get_next_overwrite()
-static void zsv_next_overwrite(struct zsv_overwrite *overwrite) {
+static void zsv_next_overwrite_sqlite3(struct zsv_overwrite *overwrite) {
   if (overwrite->have) {
-    if (zsv_next_row(overwrite->reader) != zsv_status_row)
-      overwrite->have = 0;
-    else {
-      struct zsv_overwrite_data data;
-      overwrite->next(overwrite, &data);
-      if (data.row.len && data.col.len) {
-        char *end = (char *)(data.row.str + data.row.len);
-        char **endp = &end;
-        overwrite->row_ix = strtoumax((char *)data.row.str, endp, 10);
-        end = (char *)(data.col.str + data.col.len);
-        overwrite->col_ix = strtoumax((char *)data.col.str, endp, 10);
-        overwrite->val = data.val;
+    sqlite3_stmt *stmt = overwrite->sqlite3.stmt;
+    if (stmt) {
+      if (sqlite3_step(stmt) == SQLITE_ROW) {
+        // row, column, value
+        overwrite->row_ix = sqlite3_column_int64(stmt, 0);
+        overwrite->col_ix = sqlite3_column_int64(stmt, 1);
+        overwrite->val.str = (unsigned char *)sqlite3_column_text(stmt, 2);
+        overwrite->val.len = sqlite3_column_bytes(stmt, 2);
       } else {
         overwrite->row_ix = 0;
         overwrite->col_ix = 0;
         overwrite->val.len = 0;
+        overwrite->have = 0;
       }
     }
   }
 }
 
-static enum zsv_status zsv_init_overwrites(zsv_parser parser, struct zsv_opt_overwrite *overwrite_opts) {
-  if (overwrite_opts->type <= zsv_overwrite_type_none)
+static void zsv_next_overwrite_csv(struct zsv_overwrite *overwrite) {
+  if (zsv_next_row(overwrite->csv.parser) != zsv_status_row)
+    overwrite->have = 0;
+  else {
+    // row, column, value
+    struct zsv_cell row = zsv_get_cell_1(overwrite->csv.parser, 0);
+    struct zsv_cell col = zsv_get_cell_1(overwrite->csv.parser, 1);
+    struct zsv_cell val = zsv_get_cell_1(overwrite->csv.parser, 2);
+    if (row.len && col.len) {
+      char *end = (char *)(row.str + row.len);
+      char **endp = &end;
+      overwrite->row_ix = strtoumax((char *)row.str, endp, 10);
+      end = (char *)(col.str + col.len);
+      overwrite->col_ix = strtoumax((char *)col.str, endp, 10);
+      overwrite->val = val;
+    } else {
+      overwrite->row_ix = 0;
+      overwrite->col_ix = 0;
+      overwrite->val.len = 0;
+    }
+  }
+}
+
+#define zsv_overwrite_sqlite3_prefix "sqlite3://"
+#define zsv_overwrite_sql_prefix "sql="
+
+static void zvs_overwrite_close(struct zsv_overwrite *overwrite) {
+  free(overwrite->sqlite3.filename);
+  if (overwrite->sqlite3.stmt)
+    sqlite3_finalize(overwrite->sqlite3.stmt);
+  if (overwrite->sqlite3.db)
+    sqlite3_close(overwrite->sqlite3.db);
+  if (overwrite->csv.f)
+    fclose(overwrite->csv.f);
+  if (overwrite->csv.parser)
+    zsv_delete(overwrite->csv.parser);
+}
+
+static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite *overwrite, const char *source, size_t len) {
+  size_t pfx_len;
+  if (len > (pfx_len = strlen(zsv_overwrite_sqlite3_prefix)) &&
+      !memcmp(source, zsv_overwrite_sqlite3_prefix, pfx_len)) {
+    overwrite->sqlite3.filename = malloc(len - pfx_len + 1);
+    memcpy(overwrite->sqlite3.filename, source + pfx_len, len - pfx_len);
+    overwrite->sqlite3.filename[len - pfx_len] = '\0';
+    char *q = memchr(overwrite->sqlite3.filename, '?', len - pfx_len);
+    if (q) {
+      *q = '\0';
+      q++;
+      const char *sql = strstr(q, zsv_overwrite_sql_prefix);
+      if (sql)
+        overwrite->sqlite3.sql = sql + strlen(zsv_overwrite_sql_prefix);
+    }
+
+    if (!overwrite->sqlite3.filename || !*overwrite->sqlite3.filename) {
+      fprintf(stderr, "Missing sqlite3 file name\n");
+      return zsv_status_error;
+    }
+
+    if (!overwrite->sqlite3.sql || !*overwrite->sqlite3.sql) {
+      // to do: detect it from the db
+      fprintf(stderr, "Missing sql select statement for sqlite3 overwrite data e.g.:\n"
+                      "  select row, column, value from overwrites order by row, column\n");
+      return zsv_status_error;
+    }
+
+    int rc = sqlite3_open_v2(overwrite->sqlite3.filename, &overwrite->sqlite3.db, SQLITE_OPEN_READONLY, NULL);
+    if (rc != SQLITE_OK || !overwrite->sqlite3.db) {
+      fprintf(stderr, "%s: %s\n", sqlite3_errstr(rc), overwrite->sqlite3.filename);
+      return zsv_status_error;
+    }
+
+    rc = sqlite3_prepare_v2(overwrite->sqlite3.db, overwrite->sqlite3.sql, -1, &overwrite->sqlite3.stmt, NULL);
+    if (rc != SQLITE_OK || !overwrite->sqlite3.stmt) {
+      fprintf(stderr, "%s\n", sqlite3_errmsg(overwrite->sqlite3.db));
+      return zsv_status_error;
+    }
+
+    // successful sqlite3 connection
     return zsv_status_ok;
-  struct zsv_overwrite *overwrite = &parser->overwrite;
-  switch (overwrite_opts->type) {
-  case zsv_overwrite_type_csv: {
-    struct zsv_opts opts = {0};
-    overwrite->ctx = opts.stream = overwrite_opts->ctx;
-    overwrite->close_ctx = overwrite_opts->close_ctx;
-    if (!(overwrite->reader = zsv_new(&opts)))
-      return zsv_status_memory;
-    overwrite->close_reader = zsv_delete_v;
-    overwrite->next = zsv_next_overwrite_csv;
-  } break;
-  default:
-    fprintf(stderr, "Unrecognized overwrite type\n");
-    return zsv_status_error;
   }
 
+  fprintf(stderr, "Invalid overwrite source: %s\n", source);
+  return zsv_status_error;
+}
+
+static enum zsv_status zsv_init_overwrites(zsv_parser parser, struct zsv_opt_overwrite *overwrite_opts) {
+  if (!overwrite_opts->src)
+    return zsv_status_ok;
+  struct zsv_overwrite *overwrite = &parser->overwrite;
   overwrite->have = 0;
-  if (zsv_next_row(overwrite->reader) == zsv_status_row) {
-    // to do: check that column names are row, col, value
-    struct zsv_overwrite_data data;
-    overwrite->next(overwrite, &data);
-    if (data.row.len < 3 || memcmp(data.row.str, "row", 3) || data.col.len < 3 || memcmp(data.col.str, "col", 3) ||
-        data.val.len < 3 || memcmp(data.val.str, "val", 3))
-      fprintf(stderr, "Warning! overwrite expects 'row,col,value' header, got '%.*s,%.*s,%.*s'\n", (int)data.row.len,
-              data.row.str, (int)data.col.len, data.col.str, (int)data.val.len, data.val.str);
+  if (strlen(overwrite_opts->src) > strlen(zsv_overwrite_sqlite3_prefix) &&
+      !memcmp(zsv_overwrite_sqlite3_prefix, overwrite_opts->src, strlen(zsv_overwrite_sqlite3_prefix))) { // sql
+    if (zsv_overwrite_init_sqlite3(overwrite, overwrite_opts->src, strlen(overwrite_opts->src)) == zsv_status_ok) {
+      overwrite->type = zsv_overwrite_type_sqlite3;
+      overwrite->next = zsv_next_overwrite_sqlite3;
+      overwrite->have = 1;
+    }
+  } else { // csv
+    struct zsv_opts opts = {0};
+    overwrite->csv.f = opts.stream = fopen(overwrite_opts->src, "rb");
+    if (!overwrite->csv.f) {
+      perror(overwrite_opts->src);
+      return zsv_status_error;
+    }
+    if (!(overwrite->csv.parser = zsv_new(&opts)))
+      return zsv_status_memory;
+
+    if (zsv_next_row(overwrite->csv.parser) != zsv_status_row) {
+      fprintf(stderr, "Unable to fetch any data from overwrite source %s\n", overwrite_opts->src);
+    } else {
+      // row, column, value
+      struct zsv_cell row = zsv_get_cell_1(overwrite->csv.parser, 0);
+      struct zsv_cell col = zsv_get_cell_1(overwrite->csv.parser, 1);
+      struct zsv_cell val = zsv_get_cell_1(overwrite->csv.parser, 2);
+      if (row.len < 3 || memcmp(row.str, "row", 3) || col.len < 3 || memcmp(col.str, "col", 3) || val.len < 3 ||
+          memcmp(val.str, "val", 3))
+        fprintf(stderr, "Warning! overwrite expects 'row,col,value' header, got '%.*s,%.*s,%.*s'\n", (int)row.len,
+                row.str, (int)col.len, col.str, (int)val.len, val.str);
+    }
+    overwrite->type = zsv_overwrite_type_csv;
+    overwrite->next = zsv_next_overwrite_csv;
     overwrite->have = 1;
-    zsv_next_overwrite(overwrite);
   }
+  if (overwrite->have)
+    overwrite->next(overwrite);
+
   return overwrite->have ? zsv_status_ok : zsv_status_error;
 }
 
 static int zsv_have_overwrite(zsv_parser parser, size_t row_ix, size_t col_ix) {
   struct zsv_overwrite *overwrite = &parser->overwrite;
   while (overwrite->have && overwrite->row_ix < row_ix)
-    zsv_next_overwrite(overwrite);
+    overwrite->next(overwrite);
   while (overwrite->have && overwrite->row_ix == row_ix && overwrite->col_ix < col_ix)
-    zsv_next_overwrite(overwrite);
+    overwrite->next(overwrite);
   if (!overwrite->have)
     parser->get_cell = zsv_get_cell_1;
   return overwrite->have && overwrite->row_ix == row_ix && overwrite->col_ix == col_ix;
