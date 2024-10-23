@@ -276,7 +276,7 @@ SQLITE_EXT=${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o
 SQLITE_EXT_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/sqlite3
 
 # everything uses prop, which in turn uses yajl and jq and json
-OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${BUILD_DIR}/objs/utils/json.o
+OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${BUILD_DIR}/objs/utils/json.o ${SQLITE_EXT}
 MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -I${JQ_INCLUDE_DIR}
 MORE_LIBS+=${JQ_LIB} ${LDFLAGS_JQ}
 
@@ -429,7 +429,7 @@ ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 # ${STANDALONE_PFX}flatten${EXE} ${STANDALONE_PFX}stack${EXE} ${STANDALONE_PFX}desc${EXE}:
 MORE_SOURCE+=-I${THIS_MAKEFILE_DIR}/external/sglib
 
-MORE_OBJECTS+=${SQLITE_EXT}
+# MORE_OBJECTS+=${SQLITE_EXT}
 MORE_SOURCE+=${SQLITE_EXT_INCLUDE}
 
 # sql, 2db, 2json, echo, compare use sqlite3
