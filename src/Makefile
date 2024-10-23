@@ -161,4 +161,4 @@ clean:
 
 ${BUILD_DIR}/objs/zsv.o: zsv.c zsv_internal.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -DZSV_VERSION=\"${VERSION}\" -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -o $@ -c $< -I./app/external/sqlite3
+	${CC} ${CFLAGS} -DZSV_VERSION=\"${VERSION}\" -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -o $@ -c $< -I../app/external/sqlite3
