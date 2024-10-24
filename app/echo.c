@@ -267,7 +267,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   data.csv_writer = zsv_writer_new(&writer_opts);
   if (overwrite_opts.src) {
-    if(!(opts.overwrite.ctx = zsv_overwrite_context_new(&overwrite_opts))) {
+    if (!(opts.overwrite.ctx = zsv_overwrite_context_new(&overwrite_opts))) {
       fprintf(stderr, "Out of memory!\n");
       err = 1;
     } else {
@@ -278,7 +278,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   if (data.csv_writer && !err) {
-    if(zsv_new_with_properties(&opts, custom_prop_handler, data.input_path, opts_used, &data.parser) != zsv_status_ok)
+    if (zsv_new_with_properties(&opts, custom_prop_handler, data.input_path, opts_used, &data.parser) != zsv_status_ok)
       err = 1;
     else {
       // create a local csv writer buff for faster performance

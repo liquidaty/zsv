@@ -44,8 +44,8 @@ struct zsv_overwrite_ctx {
 
 void *zsv_overwrite_context_new(struct zsv_overwrite_opts *opts) {
   struct zsv_overwrite_ctx *ctx = calloc(1, sizeof(*ctx));
-  if(ctx && opts->src) {
-    if(!(ctx->src = strdup(opts->src)))
+  if (ctx && opts->src) {
+    if (!(ctx->src = strdup(opts->src)))
       fprintf(stderr, "zsv_overwrite_context_new: out of memory!\n");
   }
   return ctx;
@@ -119,10 +119,9 @@ enum zsv_status zsv_overwrite_next(void *h, struct zsv_overwrite_data *odata) {
   return ctx->next(ctx, odata);
 }
 
-static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx,
-                                                  const char *source, size_t len) {
+static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx, const char *source, size_t len) {
   char ok = 0;
-  size_t pfx_len;  
+  size_t pfx_len;
   if (len > (pfx_len = strlen(zsv_overwrite_sqlite3_prefix)) &&
       !memcmp(source, zsv_overwrite_sqlite3_prefix, pfx_len)) {
     ctx->sqlite3.filename = malloc(len - pfx_len + 1);
@@ -149,14 +148,13 @@ static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx,
       return zsv_status_error;
     }
     ok = 1;
-  } else if(len > strlen(".sqlite3")
-          && !strcmp(source + len - strlen(".sqlite3"), ".sqlite3")) {
+  } else if (len > strlen(".sqlite3") && !strcmp(source + len - strlen(".sqlite3"), ".sqlite3")) {
     ctx->sqlite3.filename = strdup(source);
     ctx->sqlite3.sql = "select row, col, value from overwrites order by row, col";
     ok = 1;
   }
 
-  if(ok) {
+  if (ok) {
     int rc = sqlite3_open_v2(ctx->sqlite3.filename, &ctx->sqlite3.db, SQLITE_OPEN_READONLY, NULL);
     if (rc != SQLITE_OK || !ctx->sqlite3.db) {
       fprintf(stderr, "%s: %s\n", sqlite3_errstr(rc), ctx->sqlite3.filename);
@@ -184,10 +182,8 @@ enum zsv_status zsv_overwrite_open(void *h) {
   char ok = 0;
   size_t src_len = strlen(ctx->src);
   if ((src_len > strlen(zsv_overwrite_sqlite3_prefix) &&
-       !memcmp(zsv_overwrite_sqlite3_prefix, ctx->src, strlen(zsv_overwrite_sqlite3_prefix)))
-      || (src_len > strlen(".sqlite3")
-          && !strcmp(ctx->src + src_len - strlen(".sqlite3"), ".sqlite3"))
-      ) {
+       !memcmp(zsv_overwrite_sqlite3_prefix, ctx->src, strlen(zsv_overwrite_sqlite3_prefix))) ||
+      (src_len > strlen(".sqlite3") && !strcmp(ctx->src + src_len - strlen(".sqlite3"), ".sqlite3"))) {
     if (zsv_overwrite_init_sqlite3(ctx, ctx->src, src_len) == zsv_status_ok) {
       ctx->next = zsv_next_overwrite_sqlite3;
       ok = 1;
@@ -227,25 +223,20 @@ enum zsv_status zsv_overwrite_open(void *h) {
  * - zsv_status_no_more_input if no overwrite file was found
  * - a different status code on error
  */
-enum zsv_status zsv_overwrite_auto(struct zsv_opts *opts,
-                                   const char *csv_path) {
+enum zsv_status zsv_overwrite_auto(struct zsv_opts *opts, const char *csv_path) {
   enum zsv_status status = zsv_status_error;
-  if(opts->overwrite.ctx
-     || opts->overwrite.open
-     || opts->overwrite.next
-     || opts->overwrite.close
-     )
+  if (opts->overwrite.ctx || opts->overwrite.open || opts->overwrite.next || opts->overwrite.close)
     status = zsv_status_error;
   else {
     unsigned char *overwrite_fn = zsv_cache_filepath((const unsigned char *)csv_path, zsv_cache_type_overwrite, 0, 0);
-    if(!overwrite_fn)
+    if (!overwrite_fn)
       status = zsv_status_memory;
-    else if(!zsv_file_exists((char *)overwrite_fn))
+    else if (!zsv_file_exists((char *)overwrite_fn))
       status = zsv_status_no_more_input;
     else {
-      struct zsv_overwrite_opts overwrite_opts = { 0 };
+      struct zsv_overwrite_opts overwrite_opts = {0};
       overwrite_opts.src = (char *)overwrite_fn;
-      if(!(opts->overwrite.ctx = zsv_overwrite_context_new(&overwrite_opts)))
+      if (!(opts->overwrite.ctx = zsv_overwrite_context_new(&overwrite_opts)))
         status = zsv_status_memory;
       else {
         opts->overwrite.open = zsv_overwrite_open;

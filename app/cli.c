@@ -437,7 +437,7 @@ static enum zsv_ext_status run_extension(int argc, const char *argv[], struct zs
       zsv_args_to_opts(argc, argv, &argc, argv, &opts, ctx.opts_used);
       zsv_set_default_opts(opts);
       // need a corresponding zsv_set_default_custom_prop_handler?
-      
+
       stat = cmd->main(&ctx, ctx.argc - 1, &ctx.argv[1], &opts, ctx.opts_used);
     }
 
