@@ -15,6 +15,7 @@
 #include <zsv/utils/string.h>
 #include <zsv/utils/dirs.h>
 #include <zsv/utils/signal.h>
+#include <zsv/utils/overwrite.h>
 #include <zsv.h>
 #include <zsv/ext.h>
 #include "cli_internal.h"
@@ -431,12 +432,12 @@ static enum zsv_ext_status run_extension(int argc, const char *argv[], struct zs
     }
 
     struct zsv_execution_data ctx = {0};
-
     if ((stat = execution_context_init(&ctx, argc, argv)) == zsv_ext_status_ok) {
       struct zsv_opts opts;
       zsv_args_to_opts(argc, argv, &argc, argv, &opts, ctx.opts_used);
       zsv_set_default_opts(opts);
       // need a corresponding zsv_set_default_custom_prop_handler?
+      
       stat = cmd->main(&ctx, ctx.argc - 1, &ctx.argv[1], &opts, ctx.opts_used);
     }
 

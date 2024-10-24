@@ -98,22 +98,6 @@ struct zsv_overwrite {
   void *ctx;
   enum zsv_status (*next)(void *ctx, struct zsv_overwrite_data *odata);
   enum zsv_status (*close)(void *ctx);
-
-  /*
-  enum zsv_overwrite_type type;
-
-  struct {
-    FILE *f;
-    zsv_parser parser;
-  } csv;
-
-  struct {
-    char *filename;
-    sqlite3 *db;
-    sqlite3_stmt *stmt; // select row, column, overwrite
-    const char *sql;
-  } sqlite3;
-  */
 };
 #endif
 

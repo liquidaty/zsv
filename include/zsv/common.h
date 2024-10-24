@@ -92,6 +92,8 @@ typedef void (*zsv_completed_callback)(void *ctx, int code);
 
 /**
  * Data can be "overwritten" on-the-fly by providing custom callbacks
+ * data from the calling code is passed to the zsv library
+ * via the `zsv_overwrite_data` structure
  */
 struct zsv_overwrite_data {
   size_t row_ix; // 0-based
@@ -291,7 +293,18 @@ struct zsv_opts {
   size_t max_rows;
 
   /**
+   * If non-zero, automatically apply overwrites located in
+   * /path/to/.zsv/data/my-data.csv/overwrites.db for a given
+   * input /path/to/my-data.csv
+   *
+   * This flag is only used by zsv_new_with_properties()
+   * if using zsv_new(), this flag is ignored (use the `overwrite` structure instead)
+   */
+  char overwrite_auto;
+
+  /**
    * Optional cell-level values that overwrite data returned to the caller by the API
+   * Use when not using overwrite_auto together with zsv_new_with_properties()
    */
   struct zsv_opt_overwrite overwrite;
 
