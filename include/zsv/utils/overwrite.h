@@ -12,7 +12,7 @@
  * - zsv_status_no_more_input if no overwrite file was found
  * - a different status code on error
  *
- * This function is used in app/cli.c
+ * This function is used in app/cli.c via the --overwrite-auto option
  */
 enum zsv_status zsv_overwrite_auto(struct zsv_opts *opts, const char *csv_filename);
 

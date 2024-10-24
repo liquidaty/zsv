@@ -13,18 +13,7 @@
 #define zsv_overwrite_sqlite3_prefix "sqlite3://"
 #define zsv_overwrite_sql_prefix "sql="
 
-/** Overwrite structures for CSV or SQLITE3 sources
- *   (row, column, value) tuples
- * Supported source formats are CSV and SQLITE3
- */
-/*
-enum zsv_overwrite_type {
-  zsv_overwrite_type_unknown = 0, // do not change
-  zsv_overwrite_type_none = 1,    // do not change
-  zsv_overwrite_type_csv,
-  zsv_overwrite_type_sqlite3
-};
-*/
+/* Overwrite structure for CSV or SQLITE3 sources */
 struct zsv_overwrite_ctx {
   char *src;
   // enum zsv_overwrite_type type;
@@ -39,7 +28,6 @@ struct zsv_overwrite_ctx {
     sqlite3_stmt *stmt; // select row, column, overwrite
     const char *sql;
   } sqlite3;
-  void **tracker; // address of the pointer to this structure
 };
 
 void *zsv_overwrite_context_new(struct zsv_overwrite_opts *opts) {
@@ -210,7 +198,6 @@ enum zsv_status zsv_overwrite_open(void *h) {
         fprintf(stderr, "Warning! overwrite expects 'row,col,value' header, got '%.*s,%.*s,%.*s'\n", (int)row.len,
                 row.str, (int)col.len, col.str, (int)val.len, val.str);
     }
-    //    ctx->type = zsv_overwrite_type_csv;
     ctx->next = zsv_next_overwrite_csv;
     ok = 1;
   }
