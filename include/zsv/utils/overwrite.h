@@ -14,9 +14,7 @@
  *
  * This function is used in app/cli.c
  */
-enum zsv_status zsv_overwrite_auto(struct zsv_opts *opts,
-                                   const char *csv_filename
-                                   );
+enum zsv_status zsv_overwrite_auto(struct zsv_opts *opts, const char *csv_filename);
 
 /**
  * As an alternative to zsv_overwrite_auto(), you can specify your own
@@ -47,6 +45,5 @@ void *zsv_overwrite_context_new(struct zsv_overwrite_opts *);
 enum zsv_status zsv_overwrite_next(void *h, struct zsv_overwrite_data *odata);
 enum zsv_status zsv_overwrite_open(void *h);
 enum zsv_status zsv_overwrite_context_delete(void *h);
-
 
 #endif
