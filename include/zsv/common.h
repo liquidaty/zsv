@@ -91,21 +91,22 @@ typedef int (*zsv_progress_callback)(void *ctx, size_t cumulative_row_count);
 typedef void (*zsv_completed_callback)(void *ctx, int code);
 
 /**
- * Data can be "overwritten" on-the-fly by providing a source for
- *   (row, column, value) tuples
- * Supported source formats are CSV and SQLITE3
+ * Data can be "overwritten" on-the-fly by providing custom callbacks
+ * data from the calling code is passed to the zsv library
+ * via the `zsv_overwrite_data` structure
  */
-enum zsv_overwrite_type {
-  zsv_overwrite_type_unknown = 0, // do not change
-  zsv_overwrite_type_none = 1,    // do not change
-  zsv_overwrite_type_csv
-  // to do: zsv_overwrite_type_sqlite3
+struct zsv_overwrite_data {
+  size_t row_ix; // 0-based
+  size_t col_ix; // 0-based
+  struct zsv_cell val;
+  char have; // 1 = we have unprocessed overwrites
 };
 
 struct zsv_opt_overwrite {
-  enum zsv_overwrite_type type;
   void *ctx;
-  int (*close_ctx)(void *);
+  enum zsv_status (*open)(void *ctx);
+  enum zsv_status (*next)(void *ctx, struct zsv_overwrite_data *odata);
+  enum zsv_status (*close)(void *ctx);
 };
 
 #endif
@@ -292,7 +293,18 @@ struct zsv_opts {
   size_t max_rows;
 
   /**
+   * If non-zero, automatically apply overwrites located in
+   * /path/to/.zsv/data/my-data.csv/overwrites.db for a given
+   * input /path/to/my-data.csv
+   *
+   * This flag is only used by zsv_new_with_properties()
+   * if using zsv_new(), this flag is ignored (use the `overwrite` structure instead)
+   */
+  char overwrite_auto;
+
+  /**
    * Optional cell-level values that overwrite data returned to the caller by the API
+   * Use when not using overwrite_auto together with zsv_new_with_properties()
    */
   struct zsv_opt_overwrite overwrite;
 

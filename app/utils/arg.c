@@ -124,6 +124,7 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx) {
  * input (default for "desc" command is '?') -S,--keep-blank-headers  : disable default behavior of ignoring leading
  * blank rows -0,--header-row <header> : insert the provided CSV as the first row (in position 0) e.g. --header-row
  * 'col1,col2,\"my col 3\"'", -v,--verbose
+ *     -1,--overwrite-auto: automatically apply cached overwrites
  *
  * @param  argc      count of args to process
  * @param  argv      args to process
@@ -142,7 +143,7 @@ ZSV_EXPORT
 enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, const char **argv_out,
                                  struct zsv_opts *opts_out, char *opts_used) {
 #ifdef ZSV_EXTRAS
-  static const char *short_args = "BcrtOqvRdSu0L";
+  static const char *short_args = "BcrtOqvRdSu01L";
 #else
   static const char *short_args = "BcrtOqvRdSu0";
 #endif
@@ -162,6 +163,7 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, co
     "malformed-utf8-replacement",
     "header-row",
 #ifdef ZSV_EXTRAS
+    "overwrite-auto",
     "limit-rows",
 #endif
     NULL,
@@ -211,6 +213,9 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, co
       opts_out->verbose = 1;
       break;
 #ifdef ZSV_EXTRAS
+    case '1':
+      opts_out->overwrite_auto = 1;
+      break;
     case 'L':
 #endif
     case 'B':

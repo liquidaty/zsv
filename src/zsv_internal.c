@@ -91,26 +91,13 @@ struct zsv_scan_fixed_regs {
 
 #ifdef ZSV_EXTRAS
 #include <inttypes.h>
-
-struct zsv_overwrite_data {
-  struct zsv_cell row;
-  struct zsv_cell col;
-  struct zsv_cell val;
-};
+#include <sqlite3.h>
 
 struct zsv_overwrite {
-  void (*next)(struct zsv_overwrite *overwrite, struct zsv_overwrite_data *data);
-
-  size_t row_ix; // 0-based
-  size_t col_ix; // 0-based
-  struct zsv_cell val;
-  char have; // 1 = we have unprocessed overwrites
-
+  struct zsv_overwrite_data odata;
   void *ctx;
-  int (*close_ctx)(void *);
-
-  void *reader;
-  int (*close_reader)(void *);
+  enum zsv_status (*next)(void *ctx, struct zsv_overwrite_data *odata);
+  enum zsv_status (*close)(void *ctx);
 };
 #endif
 
@@ -420,8 +407,8 @@ __attribute__((always_inline)) static inline enum zsv_status cell_and_row_dl(str
 #include <arm_neon.h>
 static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
   // see https://stackoverflow.com/questions/11870910/
-  static const uint8_t __attribute__((aligned(16)))
-  _powers[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
+  static const uint8_t
+    __attribute__((aligned(16))) _powers[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
   uint8x16_t mm_powers = vld1q_u8(_powers);
 
   // compute the mask from the input
@@ -604,7 +591,7 @@ static void set_callbacks(struct zsv_scanner *scanner) {
     scanner->opts.cell_handler = NULL;
     scanner->opts.ctx = scanner;
   } else {
-    if (scanner->overwrite.have)
+    if (scanner->overwrite.odata.have)
       scanner->get_cell = zsv_get_cell_with_overwrite;
     else
       scanner->get_cell = zsv_get_cell_1;
@@ -626,84 +613,16 @@ static void zsv_throwaway_row(void *ctx) {
 }
 
 #ifdef ZSV_EXTRAS
-static int zsv_delete_v(void *p) {
-  return zsv_delete((zsv_parser)p);
-}
-
-static void zsv_next_overwrite_csv(struct zsv_overwrite *overwrite, struct zsv_overwrite_data *data) {
-  // row, column, value
-  data->row = zsv_get_cell_1(overwrite->reader, 0);
-  data->col = zsv_get_cell_1(overwrite->reader, 1);
-  data->val = zsv_get_cell_1(overwrite->reader, 2);
-}
-
-// TO DO: consolidate with zsv_echo_get_next_overwrite()
-static void zsv_next_overwrite(struct zsv_overwrite *overwrite) {
-  if (overwrite->have) {
-    if (zsv_next_row(overwrite->reader) != zsv_status_row)
-      overwrite->have = 0;
-    else {
-      struct zsv_overwrite_data data;
-      overwrite->next(overwrite, &data);
-      if (data.row.len && data.col.len) {
-        char *end = (char *)(data.row.str + data.row.len);
-        char **endp = &end;
-        overwrite->row_ix = strtoumax((char *)data.row.str, endp, 10);
-        end = (char *)(data.col.str + data.col.len);
-        overwrite->col_ix = strtoumax((char *)data.col.str, endp, 10);
-        overwrite->val = data.val;
-      } else {
-        overwrite->row_ix = 0;
-        overwrite->col_ix = 0;
-        overwrite->val.len = 0;
-      }
-    }
-  }
-}
-
-static enum zsv_status zsv_init_overwrites(zsv_parser parser, struct zsv_opt_overwrite *overwrite_opts) {
-  if (overwrite_opts->type <= zsv_overwrite_type_none)
-    return zsv_status_ok;
-  struct zsv_overwrite *overwrite = &parser->overwrite;
-  switch (overwrite_opts->type) {
-  case zsv_overwrite_type_csv: {
-    struct zsv_opts opts = {0};
-    overwrite->ctx = opts.stream = overwrite_opts->ctx;
-    overwrite->close_ctx = overwrite_opts->close_ctx;
-    if (!(overwrite->reader = zsv_new(&opts)))
-      return zsv_status_memory;
-    overwrite->close_reader = zsv_delete_v;
-    overwrite->next = zsv_next_overwrite_csv;
-  } break;
-  default:
-    fprintf(stderr, "Unrecognized overwrite type\n");
-    return zsv_status_error;
-  }
-
-  overwrite->have = 0;
-  if (zsv_next_row(overwrite->reader) == zsv_status_row) {
-    // to do: check that column names are row, col, value
-    struct zsv_overwrite_data data;
-    overwrite->next(overwrite, &data);
-    if (data.row.len < 3 || memcmp(data.row.str, "row", 3) || data.col.len < 3 || memcmp(data.col.str, "col", 3) ||
-        data.val.len < 3 || memcmp(data.val.str, "val", 3))
-      fprintf(stderr, "Warning! overwrite expects 'row,col,value' header, got '%.*s,%.*s,%.*s'\n", (int)data.row.len,
-              data.row.str, (int)data.col.len, data.col.str, (int)data.val.len, data.val.str);
-    overwrite->have = 1;
-    zsv_next_overwrite(overwrite);
-  }
-  return overwrite->have ? zsv_status_ok : zsv_status_error;
-}
 
 static int zsv_have_overwrite(zsv_parser parser, size_t row_ix, size_t col_ix) {
   struct zsv_overwrite *overwrite = &parser->overwrite;
-  while (overwrite->have && overwrite->row_ix < row_ix)
-    zsv_next_overwrite(overwrite);
-  while (overwrite->have && overwrite->row_ix == row_ix && overwrite->col_ix < col_ix)
-    zsv_next_overwrite(overwrite);
-  if (!overwrite->have)
+  while (overwrite->odata.have && overwrite->odata.row_ix < row_ix)
+    overwrite->next(overwrite->ctx, &overwrite->odata);
+  while (overwrite->odata.have && overwrite->odata.row_ix == row_ix && overwrite->odata.col_ix < col_ix)
+    overwrite->next(overwrite->ctx, &overwrite->odata);
+  if (!overwrite->odata.have)
     parser->get_cell = zsv_get_cell_1;
-  return overwrite->have && overwrite->row_ix == row_ix && overwrite->col_ix == col_ix;
+  return overwrite->odata.have && overwrite->odata.row_ix == row_ix && overwrite->odata.col_ix == col_ix;
 }
 
 static struct zsv_cell zsv_get_cell_with_overwrite(zsv_parser parser, size_t col_ix) {
@@ -712,7 +631,7 @@ static struct zsv_cell zsv_get_cell_with_overwrite(zsv_parser parser, size_t col
     if (!zsv_have_overwrite(parser, row_ix, col_ix))
       return parser->row.cells[col_ix];
 
-    struct zsv_cell c = parser->overwrite.val;
+    struct zsv_cell c = parser->overwrite.odata.val;
     c.overwritten = 1;
     return c;
   }
@@ -781,12 +700,24 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
       scanner->opts.max_columns = 1024;
     set_callbacks(scanner);
     if ((scanner->row.allocated = scanner->opts.max_columns) &&
-        (scanner->row.cells = calloc(scanner->row.allocated, sizeof(*scanner->row.cells))))
+        (scanner->row.cells = calloc(scanner->row.allocated, sizeof(*scanner->row.cells)))) {
 #ifdef ZSV_EXTRAS
       // initialize overwrites
-      if (zsv_init_overwrites(scanner, &scanner->opts.overwrite) == zsv_status_ok)
+      if (scanner->opts.overwrite.open) {
+        if (scanner->opts.overwrite.open(scanner->opts.overwrite.ctx) == zsv_status_ok) {
+          scanner->overwrite.odata.have = 1;
+          scanner->overwrite.next = scanner->opts.overwrite.next;
+          scanner->overwrite.close = scanner->opts.overwrite.close;
+          scanner->overwrite.ctx = scanner->opts.overwrite.ctx;
+          // load the first overwrite
+          scanner->overwrite.next(scanner->overwrite.ctx, &scanner->overwrite.odata);
+          return 0;
+        }
+        return 1;
+      }
 #endif
-        return 0;
+      return 0;
+    }
   }
   return 1;
 }
