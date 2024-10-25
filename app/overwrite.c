@@ -14,7 +14,12 @@
 #include <string.h>
 #include <ctype.h>
 
+#include <sqlite3.h>
+
+#include <zsv.h>
+#include <zsv/utils/cache.h>
 #include <zsv/utils/file.h>
+#include <zsv/utils/overwrite.h>
 
 #define ZSV_COMMAND overwrite
 #include "zsv_command.h"
@@ -77,10 +82,14 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
 
   const unsigned char *filepath = (const unsigned char *)m_argv[1];
 
+  size_t row = 0;
+  size_t col = 0;
+  const char *val = NULL;
+
   if (m_argc == 2)
     return show_all_overwrites(filepath);
 
-  for (int i = 2; !err && i < m_argc; i++) {
+  for (int i = 1; !err && i < m_argc; i++) {
     const char *opt = m_argv[i];
     if (!strcmp(opt, "-f") || !strcmp(opt, "--force")) {
       err = 1;
@@ -95,11 +104,47 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
       fprintf(stderr, "Error: %s is not implemented\n", opt);
       err = 1;
     } else {
-      fprintf(stderr, "Unrecognized option: %s\n", opt);
-      err = 1;
+      if (*opt == '-') {
+        err = 1;
+        fprintf(stderr, "Unrecognized option: %s\n", opt);
+      }
+      if (!row)
+        row = atoi(opt);
+      else if (!col)
+        col = atoi(opt);
+      else
+        val = strdup(opt);
     }
   }
 
-  printf("%s\n", filepath);
+  // If a non-integer is passed, atoi returns 0, which will trigger this condition
+  if (!row || !col || !val) {
+    fprintf(stderr, "Error: expected <row> <col> and <value>\n");
+    err = 1;
+  }
+
+  if (err)
+    return err;
+
+  struct zsv_opts opts = {0};
+  struct zsv_overwrite_opts overwrite_opts = {0};
+
+  const char *overwrite_fn =
+    (const char *)zsv_cache_filepath((const unsigned char *)filepath, zsv_cache_type_overwrite, 0, 0);
+  overwrite_opts.src = overwrite_fn;
+
+  if (!(opts.overwrite.ctx = zsv_overwrite_context_new(&overwrite_opts))) {
+    fprintf(stderr, "Out of memory!\n");
+    err = 1;
+  } else {
+    opts.overwrite.open = zsv_overwrite_open;
+    opts.overwrite.next = zsv_overwrite_next;
+    opts.overwrite.close = zsv_overwrite_context_delete;
+  }
+
+  if (!err) {
+    printf("Loaded file: %s\n", filepath);
+  }
+
   return err;
 }
