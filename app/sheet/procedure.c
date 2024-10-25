@@ -1,5 +1,5 @@
 #include "procedure.h"
-#include "darray.h"
+#include <stdint.h>
 
 #if 0
 #define proc_debug(...) fprintf(stderr, __VA_ARGS__)
@@ -7,8 +7,7 @@
 #define proc_debug(...) ((void)0)
 #endif
 
-int proc_id_generator = 100; // TODO: shuold be dependant on number of bulitins
-struct darray procedures = {};
+#define MAX_PROCEDURES 512
 
 /* Each procedure can be given a name and in the future argument specification
  * so it can be typed from the procedureline. Simple procedure like call motion
@@ -20,13 +19,32 @@ struct zsvsheet_procedure {
   zsvsheet_proc_handler_fn handler;
 };
 
+/* This array both stores procedures and works as a lookup table.
+ * zero is */
+static struct zsvsheet_procedure procedure_lookup[MAX_PROCEDURES] = {0};
+
+static inline bool is_valid_proc_id(zsvsheet_proc_id_t id)
+{ return (0 < id && id < MAX_PROCEDURES); }
+
 struct zsvsheet_procedure *zsvsheet_find_procedure(zsvsheet_proc_id_t proc_id)
 {
-  darray_for(struct zsvsheet_procedure, proc, &procedures) {
-    if(proc->id == proc_id)
-      return proc;
+  struct zsvsheet_procedure *proc;
+  if(!is_valid_proc_id(proc_id))
+    return NULL;
+  proc = &procedure_lookup[proc_id];
+  if(proc->id == ZSVSHEET_PROC_INVALID)
+    return NULL;
+  assert(proc->id == proc_id);
+  return proc;
+}
+
+static zsvsheet_proc_id_t zsvsheet_generate_proc_id()
+{
+  for(zsvsheet_proc_id_t id = MAX_PROCEDURES - 1; id > ZSVSHEET_PROC_INVALID; --id) {
+    if(!is_valid_proc_id(procedure_lookup[id].id))
+      return id;
   }
-  return NULL;
+  return ZSVSHEET_PROC_INVALID;
 }
 
 zsvsheet_handler_status zsvsheet_proc_invoke(zsvsheet_proc_id_t proc_id, struct zsvsheet_proc_context *ctx)
@@ -55,15 +73,11 @@ zsvsheet_handler_status zsvsheet_proc_invoke_from_keypress(zsvsheet_proc_id_t pr
 static zsvsheet_proc_id_t zsvsheet_do_register_proc(struct zsvsheet_procedure *proc)
 {
   proc_debug("register proc %d %s\n", proc->id, proc->name ? proc->name : "(unnamed)");
+  if(!is_valid_proc_id(proc->id))
+    return -1;
   if(zsvsheet_find_procedure(proc->id))
     return -1;
-
-  /* Lazy init */
-  if(!darray_alive(&procedures))
-    darray_init(&procedures, sizeof(struct zsvsheet_procedure));
-  darray_push(&procedures, proc);
-
-  proc_id_generator = proc->id;
+  procedure_lookup[proc->id] = *proc;
   return proc->id;
 }
 
@@ -78,7 +92,7 @@ zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const c
 zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, zsvsheet_proc_handler_fn handler)
 {
   struct zsvsheet_procedure procedure = {
-    .id = proc_id_generator + 1, .name = name, .handler = handler
+    .id = zsvsheet_generate_proc_id(), .name = name, .handler = handler
   };
   return zsvsheet_do_register_proc(&procedure);
 }

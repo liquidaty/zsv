@@ -2,7 +2,13 @@
 #define ZSVSHEET_PROCEDURE_H
 #include <stdbool.h>
 
-/* ID's of bulitin procedures, extensions can register more */
+/* ID's of bulitin procedures, extensions can register more.
+ *
+ * TODO: What specific procedures are bulitin and what are their
+ *       id's is not a concern of the procedure system. This should
+ *       be defined by the registrar who defines those procedures,
+ *       in this case sheet. move it out of here at some point.
+ */
 enum {
   zsvsheet_builtin_proc_unknown = 0,
   zsvsheet_builtin_proc_quit,

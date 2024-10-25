@@ -1,6 +1,5 @@
 #include "procedure.h"
 #include "key-bindings.h"
-#include "darray.h"
 
 #include <stdio.h>
 
@@ -16,8 +15,10 @@
 #define keyb_debug(...) ((void)0)
 #endif
 
+#define MAX_KEY_BINDINGS 512
+
 static int prev_ch = -1;
-static struct darray zsvsheet_key_bindings = {0};
+static struct zsvsheet_key_binding key_bindings[MAX_KEY_BINDINGS] = {0};
 
 zsvsheet_handler_status zsvsheet_proc_key_binding_handler(struct zsvsheet_key_binding_context *ctx)
 {
@@ -34,12 +35,14 @@ int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding)
 
   assert(binding->handler);
 
-  /* Lazy init */
-  if(!darray_alive(&zsvsheet_key_bindings))
-    darray_init(&zsvsheet_key_bindings, sizeof(struct zsvsheet_key_binding));
-  darray_push(&zsvsheet_key_bindings, binding);
+  for(int i = 0; i < MAX_KEY_BINDINGS; ++i) {
+    if(key_bindings[i].ch == 0) {
+      key_bindings[i] = *binding;
+      return 0;
+    }
+  }
 
-  return 0;
+  return -ENOMEM;
 }
 
 int zsvsheet_register_proc_key_binding(char ch, int proc_id)
@@ -52,14 +55,12 @@ int zsvsheet_register_proc_key_binding(char ch, int proc_id)
 
 struct zsvsheet_key_binding *zsvsheet_find_key_binding(int ch)
 {
-  darray_for(struct zsvsheet_key_binding, binding, &zsvsheet_key_bindings) {
-    if(binding->ch == ch)
-      return binding;
+  for(int i = 0; i < MAX_KEY_BINDINGS; ++i) {
+    if(key_bindings[i].ch == ch)
+      return &key_bindings[i];
   }
   return NULL;
 }
-
-
 
 /* Subcommand context, that we later pass to procedures, seems a little out
  * of place here. Alternatively this function could only return the binding

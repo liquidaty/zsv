@@ -39,7 +39,6 @@
 #include "sheet/sheet_internal.h"
 #include "sheet/buffer.h"
 #include "sheet/buffer.c"
-#include "sheet/darray.c"
 #include "sheet/procedure.c"
 
 /* TODO: move this somewhere else like common or utils */
