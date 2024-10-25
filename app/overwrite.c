@@ -56,12 +56,31 @@ static int zsv_overwrite_usage() {
   return 1;
 }
 
-int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
-  if (argc < 1 || (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))) {
+int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
+  if (m_argc < 2 || (m_argc > 1 && (!strcmp(m_argv[1], "-h") || !strcmp(m_argv[1], "--help")))) {
     zsv_overwrite_usage();
     return 0;
   }
+
   int err = 0;
+  for (int i = 1; !err && i < m_argc; i++) {
+    const char *opt = m_argv[i];
+    if (!strcmp(opt, "-f") || !strcmp(opt, "--force")) {
+      err = 1;
+      fprintf(stderr, "Error: %s is not implemented\n", opt);
+    } else if (!strcmp(opt, "--author")) {
+      fprintf(stderr, "Error: %s is not implemented\n", opt);
+      err = 1;
+    } else if (!strcmp(opt, "--reason")) {
+      fprintf(stderr, "Error: %s is not implemented\n", opt);
+      err = 1;
+    } else if (!strcmp(opt, "--timestamp")) {
+      fprintf(stderr, "Error: %s is not implemented\n", opt);
+      err = 1;
+    } else {
+      fprintf(stderr, "Unrecognized option: %s\n", opt);
+      err = 1;
+    }
+  }
   return err;
 }

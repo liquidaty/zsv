@@ -55,6 +55,7 @@ static int main_help(int argc, const char *argv[]) {
     "Commands that parse CSV or other tabular data:",
     "  select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations",
     "  echo     : write tabular input to stdout with optional cell overwrites",
+    "  overwrite: save, modify or apply overwrites",
     "  sql      : run ad-hoc SQL",
     "  count    : print the number of rows",
     "  desc     : describe each column",
