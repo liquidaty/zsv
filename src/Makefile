@@ -27,6 +27,8 @@ ifeq ($(WIN),)
   endif
 endif
 
+include ${THIS_MAKEFILE_DIR}/../make/sharedlib.mk # sets SHAREDLIB_EXT
+
 CFLAGS+= ${CFLAG_O} ${CFLAGS_OPT}
 CFLAGS+= ${CFLAGS_AUTO}
 
@@ -56,7 +58,6 @@ endif
 
 ifeq ($(DEBUG),0)
   CFLAGS+= -DNDEBUG -O3  ${CFLAGS_LTO}
-  CFLAGS+= ${CFLAGS_OPENMP}
 
   ifeq ($(PGO),1)
     CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4
@@ -103,15 +104,27 @@ NO_UTF8_CHECK=1
 
 LIB_SUFFIX?=
 ZSV_OBJ=${BUILD_DIR}/objs/zsv.o
-LIBZSV_A=libzsv${LIB_SUFFIX}.a
-LIBZSV=${BUILD_DIR}/lib/${LIBZSV_A}
-LIBZSV_INSTALL=${LIBDIR}/${LIBZSV_A}
+LIBZSV_STATIC=libzsv${LIB_SUFFIX}.a
+LIBZSV_STATIC_BUILD=${BUILD_DIR}/lib/${LIBZSV_STATIC}
+LIBZSV_BUILD=${LIBZSV_STATIC_BUILD}
+LIBZSV_INSTALL=${LIBDIR}/${LIBZSV_STATIC}
+
+ifeq ($(BUILD_SHAREDLIB),1)
+  LIBZSV_SHARED=libzsv.${SHAREDLIB_EXT}
+  LIBZSV_SHARED_BUILD+=${BUILD_DIR}/lib/${LIBZSV_SHARED}
+  LIBZSV_BUILD+=${LIBZSV_SHARED_BUILD}
+  LIBZSV_INSTALL+=${LIBDIR}/${LIBZSV_SHARED}
+  ifeq ($(WIN),)
+    CFLAGS+= ${CFLAGS_OPENMP}
+  endif
+else
+    CFLAGS+= ${CFLAGS_OPENMP}
+endif
 
 ZSV_OBJ_OPTS=
 ifeq ($(NO_UTF8_CHECK),1)
   ZSV_OBJ_OPTS+= -DNO_UTF8_CHECK
 endif
-
 
 help:
 	@echo "Make options:"
@@ -121,15 +134,19 @@ help:
 	@echo "  [CONFIGFILE=config.mk] [NO_UTF8_CHECK=1] [VERBOSE=1] [LIBDIR=${LIBDIR}] [INCLUDEDIR=${INCLUDEDIR}] [LIB_SUFFIX=]"
 	@echo
 
-build: ../include/zsv.h ${LIBZSV}
+build: ../include/zsv.h ${LIBZSV_BUILD}
 
-${LIBZSV}: ${ZSV_OBJ}
+${LIBZSV_STATIC_BUILD}: ${ZSV_OBJ}
 	@mkdir -p `dirname "$@"`
 	@rm -f $@
 	$(AR) rcv $@ $?
 	$(RANLIB) $@
 	$(AR) -t $@ # check it is there
 	@echo Built $@
+
+${LIBZSV_SHARED_BUILD}: zsv.c zsv_internal.c
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} ${CFLAGS_VISIBILITY_HIDDEN} -DZSV_BUILD_SHARED -DZSV_VERSION=\"${VERSION}\" -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -shared -fPIC -o $@ $< -I../app/external/sqlite3
 
 ../include/zsv.h:
 ifeq ($(ZSV_EXTRAS),1)
@@ -144,17 +161,17 @@ install: ../include/zsv.h ${LIBZSV_INSTALL}
 	@cp -pR ../include/zsv $(INCLUDEDIR)/
 	@echo "include files copied to $(INCLUDEDIR)"
 
-${LIBZSV_INSTALL}: ${LIBZSV}
+${LIBZSV_INSTALL}: ${LIBDIR}/% : ${BUILD_DIR}/lib/%
 	@mkdir -p `dirname "$@"`
-	@cp -p ${LIBZSV} "$@"
-	@echo "libzsv installed to $@"
+	cp -p "$<" "$@"
+	@echo "$* installed to $@"
 
 uninstall:
 	@rm -rf ${INCLUDEDIR}/zsv*
 	 rm  -f ${LIBDIR}/libzsv*
 
 clean:
-	rm -rf ${BUILD_DIR}/objs ${LIBZSV}
+	rm -rf ${BUILD_DIR}/objs ${LIBZSV_BUILD}
 	rm -f ../include/zsv.h
 
 .PHONY: build install uninstall clean  ${LIBZSV_INSTALL}
