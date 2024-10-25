@@ -1,5 +1,4 @@
 #include "procedure.h"
-#include <stdint.h>
 
 #if 0
 #define proc_debug(...) fprintf(stderr, __VA_ARGS__)
@@ -19,8 +18,7 @@ struct zsvsheet_procedure {
   zsvsheet_proc_handler_fn handler;
 };
 
-/* This array both stores procedures and works as a lookup table.
- * zero is */
+/* This array both stores procedures and works as a lookup table. */
 static struct zsvsheet_procedure procedure_lookup[MAX_PROCEDURES] = {0};
 
 static inline bool is_valid_proc_id(zsvsheet_proc_id_t id)
