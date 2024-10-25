@@ -8,21 +8,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sqlite3.h>
+#include <errno.h>
 
 #define _GNU_SOURCE 1
 #include <string.h>
 #include <ctype.h>
 
-#define ZSV_COMMAND overwrite 
-#include "zsv_command.h"
-
-#include <zsv/utils/compiler.h>
-#include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
-#include <zsv/utils/string.h>
-#include <zsv/utils/mem.h>
-#include <zsv/utils/arg.h>
-#include <zsv/utils/overwrite.h>
+
+#define ZSV_COMMAND overwrite
+#include "zsv_command.h"
 
 const char *zsv_overwrite_usage_msg[] = {
   APPNAME ": save, modify or apply overwrites",
@@ -41,14 +36,13 @@ const char *zsv_overwrite_usage_msg[] = {
   "",
   "",
   "options:",
-    "--author <value>: add the specified author to the overwrite record",
-    "--timestamp <value>: add the specified timestamp to the overwrite record",
-    "--reason <value>: add the specified reason to the overwrite record",
-    "-f,--force: replace prior overwrite in the same address",
+  "--author <value>: add the specified author to the overwrite record",
+  "--timestamp <value>: add the specified timestamp to the overwrite record",
+  "--reason <value>: add the specified reason to the overwrite record",
+  "-f,--force: replace prior overwrite in the same address",
   "",
   "Notes: overwrite data relating to /path/to/my-data.csv",
-  "is kept in the \"overwrites\" table of /path/to/.zsv/data/my-data.csv/overwrite.sqlite3."
-};
+  "is kept in the \"overwrites\" table of /path/to/.zsv/data/my-data.csv/overwrite.sqlite3."};
 
 static int zsv_overwrite_usage() {
   for (size_t i = 0; zsv_overwrite_usage_msg[i]; i++)
@@ -56,14 +50,37 @@ static int zsv_overwrite_usage() {
   return 1;
 }
 
-int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
-  if (m_argc < 2 || (m_argc > 1 && (!strcmp(m_argv[1], "-h") || !strcmp(m_argv[1], "--help")))) {
-    zsv_overwrite_usage();
-    return 0;
+static int show_all_overwrites(const unsigned char *filepath) {
+  int err = 0;
+
+  if (!zsv_file_readable((const char *)filepath, &err, NULL)) {
+    perror((const char *)filepath);
+    return err;
   }
 
+  // TODO: read from overwrites file
+
+  printf("Overwrites not implemented\n");
+
+  if (err == ENOENT)
+    err = 0;
+  return err;
+}
+
+int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
   int err = 0;
-  for (int i = 1; !err && i < m_argc; i++) {
+  if (m_argc < 2 || (m_argc > 1 && (!strcmp(m_argv[1], "-h") || !strcmp(m_argv[1], "--help")))) {
+    err = 1;
+    zsv_overwrite_usage();
+    return err;
+  }
+
+  const unsigned char *filepath = (const unsigned char *)m_argv[1];
+
+  if (m_argc == 2)
+    return show_all_overwrites(filepath);
+
+  for (int i = 2; !err && i < m_argc; i++) {
     const char *opt = m_argv[i];
     if (!strcmp(opt, "-f") || !strcmp(opt, "--force")) {
       err = 1;
@@ -82,5 +99,7 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
       err = 1;
     }
   }
+
+  printf("%s\n", filepath);
   return err;
 }
