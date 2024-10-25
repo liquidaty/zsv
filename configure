@@ -34,6 +34,7 @@ Optional features:
   --force-avx             force compile with (no CPU check) or without -mavx [auto]
   --force-sse2            force compile with (no CPU check) or without -msse2 [auto]
   --enable-sheet          compile with 'sheet' feature (requires ncurses) [yes]
+  --enable-shared         build/install zsv shared library
   --ncurses-dynamic       compile without NCURSES_STATIC or NCURSESW_STATIC defines
   --enable-lto            compile with LTO (works with some but not all platforms/compilers) [no]
   --enable-whole-program  compile without -fwhole-program even if no -flto [yes]
@@ -312,6 +313,7 @@ MANDIR="$PREFIX/share/man"
 MINIMAL=no
 
 TRY_SHEET=auto
+BUILD_SHAREDLIB=0
 TRY_LTO=no
 TRY_WHOLE_PROGRAM=auto
 FORCE_AVX2=auto
@@ -358,6 +360,9 @@ for arg ; do
         --enable-sheet|--enable-sheet=yes) TRY_SHEET=yes;;
         --enable-sheet=auto) TRY_SHEET=auto;;
         --disable-sheet|--enable-sheet=no) TRY_SHEET=no;;
+
+        --enable-shared|--enable-shared=yes) BUILD_SHAREDLIB=1;;
+        --disable-shared|--enable-shared=no) BUILD_SHAREDLIB=0;;
 
         --enable-lto|--enable-lto=yes) TRY_LTO=yes;;
         --enable-lto=auto) TRY_LTO=auto;;
@@ -817,6 +822,8 @@ CFLAGS_NCURSES = $CFLAGS_NCURSES
 
 ZSV_EXTRAS = $ZSV_EXTRAS
 
+BUILD_SHAREDLIB = $BUILD_SHAREDLIB
+
 ZSVSHEET_BUILD = $ZSVSHEET_BUILD
 
 $NO_HAVE
@@ -840,6 +847,12 @@ if [ "$LDFLAGS_TERMCAP" = "" ]; then
     echo "*  - termcap: no. \`pretty\` will use default width assumption   *"
 else
     echo "*  - termcap: yes                                              *"
+fi
+
+if [ "$BUILD_SHAREDLIB" = "1" ]; then
+    echo "*  - build shared library: yes                                 *"
+else
+    echo "*  - build shared library: no                                  *"
 fi
 
 if [ "$ZSVSHEET_BUILD" = "1" ]; then
