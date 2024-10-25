@@ -3,12 +3,29 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
-#ifndef ZSV_EXPORT
 #define ZSV_EXPORT EMSCRIPTEN_KEEPALIVE
+#else
+
+#if defined(_WIN32) || defined(__CYGWIN__)
+#ifdef ZSV_BUILD_SHARED
+#ifdef __GNUC__
+#define ZSV_EXPORT __attribute__((dllexport))
+#else
+#define ZSV_EXPORT __declspec(dllexport)
 #endif
 #else
-#ifndef ZSV_EXPORT
+#ifdef __GNUC__
+#define ZSV_EXPORT __attribute__((dllimport))
+#else
+#define ZSV_EXPORT __declspec(dllimport)
+#endif
+#endif
+#else
+#if __GNUC__ >= 4
+#define ZSV_EXPORT __attribute__((visibility("default")))
+#else
 #define ZSV_EXPORT
+#endif
 #endif
 #endif
 

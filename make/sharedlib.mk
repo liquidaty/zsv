@@ -2,7 +2,7 @@ ifeq ($(OS),Windows_NT)
   WIN=1
 endif
 
-ifneq ($(WIN),)
+ifeq ($(WIN),1)
   SHAREDLIB_EXT:=dll
 else
   UNAME_S := $(shell uname -s)

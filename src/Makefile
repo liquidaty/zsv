@@ -12,8 +12,6 @@ CONFIGFILE ?=../config.mk
 $(info Using config file ${CONFIGFILE})
 include ${CONFIGFILE}
 
-include ${THIS_MAKEFILE_DIR}/../make/sharedlib.mk # sets SHAREDLIB_EXT
-
 CC ?= cc
 AWK ?= awk
 AR ?= ar
@@ -28,6 +26,8 @@ ifeq ($(WIN),)
     WIN=1
   endif
 endif
+
+include ${THIS_MAKEFILE_DIR}/../make/sharedlib.mk # sets SHAREDLIB_EXT
 
 CFLAGS+= ${CFLAG_O} ${CFLAGS_OPT}
 CFLAGS+= ${CFLAGS_AUTO}
@@ -58,7 +58,6 @@ endif
 
 ifeq ($(DEBUG),0)
   CFLAGS+= -DNDEBUG -O3  ${CFLAGS_LTO}
-  CFLAGS+= ${CFLAGS_OPENMP}
 
   ifeq ($(PGO),1)
     CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4
@@ -115,6 +114,11 @@ ifeq ($(BUILD_SHAREDLIB),1)
   LIBZSV_SHARED_BUILD+=${BUILD_DIR}/lib/${LIBZSV_SHARED}
   LIBZSV_BUILD+=${LIBZSV_SHARED_BUILD}
   LIBZSV_INSTALL+=${LIBDIR}/${LIBZSV_SHARED}
+  ifeq ($(WIN),)
+    CFLAGS+= ${CFLAGS_OPENMP}
+  endif
+else
+    CFLAGS+= ${CFLAGS_OPENMP}
 endif
 
 ZSV_OBJ_OPTS=
@@ -142,7 +146,7 @@ ${LIBZSV_STATIC_BUILD}: ${ZSV_OBJ}
 
 ${LIBZSV_SHARED_BUILD}: zsv.c zsv_internal.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -DZSV_EXPORT='__attribute__((visibility("default")))' -DZSV_VERSION=\"${VERSION}\" -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -shared -fPIC -o $@ $< -I../app/external/sqlite3
+	${CC} ${CFLAGS} ${CFLAGS_VISIBILITY_HIDDEN} -DZSV_BUILD_SHARED -DZSV_VERSION=\"${VERSION}\" -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -shared -fPIC -o $@ $< -I../app/external/sqlite3
 
 ../include/zsv.h:
 ifeq ($(ZSV_EXTRAS),1)
