@@ -45,7 +45,7 @@ BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 TMP_DIR=${THIS_LIB_BASE}/tmp
 TEST_DATA_DIR=${THIS_LIB_BASE}/data
 
-SOURCES=echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare
+SOURCES=echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare overwrite
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
 TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help
@@ -179,6 +179,11 @@ test-echo-overwrite-auto: ${BUILD_DIR}/bin/zsv_echo${EXE}
 test-echo-overwrite-csv: ${BUILD_DIR}/bin/zsv_echo${EXE} ${TEST_DATA_DIR}/loans_1-overwrite.csv
 	@${TEST_INIT}
 	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv --overwrite '${TEST_DATA_DIR}/loans_1-overwrite.csv' ${REDIRECT} ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${TEST_DATA_DIR}/overwrite.csv
+	@${TEST_INIT}
+	@${PREFIX} $< ${TEST_DATA_DIR}/overwrite.csv 12 24 ABC ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 worldcitiespop_mil.csv:
