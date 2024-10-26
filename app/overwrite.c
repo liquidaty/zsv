@@ -9,15 +9,15 @@
 #include <stdlib.h>
 #include <sqlite3.h>
 #include <errno.h>
+#include <limits.h>
 
 #define _GNU_SOURCE 1
 #include <string.h>
 #include <ctype.h>
 
-#include <sqlite3.h>
-
 #include <zsv.h>
 #include <zsv/utils/cache.h>
+#include <zsv/utils/os.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/overwrite.h>
 
@@ -55,17 +55,52 @@ static int zsv_overwrite_usage() {
   return 1;
 }
 
+static int zsv_overwrites_init(const unsigned char *filepath, sqlite3 **db) {
+  const char *overwrites_fn = (const char *)zsv_cache_filepath(filepath, zsv_cache_type_overwrite, 0, 0);
+  sqlite3_stmt *query = NULL;
+  int err = 0;
+  int ret = 0;
+
+  if ((ret = sqlite3_initialize()) != SQLITE_OK) {
+    printf("Failed to initialize library: %d\n", ret);
+    err = 1;
+  }
+
+  if ((ret = sqlite3_open_v2(overwrites_fn, db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) != SQLITE_OK) {
+    printf("Failed to open conn: %d\n", ret);
+    err = 1;
+  }
+
+  if ((ret = sqlite3_prepare_v2(*db, "CREATE TABLE IF NOT EXISTS overwrites ( row integer, col integer, val string );",
+                                -1, &query, NULL)) == SQLITE_OK) {
+    if ((ret = sqlite3_step(query)) != SQLITE_DONE) {
+      printf("Failed to step: %d, %s\n", ret, sqlite3_errmsg(*db));
+      err = 1;
+    }
+  }
+  if (query)
+    sqlite3_finalize(query);
+
+  return err;
+}
+
+static int zsv_overwrites_exit(sqlite3 *db) {
+  sqlite3_close(db);
+  sqlite3_shutdown();
+  return 0;
+}
+
 static int show_all_overwrites(const unsigned char *filepath) {
   int err = 0;
+  const char *overwrites_fn = (const char *)zsv_cache_filepath(filepath, zsv_cache_type_overwrite, 0, 0);
 
-  if (!zsv_file_readable((const char *)filepath, &err, NULL)) {
-    perror((const char *)filepath);
+  if (!zsv_file_readable(overwrites_fn, &err, NULL)) {
+    perror((const char *)overwrites_fn);
     return err;
   }
 
-  // TODO: read from overwrites file
-
-  printf("Overwrites not implemented\n");
+  // TODO: read from overwrites sql file and display all overwrites
+  printf("Showing all overwrites is not implemented\n");
 
   if (err == ENOENT)
     err = 0;
@@ -117,34 +152,19 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
     }
   }
 
-  // If a non-integer is passed, atoi returns 0, which will trigger this condition
-  if (!row || !col || !val) {
-    fprintf(stderr, "Error: expected <row> <col> and <value>\n");
-    err = 1;
-  }
-
   if (err)
     return err;
 
-  struct zsv_opts opts = {0};
-  struct zsv_overwrite_opts overwrite_opts = {0};
+  sqlite3 *db = NULL;
+  err = zsv_overwrites_init(filepath, &db);
 
-  const char *overwrite_fn =
-    (const char *)zsv_cache_filepath((const unsigned char *)filepath, zsv_cache_type_overwrite, 0, 0);
-  overwrite_opts.src = overwrite_fn;
+  if (err)
+    fprintf(stderr, "Failed to initialize database\n");
 
-  if (!(opts.overwrite.ctx = zsv_overwrite_context_new(&overwrite_opts))) {
-    fprintf(stderr, "Out of memory!\n");
-    err = 1;
-  } else {
-    opts.overwrite.open = zsv_overwrite_open;
-    opts.overwrite.next = zsv_overwrite_next;
-    opts.overwrite.close = zsv_overwrite_context_delete;
-  }
+  if (!err && row && col && val && db)
+    printf("Found row %zu, column %zu, and value %s for overwrite\n", row, col, val);
 
-  if (!err) {
-    printf("Loaded file: %s\n", filepath);
-  }
+  zsv_overwrites_exit(db);
 
   return err;
 }
