@@ -48,8 +48,7 @@ const char *zsv_overwrite_usage_msg[] = {
   "",
   "Notes: overwrite data relating to /path/to/my-data.csv",
   "is kept in the \"overwrites\" table of /path/to/.zsv/data/my-data.csv/overwrite.sqlite3.",
-  NULL
-};
+  NULL};
 
 static int zsv_overwrite_usage() {
   for (size_t i = 0; zsv_overwrite_usage_msg[i]; i++)
@@ -157,7 +156,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return err;
 
   sqlite3 *db = NULL;
-  if(!(db = zsv_overwrites_init(filepath))) {
+  if (!(db = zsv_overwrites_init(filepath))) {
     fprintf(stderr, "Failed to initalize database\n");
   }
 
