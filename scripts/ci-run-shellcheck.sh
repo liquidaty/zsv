@@ -14,39 +14,53 @@ echo "[INF] shellcheck version [$VERSION]"
 
 echo "[INF] Running shellcheck..."
 
-shellcheck --format=tty \
+echo "[INF] Generating tty output..."
+OUTPUT_TTY="$(shellcheck --format=tty \
   configure \
   app/test/*.sh \
   scripts/*.sh \
-  setup-action/scripts/*.bash || true
+  setup-action/scripts/*.bash 2>&1 || true)"
+
+echo "[INF] Generating diff output..."
+OUTPUT_DIFF="$(shellcheck --format=diff \
+  configure \
+  app/test/*.sh \
+  scripts/*.sh \
+  setup-action/scripts/*.bash 2>&1 || true)"
+
+if [ "$OUTPUT_TTY" != "" ] && [ "$OUTPUT_DIFF" != "" ]; then
+  echo "[ERR] Issues found!"
+  echo "[ERR] Dumping tty output..."
+  echo "$OUTPUT_TTY"
+  echo "[ERR] Dumping diff output..."
+  echo "$OUTPUT_DIFF"
+else
+  echo "[INF] No issues found!"
+fi
 
 if [ "$CI" = true ]; then
+  echo "[INF] Generating Markdown step summary..."
   {
-    echo "<details>"
-    echo "<summary>Shellcheck Summary (tty format)</summary>"
-    echo
-    echo '```'
-    shellcheck --format=tty \
-      configure \
-      app/test/*.sh \
-      scripts/*.sh \
-      setup-action/scripts/*.bash \
-      2>&1 || true
-    echo '```'
-    echo "</details>"
-    echo
-    echo "<details>"
-    echo "<summary>Shellcheck Summary (diff format)</summary>"
-    echo
-    echo '```diff'
-    shellcheck --format=diff \
-      configure \
-      app/test/*.sh \
-      scripts/*.sh \
-      setup-action/scripts/*.bash \
-      2>&1 || true
-    echo '```'
-    echo "</details>"
+    if [ "$OUTPUT_TTY" != "" ] && [ "$OUTPUT_DIFF" != "" ]; then
+      echo "<details>"
+      echo "<summary>Shellcheck Summary (tty format)</summary>"
+      echo
+      echo '```'
+      echo "$OUTPUT_TTY"
+      echo '```'
+      echo
+      echo "</details>"
+      echo
+      echo "<details>"
+      echo "<summary>Shellcheck Summary (diff format)</summary>"
+      echo
+      echo '```diff'
+      echo "$OUTPUT_DIFF"
+      echo '```'
+      echo "</details>"
+    else
+      echo "No issues found!"
+    fi
   } >>"$GITHUB_STEP_SUMMARY"
 fi
 

@@ -70,6 +70,10 @@ enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *
 static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *opts,
                                      const char *opts_used);
 
+#ifdef ZSVSHEET_BUILD
+/**
+ * Here we define a custom command for the zsv `sheet` feature
+ */
 zsvsheet_handler_status my_test_command_handler(struct zsvsheet_proc_context *ctx)
 {
   char result_buffer[256] = {0};
@@ -105,6 +109,8 @@ zsvsheet_handler_status my_test_command_handler(struct zsvsheet_proc_context *ct
   return zsvsheet_handler_status_ok;
 }
 
+#endif
+
 /**
  * *Required*. Initialization is called when our extension is loaded. Our
  * initialization routine uses `ext_add_command` to register our commands and
@@ -132,10 +138,12 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
   zsv_cb.ext_add_command(ctx, "count", "print the number of rows", count_main);
   zsv_cb.ext_add_command(ctx, "echo", "print the input data back to stdout", echo_main);
 
+#ifdef ZSVSHEET_BUILD
   int proc_id = zsv_cb.ext_sheet_register_proc("my-test-command", my_test_command_handler);
   if(proc_id < 0)
     return zsv_ext_status_error;
   zsv_cb.ext_sheet_register_proc_key_binding('t', proc_id);
+#endif
   return zsv_ext_status_ok;
 }
 

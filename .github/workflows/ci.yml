@@ -125,7 +125,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt update
-        sudo apt install -y mingw-w64 rpm alien nuget musl-tools tmux
+        sudo apt install -y rpm alien musl-tools tmux
         sudo apt remove -y jq
 
     - name: Set up macOS (AMD64 and ARM64)
@@ -172,23 +172,6 @@ jobs:
         ./scripts/ci-build.sh
         ./scripts/ci-create-debian-package.sh
         ./scripts/ci-create-rpm-package.sh
-
-    - name: Build on Linux (${{ env.AMD64_WINDOWS_MINGW }})
-      if: runner.os == 'Linux'
-      env:
-        PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
-        CC: x86_64-w64-mingw32-gcc
-        MAKE: make
-        RUN_TESTS: false
-        CXX: x86_64-w64-mingw32-g++
-        CPP: x86_64-w64-mingw32-cpp
-        RANLIB: x86_64-w64-mingw32-ranlib
-        AR: x86_64-w64-mingw32-ar
-        NM: x86_64-w64-mingw32-nm
-        WINDRES: x86_64-w64-mingw32-windres
-      run: |
-        ./scripts/ci-build.sh
-        ./scripts/ci-create-nuget-package.sh
 
     - name: Build on macOS (${{ env.AMD64_MACOSX_GCC }})
       if: matrix.os == 'macos-13'
@@ -322,28 +305,6 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.zip)
       if: matrix.os == 'macos-13'
       uses: actions/upload-artifact@v4
@@ -399,17 +360,6 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.tar.gz)
       if: matrix.os == 'macos-13'
       uses: actions/upload-artifact@v4
@@ -432,13 +382,9 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    # --- Upload release artifacts ---
-
     - name: Upload release artifacts
       if: startsWith(github.ref, 'refs/tags/v')
       run: ./scripts/ci-upload-release-artifacts.sh
-
-    # --- Update homebrew tap ---
 
     - name: Update homebrew tap (liquidaty/homebrew-zsv)
       if: ${{ startsWith(github.ref, 'refs/tags/v') && matrix.os == 'macos-13' }}
@@ -464,7 +410,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Build on Linux (${{ env.AMD64_FREEBSD_GCC }})
+    - name: Build (${{ env.AMD64_FREEBSD_GCC }})
       uses: cross-platform-actions/action@v0.25.0
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
@@ -513,7 +459,113 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    # --- Upload release artifacts ---
+    - name: Upload release artifacts
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: ./scripts/ci-upload-release-artifacts.sh
+
+  ci-mingw:
+    needs: [tag, clang-format, cppcheck, shellcheck]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    env:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
+    steps:
+    - name: Set up apt dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y mingw-w64 nuget
+        sudo apt remove -y jq
+
+    - name: Set VCPKG_MINGW_INSTALL_ROOT env var
+      run: echo "VCPKG_MINGW_INSTALL_ROOT=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static" >>"$GITHUB_ENV"
+
+    - name: Cache ncurses
+      uses: actions/cache@v4
+      id: cache-ncurses
+      with:
+        key: ncurses:x64-mingw-static
+        path: ${{ env.VCPKG_MINGW_INSTALL_ROOT }}
+
+    - name: Install ncurses with wide character support using vcpkg
+      if: ${{ steps.cache-ncurses.outputs.cache-hit != 'true' }}
+      run: |
+        NCURSES_PORTFILE="$VCPKG_INSTALLATION_ROOT/ports/ncurses/portfile.cmake"
+        cd "$VCPKG_INSTALLATION_ROOT"
+        if ! grep -- "--enable-widec" "$NCURSES_PORTFILE" >/dev/null; then
+          sed 's|--enable-pc-files|--enable-pc-files --enable-widec|' -i "$NCURSES_PORTFILE"
+        fi
+        ./vcpkg install ncurses:x64-mingw-static
+        tree -h ./installed/x64-mingw-static
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
+      env:
+        PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
+        CC: x86_64-w64-mingw32-gcc
+        MAKE: make
+        RUN_TESTS: false
+        CXX: x86_64-w64-mingw32-g++
+        CPP: x86_64-w64-mingw32-cpp
+        RANLIB: x86_64-w64-mingw32-gcc-ranlib
+        AR: x86_64-w64-mingw32-gcc-ar
+        NM: x86_64-w64-mingw32-gcc-nm
+        WINDRES: x86_64-w64-mingw32-windres
+        CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
+        LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
+      run: |
+        ./scripts/ci-build.sh
+        ./scripts/ci-create-nuget-package.sh
+
+    - name: Prepare build artifacts for upload
+      run: ./scripts/ci-prepare-artifacts-for-upload.sh
+
+    - name: Attest build artifacts for release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: actions/attest-build-provenance@v1
+      with:
+        subject-path: ${{ env.ARTIFACT_DIR }}/*
+
+    - name: Verify attestations of release artifacts
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: ./scripts/ci-verify-attestations.sh
+
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
+      uses: actions/upload-artifact@v4
+      env:
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz)
+      uses: actions/upload-artifact@v4
+      env:
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg)
+      uses: actions/upload-artifact@v4
+      env:
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
 
     - name: Upload release artifacts
       if: startsWith(github.ref, 'refs/tags/v')

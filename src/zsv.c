@@ -402,10 +402,8 @@ enum zsv_status zsv_delete(zsv_parser parser) {
     free(parser->pull.regs);
 
 #ifdef ZSV_EXTRAS
-    if (parser->overwrite.ctx && parser->overwrite.close_ctx)
-      parser->overwrite.close_ctx(parser->overwrite.ctx);
-    if (parser->overwrite.reader && parser->overwrite.close_reader)
-      parser->overwrite.close_reader(parser->overwrite.reader);
+    if (parser->overwrite.close)
+      parser->overwrite.close(parser->overwrite.ctx);
 #endif
 
     free(parser);
