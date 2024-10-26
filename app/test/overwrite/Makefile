@@ -44,14 +44,14 @@ test: test-1 test-2
 
 test-1:
 	@${TEST_INIT}
-	@${PREFIX} ${EXE} dummy.csv remove-all
-	@${CHECK} [ "`${EXE} dummy.csv`" = "" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${EXE} dummy.csv clear 
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 
 test-2:
 	@${TEST_INIT}
-	@${PREFIX} ${EXE} dummy.csv 2 1 ABC
-	@${CHECK} [ "`${EXE} dummy.csv`" = "2 1 ABC" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "2 1 ABC" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
 	@rm -rf ${TMP_DIR}
