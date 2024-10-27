@@ -21,43 +21,41 @@ struct zsvsheet_procedure {
 /* This array both stores procedures and works as a lookup table. */
 static struct zsvsheet_procedure procedure_lookup[MAX_PROCEDURES] = {0};
 
-static inline bool is_valid_proc_id(zsvsheet_proc_id_t id)
-{ return (0 < id && id < MAX_PROCEDURES); }
+static inline bool is_valid_proc_id(zsvsheet_proc_id_t id) {
+  return (0 < id && id < MAX_PROCEDURES);
+}
 
-struct zsvsheet_procedure *zsvsheet_find_procedure(zsvsheet_proc_id_t proc_id)
-{
+struct zsvsheet_procedure *zsvsheet_find_procedure(zsvsheet_proc_id_t proc_id) {
   struct zsvsheet_procedure *proc;
-  if(!is_valid_proc_id(proc_id))
+  if (!is_valid_proc_id(proc_id))
     return NULL;
   proc = &procedure_lookup[proc_id];
-  if(proc->id == ZSVSHEET_PROC_INVALID)
+  if (proc->id == ZSVSHEET_PROC_INVALID)
     return NULL;
   assert(proc->id == proc_id);
   return proc;
 }
 
-static zsvsheet_proc_id_t zsvsheet_generate_proc_id()
-{
-  for(zsvsheet_proc_id_t id = MAX_PROCEDURES - 1; id > ZSVSHEET_PROC_INVALID; --id) {
-    if(!is_valid_proc_id(procedure_lookup[id].id))
+static zsvsheet_proc_id_t zsvsheet_generate_proc_id() {
+  for (zsvsheet_proc_id_t id = MAX_PROCEDURES - 1; id > ZSVSHEET_PROC_INVALID; --id) {
+    if (!is_valid_proc_id(procedure_lookup[id].id))
       return id;
   }
   return ZSVSHEET_PROC_INVALID;
 }
 
-zsvsheet_handler_status zsvsheet_proc_invoke(zsvsheet_proc_id_t proc_id, struct zsvsheet_proc_context *ctx)
-{
+zsvsheet_handler_status zsvsheet_proc_invoke(zsvsheet_proc_id_t proc_id, struct zsvsheet_proc_context *ctx) {
   proc_debug("invoke proc %d\n", proc_id);
   struct zsvsheet_procedure *proc = zsvsheet_find_procedure(proc_id);
-  if(proc) {
+  if (proc) {
     proc_debug("call proc %d handler %p\n", proc->id, proc->handler);
     return proc->handler(ctx);
   }
   return -1;
 }
 
-zsvsheet_handler_status zsvsheet_proc_invoke_from_keypress(zsvsheet_proc_id_t proc_id, int ch, void *subcommand_context)
-{
+zsvsheet_handler_status zsvsheet_proc_invoke_from_keypress(zsvsheet_proc_id_t proc_id, int ch,
+                                                           void *subcommand_context) {
   struct zsvsheet_proc_context context = {
     .proc_id = proc_id,
     .invocation.type = zsvsheet_proc_invocation_type_keypress,
@@ -68,29 +66,23 @@ zsvsheet_handler_status zsvsheet_proc_invoke_from_keypress(zsvsheet_proc_id_t pr
   return zsvsheet_proc_invoke(proc_id, &context);
 }
 
-static zsvsheet_proc_id_t zsvsheet_do_register_proc(struct zsvsheet_procedure *proc)
-{
+static zsvsheet_proc_id_t zsvsheet_do_register_proc(struct zsvsheet_procedure *proc) {
   proc_debug("register proc %d %s\n", proc->id, proc->name ? proc->name : "(unnamed)");
-  if(!is_valid_proc_id(proc->id))
+  if (!is_valid_proc_id(proc->id))
     return -1;
-  if(zsvsheet_find_procedure(proc->id))
+  if (zsvsheet_find_procedure(proc->id))
     return -1;
   procedure_lookup[proc->id] = *proc;
   return proc->id;
 }
 
-zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name, zsvsheet_proc_handler_fn handler)
-{
-  struct zsvsheet_procedure procedure = {
-    .id = id, .name = name, .handler = handler
-  };
+zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name,
+                                                  zsvsheet_proc_handler_fn handler) {
+  struct zsvsheet_procedure procedure = {.id = id, .name = name, .handler = handler};
   return zsvsheet_do_register_proc(&procedure);
 }
 
-zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, zsvsheet_proc_handler_fn handler)
-{
-  struct zsvsheet_procedure procedure = {
-    .id = zsvsheet_generate_proc_id(), .name = name, .handler = handler
-  };
+zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, zsvsheet_proc_handler_fn handler) {
+  struct zsvsheet_procedure procedure = {.id = zsvsheet_generate_proc_id(), .name = name, .handler = handler};
   return zsvsheet_do_register_proc(&procedure);
 }

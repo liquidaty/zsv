@@ -70,14 +70,13 @@ enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *
 static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *opts,
                                      const char *opts_used);
 
-zsvsheet_handler_status my_test_command_handler(struct zsvsheet_proc_context *ctx)
-{
+zsvsheet_handler_status my_test_command_handler(struct zsvsheet_proc_context *ctx) {
   char result_buffer[256] = {0};
   assert(ctx->invocation.type == zsvsheet_proc_invocation_type_keypress);
-  zsv_cb.ext_sheet_prompt(ctx, result_buffer, sizeof(result_buffer),
-      "You pressed %c. Now enter something here", (char)ctx->invocation.u.keypress.ch);
+  zsv_cb.ext_sheet_prompt(ctx, result_buffer, sizeof(result_buffer), "You pressed %c. Now enter something here",
+                          (char)ctx->invocation.u.keypress.ch);
 
-  if(*result_buffer == '\0')
+  if (*result_buffer == '\0')
     return zsvsheet_handler_status_ok;
 
   const char *temp_filename = "/tmp/zsvsheet_extension_example.csv";
@@ -133,7 +132,7 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
   zsv_cb.ext_add_command(ctx, "echo", "print the input data back to stdout", echo_main);
 
   int proc_id = zsv_cb.ext_sheet_register_proc("my-test-command", my_test_command_handler);
-  if(proc_id < 0)
+  if (proc_id < 0)
     return zsv_ext_status_error;
   zsv_cb.ext_sheet_register_proc_key_binding('t', proc_id);
   return zsv_ext_status_ok;

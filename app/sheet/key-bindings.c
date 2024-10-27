@@ -20,23 +20,21 @@
 static int prev_ch = -1;
 static struct zsvsheet_key_binding key_bindings[MAX_KEY_BINDINGS] = {0};
 
-zsvsheet_handler_status zsvsheet_proc_key_binding_handler(struct zsvsheet_key_binding_context *ctx)
-{
+zsvsheet_handler_status zsvsheet_proc_key_binding_handler(struct zsvsheet_key_binding_context *ctx) {
   return zsvsheet_proc_invoke_from_keypress(ctx->binding->proc_id, ctx->ch, ctx->subcommand_context);
 }
 
-int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding)
-{
-  if(zsvsheet_find_key_binding(binding->ch))
+int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding) {
+  if (zsvsheet_find_key_binding(binding->ch))
     return -EEXIST; /* Key bound already */
 
-  if(binding->proc_id != ZSVSHEET_PROC_INVALID && binding->handler == NULL)
+  if (binding->proc_id != ZSVSHEET_PROC_INVALID && binding->handler == NULL)
     binding->handler = zsvsheet_proc_key_binding_handler;
 
   assert(binding->handler);
 
-  for(int i = 0; i < MAX_KEY_BINDINGS; ++i) {
-    if(key_bindings[i].ch == 0) {
+  for (int i = 0; i < MAX_KEY_BINDINGS; ++i) {
+    if (key_bindings[i].ch == 0) {
       key_bindings[i] = *binding;
       return 0;
     }
@@ -45,18 +43,17 @@ int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding)
   return -ENOMEM;
 }
 
-int zsvsheet_register_proc_key_binding(char ch, int proc_id)
-{
+int zsvsheet_register_proc_key_binding(char ch, int proc_id) {
   struct zsvsheet_key_binding binding = {
-    .ch = ch, .proc_id = proc_id,
+    .ch = ch,
+    .proc_id = proc_id,
   };
   return zsvsheet_register_key_binding(&binding);
 }
 
-struct zsvsheet_key_binding *zsvsheet_find_key_binding(int ch)
-{
-  for(int i = 0; i < MAX_KEY_BINDINGS; ++i) {
-    if(key_bindings[i].ch == ch)
+struct zsvsheet_key_binding *zsvsheet_find_key_binding(int ch) {
+  for (int i = 0; i < MAX_KEY_BINDINGS; ++i) {
+    if (key_bindings[i].ch == ch)
       return &key_bindings[i];
   }
   return NULL;
@@ -66,8 +63,7 @@ struct zsvsheet_key_binding *zsvsheet_find_key_binding(int ch)
  * of place here. Alternatively this function could only return the binding
  * and allow user to execute it.
  */
-zsvsheet_handler_status zsvsheet_key_press(int ch, void *subcommand_context)
-{
+zsvsheet_handler_status zsvsheet_key_press(int ch, void *subcommand_context) {
   int ret = zsvsheet_handler_status_error;
   struct zsvsheet_key_binding *binding;
   struct zsvsheet_key_binding_context ctx;
@@ -75,7 +71,7 @@ zsvsheet_handler_status zsvsheet_key_press(int ch, void *subcommand_context)
   keyb_debug("key press %d prev %d\n", ch, prev_ch);
 
   binding = zsvsheet_find_key_binding(ch);
-  if(!binding)
+  if (!binding)
     goto not_found;
 
   ctx.ch = ch;
@@ -93,9 +89,8 @@ not_found:
  * Specific key bindings
  */
 
-void zsvsheet_register_builtin_key_bindings(struct zsvsheet_key_binding *arr)
-{
-  for(struct zsvsheet_key_binding *binding = arr; binding->ch != -1; ++binding)
+void zsvsheet_register_builtin_key_bindings(struct zsvsheet_key_binding *arr) {
+  for (struct zsvsheet_key_binding *binding = arr; binding->ch != -1; ++binding)
     zsvsheet_register_key_binding(binding);
 }
 
@@ -103,16 +98,14 @@ void zsvsheet_register_builtin_key_bindings(struct zsvsheet_key_binding *arr)
  * VIM key bindings
  */
 
-zsvsheet_handler_status zsvsheet_vim_g_key_binding_dmux_handler(struct zsvsheet_key_binding_context *ctx)
-{
+zsvsheet_handler_status zsvsheet_vim_g_key_binding_dmux_handler(struct zsvsheet_key_binding_context *ctx) {
   /* Double g takes you to the top of the file in vim. We need to wait for the
    * second g in a row to execute the procedure */
   assert(ctx->ch == 'g');
-  if(ctx->ch == ctx->prev_ch)
+  if (ctx->ch == ctx->prev_ch)
     return zsvsheet_proc_invoke_from_keypress(zsvsheet_builtin_proc_move_top, ctx->ch, ctx->subcommand_context);
   return zsvsheet_handler_status_ok;
 }
-
 
 /* clang-format off */
 struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
@@ -163,8 +156,7 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
 };
 /* clang-format on */
 
-void zsvsheet_register_vim_key_bindings(void)
-{
+void zsvsheet_register_vim_key_bindings(void) {
   zsvsheet_register_builtin_key_bindings(zsvsheet_vim_key_bindings);
 }
 
@@ -172,22 +164,19 @@ void zsvsheet_register_vim_key_bindings(void)
  * EMACS key bindings
  */
 
-zsvsheet_handler_status zsvsheet_emacs_Cx_key_binding_dmux_handler(struct zsvsheet_key_binding_context *ctx)
-{
-  if(ctx->ch == ZSVSHEET_CTRL('c'))
+zsvsheet_handler_status zsvsheet_emacs_Cx_key_binding_dmux_handler(struct zsvsheet_key_binding_context *ctx) {
+  if (ctx->ch == ZSVSHEET_CTRL('c'))
     return zsvsheet_proc_invoke_from_keypress(zsvsheet_builtin_proc_quit, ctx->ch, ctx->subcommand_context);
   return zsvsheet_handler_status_ok;
 }
 
-zsvsheet_handler_status zsvsheet_emacs_Cf_key_binding_dmux_handler(struct zsvsheet_key_binding_context *ctx)
-{
-  if(ctx->prev_ch == ZSVSHEET_CTRL('x') && ctx->ch == ZSVSHEET_CTRL('f'))
+zsvsheet_handler_status zsvsheet_emacs_Cf_key_binding_dmux_handler(struct zsvsheet_key_binding_context *ctx) {
+  if (ctx->prev_ch == ZSVSHEET_CTRL('x') && ctx->ch == ZSVSHEET_CTRL('f'))
     return zsvsheet_proc_invoke_from_keypress(zsvsheet_builtin_proc_open_file, ctx->ch, ctx->subcommand_context);
   return zsvsheet_handler_status_ok;
 }
 
-zsvsheet_handler_status zsvsheet_emacs_Cs_key_binding_dmux_handler(struct zsvsheet_key_binding_context *ctx)
-{
+zsvsheet_handler_status zsvsheet_emacs_Cs_key_binding_dmux_handler(struct zsvsheet_key_binding_context *ctx) {
   return zsvsheet_handler_status_ok;
 }
 
@@ -222,11 +211,6 @@ struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
 };
 /* clang-format on */
 
-void zsvsheet_register_emacs_key_bindings(void)
-{
+void zsvsheet_register_emacs_key_bindings(void) {
   zsvsheet_register_builtin_key_bindings(zsvsheet_emacs_key_bindings);
 }
-
-
-
-

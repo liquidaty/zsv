@@ -157,7 +157,8 @@ struct zsv_ext_callbacks {
    *       of the next should be zsvsheet_proc_id_t but the includes in this
    *       projects are quite messy at this moment.
    */
-  int (*ext_sheet_register_proc)(const char *name, zsvsheet_handler_status (*handler)(struct zsvsheet_proc_context *ctx));
+  int (*ext_sheet_register_proc)(const char *name,
+                                 zsvsheet_handler_status (*handler)(struct zsvsheet_proc_context *ctx));
 
   /* Use this one if you just need to call a procedure */
   void (*ext_sheet_register_proc_key_binding)(char ch, int proc_id);
@@ -168,8 +169,8 @@ struct zsv_ext_callbacks {
    * @param  s text to set the subcommand prompt to. must be < 256 bytes in length
    * returns zsvsheet_status_ok on success
    */
-  zsvsheet_handler_status (*ext_sheet_prompt)(struct zsvsheet_proc_context *ctx, 
-      char *buffer, size_t bufsz, const char *fmt, ...);
+  zsvsheet_handler_status (*ext_sheet_prompt)(struct zsvsheet_proc_context *ctx, char *buffer, size_t bufsz,
+                                              const char *fmt, ...);
 
   /*** Custom command handling ***/
   /**

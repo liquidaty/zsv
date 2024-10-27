@@ -39,7 +39,7 @@ zsvsheet_handler_status zsvsheet_subcommand_prompt(zsvsheet_subcommand_handler_c
  * Set a status message
  */
 zsvsheet_handler_status zsvsheet_handler_set_status(struct zsvsheet_proc_context *ctx, const char *fmt, ...) {
-  struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state*)ctx->subcommand_context;
+  struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state *)ctx->subcommand_context;
   va_list argv;
   va_start(argv, fmt);
   vsnprintf(zsvsheet_status_text, sizeof(zsvsheet_status_text), fmt, argv);
@@ -59,9 +59,8 @@ int zsvsheet_handler_key(zsvsheet_subcommand_handler_context_t ctx) {
 /**
  * Get the current buffer
  */
-zsvsheet_handler_buffer_t zsvsheet_handler_buffer_current(struct zsvsheet_proc_context *ctx)
-{
-  struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state*)ctx->subcommand_context;
+zsvsheet_handler_buffer_t zsvsheet_handler_buffer_current(struct zsvsheet_proc_context *ctx) {
+  struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state *)ctx->subcommand_context;
   return state && state->display_info.ui_buffers.current ? *state->display_info.ui_buffers.current : NULL;
 }
 

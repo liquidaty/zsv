@@ -36,7 +36,8 @@ struct cli_config {
 
 static struct zsv_ext *zsv_ext_new(const char *dl_name, const char *id, char verbose);
 
-zsvsheet_handler_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, char *buffer, size_t bufsz, const char *fmt, ...);
+zsvsheet_handler_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, char *buffer, size_t bufsz,
+                                            const char *fmt, ...);
 
 #include "cli_ini.c"
 
@@ -194,7 +195,7 @@ static void *ext_get_context(zsv_execution_context ctx) {
   return d->custom_context;
 }
 
-static void ext_set_state(zsv_execution_context ctx, void* state) {
+static void ext_set_state(zsv_execution_context ctx, void *state) {
   struct zsv_execution_data *d = ctx;
   d->state = state;
 }
