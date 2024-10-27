@@ -25,6 +25,7 @@ Fine tuning of the installation directories:
 
 Optional features:
   --try-avx512            use avx512 instructions, if available (not recommended)
+  --enable-sheet          compile with 'sheet' feature (requires ncurses) [yes]
   --enable-small-lut      build with smaller lookup tables [no]
   --enable-debug-stderr   build with debug msgs in stderr [no]
   --enable-pie            build with position independent executables [auto]
@@ -264,6 +265,7 @@ DOCDIR='$(PREFIX)/share/doc'
 MANDIR='$(PREFIX)/share/man'
 
 MINIMAL=no
+TRY_SHEET=auto
 
 help=yes
 usesmalllut=no
@@ -301,6 +303,11 @@ for arg ; do
         --disable-jq|--enable-jq=no) usejq=no ;;
         --enable-pic=auto) usepic=auto ;;
         --disable-pic|--enable-pic=no) usepic=no ;;
+
+        --enable-sheet|--enable-sheet=yes) TRY_SHEET=yes;;
+        --enable-sheet=auto) TRY_SHEET=auto;;
+        --disable-sheet|--enable-sheet=no) TRY_SHEET=no;;
+        
         --enable-*|--disable-*|--with-*|--without-*|--*dir=*|--build=*) ;;
         -* ) echo "$0: unknown option $arg" ;;
         CC=*) CC=${arg#*=} ;;
@@ -449,6 +456,36 @@ tryflag CFLAGS_VECTORIZE_OPTIMIZED -fopt-info-vec-optimized
 tryflag CFLAGS_VECTORIZE_MISSED -fopt-info-vec-missed
 tryflag CFLAGS_VECTORIZE_ALL -fopt-info-vec-all
 tryflag CFLAGS_OPENMP -fopenmp
+
+if [ "$TRY_SHEET" != "no" ]; then
+    if tryldflag LDFLAGS_NCURSESW -lncursesw -L"$PREFIX"/lib ; then
+        LDFLAGS_NCURSES=-lncursesw
+        NCLIB=ncursesw
+        if [ "$NCURSES_DYNAMIC" = "" ] ; then
+            CFLAGS_NCURSES="-DHAVE_NCURSESW -DNCURSES_STATIC"
+        else
+            CFLAGS_NCURSES="-DHAVE_NCURSESW"
+        fi
+    fi
+    if tryldflag LDFLAGS_NCURSES -lncurses -L"$PREFIX"/lib ; then
+        NCLIB=ncurses
+        if [ "$NCURSES_DYNAMIC" = "" ] ; then
+            CFLAGS_NCURSES="$CFLAGS_NCURSES -DHAVE_NCURSES -DNCURSES_STATIC"
+        else
+            CFLAGS_NCURSES="$CFLAGS_NCURSES -DHAVE_NCURSES"
+        fi
+    fi
+    ZSVSHEET_BUILD=1
+
+    if [ "$TRY_SHEET" = "yes" ] ; then
+        echo "Error: could not find either ncurses or ncursesw library; cannot build 'sheet' feature"
+        exit 1
+    fi
+    if [ "$LDFLAGS_NCURSES" = "" ] ; then
+        echo "Warning: could not find either ncurses or ncursesw library; cannot build 'sheet' feature"
+        ZSVSHEET_BUILD=0
+    fi
+fi
 
 if test "$usepie" = "yes" ; then
     tryflag CFLAGS_PIE -fpie || tryflag CFLAGS_PIE -fPIE
@@ -629,6 +666,8 @@ CFLAGS_VECTORIZE_ALL = $CFLAGS_VECTORIZE_ALL
 CFLAGS_OPENMP = $CFLAGS_OPENMP
 
 ZSV_EXTRAS = $ZSV_EXTRAS
+
+ZSVSHEET_BUILD = $ZSVSHEET_BUILD
 
 $NO_HAVE
 $USE_LIBS

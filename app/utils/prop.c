@@ -6,6 +6,7 @@
 #include <zsv/utils/prop.h>
 #include <zsv/utils/cache.h>
 #include <zsv/utils/file.h>
+#include <zsv/utils/overwrite.h>
 #include <yajl_helper/yajl_helper.h>
 
 #ifndef ZSVTLS
@@ -38,12 +39,12 @@ static struct zsv_prop_handler *zsv_with_default_custom_prop_handler(char mode) 
 }
 
 ZSV_EXPORT
-void zsv_clear_default_custom_prop_handler() {
+void zsv_clear_default_custom_prop_handler(void) {
   zsv_with_default_custom_prop_handler('c');
 }
 
 ZSV_EXPORT
-struct zsv_prop_handler zsv_get_default_custom_prop_handler() {
+struct zsv_prop_handler zsv_get_default_custom_prop_handler(void) {
   return *zsv_with_default_custom_prop_handler('g');
 }
 
@@ -54,8 +55,6 @@ void zsv_set_default_custom_prop_handler(struct zsv_prop_handler custom_prop_han
 
 // TO DO: import these through a proper header
 static int zsv_properties_parse_process_value(yajl_helper_t yh, struct json_value *value);
-unsigned char *zsv_cache_filepath(const unsigned char *data_filepath, enum zsv_cache_type type, char create_dir,
-                                  char temp_file);
 
 struct zsv_properties_parser {
   yajl_helper_t yh;
@@ -262,6 +261,8 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts, struct zsv_prop_h
     if (fp.stat != zsv_status_ok)
       return fp.stat;
   }
+  if (opts->overwrite_auto)
+    zsv_overwrite_auto(opts, input_path);
   if ((*handle_out = zsv_new(opts)))
     return zsv_status_ok;
   return zsv_status_memory;

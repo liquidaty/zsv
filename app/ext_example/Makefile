@@ -102,7 +102,7 @@ CLI=${BUILD_DIR}/bin/cli
 RUN_CLI=ZSV_CONFIG_DIR=/tmp ${CLI}
 
 ${BUILD_DIR}/bin/cli:
-	(cd .. && make CC=${CC} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} ${BUILD_DIR}/bin/cli)
+	make -C .. build-cli CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 ${BUILD_DIR}/objs/utils/%.o:
 	(cd .. && make CONFIGFILE=${CONFIGFILEPATH} CC=${CC} DEBUG=${DEBUG} $@ )
