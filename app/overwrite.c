@@ -24,6 +24,14 @@
 #define ZSV_COMMAND overwrite
 #include "zsv_command.h"
 
+struct zsv_overwrite_ctx {
+  unsigned const char *filepath;
+
+  struct zsv_overwrite_data overwrite;
+
+  unsigned char list: 1;
+};
+
 const char *zsv_overwrite_usage_msg[] = {
     APPNAME " - Manage overwrites associated with a CSV file",
     "",
@@ -119,7 +127,7 @@ static int zsv_overwrites_exit(sqlite3 *db) {
   return 0;
 }
 
-static int show_all_overwrites(const unsigned char *filepath) {
+static int show_all_overwrites(struct zsv_overwrite_ctx *data) {
   // TODO: read from overwrites sql file and display all overwrites
   printf("Showing all overwrites is not implemented\n");
 
@@ -130,46 +138,49 @@ static int show_all_overwrites(const unsigned char *filepath) {
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
                                struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
   int err = 0;
-  if (argc < 2 || (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))) {
-    err = 1;
+  if (argc < 3 || (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))) {
     zsv_overwrite_usage();
     return err;
   }
 
+  struct zsv_overwrite_ctx data = {0};
+
   const unsigned char *filepath = (const unsigned char *)argv[1];
+  data.filepath = filepath;
 
   size_t row = 0;
   size_t col = 0;
   const char *val = NULL;
 
-  if (argc == 2)
-    return show_all_overwrites(filepath);
-
-  for (int i = 1; !err && i < argc; i++) {
+  for (int i = 2; !err && i < argc; i++) {
     const char *opt = argv[i];
     if (!strcmp(opt, "-f") || !strcmp(opt, "--force")) {
       err = 1;
       fprintf(stderr, "Error: %s is not implemented\n", opt);
-    } else if (!strcmp(opt, "--author")) {
+    } else if (!strcmp(opt, "--old-value")) {
       fprintf(stderr, "Error: %s is not implemented\n", opt);
       err = 1;
-    } else if (!strcmp(opt, "--reason")) {
-      fprintf(stderr, "Error: %s is not implemented\n", opt);
-      err = 1;
-    } else if (!strcmp(opt, "--timestamp")) {
-      fprintf(stderr, "Error: %s is not implemented\n", opt);
-      err = 1;
-    } else {
-      if (*opt == '-') {
+    } else if(!strcmp(opt, "list")) {
+      data.list = 1;
+    } else if(!strcmp(opt, "add")) {
+      if(argc - i > 3) {
+        row = atoi(argv[++i]);
+        col = atoi(argv[++i]);
+        val = strdup(argv[++i]);
+        if(!row || !col || !val) {
+          fprintf(stderr, "Expected row, column, and value\n");
+          err = 1;
+        }
+      } else {
+        fprintf(stderr, "Expected row, column, and value\n");
         err = 1;
-        fprintf(stderr, "Unrecognized option: %s\n", opt);
       }
-      if (!row)
-        row = atoi(opt);
-      else if (!col)
-        col = atoi(opt);
+    } else {
+      err = 1;
+      if (*opt == '-')
+        fprintf(stderr, "Unrecognized option: %s\n", opt);
       else
-        val = strdup(opt);
+        fprintf(stderr, "Unrecognized command or argument: %s\n", opt);
     }
   }
 
@@ -177,12 +188,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return err;
 
   sqlite3 *db = NULL;
-  if (!(db = zsv_overwrites_init(filepath))) {
+  if (!(db = zsv_overwrites_init(data.filepath))) {
     fprintf(stderr, "Failed to initalize database\n");
   }
 
-  if (err)
-    fprintf(stderr, "Failed to initialize database\n");
+  if(data.list)
+    show_all_overwrites(&data);
 
   if (!err && row && col && val && db)
     printf("Found row %zu, column %zu, and value %s for overwrite\n", row, col, val);
