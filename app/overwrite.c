@@ -26,56 +26,58 @@
 
 struct zsv_overwrite_ctx {
   unsigned const char *filepath;
+  sqlite3 *db;
 
   struct zsv_overwrite_data overwrite;
 
-  unsigned char list: 1;
+  unsigned char list : 1;
+  unsigned char clear : 1;
+  unsigned char add : 1;
 };
 
 const char *zsv_overwrite_usage_msg[] = {
-    APPNAME " - Manage overwrites associated with a CSV file",
-    "",
-    "Usage:",
-    "  "  APPNAME " <file> <command> [arguments] [options]",
-    "",
-    "Commands (where <cell> can be <row>-<col> or an Excel-style address):",
-    "  list                   : Display all saved overwrite entries",
-    "  add <cell> <value>     : Add an overwrite entry",
-    "                           Example 1: overwrite the first column of the first",
-    "                           non-header row",
-    "                             overwrite add A1 \"new value\"",
-    "                               - or -",
-    "                             overwrite add 1-1 \"new value\"",
-    "                           Example 2: change the header in the first column",
-    "                           to \"ID #\"",
-    "                             overwrite add 0-1 \"ID #\"",
-    "  remove <cell>          : Remove an overwrite entry",
-    "  clear                  : Remove any / all overwrites",
-    "  bulk-add <datafile>    : Bulk add overwrite entries from a CSV or JSON file",
-    "  bulk-remove <datafile> : Bulk remove overwrite entries from a CSV or JSON file",
-    "",
-    "Options:",
-    "  -h,--help           : Show this help message",
-    "  --old-value <value> : For `add` or `remove`, only proceed if the old value",
-    "                        matches the given value",
-    "  --force             : For `add`, proceed even if an overwrite for the specified",
-    "                        cell already exists",
-    "                        For `remove`, exit without error even if no overwrite for",
-    "                        the specified cell already exists",
-    "",
-    "Description:",
-    "  The  `overwrite`  utility  allows  you to manage a list of \"overwrites\" associated",
-    "  with a given CSV input file. Each overwrite entry is a tuple consisting  of  row,",
-    "  column,  original  value, and new value, along with optional timestamp and author",
-    "  metadata.",
-    "",
-    "  Overwrite data for a given input file `/path/to/my-data.csv` is stored in the \"over‐",
-    "  writes\"  table  of  `/path/to/.zsv/data/my-data.csv/overwrite.sqlite3`.",
-    "",
-    "  For bulk operations, the data file must be a CSV with \"row\", \"col\" and \"value\" columns",
-    "  and may optionally include \"old value\", \"timestamp\" and/or \"author\"",
-    NULL
-};
+  APPNAME " - Manage overwrites associated with a CSV file",
+  "",
+  "Usage:",
+  "  " APPNAME " <file> <command> [arguments] [options]",
+  "",
+  "Commands (where <cell> can be <row>-<col> or an Excel-style address):",
+  "  list                   : Display all saved overwrite entries",
+  "  add <cell> <value>     : Add an overwrite entry",
+  "                           Example 1: overwrite the first column of the first",
+  "                           non-header row",
+  "                             overwrite add A1 \"new value\"",
+  "                               - or -",
+  "                             overwrite add 1-1 \"new value\"",
+  "                           Example 2: change the header in the first column",
+  "                           to \"ID #\"",
+  "                             overwrite add 0-1 \"ID #\"",
+  "  remove <cell>          : Remove an overwrite entry",
+  "  clear                  : Remove any / all overwrites",
+  "  bulk-add <datafile>    : Bulk add overwrite entries from a CSV or JSON file",
+  "  bulk-remove <datafile> : Bulk remove overwrite entries from a CSV or JSON file",
+  "",
+  "Options:",
+  "  -h,--help           : Show this help message",
+  "  --old-value <value> : For `add` or `remove`, only proceed if the old value",
+  "                        matches the given value",
+  "  --force             : For `add`, proceed even if an overwrite for the specified",
+  "                        cell already exists",
+  "                        For `remove`, exit without error even if no overwrite for",
+  "                        the specified cell already exists",
+  "",
+  "Description:",
+  "  The  `overwrite`  utility  allows  you to manage a list of \"overwrites\" associated",
+  "  with a given CSV input file. Each overwrite entry is a tuple consisting  of  row,",
+  "  column,  original  value, and new value, along with optional timestamp and author",
+  "  metadata.",
+  "",
+  "  Overwrite data for a given input file `/path/to/my-data.csv` is stored in the \"over‐",
+  "  writes\"  table  of  `/path/to/.zsv/data/my-data.csv/overwrite.sqlite3`.",
+  "",
+  "  For bulk operations, the data file must be a CSV with \"row\", \"col\" and \"value\" columns",
+  "  and may optionally include \"old value\", \"timestamp\" and/or \"author\"",
+  NULL};
 
 static int zsv_overwrite_usage() {
   for (size_t i = 0; zsv_overwrite_usage_msg[i]; i++)
@@ -83,13 +85,15 @@ static int zsv_overwrite_usage() {
   return 1;
 }
 
-static sqlite3 *zsv_overwrites_init(const unsigned char *filepath) {
+static int zsv_overwrites_init(struct zsv_overwrite_ctx *ctx) {
+  const unsigned char *filepath = ctx->filepath;
   const char *overwrites_fn = (const char *)zsv_cache_filepath(filepath, zsv_cache_type_overwrite, 0, 0);
 
   int err = 0;
   if (zsv_mkdirs(overwrites_fn, 1) && !zsv_file_readable(overwrites_fn, &err, NULL)) {
+    err = 1;
     perror(overwrites_fn);
-    return NULL;
+    return err;
   }
 
   sqlite3 *db = NULL;
@@ -98,31 +102,55 @@ static sqlite3 *zsv_overwrites_init(const unsigned char *filepath) {
 
   if ((ret = sqlite3_initialize()) != SQLITE_OK) {
     fprintf(stderr, "Failed to initialize library: %d\n", ret);
-    return NULL;
+    return err;
   }
 
-  if((ret = sqlite3_open_v2(overwrites_fn, &db, SQLITE_OPEN_READONLY, NULL)) != SQLITE_OK) {
-    if((ret = sqlite3_open_v2(overwrites_fn, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) != SQLITE_OK) {
+  if ((ret = sqlite3_open_v2(overwrites_fn, &ctx->db, SQLITE_OPEN_READONLY, NULL)) != SQLITE_OK || ctx->add ||
+      ctx->clear) {
+    sqlite3_close(ctx->db);
+    if ((ret = sqlite3_open_v2(overwrites_fn, &ctx->db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) !=
+        SQLITE_OK) {
+      err = 1;
       fprintf(stderr, "Failed to open conn: %d, %s\n", ret, sqlite3_errmsg(db));
-      return NULL;
+      return err;
     }
 
     if ((ret = sqlite3_prepare_v2(db, "CREATE TABLE IF NOT EXISTS overwrites ( row integer, col integer, val string );",
                                   -1, &query, NULL)) == SQLITE_OK) {
       if ((ret = sqlite3_step(query)) != SQLITE_DONE) {
+        err = 1;
         fprintf(stderr, "Failed to step: %d, %s\n", ret, sqlite3_errmsg(db));
-        return NULL;
+        return err;
       }
     }
     if (query)
       sqlite3_finalize(query);
   }
 
-  return db;
+  if (!ctx->db)
+    err = 1;
+
+  return err;
 }
 
-static int zsv_overwrites_exit(sqlite3 *db) {
-  sqlite3_close(db);
+static int zsv_overwrites_clear(struct zsv_overwrite_ctx *ctx) {
+  int err = 0;
+  sqlite3_stmt *query = NULL;
+  int ret;
+  if ((ret = sqlite3_prepare_v2(ctx->db, "DELETE * FROM overwrites", -1, &query, NULL)) == SQLITE_OK) {
+    if ((ret = sqlite3_step(query)) != SQLITE_DONE) {
+      err = 1;
+      fprintf(stderr, "Failed to step: %d, %s\n", ret, sqlite3_errmsg(ctx->db));
+      return err;
+    }
+  }
+  if (query)
+    sqlite3_finalize(query);
+  return err;
+}
+
+static int zsv_overwrites_exit(struct zsv_overwrite_ctx *ctx) {
+  sqlite3_close(ctx->db);
   sqlite3_shutdown();
   return 0;
 }
@@ -143,10 +171,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return err;
   }
 
-  struct zsv_overwrite_ctx data = {0};
+  struct zsv_overwrite_ctx ctx = {0};
 
   const unsigned char *filepath = (const unsigned char *)argv[1];
-  data.filepath = filepath;
+  ctx.filepath = filepath;
 
   size_t row = 0;
   size_t col = 0;
@@ -160,14 +188,17 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if (!strcmp(opt, "--old-value")) {
       fprintf(stderr, "Error: %s is not implemented\n", opt);
       err = 1;
-    } else if(!strcmp(opt, "list")) {
-      data.list = 1;
-    } else if(!strcmp(opt, "add")) {
-      if(argc - i > 3) {
+    } else if (!strcmp(opt, "list")) {
+      ctx.list = 1;
+    } else if (!strcmp(opt, "clear")) {
+      ctx.clear = 1;
+    } else if (!strcmp(opt, "add")) {
+      if (argc - i > 3) {
+        ctx.add = 1;
         row = atoi(argv[++i]);
         col = atoi(argv[++i]);
         val = strdup(argv[++i]);
-        if(!row || !col || !val) {
+        if (!row || !col || !val) {
           fprintf(stderr, "Expected row, column, and value\n");
           err = 1;
         }
@@ -187,18 +218,19 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   if (err)
     return err;
 
-  sqlite3 *db = NULL;
-  if (!(db = zsv_overwrites_init(data.filepath))) {
+  if (err = zsv_overwrites_init(&ctx)) {
     fprintf(stderr, "Failed to initalize database\n");
   }
 
-  if(data.list)
-    show_all_overwrites(&data);
+  if (ctx.list)
+    show_all_overwrites(&ctx);
+  else if (ctx.clear)
+    zsv_overwrites_clear(&ctx);
 
-  if (!err && row && col && val && db)
+  if (!err && row && col && val && ctx.db)
     printf("Found row %zu, column %zu, and value %s for overwrite\n", row, col, val);
 
-  zsv_overwrites_exit(db);
+  zsv_overwrites_exit(&ctx);
 
   return err;
 }
