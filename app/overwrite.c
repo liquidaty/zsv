@@ -79,7 +79,7 @@ static sqlite3 *zsv_overwrites_init(const unsigned char *filepath) {
   const char *overwrites_fn = (const char *)zsv_cache_filepath(filepath, zsv_cache_type_overwrite, 0, 0);
 
   int err = 0;
-  if (!zsv_file_readable(overwrites_fn, &err, NULL) && zsv_mkdirs(overwrites_fn, 1)) {
+  if (zsv_mkdirs(overwrites_fn, 1) && !zsv_file_readable(overwrites_fn, &err, NULL)) {
     perror(overwrites_fn);
     return NULL;
   }
@@ -93,20 +93,22 @@ static sqlite3 *zsv_overwrites_init(const unsigned char *filepath) {
     return NULL;
   }
 
-  if ((ret = sqlite3_open_v2(overwrites_fn, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) != SQLITE_OK) {
-    fprintf(stderr, "Failed to open conn: %d, %s\n", ret, sqlite3_errmsg(db));
-    return NULL;
-  }
-
-  if ((ret = sqlite3_prepare_v2(db, "CREATE TABLE IF NOT EXISTS overwrites ( row integer, col integer, val string );",
-                                -1, &query, NULL)) == SQLITE_OK) {
-    if ((ret = sqlite3_step(query)) != SQLITE_DONE) {
-      fprintf(stderr, "Failed to step: %d, %s\n", ret, sqlite3_errmsg(db));
+  if((ret = sqlite3_open_v2(overwrites_fn, &db, SQLITE_OPEN_READONLY, NULL)) != SQLITE_OK) {
+    if((ret = sqlite3_open_v2(overwrites_fn, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL)) != SQLITE_OK) {
+      fprintf(stderr, "Failed to open conn: %d, %s\n", ret, sqlite3_errmsg(db));
       return NULL;
     }
+
+    if ((ret = sqlite3_prepare_v2(db, "CREATE TABLE IF NOT EXISTS overwrites ( row integer, col integer, val string );",
+                                  -1, &query, NULL)) == SQLITE_OK) {
+      if ((ret = sqlite3_step(query)) != SQLITE_DONE) {
+        fprintf(stderr, "Failed to step: %d, %s\n", ret, sqlite3_errmsg(db));
+        return NULL;
+      }
+    }
+    if (query)
+      sqlite3_finalize(query);
   }
-  if (query)
-    sqlite3_finalize(query);
 
   return db;
 }
