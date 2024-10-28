@@ -25,6 +25,8 @@
 #include "sheet/sheet_internal.h"
 #include "sheet/handlers_internal.h"
 #endif
+#include "sheet/procedure.h"
+#include "sheet/key-bindings.h"
 
 struct cli_config {
   struct zsv_ext *extensions;
@@ -34,6 +36,9 @@ struct cli_config {
 };
 
 static struct zsv_ext *zsv_ext_new(const char *dl_name, const char *id, char verbose);
+
+zsvsheet_handler_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, char *buffer, size_t bufsz,
+                                            const char *fmt, ...);
 
 #include "cli_ini.c"
 
@@ -141,6 +146,8 @@ struct zsv_execution_data {
   const char **argv;
   char opts_used[ZSV_OPTS_SIZE_MAX];
   void *custom_context; // user-defined
+  void *state;          // program state relevant to the handler, e.g. cursor
+                        // position in zsv sheet.
 };
 
 static const char *ext_opts_used(zsv_execution_context ctx) {
@@ -187,6 +194,16 @@ static void ext_set_context(zsv_execution_context ctx, void *custom_context) {
 static void *ext_get_context(zsv_execution_context ctx) {
   struct zsv_execution_data *d = ctx;
   return d->custom_context;
+}
+
+static void ext_set_state(zsv_execution_context ctx, void *state) {
+  struct zsv_execution_data *d = ctx;
+  d->state = state;
+}
+
+static void *ext_get_state(zsv_execution_context ctx) {
+  struct zsv_execution_data *d = ctx;
+  return d->state;
 }
 
 static void ext_set_parser(zsv_execution_context ctx, zsv_parser parser) {
@@ -367,13 +384,14 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
 
 #ifdef ZSVSHEET_BUILD
     e->ext_sheet_handler_key = zsvsheet_handler_key;
-    e->ext_sheet_subcommand_prompt = zsvsheet_subcommand_prompt;
+    e->ext_sheet_prompt = zsvsheet_ext_prompt;
     e->ext_sheet_handler_set_status = zsvsheet_handler_set_status;
     e->ext_sheet_handler_buffer_current = zsvsheet_handler_buffer_current;
     e->ext_sheet_handler_buffer_prior = zsvsheet_handler_buffer_prior;
     e->ext_sheet_handler_buffer_filename = zsvsheet_handler_buffer_filename;
     e->ext_sheet_handler_open_file = zsvsheet_handler_open_file;
-    e->ext_sheet_register_command = zsvsheet_register_command;
+    e->ext_sheet_register_proc = zsvsheet_register_proc;
+    e->ext_sheet_register_proc_key_binding = zsvsheet_register_proc_key_binding;
 #endif
   }
   return e;
