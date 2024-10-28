@@ -703,7 +703,7 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
         (scanner->row.cells = calloc(scanner->row.allocated, sizeof(*scanner->row.cells)))) {
 #ifdef ZSV_EXTRAS
       // initialize overwrites
-      if (scanner->opts.overwrite.open) {
+      if (scanner->opts.overwrite.open && !scanner->opts.overwrite.cancel) {
         if (scanner->opts.overwrite.open(scanner->opts.overwrite.ctx) == zsv_status_ok) {
           scanner->overwrite.odata.have = 1;
           scanner->overwrite.next = scanner->opts.overwrite.next;

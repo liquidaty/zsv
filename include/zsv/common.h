@@ -107,6 +107,7 @@ struct zsv_opt_overwrite {
   enum zsv_status (*open)(void *ctx);
   enum zsv_status (*next)(void *ctx, struct zsv_overwrite_data *odata);
   enum zsv_status (*close)(void *ctx);
+  char cancel; // explicitly cancel application of overwrites
 };
 
 #endif
