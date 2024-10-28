@@ -115,7 +115,7 @@ static int zsv_overwrites_init(struct zsv_overwrite_ctx *ctx) {
     }
 
     if ((ret = sqlite3_prepare_v2(ctx->db,
-                                  "CREATE TABLE IF NOT EXISTS overwrites ( row integer, col integer, val string );", -1,
+                                  "CREATE TABLE IF NOT EXISTS overwrites ( row integer, col integer, orig_val string, val string );", -1,
                                   &query, NULL)) == SQLITE_OK) {
       if ((ret = sqlite3_step(query)) != SQLITE_DONE) {
         err = 1;
@@ -159,7 +159,7 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx) {
   int err = 0;
   sqlite3_stmt *query = NULL;
   int ret;
-  if ((ret = sqlite3_prepare_v2(ctx->db, "INSERT INTO overwrites (row, col, val) VALUES (?, ?, ?)", -1, &query,
+  if ((ret = sqlite3_prepare_v2(ctx->db, "INSERT INTO overwrites (row, col, orig_val, val) VALUES (?, ?, ?, ?)", -1, &query,
                                 NULL)) == SQLITE_OK) {
     sqlite3_bind_int(query, 1, (int)ctx->overwrite.row_ix);
     sqlite3_bind_int(query, 2, (int)ctx->overwrite.col_ix);
@@ -177,8 +177,6 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx) {
   if (query)
     sqlite3_finalize(query);
 
-  printf("Added %s as an overwrite in row %zu and column %zu\n", ctx->overwrite.val.str, ctx->overwrite.row_ix,
-         ctx->overwrite.col_ix);
   return err;
 }
 
