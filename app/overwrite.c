@@ -31,19 +31,6 @@ struct zsv_overwrite_args {
   unsigned char add : 1;
 };
 
-/*
-struct zsv_overwrite_ctx {
-  unsigned const char *filepath;
-  sqlite3 *db;
-
-  struct zsv_overwrite_data overwrite;
-
-  unsigned char list : 1;
-  unsigned char clear : 1;
-  unsigned char add : 1;
-};
-*/
-
 const char *zsv_overwrite_usage_msg[] = {
   APPNAME " - Manage overwrites associated with a CSV file",
   "",
