@@ -97,7 +97,7 @@ static int zsv_overwrite_usage() {
 static int zsv_overwrites_init(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_args *args) {
   char *filepath = args->filepath;
   const char *overwrites_fn = (const char*)zsv_cache_filepath((const unsigned char*)filepath, zsv_cache_type_overwrite, 0, 0);
-  ctx->src = overwrites_fn;
+  ctx->src = (char*)overwrites_fn;
 
   int err = 0;
   if (zsv_mkdirs(overwrites_fn, 1) && !zsv_file_readable(overwrites_fn, &err, NULL)) {
@@ -171,8 +171,8 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
   int ret;
   if ((ret = sqlite3_prepare_v2(ctx->sqlite3.db, "INSERT INTO overwrites (row, column, value) VALUES (?, ?, ?)", -1, &query,
                                 NULL)) == SQLITE_OK) {
-    sqlite3_bind_int(query, 1, (int)overwrite->row_ix);
-    sqlite3_bind_int(query, 2, (int)overwrite->col_ix);
+    sqlite3_bind_int64(query, 1, overwrite->row_ix);
+    sqlite3_bind_int64(query, 2, overwrite->col_ix);
     sqlite3_bind_text(query, 3, (const char *)overwrite->val.str, -1, SQLITE_STATIC);
     if ((ret = sqlite3_step(query)) != SQLITE_DONE) {
       err = 1;
@@ -207,11 +207,12 @@ static int show_all_overwrites(struct zsv_overwrite_ctx *ctx) {
   }
 
   while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
-    size_t row = sqlite3_column_int(stmt, 0);
-    size_t col = sqlite3_column_int(stmt, 1);
-    const unsigned char *name = sqlite3_column_text(stmt, 2); // Column 1
+    size_t row = sqlite3_column_int64(stmt, 0);
+    size_t col = sqlite3_column_int64(stmt, 1);
+    const unsigned char *val = sqlite3_column_text(stmt, 2);
+    size_t len = sqlite3_column_bytes(stmt, 2);
 
-    printf("row: %zu, col: %zu, name: %s\n", row, col, name ? (const char *)name : "NULL");
+    printf("row: %zu, column: %zu, value: %s, len: %zu\n", row, col, val ? (const char*)val : "NULL", len);
   }
 
   if (ret != SQLITE_DONE) {

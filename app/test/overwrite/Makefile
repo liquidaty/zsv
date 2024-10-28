@@ -50,8 +50,9 @@ test-1:
 
 test-2:
 	@${TEST_INIT}
+	@${PREFIX} ${EXE} dummy.csv clear 
 	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC
-	@${CHECK} [ "`${EXE} dummy.csv list`" = "2 1 ABC" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "row: 2, column: 1, value: ABC, len: 3" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
 	@rm -rf ${TMP_DIR}
