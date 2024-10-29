@@ -195,7 +195,7 @@ enum zsv_status zsv_overwrite_open(void *h) {
       struct zsv_cell val = zsv_get_cell(ctx->csv.parser, 2);
       if (row.len < 3 || memcmp(row.str, "row", 3) || col.len < 3 || memcmp(col.str, "col", 3) || val.len < 3 ||
           memcmp(val.str, "val", 3))
-        fprintf(stderr, "Warning! overwrite expects 'row,column,value' header, got '%.*s,%.*s,%.*s'\n", (int)row.len,
+        fprintf(stderr, "Warning! overwrite expects 'row,col,value' header, got '%.*s,%.*s,%.*s'\n", (int)row.len,
                 row.str, (int)col.len, col.str, (int)val.len, val.str);
     }
     ctx->next = zsv_next_overwrite_csv;

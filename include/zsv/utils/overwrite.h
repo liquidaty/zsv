@@ -4,7 +4,7 @@
 /**
  * The easiest way to enable overwrite support is to use zsv_overwrite_auto()
  * which, given an input located at /path/to/my-data.csv, will assume an overwrite source
- * located at /path/to/.zsv/data/my-data.csv/overwrites.sqlite3
+ * located at /path/to/.zsv/data/my-data.csv/overwrite.sqlite3
  * in a table named 'overwrites'
  *
  * zsv_overwrite_auto() returns:
@@ -29,7 +29,7 @@ struct zsv_overwrite_opts {
    * 1. sqlite3 file source:
    *    sqlite3://<filename>[?sql=<query>]",
    *
-   * e.g. sqlite3://overwrites.db?sql=select row, column, value from overwrites order by row, column",
+   * e.g. sqlite3:///path/to/my-overwritedb.sqlite3?sql=select row, column, value from overwrites order by row, column",
    *
    * or
    *
