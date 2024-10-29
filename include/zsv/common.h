@@ -295,7 +295,7 @@ struct zsv_opts {
 
   /**
    * If non-zero, automatically apply overwrites located in
-   * /path/to/.zsv/data/my-data.csv/overwrites.db for a given
+   * /path/to/.zsv/data/my-data.csv/overwrite.sqlite3 for a given
    * input /path/to/my-data.csv
    *
    * This flag is only used by zsv_new_with_properties()
