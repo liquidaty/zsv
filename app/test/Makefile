@@ -107,7 +107,7 @@ test: ${TESTS}
 test-prop:
 	EXE=${BUILD_DIR}/bin/zsv_prop${EXE} make -C prop test
 
-test-overwrite:
+test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE}
 	EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} make -C overwrite test
 
 test-echo : test-echo1 test-echo-overwrite-all test-echo-eol test-echo-chars test-echo-trim test-echo-skip-until test-echo-contiguous test-echo-trim-columns test-echo-trim-columns-2 test-echo-buffsize
@@ -615,3 +615,4 @@ test-sheet-4: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
