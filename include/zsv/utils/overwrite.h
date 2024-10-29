@@ -1,6 +1,8 @@
 #ifndef ZSV_OVERWRITE_H
 #define ZSV_OVERWRITE_H
 
+#include <sqlite3.h>
+
 struct zsv_overwrite_ctx {
   char *src;
   // enum zsv_overwrite_type type;
