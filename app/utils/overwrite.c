@@ -14,22 +14,6 @@
 #define zsv_overwrite_sql_prefix "sql="
 
 /* Overwrite structure for CSV or SQLITE3 sources */
-struct zsv_overwrite_ctx {
-  char *src;
-  // enum zsv_overwrite_type type;
-  enum zsv_status (*next)(void *ctx, struct zsv_overwrite_data *odata);
-  struct {
-    FILE *f;
-    zsv_parser parser;
-  } csv;
-  struct {
-    char *filename;
-    sqlite3 *db;
-    sqlite3_stmt *stmt; // select row, column, overwrite
-    const char *sql;
-  } sqlite3;
-};
-
 void *zsv_overwrite_context_new(struct zsv_overwrite_opts *opts) {
   struct zsv_overwrite_ctx *ctx = calloc(1, sizeof(*ctx));
   if (ctx && opts->src) {
