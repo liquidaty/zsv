@@ -138,7 +138,7 @@ static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx,
     ok = 1;
   } else if (len > strlen(".sqlite3") && !strcmp(source + len - strlen(".sqlite3"), ".sqlite3")) {
     ctx->sqlite3.filename = strdup(source);
-    ctx->sqlite3.sql = "select row, col, value from overwrites order by row, col";
+    ctx->sqlite3.sql = "select row, column, value from overwrites order by row, column";
     ok = 1;
   }
 
@@ -195,7 +195,7 @@ enum zsv_status zsv_overwrite_open(void *h) {
       struct zsv_cell val = zsv_get_cell(ctx->csv.parser, 2);
       if (row.len < 3 || memcmp(row.str, "row", 3) || col.len < 3 || memcmp(col.str, "col", 3) || val.len < 3 ||
           memcmp(val.str, "val", 3))
-        fprintf(stderr, "Warning! overwrite expects 'row,col,value' header, got '%.*s,%.*s,%.*s'\n", (int)row.len,
+        fprintf(stderr, "Warning! overwrite expects 'row,column,value' header, got '%.*s,%.*s,%.*s'\n", (int)row.len,
                 row.str, (int)col.len, col.str, (int)val.len, val.str);
     }
     ctx->next = zsv_next_overwrite_csv;
