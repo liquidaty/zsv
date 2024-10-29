@@ -46,6 +46,10 @@ else
 endif
 CFLAGS+= ${CFLAGS_PIC}
 
+ifeq ($(ZSVSHEET_BUILD),1)
+  CFLAGS+=-DZSVSHEET_BUILD
+endif
+
 ifeq ($(ZSV_EXTRAS),1)
   CFLAGS+= -DZSV_EXTRAS
 endif
