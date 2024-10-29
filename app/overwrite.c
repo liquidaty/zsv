@@ -157,19 +157,21 @@ static int zsv_overwrite_check_for_value(struct zsv_overwrite_ctx *ctx, struct z
   sqlite3_stmt *query = NULL;
   int ret = 0;
   int err = 0;
-  if((ret = sqlite3_prepare_v2(ctx->sqlite3.db, "SELECT 1 FROM overwrites WHERE row = ? AND column = ?", -1, &query, NULL)) != SQLITE_OK) {
+  if ((ret = sqlite3_prepare_v2(ctx->sqlite3.db, "SELECT 1 FROM overwrites WHERE row = ? AND column = ?", -1, &query,
+                                NULL)) != SQLITE_OK) {
     err = 1;
     fprintf(stderr, "Failed to prepare: %d, %s\n", ret, sqlite3_errmsg(ctx->sqlite3.db));
     return err;
   }
   sqlite3_bind_int64(query, 1, overwrite->row_ix);
   sqlite3_bind_int64(query, 2, overwrite->col_ix);
-  if((ret = sqlite3_step(query)) == SQLITE_ROW) // Value exists
+  if ((ret = sqlite3_step(query)) == SQLITE_ROW) // Value exists
     err = 1;
-  else                                          // Value does not exist
+  else // Value does not exist
     err = 0;
 
-  if(query) sqlite3_finalize(query);
+  if (query)
+    sqlite3_finalize(query);
   return err;
 }
 
@@ -177,9 +179,10 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
   int err = 0;
   sqlite3_stmt *query = NULL;
   int ret;
-  if(zsv_overwrite_check_for_value(ctx, overwrite)) {
+  if (zsv_overwrite_check_for_value(ctx, overwrite)) {
     err = 1;
-    fprintf(stderr, "Value already exists at row %zu and column %zu, use --force to force insert\n", overwrite->row_ix, overwrite->col_ix);
+    fprintf(stderr, "Value already exists at row %zu and column %zu, use --force to force insert\n", overwrite->row_ix,
+            overwrite->col_ix);
     return err;
   }
 
