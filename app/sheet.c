@@ -63,10 +63,8 @@ struct zsvsheet_opts {
 #include "sheet/read-data.c"
 #include "sheet/key-bindings.c"
 
-void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t rownum_col_offset, size_t input_header_span,
+static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t rownum_col_offset, size_t input_header_span,
                              struct zsvsheet_display_dimensions *ddims);
-
-void zsvsheet_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt, ...);
 
 struct zsvsheet_display_info {
   int update_buffer;
@@ -86,7 +84,7 @@ struct zsvsheet_builtin_proc_state {
   const char *opts_used;
 };
 
-int get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row) {
+static void get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row) {
   *buff = '\0';
   // this is a hack to blank-out the currently-selected cell value
   int max_screen_width = 256; // to do: don't assume this
@@ -204,36 +202,6 @@ void zsvsheet_set_status(const struct zsvsheet_display_dimensions *ddims, int ov
 #include "sheet/handlers.c"
 #include "sheet/file.c"
 #include "sheet/usage.c"
-
-enum zsvsheet_status zsvsheet_key_handler(struct zsvsheet_key_handler_data *khd, int ch, char *cmdbuff,
-                                          size_t cmdbuff_sz, // subcommand buffer
-                                          struct zsvsheet_ui_buffer **base_ui_buffer,
-                                          struct zsvsheet_ui_buffer **current_ui_buffer,
-                                          const struct zsvsheet_display_dimensions *display_dims,
-                                          struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
-  struct zsvsheet_subcommand_handler_context sctx = {0};
-  sctx.ch = ch;
-  sctx.ui_buffers = *base_ui_buffer;
-  sctx.current_ui_buffer = *current_ui_buffer;
-  zsvsheet_handler_status status = khd->subcommand_handler(&sctx);
-  if (status == zsvsheet_handler_status_ok) {
-    get_subcommand(sctx.prompt, cmdbuff, cmdbuff_sz, (int)(display_dims->rows - display_dims->footer_span));
-    if (*cmdbuff == '\0')
-      return zsvsheet_status_continue;
-    struct zsvsheet_handler_context ctx = {.subcommand_value = cmdbuff,
-                                           .ch = ch,
-                                           .ui_buffers = {.base = base_ui_buffer, .current = current_ui_buffer},
-                                           .display_dims = display_dims,
-                                           .custom_prop_handler = custom_prop_handler,
-                                           .opts_used = opts_used};
-    status = khd->handler(&ctx);
-  }
-  if (status == zsvsheet_handler_status_ok)
-    return zsvsheet_status_ok;
-  if (status == zsvsheet_handler_status_ignore)
-    return zsvsheet_status_continue;
-  return zsvsheet_status_error;
-}
 
 struct zsvsheet_key_handler_data *zsvsheet_key_handlers = NULL;
 struct zsvsheet_key_handler_data **zsvsheet_next_key_handler = &zsvsheet_key_handlers;
@@ -709,7 +677,7 @@ const char *display_cell(struct zsvsheet_buffer *buff, size_t data_row, size_t d
   return str;
 }
 
-void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t rownum_col_offset, size_t input_header_span,
+static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t rownum_col_offset, size_t input_header_span,
                              struct zsvsheet_display_dimensions *ddims) {
   struct zsvsheet_buffer *buffer = ui_buffer->buffer;
   size_t start_row = ui_buffer->buff_offset.row;
