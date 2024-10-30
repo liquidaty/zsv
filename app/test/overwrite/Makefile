@@ -47,12 +47,15 @@ test-1:
 	@${PREFIX} ${EXE} dummy.csv clear 
 	@${CHECK} [ "`${EXE} dummy.csv list`" = "" ] && ${TEST_PASS} || ${TEST_FAIL}
 
+TIMESTAMP=$(shell date +"%a %b %d %R:%S %Y")
 
 test-2:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear 
 	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC
-	@${CHECK} [ "`${EXE} dummy.csv list`" = "row: 2, column: 1, value: ABC, len: 3" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@$(info timestamp is ${TIMESTAMP})
+	@${PREFIX} ${EXE} dummy.csv list > out
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "2,1,ABC,$(TIMESTAMP)," ] && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
 	@rm -rf ${TMP_DIR}

@@ -20,6 +20,7 @@
 #include <zsv/utils/os.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/overwrite.h>
+#include <zsv/utils/clock.h>
 
 #define ZSV_COMMAND overwrite
 #include "zsv_command.h"
@@ -113,7 +114,7 @@ static int zsv_overwrites_init(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
     }
 
     if ((ret = sqlite3_prepare_v2(
-           ctx->sqlite3.db, "CREATE TABLE IF NOT EXISTS overwrites ( row integer, column integer, value string );", -1,
+           ctx->sqlite3.db, "CREATE TABLE IF NOT EXISTS overwrites ( row integer, column integer, value string, timestamp varchar(25), author varchar(25) );", -1,
            &query, NULL)) == SQLITE_OK) {
       if ((ret = sqlite3_step(query)) != SQLITE_DONE) {
         err = 1;
@@ -124,8 +125,19 @@ static int zsv_overwrites_init(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
       err = 1;
       fprintf(stderr, "Failed to prepare: %d, %s\n", ret, sqlite3_errmsg(ctx->sqlite3.db));
     }
+
     if (query)
       sqlite3_finalize(query);
+
+    if((ret = sqlite3_prepare_v2(ctx->sqlite3.db, "CREATE UNIQUE INDEX position ON overwrites (row, column)", -1, &query, NULL)) == SQLITE_OK) {
+      if ((ret = sqlite3_step(query)) != SQLITE_DONE) {
+        err = 1;
+        fprintf(stderr, "Failed to step: %d, %s\n", ret, sqlite3_errmsg(ctx->sqlite3.db));
+        return err;
+      }
+      if (query)
+        sqlite3_finalize(query);
+    }
   }
 
   if (!ctx->sqlite3.db)
@@ -179,21 +191,20 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
   int err = 0;
   sqlite3_stmt *query = NULL;
   int ret;
-  if (zsv_overwrite_check_for_value(ctx, overwrite)) {
-    err = 1;
-    fprintf(stderr, "Value already exists at row %zu and column %zu, use --force to force insert\n", overwrite->row_ix,
-            overwrite->col_ix);
-    return err;
-  }
 
-  if ((ret = sqlite3_prepare_v2(ctx->sqlite3.db, "INSERT INTO overwrites (row, column, value) VALUES (?, ?, ?)", -1,
+  if ((ret = sqlite3_prepare_v2(ctx->sqlite3.db, "INSERT INTO overwrites (row, column, value, timestamp, author) VALUES (?, ?, ?, ?, ?)", -1,
                                 &query, NULL)) == SQLITE_OK) {
     sqlite3_bind_int64(query, 1, overwrite->row_ix);
     sqlite3_bind_int64(query, 2, overwrite->col_ix);
     sqlite3_bind_text(query, 3, (const char *)overwrite->val.str, -1, SQLITE_STATIC);
+    time_t my_time = time(NULL);
+    char *time_buf = ctime(&my_time);
+    time_buf[strlen(time_buf)-1] = '\0'; // Remove newline
+    sqlite3_bind_text(query, 4, (const char *)time_buf, -1, SQLITE_STATIC);
+    sqlite3_bind_text(query, 5, "", -1, SQLITE_STATIC); // author
     if ((ret = sqlite3_step(query)) != SQLITE_DONE) {
       err = 1;
-      fprintf(stderr, "Failed to step: %d, %s\n", ret, sqlite3_errmsg(ctx->sqlite3.db));
+      fprintf(stderr, "Value already exists at row %zu and column %zu, use --force to force insert\n", overwrite->row_ix, overwrite->col_ix);
       return err;
     }
   } else {
@@ -228,9 +239,10 @@ static int show_all_overwrites(struct zsv_overwrite_ctx *ctx) {
     size_t row = sqlite3_column_int64(stmt, 0);
     size_t col = sqlite3_column_int64(stmt, 1);
     const unsigned char *val = sqlite3_column_text(stmt, 2);
-    size_t len = sqlite3_column_bytes(stmt, 2);
+    const unsigned char *timestamp = sqlite3_column_text(stmt, 3);
+    const unsigned char *author = sqlite3_column_text(stmt, 4);
 
-    printf("row: %zu, column: %zu, value: %s, len: %zu\n", row, col, val ? (const char *)val : "NULL", len);
+    printf("%zu,%zu,%s,%s,%s\n", row, col, val ? (const char *)val : "NULL", timestamp, author);
   }
 
   if (ret != SQLITE_DONE) {
