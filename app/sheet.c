@@ -34,9 +34,7 @@
 
 #include <locale.h>
 #include <wchar.h>
-#ifdef ZSVSHEET_USE_THREADS
 #include <pthread.h>
-#endif
 
 #define ZSV_COMMAND sheet
 #include "zsv_command.h"
@@ -60,6 +58,7 @@ struct zsvsheet_opts {
 
 #include "sheet/utf8-width.c"
 #include "sheet/ui_buffer.c"
+#include "sheet/index.c"
 #include "sheet/read-data.c"
 #include "sheet/key-bindings.c"
 
@@ -609,6 +608,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     zsvsheet_set_status(&display_dims, 1, "");
     handler_state.display_info.update_buffer = false;
 
+    pthread_mutex_lock(&current_ui_buffer->mutex);
+    if (current_ui_buffer->index_ready && current_ui_buffer->dimensions.row_count != current_ui_buffer->index->row_count) {
+      current_ui_buffer->dimensions.row_count = current_ui_buffer->index->row_count;
+      handler_state.display_info.update_buffer = true;
+    }
+    pthread_mutex_unlock(&current_ui_buffer->mutex);
+
     status = zsvsheet_key_press(ch, &handler_state);
     if (status == zsvsheet_handler_status_exit)
       break;
@@ -618,7 +624,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     if (handler_state.display_info.update_buffer && current_ui_buffer->filename) {
       struct zsvsheet_opts zsvsheet_opts = {0};
       if (read_data(&current_ui_buffer, NULL, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col,
-                    header_span, current_ui_buffer->dimensions.index, &zsvsheet_opts, custom_prop_handler, opts_used)) {
+                    header_span, &zsvsheet_opts, custom_prop_handler, opts_used)) {
         zsvsheet_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
         continue;
       }
