@@ -391,12 +391,17 @@ test-pretty-escape-chars: ${BUILD_DIR}/bin/zsv_pretty${EXE}
 	@(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/pretty-escape.csv -M ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
-test-2tsv: test-2tsv-1 test-2tsv-2
+test-2tsv: test-2tsv-1 test-2tsv-2 test-2tsv-3
 
 test-2tsv-1 test-2tsv-2: test-% : ${BUILD_DIR}/bin/zsv_2tsv${EXE}
 	@${TEST_INIT}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for 2tsv" && exit 1) || \
 	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+test-2tsv-3: ${BUILD_DIR}/bin/zsv_2tsv${EXE}
+	@${TEST_INIT}
+	@(${PREFIX} $< --convert-to-space < ${TEST_DATA_DIR}/test/2tsv-2.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 ${THIS_MAKEFILE_DIR}/../../data/quoted5.csv: ${THIS_MAKEFILE_DIR}/../../data/quoted5.csv.bz2

@@ -30,6 +30,8 @@ struct static_buff {
 struct zsv_2tsv_data {
   zsv_parser parser;
   struct static_buff out;
+  unsigned char convert_to_space : 1;
+  unsigned char _ : 7;
 };
 
 __attribute__((always_inline)) static inline void zsv_2tsv_flush(struct static_buff *b) {
@@ -57,7 +59,8 @@ static inline void zsv_2tsv_write(struct static_buff *b, const unsigned char *s,
 // - else, return allocated char * of converted tsv (caller must free), and update *lenp
 // - on error, set *err
 __attribute__((always_inline)) static inline unsigned char *zsv_to_tsv(const unsigned char *utf8, size_t *len,
-                                                                       enum zsv_2tsv_status *err) {
+                                                                       enum zsv_2tsv_status *err,
+                                                                       char convert_to_space) {
   // replace tab, newline and lf with \t, \n or \r or backslash
   size_t do_convert = 0;
   for (size_t i = 0; i < *len; i++) {
@@ -74,8 +77,12 @@ __attribute__((always_inline)) static inline unsigned char *zsv_to_tsv(const uns
     size_t j = 0;
     for (size_t i = 0; i < *len; i++) {
       if (UNLIKELY(utf8[i] == '\t' || utf8[i] == '\n' || utf8[i] == '\r' || utf8[i] == '\\')) {
-        converted[j++] = '\\';
-        converted[j++] = utf8[i] == '\t' ? 't' : utf8[i] == '\n' ? 'n' : utf8[i] == '\r' ? 'r' : '\\';
+        if (convert_to_space)
+          converted[j++] = utf8[i] == '\\' ? '\\' : ' ';
+        else {
+          converted[j++] = '\\';
+          converted[j++] = utf8[i] == '\t' ? 't' : utf8[i] == '\n' ? 'n' : utf8[i] == '\r' ? 'r' : '\\';
+        }
       } else
         converted[j++] = utf8[i];
     }
@@ -86,7 +93,8 @@ __attribute__((always_inline)) static inline unsigned char *zsv_to_tsv(const uns
 }
 
 __attribute__((always_inline)) static inline void zsv_2tsv_cell(struct zsv_2tsv_data *data, unsigned char *utf8_value,
-                                                                size_t len, char no_newline_or_slash) {
+                                                                size_t len, char no_newline_or_slash,
+                                                                char convert_to_space) {
   // output cell contents (converted if necessary)
   if (len) {
     enum zsv_2tsv_status err = zsv_2tsv_status_ok;
@@ -96,7 +104,7 @@ __attribute__((always_inline)) static inline void zsv_2tsv_cell(struct zsv_2tsv_
     }
 
     // if we're here, there either definitely an embedded tab, or maybe an embedded \n or \r
-    unsigned char *converted = zsv_to_tsv(utf8_value, &len, &err);
+    unsigned char *converted = zsv_to_tsv(utf8_value, &len, &err, convert_to_space);
     if (converted != NULL) {
       zsv_2tsv_write(&data->out, converted, len);
       free(converted);
@@ -119,11 +127,12 @@ static void zsv_2tsv_row(void *ctx) {
     if (LIKELY(!(memchr(start, '\n', row_len) || memchr(start, '\r', row_len) || memchr(start, '\\', row_len))))
       no_newline_or_slash = 1;
 
-    zsv_2tsv_cell(ctx, cell.str, cell.len, no_newline_or_slash);
+    const char convert_to_space = data->convert_to_space;
+    zsv_2tsv_cell(ctx, cell.str, cell.len, no_newline_or_slash, convert_to_space);
     for (unsigned int i = 1; i < cols; i++) {
       zsv_2tsv_write(&data->out, (const unsigned char *)"\t", 1);
       cell = zsv_get_cell(data->parser, i);
-      zsv_2tsv_cell(ctx, cell.str, cell.len, no_newline_or_slash);
+      zsv_2tsv_cell(ctx, cell.str, cell.len, no_newline_or_slash, convert_to_space);
     }
   }
   zsv_2tsv_write(&data->out, (const unsigned char *)"\n", 1);
@@ -135,8 +144,12 @@ int zsv_2tsv_usage(int rc) {
     "          text processing. By default, embedded tabs or multilines will be escaped",
     "          to \\t, \\n or \\r, respectively",
     "",
-    "Usage: " APPNAME " [filename] [-o <output_filename>]",
+    "Usage: " APPNAME " [filename] [options]",
     "  e.g. " APPNAME " < file.csv > file.tsv",
+    "",
+    "Options:",
+    "  -o <file>         : save output to <file>",
+    "  --convert-to-space: convert embedded \\t, \\n or \\r to space",
     NULL,
   };
 
@@ -152,9 +165,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   const char *input_path = NULL;
   int err = 0;
   for (int i = 1; !err && i < argc; i++) {
-    if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
+    if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h"))
       return zsv_2tsv_usage(0);
-    } else if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
+    if (!strcmp(argv[i], "--convert-to-space"))
+      data.convert_to_space = 1;
+    else if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if (++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i - 1]), err = 1;
       else if (data.out.stream && data.out.stream != stdout)
