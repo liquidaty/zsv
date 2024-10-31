@@ -20,8 +20,8 @@ struct data {
 
 static void row_verbose(void *ctx) {
   ((struct data *)ctx)->rows++;
-  if((((struct data *)ctx)->rows - 1) % 1000000 == 0)
-    fprintf(stderr, "Processed %zumm data rows\n", (((struct data *)ctx)->rows - 1)/1000000);
+  if ((((struct data *)ctx)->rows - 1) % 1000000 == 0)
+    fprintf(stderr, "Processed %zumm data rows\n", (((struct data *)ctx)->rows - 1) / 1000000);
 }
 
 static void row(void *ctx) {
