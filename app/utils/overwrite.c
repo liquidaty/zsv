@@ -122,7 +122,7 @@ static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx,
     ok = 1;
   } else if (len > strlen(".sqlite3") && !strcmp(source + len - strlen(".sqlite3"), ".sqlite3")) {
     ctx->sqlite3.filename = strdup(source);
-    ctx->sqlite3.sql = "select row, col, value from overwrites order by row, col";
+    ctx->sqlite3.sql = "select row, column, value from overwrites order by row, column";
     ok = 1;
   }
 

@@ -40,7 +40,7 @@ ifeq ($(EXE),)
   $(error EXE is not defined)
 endif
 
-test: test-1 test-2
+test: test-1 test-2 test-echo-overwrite-auto
 
 test-1:
 	@${TEST_INIT}
@@ -54,8 +54,15 @@ test-2:
 	@${PREFIX} ${EXE} dummy.csv clear 
 	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC
 	@$(info timestamp is ${TIMESTAMP})
-	@${PREFIX} ${EXE} dummy.csv list > out
 	@${CHECK} [ "`${EXE} dummy.csv list`" = "2,1,ABC,$(TIMESTAMP)," ] && ${TEST_PASS} || ${TEST_FAIL}
+
+test-echo-overwrite-auto:
+	@${TEST_INIT}
+	@${PREFIX} ${EXE} dummy.csv clear 
+	@${PREFIX} ${EXE} dummy.csv add 1-0 ABC
+	@${PREFIX} ${EXE} dummy.csv add 2-2 123 
+	@${ECHO_EXE} --overwrite-auto dummy.csv > ${TMP_DIR}/$@.out 
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
 	@rm -rf ${TMP_DIR}

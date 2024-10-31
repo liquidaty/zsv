@@ -16,6 +16,7 @@
 #include <ctype.h>
 
 #include <zsv.h>
+#include <zsv/utils/writer.h>
 #include <zsv/utils/cache.h>
 #include <zsv/utils/os.h>
 #include <zsv/utils/file.h>
@@ -43,12 +44,12 @@ const char *zsv_overwrite_usage_msg[] = {
   "  add <cell> <value>     : Add an overwrite entry",
   "                           Example 1: overwrite the first column of the first",
   "                           non-header row",
-  "                             overwrite add A1 \"new value\"",
+  "                             overwrite mydata.csv add A1 \"new value\"",
   "                               - or -",
-  "                             overwrite add 1-1 \"new value\"",
+  "                             overwrite mydata.csv add 1-1 \"new value\"",
   "                           Example 2: change the header in the first column",
   "                           to \"ID #\"",
-  "                             overwrite add 0-1 \"ID #\"",
+  "                             overwrite mydata.csv add 0-1 \"ID #\"",
   "  remove <cell>          : Remove an overwrite entry",
   "  clear                  : Remove any / all overwrites",
   "  bulk-add <datafile>    : Bulk add overwrite entries from a CSV or JSON file",
@@ -130,7 +131,7 @@ static int zsv_overwrites_init(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
     if (query)
       sqlite3_finalize(query);
 
-    if ((ret = sqlite3_prepare_v2(ctx->sqlite3.db, "CREATE UNIQUE INDEX position ON overwrites (row, column)", -1,
+    if ((ret = sqlite3_prepare_v2(ctx->sqlite3.db, "CREATE UNIQUE INDEX overwrites_uix ON overwrites (row, column)", -1,
                                   &query, NULL)) == SQLITE_OK) {
       if ((ret = sqlite3_step(query)) != SQLITE_DONE) {
         err = 1;
@@ -222,14 +223,15 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
   return err;
 }
 
-static int zsv_overwrites_exit(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite) {
+static int zsv_overwrites_exit(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite, zsv_csv_writer writer) {
+  zsv_writer_delete(writer);
   free(overwrite->val.str);
   sqlite3_close(ctx->sqlite3.db);
   sqlite3_shutdown();
   return 0;
 }
 
-static int show_all_overwrites(struct zsv_overwrite_ctx *ctx) {
+static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, zsv_csv_writer writer) {
   int err = 0;
   sqlite3_stmt *stmt;
   int ret;
@@ -243,10 +245,18 @@ static int show_all_overwrites(struct zsv_overwrite_ctx *ctx) {
     size_t row = sqlite3_column_int64(stmt, 0);
     size_t col = sqlite3_column_int64(stmt, 1);
     const unsigned char *val = sqlite3_column_text(stmt, 2);
+    size_t val_len = sqlite3_column_bytes(stmt, 2);
     const unsigned char *timestamp = sqlite3_column_text(stmt, 3);
+    size_t timestamp_len = sqlite3_column_bytes(stmt, 3);
     const unsigned char *author = sqlite3_column_text(stmt, 4);
+    size_t author_len = sqlite3_column_bytes(stmt, 4);
 
-    printf("%zu,%zu,%s,%s,%s\n", row, col, val ? (const char *)val : "NULL", timestamp, author);
+
+    zsv_writer_cell_zu(writer, 1, row);
+    zsv_writer_cell_zu(writer, 0, col);
+    zsv_writer_cell(writer, 0, val, val_len, 0);
+    zsv_writer_cell(writer, 0, timestamp, timestamp_len, 0);
+    zsv_writer_cell(writer, 0, author, author_len, 0);
   }
 
   if (ret != SQLITE_DONE) {
@@ -274,6 +284,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   struct zsv_overwrite_ctx ctx = {0};
   struct zsv_overwrite_args args = {0};
   struct zsv_overwrite_data overwrite = {0};
+  struct zsv_csv_writer_options writer_opts = {0};
 
   char *filepath = (char *)argv[1];
   args.filepath = filepath;
@@ -320,14 +331,15 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     fprintf(stderr, "Failed to initalize database\n");
   }
 
+  zsv_csv_writer writer = zsv_writer_new(&writer_opts);
   if (args.list)
-    show_all_overwrites(&ctx);
+    show_all_overwrites(&ctx, writer);
   else if (args.clear)
     zsv_overwrites_clear(&ctx);
   else if (!err && args.add && ctx.sqlite3.db)
     zsv_overwrites_insert(&ctx, &overwrite);
 
-  zsv_overwrites_exit(&ctx, &overwrite);
+  zsv_overwrites_exit(&ctx, &overwrite, writer);
 
   return err;
 }
