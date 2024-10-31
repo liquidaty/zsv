@@ -18,6 +18,12 @@ struct data {
   size_t rows;
 };
 
+static void row_verbose(void *ctx) {
+  ((struct data *)ctx)->rows++;
+  if((((struct data *)ctx)->rows - 1) % 1000000 == 0)
+    fprintf(stderr, "Processed %zumm data rows\n", (((struct data *)ctx)->rows - 1)/1000000);
+}
+
 static void row(void *ctx) {
   ((struct data *)ctx)->rows++;
 }
@@ -71,7 +77,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #endif
 
   if (!err) {
-    opts->row_handler = row;
+    opts->row_handler = opts->verbose ? row_verbose : row;
     opts->ctx = &data;
     if (zsv_new_with_properties(opts, custom_prop_handler, input_path, opts_used, &data.parser) != zsv_status_ok) {
       fprintf(stderr, "Unable to initialize parser\n");

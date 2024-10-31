@@ -71,6 +71,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   (void)(index); // to do
   const char *filename = (uibufferp && *uibufferp) ? (*uibufferp)->filename : uibopts ? uibopts->filename : NULL;
   struct zsv_opts opts = {0};
+  opts.verbose = 1;
+  fprintf(stderr, "hi\n");
   if (uibufferp && *uibufferp)
     opts = (*uibufferp)->zsv_opts;
   else if (uibopts)
@@ -174,7 +176,6 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       if (c.len)
         zsvsheet_buffer_write_cell_w_len(buffer, rows_read, i + rownum_column_offset, c.str, c.len);
     }
-
     // if we have a row filter, write it to a temp file
     // later if needed this could be optimized in general and where the filtered data is small enough to not need
     // indexing
@@ -206,7 +207,9 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   fclose(fp);
   zsv_delete(parser);
 
+  fprintf(stderr, "hi 2\n");
   if (temp_file_writer) { // finish writing the filtered data to temp file
+    fprintf(stderr, "hi 2.5\n");
     // to do: do this in a separate thread
     while (zsv_next_row(parser) == zsv_status_row) {
       size_t col_count = zsv_cell_count(parser);
@@ -220,6 +223,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   if (temp_f)
     fclose(temp_f);
 
+  fprintf(stderr, "hi 3\n");
   if (uibuff && !uibuff->indexed) {
     uibuff->buff_used_rows = rows_read;
     uibuff->indexed = 1;
@@ -233,6 +237,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 #endif
       );
     }
+
+    fprintf(stderr, "hi 3\n");
     if (row_filter != NULL) {
 #ifdef ZSVSHEET_USE_THREADS
       pthread_mutex_lock(uibuff->mutex);
@@ -246,7 +252,9 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       pthread_mutex_unlock(uibuff->mutex);
 #endif
     }
+    fprintf(stderr, "hi 4\n");
   }
+    fprintf(stderr, "hi 5\n");
   return 0;
 }
 
