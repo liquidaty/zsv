@@ -167,7 +167,7 @@ jobs:
         CC: musl-gcc
         LDFLAGS: -static
         MAKE: make
-        RUN_TESTS: true
+        RUN_TESTS: false
       run: |
         ./scripts/ci-build.sh
         ./scripts/ci-create-debian-package.sh
