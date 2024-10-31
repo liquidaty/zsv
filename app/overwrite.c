@@ -223,7 +223,8 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
   return err;
 }
 
-static int zsv_overwrites_exit(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite, zsv_csv_writer writer) {
+static int zsv_overwrites_exit(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
+                               zsv_csv_writer writer) {
   zsv_writer_delete(writer);
   free(overwrite->val.str);
   sqlite3_close(ctx->sqlite3.db);
@@ -250,7 +251,6 @@ static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, zsv_csv_writer wri
     size_t timestamp_len = sqlite3_column_bytes(stmt, 3);
     const unsigned char *author = sqlite3_column_text(stmt, 4);
     size_t author_len = sqlite3_column_bytes(stmt, 4);
-
 
     zsv_writer_cell_zu(writer, 1, row);
     zsv_writer_cell_zu(writer, 0, col);
