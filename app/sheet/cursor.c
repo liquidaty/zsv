@@ -61,7 +61,7 @@ static int zsvsheet_goto_input_raw_row(struct zsvsheet_ui_buffer *uib, size_t in
   size_t buffer_rows = zsvsheet_buffer_rows(buffer);
   int update_buffer = 0;
   if (input_raw_num < input_offset->row                      // move the buffer up
-      || input_raw_num + input_header_span + 1 > buffer_rows // move the buffer down
+      || input_raw_num + input_header_span + 1 > input_offset->row + buffer_rows // move the buffer down
   ) {
     input_offset->row = input_offset_centered(input_dims, buffer_rows, input_raw_num);
     update_buffer = 1;
