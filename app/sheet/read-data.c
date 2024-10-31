@@ -257,7 +257,7 @@ static void *get_data_index(struct get_data_index_data *d) {
 #endif
   const char *filename = d->filename;
   const struct zsv_opts *optsp = d->optsp;
-  const char *row_filter = d->row_filter;
+  const char *row_filter = NULL; // d->row_filter; TO DO: clean up dead code since we no longer use this
   size_t *row_countp = d->row_countp;
   int *errp = d->errp;
   struct zsv_prop_handler *custom_prop_handler = d->custom_prop_handler;
