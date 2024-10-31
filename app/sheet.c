@@ -23,10 +23,10 @@
 #include <ncurses/ncurses.h>
 #endif // HAVE_NCURSESW
 #else
-#if __has_include(<curses.h>)
-#include <curses.h>
-#elif __has_include(<ncursesw/curses.h>)
+#if __has_include(<ncursesw/curses.h>)
 #include <ncursesw/curses.h>
+#elif __has_include(<curses.h>)
+#include <curses.h>
 #endif
 #endif
 
