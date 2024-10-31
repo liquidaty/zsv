@@ -274,7 +274,6 @@ static zsvsheet_handler_status zsvsheet_move_page(struct zsvsheet_display_info *
 static zsvsheet_handler_status zsvsheet_move_ver(struct zsvsheet_display_info *di, bool up) {
   size_t current;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
-
   current = zsvsheet_get_input_raw_row(&current_ui_buffer->input_offset, &current_ui_buffer->buff_offset,
                                        current_ui_buffer->cursor_row);
   if (up) {
