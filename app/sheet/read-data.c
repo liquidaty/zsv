@@ -174,6 +174,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       if (c.len)
         zsvsheet_buffer_write_cell_w_len(buffer, rows_read, i + rownum_column_offset, c.str, c.len);
     }
+
     // if we have a row filter, write it to a temp file
     // later if needed this could be optimized in general and where the filtered data is small enough to not need
     // indexing
@@ -232,7 +233,6 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 #endif
       );
     }
-
     if (row_filter != NULL) {
 #ifdef ZSVSHEET_USE_THREADS
       pthread_mutex_lock(uibuff->mutex);
