@@ -7,6 +7,8 @@
 #define NO_MEMMEM
 #include <zsv/utils/memmem.h>
 #endif
+#include <zsv/utils/writer.h>
+#include <zsv/utils/file.h>
 
 static char *zsvsheet_found_in_row(zsv_parser parser, size_t col_count, const char *target, size_t target_len) {
   if (col_count == 0)
@@ -99,6 +101,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   const char *row_filter = uibuff ? uibuff->row_filter : NULL;
   size_t row_filter_len = row_filter ? strlen(row_filter) : 0;
   zsvsheet_buffer_t buffer = uibuff ? uibuff->buffer : NULL;
+  FILE *temp_f = NULL;
+  unsigned char temp_buff[4096];
+  zsv_csv_writer temp_file_writer = NULL;
+
   while (zsv_next_row(parser) == zsv_status_row &&
          (rows_read == 0 || rows_read < zsvsheet_buffer_rows(buffer))) { // for each row
     if (uibuff == NULL && uibufferp && uibopts && zsv_cell_count(parser) > 0) {
@@ -168,17 +174,59 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       if (c.len)
         zsvsheet_buffer_write_cell_w_len(buffer, rows_read, i + rownum_column_offset, c.str, c.len);
     }
+
+    // if we have a row filter, write it to a temp file
+    // later if needed this could be optimized in general and where the filtered data is small enough to not need
+    // indexing
+    if (row_filter) {
+      if (rows_read == 0 && uibuff != NULL && uibuff->temp_filename == NULL) {
+        uibuff->temp_filename = zsv_get_temp_filename("zsvsheet_filter_XXXXXXXX");
+        if (!uibuff->temp_filename)
+          ; // to do: handle out-of-memory error
+        else {
+          struct zsv_csv_writer_options writer_opts = {0};
+          if (!(writer_opts.stream = temp_f = fopen(uibuff->temp_filename, "wb")))
+            ; // to do: handle fopen error
+          else if (!(temp_file_writer = zsv_writer_new(&writer_opts)))
+            ; // to do: handle zsv_writer_new error
+          else {
+            zsv_writer_set_temp_buff(temp_file_writer, temp_buff, sizeof(temp_buff));
+          }
+        }
+      }
+      if (temp_file_writer) {
+        for (size_t i = 0; i < col_count; i++) {
+          struct zsv_cell cell = zsv_get_cell(parser, i);
+          zsv_writer_cell(temp_file_writer, i == 0, cell.str, cell.len, cell.quoted);
+        }
+      }
+    }
     rows_read++;
   }
   fclose(fp);
   zsv_delete(parser);
+
+  if (temp_file_writer) { // finish writing the filtered data to temp file
+    // to do: do this in a separate thread
+    while (zsv_next_row(parser) == zsv_status_row) {
+      size_t col_count = zsv_cell_count(parser);
+      for (size_t i = 0; i < col_count; i++) {
+        struct zsv_cell cell = zsv_get_cell(parser, i);
+        zsv_writer_cell(temp_file_writer, i == 0, cell.str, cell.len, cell.quoted);
+      }
+    }
+    zsv_writer_delete(temp_file_writer);
+  }
+  if (temp_f)
+    fclose(temp_f);
+
   if (uibuff && !uibuff->indexed) {
     uibuff->buff_used_rows = rows_read;
     uibuff->indexed = 1;
     if (original_row_num > 1 && (row_filter == NULL || rows_read > 0)) {
       opts.stream = NULL;
-      get_data_index_async(&uibuff->dimensions.index, filename, &opts, row_filter, &uibuff->dimensions.row_count,
-                           custom_prop_handler, opts_used
+      get_data_index_async(&uibuff->dimensions.index, uibuff->temp_filename ? uibuff->temp_filename : filename, &opts,
+                           row_filter, &uibuff->dimensions.row_count, custom_prop_handler, opts_used
 #ifdef ZSVSHEET_USE_THREADS
                            ,
                            &uibuff->mutex
@@ -209,7 +257,7 @@ static void *get_data_index(struct get_data_index_data *d) {
 #endif
   const char *filename = d->filename;
   const struct zsv_opts *optsp = d->optsp;
-  const char *row_filter = d->row_filter;
+  const char *row_filter = NULL; // d->row_filter; TO DO: clean up dead code since we no longer use this
   size_t *row_countp = d->row_countp;
   int *errp = d->errp;
   struct zsv_prop_handler *custom_prop_handler = d->custom_prop_handler;
@@ -259,6 +307,9 @@ static void *get_data_index(struct get_data_index_data *d) {
       struct zsv_cell last_cell = zsv_get_cell(parser, col_count - 1);
       if (!(memmem(first_cell.str, last_cell.str - first_cell.str + last_cell.len, row_filter, strlen(row_filter))))
         continue;
+    }
+    if (row_count == 0 || row_count % 1000 == 1) {
+      // to do: save the position using scanned_length_w_lineend()
     }
     row_count++;
   }

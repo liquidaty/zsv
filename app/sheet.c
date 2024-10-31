@@ -27,6 +27,8 @@
 #include <curses.h>
 #elif __has_include(<ncursesw/curses.h>)
 #include <ncursesw/curses.h>
+#else
+#error Cannot find ncurses include file!
 #endif
 #endif
 
@@ -120,6 +122,7 @@ int get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_r
     }
     // Ignore other keys
   }
+  return 0;
 }
 
 zsvsheet_handler_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, char *buffer, size_t bufsz,
@@ -140,7 +143,7 @@ zsvsheet_handler_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, c
 
   get_subcommand(prompt_buffer, buffer, bufsz, prompt_footer_row);
   if (*prompt_buffer == '\0')
-    return zsvsheet_status_ok;
+    return zsvsheet_handler_status_ok;
 
   return zsvsheet_handler_status_ok;
 }

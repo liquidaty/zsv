@@ -1,6 +1,8 @@
+#include <unistd.h> // unlink()
 
 struct zsvsheet_ui_buffer {
   char *filename;
+  char *temp_filename;              // if this dataset was filtered from another, the filtered data is stored here
   struct zsv_opts zsv_opts;         // options to use when opening this file
   struct zsvsheet_ui_buffer *prior; // previous buffer in this stack. If null, this is the first buffer in the stack
   struct zsvsheet_buffer_opts *buff_opts;
@@ -31,6 +33,9 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
     zsvsheet_buffer_delete(ub->buffer);
     free(ub->row_filter);
     free(ub->status);
+    if (ub->temp_filename)
+      unlink(ub->temp_filename);
+    free(ub->temp_filename);
     free(ub->filename);
     free(ub);
   }

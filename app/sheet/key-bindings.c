@@ -177,6 +177,7 @@ zsvsheet_handler_status zsvsheet_emacs_Cf_key_binding_dmux_handler(struct zsvshe
 }
 
 zsvsheet_handler_status zsvsheet_emacs_Cs_key_binding_dmux_handler(struct zsvsheet_key_binding_context *ctx) {
+  (void)(ctx);
   return zsvsheet_handler_status_ok;
 }
 
