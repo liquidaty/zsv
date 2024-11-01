@@ -507,16 +507,15 @@ jobs:
   ci-musl:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-latest
-
-    container:
-      image: alpine:latest
+    container: alpine:latest
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
 
     steps:
     - name: Set up dependencies
-      run: apk add gcc make musl-dev perl ncurses-dev ncurses-static tmux file sqlite
+      shell: sh
+      run: apk add bash gcc make musl-dev perl ncurses-dev ncurses-static tmux file sqlite
 
     - name: Checkout
       uses: actions/checkout@v4
