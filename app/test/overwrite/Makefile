@@ -45,16 +45,17 @@ test: test-1 test-2 test-echo-overwrite-auto
 test-1:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear 
-	@${CHECK} [ "`${EXE} dummy.csv list`" = "" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "row,column,value,timestamp,author" ] && ${TEST_PASS} || ${TEST_FAIL}
 
-TIMESTAMP=$(shell date +"%a %b %d %R:%S %Y")
+TIMESTAMP=$(shell date +"%a %b  %-d %R:%S %Y")
 
 test-2:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear 
 	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC
-	@$(info timestamp is ${TIMESTAMP})
-	@${CHECK} [ "`${EXE} dummy.csv list`" = "2,1,ABC,$(TIMESTAMP)," ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${EXE} dummy.csv list > ${TMP_DIR}/$@.out
+	@printf 'row,column,value,timestamp,author\n2,1,ABC,$(TIMESTAMP),\n' > ${TMP_DIR}/test.out
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf 'row,column,value,timestamp,author\n2,1,ABC,$(TIMESTAMP),\n'`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-echo-overwrite-auto:
 	@${TEST_INIT}

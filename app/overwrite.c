@@ -242,6 +242,13 @@ static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, zsv_csv_writer wri
     return err;
   }
 
+  // display header
+  zsv_writer_cell(writer, 0, "row", 3, 0);
+  zsv_writer_cell(writer, 0, "column", 6, 0);
+  zsv_writer_cell(writer, 0, "value", 5, 0);
+  zsv_writer_cell(writer, 0, "timestamp", 9, 0);
+  zsv_writer_cell(writer, 0, "author", 6, 0);
+
   while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
     size_t row = sqlite3_column_int64(stmt, 0);
     size_t col = sqlite3_column_int64(stmt, 1);
