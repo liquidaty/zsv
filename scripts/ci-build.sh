@@ -42,7 +42,7 @@ echo "[INF] LDFLAGS:          $LDFLAGS"
 echo "[INF] MAKE:             $MAKE"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
-echo "[INF] DISABLE_SIMD:     $DISABLE_SIMD"
+echo "[INF] WITHOUT_SIMD:     $WITHOUT_SIMD"
 echo "[INF] SKIP_ZIP_ARCHIVE: $SKIP_ZIP_ARCHIVE"
 echo "[INF] SKIP_TAR_ARCHIVE: $SKIP_TAR_ARCHIVE"
 #echo "[INF] JQ_DIR:           $JQ_DIR"
@@ -58,7 +58,7 @@ echo "[INF] Listing compiler version [$CC]"
 echo "[INF] Configuring zsv"
 # CFLAGS="-I$JQ_INCLUDE_DIR" LDFLAGS="-L$JQ_LIB_DIR"
 
-if [ "$DISABLE_SIMD" = true ]; then
+if [ "$WITHOUT_SIMD" = true ]; then
   ./configure \
     --prefix="$PREFIX" \
     --disable-termcap \

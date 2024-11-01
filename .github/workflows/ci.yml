@@ -528,9 +528,8 @@ jobs:
         MAKE: make
         RUN_TESTS: true
         STATIC_BUILD: "1"
-        DISABLE_SIMD: true
-      run: |
-        ./scripts/ci-build.sh
+        WITHOUT_SIMD: true
+      run: ./scripts/ci-build.sh
 
     - name: Prepare build artifacts for upload
       run: ./scripts/ci-prepare-artifacts-for-upload.sh

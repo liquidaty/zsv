@@ -2,7 +2,7 @@ FROM alpine:latest AS build
 
 LABEL maintainer="Liquidaty"
 LABEL url="https://github.com/liquidaty/zsv"
-LABEL org.opencontainers.image.description "zsv: tabular data swiss-army knife CLI + world's fastest (simd) CSV parser"
+LABEL org.opencontainers.image.description="zsv: tabular data swiss-army knife CLI + world's fastest (simd) CSV parser"
 
 RUN apk add --no-cache gcc make musl-dev perl
 
