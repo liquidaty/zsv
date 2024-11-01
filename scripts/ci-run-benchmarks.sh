@@ -18,7 +18,7 @@ else
   echo "[INF] Download skipped! CSV file already exists! [$CSV]"
 fi
 
-ls -Gghl "$CSV"
+ls -hl "$CSV"
 
 ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/v0.3.9-alpha/zsv-0.3.9-alpha-amd64-macosx-gcc.tar.gz"
 TSV_TAR_URL="https://github.com/eBay/tsv-utils/releases/download/v2.2.1/tsv-utils-v2.2.1_osx-x86_64_ldc2.tar.gz"
@@ -35,7 +35,7 @@ for URL in "$ZSV_TAR_URL" "$TSV_TAR_URL" "$XSV_TAR_URL"; do
   fi
 done
 
-ls -Gghl ./*.tar.gz
+ls -hl ./*.tar.gz
 
 for TAR in *.tar.gz; do
   echo "[INF] Extracting... [$TAR]"
@@ -53,7 +53,7 @@ for FILE in $FILES; do
   fi
 done
 
-ls -Gghl "$TOOLS_DIR"
+ls -hl "$TOOLS_DIR"
 
 COUNT_OUTPUT_FILE="count.out"
 SELECT_OUTPUT_FILE="select.out"

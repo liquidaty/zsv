@@ -434,7 +434,7 @@ jobs:
   #         sed 's|--enable-pc-files|--enable-pc-files --enable-widec|' -i "$NCURSES_PORTFILE"
   #       fi
   #       ./vcpkg install ncurses:x64-mingw-static
-  #       tree -h ./installed/x64-mingw-static
+  #       tree ./installed/x64-mingw-static
 
   #   - name: Checkout
   #     uses: actions/checkout@v4

@@ -29,7 +29,7 @@ echo "[INF] HOMEBREW_TAP_FORMULA: $HOMEBREW_TAP_FORMULA"
 
 echo "[INF] Downloading release tar file [$TAR_URL]"
 wget -q "$TAR_URL"
-ls -Gghl "$TAR"
+ls -hl "$TAR"
 
 echo "[INF] Calculating SHA256 of $TAR"
 SHA256=$(openssl dgst -sha256 "$TAR" | cut -d ' ' -f2 | tr -d '\n')
@@ -37,7 +37,7 @@ echo "[INF] SHA256: $SHA256"
 rm -f "$TAR"
 
 echo "[INF] Setting up GitHub credentials"
-echo "$HOMEBREW_TAP_DEPLOY_KEY" > $HOMEBREW_TAP_DEPLOY_KEY_FILE
+echo "$HOMEBREW_TAP_DEPLOY_KEY" >$HOMEBREW_TAP_DEPLOY_KEY_FILE
 chmod 400 $HOMEBREW_TAP_DEPLOY_KEY_FILE
 export GIT_SSH_COMMAND="ssh -i $PWD/$HOMEBREW_TAP_DEPLOY_KEY_FILE -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 git config --global user.name "zsv-ci"

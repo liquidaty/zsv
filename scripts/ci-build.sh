@@ -71,7 +71,7 @@ else
   ./configure \
     --prefix="$PREFIX" \
     --disable-termcap
-    # --enable-jq
+  # --enable-jq
 fi
 
 if [ "$RUN_TESTS" = true ]; then
@@ -93,7 +93,7 @@ fi
 echo "[INF] Building"
 rm -rf build "$PREFIX" /usr/local/etc/zsv.ini
 "$MAKE" install
-tree -h "$PREFIX"
+tree "$PREFIX"
 echo "[INF] Built successfully!"
 
 mkdir -p "$ARTIFACT_DIR"
@@ -103,7 +103,7 @@ if [ "$SKIP_ZIP_ARCHIVE" = false ]; then
   echo "[INF] Compressing [$ZIP]"
   cd "$PREFIX"
   zip -r "$ZIP" .
-  ls -Gghl "$ZIP"
+  ls -hl "$ZIP"
   cd ..
   mv "$PREFIX/$ZIP" "$ARTIFACT_DIR"
   echo "[INF] Compressed! [$ZIP]"
@@ -113,7 +113,7 @@ if [ "$SKIP_TAR_ARCHIVE" = false ]; then
   TAR="$PREFIX.tar.gz"
   echo "[INF] Compressing [$TAR]"
   tar -czvf "$TAR" "$PREFIX"
-  ls -Gghl "$TAR"
+  ls -hl "$TAR"
   mv "$TAR" "$ARTIFACT_DIR"
   echo "[INF] Compressed! [$TAR]"
 fi
