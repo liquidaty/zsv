@@ -10,6 +10,11 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
 defaults:
   run:
     shell: bash
@@ -109,11 +114,6 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
 
@@ -125,7 +125,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt update
-        sudo apt install -y rpm alien musl-tools tmux
+        sudo apt install -y rpm alien tmux
         sudo apt remove -y jq
 
     - name: Set up macOS (AMD64 and ARM64)
@@ -155,19 +155,6 @@ jobs:
         CC: clang
         MAKE: make
         RUN_TESTS: true
-      run: |
-        ./scripts/ci-build.sh
-        ./scripts/ci-create-debian-package.sh
-        ./scripts/ci-create-rpm-package.sh
-
-    - name: Build on Linux (${{ env.AMD64_LINUX_MUSL }})
-      if: runner.os == 'Linux'
-      env:
-        PREFIX: ${{ env.AMD64_LINUX_MUSL }}
-        CC: musl-gcc
-        LDFLAGS: -static
-        MAKE: make
-        RUN_TESTS: false
       run: |
         ./scripts/ci-build.sh
         ./scripts/ci-create-debian-package.sh
@@ -228,17 +215,6 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.deb)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
@@ -261,17 +237,6 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.deb)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.deb
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.rpm)
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
@@ -288,17 +253,6 @@ jobs:
       uses: actions/upload-artifact@v4
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.rpm
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.rpm)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.rpm
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
@@ -349,17 +303,6 @@ jobs:
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz)
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_MACOSX_GCC }}.tar.gz)
       if: matrix.os == 'macos-13'
       uses: actions/upload-artifact@v4
@@ -397,11 +340,6 @@ jobs:
   ci-bsd:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -466,11 +404,6 @@ jobs:
   ci-mingw:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -571,8 +504,75 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       run: ./scripts/ci-upload-release-artifacts.sh
 
+  ci-musl:
+    needs: [tag, clang-format, cppcheck, shellcheck]
+    runs-on: ubuntu-latest
+
+    container:
+      image: alpine:latest
+
+    env:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
+    steps:
+    - name: Set up dependencies
+      run: apk add gcc make musl-dev perl ncurses-dev ncurses-static tmux file sqlite
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build (${{ env.AMD64_LINUX_MUSL }})
+      env:
+        PREFIX: ${{ env.AMD64_LINUX_MUSL }}
+        CC: gcc
+        MAKE: make
+        RUN_TESTS: true
+        STATIC_BUILD: "1"
+        DISABLE_SIMD: true
+      run: |
+        ./scripts/ci-build.sh
+        ./scripts/ci-create-debian-package.sh
+        ./scripts/ci-create-rpm-package.sh
+
+    - name: Prepare build artifacts for upload
+      run: ./scripts/ci-prepare-artifacts-for-upload.sh
+
+    - name: Attest build artifacts for release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: actions/attest-build-provenance@v1
+      with:
+        subject-path: ${{ env.ARTIFACT_DIR }}/*
+
+    - name: Verify attestations of release artifacts
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: ./scripts/ci-verify-attestations.sh
+
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
+      uses: actions/upload-artifact@v4
+      env:
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz)
+      uses: actions/upload-artifact@v4
+      env:
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload release artifacts
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: ./scripts/ci-upload-release-artifacts.sh
+
   ghcr:
-    needs: [tag]
+    needs: [tag, ci-musl]
     runs-on: ubuntu-latest
 
     permissions:

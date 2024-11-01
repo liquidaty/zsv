@@ -42,6 +42,7 @@ echo "[INF] LDFLAGS:          $LDFLAGS"
 echo "[INF] MAKE:             $MAKE"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
+echo "[INF] DISABLE_SIMD:     $DISABLE_SIMD"
 echo "[INF] SKIP_ZIP_ARCHIVE: $SKIP_ZIP_ARCHIVE"
 echo "[INF] SKIP_TAR_ARCHIVE: $SKIP_TAR_ARCHIVE"
 #echo "[INF] JQ_DIR:           $JQ_DIR"
@@ -56,10 +57,22 @@ echo "[INF] Listing compiler version [$CC]"
 
 echo "[INF] Configuring zsv"
 # CFLAGS="-I$JQ_INCLUDE_DIR" LDFLAGS="-L$JQ_LIB_DIR"
-./configure \
-  --prefix="$PREFIX" \
-  --disable-termcap
-#  --enable-jq
+
+if [ "$DISABLE_SIMD" = true ]; then
+  ./configure \
+    --prefix="$PREFIX" \
+    --disable-termcap \
+    --arch=none \
+    --try-avx512=no \
+    --force-avx2=no \
+    --force-avx=no \
+    --force-sse2=no
+else
+  ./configure \
+    --prefix="$PREFIX" \
+    --disable-termcap
+    # --enable-jq
+fi
 
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
@@ -67,8 +80,8 @@ if [ "$RUN_TESTS" = true ]; then
   "$MAKE" test
   echo "[INF] Tests completed successfully!"
 
-  if [ "$CC" = "musl-gcc" ] && [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ]; then
-    echo "[WRN] Dynamic extensions are not supported with static musl build! Skipping tests..."
+  if [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ] || [ "$STATIC_BUILD" = "1" ]; then
+    echo "[WRN] Dynamic extensions are not supported with static builds! Skipping tests..."
   else
     echo "[INF] Configuring example extension and running example extension tests"
     echo "[INF] (cd app/ext_example && $MAKE CONFIGFILE=../../config.mk test)"

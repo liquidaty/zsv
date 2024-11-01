@@ -345,6 +345,7 @@ for arg ; do
         --mandir=*) MANDIR=${arg#*=} ;;
         --minimal|--minimal=yes) MINIMAL=yes;;
         --try-avx512|--try-avx512=yes) TRY_AVX512=yes;;
+        --try-avx512=no) TRY_AVX512=no;;
 
         --force-avx2|--force-avx2=yes) FORCE_AVX2=yes;;
         --force-avx2=no) FORCE_AVX2=no;;
@@ -606,13 +607,12 @@ elif [ "$FORCE_AVX2" = "auto" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     trycpusupport avx2 && CFLAGS_AVX=-mavx2
 fi
 
-if [ "$FORCE_AVX" = "yes" ] ; then
+if [ "$FORCE_AVX" = "no" ]; then
+    tryflag CFLAGS -mno-avx
+elif [ "$FORCE_AVX" = "yes" ] ; then
     CFLAGS_AVX=-mavx || echo "warning: avx forced but not supported on native CPU"
 elif [ "$FORCE_AVX" = "auto" ] && [ "$CFLAGS_AVX" = "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     trycpusupport avx && CFLAGS_AVX=-mavx
-fi
-if [ "$FORCE_AVX" = "no" ]; then
-    tryflag CFLAGS -mno-avx
 fi
 
 if [ "$FORCE_SSE2" = "no" ]; then
@@ -857,7 +857,11 @@ fi
 
 if [ "$ZSVSHEET_BUILD" = "1" ]; then
     echo "*  - build sheet feature: yes                                  *"
-    echo "*    ncurses library:     $NCLIB                               *"
+    if [ "$NCLIB" = "ncurses" ]; then
+        echo "*    ncurses library:     ncurses                              *"
+    elif [ "$NCLIB" = "ncursesw" ]; then
+        echo "*    ncurses library:     ncursesw                             *"
+    fi
 else
     echo "*  - build sheet feature: no                                   *"
 fi

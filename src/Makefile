@@ -27,7 +27,9 @@ ifeq ($(WIN),)
   endif
 endif
 
-include ${THIS_MAKEFILE_DIR}/../make/sharedlib.mk # sets SHAREDLIB_EXT
+ifeq ($(BUILD_SHAREDLIB),1)
+  include ${THIS_MAKEFILE_DIR}/../make/sharedlib.mk # sets SHAREDLIB_EXT
+endif
 
 CFLAGS+= ${CFLAG_O} ${CFLAGS_OPT}
 CFLAGS+= ${CFLAGS_AUTO}
