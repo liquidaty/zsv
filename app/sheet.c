@@ -62,8 +62,8 @@ struct zsvsheet_opts {
 #include "sheet/read-data.c"
 #include "sheet/key-bindings.c"
 
-static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t rownum_col_offset, size_t input_header_span,
-                             struct zsvsheet_display_dimensions *ddims);
+static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t rownum_col_offset,
+                                    size_t input_header_span, struct zsvsheet_display_dimensions *ddims);
 
 struct zsvsheet_display_info {
   int update_buffer;
@@ -609,7 +609,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     handler_state.display_info.update_buffer = false;
 
     pthread_mutex_lock(&current_ui_buffer->mutex);
-    if (current_ui_buffer->index_ready && current_ui_buffer->dimensions.row_count != current_ui_buffer->index->row_count) {
+    if (current_ui_buffer->index_ready &&
+        current_ui_buffer->dimensions.row_count != current_ui_buffer->index->row_count) {
       current_ui_buffer->dimensions.row_count = current_ui_buffer->index->row_count;
       handler_state.display_info.update_buffer = true;
     }
@@ -683,8 +684,8 @@ const char *display_cell(struct zsvsheet_buffer *buff, size_t data_row, size_t d
   return str;
 }
 
-static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t rownum_col_offset, size_t input_header_span,
-                             struct zsvsheet_display_dimensions *ddims) {
+static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t rownum_col_offset,
+                                    size_t input_header_span, struct zsvsheet_display_dimensions *ddims) {
   struct zsvsheet_buffer *buffer = ui_buffer->buffer;
   size_t start_row = ui_buffer->buff_offset.row;
   size_t buffer_used_row_count = ui_buffer->buff_used_rows;

@@ -15,7 +15,7 @@ struct zsvsheet_ui_buffer {
   struct zsvsheet_input_dimensions dimensions;
   struct zsvsheet_index *index;
   pthread_mutex_t mutex;
-  
+
   // input_offset: location within the input from which the buffer is read
   // i.e. if row = 5, col = 3, the buffer data starts from cell D6
   struct zsvsheet_rowcol input_offset;
@@ -28,7 +28,7 @@ struct zsvsheet_ui_buffer {
   char *row_filter;
 
   unsigned char index_ready;
-  
+
   unsigned char index_started : 1;
   unsigned char _ : 7;
 };

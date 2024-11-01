@@ -6,13 +6,14 @@
 #include <pthread.h>
 
 #include "zsv.h"
+#include "zsv/utils/writer.h"
 
 // Decides the number of rows we skip when storing the line end
 // 1 << 10 = 1024 means that we store every 1024th line end
 #define LINE_END_SHIFT 10
 #define LINE_END_N (1 << LINE_END_SHIFT)
 
-enum zsvsheet_index_status{
+enum zsvsheet_index_status {
   zsvsheet_index_status_ok = 0,
   zsvsheet_index_status_memory,
   zsvsheet_index_status_error,
@@ -30,11 +31,16 @@ struct zsvsheet_index {
 struct zsvsheet_indexer {
   zsv_parser parser;
   struct zsvsheet_index *ix;
+  const char *filter;
+  size_t filter_len;
+  zsv_csv_writer writer;
+  FILE *filter_stream;
 };
 
 struct zsvsheet_index_opts {
   pthread_mutex_t *mutexp;
   const char *filename;
+  char **temp_filename;
   const char *row_filter;
   struct zsv_opts *zsv_optsp;
   struct zsvsheet_index **index;
@@ -44,7 +50,7 @@ struct zsvsheet_index_opts {
   const char *opts_used;
 };
 
-enum zsvsheet_index_status build_memory_index(struct zsvsheet_index_opts *optsp, struct zsvsheet_index **index_out);
+enum zsvsheet_index_status build_memory_index(struct zsvsheet_index_opts *optsp);
 void get_memory_index(struct zsvsheet_index *ix, uint64_t row, off_t *offset_out, size_t *remaining_rows_out);
 
 #endif
