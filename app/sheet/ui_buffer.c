@@ -24,8 +24,10 @@ struct zsvsheet_ui_buffer {
   char *status;
   char *row_filter;
 
-  unsigned char indexed : 1;
-  unsigned char _ : 7;
+  // index_completed must be wrapped in mutex lock
+  unsigned char index_started : 1;
+  unsigned char index_completed : 1;
+  unsigned char _ : 6;
 };
 
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
@@ -53,7 +55,7 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_buffer_t buffer, stru
   if (uib) {
     uib->buffer = buffer;
 #ifdef ZSVSHEET_USE_THREADS
-    uib->mutex = PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_init(&uib->mutex, NULL);
 #endif
     if (uibopts) {
       if ((uibopts->row_filter && !(uib->row_filter = strdup(uibopts->row_filter))) ||

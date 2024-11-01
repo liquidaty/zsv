@@ -167,7 +167,9 @@ endif
 UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
 
 ifeq ($(NO_THREADING),1)
-  CFLAGS+= -DNO_THREADING
+  CFLAGS+=-DNO_THREADING
+else
+  CFLAGS+=-DZSVSHEET_USE_THREADS
 endif
 
 ifeq ($(ZSV_EXTRAS),1)

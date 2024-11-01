@@ -32,12 +32,16 @@ struct get_data_index_data {
   int *errp;
   struct zsv_prop_handler *custom_prop_handler;
   const char *opts_used;
+  void (*finished_cb)(int err, struct zsvsheet_ui_buffer *uibuff);
+  struct zsvsheet_ui_buffer *uib;
 };
 
-static void *get_data_index(struct get_data_index_data *d);
+static void *get_data_index(void *struct_get_data_index_data_ptr);
 
 static void get_data_index_async(void **ix, const char *filename, const struct zsv_opts *optsp, const char *row_filter,
-                                 size_t *row_countp, struct zsv_prop_handler *custom_prop_handler, const char *opts_used
+                                 size_t *row_countp, struct zsv_prop_handler *custom_prop_handler,
+                                 const char *opts_used, void (*finished_cb)(int err, struct zsvsheet_ui_buffer *uibuff),
+                                 struct zsvsheet_ui_buffer *uibuff
 #ifdef ZSVSHEET_USE_THREADS
                                  ,
                                  pthread_mutex_t *mutexp
@@ -54,12 +58,30 @@ static void get_data_index_async(void **ix, const char *filename, const struct z
   gdi->indexp = ix;
   gdi->custom_prop_handler = custom_prop_handler;
   gdi->opts_used = opts_used;
+  gdi->finished_cb = finished_cb;
+  gdi->uib = uibuff;
 #ifdef ZSVSHEET_USE_THREADS
+  halfdelay(2); // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
   pthread_t thread;
   pthread_create(&thread, NULL, get_data_index, gdi);
   pthread_detach(thread);
 #else
   get_data_index(gdi);
+#endif
+}
+
+static void get_data_index_done(int err, struct zsvsheet_ui_buffer *uibuff) {
+#ifdef ZSVSHEET_USE_THREADS
+  pthread_mutex_lock(&uibuff->mutex);
+#endif
+  uibuff->index_completed = 1;
+  if (uibuff->temp_filename && !err) {
+    free(uibuff->status);
+    if (uibuff->dimensions.row_count > 0)
+      asprintf(&uibuff->status, "(%zu filtered rows) ", uibuff->dimensions.row_count - 1);
+  }
+#ifdef ZSVSHEET_USE_THREADS
+  pthread_mutex_unlock(&uibuff->mutex);
 #endif
 }
 
@@ -203,11 +225,9 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     }
     rows_read++;
   }
-  fclose(fp);
-  zsv_delete(parser);
 
+  // to do: do everything below this line in a separate thread
   if (temp_file_writer) { // finish writing the filtered data to temp file
-    // to do: do this in a separate thread
     while (zsv_next_row(parser) == zsv_status_row) {
       size_t col_count = zsv_cell_count(parser);
       for (size_t i = 0; i < col_count; i++) {
@@ -219,39 +239,30 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   }
   if (temp_f)
     fclose(temp_f);
+  fclose(fp);
+  zsv_delete(parser);
 
-  if (uibuff && !uibuff->indexed) {
+  if (uibuff && !uibuff->index_started) {
+    uibuff->index_started = 1;
     uibuff->buff_used_rows = rows_read;
-    uibuff->indexed = 1;
     if (original_row_num > 1 && (row_filter == NULL || rows_read > 0)) {
       opts.stream = NULL;
-      get_data_index_async(&uibuff->dimensions.index, uibuff->temp_filename ? uibuff->temp_filename : filename, &opts,
-                           row_filter, &uibuff->dimensions.row_count, custom_prop_handler, opts_used
+      get_data_index_async(&uibuff->dimensions.index, uibuff->temp_filename ? uibuff->temp_filename : filename,
+                           uibuff->temp_filename ? NULL : &opts, row_filter, &uibuff->dimensions.row_count,
+                           custom_prop_handler, opts_used, get_data_index_done, uibuff
 #ifdef ZSVSHEET_USE_THREADS
                            ,
                            &uibuff->mutex
 #endif
       );
     }
-    if (row_filter != NULL) {
-#ifdef ZSVSHEET_USE_THREADS
-      pthread_mutex_lock(uibuff->mutex);
-#endif
-      free(uibuff->status);
-      if (uibuff->dimensions.row_count > 0)
-        asprintf(&uibuff->status, "(%zu filtered rows) ", uibuff->dimensions.row_count - 1);
-      else
-        uibuff->status = NULL;
-#ifdef ZSVSHEET_USE_THREADS
-      pthread_mutex_unlock(uibuff->mutex);
-#endif
-    }
   }
   return 0;
 }
 
 // get_data_index(): to do: return an index for constant-time access
-static void *get_data_index(struct get_data_index_data *d) {
+static void *get_data_index(void *ctx) {
+  struct get_data_index_data *d = ctx;
 #ifdef ZSVSHEET_USE_THREADS
   pthread_mutex_t *mutexp = d->mutexp;
 #endif
@@ -264,18 +275,15 @@ static void *get_data_index(struct get_data_index_data *d) {
   const char *opts_used = d->opts_used;
   FILE *fp = fopen(filename, "rb");
   if (!fp) {
-#ifdef ZSVSHEET_USE_THREADS
-    pthread_mutex_lock(mutexp);
-#endif
     perror(filename);
     *errp = errno;
+    d->finished_cb(*errp, d->uib);
     free(d);
-#ifdef ZSVSHEET_USE_THREADS
-    pthread_mutex_unlock(mutexp);
-#endif
     return NULL;
   }
-  struct zsv_opts opts = *optsp;
+  struct zsv_opts opts = {0};
+  if (optsp)
+    opts = *optsp;
   opts.stream = fp;
 
   // Generate the index data
@@ -289,11 +297,12 @@ static void *get_data_index(struct get_data_index_data *d) {
     *errp = errno;
     fclose(fp);
     perror(NULL);
-    free(d);
 #ifdef ZSVSHEET_USE_THREADS
     pthread_mutex_unlock(mutexp);
 #endif
     zsv_delete(parser);
+    d->finished_cb(*errp, d->uib);
+    free(d);
     return NULL;
   }
 
@@ -318,12 +327,12 @@ static void *get_data_index(struct get_data_index_data *d) {
   pthread_mutex_lock(mutexp);
 #endif
   *row_countp = row_count;
-  // TO DO: *d->indexp = xxx;
-  free(d);
 #ifdef ZSVSHEET_USE_THREADS
   pthread_mutex_unlock(mutexp);
 #endif
   zsv_delete(parser);
+  d->finished_cb(0, d->uib);
+  free(d);
   return NULL;
 }
 
