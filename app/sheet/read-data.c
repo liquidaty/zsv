@@ -38,6 +38,8 @@ static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char 
   gdi->index_ready = &uibuffp->index_ready;
   gdi->custom_prop_handler = custom_prop_handler;
   gdi->opts_used = opts_used;
+  gdi->uib = uibuffp;
+  halfdelay(2); // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
   pthread_t thread;
   pthread_create(&thread, NULL, get_data_index, gdi);
   pthread_detach(thread);
@@ -200,6 +202,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       }
     }
 
+    /*
     char *ui_status = NULL;
 
     if (row_filter != NULL && uibuff->dimensions.row_count > 0) {
@@ -214,6 +217,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     } else {
       uibuff->status = NULL;
     }
+    */
   }
   return 0;
 }
@@ -236,6 +240,16 @@ static void *get_data_index(void *gdi) {
 
   pthread_mutex_lock(mutexp);
   *d->index_ready = 1;
+
+  if (d->row_filter != NULL) {
+    if (d->uib && d->uib->status)
+      free(d->uib->status);
+    if (d->uib->index->row_count > 0) {
+      d->uib->dimensions.row_count = d->uib->index->row_count;
+      asprintf(&d->uib->status, "(%zu filtered rows) ", d->uib->dimensions.row_count - 1);
+    } else
+      d->uib->status = NULL;
+  }
   free(d);
   pthread_mutex_unlock(mutexp);
 
