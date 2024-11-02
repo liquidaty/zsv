@@ -4,9 +4,54 @@ set -e
 
 echo "[INF] Running $0"
 
-BENCHMARKS_DIR=".benchmarks"
+OS=${OS:-}
+RUNS=${RUNS:-6}
+SKIP_FIRST_RUN=${SKIP_FIRST_RUN:-true}
+BENCHMARKS_DIR=${BENCHMARKS_DIR:-".benchmarks"}
+ZSV_LINUX_BUILD_COMPILER=${ZSV_LINUX_BUILD_COMPILER:-gcc}
+
+if [ "$OS" = "" ]; then
+  if [ "$CI" = true ]; then
+    OS="$RUNNER_OS"
+  else
+    OS="$(uname -s)"
+  fi
+  OS=$(echo "$OS" | tr '[:upper:]' '[:lower:]')
+fi
+
+echo "[INF] OS                        : $OS"
+echo "[INF] RUNS                      : $RUNS"
+echo "[INF] SKIP_FIRST_RUN            : $SKIP_FIRST_RUN"
+echo "[INF] BENCHMARKS_DIR            : $BENCHMARKS_DIR"
+
+if [ "$RUNS" -lt 2 ]; then
+  echo "[ERR] RUNS must be greater than 2!"
+  exit 1
+fi
+
+if [ "$OS" = "linux" ]; then
+  echo "[INF] ZSV_LINUX_BUILD_COMPILER  : $ZSV_LINUX_BUILD_COMPILER"
+  if [ "$ZSV_LINUX_BUILD_COMPILER" != "gcc" ] && [ "$ZSV_LINUX_BUILD_COMPILER" != "clang" ] && [ "$ZSV_LINUX_BUILD_COMPILER" != "musl" ]; then
+    echo "[INF] Unknown ZSV_LINUX_BUILD_COMPILER value! [$ZSV_LINUX_BUILD_COMPILER]"
+    exit 1
+  fi
+  ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/v0.3.9-alpha/zsv-0.3.9-alpha-amd64-linux-$ZSV_LINUX_BUILD_COMPILER.tar.gz"
+  TSV_TAR_URL="https://github.com/eBay/tsv-utils/releases/download/v2.2.0/tsv-utils-v2.2.0_linux-x86_64_ldc2.tar.gz"
+  XSV_TAR_URL="https://github.com/BurntSushi/xsv/releases/download/0.13.0/xsv-0.13.0-x86_64-unknown-linux-musl.tar.gz"
+elif [ "$OS" = "macos" ] || [ "$OS" = "darwin" ]; then
+  ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/v0.3.9-alpha/zsv-0.3.9-alpha-amd64-macosx-gcc.tar.gz"
+  TSV_TAR_URL="https://github.com/eBay/tsv-utils/releases/download/v2.2.1/tsv-utils-v2.2.1_osx-x86_64_ldc2.tar.gz"
+  XSV_TAR_URL="https://github.com/BurntSushi/xsv/releases/download/0.13.0/xsv-0.13.0-x86_64-apple-darwin.tar.gz"
+else
+  echo "[ERR] OS not supported! [$OS]"
+  exit 1
+fi
+
 mkdir -p "$BENCHMARKS_DIR"
 cd "$BENCHMARKS_DIR"
+
+echo "[INF] Deleting existing extracted directories..."
+find ./ -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
 
 CSV_URL="https://burntsushi.net/stuff/worldcitiespop_mil.csv"
 CSV="$(echo "$CSV_URL" | sed 's:.*/::')"
@@ -18,11 +63,7 @@ else
   echo "[INF] Download skipped! CSV file already exists! [$CSV]"
 fi
 
-ls -Gghl "$CSV"
-
-ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/v0.3.9-alpha/zsv-0.3.9-alpha-amd64-macosx-gcc.tar.gz"
-TSV_TAR_URL="https://github.com/eBay/tsv-utils/releases/download/v2.2.1/tsv-utils-v2.2.1_osx-x86_64_ldc2.tar.gz"
-XSV_TAR_URL="https://github.com/BurntSushi/xsv/releases/download/0.13.0/xsv-0.13.0-x86_64-apple-darwin.tar.gz"
+ls -hl "$CSV"
 
 for URL in "$ZSV_TAR_URL" "$TSV_TAR_URL" "$XSV_TAR_URL"; do
   TAR="$(echo "$URL" | sed 's:.*/::')"
@@ -33,11 +74,6 @@ for URL in "$ZSV_TAR_URL" "$TSV_TAR_URL" "$XSV_TAR_URL"; do
   else
     echo "[INF] Download skipped! Archive already exists! [$TAR]"
   fi
-done
-
-ls -Gghl ./*.tar.gz
-
-for TAR in *.tar.gz; do
   echo "[INF] Extracting... [$TAR]"
   tar xf "$TAR"
 done
@@ -49,18 +85,16 @@ mkdir -p "$TOOLS_DIR"
 FILES="$(find . -type f)"
 for FILE in $FILES; do
   if [ -x "$FILE" ]; then
-    cp "$FILE" "$TOOLS_DIR"
+    mv "$FILE" "$TOOLS_DIR"
   fi
 done
 
-ls -Gghl "$TOOLS_DIR"
+ls -hl "$TOOLS_DIR"
 
 COUNT_OUTPUT_FILE="count.out"
 SELECT_OUTPUT_FILE="select.out"
 
 rm -f "$COUNT_OUTPUT_FILE" "$SELECT_OUTPUT_FILE"
-
-RUNS=6
 
 echo "[INF] Running count benchmarks..."
 for TOOL in zsv xsv tsv; do
@@ -73,11 +107,15 @@ for TOOL in zsv xsv tsv; do
     CMD="$TOOLS_DIR/number-lines -d,"
   fi
 
-  I=1
-  while [ "$I" -le "$RUNS" ]; do
+  I=0
+  while [ "$I" -lt "$RUNS" ]; do
+    if [ "$SKIP_FIRST_RUN" = true ] && [ "$I" = 0 ]; then
+      I=$((I + 1))
+      continue
+    fi
     {
       printf "%d | %s : " "$I" "$TOOL"
-      (time $CMD <"$CSV" >/dev/null) 2>&1 | xargs
+      (time -p $CMD <"$CSV" >/dev/null) 2>&1 | xargs
     } | tee -a "$COUNT_OUTPUT_FILE"
     I=$((I + 1))
   done
@@ -94,11 +132,15 @@ for TOOL in zsv xsv tsv; do
     CMD="$TOOLS_DIR/tsv-select -d, -f 1-7"
   fi
 
-  I=1
-  while [ "$I" -le "$RUNS" ]; do
+  I=0
+  while [ "$I" -lt "$RUNS" ]; do
+    if [ "$SKIP_FIRST_RUN" = true ] && [ "$I" = 0 ]; then
+      I=$((I + 1))
+      continue
+    fi
     {
       printf "%d | %s : " "$I" "$TOOL"
-      (time $CMD <"$CSV" >/dev/null) 2>&1 | xargs
+      (time -p $CMD <"$CSV" >/dev/null) 2>&1 | xargs
     } | tee -a "$SELECT_OUTPUT_FILE"
     I=$((I + 1))
   done
@@ -135,7 +177,6 @@ TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 } >"$MARKDOWN_OUTPUT"
 echo "[INF] Generated Markdown output successfully!"
 
-# GitHub Actions
 if [ "$CI" = true ]; then
   echo "[INF] Generating step summary..."
   {

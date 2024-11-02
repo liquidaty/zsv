@@ -27,10 +27,9 @@ struct zsvsheet_ui_buffer {
   char *status;
   char *row_filter;
 
-  unsigned char index_ready;
-
-  unsigned char index_started : 1;
-  unsigned char _ : 7;
+  unsigned char indexed : 1;
+  unsigned char rownum_col_offset : 1;
+  unsigned char _ : 6;
 };
 
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
@@ -51,6 +50,7 @@ struct zsvsheet_ui_buffer_opts {
   const char *row_filter;
   const char *filename;
   struct zsv_opts zsv_opts; // options to use when opening this file
+  char no_rownum_col_offset;
 };
 
 struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_buffer_t buffer, struct zsvsheet_ui_buffer_opts *uibopts) {
@@ -59,7 +59,8 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_buffer_t buffer, stru
   if (uib) {
     uib->buffer = buffer;
     memcpy(&uib->mutex, &init, sizeof(init));
-    if (uibopts) {
+    if (!(uibopts && uibopts->no_rownum_col_offset))
+      uib->rownum_col_offset = 1;
       if ((uibopts->row_filter && !(uib->row_filter = strdup(uibopts->row_filter))) ||
           (uibopts->filename && !(uib->filename = strdup(uibopts->filename)))) {
         zsvsheet_ui_buffer_delete(uib);
