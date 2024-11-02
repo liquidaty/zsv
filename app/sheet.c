@@ -125,7 +125,6 @@ static void get_subcommand(const char *prompt, char *buff, size_t buffsize, int 
     }
     // Ignore other keys
   }
-  return 0;
 }
 
 zsvsheet_handler_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, char *buffer, size_t bufsz,
@@ -687,8 +686,6 @@ const char *display_cell(struct zsvsheet_buffer *buff, size_t data_row, size_t d
   return str;
 }
 
-static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t rownum_col_offset,
-                                    size_t input_header_span, struct zsvsheet_display_dimensions *ddims) {
 static size_t zsvsheet_max_buffer_cols(struct zsvsheet_ui_buffer *ui_buffer) {
   size_t col_count = ui_buffer->dimensions.col_count + (ui_buffer->rownum_col_offset ? 1 : 0);
   return col_count > zsvsheet_buffer_cols(ui_buffer->buffer) ? zsvsheet_buffer_cols(ui_buffer->buffer) : col_count;
