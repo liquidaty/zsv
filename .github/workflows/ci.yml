@@ -604,6 +604,7 @@ jobs:
         mv ./"$DIR"/bin/zsv ./ci/
         tree ./ci
         rm -rf ./"$DIR"
+        realpath ci/zsv
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
@@ -624,6 +625,7 @@ jobs:
       env:
         DOCKER_BUILD_RECORD_UPLOAD: false
       with:
+        no-cache: true
         file: Dockerfile.ci
         platforms: linux/amd64
         push: ${{ startsWith(github.ref, 'refs/tags/v') }}
