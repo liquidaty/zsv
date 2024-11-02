@@ -596,15 +596,10 @@ jobs:
         ZIP: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
         DIR: ${{ env.AMD64_LINUX_MUSL }}
       run: |
-        cd "$DIR"
-        unzip -o "$ZIP"
-        cd ..
-        tree ./"$DIR"
+        unzip -o "$ZIP" -d "$DIR"
         mkdir -p ./ci
         mv ./"$DIR"/bin/zsv ./ci/
-        tree ./ci
         rm -rf ./"$DIR"
-        realpath ci/zsv
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
