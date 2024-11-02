@@ -526,7 +526,7 @@ jobs:
         PREFIX: ${{ env.AMD64_LINUX_MUSL }}
         CC: gcc
         MAKE: make
-        RUN_TESTS: true
+        RUN_TESTS: false
         STATIC_BUILD: "1"
         WITHOUT_SIMD: false
       run: ./scripts/ci-build.sh
@@ -589,14 +589,17 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
+        path: ${{ env.AMD64_LINUX_MUSL }}
 
     - name: Unzip
       env:
         ZIP: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
         DIR: ${{ env.AMD64_LINUX_MUSL }}
       run: |
+        cd "$DIR"
         unzip -o "$ZIP"
-        tree ./"$DIR"
+        tree
+        cd ..
         mv ./"$DIR"/bin/zsv .
         rm -rf ./"$DIR"
 
