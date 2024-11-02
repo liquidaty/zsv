@@ -626,6 +626,7 @@ jobs:
         DOCKER_BUILD_RECORD_UPLOAD: false
       with:
         no-cache: true
+        context: .
         file: Dockerfile.ci
         platforms: linux/amd64
         push: ${{ startsWith(github.ref, 'refs/tags/v') }}
