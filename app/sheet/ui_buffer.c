@@ -27,8 +27,9 @@ struct zsvsheet_ui_buffer {
   char *status;
   char *row_filter;
 
-  unsigned char indexed : 1;
+  unsigned char index_ready;
   unsigned char rownum_col_offset : 1;
+  unsigned char index_started:1;
   unsigned char _ : 6;
 };
 
