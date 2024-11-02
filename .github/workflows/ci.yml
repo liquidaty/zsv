@@ -598,9 +598,9 @@ jobs:
       run: |
         cd "$DIR"
         unzip -o "$ZIP"
-        tree
         cd ..
-        mv ./"$DIR"/bin/zsv .
+        mkdir -p ci
+        mv ./"$DIR"/bin/zsv ./ci
         rm -rf ./"$DIR"
 
     - name: Set up QEMU
