@@ -45,6 +45,7 @@ struct zsvsheet_index_opts {
   struct zsv_opts *zsv_optsp;
   struct zsvsheet_index **index;
   unsigned char *index_ready;
+  struct zsvsheet_ui_buffer *uib;
   int *errp;
   struct zsv_prop_handler *custom_prop_handler;
   const char *opts_used;
