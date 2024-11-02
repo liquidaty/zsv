@@ -525,7 +525,7 @@ jobs:
         PREFIX: ${{ env.AMD64_LINUX_MUSL }}
         CC: gcc
         MAKE: make
-        RUN_TESTS: false
+        RUN_TESTS: true
         STATIC_BUILD: "1"
         WITHOUT_SIMD: false
       run: ./scripts/ci-build.sh
