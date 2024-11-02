@@ -599,8 +599,10 @@ jobs:
         cd "$DIR"
         unzip -o "$ZIP"
         cd ..
-        mkdir -p ci
-        mv ./"$DIR"/bin/zsv ./ci
+        tree ./"$DIR"
+        mkdir -p ./ci
+        mv ./"$DIR"/bin/zsv ./ci/
+        tree ./ci
         rm -rf ./"$DIR"
 
     - name: Set up QEMU
