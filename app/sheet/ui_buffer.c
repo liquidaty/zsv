@@ -61,6 +61,7 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_buffer_t buffer, stru
     memcpy(&uib->mutex, &init, sizeof(init));
     if (!(uibopts && uibopts->no_rownum_col_offset))
       uib->rownum_col_offset = 1;
+    if (uibopts) {
       if ((uibopts->row_filter && !(uib->row_filter = strdup(uibopts->row_filter))) ||
           (uibopts->filename && !(uib->filename = strdup(uibopts->filename)))) {
         zsvsheet_ui_buffer_delete(uib);
