@@ -302,7 +302,7 @@ static zsvsheet_handler_status zsvsheet_move_hor(struct zsvsheet_display_info *d
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
 
   if (right) {
-    cursor_right(di->dimensions->columns, zsvsheet_cell_display_width(current_ui_buffer, di->dimensions), ,
+    cursor_right(di->dimensions->columns, zsvsheet_cell_display_width(current_ui_buffer, di->dimensions),
                  current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset >
                      zsvsheet_buffer_cols(current_ui_buffer->buffer)
                    ? zsvsheet_buffer_cols(current_ui_buffer->buffer)
@@ -350,7 +350,7 @@ static zsvsheet_handler_status zsvsheet_move_hor_end(struct zsvsheet_display_inf
 
   if (right) {
     // to do: directly set current_ui_buffer->cursor_col and buff_offset.col
-    while (cursor_right(di->dimensions->columns, zsvsheet_cell_display_width(current_ui_buffer, di->dimensions), ,
+    while (cursor_right(di->dimensions->columns, zsvsheet_cell_display_width(current_ui_buffer, di->dimensions),
                         current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset >
                             zsvsheet_buffer_cols(current_ui_buffer->buffer)
                           ? zsvsheet_buffer_cols(current_ui_buffer->buffer)
