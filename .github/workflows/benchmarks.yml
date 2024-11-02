@@ -3,7 +3,7 @@ name: benchmarks
 on: workflow_dispatch
 
 jobs:
-  benchmarks:
+  amd64-macos-gcc:
     runs-on: [macos-13]
 
     steps:
@@ -16,10 +16,56 @@ jobs:
     - name: Cache
       uses: actions/cache@v4
       with:
-        key: ${{ runner.os }}-benchmarks
+        key: benchmarks-${{ runner.os }}-amd64-macos-gcc
         path: |
           **/*.csv
           **/*.tar.gz
 
     - name: Run benchmarks
+      run: ./scripts/ci-run-benchmarks.sh
+
+  amd64-linux-gcc:
+    runs-on: [ubuntu-latest]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          scripts/ci-run-benchmarks.sh
+
+    - name: Cache
+      uses: actions/cache@v4
+      with:
+        key: benchmarks-${{ runner.os }}-amd64-linux-gcc
+        path: |
+          **/*.csv
+          **/*.tar.gz
+
+    - name: Run benchmarks
+      env:
+        ZSV_LINUX_BUILD_COMPILER: gcc
+      run: ./scripts/ci-run-benchmarks.sh
+
+  amd64-linux-clang:
+    runs-on: [ubuntu-latest]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          scripts/ci-run-benchmarks.sh
+
+    - name: Cache
+      uses: actions/cache@v4
+      with:
+        key: benchmarks-${{ runner.os }}-amd64-linux-clang
+        path: |
+          **/*.csv
+          **/*.tar.gz
+
+    - name: Run benchmarks
+      env:
+        ZSV_LINUX_BUILD_COMPILER: clang
       run: ./scripts/ci-run-benchmarks.sh
