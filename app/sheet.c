@@ -607,6 +607,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   while (true) {
     ch = getch();
+    if (ch == ERR) {
+      pthread_mutex_lock(&current_ui_buffer->mutex);
+      if (current_ui_buffer && current_ui_buffer->status) {
+        zsvsheet_set_status(&display_dims, 1, current_ui_buffer->status);
+        display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
+        cbreak();
+      }
+      pthread_mutex_unlock(&current_ui_buffer->mutex);
+      continue;
+    }
 
     zsvsheet_set_status(&display_dims, 1, "");
     handler_state.display_info.update_buffer = false;
