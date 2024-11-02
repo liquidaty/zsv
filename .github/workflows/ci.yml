@@ -596,7 +596,9 @@ jobs:
         ZIP: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
         DIR: ${{ env.AMD64_LINUX_MUSL }}
       run: |
-        unzip -o "$ZIP" -d "$DIR"
+        cd "$DIR"
+        unzip -o "$ZIP"
+        cd ..
         mkdir -p ./ci
         mv ./"$DIR"/bin/zsv ./ci/
         rm -rf ./"$DIR"
