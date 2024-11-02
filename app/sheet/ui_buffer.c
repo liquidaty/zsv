@@ -25,7 +25,7 @@ struct zsvsheet_ui_buffer {
   char *row_filter;
 
   unsigned char indexed : 1;
-  unsigned char rownum_col_offset:1;
+  unsigned char rownum_col_offset : 1;
   unsigned char _ : 6;
 };
 
@@ -54,7 +54,7 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_buffer_t buffer, stru
   struct zsvsheet_ui_buffer *uib = calloc(1, sizeof(*uib));
   if (uib) {
     uib->buffer = buffer;
-    if(!(uibopts && uibopts->no_rownum_col_offset))
+    if (!(uibopts && uibopts->no_rownum_col_offset))
       uib->rownum_col_offset = 1;
 #ifdef ZSVSHEET_USE_THREADS
     uib->mutex = PTHREAD_MUTEX_INITIALIZER;
