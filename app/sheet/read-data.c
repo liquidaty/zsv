@@ -49,7 +49,6 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
                      struct zsvsheet_ui_buffer_opts *uibopts, // if *uibufferp == NULL and uibopts != NULL
                      size_t start_row, size_t start_col, size_t header_span, struct zsvsheet_opts *zsvsheet_opts,
                      struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
-  (void)(index); // to do
   const char *filename = (uibufferp && *uibufferp) ? (*uibufferp)->filename : uibopts ? uibopts->filename : NULL;
   struct zsv_opts opts = {0};
   if (uibufferp && *uibufferp)
