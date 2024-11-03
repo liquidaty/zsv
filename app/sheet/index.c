@@ -74,13 +74,12 @@ static void build_memory_index_row_handler(void *ctx) {
 }
 
 enum zsvsheet_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
-  struct zsvsheet_indexer ixr = { 0 };
+  struct zsvsheet_indexer ixr = {0};
   ixr.filter = optsp->row_filter;
   ixr.filter_len = optsp->row_filter ? strlen(optsp->row_filter) : 0;
 
   enum zsvsheet_index_status ret = zsvsheet_index_status_error;
-  struct zsv_opts *zopts = optsp->zsv_optsp;
-  struct zsv_opts ix_zopts = {0};
+  struct zsv_opts ix_zopts =  optsp->zsv_opts;
   char *temp_filename;
   FILE *temp_f = NULL;
 
