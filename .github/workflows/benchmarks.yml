@@ -30,7 +30,7 @@ jobs:
       with:
         run-id: ${{ inputs.run-id }}
         path: ${{ env.BENCHMARKS_DIR }}
-        pattern: '*-amd64-macosx-gcc.tar.gz'
+        name: zsv-0.3.9-alpha-amd64-macosx-gcc.tar.gz
 
     - name: Set ZSV_TAG env var
       if: ${{ inputs.run-id }}
@@ -41,38 +41,38 @@ jobs:
     - name: Run benchmarks
       run: ./scripts/ci-run-benchmarks.sh
 
-  amd64-linux:
-    runs-on: ubuntu-latest
+  # amd64-linux:
+  #   runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        compiler: [gcc, clang, musl]
-    continue-on-error: true
+  #   strategy:
+  #     matrix:
+  #       compiler: [gcc, clang, musl]
+  #   continue-on-error: true
 
-    name: amd64-linux-${{ matrix.compiler }}
+  #   name: amd64-linux-${{ matrix.compiler }}
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        sparse-checkout: |
-          scripts/ci-run-benchmarks.sh
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v4
+  #     with:
+  #       sparse-checkout: |
+  #         scripts/ci-run-benchmarks.sh
 
-    - name: Download build artifact from workflow run
-      if: ${{ inputs.run-id }}
-      uses: actions/download-artifact@v4
-      with:
-        run-id: ${{ inputs.run-id }}
-        path: ${{ env.BENCHMARKS_DIR }}
-        pattern: '*-amd64-linux-${{ matrix.compiler }}.tar.gz'
+  #   - name: Download build artifact from workflow run
+  #     if: ${{ inputs.run-id }}
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       run-id: ${{ inputs.run-id }}
+  #       path: ${{ env.BENCHMARKS_DIR }}
+  #       pattern: '*-amd64-linux-${{ matrix.compiler }}.tar.gz'
 
-    - name: Set ZSV_TAG env var
-      if: ${{ inputs.run-id }}
-      run: |
-        ZSV_TAG="$(ls "$BENCHMARKS_DIR"/*.tar.gz" | grep -Po '(?<=zsv-).*(?=-amd)')"
-        echo "ZSV_TAG=$ZSV_TAG" | tee -a "$GITHUB_ENV"
+  #   - name: Set ZSV_TAG env var
+  #     if: ${{ inputs.run-id }}
+  #     run: |
+  #       ZSV_TAG="$(ls "$BENCHMARKS_DIR"/*.tar.gz" | grep -Po '(?<=zsv-).*(?=-amd)')"
+  #       echo "ZSV_TAG=$ZSV_TAG" | tee -a "$GITHUB_ENV"
 
-    - name: Run benchmarks
-      env:
-        ZSV_LINUX_BUILD_COMPILER: ${{ matrix.compiler }}
-      run: ./scripts/ci-run-benchmarks.sh
+  #   - name: Run benchmarks
+  #     env:
+  #       ZSV_LINUX_BUILD_COMPILER: ${{ matrix.compiler }}
+  #     run: ./scripts/ci-run-benchmarks.sh
