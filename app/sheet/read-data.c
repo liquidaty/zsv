@@ -123,7 +123,6 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       struct zsvsheet_ui_buffer *tmp_uibuff = NULL;
       if (!(buffer = zsvsheet_buffer_new(zsv_cell_count(parser), uibopts->buff_opts, &stat)) ||
           stat != zsvsheet_status_ok || !(tmp_uibuff = zsvsheet_ui_buffer_new(buffer, uibopts))) {
-        zsv_delete(parser);
         if (tmp_uibuff)
           zsvsheet_ui_buffer_delete(tmp_uibuff);
         else
