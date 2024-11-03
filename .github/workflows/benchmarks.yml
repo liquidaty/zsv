@@ -4,14 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       run-id:
-        description: 'Workflow run ID to download builds from'
+        description: 'Run ID (optional) [default: latest release]'
         type: number
 
 permissions:
   actions: read
 
 env:
-  BENCHMARKS_DIR: ci-benchmarks
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  BENCHMARKS_DIR: .benchmarks
 
 jobs:
   amd64-macos-gcc:
@@ -26,16 +27,17 @@ jobs:
 
     - name: Download build artifact from workflow run
       if: ${{ inputs.run-id }}
-      uses: actions/download-artifact@v4
-      with:
-        run-id: ${{ inputs.run-id }}
-        path: ${{ env.BENCHMARKS_DIR }}
-        name: zsv-0.3.9-alpha-amd64-macosx-gcc.tar.gz
+      run: |
+        gh run download --repo liquidaty/zsv --pattern *amd64-macosx-gcc.tar.gz ${{ inputs.run-id }}
+        mkdir -p ./"$BENCHMARKS_DIR"
+        mv zsv-*.tar.gz/*.tar.gz ./"$BENCHMARKS_DIR"
+        rm -rf zsv-*.tar.gz
+        ls -hl ./"$BENCHMARKS_DIR"
 
     - name: Set ZSV_TAG env var
       if: ${{ inputs.run-id }}
       run: |
-        ZSV_TAG="$(ls "$BENCHMARKS_DIR"/*.tar.gz" | grep -Po '(?<=zsv-).*(?=-amd)')"
+        ZSV_TAG="$(ls ./"$BENCHMARKS_DIR"/*.tar.gz" | grep -Po '(?<=zsv-).*(?=-amd)')"
         echo "ZSV_TAG=$ZSV_TAG" | tee -a "$GITHUB_ENV"
 
     - name: Run benchmarks
