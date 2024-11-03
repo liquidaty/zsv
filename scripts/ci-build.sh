@@ -27,6 +27,8 @@ if [ "$SKIP_TAR_ARCHIVE" != true ]; then
   SKIP_TAR_ARCHIVE=false
 fi
 
+WITHOUT_SIMD=${WITHOUT_SIMD:-false}
+
 #JQ_DIR="$PWD/jq"
 #JQ_PREFIX="$JQ_DIR/build"
 #JQ_INCLUDE_DIR="$JQ_PREFIX/include"
