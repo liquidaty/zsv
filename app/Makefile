@@ -245,7 +245,7 @@ CFLAGS+=${YAJL_HELPER_INCLUDE} ${YAJL_INCLUDE}
 
 # jq
 JQ_TARBALL=${THIS_MAKEFILE_DIR}/external/jq-1.6.tar.gz
-JQ_SRC=${BUILD_DIR}/external/jq-src
+JQ_SRC=${BUILD_DIR}-external/jq-src
 
 JQ_PREFIX ?=
 ifeq ($(JQ_PREFIX),)
@@ -408,7 +408,12 @@ lib-jq: ${JQ_LIB}
 	@echo "Using jq library ${JQ_LIB}"
 
 ${JQ_BUNDLE_LIB}: ${JQ_SRC} # -D_REENTRANT needed for clang to not break
-	cd ${JQ_SRC} \
+	@if [ -e ${JQ_SRC}-conf ]; then \
+		rm -rf ${JQ_SRC}-conf; \
+	fi
+	# copy the directory because its timestamp gets updated after libjq is built
+	@cp -a ${JQ_SRC} ${JQ_SRC}-conf
+	cd ${JQ_SRC}-conf \
 	&& CC="${CC}" CFLAGS="${CFLAGS} -D_REENTRANT" ./configure \
 	    --prefix="${JQ_PREFIX}" \
 	    --disable-maintainer-mode \

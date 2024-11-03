@@ -1,4 +1,7 @@
 #include <unistd.h> // unlink()
+#include <pthread.h>
+
+#include "index.h"
 
 struct zsvsheet_ui_buffer {
   char *filename;
@@ -10,9 +13,9 @@ struct zsvsheet_ui_buffer {
   size_t cursor_row;
   size_t cursor_col;
   struct zsvsheet_input_dimensions dimensions;
-#ifdef ZSVSHEET_USE_THREADS
+  struct zsvsheet_index *index;
   pthread_mutex_t mutex;
-#endif
+
   // input_offset: location within the input from which the buffer is read
   // i.e. if row = 5, col = 3, the buffer data starts from cell D6
   struct zsvsheet_rowcol input_offset;
@@ -24,8 +27,10 @@ struct zsvsheet_ui_buffer {
   char *status;
   char *row_filter;
 
-  unsigned char indexed : 1;
-  unsigned char _ : 7;
+  unsigned char index_ready;
+  unsigned char rownum_col_offset : 1;
+  unsigned char index_started : 1;
+  unsigned char _ : 6;
 };
 
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
@@ -46,15 +51,17 @@ struct zsvsheet_ui_buffer_opts {
   const char *row_filter;
   const char *filename;
   struct zsv_opts zsv_opts; // options to use when opening this file
+  char no_rownum_col_offset;
 };
 
 struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_buffer_t buffer, struct zsvsheet_ui_buffer_opts *uibopts) {
   struct zsvsheet_ui_buffer *uib = calloc(1, sizeof(*uib));
+  pthread_mutex_t init = PTHREAD_MUTEX_INITIALIZER;
   if (uib) {
     uib->buffer = buffer;
-#ifdef ZSVSHEET_USE_THREADS
-    uib->mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
+    memcpy(&uib->mutex, &init, sizeof(init));
+    if (!(uibopts && uibopts->no_rownum_col_offset))
+      uib->rownum_col_offset = 1;
     if (uibopts) {
       if ((uibopts->row_filter && !(uib->row_filter = strdup(uibopts->row_filter))) ||
           (uibopts->filename && !(uib->filename = strdup(uibopts->filename)))) {

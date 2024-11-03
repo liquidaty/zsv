@@ -18,7 +18,6 @@ struct zsvsheet_rowcol {
 struct zsvsheet_input_dimensions {
   size_t col_count;
   size_t row_count;
-  void *index;
 };
 
 struct zsvsheet_display_dimensions {
