@@ -11,7 +11,7 @@ permissions:
   actions: read
 
 env:
-  BENCHMARKS_DIR: .benchmarks
+  BENCHMARKS_DIR: ci-benchmarks
 
 jobs:
   amd64-macos-gcc:
@@ -30,7 +30,7 @@ jobs:
       with:
         run-id: ${{ inputs.run-id }}
         path: ${{ env.BENCHMARKS_DIR }}
-        pattern: zsv-*-amd64-macosx-gcc.tar.gz
+        pattern: '*-amd64-macosx-gcc.tar.gz'
 
     - name: Set ZSV_TAG env var
       if: ${{ inputs.run-id }}
@@ -64,7 +64,7 @@ jobs:
       with:
         run-id: ${{ inputs.run-id }}
         path: ${{ env.BENCHMARKS_DIR }}
-        pattern: zsv-*-amd64-linux-${{ matrix.compiler }}.tar.gz
+        pattern: '*-amd64-linux-${{ matrix.compiler }}.tar.gz'
 
     - name: Set ZSV_TAG env var
       if: ${{ inputs.run-id }}
