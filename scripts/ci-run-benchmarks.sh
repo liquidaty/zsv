@@ -37,7 +37,9 @@ fi
 ZSV_TAG="$(echo "$ZSV_TAG" | sed 's/^v//')"
 echo "[INF] ZSV_TAG: $ZSV_TAG"
 
+ZSV_BUILD_FROM="[RELESAE (v$ZSV_TAG)](https://github.com/liquidaty/zsv/releases/tag/v$ZSV_TAG)"
 if [ "$CI" = true ] && [ "$WORKFLOW_RUN_ID" != "" ]; then
+  ZSV_BUILD_FROM="[WORKFLOW ($WORKFLOW_RUN_ID)](https://github.com/liquidaty/zsv/actions/runs/$WORKFLOW_RUN_ID)"
   echo "[INF] WORKFLOW_RUN_ID: $WORKFLOW_RUN_ID"
 fi
 
@@ -159,7 +161,8 @@ TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 {
   echo '# Benchmarks'
   echo
-  echo "- Timestamp UTC: \`$TIMESTAMP\`"
+  echo "- Timestamp UTC: $TIMESTAMP"
+  echo "- zsv build from: $ZSV_BUILD_FROM"
   echo
   echo "## Releases Used"
   echo

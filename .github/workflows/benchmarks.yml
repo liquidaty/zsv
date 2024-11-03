@@ -3,7 +3,7 @@ name: benchmarks
 on:
   workflow_dispatch:
     inputs:
-      run-id:
+      workflow-run-id:
         description: 'Run ID (optional) [default: latest release]'
         type: number
 
@@ -12,6 +12,7 @@ permissions:
 
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  WORKFLOW_RUN_ID: ${{ inputs.workflow-run-id }}
   BENCHMARKS_DIR: .benchmarks
 
 jobs:
@@ -26,16 +27,16 @@ jobs:
           scripts/ci-run-benchmarks.sh
 
     - name: Download build artifact from workflow run
-      if: ${{ inputs.run-id }}
+      if: ${{ env.WORKFLOW_RUN_ID }}
       run: |
-        gh run download --repo liquidaty/zsv --pattern *amd64-macosx-gcc.tar.gz ${{ inputs.run-id }}
+        gh run download --repo liquidaty/zsv --pattern *amd64-macosx-gcc.tar.gz "$WORKFLOW_RUN_ID"
         mkdir -p ./"$BENCHMARKS_DIR"
         mv zsv-*.tar.gz/*.tar.gz ./"$BENCHMARKS_DIR"
         rm -rf zsv-*.tar.gz
         ls -hl ./"$BENCHMARKS_DIR"
 
     - name: Set ZSV_TAG env var
-      if: ${{ inputs.run-id }}
+      if: ${{ env.WORKFLOW_RUN_ID }}
       run: |
         cd ./"$BENCHMARKS_DIR"
         ZSV_TAG="$(ls *.tar.gz | sed 's|zsv-\(.*\)-amd64.*|\1|')"
@@ -44,38 +45,42 @@ jobs:
     - name: Run benchmarks
       run: ./scripts/ci-run-benchmarks.sh
 
-  # amd64-linux:
-  #   runs-on: ubuntu-latest
+  amd64-linux:
+    runs-on: ubuntu-latest
 
-  #   strategy:
-  #     matrix:
-  #       compiler: [gcc, clang, musl]
-  #   continue-on-error: true
+    strategy:
+      matrix:
+        compiler: [gcc, clang, musl]
+    continue-on-error: true
 
-  #   name: amd64-linux-${{ matrix.compiler }}
+    name: amd64-linux-${{ matrix.compiler }}
 
-  #   steps:
-  #   - name: Checkout
-  #     uses: actions/checkout@v4
-  #     with:
-  #       sparse-checkout: |
-  #         scripts/ci-run-benchmarks.sh
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          scripts/ci-run-benchmarks.sh
 
-  #   - name: Download build artifact from workflow run
-  #     if: ${{ inputs.run-id }}
-  #     uses: actions/download-artifact@v4
-  #     with:
-  #       run-id: ${{ inputs.run-id }}
-  #       path: ${{ env.BENCHMARKS_DIR }}
-  #       pattern: '*-amd64-linux-${{ matrix.compiler }}.tar.gz'
+    - name: Download build artifact from workflow run
+      if: ${{ env.WORKFLOW_RUN_ID }}
+      env:
+        COMPILER: ${{ matrix.compiler }}
+      run: |
+        gh run download --repo liquidaty/zsv --pattern *amd64-linux-$COMPILER.tar.gz "$WORKFLOW_RUN_ID"
+        mkdir -p ./"$BENCHMARKS_DIR"
+        mv zsv-*.tar.gz/*.tar.gz ./"$BENCHMARKS_DIR"
+        rm -rf zsv-*.tar.gz
+        ls -hl ./"$BENCHMARKS_DIR"
 
-  #   - name: Set ZSV_TAG env var
-  #     if: ${{ inputs.run-id }}
-  #     run: |
-  #       ZSV_TAG="$(ls "$BENCHMARKS_DIR"/*.tar.gz" | grep -Po '(?<=zsv-).*(?=-amd)')"
-  #       echo "ZSV_TAG=$ZSV_TAG" | tee -a "$GITHUB_ENV"
+    - name: Set ZSV_TAG env var
+      if: ${{ env.WORKFLOW_RUN_ID }}
+      run: |
+        cd ./"$BENCHMARKS_DIR"
+        ZSV_TAG="$(ls *.tar.gz | sed 's|zsv-\(.*\)-amd64.*|\1|')"
+        echo "ZSV_TAG=$ZSV_TAG" | tee -a "$GITHUB_ENV"
 
-  #   - name: Run benchmarks
-  #     env:
-  #       ZSV_LINUX_BUILD_COMPILER: ${{ matrix.compiler }}
-  #     run: ./scripts/ci-run-benchmarks.sh
+    - name: Run benchmarks
+      env:
+        ZSV_LINUX_BUILD_COMPILER: ${{ matrix.compiler }}
+      run: ./scripts/ci-run-benchmarks.sh
