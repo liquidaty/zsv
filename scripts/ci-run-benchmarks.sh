@@ -84,10 +84,9 @@ else
   echo "[SKIPPED]"
   fi
   printf "[INF] Extracting... [%s] " "$TAR"
+  tar xf "$TAR"
   echo "[DONE]"
 done
-
-tree
 
 TOOLS_DIR="tools"
 rm -rf ./"$TOOLS_DIR"
@@ -99,8 +98,6 @@ for FILE in $FILES; do
     mv "$FILE" "$TOOLS_DIR"
   fi
 done
-
-tree
 
 COUNT_OUTPUT_FILE="count.out"
 SELECT_OUTPUT_FILE="select.out"

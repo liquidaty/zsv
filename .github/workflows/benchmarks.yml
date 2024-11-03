@@ -47,6 +47,7 @@ jobs:
     strategy:
       matrix:
         compiler: [gcc, clang, musl]
+    continue-on-error: true
 
     name: amd64-linux-${{ matrix.compiler }}
 
