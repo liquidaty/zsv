@@ -78,7 +78,7 @@ for URL in "$ZSV_TAR_URL" "$TSV_TAR_URL" "$XSV_TAR_URL"; do
   TAR="$(echo "$URL" | sed 's:.*/::')"
   printf "[INF] Downloading... [%s] " "$TAR"
   if [ ! -f "$TAR" ]; then
-    wget "$URL"
+    wget -q "$URL"
   echo "[DONE]"
 else
   echo "[SKIPPED]"
@@ -86,6 +86,8 @@ else
   printf "[INF] Extracting... [%s] " "$TAR"
   echo "[DONE]"
 done
+
+tree
 
 TOOLS_DIR="tools"
 rm -rf ./"$TOOLS_DIR"
@@ -97,6 +99,8 @@ for FILE in $FILES; do
     mv "$FILE" "$TOOLS_DIR"
   fi
 done
+
+tree
 
 COUNT_OUTPUT_FILE="count.out"
 SELECT_OUTPUT_FILE="select.out"
