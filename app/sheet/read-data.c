@@ -32,7 +32,7 @@ static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char 
   gdi->mutexp = mutexp;
   gdi->filename = filename;
   gdi->temp_filename = &uibuffp->temp_filename;
-  gdi->zsv_optsp = optsp;
+  gdi->zsv_opts = *optsp;
   gdi->row_filter = row_filter;
   gdi->index = &uibuffp->index;
   gdi->index_ready = &uibuffp->index_ready;
