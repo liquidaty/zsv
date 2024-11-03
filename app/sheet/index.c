@@ -82,9 +82,6 @@ enum zsvsheet_index_status build_memory_index(struct zsvsheet_index_opts *optsp)
   struct zsv_opts ix_zopts = optsp->zsv_opts;
   char *temp_filename;
   FILE *temp_f = NULL;
-
-  memcpy(&ix_zopts, zopts, sizeof(ix_zopts));
-
   FILE *fp = fopen(optsp->filename, "rb");
   if (!fp)
     return ret;
