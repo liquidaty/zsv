@@ -9,6 +9,7 @@ RUNS=${RUNS:-6}
 SKIP_FIRST_RUN=${SKIP_FIRST_RUN:-true}
 BENCHMARKS_DIR=${BENCHMARKS_DIR:-".benchmarks"}
 ZSV_LINUX_BUILD_COMPILER=${ZSV_LINUX_BUILD_COMPILER:-gcc}
+ZSV_TAG=${ZSV_TAG:-}
 
 if [ "$OS" = "" ]; then
   if [ "$CI" = true ]; then
@@ -19,27 +20,40 @@ if [ "$OS" = "" ]; then
   OS=$(echo "$OS" | tr '[:upper:]' '[:lower:]')
 fi
 
-echo "[INF] OS                        : $OS"
-echo "[INF] RUNS                      : $RUNS"
-echo "[INF] SKIP_FIRST_RUN            : $SKIP_FIRST_RUN"
-echo "[INF] BENCHMARKS_DIR            : $BENCHMARKS_DIR"
+echo "[INF] OS: $OS"
+echo "[INF] RUNS: $RUNS"
+echo "[INF] SKIP_FIRST_RUN: $SKIP_FIRST_RUN"
+echo "[INF] BENCHMARKS_DIR: $BENCHMARKS_DIR"
 
 if [ "$RUNS" -lt 2 ]; then
   echo "[ERR] RUNS must be greater than 2!"
   exit 1
 fi
 
+if [ "$ZSV_TAG" = "" ]; then
+  ZSV_TAG=$(git ls-remote --tags --refs https://github.com/liquidaty/zsv | tail -n1 | cut -d '/' -f3)
+fi
+
+ZSV_TAG="$(echo "$ZSV_TAG" | sed 's/^v//')"
+echo "[INF] ZSV_TAG: $ZSV_TAG"
+
+ZSV_BUILD_FROM="[RELESAE (v$ZSV_TAG)](https://github.com/liquidaty/zsv/releases/tag/v$ZSV_TAG)"
+if [ "$CI" = true ] && [ "$WORKFLOW_RUN_ID" != "" ]; then
+  ZSV_BUILD_FROM="[WORKFLOW ($WORKFLOW_RUN_ID)](https://github.com/liquidaty/zsv/actions/runs/$WORKFLOW_RUN_ID)"
+  echo "[INF] WORKFLOW_RUN_ID: $WORKFLOW_RUN_ID"
+fi
+
 if [ "$OS" = "linux" ]; then
-  echo "[INF] ZSV_LINUX_BUILD_COMPILER  : $ZSV_LINUX_BUILD_COMPILER"
+  echo "[INF] ZSV_LINUX_BUILD_COMPILER: $ZSV_LINUX_BUILD_COMPILER"
   if [ "$ZSV_LINUX_BUILD_COMPILER" != "gcc" ] && [ "$ZSV_LINUX_BUILD_COMPILER" != "clang" ] && [ "$ZSV_LINUX_BUILD_COMPILER" != "musl" ]; then
-    echo "[INF] Unknown ZSV_LINUX_BUILD_COMPILER value! [$ZSV_LINUX_BUILD_COMPILER]"
+    echo "[INF] Unknown value for ZSV_LINUX_BUILD_COMPILER! [$ZSV_LINUX_BUILD_COMPILER]"
     exit 1
   fi
-  ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/v0.3.9-alpha/zsv-0.3.9-alpha-amd64-linux-$ZSV_LINUX_BUILD_COMPILER.tar.gz"
+  ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/v$ZSV_TAG/zsv-$ZSV_TAG-amd64-linux-$ZSV_LINUX_BUILD_COMPILER.tar.gz"
   TSV_TAR_URL="https://github.com/eBay/tsv-utils/releases/download/v2.2.0/tsv-utils-v2.2.0_linux-x86_64_ldc2.tar.gz"
   XSV_TAR_URL="https://github.com/BurntSushi/xsv/releases/download/0.13.0/xsv-0.13.0-x86_64-unknown-linux-musl.tar.gz"
 elif [ "$OS" = "macos" ] || [ "$OS" = "darwin" ]; then
-  ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/v0.3.9-alpha/zsv-0.3.9-alpha-amd64-macosx-gcc.tar.gz"
+  ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/v$ZSV_TAG/zsv-$ZSV_TAG-amd64-macosx-gcc.tar.gz"
   TSV_TAR_URL="https://github.com/eBay/tsv-utils/releases/download/v2.2.1/tsv-utils-v2.2.1_osx-x86_64_ldc2.tar.gz"
   XSV_TAR_URL="https://github.com/BurntSushi/xsv/releases/download/0.13.0/xsv-0.13.0-x86_64-apple-darwin.tar.gz"
 else
@@ -50,32 +64,30 @@ fi
 mkdir -p "$BENCHMARKS_DIR"
 cd "$BENCHMARKS_DIR"
 
-echo "[INF] Deleting existing extracted directories..."
 find ./ -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
 
 CSV_URL="https://burntsushi.net/stuff/worldcitiespop_mil.csv"
 CSV="$(echo "$CSV_URL" | sed 's:.*/::')"
-echo "[INF] Downloading CSV file... [$CSV]"
+printf "[INF] Downloading CSV file... [%s] " "$CSV"
 if [ ! -f "$CSV" ]; then
   wget -q "$CSV_URL"
-  echo "[INF] Downloaded successfully!"
+  echo "[DOWNLOADED]"
 else
-  echo "[INF] Download skipped! CSV file already exists! [$CSV]"
+  echo "[SKIPPED]"
 fi
-
-ls -hl "$CSV"
 
 for URL in "$ZSV_TAR_URL" "$TSV_TAR_URL" "$XSV_TAR_URL"; do
   TAR="$(echo "$URL" | sed 's:.*/::')"
-  echo "[INF] Downloading... [$TAR]"
+  printf "[INF] Downloading... [%s] " "$TAR"
   if [ ! -f "$TAR" ]; then
     wget -q "$URL"
-    echo "[INF] Downloaded successfully! [$TAR]"
-  else
-    echo "[INF] Download skipped! Archive already exists! [$TAR]"
+  echo "[DONE]"
+else
+  echo "[SKIPPED]"
   fi
-  echo "[INF] Extracting... [$TAR]"
+  printf "[INF] Extracting... [%s] " "$TAR"
   tar xf "$TAR"
+  echo "[DONE]"
 done
 
 TOOLS_DIR="tools"
@@ -89,11 +101,8 @@ for FILE in $FILES; do
   fi
 done
 
-ls -hl "$TOOLS_DIR"
-
 COUNT_OUTPUT_FILE="count.out"
 SELECT_OUTPUT_FILE="select.out"
-
 rm -f "$COUNT_OUTPUT_FILE" "$SELECT_OUTPUT_FILE"
 
 echo "[INF] Running count benchmarks..."
@@ -152,7 +161,8 @@ TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 {
   echo '# Benchmarks'
   echo
-  echo "- Timestamp UTC: \`$TIMESTAMP\`"
+  echo "- Timestamp UTC: $TIMESTAMP"
+  echo "- zsv build from: $ZSV_BUILD_FROM"
   echo
   echo "## Releases Used"
   echo
