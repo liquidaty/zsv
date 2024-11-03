@@ -3,10 +3,20 @@ name: ci
 on:
   push:
     branches: [main]
-    paths-ignore: ['**.md', 'setup-action/**']
+    paths-ignore:
+    - '**.md'
+    - 'setup-action/**'
+    - '.github/workflows/codeql.yml'
+    - '.github/workflows/benchmarks.yml'
+    - 'scripts/ci-run-benchmarks.sh'
   pull_request:
     branches: [main]
-    paths-ignore: ['**.md', 'setup-action/**']
+    paths-ignore:
+    - '**.md'
+    - 'setup-action/**'
+    - '.github/workflows/codeql.yml'
+    - '.github/workflows/benchmarks.yml'
+    - 'scripts/ci-run-benchmarks.sh'
   release:
     types: [published]
 
