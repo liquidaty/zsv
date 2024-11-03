@@ -37,7 +37,8 @@ jobs:
     - name: Set ZSV_TAG env var
       if: ${{ inputs.run-id }}
       run: |
-        ZSV_TAG="$(ls ./"$BENCHMARKS_DIR"/*.tar.gz | sed 's|zsv-\(.*\)-amd64.*|\1|')"
+        cd ./"$BENCHMARKS_DIR"
+        ZSV_TAG="$(ls *.tar.gz | sed 's|zsv-\(.*\)-amd64.*|\1|')"
         echo "ZSV_TAG=$ZSV_TAG" | tee -a "$GITHUB_ENV"
 
     - name: Run benchmarks
