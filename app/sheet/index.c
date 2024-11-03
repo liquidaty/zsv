@@ -79,7 +79,7 @@ enum zsvsheet_index_status build_memory_index(struct zsvsheet_index_opts *optsp)
   ixr.filter_len = optsp->row_filter ? strlen(optsp->row_filter) : 0;
 
   enum zsvsheet_index_status ret = zsvsheet_index_status_error;
-  struct zsv_opts ix_zopts =  optsp->zsv_opts;
+  struct zsv_opts ix_zopts = optsp->zsv_opts;
   char *temp_filename;
   FILE *temp_f = NULL;
 
