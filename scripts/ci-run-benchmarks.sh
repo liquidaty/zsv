@@ -51,7 +51,7 @@ if [ "$OS" = "linux" ]; then
   TSV_TAR_URL="https://github.com/eBay/tsv-utils/releases/download/v2.2.0/tsv-utils-v2.2.0_linux-x86_64_ldc2.tar.gz"
   XSV_TAR_URL="https://github.com/BurntSushi/xsv/releases/download/0.13.0/xsv-0.13.0-x86_64-unknown-linux-musl.tar.gz"
 elif [ "$OS" = "macos" ] || [ "$OS" = "darwin" ]; then
-  ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/$ZSV_TAG/zsv-$ZSV_TAG-amd64-macosx-gcc.tar.gz"
+  ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/v$ZSV_TAG/zsv-$ZSV_TAG-amd64-macosx-gcc.tar.gz"
   TSV_TAR_URL="https://github.com/eBay/tsv-utils/releases/download/v2.2.1/tsv-utils-v2.2.1_osx-x86_64_ldc2.tar.gz"
   XSV_TAR_URL="https://github.com/BurntSushi/xsv/releases/download/0.13.0/xsv-0.13.0-x86_64-apple-darwin.tar.gz"
 else
