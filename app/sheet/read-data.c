@@ -231,7 +231,8 @@ static void *get_data_index(void *gdi) {
 
   if (ix_status != zsvsheet_index_status_ok) {
     pthread_mutex_lock(mutexp);
-    *errp = errno;
+    if (errp != NULL)
+      *errp = errno;
     free(d);
     pthread_mutex_unlock(mutexp);
     return NULL;
