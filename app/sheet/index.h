@@ -42,7 +42,7 @@ struct zsvsheet_index_opts {
   const char *filename;
   char **temp_filename;
   const char *row_filter;
-  struct zsv_opts *zsv_optsp;
+  struct zsv_opts zsv_opts;
   struct zsvsheet_index **index;
   unsigned char *index_ready;
   struct zsvsheet_ui_buffer *uib;
