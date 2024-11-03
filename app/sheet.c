@@ -34,9 +34,7 @@
 
 #include <locale.h>
 #include <wchar.h>
-#ifdef ZSVSHEET_USE_THREADS
 #include <pthread.h>
-#endif
 
 #define ZSV_COMMAND sheet
 #include "zsv_command.h"
@@ -58,6 +56,7 @@ struct zsvsheet_opts {
 
 #include "sheet/utf8-width.c"
 #include "sheet/ui_buffer.c"
+#include "sheet/index.c"
 #include "sheet/read-data.c"
 #include "sheet/key-bindings.c"
 
@@ -90,7 +89,7 @@ struct zsvsheet_builtin_proc_state {
   const char *opts_used;
 };
 
-int get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row) {
+static void get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row) {
   *buff = '\0';
   // this is a hack to blank-out the currently-selected cell value
   int max_screen_width = 256; // to do: don't assume this
@@ -126,7 +125,6 @@ int get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_r
     }
     // Ignore other keys
   }
-  return 0;
 }
 
 zsvsheet_handler_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, char *buffer, size_t bufsz,
@@ -208,36 +206,6 @@ void zsvsheet_set_status(const struct zsvsheet_display_dimensions *ddims, int ov
 #include "sheet/handlers.c"
 #include "sheet/file.c"
 #include "sheet/usage.c"
-
-enum zsvsheet_status zsvsheet_key_handler(struct zsvsheet_key_handler_data *khd, int ch, char *cmdbuff,
-                                          size_t cmdbuff_sz, // subcommand buffer
-                                          struct zsvsheet_ui_buffer **base_ui_buffer,
-                                          struct zsvsheet_ui_buffer **current_ui_buffer,
-                                          const struct zsvsheet_display_dimensions *display_dims,
-                                          struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
-  struct zsvsheet_subcommand_handler_context sctx = {0};
-  sctx.ch = ch;
-  sctx.ui_buffers = *base_ui_buffer;
-  sctx.current_ui_buffer = *current_ui_buffer;
-  zsvsheet_handler_status status = khd->subcommand_handler(&sctx);
-  if (status == zsvsheet_handler_status_ok) {
-    get_subcommand(sctx.prompt, cmdbuff, cmdbuff_sz, (int)(display_dims->rows - display_dims->footer_span));
-    if (*cmdbuff == '\0')
-      return zsvsheet_status_continue;
-    struct zsvsheet_handler_context ctx = {.subcommand_value = cmdbuff,
-                                           .ch = ch,
-                                           .ui_buffers = {.base = base_ui_buffer, .current = current_ui_buffer},
-                                           .display_dims = display_dims,
-                                           .custom_prop_handler = custom_prop_handler,
-                                           .opts_used = opts_used};
-    status = khd->handler(&ctx);
-  }
-  if (status == zsvsheet_handler_status_ok)
-    return zsvsheet_status_ok;
-  if (status == zsvsheet_handler_status_ignore)
-    return zsvsheet_status_continue;
-  return zsvsheet_status_error;
-}
 
 struct zsvsheet_key_handler_data *zsvsheet_key_handlers = NULL;
 struct zsvsheet_key_handler_data **zsvsheet_next_key_handler = &zsvsheet_key_handlers;
@@ -639,9 +607,27 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   while (true) {
     ch = getch();
+    if (ch == ERR) {
+      pthread_mutex_lock(&current_ui_buffer->mutex);
+      if (current_ui_buffer && current_ui_buffer->status) {
+        zsvsheet_set_status(&display_dims, 1, current_ui_buffer->status);
+        display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
+        cbreak();
+      }
+      pthread_mutex_unlock(&current_ui_buffer->mutex);
+      continue;
+    }
 
     zsvsheet_set_status(&display_dims, 1, "");
     handler_state.display_info.update_buffer = false;
+
+    pthread_mutex_lock(&current_ui_buffer->mutex);
+    if (current_ui_buffer->index_ready &&
+        current_ui_buffer->dimensions.row_count != current_ui_buffer->index->row_count) {
+      current_ui_buffer->dimensions.row_count = current_ui_buffer->index->row_count;
+      handler_state.display_info.update_buffer = true;
+    }
+    pthread_mutex_unlock(&current_ui_buffer->mutex);
 
     status = zsvsheet_key_press(ch, &handler_state);
     if (status == zsvsheet_handler_status_exit)
@@ -652,7 +638,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     if (handler_state.display_info.update_buffer && current_ui_buffer->filename) {
       struct zsvsheet_opts zsvsheet_opts = {0};
       if (read_data(&current_ui_buffer, NULL, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col,
-                    header_span, current_ui_buffer->dimensions.index, &zsvsheet_opts, custom_prop_handler, opts_used)) {
+                    header_span, &zsvsheet_opts, custom_prop_handler, opts_used)) {
         zsvsheet_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
         continue;
       }
