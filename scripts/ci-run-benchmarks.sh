@@ -37,22 +37,25 @@ fi
 ZSV_TAG="$(echo "$ZSV_TAG" | sed 's/^v//')"
 echo "[INF] ZSV_TAG: $ZSV_TAG"
 
-ZSV_BUILD_FROM="[RELESAE (v$ZSV_TAG)](https://github.com/liquidaty/zsv/releases/tag/v$ZSV_TAG)"
+ZSV_BUILD_FROM="[Release (v$ZSV_TAG)](https://github.com/liquidaty/zsv/releases/tag/v$ZSV_TAG)"
 if [ "$CI" = true ] && [ "$WORKFLOW_RUN_ID" != "" ]; then
-  ZSV_BUILD_FROM="[WORKFLOW ($WORKFLOW_RUN_ID)](https://github.com/liquidaty/zsv/actions/runs/$WORKFLOW_RUN_ID)"
+  ZSV_BUILD_FROM="[Workflow Run ($WORKFLOW_RUN_ID)](https://github.com/liquidaty/zsv/actions/runs/$WORKFLOW_RUN_ID)"
   echo "[INF] WORKFLOW_RUN_ID: $WORKFLOW_RUN_ID"
 fi
 
+OS_COMPILER=
 if [ "$OS" = "linux" ]; then
   echo "[INF] ZSV_LINUX_BUILD_COMPILER: $ZSV_LINUX_BUILD_COMPILER"
   if [ "$ZSV_LINUX_BUILD_COMPILER" != "gcc" ] && [ "$ZSV_LINUX_BUILD_COMPILER" != "clang" ] && [ "$ZSV_LINUX_BUILD_COMPILER" != "musl" ]; then
     echo "[INF] Unknown value for ZSV_LINUX_BUILD_COMPILER! [$ZSV_LINUX_BUILD_COMPILER]"
     exit 1
   fi
+  OS_COMPILER="$OS [$ZSV_LINUX_BUILD_COMPILER]"
   ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/v$ZSV_TAG/zsv-$ZSV_TAG-amd64-linux-$ZSV_LINUX_BUILD_COMPILER.tar.gz"
   TSV_TAR_URL="https://github.com/eBay/tsv-utils/releases/download/v2.2.0/tsv-utils-v2.2.0_linux-x86_64_ldc2.tar.gz"
   XSV_TAR_URL="https://github.com/BurntSushi/xsv/releases/download/0.13.0/xsv-0.13.0-x86_64-unknown-linux-musl.tar.gz"
 elif [ "$OS" = "macos" ] || [ "$OS" = "darwin" ]; then
+  OS_COMPILER="$OS [gcc]"
   ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/v$ZSV_TAG/zsv-$ZSV_TAG-amd64-macosx-gcc.tar.gz"
   TSV_TAR_URL="https://github.com/eBay/tsv-utils/releases/download/v2.2.1/tsv-utils-v2.2.1_osx-x86_64_ldc2.tar.gz"
   XSV_TAR_URL="https://github.com/BurntSushi/xsv/releases/download/0.13.0/xsv-0.13.0-x86_64-apple-darwin.tar.gz"
@@ -162,7 +165,8 @@ TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   echo '# Benchmarks'
   echo
   echo "- Timestamp UTC: $TIMESTAMP"
-  echo "- zsv build from: $ZSV_BUILD_FROM"
+  echo "- ZSV build from: $ZSV_BUILD_FROM"
+  echo "- OS [compiler]: $OS_COMPILER"
   echo
   echo "## Releases Used"
   echo
