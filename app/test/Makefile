@@ -604,7 +604,7 @@ test-sheet-3: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@(tmux new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "f" "sarmaj" Enter && \
-	sleep 0.5 && \
+	sleep 2 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})

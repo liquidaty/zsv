@@ -2,6 +2,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <zsv/utils/prop.h>
+#include <zsv/utils/index.h>
 #include "sheet_internal.h"
 #include "buffer.h"
 #include "index.h"
@@ -39,7 +40,6 @@ static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char 
   gdi->custom_prop_handler = custom_prop_handler;
   gdi->opts_used = opts_used;
   gdi->uib = uibuffp;
-  halfdelay(2); // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
   pthread_t thread;
   pthread_create(&thread, NULL, get_data_index, gdi);
   pthread_detach(thread);
@@ -79,28 +79,20 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
         pthread_mutex_unlock(&uibuff->mutex);
         return errno;
       }
+      opts.stream = fp;
     }
 
+    enum zsv_index_status zst;
     if (uibuff->index_ready) {
-      off_t file_start;
-      get_memory_index(uibuff->index, start_row, &file_start, &remaining_rows_to_skip);
-
-      if (fseek(fp, file_start, SEEK_SET)) {
-        return errno;
-      }
-
-      // original csv files can have two char line endings
-      if (!row_filter) {
-        if (!isspace(fgetc(fp))) {
-          if (fseek(fp, file_start, SEEK_SET))
-            return errno;
-        }
-      }
+      zst = zsv_index_seek_row(uibuff->index, &opts, start_row);
 
       remaining_header_to_skip = 0;
-      original_row_num = header_span + start_row - remaining_rows_to_skip;
+      remaining_rows_to_skip = 0;
+      original_row_num = header_span + start_row;
     }
     pthread_mutex_unlock(&uibuff->mutex);
+    if (zst != zsv_index_status_ok)
+      return errno ? errno : -1;
   }
 
   size_t rows_read = header_span;
@@ -190,6 +182,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   fclose(fp);
   zsv_delete(parser);
 
+  char *ui_status = NULL;
   if (uibuff) {
     if (!uibuff->index_started) {
       uibuff->buff_used_rows = rows_read;
@@ -197,26 +190,19 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       if (original_row_num > 1 && (row_filter == NULL || rows_read > 0)) {
         opts.stream = NULL;
         get_data_index_async(uibuff, filename, &opts, row_filter, custom_prop_handler, opts_used, &uibuff->mutex);
+        asprintf(&ui_status, "(building index) ");
       }
     }
-
-    /*
-    char *ui_status = NULL;
-
-    if (row_filter != NULL && uibuff->dimensions.row_count > 0) {
-      asprintf(&ui_status, "(%zu filtered rows) ", uibuff->dimensions.row_count - 1);
-    }
-
-    free(uibuff->status);
-    if (ui_status) {
-      pthread_mutex_lock(&uibuff->mutex);
-      uibuff->status = ui_status;
-      pthread_mutex_unlock(&uibuff->mutex);
-    } else {
-      uibuff->status = NULL;
-    }
-    */
   }
+
+  if (ui_status) {
+    if (uibuff->status)
+      free(uibuff->status);
+    pthread_mutex_lock(&uibuff->mutex);
+    uibuff->status = ui_status;
+    pthread_mutex_unlock(&uibuff->mutex);
+  }
+
   return 0;
 }
 
@@ -226,9 +212,9 @@ static void *get_data_index(void *gdi) {
   pthread_mutex_t *mutexp = d->mutexp;
   int *errp = d->errp;
 
-  enum zsvsheet_index_status ix_status = build_memory_index(d);
+  enum zsv_index_status ix_status = build_memory_index(d);
 
-  if (ix_status != zsvsheet_index_status_ok) {
+  if (ix_status != zsv_index_status_ok) {
     pthread_mutex_lock(mutexp);
     if (errp != NULL)
       *errp = errno;
@@ -240,14 +226,17 @@ static void *get_data_index(void *gdi) {
   pthread_mutex_lock(mutexp);
   *d->index_ready = 1;
 
+  if (d->uib && d->uib->status)
+    free(d->uib->status);
+
   if (d->row_filter != NULL) {
-    if (d->uib && d->uib->status)
-      free(d->uib->status);
     if (d->uib->index->row_count > 0) {
-      d->uib->dimensions.row_count = d->uib->index->row_count;
-      asprintf(&d->uib->status, "(%zu filtered rows) ", d->uib->dimensions.row_count - 1);
+      d->uib->dimensions.row_count = d->uib->index->row_count + 1;
+      asprintf(&d->uib->status, "(%zu filtered rows) ", d->uib->index->row_count);
     } else
       d->uib->status = NULL;
+  } else {
+    d->uib->status = NULL;
   }
   free(d);
   pthread_mutex_unlock(mutexp);

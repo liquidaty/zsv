@@ -73,6 +73,7 @@ struct zsv_cell {
 
 typedef size_t (*zsv_generic_write)(const void *restrict, size_t, size_t, void *restrict);
 typedef size_t (*zsv_generic_read)(void *restrict, size_t n, size_t size, void *restrict);
+typedef int (*zsv_generic_seek)(void *, long, int);
 
 #ifdef ZSV_EXTRAS
 /**
@@ -154,6 +155,12 @@ struct zsv_opts {
    * If not specified, the default value is `fread()`
    */
   zsv_generic_read read;
+
+  /**
+   * Caller can specify its own seek function for setting the file position
+   * with zsv_index_seek. If not specified, the default value is `fseek()`
+   */
+  zsv_generic_seek seek;
 
   /**
    * Caller can specify its own stream that is passed to the read function
