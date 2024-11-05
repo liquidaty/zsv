@@ -29,6 +29,7 @@
 struct zsv_overwrite_args {
   char *filepath;
   unsigned char list : 1;
+  unsigned char a1: 1;
   unsigned char clear : 1;
   unsigned char add : 1;
 };
@@ -65,6 +66,7 @@ const char *zsv_overwrite_usage_msg[] = {
   "                        cell already exists",
   "                        For `remove`, exit without error even if no overwrite for",
   "                        the specified cell already exists",
+  "  --A1                : For `list`, Display addresses in A1-notation",
   "",
   "Description:",
   "  The  `overwrite`  utility  allows  you to manage a list of \"overwrites\" associated",
@@ -234,7 +236,28 @@ static int zsv_overwrites_exit(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
   return 0;
 }
 
-static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, zsv_csv_writer writer) {
+static char *row_col_to_a1(size_t col, size_t row) {
+  char buffer[64];
+  int index = 63;
+  buffer[index] = '\0';
+
+  while(1) {
+    if(index == 0)
+      return NULL;
+    col--;
+    buffer[--index] = 'A' + (col % 26);
+    col /= 26;
+    if(col == 0) break;
+  }
+  printf("%s\n", &buffer[index]);
+  // 20 extra bytes for row
+  char *result = malloc(strlen(&buffer[index])+20+1);
+  if(result)
+    sprintf(result, "%s%zu", &buffer[index], row+1);
+  return result;
+}
+
+static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_args *args, zsv_csv_writer writer) {
   int err = 0;
   sqlite3_stmt *stmt;
   int ret;
@@ -245,11 +268,11 @@ static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, zsv_csv_writer wri
   }
 
   // display header
-  zsv_writer_cell(writer, 0, "row", 3, 0);
-  zsv_writer_cell(writer, 0, "column", 6, 0);
-  zsv_writer_cell(writer, 0, "value", 5, 0);
-  zsv_writer_cell(writer, 0, "timestamp", 9, 0);
-  zsv_writer_cell(writer, 0, "author", 6, 0);
+  zsv_writer_cell(writer, 0, (const unsigned char*)"row", 3, 0);
+  zsv_writer_cell(writer, 0, (const unsigned char*)"column", 6, 0);
+  zsv_writer_cell(writer, 0, (const unsigned char*)"value", 5, 0);
+  zsv_writer_cell(writer, 0, (const unsigned char*)"timestamp", 9, 0);
+  zsv_writer_cell(writer, 0, (const unsigned char*)"author", 6, 0);
 
   while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
     size_t row = sqlite3_column_int64(stmt, 0);
@@ -260,9 +283,20 @@ static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, zsv_csv_writer wri
     size_t timestamp_len = sqlite3_column_bytes(stmt, 3);
     const unsigned char *author = sqlite3_column_text(stmt, 4);
     size_t author_len = sqlite3_column_bytes(stmt, 4);
-
-    zsv_writer_cell_zu(writer, 1, row);
-    zsv_writer_cell_zu(writer, 0, col);
+    
+    if(args->a1) {
+      char *col_a1 = row_col_to_a1(col, row);
+      if(!col_a1) {
+        err = 1;
+        fprintf(stderr, "Error converting column number to A1-notation\n");
+        return err;
+      }
+      zsv_writer_cell(writer, 1, (const unsigned char*)col_a1, strlen(col_a1), 0);
+      free(col_a1);
+    } else {
+      zsv_writer_cell_zu(writer, 1, row);
+      zsv_writer_cell_zu(writer, 0, col);
+    }
     zsv_writer_cell(writer, 0, val, val_len, 0);
     zsv_writer_cell(writer, 0, timestamp, timestamp_len, 0);
     zsv_writer_cell(writer, 0, author, author_len, 0);
@@ -349,6 +383,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if (!strcmp(opt, "--old-value")) {
       fprintf(stderr, "Error: %s is not implemented\n", opt);
       err = 1;
+    } else if(!strcmp(opt, "--A1")) {
+      args.a1 = 1;
     } else if (!strcmp(opt, "list")) {
       args.list = 1;
     } else if (!strcmp(opt, "clear")) {
@@ -385,7 +421,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   zsv_csv_writer writer = zsv_writer_new(&writer_opts);
   if (args.list)
-    show_all_overwrites(&ctx, writer);
+    show_all_overwrites(&ctx, &args, writer);
   else if (args.clear)
     zsv_overwrites_clear(&ctx);
   else if (!err && args.add && ctx.sqlite3.db)
