@@ -280,26 +280,26 @@ static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, zsv_csv_writer wri
 
 static int parse_xl_address(const char *s, struct zsv_overwrite_data *overwrite) {
   unsigned len = strlen(s);
-  for(unsigned i = 0; i < len; i++) {
+  for (unsigned i = 0; i < len; i++) {
     char c = s[i];
-    if(c >= '0' && c <= '9') {
-      if(overwrite->col_ix == 0)
+    if (c >= '0' && c <= '9') {
+      if (overwrite->col_ix == 0)
         return 1; // alpha should come before num
-      if(overwrite->row_ix == 0 && c == '0')
+      if (overwrite->row_ix == 0 && c == '0')
         return 1; // first num should not be zero
       overwrite->row_ix = overwrite->row_ix * 10 + (c - '0');
-    } else if(c >= 'A' && c <= 'Z') {
-      if(overwrite->row_ix > 0)
+    } else if (c >= 'A' && c <= 'Z') {
+      if (overwrite->row_ix > 0)
         return 1; // alpha should come before num
       overwrite->col_ix = overwrite->col_ix * 26 + (c - 'A') + 1;
-    } else if(c >= 'a' && c <= 'z') {
-      if(overwrite->row_ix > 0)
+    } else if (c >= 'a' && c <= 'z') {
+      if (overwrite->row_ix > 0)
         return 1; // alpha should come before num
       overwrite->col_ix = overwrite->col_ix * 26 + (c - 'a') + 1;
     } else
       break;
   }
-  if(overwrite->row_ix > 0 && overwrite->col_ix > 0) {
+  if (overwrite->row_ix > 0 && overwrite->col_ix > 0) {
     overwrite->row_ix--;
     overwrite->col_ix--;
     return 0;
@@ -309,7 +309,7 @@ static int parse_xl_address(const char *s, struct zsv_overwrite_data *overwrite)
 
 static int zsv_overwrite_parse_pos(struct zsv_overwrite_data *overwrite, const char *str) {
   // this means it's an excel-style cell, because it does not start with a number for the row
-  if(!isdigit(*str))
+  if (!isdigit(*str))
     return parse_xl_address(str, overwrite);
   return sscanf(str, "%zu-%zu", &overwrite->row_ix, &overwrite->col_ix) != 2;
 }
