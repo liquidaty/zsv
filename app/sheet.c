@@ -605,35 +605,32 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   zsvsheet_handler_status status;
 
-  while (true) {
-    ch = getch();
-    if (ch == ERR) {
-      pthread_mutex_lock(&current_ui_buffer->mutex);
-      if (current_ui_buffer && current_ui_buffer->status) {
-        zsvsheet_set_status(&display_dims, 1, current_ui_buffer->status);
-        display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
-        cbreak();
-      }
-      pthread_mutex_unlock(&current_ui_buffer->mutex);
-      continue;
-    }
+  halfdelay(2); // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
 
-    zsvsheet_set_status(&display_dims, 1, "");
+  while (true) {
+    char *status_msg = NULL;
+    ch = getch();
+
     handler_state.display_info.update_buffer = false;
 
     pthread_mutex_lock(&current_ui_buffer->mutex);
+    status_msg = current_ui_buffer->status;
     if (current_ui_buffer->index_ready &&
-        current_ui_buffer->dimensions.row_count != current_ui_buffer->index->row_count) {
-      current_ui_buffer->dimensions.row_count = current_ui_buffer->index->row_count;
+        current_ui_buffer->dimensions.row_count != current_ui_buffer->index->row_count + 1) {
+      current_ui_buffer->dimensions.row_count = current_ui_buffer->index->row_count + 1;
       handler_state.display_info.update_buffer = true;
     }
     pthread_mutex_unlock(&current_ui_buffer->mutex);
 
-    status = zsvsheet_key_press(ch, &handler_state);
-    if (status == zsvsheet_handler_status_exit)
-      break;
-    if (status != zsvsheet_handler_status_ok)
-      continue;
+    zsvsheet_set_status(&display_dims, 1, "");
+
+    if (ch != ERR) {
+      status = zsvsheet_key_press(ch, &handler_state);
+      if (status == zsvsheet_handler_status_exit)
+        break;
+      if (status != zsvsheet_handler_status_ok)
+        continue;
+    }
 
     if (handler_state.display_info.update_buffer && current_ui_buffer->filename) {
       struct zsvsheet_opts zsvsheet_opts = {0};
@@ -643,8 +640,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         continue;
       }
     }
-    if (current_ui_buffer->status)
-      zsvsheet_set_status(&display_dims, 1, current_ui_buffer->status);
+
+    if (status_msg)
+      zsvsheet_set_status(&display_dims, 1, status_msg);
+
     display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
   }
 
