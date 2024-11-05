@@ -17,7 +17,7 @@ TMP_DIR=${THIS_MAKEFILE_DIR}/tmp
 
 TEST_PASS=echo "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
 TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
-TEST_INIT=mkdir -p ${TMP_DIR} && rm -rf ${TMP_DIR}/test* && echo "${COLOR_PINK}$@: ${COLOR_NONE}"
+TEST_INIT=mkdir -p ${TMP_DIR} && rm -rf ${TMP_DIR}/test* && echo "${COLOR_PINK}test-overwrite-$@: ${COLOR_NONE}"
 
 LEAKS=
 ifneq ($(LEAKS),)
