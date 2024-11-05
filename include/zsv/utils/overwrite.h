@@ -1,6 +1,24 @@
 #ifndef ZSV_OVERWRITE_H
 #define ZSV_OVERWRITE_H
 
+#include <sqlite3.h>
+
+struct zsv_overwrite_ctx {
+  char *src;
+  // enum zsv_overwrite_type type;
+  enum zsv_status (*next)(void *ctx, struct zsv_overwrite_data *odata);
+  struct {
+    FILE *f;
+    zsv_parser parser;
+  } csv;
+  struct {
+    char *filename;
+    sqlite3 *db;
+    sqlite3_stmt *stmt; // select row, column, overwrite
+    const char *sql;
+  } sqlite3;
+};
+
 /**
  * The easiest way to enable overwrite support is to use zsv_overwrite_auto()
  * which, given an input located at /path/to/my-data.csv, will assume an overwrite source
