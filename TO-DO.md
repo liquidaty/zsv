@@ -8,6 +8,7 @@
 # CLI
 - add index-related parser options to general command-line options
 - change --overwrite-auto to --apply-overwrites
+- add `--all` option to `help` which will output all help messages for all commands (including extension commands)
 
 ---
 ## Performance
