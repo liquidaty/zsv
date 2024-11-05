@@ -15,12 +15,24 @@
 #include "zsv_command.h"
 
 static int zsv_paste_usage() {
-  static const char *usage = "Usage: paste <filename> [<filename> ...]\n"
-                             "\n"
-                             "Options:\n"
-                             "  -h,--help            : show usage\n";
-  printf("%s\n", usage);
-  return 1;
+  /* clang-format off */
+  static const char *usage[] = {
+    "Usage: paste <filename> [<filename> ...]",
+    "",
+    "Horizontally paste two tables together: given inputs X, Y, ... of N rows",
+    "outputs 1...N rows, where each row i contains:",
+    "  row i of input X,",
+    "  followed by row i of input Y,",
+    "  [followed by ...]",
+    "",
+    "Options:",
+    "  -h,--help : show usage",
+    NULL
+  };
+  /* clang-format on */
+  for (int i = 0; usage[i]; i++)
+    printf("%s\n", usage[i]);
+  return 0;
 }
 
 struct zsv_paste_input_file {
@@ -114,10 +126,15 @@ static enum zsv_paste_status zsv_paste_add_input(const char *fname, struct zsv_p
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
                                struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+  for (int i = 1; i < argc; i++) {
+    const char *arg = argv[i];
+    if (!strcmp(arg, "-h") || !strcmp(arg, "--help"))
+      return zsv_paste_usage();
+  }
+
   struct zsv_paste_input_file *inputs = NULL;
   struct zsv_paste_input_file **next_input = &inputs;
   enum zsv_paste_status status = zsv_paste_status_ok;
-
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   zsv_csv_writer writer = zsv_writer_new(&writer_opts);
   if (!writer) {
@@ -127,15 +144,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   for (int i = 1; status == zsv_paste_status_ok && i < argc; i++) {
     const char *arg = argv[i];
-    if (!strcmp(arg, "-h") || !strcmp(arg, "--help")) {
-      zsv_paste_usage();
-      goto zsv_paste_done;
-    }
-
-    if (0) { // !strcmp(arg, "-x") || !strcmp(arg, "--my-arg")) { ...
-    } else {
+    if (!(!strcmp(arg, "-h") || !strcmp(arg, "--help")))
       status = zsv_paste_add_input(arg, next_input, &next_input, opts, custom_prop_handler, opts_used);
-    }
   }
 
   if (status == zsv_paste_status_ok) {

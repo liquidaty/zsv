@@ -48,7 +48,7 @@ TEST_DATA_DIR=${THIS_LIB_BASE}/data
 SOURCES=echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare overwrite
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
-TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help test-sheet
+TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help test-sheet test-paste
 
 ifeq ($(ZSV_BUILD_SHEET),1)
   SOURCES+=sheet
@@ -99,6 +99,9 @@ CLI:
 	@make CLI1=1 test -n | sed 's/\/[^ ]*\/bin\/zsv_/zsv /g' | sh
 
 test: ${TESTS}
+
+test-paste:
+	@echo "TO DO: test paste"
 
 .SECONDARY: worldcitiespop_mil.csv
 

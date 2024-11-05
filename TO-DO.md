@@ -7,6 +7,7 @@
 
 # CLI
 - add index-related parser options to general command-line options
+- change --overwrite-auto to --apply-overwrites
 
 ---
 ## Performance
