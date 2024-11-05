@@ -40,7 +40,7 @@ ifeq ($(EXE),)
   $(error EXE is not defined)
 endif
 
-test: test-1 test-2 test-echo-overwrite-auto
+test: test-1 test-2 test-excel-cells test-echo-overwrite-auto
 
 test-1:
 	@${TEST_INIT}
@@ -53,9 +53,14 @@ test-2:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear 
 	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC
-	@${PREFIX} ${EXE} dummy.csv list > ${TMP_DIR}/$@.out
-	@printf 'row,column,value,timestamp,author\n2,1,ABC,$(TIMESTAMP),\n' > ${TMP_DIR}/test.out
 	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf 'row,column,value,timestamp,author\n2,1,ABC,$(TIMESTAMP),\n'`" ] && ${TEST_PASS} || ${TEST_FAIL}
+
+test-excel-cells:
+	@${TEST_INIT}
+	@${PREFIX} ${EXE} dummy.csv clear 
+	@${PREFIX} ${EXE} dummy.csv add C2 EXCEL 
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf 'row,column,value,timestamp,author\n1,2,EXCEL,$(TIMESTAMP),\n'`" ] && ${TEST_PASS} || ${TEST_FAIL}
+
 
 test-echo-overwrite-auto:
 	@${TEST_INIT}
