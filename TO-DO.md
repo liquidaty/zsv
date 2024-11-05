@@ -21,7 +21,7 @@ Row indexing
 - align key bindings with vim
 - support alternate key binding profiles (emacs, custom1, etc)
 - register built-in cmds before extension cmds
-- add subcommand invocation by name e.g. M-x run-command x
+- add subcommand invocation by name e.g. emacs style (M-x run-command) or vim style (':' + command)
 
 ### Open/edit file
 - tab for autocomplete
@@ -32,6 +32,11 @@ Row indexing
 
 ### Extensions
 - lq extension plug-ins
+
+### Interface
+- progress tracking
+- title line?
+- help
 
 ---
 
