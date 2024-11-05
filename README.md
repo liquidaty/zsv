@@ -24,7 +24,7 @@ generic-delimited and fixed-width formats, as well as multi-row-span headers
 The ZSV CLI can be compiled to virtually any target, including
 [WebAssembly](examples/js), and offers features including `select`, `count`,
 direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3
-conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste` and more.
+conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste`, `overwrite` and more.
 
 The ZSV CLI also includes `sheet`, an in-console interactive grid viewer (TO DO:
 that can be extended with your custom code for manipulating and) for viewing
@@ -102,7 +102,8 @@ that implements the expected
 - Includes the `zsv` CLI with the following built-in commands:
   - `sheet`, an in-console interactive and extendable grid viewer
   - `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
-    `2db`, `stack`, `pretty`, `2tsv`, `paste`, `compare`, `jq`, `prop`, `rm`
+    `2db`, `stack`, `pretty`, `2tsv`, `paste`, `compare`, `overwrite`,
+    `jq`, `prop`, `rm`
   - easily [convert between CSV/JSON/sqlite3](docs/csv_json_sqlite.md)
   - [compare multiple files](docs/compare.md)
 - CLI is easy to extend/customize with a few lines of code via modular plug-in
@@ -308,8 +309,8 @@ needs.
 - `2tsv`: convert to TSV (tab-delimited) format
 - `compare`: compare two or more tables of data and output the differences
 - `paste` (alpha): horizontally paste two tables together (given inputs X and Y,
-   output 1...N rows where each row all columns of X in row N, followed by all
-   columns of Y in row N)
+   output 1...N rows where each row contains the entire corresponding
+   row in X followed by the entire corresponding row in Y)
 - `serialize` (inverse of flatten): convert an NxM table to a single 3x (Nx(M-1))
   table with columns: Row, Column Name, Column Value
 - `flatten` (inverse of serialize): flatten a table by combining rows that share
@@ -317,6 +318,8 @@ needs.
 - `stack`: merge CSV files vertically
 - `jq`: run a `jq` filter
 - `2db`: [convert from JSON to sqlite3 db](docs/csv_json_sqlite.md)
+- `overwrite`: overwrite a cell value; changes will be reflected in any zsv
+  command when the --apply-overwrites option is specified
 - `prop`: view or save parsing options associated with a file, such as initial
   rows to ignore, or header row span. Saved options are be applied by default
   when processing that file.
