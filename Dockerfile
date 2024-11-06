@@ -1,4 +1,4 @@
-FROM alpine:latest AS build
+FROM alpine:3.12.12 AS build
 
 LABEL maintainer="Liquidaty"
 LABEL url="https://github.com/liquidaty/zsv"
