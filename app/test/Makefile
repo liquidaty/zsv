@@ -579,7 +579,7 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 
 test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-sheet-all
 
-test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5
+test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7
 	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null; done && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
@@ -628,3 +628,24 @@ test-sheet-5: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	tmux send-keys -t $@ "q" && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
+test-sheet-6: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "tmux-256color"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 50 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "G" "C-u" "C-u" "C-u" && \
+	sleep 0.5 && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-7: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "tmux-256color"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "G" "g" "g" "C-u" "/" "1234" "Enter" && \
+	sleep 0.5 && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
