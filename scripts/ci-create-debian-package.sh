@@ -65,7 +65,7 @@ Homepage: https://github.com/liquidaty/zsv
 Installed-Size: $INSTALLED_SIZE
 EOF
 
-ls -Gghl "$DEBIAN_CONTROL_FILE"
+ls -hl "$DEBIAN_CONTROL_FILE"
 
 echo "[INF] Dumping [$DEBIAN_CONTROL_FILE]"
 echo "[INF] --- [$DEBIAN_CONTROL_FILE] ---"
@@ -81,7 +81,7 @@ rm -rf /usr/bin/zsv
 EOF
 
 chmod +x "$DEBIAN_PREINST_SCRIPT"
-ls -Gghl "$DEBIAN_PREINST_SCRIPT"
+ls -hl "$DEBIAN_PREINST_SCRIPT"
 
 echo "[INF] Dumping [$DEBIAN_PREINST_SCRIPT]"
 echo "[INF] --- [$DEBIAN_PREINST_SCRIPT] ---"
@@ -91,7 +91,7 @@ echo "[INF] --- [$DEBIAN_PREINST_SCRIPT] ---"
 echo "[INF] Building debian package"
 dpkg-deb --root-owner-group --build "$PREFIX"
 dpkg --contents "$DEBIAN_PKG"
-ls -Gghl "$DEBIAN_PKG"
+ls -hl "$DEBIAN_PKG"
 mv -f "$DEBIAN_PKG" "$ARTIFACT_DIR/"
 
 mv -f "./$PREFIX/usr/bin" "./$PREFIX/"

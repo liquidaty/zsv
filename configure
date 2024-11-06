@@ -35,7 +35,7 @@ Optional features:
   --force-sse2            force compile with (no CPU check) or without -msse2 [auto]
   --enable-sheet          compile with 'sheet' feature (requires ncurses) [yes]
   --enable-shared         build/install zsv shared library
-  --ncurses-dynamic       compile without NCURSES_STATIC or NCURSESW_STATIC defines
+  --ncurses-dynamic       compile without NCURSES_STATIC
   --enable-lto            compile with LTO (works with some but not all platforms/compilers) [no]
   --enable-whole-program  compile without -fwhole-program even if no -flto [yes]
   --enable-pie            build with position independent executables [auto]
@@ -78,7 +78,7 @@ tryranlib () { test -z "$RANLIB" && cmdexists "$1" && RANLIB=$1 ; }
 tryawk () { test -z "$AWK" && "$1" 'function works () {return 0} BEGIN{exit works()}' && AWK=$1 ; }
 trymake() {
     if test -z "$MAKE" && cmdexists "$1" ; then
-    v=$($1 --version | grep 'GNU Make' | sed -e 's/.*Make //')
+        v=$($1 --version | grep 'GNU Make' | sed -e 's/.*Make //')
         if [ "$v" = "" ] ; then
             printf "Found but not using non-GNU make (%s)..." "$1"
         else
@@ -86,7 +86,7 @@ trymake() {
             maj=$(echo "$v" | cut -d. -f 1)
             min=$(echo "$v" | cut -d. -f 2)
             if ! test "$maj" -gt 3 -o '(' "$maj" -eq 3 -a "$min" -ge 81 ')'; then
-                printf "Warning: using make, but version %s < 3.81 has not been tested. " "$v"
+                printf "WARNING: using make, but version %s < 3.81 has not been tested. " "$v"
             fi
         fi
     fi
@@ -101,14 +101,14 @@ trycchdr () {
     printf "checking whether there is a header called %s... " "$2"
     dn=$(dirname "$2")
     if [ "$dn" != "" ]; then
-    dn="/$dn"
-    bn=$(basename "$2")
-    for x in $CCSEARCHPATH ; do
-        fnd=$fnd"$x$dn "
-    done
+        dn="/$dn"
+        bn=$(basename "$2")
+        for x in $CCSEARCHPATH ; do
+            fnd=$fnd"$x$dn "
+        done
     else
-    bn="$2"
-    fnd=$CCSEARCHPATH
+        bn="$2"
+        fnd=$CCSEARCHPATH
     fi
     upper2=$(echo "$2" | tr '[:lower:]' '[:upper:]' | tr . _ | tr / _)
     if find "$fnd" -name "$bn" 2>/dev/null | grep "/$2$" >/dev/null 2>&1 ; then
@@ -179,7 +179,7 @@ NO_$flag = 1"
             echo "Failed: $CC -o $tmpo tmp.c"
             cat "$tmpc"
             echo "------"
-        }>> "$CONFIGFILE".log
+        } >>"$CONFIGFILE".log
         return 1
     fi
 }
@@ -344,7 +344,9 @@ for arg ; do
         --docdir=*) DOCDIR=${arg#*=} ;;
         --mandir=*) MANDIR=${arg#*=} ;;
         --minimal|--minimal=yes) MINIMAL=yes;;
+
         --try-avx512|--try-avx512=yes) TRY_AVX512=yes;;
+        --try-avx512=no) TRY_AVX512=no;;
 
         --force-avx2|--force-avx2=yes) FORCE_AVX2=yes;;
         --force-avx2=no) FORCE_AVX2=no;;
@@ -564,7 +566,7 @@ if [ "$TRY_SHEET" != "no" ]; then
         exit 1
     fi
     if [ "$LDFLAGS_NCURSES" = "" ] ; then
-        echo "Warning: could not find either ncurses or ncursesw library; cannot build 'sheet' feature"
+        echo "WARNING: could not find either ncurses or ncursesw library; cannot build 'sheet' feature"
         ZSVSHEET_BUILD=0
     fi
 fi
@@ -600,19 +602,18 @@ if [ "$FORCE_AVX2" = "no" ]; then
 elif [ "$FORCE_AVX2" = "yes" ] ; then
     CFLAGS_AVX=-mavx2
     if [ "$CROSS_COMPILING" = "no" ] ; then
-        trycpusupport avx2 || echo "warning: avx2 forced but not supported on native CPU"
+        trycpusupport avx2 || echo "WARNING: avx2 forced but not supported on native CPU"
     fi
 elif [ "$FORCE_AVX2" = "auto" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     trycpusupport avx2 && CFLAGS_AVX=-mavx2
 fi
 
-if [ "$FORCE_AVX" = "yes" ] ; then
-    CFLAGS_AVX=-mavx || echo "warning: avx forced but not supported on native CPU"
-elif [ "$FORCE_AVX" = "auto" ] && [ "$CFLAGS_AVX" = "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
-    trycpusupport avx && CFLAGS_AVX=-mavx
-fi
 if [ "$FORCE_AVX" = "no" ]; then
     tryflag CFLAGS -mno-avx
+elif [ "$FORCE_AVX" = "yes" ] ; then
+    CFLAGS_AVX=-mavx || echo "WARNING: avx forced but not supported on native CPU"
+elif [ "$FORCE_AVX" = "auto" ] && [ "$CFLAGS_AVX" = "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
+    trycpusupport avx && CFLAGS_AVX=-mavx
 fi
 
 if [ "$FORCE_SSE2" = "no" ]; then
@@ -623,7 +624,7 @@ elif [ "$FORCE_SSE2" = "yes" ] ; then
         CFLAGS_SSE="$CFLAGS_SSE -msimd128 -experimental-wasm-simd"
     fi
     if [ "$CROSS_COMPILING" = "no" ] ; then
-        trycpusupport sse2 || echo "warning: sse2 forced but not supported on native CPU"
+        trycpusupport sse2 || echo "WARNING: sse2 forced but not supported on native CPU"
     fi
 elif [ "$FORCE_SSE2" = "auto" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     if [ "$CFLAGS_SSE" = "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
@@ -689,7 +690,7 @@ fi
 
 # Check function availability
 if [ "$TRY_AVX512" = "yes" ]; then
-    printf "checking whether avx512 instructions are available..."
+    printf "checking whether avx512 instructions are available... "
     HAVE_AVX512=
     tryccfn CFLAGS_AVX_512 "_mm512_movepi8_mask" "immintrin.h" && \
         trycchdr CFLAGS_AVX_512 "immintrin.h" && \
@@ -699,10 +700,10 @@ if [ "$TRY_AVX512" = "yes" ]; then
         CFLAGS_AVX_512="-mbmi -mavx512bw -DHAVE_AVX512=1" && \
         HAVE_AVX512=1
     if [ "$HAVE_AVX512" = "1" ]; then
-    echo "yes"
+        echo "yes"
     else
-    echo "no"
-    echo "WARNING: --try-avx512 option enabled, but no avx512 instruction set available"
+        echo "no"
+        echo "WARNING: --try-avx512 option enabled, but no avx512 instruction set available"
     fi
 fi
 
@@ -857,7 +858,11 @@ fi
 
 if [ "$ZSVSHEET_BUILD" = "1" ]; then
     echo "*  - build sheet feature: yes                                  *"
-    echo "*    ncurses library:     $NCLIB                               *"
+    if [ "$NCLIB" = "ncurses" ]; then
+        echo "*    ncurses library:     ncurses                              *"
+    elif [ "$NCLIB" = "ncursesw" ]; then
+        echo "*    ncurses library:     ncursesw                             *"
+    fi
 else
     echo "*  - build sheet feature: no                                   *"
 fi
