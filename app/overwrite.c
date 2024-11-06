@@ -28,8 +28,11 @@
 
 struct zsv_overwrite_args {
   char *filepath;
-  unsigned char list : 1;
+  // options
   unsigned char a1: 1;
+  unsigned char timestamp: 1;
+  // commands
+  unsigned char list : 1;
   unsigned char clear : 1;
   unsigned char add : 1;
 };
@@ -66,6 +69,7 @@ const char *zsv_overwrite_usage_msg[] = {
   "                        cell already exists",
   "                        For `remove`, exit without error even if no overwrite for",
   "                        the specified cell already exists",
+  "  --no-timestamp      : For `add`, don't save timestamp when adding an overwrite",
   "  --A1                : For `list`, Display addresses in A1-notation",
   "",
   "Description:",
@@ -366,6 +370,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   struct zsv_overwrite_ctx ctx = {0};
   struct zsv_overwrite_args args = {0};
+  // By default, save timestamps
+  args.timestamp = 1;
   struct zsv_overwrite_data overwrite = {0};
   struct zsv_csv_writer_options writer_opts = {0};
 
@@ -380,6 +386,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if (!strcmp(opt, "--old-value")) {
       fprintf(stderr, "Error: %s is not implemented\n", opt);
       err = 1;
+    } else if(!strcmp(opt, "--no-timestamp")) {
+      args.timestamp = 0;
     } else if(!strcmp(opt, "--A1")) {
       args.a1 = 1;
     } else if (!strcmp(opt, "list")) {
