@@ -518,7 +518,7 @@ jobs:
     # needs: [tag, clang-format, cppcheck, shellcheck]
     needs: [tag]
     runs-on: ubuntu-latest
-    container: alpine:latest
+    container: alpine:3.12.12
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
