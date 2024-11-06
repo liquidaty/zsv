@@ -27,7 +27,7 @@ struct zsv_index *zsv_index_new(void) {
 enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, zsv_parser parser) {
   struct zsv_index_array *arr = ix->array;
   size_t len = arr->len, cap = arr->capacity;
-  uint64_t line_end = zsv_cum_scanned_length(parser) + 1;
+  uint64_t line_end = zsv_cum_scanned_length(parser);
 
   if (!ix->header_line_end) {
     ix->header_line_end = line_end;
@@ -89,8 +89,8 @@ static void seek_row_handler(void *ctx) {
   zsv_abort(c->parser);
 }
 
-static enum zsv_index_status seek_and_check_newline(long offset, struct zsv_opts *opts) {
-  char maybe_space;
+static enum zsv_index_status seek_and_check_newline(long *offset, struct zsv_opts *opts) {
+  char new_line[2];
   zsv_generic_read read = (zsv_generic_read)fread;
   zsv_generic_seek seek = (zsv_generic_seek)fseek;
   FILE *stream = opts->stream;
@@ -101,16 +101,29 @@ static enum zsv_index_status seek_and_check_newline(long offset, struct zsv_opts
   if (opts->read)
     read = opts->read;
 
-  if (seek(stream, offset, SEEK_SET))
+  if (seek(stream, *offset, SEEK_SET))
     return zsv_index_status_error;
 
-  if (read(&maybe_space, 1, 1, stream) != 1)
+  size_t nmemb = read(new_line, 1, 2, stream);
+
+  if (nmemb < 1)
     return zsv_index_status_error;
 
-  if (!isspace(maybe_space)) {
-    if (seek(stream, offset, SEEK_SET))
-      return zsv_index_status_error;
+  if (new_line[0] == '\n') {
+    *offset += 1;
+  } else if (new_line[0] == '\r') {
+    if (new_line[1] == '\n') {
+      *offset += 1;
+      return zsv_index_status_ok;
+    }
+
+    *offset += 1;
+  } else {
+    return zsv_index_status_error;
   }
+
+  if (seek(stream, *offset, SEEK_SET))
+    return zsv_index_status_error;
 
   return zsv_index_status_ok;
 }
@@ -123,7 +136,7 @@ enum zsv_index_status zsv_index_seek_row(const struct zsv_index *ix, struct zsv_
   if (zist != zsv_index_status_ok)
     return zist;
 
-  if ((zist = seek_and_check_newline(offset, opts)) != zsv_index_status_ok)
+  if ((zist = seek_and_check_newline((long *)&offset, opts)) != zsv_index_status_ok)
     return zist;
 
   if (!remaining_rows)
@@ -146,9 +159,9 @@ enum zsv_index_status zsv_index_seek_row(const struct zsv_index *ix, struct zsv_
   if (zst != zsv_status_cancelled)
     return zsv_index_status_error;
 
-  offset += zsv_cum_scanned_length(parser) + 1;
+  offset += zsv_cum_scanned_length(parser);
 
   zsv_delete(parser);
 
-  return seek_and_check_newline(offset, opts);
+  return seek_and_check_newline((long *)&offset, opts);
 }
