@@ -6,7 +6,7 @@
 - add start_row and end_row options to `zsv_opts`
 
 ### input formats
-- single-registration-function support for additional file suffix support. This functionality could come from either a built-in or an extension
+- high priority: single-registration-function support for additional file suffix support. This functionality could come from either a built-in or an extension
   - for example, `zsv_register_file_reader("bz2", ...)` and `zsvwriter_register_file_writer("bz2", ...)`
   - should also handle file formats that may contain multiple files e.g. multiple tabs in xlsx
 
@@ -47,7 +47,7 @@ Row indexing
       - the buffer handles this in a specific manner to trace the edited row back to the correct row in the original data
 
 ### Extensions
-- Support extension custom properties
+- high priority: support extension custom properties
   - saved in .zsv/data/<fn>/props-<ext>.json
   - API should include means to (during ext initialization), functions to set/get
 - Extend the my_extension.c such that when a buffer in the displayed list is selected, pressing Return will load that buffer
