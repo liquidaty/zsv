@@ -209,13 +209,10 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
     sqlite3_bind_int64(query, 1, overwrite->row_ix);
     sqlite3_bind_int64(query, 2, overwrite->col_ix);
     sqlite3_bind_text(query, 3, (const char *)overwrite->val.str, -1, SQLITE_STATIC);
-    char *time_buf = "";
-    if(args->timestamp) {
-      time_t my_time = time(NULL);
-      time_buf = ctime(&my_time);
-      time_buf[strlen(time_buf) - 1] = '\0'; // Remove newline
-    }
-    sqlite3_bind_text(query, 4, (const char *)time_buf, -1, SQLITE_STATIC);
+    if(args->timestamp)
+      sqlite3_bind_int64(query, 4, time(NULL));
+    else
+      sqlite3_bind_null(query, 4);
     sqlite3_bind_text(query, 5, "", -1, SQLITE_STATIC); // author
     if ((ret = sqlite3_step(query)) != SQLITE_DONE) {
       err = 1;
@@ -284,8 +281,11 @@ static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
     size_t col = sqlite3_column_int64(stmt, 1);
     const unsigned char *val = sqlite3_column_text(stmt, 2);
     size_t val_len = sqlite3_column_bytes(stmt, 2);
-    const unsigned char *timestamp = sqlite3_column_text(stmt, 3);
-    size_t timestamp_len = sqlite3_column_bytes(stmt, 3);
+    size_t timestamp = 0;
+    // If timestamp is null, that means --no-timestamp was passed on insertion
+    int timestamp_is_null = sqlite3_column_type(stmt, 3) == SQLITE_NULL;
+    if(!timestamp_is_null)
+      timestamp = sqlite3_column_int64(stmt, 3);
     const unsigned char *author = sqlite3_column_text(stmt, 4);
     size_t author_len = sqlite3_column_bytes(stmt, 4);
     if(args->a1) {
@@ -302,7 +302,10 @@ static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
       zsv_writer_cell_zu(writer, 0, col);
     }
     zsv_writer_cell(writer, 0, val, val_len, 0);
-    zsv_writer_cell(writer, 0, timestamp, timestamp_len, 0);
+    if(!timestamp_is_null)
+      zsv_writer_cell_zu(writer, 0, timestamp);
+    else
+      zsv_writer_cell(writer, 0, (const unsigned char*)"", 0, 0); // write an empty cell if null
     zsv_writer_cell(writer, 0, author, author_len, 0);
   }
 
