@@ -198,7 +198,7 @@ static int zsv_overwrite_check_for_value(struct zsv_overwrite_ctx *ctx, struct z
   return err;
 }
 
-static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite) {
+static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite, struct zsv_overwrite_args *args) {
   int err = 0;
   sqlite3_stmt *query = NULL;
   int ret;
@@ -209,9 +209,12 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
     sqlite3_bind_int64(query, 1, overwrite->row_ix);
     sqlite3_bind_int64(query, 2, overwrite->col_ix);
     sqlite3_bind_text(query, 3, (const char *)overwrite->val.str, -1, SQLITE_STATIC);
-    time_t my_time = time(NULL);
-    char *time_buf = ctime(&my_time);
-    time_buf[strlen(time_buf) - 1] = '\0'; // Remove newline
+    char *time_buf = "";
+    if(args->timestamp) {
+      time_t my_time = time(NULL);
+      time_buf = ctime(&my_time);
+      time_buf[strlen(time_buf) - 1] = '\0'; // Remove newline
+    }
     sqlite3_bind_text(query, 4, (const char *)time_buf, -1, SQLITE_STATIC);
     sqlite3_bind_text(query, 5, "", -1, SQLITE_STATIC); // author
     if ((ret = sqlite3_step(query)) != SQLITE_DONE) {
@@ -430,7 +433,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   else if (args.clear)
     zsv_overwrites_clear(&ctx);
   else if (!err && args.add && ctx.sqlite3.db)
-    zsv_overwrites_insert(&ctx, &overwrite);
+    zsv_overwrites_insert(&ctx, &overwrite, &args);
 
   zsv_overwrites_exit(&ctx, &overwrite, writer);
 
