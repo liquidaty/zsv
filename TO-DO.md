@@ -47,6 +47,7 @@ Row indexing
       - the buffer handles this in a specific manner to trace the edited row back to the correct row in the original data
 
 ### Extensions
+- Extend the my_extension.c such that when a buffer in the displayed list is selected, pressing Return will load that buffer
 - cell plug-in: display context menu
 - update temp file management to centralized list with ref count
 - add option to cancel event handling before it is finished running
