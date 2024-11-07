@@ -70,6 +70,13 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
   opts.stream = fp; // Input file stream
 
+  zsv_parser parser = {0};
+  if (zsv_new_with_properties(&opts, custom_prop_handler, filename, opts_used, &parser) != zsv_status_ok) {
+    fclose(fp);
+    zsv_delete(parser);
+    return errno ? errno : -1;
+  }
+
   if (uibuff) {
     pthread_mutex_lock(&uibuff->mutex);
     if (uibuff->index_ready && row_filter) {
@@ -88,6 +95,9 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       opts.rows_to_ignore = 0;
       zst = zsv_index_seek_row(uibuff->index, &opts, start_row);
 
+      zsv_delete(parser);
+      parser = zsv_new(&opts);
+
       remaining_header_to_skip = 0;
       remaining_rows_to_skip = 0;
       original_row_num = header_span + start_row;
@@ -98,13 +108,6 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   }
 
   size_t rows_read = header_span;
-
-  zsv_parser parser = {0};
-  if (zsv_new_with_properties(&opts, custom_prop_handler, filename, opts_used, &parser) != zsv_status_ok) {
-    fclose(fp);
-    zsv_delete(parser);
-    return errno ? errno : -1;
-  }
 
   size_t find_len = zsvsheet_opts->find ? strlen(zsvsheet_opts->find) : 0;
   size_t rows_searched = 0;
