@@ -47,7 +47,7 @@ test-1:
 	@${PREFIX} ${EXE} dummy.csv clear 
 	@${CHECK} [ "`${EXE} dummy.csv list`" = "row,column,value,timestamp,author" ] && ${TEST_PASS} || ${TEST_FAIL}
 
-TIMESTAMP=$(shell date +"%a %b  %-d %R:%S %Y")
+TIMESTAMP=$(shell date +"%s")
 
 test-2:
 	@${TEST_INIT}
@@ -67,6 +67,7 @@ test-echo-overwrite-auto:
 	@${PREFIX} ${EXE} dummy.csv clear 
 	@${PREFIX} ${EXE} dummy.csv add 1-0 ABC
 	@${PREFIX} ${EXE} dummy.csv add 2-2 123 
+	@echo $(TIMESTAMP) > out.txt
 	@${ECHO_EXE} --overwrite-auto dummy.csv > ${TMP_DIR}/$@.out 
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
