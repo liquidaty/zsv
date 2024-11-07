@@ -47,6 +47,6 @@ prepare 'nupkg'
 cd ..
 
 echo "[INF] Listing"
-ls -Gghl "$ARTIFACT_DIR"
+ls -hl "$ARTIFACT_DIR"
 
 echo "[INF] --- [DONE] ---"

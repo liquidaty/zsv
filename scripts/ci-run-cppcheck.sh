@@ -31,7 +31,7 @@ cppcheck \
   --project="$CPPCHECK_PROJECT_FILE" \
   --xml 2>"$CPPCHECK_XML_OUTPUT_FILE"
 
-ls -Gghl "$CPPCHECK_XML_OUTPUT_FILE"
+ls -hl "$CPPCHECK_XML_OUTPUT_FILE"
 
 echo "[INF] Generating HTML report..."
 cppcheck-htmlreport \
