@@ -1,6 +1,9 @@
 /**
 !/app
 /app/cli_internal.*.in
+!/data
+!/docs/*.json
+!examples
 !/include
 !/scripts
 !/src
@@ -8,3 +11,4 @@
 !AUTHORS
 !Makefile
 !LICENSE
+!./ci/zsv

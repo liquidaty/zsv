@@ -84,6 +84,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
     enum zsv_index_status zst;
     if (uibuff->index_ready) {
+      opts.header_span = 0;
+      opts.rows_to_ignore = 0;
       zst = zsv_index_seek_row(uibuff->index, &opts, start_row);
 
       remaining_header_to_skip = 0;

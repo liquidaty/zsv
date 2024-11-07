@@ -94,7 +94,7 @@ rpm -qlp "$RPM_PKG_PATH"
 mv "$RPM_PKG_PATH" "$ARTIFACT_DIR/"
 rm -rf "$RPM_DIR"
 
-ls -Gghl "$ARTIFACT_DIR/$RPM_PKG"
+ls -hl "$ARTIFACT_DIR/$RPM_PKG"
 
 echo "[INF] Verifying RPM package [$ARTIFACT_DIR/$RPM_PKG]"
 
