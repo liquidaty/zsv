@@ -40,7 +40,7 @@ ifeq ($(EXE),)
   $(error EXE is not defined)
 endif
 
-test: test-1 test-2 test-excel-cells test-echo-overwrite-auto
+test: test-1 test-2 test-excel-cells test-add test-echo-overwrite-auto
 
 test-1:
 	@${TEST_INIT}
@@ -48,18 +48,31 @@ test-1:
 	@${CHECK} [ "`${EXE} dummy.csv list`" = "row,column,value,timestamp,author" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 TIMESTAMP=$(shell date +"%s")
+HEADER=row,column,value,timestamp,author
 
 test-2:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear 
 	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC
-	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf 'row,column,value,timestamp,author\n2,1,ABC,$(TIMESTAMP),\n'`" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf '$(HEADER)\n2,1,ABC,$(TIMESTAMP),\n'`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-excel-cells:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear 
 	@${PREFIX} ${EXE} dummy.csv add C2 EXCEL 
-	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf 'row,column,value,timestamp,author\n1,2,EXCEL,$(TIMESTAMP),\n'`" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf '$(HEADER)\n1,2,EXCEL,$(TIMESTAMP),\n'`" ] && ${TEST_PASS} || ${TEST_FAIL}
+
+test-add:
+	@${TEST_INIT}
+	@${PREFIX} ${EXE} dummy2.csv clear 
+	@${PREFIX} ${EXE} dummy2.csv add 1-2 VAL1 
+	@${PREFIX} ${EXE} dummy2.csv add 2-2 VAL2 
+	@${PREFIX} ${EXE} dummy2.csv add 2-3 VAL3 
+	@${PREFIX} ${EXE} dummy2.csv add 2-4 VAL4 
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf '$(HEADER)\n1,2,VAL1,$(TIMESTAMP),\n2,2,VAL2,$(TIMESTAMP),\n2,3,VAL3,$(TIMESTAMP),\n2,4,VAL4,$(TIMESTAMP),\n'`" ] \
+		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${ECHO_EXE} --overwrite-auto dummy2.csv > ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 
 test-echo-overwrite-auto:
@@ -67,7 +80,6 @@ test-echo-overwrite-auto:
 	@${PREFIX} ${EXE} dummy.csv clear 
 	@${PREFIX} ${EXE} dummy.csv add 1-0 ABC
 	@${PREFIX} ${EXE} dummy.csv add 2-2 123 
-	@echo $(TIMESTAMP) > out.txt
 	@${ECHO_EXE} --overwrite-auto dummy.csv > ${TMP_DIR}/$@.out 
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
