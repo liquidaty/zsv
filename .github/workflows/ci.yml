@@ -526,7 +526,7 @@ jobs:
     steps:
     - name: Set up dependencies
       shell: sh
-      run: apk add bash gcc make musl-dev perl ncurses-dev ncurses-static tmux file sqlite curl zip
+      run: apk add bash gcc make musl-dev perl ncurses-dev ncurses-static tmux file sqlite curl zip tree
 
     - name: Checkout
       uses: actions/checkout@v4
