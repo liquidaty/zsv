@@ -26,7 +26,7 @@ zsvsheet_handler_status zsvsheet_proc_key_binding_handler(struct zsvsheet_key_bi
 
 int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding) {
   if (zsvsheet_find_key_binding(binding->ch))
-    return -EEXIST; /* Key bound already */
+    return EEXIST; /* Key bound already */
 
   if (binding->proc_id != ZSVSHEET_PROC_INVALID && binding->handler == NULL)
     binding->handler = zsvsheet_proc_key_binding_handler;
@@ -43,7 +43,7 @@ int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding) {
   return -ENOMEM;
 }
 
-int zsvsheet_register_proc_key_binding(char ch, int proc_id) {
+int zsvsheet_register_proc_key_binding(char ch, zsvsheet_proc_id_t proc_id) {
   struct zsvsheet_key_binding binding = {
     .ch = ch,
     .proc_id = proc_id,
