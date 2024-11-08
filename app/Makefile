@@ -457,7 +457,7 @@ ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF
 
 ${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}-external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ -c $<
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -o $@ -c $<
 
 ${YAJL_OBJ}: ${BUILD_DIR}-external/yajl/%.o : external/yajl/src/%.c
 	@mkdir -p `dirname "$@"`
