@@ -1,6 +1,7 @@
 #ifndef ZSVSHEET_PROCEDURE_H
 #define ZSVSHEET_PROCEDURE_H
 #include <stdbool.h>
+#include <zsv/ext.h>
 
 /* ID's of bulitin procedures, extensions can register more.
  *
