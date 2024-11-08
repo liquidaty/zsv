@@ -52,8 +52,10 @@ zsvsheet_handler_status zsvsheet_handler_set_status(struct zsvsheet_proc_context
 /**
  * Get the key press that triggered this subcommand handler
  */
-int zsvsheet_handler_key(zsvsheet_subcommand_handler_context_t ctx) {
-  return ctx->ch;
+int zsvsheet_ext_keypress(zsvsheet_proc_context_t ctx) {
+  if (ctx && ctx->invocation.type == zsvsheet_proc_invocation_type_keypress)
+    return ctx->invocation.u.keypress.ch;
+  return -1;
 }
 
 /**
