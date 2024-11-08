@@ -24,6 +24,7 @@
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/mem.h>
+#include <zsv/utils/memmem.h>
 #include <zsv/utils/arg.h>
 
 struct zsv_select_search_str {
