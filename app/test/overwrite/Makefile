@@ -53,22 +53,22 @@ HEADER=row,column,value,timestamp,author
 test-2:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear 
-	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC && date +"%s" > ${TMP_DIR}/timestamp1.txt
+	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC && stat -c %Y .zsv/data/dummy.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp1.txt
 	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf \"$(HEADER)\n2,1,ABC,$$(cat ${TMP_DIR}/timestamp1.txt),\n\"`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-excel-cells:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear 
-	@${PREFIX} ${EXE} dummy.csv add C2 EXCEL && date +"%s" > ${TMP_DIR}/timestamp1.txt
+	@${PREFIX} ${EXE} dummy.csv add C2 EXCEL && stat -c %Y .zsv/data/dummy.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp1.txt
 	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf \"$(HEADER)\n1,2,EXCEL,$$(cat ${TMP_DIR}/timestamp1.txt),\n\"`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-add:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy2.csv clear 
-	@(${PREFIX} ${EXE} dummy2.csv add 1-2 VAL1 && date +"%s" > ${TMP_DIR}/timestamp1.txt)
-	@(${PREFIX} ${EXE} dummy2.csv add 2-2 VAL2 && date +"%s" > ${TMP_DIR}/timestamp2.txt)
-	@(${PREFIX} ${EXE} dummy2.csv add 2-3 VAL3 && date +"%s" > ${TMP_DIR}/timestamp3.txt)
-	@(${PREFIX} ${EXE} dummy2.csv add 2-4 VAL4 && date +"%s" > ${TMP_DIR}/timestamp4.txt)
+	@${PREFIX} ${EXE} dummy2.csv add 1-2 VAL1 && stat -c %Y .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp1.txt
+	@${PREFIX} ${EXE} dummy2.csv add 2-2 VAL2 && stat -c %Y .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp2.txt
+	@${PREFIX} ${EXE} dummy2.csv add 2-3 VAL3 && stat -c %Y .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp3.txt
+	@${PREFIX} ${EXE} dummy2.csv add 2-4 VAL4 && stat -c %Y .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp4.txt
 	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,2,VAL1,$$(cat ${TMP_DIR}/timestamp1.txt),\n2,2,VAL2,$$(cat ${TMP_DIR}/timestamp2.txt),\n2,3,VAL3,$$(cat ${TMP_DIR}/timestamp3.txt),\n2,4,VAL4,$$(cat ${TMP_DIR}/timestamp4.txt),\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${ECHO_EXE} --overwrite-auto dummy2.csv > ${TMP_DIR}/$@.out
@@ -77,7 +77,7 @@ test-add:
 test-no-timestamp:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy2.csv clear 
-	@${PREFIX} ${EXE} dummy2.csv add 1-2 ABC && date +"%s" > ${TMP_DIR}/timestamp1.txt
+	@${PREFIX} ${EXE} dummy2.csv add 1-2 ABC && stat -c %Y .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp1.txt
 	@${PREFIX} ${EXE} dummy2.csv add 2-2 XYZ --no-timestamp
 	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,2,ABC,$$(cat ${TMP_DIR}/timestamp1.txt),\n2,2,XYZ,,\n\"`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
