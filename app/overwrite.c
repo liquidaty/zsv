@@ -29,8 +29,8 @@
 struct zsv_overwrite_args {
   char *filepath;
   // options
-  unsigned char a1: 1;
-  unsigned char timestamp: 1;
+  unsigned char a1 : 1;
+  unsigned char timestamp : 1;
   // commands
   unsigned char list : 1;
   unsigned char clear : 1;
@@ -198,7 +198,8 @@ static int zsv_overwrite_check_for_value(struct zsv_overwrite_ctx *ctx, struct z
   return err;
 }
 
-static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite, struct zsv_overwrite_args *args) {
+static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
+                                 struct zsv_overwrite_args *args) {
   int err = 0;
   sqlite3_stmt *query = NULL;
   int ret;
@@ -209,7 +210,7 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
     sqlite3_bind_int64(query, 1, overwrite->row_ix);
     sqlite3_bind_int64(query, 2, overwrite->col_ix);
     sqlite3_bind_text(query, 3, (const char *)overwrite->val.str, -1, SQLITE_STATIC);
-    if(args->timestamp)
+    if (args->timestamp)
       sqlite3_bind_int64(query, 4, time(NULL));
     else
       sqlite3_bind_null(query, 4);
@@ -245,19 +246,20 @@ static char *row_col_to_a1(size_t col, size_t row) {
   int index = 63;
   buffer[index] = '\0';
 
-  while(1) {
-    if(index == 0)
+  while (1) {
+    if (index == 0)
       return NULL;
     col--;
     buffer[--index] = 'A' + (col % 26);
     col /= 26;
-    if(col == 0) break;
+    if (col == 0)
+      break;
   }
   printf("%s\n", &buffer[index]);
   // 20 extra bytes for row
-  char *result = malloc(strlen(&buffer[index])+20+1);
-  if(result)
-    sprintf(result, "%s%zu", &buffer[index], row+1);
+  char *result = malloc(strlen(&buffer[index]) + 20 + 1);
+  if (result)
+    sprintf(result, "%s%zu", &buffer[index], row + 1);
   return result;
 }
 
@@ -270,11 +272,11 @@ static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
     fprintf(stderr, "Failed to prepare statement: %s\n", sqlite3_errmsg(ctx->sqlite3.db));
     return err;
   }
-  zsv_writer_cell(writer, 0, (const unsigned char*)"row", 3, 0);
-  zsv_writer_cell(writer, 0, (const unsigned char*)"column", 6, 0);
-  zsv_writer_cell(writer, 0, (const unsigned char*)"value", 5, 0);
-  zsv_writer_cell(writer, 0, (const unsigned char*)"timestamp", 9, 0);
-  zsv_writer_cell(writer, 0, (const unsigned char*)"author", 6, 0);
+  zsv_writer_cell(writer, 0, (const unsigned char *)"row", 3, 0);
+  zsv_writer_cell(writer, 0, (const unsigned char *)"column", 6, 0);
+  zsv_writer_cell(writer, 0, (const unsigned char *)"value", 5, 0);
+  zsv_writer_cell(writer, 0, (const unsigned char *)"timestamp", 9, 0);
+  zsv_writer_cell(writer, 0, (const unsigned char *)"author", 6, 0);
 
   while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
     size_t row = sqlite3_column_int64(stmt, 0);
@@ -284,28 +286,28 @@ static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
     size_t timestamp = 0;
     // If timestamp is null, that means --no-timestamp was passed on insertion
     int timestamp_is_null = sqlite3_column_type(stmt, 3) == SQLITE_NULL;
-    if(!timestamp_is_null)
+    if (!timestamp_is_null)
       timestamp = sqlite3_column_int64(stmt, 3);
     const unsigned char *author = sqlite3_column_text(stmt, 4);
     size_t author_len = sqlite3_column_bytes(stmt, 4);
-    if(args->a1) {
+    if (args->a1) {
       char *col_a1 = row_col_to_a1(col, row);
-      if(!col_a1) {
+      if (!col_a1) {
         err = 1;
         fprintf(stderr, "Error converting column number to A1-notation\n");
         return err;
       }
-      zsv_writer_cell(writer, 1, (const unsigned char*)col_a1, strlen(col_a1), 0);
+      zsv_writer_cell(writer, 1, (const unsigned char *)col_a1, strlen(col_a1), 0);
       free(col_a1);
     } else {
       zsv_writer_cell_zu(writer, 1, row);
       zsv_writer_cell_zu(writer, 0, col);
     }
     zsv_writer_cell(writer, 0, val, val_len, 0);
-    if(!timestamp_is_null)
+    if (!timestamp_is_null)
       zsv_writer_cell_zu(writer, 0, timestamp);
     else
-      zsv_writer_cell(writer, 0, (const unsigned char*)"", 0, 0); // write an empty cell if null
+      zsv_writer_cell(writer, 0, (const unsigned char *)"", 0, 0); // write an empty cell if null
     zsv_writer_cell(writer, 0, author, author_len, 0);
   }
 
@@ -392,9 +394,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if (!strcmp(opt, "--old-value")) {
       fprintf(stderr, "Error: %s is not implemented\n", opt);
       err = 1;
-    } else if(!strcmp(opt, "--no-timestamp")) {
+    } else if (!strcmp(opt, "--no-timestamp")) {
       args.timestamp = 0;
-    } else if(!strcmp(opt, "--A1")) {
+    } else if (!strcmp(opt, "--A1")) {
       args.a1 = 1;
     } else if (!strcmp(opt, "list")) {
       args.list = 1;
