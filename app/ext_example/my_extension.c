@@ -69,14 +69,14 @@ static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const 
                                      const char *opts_used);
 
 #ifdef ZSVSHEET_BUILD
-  
+
 /**
  * Here we define a custom command for the zsv `sheet` feature
  */
 zsvsheet_handler_status my_test_command_handler(zsvsheet_proc_context_t ctx) {
   char result_buffer[256] = {0};
   int ch = zsv_cb.ext_sheet_keypress(ctx);
-  if(ch < 0)
+  if (ch < 0)
     return zsvsheet_handler_status_error;
   zsv_cb.ext_sheet_prompt(ctx, result_buffer, sizeof(result_buffer), "You pressed %c. Now enter something here",
                           (char)ch);
