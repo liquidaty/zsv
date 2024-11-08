@@ -1,4 +1,4 @@
-# ZSV in web assembly example
+# ZSV in WebAssembly example
 
 ## Overview
 
@@ -41,11 +41,11 @@ already installed
    save the config output to `config.emcc`:
 
    ```shell
-   emconfigure ./configure CONFIGFILE=config.emcc
+   CROSS_COMPILING=yes emconfigure ./configure CONFIGFILE=config.emcc
    ```
 
-2. Change back to this directory (examples/wasm), then run `emmake make run`.
-   You should see output messages ending with:
+2. Change back to this directory `examples/js`, then run `emmake make run`. You
+   should see output messages ending with:
 
    ```shell
    Listening on https://127.0.0.1:8888

@@ -30,9 +30,9 @@ function rowHandler() {
 function finish() {
   zHandle.finish();
   zHandle.delete();
-  alert('Parsed ' + bytes_read + ' bytes; ' + rowcount + ' rows in '
-    + (performance.now() - start) + 'ms. '
-    + 'You can view the parsed data in your browser dev tools console (right-click and select Inspect)');
+  alert(
+    'Parsed ' + bytes_read + ' bytes (' + rowcount + ' rows) in ' + parseFloat(performance.now() - start).toFixed(2) + ' ms.\n' +
+    'View the parsed data in the browser\'s Developer Tools Console (right-click and select Inspect).');
   console.log('zsv parsed data', data);
   data = null;
 }

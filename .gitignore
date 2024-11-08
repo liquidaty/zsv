@@ -38,6 +38,13 @@
 *.log
 *.mk
 *.mk.log
+*.emcc
+*.emcc.log
+*.wasm
+*.worker.js
+package.json
+package-lock.json
+node_modules
 *.c.in
 *.h.in
 *.zip

@@ -501,5 +501,5 @@ clean-internal:
 	$(RM) cli_internal.c.in cli_internal.h.in
 
 ${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: ${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1.tar.gz
-	@cd external && tar xf $< && chown -R `whoami` utf8proc-2.6.1
+	@cd external && tar xf utf8proc-2.6.1.tar.gz && chown -R `whoami` utf8proc-2.6.1
 	@touch $@
