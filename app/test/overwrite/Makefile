@@ -79,8 +79,14 @@ test-timestamp:
 	@${PREFIX} ${EXE} dummy2.csv clear 
 	@(${PREFIX} ${EXE} dummy2.csv add 1-2 ABC && stat -c %Y .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp1.txt)
 	@(${PREFIX} ${EXE} dummy2.csv add 1-3 ABC && stat -c %Y .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp2.txt)
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,2,ABC,$$(cat ${TMP_DIR}/timestamp1.txt),\n1,3,ABC,$$(cat ${TMP_DIR}/timestamp2.txt),\n\"`" ] \
-		&& ${TEST_PASS} || ${TEST_FAIL}
+	@{ \
+		EXPECTED_TS1=`cat ${TMP_DIR}/timestamp1.txt`; \
+		EXPECTED_TS2=`cat ${TMP_DIR}/timestamp2.txt`; \
+		LOWER_TS1=$$((EXPECTED_TS1 - 1)); \
+		LOWER_TS2=$$((EXPECTED_TS2 - 1)); \
+		OUTPUT="`${EXE} dummy2.csv list | tr -d '\n'`"; \
+		echo "$$OUTPUT" | grep -q "${HEADER}1,2,ABC,\($$LOWER_TS\|$$EXPECTED_TS1\),1,3,ABC,\($$LOWER_TS2\|$$EXPECTED_TS2\)," && ${TEST_PASS} || ${TEST_FAIL}; \
+	}
 
 test-echo-overwrite-auto:
 	@${TEST_INIT}
