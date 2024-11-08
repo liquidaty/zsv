@@ -61,11 +61,6 @@ typedef void *zsv_execution_context;
 typedef enum zsv_ext_status (*zsv_ext_main)(zsv_execution_context ctx, int argc, const char *argv[],
                                             struct zsv_opts *opts, const char *opts_used);
 
-typedef struct zsvsheet_proc_context *zsvsheet_proc_context_t;
-
-/* custom sheet handler id */
-typedef int zsvsheet_proc_id_t;
-
 /**
  * ZSV callbacks structure
  *
@@ -186,7 +181,7 @@ struct zsv_ext_callbacks {
   /**
    * Get the key press that triggered this subcommand handler
    */
-  int (*ext_sheet_handler_key)(zsvsheet_subcommand_handler_context_t ctx);
+  int (*ext_sheet_keypress)(zsvsheet_proc_context_t ctx);
 
   /****** Managing buffers ******/
   /**

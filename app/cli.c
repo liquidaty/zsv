@@ -385,7 +385,7 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->ext_opts_used = ext_opts_used;
 
 #ifdef ZSVSHEET_BUILD
-    e->ext_sheet_handler_key = zsvsheet_handler_key;
+    e->ext_sheet_keypress = zsvsheet_ext_keypress;
     e->ext_sheet_prompt = zsvsheet_ext_prompt;
     e->ext_sheet_handler_set_status = zsvsheet_handler_set_status;
     e->ext_sheet_handler_buffer_current = zsvsheet_handler_buffer_current;

@@ -50,7 +50,7 @@ zsvsheet_handler_status zsvsheet_handler_set_status(struct zsvsheet_proc_context
 /**
  * Get the key press that triggered this subcommand handler
  */
-int zsvsheet_handler_key(zsvsheet_subcommand_handler_context_t ctx);
+int zsvsheet_ext_keypress(zsvsheet_proc_context_t);
 
 /**
  * Get the current buffer
