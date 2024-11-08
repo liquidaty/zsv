@@ -3,18 +3,22 @@
 THIS_MAKEFILE_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
 CONFIGFILE ?= ../config.mk
-ifneq ($(CONFIGFILE),)
-  ifeq ($(shell realpath `dirname ${CONFIGFILE}`),`realpath .`)
-    $(error howdydy)
+$(info Using config file ${CONFIGFILE})
+
+CONFIGFILEPATH:=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
+ifeq ($(CONFIGFILEPATH),)
+  ifeq ($(shell dirname ${CONFIGFILE}),.)
+    CONFIGFILEPATH:=$(shell ls ../${CONFIGFILE} >/dev/null 2>/dev/null && realpath ../${CONFIGFILE})
+    ifneq ($(CONFIGFILEPATH),)
+      $(info Config file ${CONFIGFILE} not found; using ../${CONFIGFILE})
+    endif
   endif
 endif
 
-$(info Using config file ${CONFIGFILE})
-include ${CONFIGFILE}
-
-CONFIGFILEPATH=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
 ifeq ($(CONFIGFILEPATH),)
   $(error Config file ${CONFIGFILE} not found)
+else
+  include ${CONFIGFILEPATH}
 endif
 
 CC ?= cc

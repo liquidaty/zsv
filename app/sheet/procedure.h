@@ -1,6 +1,7 @@
 #ifndef ZSVSHEET_PROCEDURE_H
 #define ZSVSHEET_PROCEDURE_H
 #include <stdbool.h>
+#include <zsv/ext.h>
 
 /* ID's of bulitin procedures, extensions can register more.
  *
@@ -32,7 +33,6 @@ enum {
 };
 
 #define ZSVSHEET_PROC_INVALID 0
-typedef int zsvsheet_proc_id_t;
 
 /* Procedures perform various actions in the editor. Procedures can be invoked
  * by key-bindings, prompt invocation, another procedure or script. */
