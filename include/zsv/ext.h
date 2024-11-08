@@ -174,8 +174,8 @@ struct zsv_ext_callbacks {
    * @param  s text to set the subcommand prompt to. must be < 256 bytes in length
    * returns zsvsheet_status_ok on success
    */
-  zsvsheet_handler_status (*ext_sheet_prompt)(zsvsheet_proc_context_t ctx, char *buffer, size_t bufsz,
-                                              const char *fmt, ...);
+  zsvsheet_handler_status (*ext_sheet_prompt)(zsvsheet_proc_context_t ctx, char *buffer, size_t bufsz, const char *fmt,
+                                              ...);
 
   /*** Custom command handling ***/
   /**

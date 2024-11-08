@@ -43,7 +43,7 @@ int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding) {
   return -ENOMEM;
 }
 
-int zsvsheet_register_proc_key_binding(char ch, zsvsheet_proc_id_t  proc_id) {
+int zsvsheet_register_proc_key_binding(char ch, zsvsheet_proc_id_t proc_id) {
   struct zsvsheet_key_binding binding = {
     .ch = ch,
     .proc_id = proc_id,
