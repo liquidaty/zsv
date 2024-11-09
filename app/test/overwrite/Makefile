@@ -40,27 +40,54 @@ ifeq ($(EXE),)
   $(error EXE is not defined)
 endif
 
-test: test-1 test-2 test-excel-cells test-echo-overwrite-auto
+test: test-1 test-2 test-excel-cells test-add test-echo-overwrite-auto test-timestamp
 
 test-1:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear 
 	@${CHECK} [ "`${EXE} dummy.csv list`" = "row,column,value,timestamp,author" ] && ${TEST_PASS} || ${TEST_FAIL}
 
-TIMESTAMP=$(shell date +"%a %b  %-d %R:%S %Y")
+TIMESTAMP=$(shell date +"%s")
+HEADER=row,column,value,timestamp,author
 
 test-2:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear 
-	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC
-	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf 'row,column,value,timestamp,author\n2,1,ABC,$(TIMESTAMP),\n'`" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC --no-timestamp
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf \"$(HEADER)\n2,1,ABC,,\n\"`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-excel-cells:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear 
-	@${PREFIX} ${EXE} dummy.csv add C2 EXCEL 
-	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf 'row,column,value,timestamp,author\n1,2,EXCEL,$(TIMESTAMP),\n'`" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${EXE} dummy.csv add C2 EXCEL --no-timestamp
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf \"$(HEADER)\n1,2,EXCEL,,\n\"`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
+test-add:
+	@${TEST_INIT}
+	@${PREFIX} ${EXE} dummy2.csv clear 
+	@${PREFIX} ${EXE} dummy2.csv add 1-2 VAL1 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 2-2 VAL2 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 2-3 VAL3 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 2-4 VAL4 --no-timestamp
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,2,VAL1,,\n2,2,VAL2,,\n2,3,VAL3,,\n2,4,VAL4,,\n\"`" ] \
+		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${ECHO_EXE} --overwrite-auto dummy2.csv > ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+STAT_MOD_TS=$(shell if stat -c %Y Makefile >/dev/null 2>/dev/null; then echo 'stat -c %Y' ; else echo 'stat -f %m' ; fi)
+test-timestamp:
+	@${TEST_INIT}
+	@${PREFIX} ${EXE} dummy2.csv clear 
+	@(${PREFIX} ${EXE} dummy2.csv add 1-2 ABC && ${STAT_MOD_TS} .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp1.txt)
+	@(${PREFIX} ${EXE} dummy2.csv add 1-3 ABC && ${STAT_MOD_TS} .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp2.txt)
+	@{ \
+		EXPECTED_TS1=`cat ${TMP_DIR}/timestamp1.txt`; \
+		EXPECTED_TS2=`cat ${TMP_DIR}/timestamp2.txt`; \
+		LOWER_TS1=$$((EXPECTED_TS1 - 1)); \
+		LOWER_TS2=$$((EXPECTED_TS2 - 1)); \
+		OUTPUT="`${EXE} dummy2.csv list | tr -d '\n'`"; \
+		echo "$$OUTPUT" | grep -q "${HEADER}1,2,ABC,\($$LOWER_TS1\|$$EXPECTED_TS1\),1,3,ABC,\($$LOWER_TS2\|$$EXPECTED_TS2\)," && ${TEST_PASS} || ${TEST_FAIL}; \
+	}
 
 test-echo-overwrite-auto:
 	@${TEST_INIT}
