@@ -114,9 +114,9 @@ for TOOL in zsv xsv tsv; do
   if [ "$TOOL" = "zsv" ]; then
     CMD="$TOOLS_DIR/zsv count"
   elif [ "$TOOL" = "xsv" ]; then
-    CMD="$TOOLS_DIR/xsv count"
+    CMD="$TOOLS_DIR/xsv count --no-headers"
   elif [ "$TOOL" = "tsv" ]; then
-    CMD="$TOOLS_DIR/number-lines -d,"
+    CMD="$TOOLS_DIR/tsv-summarize --count -d,"
   fi
 
   I=0
