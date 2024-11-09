@@ -234,12 +234,12 @@ static int zsv_foreach_dirent_remove(struct zsv_foreach_dirent_handle *h, size_t
       }
     }
   } else { // dir
-    struct dir_path *dn = calloc(1, sizeof(*dn));
-    if (!dn) {
-      fprintf(stderr, "Out of memory!\n");
-      return 1;
-    }
     if (h->parent_and_entry) {
+      struct dir_path *dn = calloc(1, sizeof(*dn));
+      if (!dn) {
+        fprintf(stderr, "Out of memory!\n");
+        return 1;
+      }
       dn->path = strdup(h->parent_and_entry);
       dn->next = *((struct dir_path **)h->ctx);
       *((struct dir_path **)h->ctx) = dn;
@@ -305,10 +305,14 @@ int zsv_remove_dir_recursive(const unsigned char *path) {
   // delete directories in the reverse order we received them
   struct dir_path *reverse_dirs = NULL;
   int err = zsv_foreach_dirent((const char *)path, 0, zsv_foreach_dirent_remove, &reverse_dirs, 0);
-  // unlink and free each dir
+
+  // unlink each dir
+  for (struct dir_path *dn = reverse_dirs; !err && dn; dn = dn->next)
+    rmdir_w_msg(dn->path, &err);
+
+  // free each dir
   for (struct dir_path *next, *dn = reverse_dirs; !err && dn; dn = next) {
     next = dn->next;
-    rmdir_w_msg(dn->path, &err);
     free(dn->path);
     free(dn);
   }
