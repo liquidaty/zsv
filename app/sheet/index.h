@@ -15,6 +15,7 @@ struct zsvsheet_indexer {
   size_t filter_len;
   zsv_csv_writer writer;
   FILE *filter_stream;
+  char seen_header;
 };
 
 struct zsvsheet_index_opts {

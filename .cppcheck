@@ -27,5 +27,6 @@
         <suppression>missingInclude</suppression>
         <suppression>missingIncludeSystem</suppression>
         <suppression>unmatchedSuppression</suppression>
+        <suppression>strdupCalled</suppression>
     </suppressions>
 </project>

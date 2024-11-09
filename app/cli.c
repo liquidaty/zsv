@@ -269,8 +269,7 @@ static int handle_ext_err(struct zsv_ext *ext, zsv_execution_context ctx, enum z
       if (ext->module.errfree)
         ext->module.errfree(errstr);
     }
-  } else
-    fprintf(stderr, "An unknown error occurred in extension %s\n", ext->id);
+  }
   return rc;
 }
 
@@ -454,7 +453,7 @@ static enum zsv_ext_status run_extension(int argc, const char *argv[], struct zs
     struct zsv_execution_data ctx = {0};
     if ((stat = execution_context_init(&ctx, argc, argv)) == zsv_ext_status_ok) {
       struct zsv_opts opts;
-      zsv_args_to_opts(argc, argv, &argc, argv, &opts, ctx.opts_used);
+      zsv_args_to_opts(argc, argv, &ctx.argc, ctx.argv, &opts, ctx.opts_used);
       zsv_set_default_opts(opts);
       // need a corresponding zsv_set_default_custom_prop_handler?
 

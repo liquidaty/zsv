@@ -9,29 +9,34 @@
 
 #include "index.h"
 
+static void save_filtered_file_row_handler(void *ctx) {
+  struct zsvsheet_indexer *ixr = ctx;
+  zsv_parser parser = ixr->parser;
+  size_t col_count = zsv_cell_count(parser);
+
+  if (col_count == 0)
+    return;
+
+  if (ixr->seen_header) {
+    struct zsv_cell first_cell = zsv_get_cell(parser, 0);
+    struct zsv_cell last_cell = zsv_get_cell(parser, col_count - 1);
+
+    if (!memmem(first_cell.str, last_cell.str - first_cell.str + last_cell.len, ixr->filter, ixr->filter_len))
+      return;
+  } else {
+    ixr->seen_header = 1;
+  }
+
+  for (size_t i = 0; i < col_count; i++) {
+    struct zsv_cell cell = zsv_get_cell(parser, i);
+    zsv_writer_cell(ixr->writer, i == 0, cell.str, cell.len, cell.quoted);
+  }
+}
+
 static void build_memory_index_row_handler(void *ctx) {
   struct zsvsheet_indexer *ixr = ctx;
   struct zsv_index *ix = ixr->ix;
   zsv_parser parser = ixr->parser;
-  size_t col_count = zsv_cell_count(parser);
-
-  if (ixr->filter) {
-    if (col_count == 0)
-      return;
-
-    if (ixr->ix->header_line_end) {
-      struct zsv_cell first_cell = zsv_get_cell(parser, 0);
-      struct zsv_cell last_cell = zsv_get_cell(parser, col_count - 1);
-
-      if (!memmem(first_cell.str, last_cell.str - first_cell.str + last_cell.len, ixr->filter, ixr->filter_len))
-        return;
-    }
-
-    for (size_t i = 0; i < col_count; i++) {
-      struct zsv_cell cell = zsv_get_cell(parser, i);
-      zsv_writer_cell(ixr->writer, i == 0, cell.str, cell.len, cell.quoted);
-    }
-  }
 
   if (zsv_index_add_row(ix, parser) != zsv_index_status_ok)
     zsv_abort(parser);
@@ -54,15 +59,8 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
 
   ix_zopts.ctx = &ixr;
   ix_zopts.stream = fp;
-  ix_zopts.row_handler = build_memory_index_row_handler;
-
-  enum zsv_status zst =
-    zsv_new_with_properties(&ix_zopts, optsp->custom_prop_handler, optsp->filename, optsp->opts_used, &ixr.parser);
-  if (zst != zsv_status_ok)
-    goto out;
 
   if (optsp->row_filter) {
-
     temp_filename = zsv_get_temp_filename("zsvsheet_filter_XXXXXXXX");
     if (!temp_filename)
       return ret;
@@ -70,7 +68,7 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
     *optsp->temp_filename = temp_filename;
 
     struct zsv_csv_writer_options writer_opts = {0};
-    if (!(writer_opts.stream = temp_f = fopen(temp_filename, "wb")))
+    if (!(writer_opts.stream = temp_f = fopen(temp_filename, "w+")))
       return ret;
     if (!(temp_file_writer = zsv_writer_new(&writer_opts)))
       goto out;
@@ -78,7 +76,35 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
     zsv_writer_set_temp_buff(temp_file_writer, temp_buff, sizeof(temp_buff));
     ixr.writer = temp_file_writer;
     ixr.filter_stream = temp_f;
+    ix_zopts.row_handler = save_filtered_file_row_handler;
+
+    enum zsv_status zst =
+      zsv_new_with_properties(&ix_zopts, optsp->custom_prop_handler, optsp->filename, optsp->opts_used, &ixr.parser);
+    if (zst != zsv_status_ok)
+      goto out;
+
+    while ((zst = zsv_parse_more(ixr.parser)) == zsv_status_ok)
+      ;
+
+    if (zst != zsv_status_no_more_input)
+      goto out;
+
+    zsv_finish(ixr.parser);
+    zsv_delete(ixr.parser);
+    zsv_writer_delete(temp_file_writer);
+    temp_file_writer = NULL;
+    if (fseek(temp_f, 0, SEEK_SET))
+      goto out;
+
+    ix_zopts.stream = temp_f;
   }
+
+  ix_zopts.row_handler = build_memory_index_row_handler;
+
+  enum zsv_status zst =
+    zsv_new_with_properties(&ix_zopts, optsp->custom_prop_handler, optsp->filename, optsp->opts_used, &ixr.parser);
+  if (zst != zsv_status_ok)
+    goto out;
 
   ixr.ix = zsv_index_new();
   if (!ixr.ix)
