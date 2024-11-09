@@ -177,7 +177,7 @@ static int zsv_overwrites_clear(struct zsv_overwrite_ctx *ctx) {
 }
 
 static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
-                                 struct zsv_overwrite_args *args) {
+                                 const struct zsv_overwrite_args *args) {
   int err = 0;
   sqlite3_stmt *query = NULL;
 
@@ -246,7 +246,7 @@ static char *row_col_to_a1(size_t col, size_t row) {
   return result;
 }
 
-static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_args *args, zsv_csv_writer writer) {
+static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, const struct zsv_overwrite_args *args, zsv_csv_writer writer) {
   int err = 0;
   sqlite3_stmt *stmt;
   int ret;
