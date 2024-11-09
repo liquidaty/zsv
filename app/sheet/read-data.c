@@ -234,7 +234,7 @@ static void *get_data_index(void *gdi) {
   if (d->row_filter != NULL) {
     if (d->uib->index->row_count > 0) {
       d->uib->dimensions.row_count = d->uib->index->row_count + 1;
-      asprintf(&d->uib->status, "(%"PRIu64" filtered rows) ", d->uib->index->row_count);
+      asprintf(&d->uib->status, "(%" PRIu64 " filtered rows) ", d->uib->index->row_count);
     } else
       d->uib->status = NULL;
   } else {
