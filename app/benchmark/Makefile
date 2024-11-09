@@ -39,17 +39,17 @@ ZSVBIN=../../build/${BUILD_SUBDIR}/${CCBN}/bin/zsv_
 
 QUICK=1
 
+MAKE_BIN=$(notdir ${MAKE})
+
 help:
 	@echo "To run all tests (set QUICK to skip mlr and csvcut):"
-	@echo "    make all [QUICK=0] [PULL=1]"
-	@echo "    make CLI"
+	@echo "    ${MAKE_BIN} all [QUICK=0] [PULL=1]"
+	@echo "    ${MAKE_BIN} CLI"
 
 CLI: ZSVBIN="zsv "
 
 CLI:
-	make all QUICK=${QUICK} ZSVBIN=${ZSVBIN} -n | sed 's/[.]*\/.*\/bin\/zsv_/zsv /g' | sh
-
-
+	${MAKE} all QUICK=${QUICK} ZSVBIN=${ZSVBIN} -n | sed 's/[.]*\/.*\/bin\/zsv_/zsv /g' | sh
 
 all: count select tsv
 

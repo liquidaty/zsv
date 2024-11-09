@@ -82,7 +82,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       opts.stream = fp;
     }
 
-    enum zsv_index_status zst;
+    enum zsv_index_status zst = zsv_index_status_ok;
     if (uibuff->index_ready) {
       opts.header_span = 0;
       opts.rows_to_ignore = 0;
@@ -234,7 +234,7 @@ static void *get_data_index(void *gdi) {
   if (d->row_filter != NULL) {
     if (d->uib->index->row_count > 0) {
       d->uib->dimensions.row_count = d->uib->index->row_count + 1;
-      asprintf(&d->uib->status, "(%zu filtered rows) ", d->uib->index->row_count);
+      asprintf(&d->uib->status, "(%" PRIu64 " filtered rows) ", d->uib->index->row_count);
     } else
       d->uib->status = NULL;
   } else {
