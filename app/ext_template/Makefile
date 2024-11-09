@@ -69,7 +69,7 @@ all: ${TARGET}
 
 # zsv utils
 ${BUILD_DIR}/objs/utils/%.o:
-	(cd .. && make CONFIGFILE=${CONFIGFILEPATH} CC=${CC} DEBUG=${DEBUG} $@ )
+	(cd .. && ${MAKE} CONFIGFILE=${CONFIGFILEPATH} CC=${CC} DEBUG=${DEBUG} $@ )
 
 install: ${TARGET}
 	@echo "To install, copy ${TARGET} to a system path or the same dir"

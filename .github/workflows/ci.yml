@@ -141,7 +141,7 @@ jobs:
     - name: Set up macOS (AMD64 and ARM64)
       if: runner.os == 'macOS'
       run: |
-        brew install --quiet coreutils tree autoconf automake libtool
+        brew install --quiet coreutils tree autoconf automake libtool tmux
         brew uninstall jq
 
     # --- Build ---

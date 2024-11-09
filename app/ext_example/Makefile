@@ -106,10 +106,10 @@ CLI=${BUILD_DIR}/bin/cli
 RUN_CLI=ZSV_CONFIG_DIR=/tmp ${CLI}
 
 ${BUILD_DIR}/bin/cli:
-	make -C .. build-cli CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+	${MAKE} -C .. build-cli CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 ${BUILD_DIR}/objs/utils/%.o:
-	(cd .. && make CONFIGFILE=${CONFIGFILEPATH} CC=${CC} DEBUG=${DEBUG} $@ )
+	(cd .. && ${MAKE} CONFIGFILE=${CONFIGFILEPATH} CC=${CC} DEBUG=${DEBUG} $@ )
 
 test: test-1 test-2 test-3 test-4 test-5 test-thirdparty
 
@@ -156,7 +156,7 @@ clean:
 	@rm -f ${TARGET} /tmp/zsvext-test*.out
 
 ${BUILD_DIR}/objs/%.o : ${THIS_LIB_BASE}/src/%.c ${PARSER_DEPS}
-	make -C ${THIS_LIB_BASE}/src CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} WIN=${WIN} $@
+	${MAKE} -C ${THIS_LIB_BASE}/src CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} WIN=${WIN} $@
 
 ${TARGET}: my_extension.c ${UTILS}
 	@mkdir -p `dirname "$@"`
