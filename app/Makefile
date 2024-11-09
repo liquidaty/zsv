@@ -384,7 +384,7 @@ ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 ${CLI_APP_OBJECT} : cli_ini.c builtin/*.c ${JQ_LIB}
 ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8proc.c # ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} -I${THIS_MAKEFILE_DIR}/external/sglib -I${INCLUDE_DIR} -c $< -o $@ ${MORE_SOURCE}
+	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} -I${THIS_MAKEFILE_DIR}/external/sglib -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -c $< -o $@ ${MORE_SOURCE}
 
 ${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
@@ -457,7 +457,7 @@ ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF
 
 ${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}-external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ -c $<
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -o $@ -c $<
 
 ${YAJL_OBJ}: ${BUILD_DIR}-external/yajl/%.o : external/yajl/src/%.c
 	@mkdir -p `dirname "$@"`
@@ -501,5 +501,5 @@ clean-internal:
 	$(RM) cli_internal.c.in cli_internal.h.in
 
 ${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: ${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1.tar.gz
-	@cd external && tar xf $< && chown -R `whoami` utf8proc-2.6.1
+	@cd external && tar xf utf8proc-2.6.1.tar.gz && chown -R `whoami` utf8proc-2.6.1
 	@touch $@

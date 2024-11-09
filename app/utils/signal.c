@@ -26,7 +26,7 @@ static int consoleHandler(DWORD signal) {
   return 0;
 }
 
-void zsv_handle_ctrl_c_signal() {
+void zsv_handle_ctrl_c_signal(void) {
   if (!SetConsoleCtrlHandler(consoleHandler, 1))
     fprintf(stderr, "Warning: unable to set signal handler\n");
 }
@@ -44,7 +44,7 @@ static void INThandler(int sig) {
   }
 }
 
-void zsv_handle_ctrl_c_signal() {
+void zsv_handle_ctrl_c_signal(void) {
   // sigaction only ADDs the handler instead of REPLACING it
   // so we will use signal() instead
   signal(SIGINT, INThandler);
