@@ -74,18 +74,19 @@ test-add:
 	@${PREFIX} ${ECHO_EXE} --overwrite-auto dummy2.csv > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
+STAT_MOD_TS=$(shell if stat --version >/dev/null 2>/dev/null ; then echo 'stat -c %Y' ; else echo 'stat -f %m' ; fi)
 test-timestamp:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy2.csv clear 
-	@(${PREFIX} ${EXE} dummy2.csv add 1-2 ABC && stat -c %Y .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp1.txt)
-	@(${PREFIX} ${EXE} dummy2.csv add 1-3 ABC && stat -c %Y .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp2.txt)
+	@(${PREFIX} ${EXE} dummy2.csv add 1-2 ABC && ${STAT_MOD_TS} .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp1.txt)
+	@(${PREFIX} ${EXE} dummy2.csv add 1-3 ABC && ${STAT_MOD_TS} .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp2.txt)
 	@{ \
 		EXPECTED_TS1=`cat ${TMP_DIR}/timestamp1.txt`; \
 		EXPECTED_TS2=`cat ${TMP_DIR}/timestamp2.txt`; \
 		LOWER_TS1=$$((EXPECTED_TS1 - 1)); \
 		LOWER_TS2=$$((EXPECTED_TS2 - 1)); \
 		OUTPUT="`${EXE} dummy2.csv list | tr -d '\n'`"; \
-		echo "$$OUTPUT" | grep -q "${HEADER}1,2,ABC,\($$LOWER_TS\|$$EXPECTED_TS1\),1,3,ABC,\($$LOWER_TS2\|$$EXPECTED_TS2\)," && ${TEST_PASS} || ${TEST_FAIL}; \
+		echo "$$OUTPUT" | grep -q "${HEADER}1,2,ABC,\($$LOWER_TS1\|$$EXPECTED_TS1\),1,3,ABC,\($$LOWER_TS2\|$$EXPECTED_TS2\)," && ${TEST_PASS} || ${TEST_FAIL}; \
 	}
 
 test-echo-overwrite-auto:
