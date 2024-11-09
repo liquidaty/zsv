@@ -74,7 +74,7 @@ test-add:
 	@${PREFIX} ${ECHO_EXE} --overwrite-auto dummy2.csv > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-STAT_MOD_TS=$(shell if stat --version >/dev/null 2>/dev/null ; then echo 'stat -c %Y' ; else echo 'stat -f %m' ; fi)
+STAT_MOD_TS=$(shell if uname -a | grep -i alpine ; then echo 'stat -c %Y' ; elif stat --version >/dev/null 2>/dev/null ; then echo 'stat -c %Y' ; else echo 'stat -f %m' ; fi)
 test-timestamp:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy2.csv clear 
