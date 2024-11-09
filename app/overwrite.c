@@ -124,9 +124,9 @@ static int zsv_overwrites_init(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
     }
 
     if (sqlite3_prepare_v2(ctx->sqlite3.db,
-                                  "CREATE TABLE IF NOT EXISTS overwrites ( row integer, column integer, value string, "
-                                  "timestamp varchar(25), author varchar(25) );",
-                                  -1, &query, NULL) == SQLITE_OK) {
+                           "CREATE TABLE IF NOT EXISTS overwrites ( row integer, column integer, value string, "
+                           "timestamp varchar(25), author varchar(25) );",
+                           -1, &query, NULL) == SQLITE_OK) {
       if (sqlite3_step(query) != SQLITE_DONE) {
         err = 1;
         fprintf(stderr, "Failed to step: %s\n", sqlite3_errmsg(ctx->sqlite3.db));
@@ -141,7 +141,7 @@ static int zsv_overwrites_init(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
       sqlite3_finalize(query);
 
     if (sqlite3_prepare_v2(ctx->sqlite3.db, "CREATE UNIQUE INDEX overwrites_uix ON overwrites (row, column)", -1,
-                                  &query, NULL) == SQLITE_OK) {
+                           &query, NULL) == SQLITE_OK) {
       if (sqlite3_step(query) != SQLITE_DONE) {
         err = 1;
         fprintf(stderr, "Failed to step: %s\n", sqlite3_errmsg(ctx->sqlite3.db));
@@ -182,8 +182,8 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
   sqlite3_stmt *query = NULL;
 
   if (sqlite3_prepare_v2(ctx->sqlite3.db,
-                                "INSERT INTO overwrites (row, column, value, timestamp, author) VALUES (?, ?, ?, ?, ?)",
-                                -1, &query, NULL) == SQLITE_OK) {
+                         "INSERT INTO overwrites (row, column, value, timestamp, author) VALUES (?, ?, ?, ?, ?)", -1,
+                         &query, NULL) == SQLITE_OK) {
     sqlite3_bind_int64(query, 1, overwrite->row_ix);
     sqlite3_bind_int64(query, 2, overwrite->col_ix);
     sqlite3_bind_text(query, 3, (const char *)overwrite->val.str, -1, SQLITE_STATIC);
@@ -246,7 +246,8 @@ static char *row_col_to_a1(size_t col, size_t row) {
   return result;
 }
 
-static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, const struct zsv_overwrite_args *args, zsv_csv_writer writer) {
+static int show_all_overwrites(struct zsv_overwrite_ctx *ctx, const struct zsv_overwrite_args *args,
+                               zsv_csv_writer writer) {
   int err = 0;
   sqlite3_stmt *stmt;
   int ret;
