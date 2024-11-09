@@ -13,6 +13,18 @@
 #include <string.h>
 #include <stdlib.h>
 
+// https://github.com/gcc-mirror/gcc/blob/releases/gcc-14.2.0/libgcc/memcpy.c
+/* Public domain.  */
+#include <stddef.h>
+
+static inline void *zsv_memcpy(void *dest, const void *src, size_t len) {
+  char *d = dest;
+  const char *s = src;
+  while (len--)
+    *d++ = *s++;
+  return dest;
+}
+
 // clang-format off
 
 // return 0 on eof, +1 on error, > 0 if valid utf8 first byte read
@@ -142,7 +154,7 @@ static inline void zsv_output_buff_write(struct zsv_output_buff *b, const unsign
       }
     }
     // n + used < buff size
-    memcpy(b->buff + b->used, s, n);
+    zsv_memcpy(b->buff + b->used, s, n);
     b->used += n;
   }
 }
