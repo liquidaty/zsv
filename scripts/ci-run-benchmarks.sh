@@ -141,7 +141,7 @@ for TOOL in zsv xsv tsv; do
   elif [ "$TOOL" = "xsv" ]; then
     CMD="$TOOLS_DIR/xsv select 2,1,3-7"
   elif [ "$TOOL" = "tsv" ]; then
-    CMD="$TOOLS_DIR/tsv-select -d, -f 1-7"
+    CMD="$TOOLS_DIR/tsv-select -d, -f 2,1,3-7"
   fi
 
   I=0
