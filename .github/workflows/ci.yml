@@ -176,7 +176,7 @@ jobs:
         PREFIX: ${{ env.AMD64_MACOSX_GCC }}
         CC: gcc-13
         MAKE: make
-        RUN_TESTS: false
+        RUN_TESTS: true
       run: ./scripts/ci-build.sh
 
     - name: Build on macOS (${{ env.ARM64_MACOSX_GCC }})
