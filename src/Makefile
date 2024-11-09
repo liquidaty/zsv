@@ -10,7 +10,22 @@ THIS_MAKEFILE:=$(lastword $(MAKEFILE_LIST))
 
 CONFIGFILE ?=../config.mk
 $(info Using config file ${CONFIGFILE})
-include ${CONFIGFILE}
+
+CONFIGFILEPATH:=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
+ifeq ($(CONFIGFILEPATH),)
+  ifeq ($(shell dirname ${CONFIGFILE}),.)
+    CONFIGFILEPATH:=$(shell ls ../${CONFIGFILE} >/dev/null 2>/dev/null && realpath ../${CONFIGFILE})
+    ifneq ($(CONFIGFILEPATH),)
+      $(info Config file ${CONFIGFILE} not found; using ../${CONFIGFILE})
+    endif
+  endif
+endif
+
+ifeq ($(CONFIGFILEPATH),)
+  $(error Config file ${CONFIGFILE} not found)
+else
+  include ${CONFIGFILEPATH}
+endif
 
 CC ?= cc
 AWK ?= awk
