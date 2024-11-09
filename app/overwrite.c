@@ -107,10 +107,12 @@ static int zsv_overwrites_init(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
   sqlite3_stmt *query = NULL;
   int ret = 0;
 
+  /*
   if ((ret = sqlite3_initialize()) != SQLITE_OK) {
     fprintf(stderr, "Failed to initialize library: %d, %s\n", ret, sqlite3_errmsg(ctx->sqlite3.db));
     return err;
   }
+  */
 
   if ((ret = sqlite3_open_v2(overwrites_fn, &ctx->sqlite3.db, SQLITE_OPEN_READONLY, NULL)) != SQLITE_OK || args->add ||
       args->clear) {
@@ -232,12 +234,18 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
   return err;
 }
 
-static int zsv_overwrites_exit(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
+static int zsv_overwrites_free(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
                                zsv_csv_writer writer) {
-  zsv_writer_delete(writer);
-  free(overwrite->val.str);
-  sqlite3_close(ctx->sqlite3.db);
-  sqlite3_shutdown();
+  if (writer)
+    zsv_writer_delete(writer);
+  if (ctx) {
+    free(ctx->src);
+    sqlite3_close(ctx->sqlite3.db);
+  }
+  if (overwrite)
+    free(overwrite->val.str);
+
+  // sqlite3_shutdown();
   return 0;
 }
 
@@ -440,7 +448,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   else if (!err && args.add && ctx.sqlite3.db)
     zsv_overwrites_insert(&ctx, &overwrite, &args);
 
-  zsv_overwrites_exit(&ctx, &overwrite, writer);
+  zsv_overwrites_free(&ctx, &overwrite, writer);
 
   return err;
 }
