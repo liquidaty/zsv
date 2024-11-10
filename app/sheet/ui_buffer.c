@@ -4,7 +4,7 @@
 
 struct zsvsheet_ui_buffer {
   char *filename;
-  char *temp_filename;              // if this dataset was filtered from another, the filtered data is stored here
+  char *data_filename;              // if this dataset was filtered from another, the filtered data is stored here
   struct zsv_opts zsv_opts;         // options to use when opening this file
   struct zsvsheet_ui_buffer *prior; // previous buffer in this stack. If null, this is the first buffer in the stack
   struct zsvsheet_buffer_opts *buff_opts;
@@ -26,6 +26,12 @@ struct zsvsheet_ui_buffer {
   char *status;
   char *row_filter;
 
+  void *ext_ctx; // extension context via zsvsheet_ext_set_ctx() zsvsheet_ext_get_ctx()
+
+  // cleanup callback set by zsvsheet_ext_get_ctx()
+  // if non-null, called when buffer is closed
+  void (*ext_on_close)(void *);
+
   unsigned char index_ready;
   unsigned char rownum_col_offset : 1;
   unsigned char index_started : 1;
@@ -34,12 +40,14 @@ struct zsvsheet_ui_buffer {
 
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
   if (ub) {
+    if (ub->ext_on_close)
+      ub->ext_on_close(ub->ext_ctx);
     zsvsheet_buffer_delete(ub->buffer);
     free(ub->row_filter);
     free(ub->status);
-    if (ub->temp_filename)
-      unlink(ub->temp_filename);
-    free(ub->temp_filename);
+    if (ub->data_filename)
+      unlink(ub->data_filename);
+    free(ub->data_filename);
     free(ub->filename);
     free(ub);
   }

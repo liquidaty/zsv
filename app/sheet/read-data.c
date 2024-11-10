@@ -32,7 +32,7 @@ static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char 
   struct zsvsheet_index_opts *gdi = calloc(1, sizeof(*gdi));
   gdi->mutexp = mutexp;
   gdi->filename = filename;
-  gdi->temp_filename = &uibuffp->temp_filename;
+  gdi->data_filenamep = &uibuffp->data_filename;
   gdi->zsv_opts = *optsp;
   gdi->row_filter = row_filter;
   gdi->index = &uibuffp->index;
@@ -81,7 +81,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     pthread_mutex_lock(&uibuff->mutex);
     if (uibuff->index_ready && row_filter) {
       fclose(fp);
-      fp = fopen(uibuff->temp_filename, "rb");
+      fp = fopen(uibuff->data_filename, "rb");
       if (!fp) {
         pthread_mutex_unlock(&uibuff->mutex);
         return errno;

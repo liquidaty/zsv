@@ -81,3 +81,31 @@ const char *zsvsheet_handler_buffer_filename(zsvsheet_handler_buffer_t h) {
   struct zsvsheet_ui_buffer *uib = h;
   return uib ? uib->filename : NULL;
 }
+
+/**
+ * Get the data file associated with a buffer. This might not be the same as the filename,
+ * such as when the data has been filtered
+ */
+const char *zsvsheet_handler_buffer_data_filename(zsvsheet_handler_buffer_t h) {
+  struct zsvsheet_ui_buffer *uib = h;
+  return uib ? uib->data_filename : NULL;
+}
+
+/**
+ * Set custom context
+ * @param on_close optional callback to invoke when the buffer is closed
+ */
+void zsvsheet_buffer_set_ctx(zsvsheet_handler_buffer_t h, void *ctx, void (*on_close)(void *)) {
+  if (h) {
+    struct zsvsheet_ui_buffer *uib = h;
+    uib->ext_ctx = ctx;
+    uib->ext_on_close = on_close;
+  }
+}
+
+/**
+ * Get custom context previously set via zsvsheet_buffer_set_ctx()
+ */
+void *zsvsheet_buffer_get_ctx(zsvsheet_handler_buffer_t h) {
+  return h ? ((struct zsvsheet_ui_buffer *)h)->ext_ctx : NULL;
+}

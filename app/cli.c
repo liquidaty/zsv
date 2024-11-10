@@ -386,10 +386,13 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
 #ifdef ZSVSHEET_BUILD
     e->ext_sheet_keypress = zsvsheet_ext_keypress;
     e->ext_sheet_prompt = zsvsheet_ext_prompt;
+    e->ext_sheet_buffer_set_ctx = zsvsheet_buffer_set_ctx;
+    e->ext_sheet_buffer_get_ctx = zsvsheet_buffer_get_ctx;
     e->ext_sheet_handler_set_status = zsvsheet_handler_set_status;
     e->ext_sheet_handler_buffer_current = zsvsheet_handler_buffer_current;
     e->ext_sheet_handler_buffer_prior = zsvsheet_handler_buffer_prior;
     e->ext_sheet_handler_buffer_filename = zsvsheet_handler_buffer_filename;
+    e->ext_sheet_handler_buffer_data_filename = zsvsheet_handler_buffer_data_filename;
     e->ext_sheet_handler_open_file = zsvsheet_handler_open_file;
     e->ext_sheet_register_proc = zsvsheet_register_proc;
     e->ext_sheet_register_proc_key_binding = zsvsheet_register_proc_key_binding;

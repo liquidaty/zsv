@@ -200,10 +200,27 @@ struct zsv_ext_callbacks {
   const char *(*ext_sheet_handler_buffer_filename)(zsvsheet_handler_buffer_t);
 
   /**
+   * Get the data file associated with a buffer. This might not be the same as the filename,
+   * such as when the data has been filtered
+   */
+  const char *(*ext_sheet_handler_buffer_data_filename)(zsvsheet_handler_buffer_t);
+
+  /**
    * Open a tabular file as a new buffer
    */
   zsvsheet_handler_status (*ext_sheet_handler_open_file)(zsvsheet_proc_context_t, const char *filepath,
                                                          struct zsv_opts *zopts);
+
+  /**
+   * Set custom context
+   * @param on_close optional callback to invoke when the buffer is closed
+   */
+  void (*ext_sheet_buffer_set_ctx)(zsvsheet_handler_buffer_t h, void *ctx, void (*on_close)(void *));
+
+  /**
+   * Get custom context previously set via zsvsheet_buffer_set_ctx()
+   */
+  void *(*ext_sheet_buffer_get_ctx)(zsvsheet_handler_buffer_t h);
 };
 
 /** @} */

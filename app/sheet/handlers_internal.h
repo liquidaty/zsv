@@ -68,6 +68,23 @@ zsvsheet_handler_buffer_t zsvsheet_handler_buffer_prior(zsvsheet_handler_buffer_
 const char *zsvsheet_handler_buffer_filename(zsvsheet_handler_buffer_t h);
 
 /**
+ * Get the data file associated with a buffer. This might not be the same as the filename,
+ * such as when the data has been filtered
+ */
+const char *zsvsheet_handler_buffer_data_filename(zsvsheet_handler_buffer_t h);
+
+/**
+ * Set custom context
+ * @param on_close optional callback to invoke when the buffer is closed
+ */
+void zsvsheet_buffer_set_ctx(zsvsheet_handler_buffer_t h, void *ctx, void (*on_close)(void *));
+
+/**
+ * Get custom context previously set via zsvsheet_buffer_set_ctx()
+ */
+void *zsvsheet_buffer_get_ctx(zsvsheet_handler_buffer_t h);
+
+/**
  * Register a custom sheet command
  */
 zsvsheet_handler_status zsvsheet_register_command(
