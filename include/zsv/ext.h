@@ -42,6 +42,12 @@ enum zsv_ext_status {
   zsv_ext_status_error,
 
   /**
+   * operation not permitted, such as an extension attempting
+   * to modify a buffer that is owned by a different extension
+   */
+  zsv_ext_status_not_permitted,
+
+  /**
    * zsv_ext_status_other is treated as a silent error by ZSV, e.g. if you have
    * already handled your error and do not want any further error message displayed
    */
@@ -214,13 +220,18 @@ struct zsv_ext_callbacks {
   /**
    * Set custom context
    * @param on_close optional callback to invoke when the buffer is closed
+   *
+   * @return zsv_ext_status_ok on success, else zsv_ext_status error code
    */
-  void (*ext_sheet_buffer_set_ctx)(zsvsheet_handler_buffer_t h, void *ctx, void (*on_close)(void *));
+  enum zsv_ext_status (*ext_sheet_buffer_set_ctx)(zsvsheet_handler_buffer_t h, void *ctx, void (*on_close)(void *));
 
   /**
    * Get custom context previously set via zsvsheet_buffer_set_ctx()
+   * @param ctx_out result will be written to this address
+   *
+   * @return zsv_ext_status_ok on success, else zsv_ext_status error code
    */
-  void *(*ext_sheet_buffer_get_ctx)(zsvsheet_handler_buffer_t h);
+  enum zsv_ext_status (*ext_sheet_buffer_get_ctx)(zsvsheet_handler_buffer_t h, void **ctx_out);
 };
 
 /** @} */

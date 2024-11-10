@@ -76,13 +76,18 @@ const char *zsvsheet_handler_buffer_data_filename(zsvsheet_handler_buffer_t h);
 /**
  * Set custom context
  * @param on_close optional callback to invoke when the buffer is closed
+ *
+ * @return zsv_ext_status_ok on success, else zsv_ext_status error code
  */
-void zsvsheet_buffer_set_ctx(zsvsheet_handler_buffer_t h, void *ctx, void (*on_close)(void *));
+enum zsv_ext_status zsvsheet_buffer_set_ctx(zsvsheet_handler_buffer_t h, void *ctx, void (*on_close)(void *));
 
 /**
  * Get custom context previously set via zsvsheet_buffer_set_ctx()
+ * @param ctx_out result will be written to this address
+ *
+ * @return zsv_ext_status_ok on success, else zsv_ext_status error code
  */
-void *zsvsheet_buffer_get_ctx(zsvsheet_handler_buffer_t h);
+enum zsv_ext_status zsvsheet_buffer_get_ctx(zsvsheet_handler_buffer_t h, void **ctx_out);
 
 /**
  * Register a custom sheet command

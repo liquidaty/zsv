@@ -94,18 +94,24 @@ const char *zsvsheet_handler_buffer_data_filename(zsvsheet_handler_buffer_t h) {
 /**
  * Set custom context
  * @param on_close optional callback to invoke when the buffer is closed
+ *
+ * @return zsv_ext_status_ok on success, else zsv_ext_status error code
  */
-void zsvsheet_buffer_set_ctx(zsvsheet_handler_buffer_t h, void *ctx, void (*on_close)(void *)) {
+enum zsv_ext_status zsvsheet_buffer_set_ctx(zsvsheet_handler_buffer_t h, void *ctx, void (*on_close)(void *)) {
   if (h) {
+    // TO DO: return zsv_ext_status_not_permitted if this buffer is protected and the caller is not authorized
     struct zsvsheet_ui_buffer *uib = h;
     uib->ext_ctx = ctx;
     uib->ext_on_close = on_close;
   }
+  return zsv_ext_status_ok;
 }
 
 /**
  * Get custom context previously set via zsvsheet_buffer_set_ctx()
  */
-void *zsvsheet_buffer_get_ctx(zsvsheet_handler_buffer_t h) {
-  return h ? ((struct zsvsheet_ui_buffer *)h)->ext_ctx : NULL;
+enum zsv_ext_status zsvsheet_buffer_get_ctx(zsvsheet_handler_buffer_t h, void **ctx_out) {
+  // TO DO: return zsv_ext_status_not_permitted if this buffer is protected and the caller is not authorized
+  *ctx_out = h ? ((struct zsvsheet_ui_buffer *)h)->ext_ctx : NULL;
+  return zsv_ext_status_ok;
 }

@@ -78,7 +78,6 @@ zsvsheet_handler_status zsvsheet_key_press(int ch, void *subcommand_context) {
   ctx.prev_ch = prev_ch;
   ctx.binding = binding;
   ctx.subcommand_context = subcommand_context;
-
   ret = binding->handler(&ctx);
 not_found:
   prev_ch = ch;
