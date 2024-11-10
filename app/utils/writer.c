@@ -13,8 +13,23 @@
 #include <string.h>
 #include <stdlib.h>
 
+// https://stackoverflow.com/a/78062291/7670262
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+// #include <features.h>
+#ifndef __USE_GNU
+#define __MUSL__
+#endif
+#undef _GNU_SOURCE /* don't contaminate other includes unnecessarily */
+#else
+// #include <features.h>
+#ifndef __USE_GNU
+#define __MUSL__
+#endif
+#endif
+
+#ifdef __MUSL__
 // https://github.com/gcc-mirror/gcc/blob/releases/gcc-14.2.0/libgcc/memcpy.c
-/* Public domain.  */
 #include <stddef.h>
 
 static inline void *zsv_memcpy(void *dest, const void *src, size_t len) {
@@ -24,6 +39,7 @@ static inline void *zsv_memcpy(void *dest, const void *src, size_t len) {
     *d++ = *s++;
   return dest;
 }
+#endif
 
 // clang-format off
 
@@ -154,7 +170,11 @@ static inline void zsv_output_buff_write(struct zsv_output_buff *b, const unsign
       }
     }
     // n + used < buff size
+#ifdef __MUSL__
     zsv_memcpy(b->buff + b->used, s, n);
+#else
+    memcpy(b->buff + b->used, s, n);
+#endif
     b->used += n;
   }
 }
