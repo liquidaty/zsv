@@ -4,8 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       workflow-run-id:
-        description: 'Run ID (optional) [default: latest release]'
+        description: 'Workflow Run ID'
         type: number
+        required: false
+      runs:
+        description: 'No. of runs [min: 5, max: 100]'
+        type: number
+        default: 5
+        required: false
 
 permissions:
   actions: read
@@ -13,6 +19,7 @@ permissions:
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   WORKFLOW_RUN_ID: ${{ inputs.workflow-run-id }}
+  RUNS: ${{ inputs.runs }}
   BENCHMARKS_DIR: .benchmarks
 
 jobs:
