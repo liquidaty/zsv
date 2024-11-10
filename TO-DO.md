@@ -46,7 +46,12 @@ Row indexing
       - either this attempt fails because the buffer is read-only, or
       - the buffer handles this in a specific manner to trace the edited row back to the correct row in the original data
 
+### Buffers
+- add buffer type e.g. csv etc
+- add read-only flag
+
 ### Extensions
+- add extension_id to each buffer; prevent extension A from modifying (e.g. set/get ext_ctx) buffer owned by extension B
 - high priority: support extension custom properties
   - saved in .zsv/data/<fn>/props-<ext>.json
   - API should include means to (during ext initialization), functions to set/get
