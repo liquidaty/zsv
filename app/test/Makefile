@@ -675,7 +675,7 @@ test-sheet-8: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 
 test-sheet-9: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
-	@echo 'set-option default-terminal "tmux-256color"' > ~/.tmux.conf
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "G" && \
