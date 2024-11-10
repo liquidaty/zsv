@@ -4,9 +4,11 @@ set -e
 
 echo "[INF] Running $0"
 
+MIN_RUNS=5
+MAX_RUNS=100
+
 OS=${OS:-}
-RUNS=${RUNS:-6}
-SKIP_FIRST_RUN=${SKIP_FIRST_RUN:-true}
+RUNS=${RUNS:-"$MIN_RUNS"}
 BENCHMARKS_DIR=${BENCHMARKS_DIR:-".benchmarks"}
 ZSV_LINUX_BUILD_COMPILER=${ZSV_LINUX_BUILD_COMPILER:-gcc}
 ZSV_TAG=${ZSV_TAG:-}
@@ -22,13 +24,16 @@ fi
 
 echo "[INF] OS: $OS"
 echo "[INF] RUNS: $RUNS"
-echo "[INF] SKIP_FIRST_RUN: $SKIP_FIRST_RUN"
 echo "[INF] BENCHMARKS_DIR: $BENCHMARKS_DIR"
 
-if [ "$RUNS" -lt 2 ]; then
-  echo "[ERR] RUNS must be greater than 2!"
-  exit 1
+if [ "$RUNS" -lt "$MIN_RUNS" ] || [ "$RUNS" -gt "$MAX_RUNS" ]; then
+  echo "[WRN] Invalid RUNS value! [$RUNS]"
+  echo "[WRN] RUNS must be >= $MIN_RUNS and <= $MAX_RUNS!"
+  echo "[WRN] Using default minimum value... [RUNS: $MIN_RUNS]"
+  RUNS="$MAX_RUNS"
 fi
+
+RUNS=$((RUNS + 1))
 
 if [ "$ZSV_TAG" = "" ]; then
   ZSV_TAG=$(git ls-remote --tags --refs https://github.com/liquidaty/zsv | tail -n1 | cut -d '/' -f3)
@@ -50,12 +55,12 @@ if [ "$OS" = "linux" ]; then
     echo "[INF] Unknown value for ZSV_LINUX_BUILD_COMPILER! [$ZSV_LINUX_BUILD_COMPILER]"
     exit 1
   fi
-  OS_COMPILER="$OS [$ZSV_LINUX_BUILD_COMPILER]"
+  OS_COMPILER="$OS | $ZSV_LINUX_BUILD_COMPILER"
   ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/v$ZSV_TAG/zsv-$ZSV_TAG-amd64-linux-$ZSV_LINUX_BUILD_COMPILER.tar.gz"
   TSV_TAR_URL="https://github.com/eBay/tsv-utils/releases/download/v2.2.0/tsv-utils-v2.2.0_linux-x86_64_ldc2.tar.gz"
   XSV_TAR_URL="https://github.com/BurntSushi/xsv/releases/download/0.13.0/xsv-0.13.0-x86_64-unknown-linux-musl.tar.gz"
 elif [ "$OS" = "macos" ] || [ "$OS" = "darwin" ]; then
-  OS_COMPILER="$OS [gcc]"
+  OS_COMPILER="$OS | gcc"
   ZSV_TAR_URL="https://github.com/liquidaty/zsv/releases/download/v$ZSV_TAG/zsv-$ZSV_TAG-amd64-macosx-gcc.tar.gz"
   TSV_TAR_URL="https://github.com/eBay/tsv-utils/releases/download/v2.2.1/tsv-utils-v2.2.1_osx-x86_64_ldc2.tar.gz"
   XSV_TAR_URL="https://github.com/BurntSushi/xsv/releases/download/0.13.0/xsv-0.13.0-x86_64-apple-darwin.tar.gz"
@@ -84,9 +89,9 @@ for URL in "$ZSV_TAR_URL" "$TSV_TAR_URL" "$XSV_TAR_URL"; do
   printf "[INF] Downloading... [%s] " "$TAR"
   if [ ! -f "$TAR" ]; then
     wget -q "$URL"
-  echo "[DONE]"
-else
-  echo "[SKIPPED]"
+    echo "[DONE]"
+  else
+    echo "[SKIPPED]"
   fi
   printf "[INF] Extracting... [%s] " "$TAR"
   tar xf "$TAR"
@@ -109,7 +114,7 @@ SELECT_OUTPUT_FILE="select.out"
 rm -f "$COUNT_OUTPUT_FILE" "$SELECT_OUTPUT_FILE"
 
 echo "[INF] Running count benchmarks..."
-for TOOL in zsv xsv tsv; do
+for TOOL in zsv tsv xsv; do
   CMD=
   if [ "$TOOL" = "zsv" ]; then
     CMD="$TOOLS_DIR/zsv count"
@@ -121,20 +126,18 @@ for TOOL in zsv xsv tsv; do
 
   I=0
   while [ "$I" -lt "$RUNS" ]; do
-    if [ "$SKIP_FIRST_RUN" = true ] && [ "$I" = 0 ]; then
-      I=$((I + 1))
-      continue
+    if [ "$I" != 0 ]; then
+      {
+        printf "%d | %s : " "$I" "$TOOL"
+        (time -p $CMD <"$CSV" >/dev/null) 2>&1 | xargs
+      } | tee -a "$COUNT_OUTPUT_FILE"
     fi
-    {
-      printf "%d | %s : " "$I" "$TOOL"
-      (time -p $CMD <"$CSV" >/dev/null) 2>&1 | xargs
-    } | tee -a "$COUNT_OUTPUT_FILE"
     I=$((I + 1))
   done
 done
 
 echo "[INF] Running select benchmarks..."
-for TOOL in zsv xsv tsv; do
+for TOOL in zsv tsv xsv; do
   CMD=
   if [ "$TOOL" = "zsv" ]; then
     CMD="$TOOLS_DIR/zsv select -W -n -- 2 1 3-7"
@@ -146,48 +149,108 @@ for TOOL in zsv xsv tsv; do
 
   I=0
   while [ "$I" -lt "$RUNS" ]; do
-    if [ "$SKIP_FIRST_RUN" = true ] && [ "$I" = 0 ]; then
-      I=$((I + 1))
-      continue
+    if [ "$I" != 0 ]; then
+      {
+        printf "%d | %s : " "$I" "$TOOL"
+        (time -p $CMD <"$CSV" >/dev/null) 2>&1 | xargs
+      } | tee -a "$SELECT_OUTPUT_FILE"
     fi
-    {
-      printf "%d | %s : " "$I" "$TOOL"
-      (time -p $CMD <"$CSV" >/dev/null) 2>&1 | xargs
-    } | tee -a "$SELECT_OUTPUT_FILE"
     I=$((I + 1))
   done
 done
+
+echo "[INF] Evaluating results..."
+
+RUNS=$((RUNS - 1))
+
+COUNT_MAX_REAL_TIME=$(cut -d ' ' -f6 <"$COUNT_OUTPUT_FILE" | sort | tail -n1)
+COUNT_ZSV_REAL_TIME_VALUES=$(grep zsv "$COUNT_OUTPUT_FILE" | cut -d ' ' -f6 | xargs | tr ' ' '+')
+COUNT_ZSV_AVG_REAL_TIME=$(printf %.2f "$(echo "($COUNT_ZSV_REAL_TIME_VALUES) / $RUNS" | bc -l)")
+COUNT_TSV_REAL_TIME_VALUES=$(grep tsv "$COUNT_OUTPUT_FILE" | cut -d ' ' -f6 | xargs | tr ' ' '+')
+COUNT_TSV_AVG_REAL_TIME=$(printf %.2f "$(echo "($COUNT_TSV_REAL_TIME_VALUES) / $RUNS" | bc -l)")
+COUNT_XSV_REAL_TIME_VALUES=$(grep xsv "$COUNT_OUTPUT_FILE" | cut -d ' ' -f6 | xargs | tr ' ' '+')
+COUNT_XSV_AVG_REAL_TIME=$(printf %.2f "$(echo "($COUNT_XSV_REAL_TIME_VALUES) / $RUNS" | bc -l)")
+
+SELECT_MAX_REAL_TIME=$(cut -d ' ' -f6 <"$SELECT_OUTPUT_FILE" | sort | tail -n1)
+SELECT_ZSV_REAL_TIME_VALUES=$(grep zsv "$SELECT_OUTPUT_FILE" | cut -d ' ' -f6 | xargs | tr ' ' '+')
+SELECT_ZSV_AVG_REAL_TIME=$(printf %.2f "$(echo "($SELECT_ZSV_REAL_TIME_VALUES) / $RUNS" | bc -l)")
+SELECT_TSV_REAL_TIME_VALUES=$(grep tsv "$SELECT_OUTPUT_FILE" | cut -d ' ' -f6 | xargs | tr ' ' '+')
+SELECT_TSV_AVG_REAL_TIME=$(printf %.2f "$(echo "($SELECT_TSV_REAL_TIME_VALUES) / $RUNS" | bc -l)")
+SELECT_XSV_REAL_TIME_VALUES=$(grep xsv "$SELECT_OUTPUT_FILE" | cut -d ' ' -f6 | xargs | tr ' ' '+')
+SELECT_XSV_AVG_REAL_TIME=$(printf %.2f "$(echo "($SELECT_XSV_REAL_TIME_VALUES) / $RUNS" | bc -l)")
+
+echo "[INF] COUNT_MAX_REAL_TIME: $COUNT_MAX_REAL_TIME"
+echo "[INF] COUNT_ZSV_AVG_REAL_TIME: [($COUNT_ZSV_REAL_TIME_VALUES) / $RUNS = $COUNT_ZSV_AVG_REAL_TIME]"
+echo "[INF] COUNT_TSV_AVG_REAL_TIME: [($COUNT_TSV_REAL_TIME_VALUES) / $RUNS = $COUNT_TSV_AVG_REAL_TIME]"
+echo "[INF] COUNT_XSV_AVG_REAL_TIME: [($COUNT_XSV_REAL_TIME_VALUES) / $RUNS = $COUNT_XSV_AVG_REAL_TIME]"
+
+echo "[INF] SELECT_MAX_REAL_TIME: $SELECT_MAX_REAL_TIME"
+echo "[INF] SELECT_ZSV_AVG_REAL_TIME: [($SELECT_ZSV_REAL_TIME_VALUES) / $RUNS = $SELECT_ZSV_AVG_REAL_TIME]"
+echo "[INF] SELECT_TSV_AVG_REAL_TIME: [($SELECT_TSV_REAL_TIME_VALUES) / $RUNS = $SELECT_TSV_AVG_REAL_TIME]"
+echo "[INF] SELECT_XSV_AVG_REAL_TIME: [($SELECT_XSV_REAL_TIME_VALUES) / $RUNS = $SELECT_XSV_AVG_REAL_TIME]"
+
+COUNT_MAX_REAL_TIME_FOR_CHART=$(printf %.2f "$(echo "$COUNT_MAX_REAL_TIME + ($COUNT_MAX_REAL_TIME * 0.1)" | bc -l)")
+SELECT_MAX_REAL_TIME_FOR_CHART=$(printf %.2f "$(echo "$SELECT_MAX_REAL_TIME + ($SELECT_MAX_REAL_TIME * 0.1)" | bc -l)")
 
 MARKDOWN_OUTPUT="benchmarks.md"
 echo "[INF] Generating Markdown output... [$MARKDOWN_OUTPUT]"
 TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 {
-  echo '# Benchmarks'
+  echo "# Benchmarks [$OS_COMPILER]"
   echo
-  echo "- Timestamp UTC: $TIMESTAMP"
-  echo "- ZSV build from: $ZSV_BUILD_FROM"
-  echo "- OS [compiler]: $OS_COMPILER"
-  echo
-  echo "## Releases Used"
-  echo
-  echo "- <$ZSV_TAR_URL>"
-  echo "- <$TSV_TAR_URL>"
-  echo "- <$XSV_TAR_URL>"
+  echo "- Timestamp UTC: \`$TIMESTAMP\`"
+  echo "- \`zsv\` build from: $ZSV_BUILD_FROM"
+  echo "- Builds: [[\`zsv\`]($ZSV_TAR_URL), [\`tsv\`]($TSV_TAR_URL), [\`xsv\`]($XSV_TAR_URL)]"
   echo
   echo '## Results'
   echo
   echo '### count'
   echo
+  echo '```mermaid'
+  echo "xychart-beta"
+  echo "  title \"count speed [lower = faster]\""
+  echo "  x-axis [zsv, tsv, xsv]"
+  echo "  y-axis \"time\" 0 --> $COUNT_MAX_REAL_TIME_FOR_CHART"
+  echo "  bar [$COUNT_ZSV_AVG_REAL_TIME, $COUNT_TSV_AVG_REAL_TIME, $COUNT_XSV_AVG_REAL_TIME]"
   echo '```'
+  echo
+  echo "<details>"
+  echo "<summary>count (runs)</summary>"
+  echo
+  echo '```text'
   cat "$COUNT_OUTPUT_FILE"
+  echo
+  echo "Averages:"
+  echo "- zsv: [($COUNT_ZSV_REAL_TIME_VALUES) / $RUNS = $COUNT_ZSV_AVG_REAL_TIME]"
+  echo "- tsv: [($COUNT_TSV_REAL_TIME_VALUES) / $RUNS = $COUNT_TSV_AVG_REAL_TIME]"
+  echo "- xsv: [($COUNT_XSV_REAL_TIME_VALUES) / $RUNS = $COUNT_XSV_AVG_REAL_TIME]"
   echo '```'
+  echo
+  echo "</details>"
   echo
   echo '### select'
   echo
-  echo '```'
-  cat "$SELECT_OUTPUT_FILE"
+  echo '```mermaid'
+  echo "xychart-beta"
+  echo "  title \"select speed [lower = faster]\""
+  echo "  x-axis [zsv, tsv, xsv]"
+  echo "  y-axis \"time\" 0 --> $SELECT_MAX_REAL_TIME_FOR_CHART"
+  echo "  bar [$SELECT_ZSV_AVG_REAL_TIME, $SELECT_TSV_AVG_REAL_TIME, $SELECT_XSV_AVG_REAL_TIME]"
   echo '```'
   echo
+  echo "<details>"
+  echo "<summary>select (runs)</summary>"
+  echo
+  echo '```text'
+  cat "$SELECT_OUTPUT_FILE"
+  echo
+  echo "Averages:"
+  echo "- zsv: [($SELECT_ZSV_REAL_TIME_VALUES) / $RUNS = $SELECT_ZSV_AVG_REAL_TIME]"
+  echo "- tsv: [($SELECT_TSV_REAL_TIME_VALUES) / $RUNS = $SELECT_TSV_AVG_REAL_TIME]"
+  echo "- xsv: [($SELECT_XSV_REAL_TIME_VALUES) / $RUNS = $SELECT_XSV_AVG_REAL_TIME]"
+  echo '```'
+  echo
+  echo "</details>"
 } >"$MARKDOWN_OUTPUT"
 echo "[INF] Generated Markdown output successfully!"
 
