@@ -5,6 +5,11 @@
 - add zsv_opts option to use index if available
 - add start_row and end_row options to `zsv_opts`
 
+### input formats
+- high priority: single-registration-function support for additional file suffix support. This functionality could come from either a built-in or an extension
+  - for example, `zsv_register_file_reader("bz2", ...)` and `zsvwriter_register_file_writer("bz2", ...)`
+  - should also handle file formats that may contain multiple files e.g. multiple tabs in xlsx
+
 # CLI
 - add index-related parser options to general command-line options
 - change --overwrite-auto to --apply-overwrites
@@ -27,13 +32,28 @@ Row indexing
 
 ### Open/edit file
 - tab for autocomplete
+- multi-tab read and write (e.g. XLSX support via plug-in)
+- column operation plug-in (add, remove, modify column)
 
 ### Data editing
 - add manual edit plug-in
 - add view-edits plug-in
+- needs to support buffer-level handlers
+  - for example:
+    - user opens mydata.csv
+    - user filters to rows that contain "xyz"; results are displayed in a new buffer
+    - user tries to edit cell in the new (filtered data) buffer
+      - either this attempt fails because the buffer is read-only, or
+      - the buffer handles this in a specific manner to trace the edited row back to the correct row in the original data
 
 ### Extensions
-- lq extension plug-ins
+- high priority: support extension custom properties
+  - saved in .zsv/data/<fn>/props-<ext>.json
+  - API should include means to (during ext initialization), functions to set/get
+- Extend the my_extension.c such that when a buffer in the displayed list is selected, pressing Return will load that buffer
+- cell plug-in: display context menu
+- update temp file management to centralized list with ref count
+- add option to cancel event handling before it is finished running
 
 ### Interface
 - progress tracking

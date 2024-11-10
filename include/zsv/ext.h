@@ -61,8 +61,6 @@ typedef void *zsv_execution_context;
 typedef enum zsv_ext_status (*zsv_ext_main)(zsv_execution_context ctx, int argc, const char *argv[],
                                             struct zsv_opts *opts, const char *opts_used);
 
-struct zsvsheet_proc_context;
-
 /**
  * ZSV callbacks structure
  *
@@ -153,15 +151,17 @@ struct zsv_ext_callbacks {
   /****************************************
    * Registering a custom `sheet` command *
    ****************************************/
-  /* TODO: Technically the ints in the return of this function and the argument
-   *       of the next should be zsvsheet_proc_id_t but the includes in this
-   *       projects are quite messy at this moment.
-   */
-  int (*ext_sheet_register_proc)(const char *name,
-                                 zsvsheet_handler_status (*handler)(struct zsvsheet_proc_context *ctx));
+  zsvsheet_proc_id_t (*ext_sheet_register_proc)(const char *name,
+                                                zsvsheet_handler_status (*handler)(zsvsheet_proc_context_t ctx));
 
-  /* Use this one if you just need to call a procedure */
-  void (*ext_sheet_register_proc_key_binding)(char ch, int proc_id);
+  /**
+   * Bind a command to a key binding
+   * TO DO: allow binding of key that already exists; in which case
+   * allow handler to act as middleware that can cancel or allow other handlers to be executed
+   *
+   * @return 0 on success, else error
+   */
+  int (*ext_sheet_register_proc_key_binding)(char ch, zsvsheet_proc_id_t proc_id);
 
   /*** Custom command prompt ***/
   /**
@@ -169,25 +169,25 @@ struct zsv_ext_callbacks {
    * @param  s text to set the subcommand prompt to. must be < 256 bytes in length
    * returns zsvsheet_status_ok on success
    */
-  zsvsheet_handler_status (*ext_sheet_prompt)(struct zsvsheet_proc_context *ctx, char *buffer, size_t bufsz,
-                                              const char *fmt, ...);
+  zsvsheet_handler_status (*ext_sheet_prompt)(zsvsheet_proc_context_t ctx, char *buffer, size_t bufsz, const char *fmt,
+                                              ...);
 
   /*** Custom command handling ***/
   /**
    * Set a status message
    */
-  zsvsheet_handler_status (*ext_sheet_handler_set_status)(struct zsvsheet_proc_context *ctx, const char *fmt, ...);
+  zsvsheet_handler_status (*ext_sheet_handler_set_status)(zsvsheet_proc_context_t ctx, const char *fmt, ...);
 
   /**
    * Get the key press that triggered this subcommand handler
    */
-  int (*ext_sheet_handler_key)(zsvsheet_subcommand_handler_context_t ctx);
+  int (*ext_sheet_keypress)(zsvsheet_proc_context_t ctx);
 
   /****** Managing buffers ******/
   /**
    * Get the current buffer
    */
-  zsvsheet_handler_buffer_t (*ext_sheet_handler_buffer_current)(struct zsvsheet_proc_context *ctx);
+  zsvsheet_handler_buffer_t (*ext_sheet_handler_buffer_current)(zsvsheet_proc_context_t ctx);
 
   /**
    * Get the prior buffer
@@ -202,7 +202,7 @@ struct zsv_ext_callbacks {
   /**
    * Open a tabular file as a new buffer
    */
-  zsvsheet_handler_status (*ext_sheet_handler_open_file)(zsvsheet_handler_context_t, const char *filepath,
+  zsvsheet_handler_status (*ext_sheet_handler_open_file)(zsvsheet_proc_context_t, const char *filepath,
                                                          struct zsv_opts *zopts);
 };
 
