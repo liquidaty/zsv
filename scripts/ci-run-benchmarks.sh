@@ -194,25 +194,15 @@ SELECT_MAX_REAL_TIME_FOR_CHART=$(printf %.2f "$(echo "$SELECT_MAX_REAL_TIME + ($
 
 MARKDOWN_OUTPUT="benchmarks.md"
 echo "[INF] Generating Markdown output... [$MARKDOWN_OUTPUT]"
-TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 {
-  echo "# Benchmarks [$OS_COMPILER]"
+  echo "## Benchmarks [$OS_COMPILER]"
   echo
-  echo "- Timestamp UTC: \`$TIMESTAMP\`"
   echo "- \`zsv\` build from: $ZSV_BUILD_FROM"
-  echo "- Builds: [[\`zsv\`]($ZSV_TAR_URL), [\`tsv\`]($TSV_TAR_URL), [\`xsv\`]($XSV_TAR_URL)]"
+  echo "- Builds: [\`zsv\`]($ZSV_TAR_URL), [\`tsv\`]($TSV_TAR_URL), [\`xsv\`]($XSV_TAR_URL)"
   echo
-  echo '## Results'
+  echo '### Results'
   echo
-  echo '### count'
-  echo
-  echo '```mermaid'
-  echo "xychart-beta"
-  echo "  title \"count speed [lower = faster]\""
-  echo "  x-axis [zsv, tsv, xsv]"
-  echo "  y-axis \"time\" 0 --> $COUNT_MAX_REAL_TIME_FOR_CHART"
-  echo "  bar [$COUNT_ZSV_AVG_REAL_TIME, $COUNT_TSV_AVG_REAL_TIME, $COUNT_XSV_AVG_REAL_TIME]"
-  echo '```'
+  echo '#### count'
   echo
   echo "<details>"
   echo "<summary>count (runs)</summary>"
@@ -228,15 +218,25 @@ TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   echo
   echo "</details>"
   echo
-  echo '### select'
-  echo
   echo '```mermaid'
+  echo '---'
+  echo 'config:'
+  echo '  xyChart:'
+  echo '    width: 600'
+  echo '    height: 400'
+  echo '  themeVariables:'
+  echo '    xyChart:'
+  echo '      titleColor: "#1e90ff"'
+  echo '      plotColorPalette: "#1e90ff"'
+  echo '---'
   echo "xychart-beta"
-  echo "  title \"select speed [lower = faster]\""
+  echo "  title \"count speed [lower = faster]\""
   echo "  x-axis [zsv, tsv, xsv]"
-  echo "  y-axis \"time\" 0 --> $SELECT_MAX_REAL_TIME_FOR_CHART"
-  echo "  bar [$SELECT_ZSV_AVG_REAL_TIME, $SELECT_TSV_AVG_REAL_TIME, $SELECT_XSV_AVG_REAL_TIME]"
+  echo "  y-axis \"time\" 0 --> $COUNT_MAX_REAL_TIME_FOR_CHART"
+  echo "  bar [$COUNT_ZSV_AVG_REAL_TIME, $COUNT_TSV_AVG_REAL_TIME, $COUNT_XSV_AVG_REAL_TIME]"
   echo '```'
+  echo
+  echo '#### select'
   echo
   echo "<details>"
   echo "<summary>select (runs)</summary>"
@@ -251,6 +251,24 @@ TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
   echo '```'
   echo
   echo "</details>"
+  echo
+  echo '```mermaid'
+  echo '---'
+  echo 'config:'
+  echo '  xyChart:'
+  echo '    width: 600'
+  echo '    height: 400'
+  echo '  themeVariables:'
+  echo '    xyChart:'
+  echo '      titleColor: "#1e90ff"'
+  echo '      plotColorPalette: "#1e90ff"'
+  echo '---'
+  echo "xychart-beta"
+  echo "  title \"select speed [lower = faster]\""
+  echo "  x-axis [zsv, tsv, xsv]"
+  echo "  y-axis \"time\" 0 --> $SELECT_MAX_REAL_TIME_FOR_CHART"
+  echo "  bar [$SELECT_ZSV_AVG_REAL_TIME, $SELECT_TSV_AVG_REAL_TIME, $SELECT_XSV_AVG_REAL_TIME]"
+  echo '```'
 } >"$MARKDOWN_OUTPUT"
 echo "[INF] Generated Markdown output successfully!"
 
