@@ -200,12 +200,10 @@ echo "[INF] Generating Markdown output... [$MARKDOWN_OUTPUT]"
   echo "- \`zsv\` build from: $ZSV_BUILD_FROM"
   echo "- Builds: [\`zsv\`]($ZSV_TAR_URL), [\`tsv\`]($TSV_TAR_URL), [\`xsv\`]($XSV_TAR_URL)"
   echo
-  echo '### Results'
-  echo
-  echo '#### count'
+  echo "### \`count\`"
   echo
   echo "<details>"
-  echo "<summary>count (runs)</summary>"
+  echo "<summary>Runs (click to expand/collapse)</summary>"
   echo
   echo '```text'
   cat "$COUNT_OUTPUT_FILE"
@@ -236,10 +234,10 @@ echo "[INF] Generating Markdown output... [$MARKDOWN_OUTPUT]"
   echo "  bar [$COUNT_ZSV_AVG_REAL_TIME, $COUNT_TSV_AVG_REAL_TIME, $COUNT_XSV_AVG_REAL_TIME]"
   echo '```'
   echo
-  echo '#### select'
+  echo "### \`select\`"
   echo
   echo "<details>"
-  echo "<summary>select (runs)</summary>"
+  echo "<summary>Runs (click to expand/collapse)</summary>"
   echo
   echo '```text'
   cat "$SELECT_OUTPUT_FILE"
