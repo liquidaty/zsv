@@ -84,10 +84,12 @@ else
   CMP=cmp
 endif
 
+MAKE_BIN=$(notdir ${MAKE})
+
 help:
-	@echo "To run all tests: make test [LEAKS=1]"
-	@echo "To run individual test: make test-xxx"
-	@echo "To run on cli: make CLI"
+	@echo "To run all tests: ${MAKE_BIN} test [LEAKS=1]"
+	@echo "To run individual test: ${MAKE_BIN} test-xxx"
+	@echo "To run on cli: ${MAKE_BIN} CLI"
 	@echo "  where xxx can be: blank-leading-rows ${SOURCES}"
 
 clean:
@@ -95,7 +97,7 @@ clean:
 
 CLI:
 	@echo "Testing CLI..."
-	@make CLI1=1 test -n | sed 's/\/[^ ]*\/bin\/zsv_/zsv /g' | sh
+	@${MAKE} CLI1=1 test -n | sed 's/\/[^ ]*\/bin\/zsv_/zsv /g' | sh
 
 test: ${TESTS}
 
@@ -107,10 +109,10 @@ test-paste:
 .PHONY: help test test-% test-stack clean
 
 test-prop:
-	EXE=${BUILD_DIR}/bin/zsv_prop${EXE} make -C prop test
+	EXE=${BUILD_DIR}/bin/zsv_prop${EXE} ${MAKE} -C prop test
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
-	EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} ECHO_EXE=${BUILD_DIR}/bin/zsv_echo${EXE} CMP=$(CMP) make -C overwrite test
+	EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} ECHO_EXE=${BUILD_DIR}/bin/zsv_echo${EXE} CMP=$(CMP) ${MAKE} -C overwrite test
 
 test-echo : test-echo1 test-echo-overwrite-all test-echo-eol test-echo-chars test-echo-trim test-echo-skip-until test-echo-contiguous test-echo-trim-columns test-echo-trim-columns-2 test-echo-buffsize
 
@@ -464,7 +466,7 @@ test-sql5: ${BUILD_DIR}/bin/zsv_sql${EXE} # test blank rows
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 ${BUILD_DIR}/bin/zsv_%${EXE}:
-	make -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
@@ -577,19 +579,27 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@(${PREFIX} $< ../../data/compare/t1.csv ../../data/compare/t2.csv --add AccentCity --sort -k country -k city ${REDIRECT1} ${TMP_DIR}/$@.out10 && \
 	${CMP} ${TMP_DIR}/$@.out10 expected/$@.out10 && ${TEST_PASS} || ${TEST_FAIL})
 
-test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-sheet-all
+test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-sheet-cleanup test-sheet-all
 
-test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7
+test-sheet-cleanup:
+	@rm -f tmux-*.log
+
+test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8
 	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null; done && ${TEST_PASS} || ${TEST_FAIL})
 
+TMUX_TERM=xterm-256color
 test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+#	For this first sheet test, separate new-session from the command so that if it fails we get better logging
 	@${TEST_INIT}
-	@echo 'set-option default-terminal "tmux-256color"' > ~/.tmux.conf
-	@(tmux new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@tmux kill-session 2>/dev/null >/dev/null || printf ''
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -v new-session -x 80 -y 5 -d -s $@ && \
 	sleep 0.5 && \
-	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
-	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+	tmux send-keys -t $@ "${PREFIX} $< worldcitiespop_mil.csv" ENTER && \
+	sleep 0.5 && \
+	tmux -v capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	tmux -v send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (for x in `ls tmux-*.log` ; do echo "Log $$x:" && cat $$x ; done && ${TEST_FAIL}))
 
 test-sheet-2: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
@@ -621,7 +631,7 @@ test-sheet-4: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 
 test-sheet-5: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
-	@echo 'set-option default-terminal "tmux-256color"' > ~/.tmux.conf
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 160 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
@@ -630,7 +640,7 @@ test-sheet-5: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 
 test-sheet-6: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
-	@echo 'set-option default-terminal "tmux-256color"' > ~/.tmux.conf
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 50 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "G" "C-u" "C-u" "C-u" && \
@@ -641,11 +651,24 @@ test-sheet-6: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 
 test-sheet-7: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
-	@echo 'set-option default-terminal "tmux-256color"' > ~/.tmux.conf
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "G" "g" "g" "C-u" "/" "1234" "Enter" && \
 	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
+
+test-sheet-8: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 160 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "f" "e" "Enter" && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "G" "C-u" "k" && \
+	sleep 0.5 && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))

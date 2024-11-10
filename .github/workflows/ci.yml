@@ -142,7 +142,7 @@ jobs:
     - name: Set up macOS (AMD64 and ARM64)
       if: runner.os == 'macOS'
       run: |
-        brew install --quiet coreutils tree autoconf automake libtool
+        brew install --quiet coreutils tree autoconf automake libtool tmux sqlite3
         brew uninstall jq
 
     # --- Build ---
@@ -177,7 +177,7 @@ jobs:
         PREFIX: ${{ env.AMD64_MACOSX_GCC }}
         CC: gcc-13
         MAKE: make
-        RUN_TESTS: false
+        RUN_TESTS: true
       run: ./scripts/ci-build.sh
 
     - name: Build on macOS (${{ env.ARM64_MACOSX_GCC }})
@@ -186,7 +186,7 @@ jobs:
         PREFIX: ${{ env.ARM64_MACOSX_GCC }}
         CC: gcc-13
         MAKE: make
-        RUN_TESTS: false
+        RUN_TESTS: true
       run: ./scripts/ci-build.sh
 
     # --- Upload build artifacts ---
@@ -359,21 +359,21 @@ jobs:
   #   - name: Checkout
   #     uses: actions/checkout@v4
 
-  #   - name: Build (${{ env.AMD64_FREEBSD_GCC }})
-  #     uses: cross-platform-actions/action@v0.25.0
-  #     env:
-  #       PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
-  #       CC: gcc
-  #       MAKE: gmake
-  #       RUN_TESTS: false
-  #     with:
-  #       operating_system: freebsd
-  #       version: '13.2'
-  #       environment_variables: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
-  #       shell: sh
-  #       run: |
-  #         ./scripts/ci-freebsd-setup.sh
-  #         ./scripts/ci-build.sh
+  #  - name: Build (${{ env.AMD64_FREEBSD_GCC }})
+  #    uses: cross-platform-actions/action@v0.25.0
+  #    env:
+  #      PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
+  #      CC: gcc
+  #      MAKE: gmake
+  #      RUN_TESTS: true
+  #    with:
+  #      operating_system: freebsd
+  #      version: '13.2'
+  #      environment_variables: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
+  #      shell: sh
+  #      run: |
+  #        ./scripts/ci-freebsd-setup.sh
+  #        ./scripts/ci-build.sh
 
   #   - name: Prepare build artifacts for upload
   #     run: ./scripts/ci-prepare-artifacts-for-upload.sh

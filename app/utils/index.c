@@ -5,8 +5,7 @@
 #include <unistd.h>
 #include <zsv.h>
 #include <zsv/utils/prop.h>
-
-#include "zsv/utils/index.h"
+#include <zsv/utils/index.h>
 
 struct zsv_index *zsv_index_new(void) {
   struct zsv_index *ix = malloc(sizeof(*ix));

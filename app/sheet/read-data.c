@@ -70,6 +70,13 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
   opts.stream = fp; // Input file stream
 
+  zsv_parser parser = {0};
+  if (zsv_new_with_properties(&opts, custom_prop_handler, filename, opts_used, &parser) != zsv_status_ok) {
+    fclose(fp);
+    zsv_delete(parser);
+    return errno ? errno : -1;
+  }
+
   if (uibuff) {
     pthread_mutex_lock(&uibuff->mutex);
     if (uibuff->index_ready && row_filter) {
@@ -82,11 +89,14 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       opts.stream = fp;
     }
 
-    enum zsv_index_status zst;
+    enum zsv_index_status zst = zsv_index_status_ok;
     if (uibuff->index_ready) {
       opts.header_span = 0;
       opts.rows_to_ignore = 0;
       zst = zsv_index_seek_row(uibuff->index, &opts, start_row);
+
+      zsv_delete(parser);
+      parser = zsv_new(&opts);
 
       remaining_header_to_skip = 0;
       remaining_rows_to_skip = 0;
@@ -98,13 +108,6 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   }
 
   size_t rows_read = header_span;
-
-  zsv_parser parser = {0};
-  if (zsv_new_with_properties(&opts, custom_prop_handler, filename, opts_used, &parser) != zsv_status_ok) {
-    fclose(fp);
-    zsv_delete(parser);
-    return errno ? errno : -1;
-  }
 
   size_t find_len = zsvsheet_opts->find ? strlen(zsvsheet_opts->find) : 0;
   size_t rows_searched = 0;
@@ -234,7 +237,7 @@ static void *get_data_index(void *gdi) {
   if (d->row_filter != NULL) {
     if (d->uib->index->row_count > 0) {
       d->uib->dimensions.row_count = d->uib->index->row_count + 1;
-      asprintf(&d->uib->status, "(%zu filtered rows) ", d->uib->index->row_count);
+      asprintf(&d->uib->status, "(%" PRIu64 " filtered rows) ", d->uib->index->row_count);
     } else
       d->uib->status = NULL;
   } else {
