@@ -24,6 +24,8 @@ Row indexing
 
 ## Sheet
 
+### Help menu
+
 ### Key bindings
 - align key bindings with vim
 - support alternate key binding profiles (emacs, custom1, etc)
