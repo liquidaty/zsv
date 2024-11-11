@@ -65,7 +65,7 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
     if (!temp_filename)
       return ret;
 
-    *optsp->temp_filename = temp_filename;
+    *optsp->data_filenamep = temp_filename;
 
     struct zsv_csv_writer_options writer_opts = {0};
     if (!(writer_opts.stream = temp_f = fopen(temp_filename, "w+")))

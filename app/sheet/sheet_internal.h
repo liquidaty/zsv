@@ -1,13 +1,13 @@
 #ifndef ZSVSHEET_INTERNAL_H
 #define ZSVSHEET_INTERNAL_H
 
-enum zsvsheet_status {
-  zsvsheet_status_ok = 0,
-  zsvsheet_status_memory,
-  zsvsheet_status_error, // generic error
-  zsvsheet_status_utf8,
-  zsvsheet_status_continue // ignore / continue
-  //  zsvsheet_status_duplicate
+enum zsvsheet_priv_status {
+  zsvsheet_priv_status_ok = 0,
+  zsvsheet_priv_status_memory,
+  zsvsheet_priv_status_error, // generic error
+  zsvsheet_priv_status_utf8,
+  zsvsheet_priv_status_continue // ignore / continue
+  //  zsvsheet_priv_status_duplicate
 };
 
 struct zsvsheet_rowcol {

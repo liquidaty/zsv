@@ -2,7 +2,7 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
                                  struct zsv_prop_handler *custom_prop_handler, const char *opts_used,
                                  struct zsvsheet_ui_buffer **ui_buffer_stack_bottom,
                                  struct zsvsheet_ui_buffer **ui_buffer_stack_top) {
-  struct zsvsheet_buffer_opts bopts = {0};
+  struct zsvsheet_screen_buffer_opts bopts = {0};
   struct zsvsheet_ui_buffer_opts uibopts = {0};
   uibopts.filename = filename;
   if (zsv_optsp)
@@ -29,15 +29,14 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
 /**
  * Open a tabular file as a new buffer
  */
-zsvsheet_handler_status zsvsheet_handler_open_file(struct zsvsheet_proc_context *ctx, const char *filepath,
-                                                   struct zsv_opts *zopts) {
+zsvsheet_status zsvsheet_open_file(struct zsvsheet_proc_context *ctx, const char *filepath, struct zsv_opts *zopts) {
   struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state *)ctx->subcommand_context;
   struct zsvsheet_display_info *di = &state->display_info;
   if (!di || !di->ui_buffers.base || !di->ui_buffers.current)
-    return zsvsheet_handler_status_error;
+    return zsvsheet_status_error;
   int err =
     zsvsheet_ui_buffer_open_file(filepath, zopts, NULL, NULL, NULL, di->ui_buffers.base, di->ui_buffers.current);
   if (err)
-    return zsvsheet_handler_status_error;
-  return zsvsheet_handler_status_ok;
+    return zsvsheet_status_error;
+  return zsvsheet_status_ok;
 }

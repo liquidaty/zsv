@@ -52,13 +52,13 @@ static void set_window_to_cursor(struct zsvsheet_rowcol *buff_offset, size_t tar
 
 static int zsvsheet_goto_input_raw_row(struct zsvsheet_ui_buffer *uib, size_t input_raw_num, size_t input_header_span,
                                        struct zsvsheet_display_dimensions *ddims, size_t final_cursor_position) {
-  zsvsheet_buffer_t buffer = uib->buffer;
+  zsvsheet_screen_buffer_t buffer = uib->buffer;
   struct zsvsheet_rowcol *input_offset = &uib->input_offset;
   struct zsvsheet_rowcol *buff_offset = &uib->buff_offset;
   struct zsvsheet_input_dimensions *input_dims = &uib->dimensions;
   size_t *cursor_rowp = &uib->cursor_row;
 
-  size_t buffer_rows = zsvsheet_buffer_rows(buffer);
+  size_t buffer_rows = zsvsheet_screen_buffer_rows(buffer);
   int update_buffer = 0;
   if (input_raw_num < input_offset->row + input_header_span                      // move the buffer up
       || input_raw_num + input_header_span + 1 > input_offset->row + buffer_rows // move the buffer down

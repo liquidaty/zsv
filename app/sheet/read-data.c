@@ -4,7 +4,7 @@
 #include <zsv/utils/prop.h>
 #include <zsv/utils/index.h>
 #include "sheet_internal.h"
-#include "buffer.h"
+#include "screen_buffer.h"
 #include "index.h"
 
 #if defined(WIN32) || defined(_WIN32)
@@ -32,7 +32,7 @@ static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char 
   struct zsvsheet_index_opts *gdi = calloc(1, sizeof(*gdi));
   gdi->mutexp = mutexp;
   gdi->filename = filename;
-  gdi->temp_filename = &uibuffp->temp_filename;
+  gdi->data_filenamep = &uibuffp->data_filename;
   gdi->zsv_opts = *optsp;
   gdi->row_filter = row_filter;
   gdi->index = &uibuffp->index;
@@ -81,7 +81,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     pthread_mutex_lock(&uibuff->mutex);
     if (uibuff->index_ready && row_filter) {
       fclose(fp);
-      fp = fopen(uibuff->temp_filename, "rb");
+      fp = fopen(uibuff->data_filename, "rb");
       if (!fp) {
         pthread_mutex_unlock(&uibuff->mutex);
         return errno;
@@ -111,19 +111,19 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
   size_t find_len = zsvsheet_opts->find ? strlen(zsvsheet_opts->find) : 0;
   size_t rows_searched = 0;
-  zsvsheet_buffer_t buffer = uibuff ? uibuff->buffer : NULL;
+  zsvsheet_screen_buffer_t buffer = uibuff ? uibuff->buffer : NULL;
 
   while (zsv_next_row(parser) == zsv_status_row &&
-         (rows_read == 0 || rows_read < zsvsheet_buffer_rows(buffer))) { // for each row
+         (rows_read == 0 || rows_read < zsvsheet_screen_buffer_rows(buffer))) { // for each row
     if (uibuff == NULL && uibufferp && uibopts && zsv_cell_count(parser) > 0) {
-      enum zsvsheet_status stat;
+      enum zsvsheet_priv_status stat;
       struct zsvsheet_ui_buffer *tmp_uibuff = NULL;
-      if (!(buffer = zsvsheet_buffer_new(zsv_cell_count(parser), uibopts->buff_opts, &stat)) ||
-          stat != zsvsheet_status_ok || !(tmp_uibuff = zsvsheet_ui_buffer_new(buffer, uibopts))) {
+      if (!(buffer = zsvsheet_screen_buffer_new(zsv_cell_count(parser), uibopts->buff_opts, &stat)) ||
+          stat != zsvsheet_priv_status_ok || !(tmp_uibuff = zsvsheet_ui_buffer_new(buffer, uibopts))) {
         if (tmp_uibuff)
           zsvsheet_ui_buffer_delete(tmp_uibuff);
         else
-          zsvsheet_buffer_delete(buffer);
+          zsvsheet_screen_buffer_delete(buffer);
         return -1;
       }
       *uibufferp = uibuff = tmp_uibuff;
@@ -164,22 +164,22 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     size_t rownum_column_offset = 0;
     if (zsvsheet_opts->hide_row_nums == 0) {
       if (rows_read == 0) // header
-        zsvsheet_buffer_write_cell(buffer, 0, 0, (const unsigned char *)"Row #");
+        zsvsheet_screen_buffer_write_cell(buffer, 0, 0, (const unsigned char *)"Row #");
       /////
       else {
         char buff[32];
         int n = snprintf(buff, sizeof(buff), "%zu", original_row_num - 1);
         if (!(n > 0 && n < (int)sizeof(buff)))
           sprintf(buff, "########");
-        zsvsheet_buffer_write_cell(buffer, rows_read, 0, (unsigned char *)buff);
+        zsvsheet_screen_buffer_write_cell(buffer, rows_read, 0, (unsigned char *)buff);
       }
       rownum_column_offset = 1;
     }
 
-    for (size_t i = start_col; i < col_count && i + rownum_column_offset < zsvsheet_buffer_cols(buffer); i++) {
+    for (size_t i = start_col; i < col_count && i + rownum_column_offset < zsvsheet_screen_buffer_cols(buffer); i++) {
       struct zsv_cell c = zsv_get_cell(parser, i);
       if (c.len)
-        zsvsheet_buffer_write_cell_w_len(buffer, rows_read, i + rownum_column_offset, c.str, c.len);
+        zsvsheet_screen_buffer_write_cell_w_len(buffer, rows_read, i + rownum_column_offset, c.str, c.len);
     }
 
     rows_read++;

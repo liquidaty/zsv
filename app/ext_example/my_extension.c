@@ -73,39 +73,39 @@ static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const 
 /**
  * Here we define a custom command for the zsv `sheet` feature
  */
-zsvsheet_handler_status my_test_command_handler(zsvsheet_proc_context_t ctx) {
+zsvsheet_status my_test_command_handler(zsvsheet_proc_context_t ctx) {
   char result_buffer[256] = {0};
   int ch = zsv_cb.ext_sheet_keypress(ctx);
   if (ch < 0)
-    return zsvsheet_handler_status_error;
+    return zsvsheet_status_error;
   zsv_cb.ext_sheet_prompt(ctx, result_buffer, sizeof(result_buffer), "You pressed %c. Now enter something here",
                           (char)ch);
   if (*result_buffer == '\0')
-    return zsvsheet_handler_status_ok;
+    return zsvsheet_status_ok;
 
   const char *temp_filename = "/tmp/zsvsheet_extension_example.csv";
   FILE *f = fopen(temp_filename, "wb");
   if (!f)
-    zsv_cb.ext_sheet_handler_set_status(ctx, "Unable to open for write: %s", temp_filename);
+    zsv_cb.ext_sheet_set_status(ctx, "Unable to open for write: %s", temp_filename);
   else {
     fprintf(f, "buffer #,file name\n");
     // get a count of open buffers
     int i = 0;
-    for (zsvsheet_handler_buffer_t buff = zsv_cb.ext_sheet_handler_buffer_current(ctx); buff;
-         buff = zsv_cb.ext_sheet_handler_buffer_prior(buff), i++)
+    for (zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx); buff;
+         buff = zsv_cb.ext_sheet_buffer_prior(buff), i++)
       ;
 
     // print a list of open buffers and filenames
-    for (zsvsheet_handler_buffer_t buff = zsv_cb.ext_sheet_handler_buffer_current(ctx); buff;
-         buff = zsv_cb.ext_sheet_handler_buffer_prior(buff), i--) {
-      const char *buff_filename = zsv_cb.ext_sheet_handler_buffer_filename(buff);
+    for (zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx); buff;
+         buff = zsv_cb.ext_sheet_buffer_prior(buff), i--) {
+      const char *buff_filename = zsv_cb.ext_sheet_buffer_filename(buff);
       if (buff_filename)
         fprintf(f, "%i,%s\n", i, buff_filename); // assumes no need for quoting or escaping buff_filename...
     }
     fclose(f);
-    return zsv_cb.ext_sheet_handler_open_file(ctx, temp_filename, NULL);
+    return zsv_cb.ext_sheet_open_file(ctx, temp_filename, NULL);
   }
-  return zsvsheet_handler_status_ok;
+  return zsvsheet_status_ok;
 }
 #endif
 

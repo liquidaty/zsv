@@ -15,7 +15,7 @@
 struct zsvsheet_procedure {
   zsvsheet_proc_id_t id;
   const char *name;
-  zsvsheet_proc_handler_fn handler;
+  zsvsheet_proc_fn handler;
 };
 
 /* This array both stores procedures and works as a lookup table. */
@@ -44,7 +44,7 @@ static zsvsheet_proc_id_t zsvsheet_generate_proc_id() {
   return ZSVSHEET_PROC_INVALID;
 }
 
-zsvsheet_handler_status zsvsheet_proc_invoke(zsvsheet_proc_id_t proc_id, struct zsvsheet_proc_context *ctx) {
+zsvsheet_status zsvsheet_proc_invoke(zsvsheet_proc_id_t proc_id, struct zsvsheet_proc_context *ctx) {
   proc_debug("invoke proc %d\n", proc_id);
   struct zsvsheet_procedure *proc = zsvsheet_find_procedure(proc_id);
   if (proc) {
@@ -54,8 +54,7 @@ zsvsheet_handler_status zsvsheet_proc_invoke(zsvsheet_proc_id_t proc_id, struct 
   return -1;
 }
 
-zsvsheet_handler_status zsvsheet_proc_invoke_from_keypress(zsvsheet_proc_id_t proc_id, int ch,
-                                                           void *subcommand_context) {
+zsvsheet_status zsvsheet_proc_invoke_from_keypress(zsvsheet_proc_id_t proc_id, int ch, void *subcommand_context) {
   struct zsvsheet_proc_context context = {
     .proc_id = proc_id,
     .invocation.type = zsvsheet_proc_invocation_type_keypress,
@@ -76,13 +75,12 @@ static zsvsheet_proc_id_t zsvsheet_do_register_proc(struct zsvsheet_procedure *p
   return proc->id;
 }
 
-zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name,
-                                                  zsvsheet_proc_handler_fn handler) {
+zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name, zsvsheet_proc_fn handler) {
   struct zsvsheet_procedure procedure = {.id = id, .name = name, .handler = handler};
   return zsvsheet_do_register_proc(&procedure);
 }
 
-zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, zsvsheet_proc_handler_fn handler) {
+zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, zsvsheet_proc_fn handler) {
   struct zsvsheet_procedure procedure = {.id = zsvsheet_generate_proc_id(), .name = name, .handler = handler};
   return zsvsheet_do_register_proc(&procedure);
 }

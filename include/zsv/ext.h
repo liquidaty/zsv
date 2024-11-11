@@ -42,6 +42,12 @@ enum zsv_ext_status {
   zsv_ext_status_error,
 
   /**
+   * operation not permitted, such as an extension attempting
+   * to modify a buffer that is owned by a different extension
+   */
+  zsv_ext_status_not_permitted,
+
+  /**
    * zsv_ext_status_other is treated as a silent error by ZSV, e.g. if you have
    * already handled your error and do not want any further error message displayed
    */
@@ -152,7 +158,7 @@ struct zsv_ext_callbacks {
    * Registering a custom `sheet` command *
    ****************************************/
   zsvsheet_proc_id_t (*ext_sheet_register_proc)(const char *name,
-                                                zsvsheet_handler_status (*handler)(zsvsheet_proc_context_t ctx));
+                                                zsvsheet_status (*handler)(zsvsheet_proc_context_t ctx));
 
   /**
    * Bind a command to a key binding
@@ -169,14 +175,13 @@ struct zsv_ext_callbacks {
    * @param  s text to set the subcommand prompt to. must be < 256 bytes in length
    * returns zsvsheet_status_ok on success
    */
-  zsvsheet_handler_status (*ext_sheet_prompt)(zsvsheet_proc_context_t ctx, char *buffer, size_t bufsz, const char *fmt,
-                                              ...);
+  zsvsheet_status (*ext_sheet_prompt)(zsvsheet_proc_context_t ctx, char *buffer, size_t bufsz, const char *fmt, ...);
 
   /*** Custom command handling ***/
   /**
    * Set a status message
    */
-  zsvsheet_handler_status (*ext_sheet_handler_set_status)(zsvsheet_proc_context_t ctx, const char *fmt, ...);
+  zsvsheet_status (*ext_sheet_set_status)(zsvsheet_proc_context_t ctx, const char *fmt, ...);
 
   /**
    * Get the key press that triggered this subcommand handler
@@ -187,23 +192,49 @@ struct zsv_ext_callbacks {
   /**
    * Get the current buffer
    */
-  zsvsheet_handler_buffer_t (*ext_sheet_handler_buffer_current)(zsvsheet_proc_context_t ctx);
+  zsvsheet_buffer_t (*ext_sheet_buffer_current)(zsvsheet_proc_context_t ctx);
 
   /**
    * Get the prior buffer
    */
-  zsvsheet_handler_buffer_t (*ext_sheet_handler_buffer_prior)(zsvsheet_handler_buffer_t b);
+  zsvsheet_buffer_t (*ext_sheet_buffer_prior)(zsvsheet_buffer_t b);
 
   /**
    * Get the filename associated with a buffer
    */
-  const char *(*ext_sheet_handler_buffer_filename)(zsvsheet_handler_buffer_t);
+  const char *(*ext_sheet_buffer_filename)(zsvsheet_buffer_t);
+
+  /**
+   * Get the data file associated with a buffer. This might not be the same as the filename,
+   * such as when the data has been filtered
+   */
+  const char *(*ext_sheet_buffer_data_filename)(zsvsheet_buffer_t);
 
   /**
    * Open a tabular file as a new buffer
    */
-  zsvsheet_handler_status (*ext_sheet_handler_open_file)(zsvsheet_proc_context_t, const char *filepath,
-                                                         struct zsv_opts *zopts);
+  zsvsheet_status (*ext_sheet_open_file)(zsvsheet_proc_context_t, const char *filepath, struct zsv_opts *zopts);
+
+  /**
+   * Set custom context
+   * @param on_close optional callback to invoke when the buffer is closed
+   *
+   * @return zsv_ext_status_ok on success, else zsv_ext_status error code
+   */
+  enum zsv_ext_status (*ext_sheet_buffer_set_ctx)(zsvsheet_buffer_t h, void *ctx, void (*on_close)(void *));
+
+  /**
+   * Get custom context previously set via zsvsheet_buffer_set_ctx()
+   * @param ctx_out result will be written to this address
+   *
+   * @return zsv_ext_status_ok on success, else zsv_ext_status error code
+   */
+  enum zsv_ext_status (*ext_sheet_buffer_get_ctx)(zsvsheet_buffer_t h, void **ctx_out);
+
+  /**
+   * Get zsv_opts used to open the buffer's data file
+   */
+  struct zsv_opts (*ext_sheet_buffer_get_zsv_opts)(zsvsheet_buffer_t h);
 };
 
 /** @} */
