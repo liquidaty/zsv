@@ -53,14 +53,14 @@ Row indexing
 - add read-only flag
 
 ### Extensions
+- update temp file management to centralized list with ref count
+- add option to cancel event handling before it is finished running
 - add extension_id to each buffer; prevent extension A from modifying (e.g. set/get ext_ctx) buffer owned by extension B
 - high priority: support extension custom properties
   - saved in .zsv/data/<fn>/props-<ext>.json
   - API should include means to (during ext initialization), functions to set/get
 - Extend the my_extension.c such that when a buffer in the displayed list is selected, pressing Return will load that buffer
 - cell plug-in: display context menu
-- update temp file management to centralized list with ref count
-- add option to cancel event handling before it is finished running
 
 ### Interface
 - progress tracking
