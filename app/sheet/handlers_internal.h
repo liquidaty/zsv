@@ -89,6 +89,9 @@ enum zsv_ext_status zsvsheet_buffer_set_ctx(zsvsheet_handler_buffer_t h, void *c
  */
 enum zsv_ext_status zsvsheet_buffer_get_ctx(zsvsheet_handler_buffer_t h, void **ctx_out);
 
+/** Get zsv_opts use to open the buffer's data file **/
+struct zsv_opts zsvsheet_buffer_get_zsv_opts(zsvsheet_handler_buffer_t h);
+
 /**
  * Register a custom sheet command
  */

@@ -232,6 +232,11 @@ struct zsv_ext_callbacks {
    * @return zsv_ext_status_ok on success, else zsv_ext_status error code
    */
   enum zsv_ext_status (*ext_sheet_buffer_get_ctx)(zsvsheet_handler_buffer_t h, void **ctx_out);
+
+  /**
+   * Get zsv_opts used to open the buffer's data file
+   */
+  struct zsv_opts (*ext_sheet_buffer_get_zsv_opts)(zsvsheet_handler_buffer_t h);
 };
 
 /** @} */

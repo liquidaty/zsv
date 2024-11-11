@@ -88,7 +88,9 @@ const char *zsvsheet_handler_buffer_filename(zsvsheet_handler_buffer_t h) {
  */
 const char *zsvsheet_handler_buffer_data_filename(zsvsheet_handler_buffer_t h) {
   struct zsvsheet_ui_buffer *uib = h;
-  return uib ? uib->data_filename : NULL;
+  if (uib)
+    return uib->data_filename ? uib->data_filename : uib->filename;
+  return NULL;
 }
 
 /**
@@ -114,4 +116,14 @@ enum zsv_ext_status zsvsheet_buffer_get_ctx(zsvsheet_handler_buffer_t h, void **
   // TO DO: return zsv_ext_status_not_permitted if this buffer is protected and the caller is not authorized
   *ctx_out = h ? ((struct zsvsheet_ui_buffer *)h)->ext_ctx : NULL;
   return zsv_ext_status_ok;
+}
+
+/** Get zsv_opts use to open the buffer's data file **/
+struct zsv_opts zsvsheet_buffer_get_zsv_opts(zsvsheet_handler_buffer_t h) {
+  if (h) {
+    struct zsvsheet_ui_buffer *buff = h;
+    return buff->zsv_opts;
+  }
+  struct zsv_opts opts = {0};
+  return opts;
 }

@@ -245,6 +245,8 @@ static char *zsv_ext_errmsg(enum zsv_ext_status stat, zsv_execution_context ctx)
       return s;
     }
     // use zsv_ext_status_other for silent errors. will not attempt to call errcode() or errstr()
+  case zsv_ext_status_not_permitted:
+    return strdup("Not permitted");
   case zsv_ext_status_other:
     // use zsv_ext_status_err for custom errors. will attempt to call errcode() and errstr()
     // for custom error code and message (if not errcode or errstr not provided, will be silent)
@@ -388,6 +390,7 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->ext_sheet_prompt = zsvsheet_ext_prompt;
     e->ext_sheet_buffer_set_ctx = zsvsheet_buffer_set_ctx;
     e->ext_sheet_buffer_get_ctx = zsvsheet_buffer_get_ctx;
+    e->ext_sheet_buffer_get_zsv_opts = zsvsheet_buffer_get_zsv_opts;
     e->ext_sheet_handler_set_status = zsvsheet_handler_set_status;
     e->ext_sheet_handler_buffer_current = zsvsheet_handler_buffer_current;
     e->ext_sheet_handler_buffer_prior = zsvsheet_handler_buffer_prior;
