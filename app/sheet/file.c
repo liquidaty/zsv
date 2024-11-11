@@ -2,7 +2,7 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
                                  struct zsv_prop_handler *custom_prop_handler, const char *opts_used,
                                  struct zsvsheet_ui_buffer **ui_buffer_stack_bottom,
                                  struct zsvsheet_ui_buffer **ui_buffer_stack_top) {
-  struct zsvsheet_buffer_opts bopts = {0};
+  struct zsvsheet_screen_buffer_opts bopts = {0};
   struct zsvsheet_ui_buffer_opts uibopts = {0};
   uibopts.filename = filename;
   if (zsv_optsp)

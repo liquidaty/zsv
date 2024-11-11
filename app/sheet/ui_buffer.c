@@ -7,8 +7,8 @@ struct zsvsheet_ui_buffer {
   char *data_filename;              // if this dataset was filtered from another, the filtered data is stored here
   struct zsv_opts zsv_opts;         // options to use when opening this file
   struct zsvsheet_ui_buffer *prior; // previous buffer in this stack. If null, this is the first buffer in the stack
-  struct zsvsheet_buffer_opts *buff_opts;
-  zsvsheet_buffer_t buffer;
+  struct zsvsheet_screen_buffer_opts *buff_opts;
+  zsvsheet_screen_buffer_t buffer;
   size_t cursor_row;
   size_t cursor_col;
   struct zsvsheet_input_dimensions dimensions;
@@ -42,7 +42,7 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
   if (ub) {
     if (ub->ext_on_close)
       ub->ext_on_close(ub->ext_ctx);
-    zsvsheet_buffer_delete(ub->buffer);
+    zsvsheet_screen_buffer_delete(ub->buffer);
     free(ub->row_filter);
     free(ub->status);
     if (ub->data_filename)
@@ -54,14 +54,15 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
 }
 
 struct zsvsheet_ui_buffer_opts {
-  struct zsvsheet_buffer_opts *buff_opts;
+  struct zsvsheet_screen_buffer_opts *buff_opts;
   const char *row_filter;
   const char *filename;
   struct zsv_opts zsv_opts; // options to use when opening this file
   char no_rownum_col_offset;
 };
 
-struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_buffer_t buffer, struct zsvsheet_ui_buffer_opts *uibopts) {
+struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffer,
+                                                  struct zsvsheet_ui_buffer_opts *uibopts) {
   struct zsvsheet_ui_buffer *uib = calloc(1, sizeof(*uib));
   pthread_mutex_t init = PTHREAD_MUTEX_INITIALIZER;
   if (uib) {
@@ -81,14 +82,14 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_buffer_t buffer, stru
   return uib;
 }
 
-enum zsvsheet_status zsvsheet_ui_buffer_new_blank(struct zsvsheet_ui_buffer **uibp) {
-  enum zsvsheet_status status;
-  zsvsheet_buffer_t buffer = zsvsheet_buffer_new(1, NULL, &status);
+enum zsvsheet_priv_status zsvsheet_ui_buffer_new_blank(struct zsvsheet_ui_buffer **uibp) {
+  enum zsvsheet_priv_status status;
+  zsvsheet_screen_buffer_t buffer = zsvsheet_screen_buffer_new(1, NULL, &status);
   if (buffer) {
     *uibp = zsvsheet_ui_buffer_new(buffer, NULL);
-    return zsvsheet_status_ok;
+    return zsvsheet_priv_status_ok;
   }
-  return zsvsheet_status_error;
+  return zsvsheet_priv_status_error;
 }
 
 void zsvsheet_ui_buffers_delete(struct zsvsheet_ui_buffer *ub) {
