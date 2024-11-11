@@ -64,20 +64,18 @@ struct zsvsheet_proc_context {
   void *subcommand_context;
 };
 
-typedef zsvsheet_handler_status (*zsvsheet_proc_handler_fn)(struct zsvsheet_proc_context *ctx);
+typedef zsvsheet_status (*zsvsheet_proc_fn)(struct zsvsheet_proc_context *ctx);
 
 /* Wrapper for procedure invocation from keypress */
-zsvsheet_handler_status zsvsheet_proc_invoke_from_keypress(zsvsheet_proc_id_t proc_id, int ch,
-                                                           void *subcommand_context);
+zsvsheet_status zsvsheet_proc_invoke_from_keypress(zsvsheet_proc_id_t proc_id, int ch, void *subcommand_context);
 
 /* Base proc invocation function */
-zsvsheet_handler_status zsvsheet_proc_invoke(zsvsheet_proc_id_t proc_id, struct zsvsheet_proc_context *ctx);
+zsvsheet_status zsvsheet_proc_invoke(zsvsheet_proc_id_t proc_id, struct zsvsheet_proc_context *ctx);
 
 /* Register builtin procedure with fixed id */
-zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name,
-                                                  zsvsheet_proc_handler_fn handler);
+zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name, zsvsheet_proc_fn handler);
 
 /* Dynamically register a procedure, returns a positive id or negative error */
-zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, zsvsheet_proc_handler_fn handler);
+zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, zsvsheet_proc_fn handler);
 
 #endif /* ZSVSHEET_PROCEDURE_H */

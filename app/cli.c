@@ -37,8 +37,8 @@ struct cli_config {
 
 static struct zsv_ext *zsv_ext_new(const char *dl_name, const char *id, char verbose);
 
-zsvsheet_handler_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, char *buffer, size_t bufsz,
-                                            const char *fmt, ...);
+zsvsheet_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, char *buffer, size_t bufsz, const char *fmt,
+                                    ...);
 
 #include "cli_ini.c"
 
@@ -391,12 +391,12 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->ext_sheet_buffer_set_ctx = zsvsheet_buffer_set_ctx;
     e->ext_sheet_buffer_get_ctx = zsvsheet_buffer_get_ctx;
     e->ext_sheet_buffer_get_zsv_opts = zsvsheet_buffer_get_zsv_opts;
-    e->ext_sheet_handler_set_status = zsvsheet_handler_set_status;
-    e->ext_sheet_handler_buffer_current = zsvsheet_handler_buffer_current;
-    e->ext_sheet_handler_buffer_prior = zsvsheet_handler_buffer_prior;
-    e->ext_sheet_handler_buffer_filename = zsvsheet_handler_buffer_filename;
-    e->ext_sheet_handler_buffer_data_filename = zsvsheet_handler_buffer_data_filename;
-    e->ext_sheet_handler_open_file = zsvsheet_handler_open_file;
+    e->ext_sheet_set_status = zsvsheet_set_status;
+    e->ext_sheet_buffer_current = zsvsheet_buffer_current;
+    e->ext_sheet_buffer_prior = zsvsheet_buffer_prior;
+    e->ext_sheet_buffer_filename = zsvsheet_buffer_filename;
+    e->ext_sheet_buffer_data_filename = zsvsheet_buffer_data_filename;
+    e->ext_sheet_open_file = zsvsheet_open_file;
     e->ext_sheet_register_proc = zsvsheet_register_proc;
     e->ext_sheet_register_proc_key_binding = zsvsheet_register_proc_key_binding;
 #endif

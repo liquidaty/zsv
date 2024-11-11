@@ -69,7 +69,8 @@ static size_t zsvsheet_cell_display_width(struct zsvsheet_ui_buffer *ui_buffer,
 static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t input_header_span,
                                     struct zsvsheet_display_dimensions *ddims);
 
-void zsvsheet_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt, ...);
+static void zsvsheet_priv_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt,
+                                     ...);
 
 struct zsvsheet_display_info {
   int update_buffer;
@@ -126,8 +127,8 @@ static void get_subcommand(const char *prompt, char *buff, size_t buffsize, int 
   }
 }
 
-zsvsheet_handler_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, char *buffer, size_t bufsz,
-                                            const char *fmt, ...) {
+zsvsheet_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, char *buffer, size_t bufsz, const char *fmt,
+                                    ...) {
   struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state *)ctx->subcommand_context;
   struct zsvsheet_display_info *di = &state->display_info;
 
@@ -140,13 +141,13 @@ zsvsheet_handler_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, c
   va_end(argv);
 
   if (!(n > 0 && (size_t)n < sizeof(prompt_buffer)))
-    return zsvsheet_handler_status_ok;
+    return zsvsheet_status_ok;
 
   get_subcommand(prompt_buffer, buffer, bufsz, prompt_footer_row);
   if (*prompt_buffer == '\0')
-    return zsvsheet_handler_status_ok;
+    return zsvsheet_status_ok;
 
-  return zsvsheet_handler_status_ok;
+  return zsvsheet_status_ok;
 }
 
 size_t zsvsheet_get_input_raw_row(struct zsvsheet_rowcol *input_offset, struct zsvsheet_rowcol *buff_offset,
@@ -189,7 +190,8 @@ static void zsvsheet_display_status_text(const struct zsvsheet_display_dimension
   attroff(A_REVERSE);
 }
 
-void zsvsheet_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt, ...) {
+static void zsvsheet_priv_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt,
+                                     ...) {
   if (overwrite || !*zsvsheet_status_text) {
     va_list argv;
     va_start(argv, fmt);
@@ -206,23 +208,23 @@ void zsvsheet_set_status(const struct zsvsheet_display_dimensions *ddims, int ov
 #include "sheet/file.c"
 #include "sheet/usage.c"
 
-struct zsvsheet_key_handler_data *zsvsheet_key_handlers = NULL;
-struct zsvsheet_key_handler_data **zsvsheet_next_key_handler = &zsvsheet_key_handlers;
+struct zsvsheet_key_data *zsvsheet_key_handlers = NULL;
+struct zsvsheet_key_data **zsvsheet_next_key_handler = &zsvsheet_key_handlers;
 
 /* Common page movement function */
-static zsvsheet_handler_status zsvsheet_move_page(struct zsvsheet_display_info *di, bool up) {
+static zsvsheet_status zsvsheet_move_page(struct zsvsheet_display_info *di, bool up) {
   size_t current, target;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
 
   if (up && current_ui_buffer->dimensions.row_count <= di->header_span)
-    return zsvsheet_handler_status_ok; // no data
+    return zsvsheet_status_ok; // no data
 
   current = zsvsheet_get_input_raw_row(&current_ui_buffer->input_offset, &current_ui_buffer->buff_offset,
                                        current_ui_buffer->cursor_row);
 
   if (up) {
     if (current <= display_data_rowcount(di->dimensions) + di->header_span) {
-      return zsvsheet_handler_status_ok; // already at top
+      return zsvsheet_status_ok; // already at top
     } else {
       target = current - display_data_rowcount(di->dimensions);
       if (target >= current_ui_buffer->dimensions.row_count)
@@ -230,7 +232,7 @@ static zsvsheet_handler_status zsvsheet_move_page(struct zsvsheet_display_info *
     }
   } else {
     if (current >= current_ui_buffer->dimensions.row_count - display_data_rowcount(di->dimensions)) {
-      return zsvsheet_handler_status_ok; // already at bottom
+      return zsvsheet_status_ok; // already at bottom
     } else {
       target = current + display_data_rowcount(di->dimensions);
     }
@@ -238,11 +240,11 @@ static zsvsheet_handler_status zsvsheet_move_page(struct zsvsheet_display_info *
 
   di->update_buffer = zsvsheet_goto_input_raw_row(current_ui_buffer, target, di->header_span, di->dimensions,
                                                   current_ui_buffer->cursor_row);
-  return zsvsheet_handler_status_ok;
+  return zsvsheet_status_ok;
 }
 
 /* Common vertical movement function */
-static zsvsheet_handler_status zsvsheet_move_ver(struct zsvsheet_display_info *di, bool up) {
+static zsvsheet_status zsvsheet_move_ver(struct zsvsheet_display_info *di, bool up) {
   size_t current;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
   current = zsvsheet_get_input_raw_row(&current_ui_buffer->input_offset, &current_ui_buffer->buff_offset,
@@ -257,15 +259,15 @@ static zsvsheet_handler_status zsvsheet_move_ver(struct zsvsheet_display_info *d
     }
   } else {
     if (current >= current_ui_buffer->dimensions.row_count - 1)
-      return zsvsheet_handler_status_ok;
+      return zsvsheet_status_ok;
     di->update_buffer = zsvsheet_goto_input_raw_row(current_ui_buffer, current + 1, di->header_span, di->dimensions,
                                                     current_ui_buffer->cursor_row + 1);
   }
-  return zsvsheet_handler_status_ok;
+  return zsvsheet_status_ok;
 }
 
 /* Common horizontal movement function */
-static zsvsheet_handler_status zsvsheet_move_hor(struct zsvsheet_display_info *di, bool right) {
+static zsvsheet_status zsvsheet_move_hor(struct zsvsheet_display_info *di, bool right) {
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
 
   if (right) {
@@ -282,11 +284,11 @@ static zsvsheet_handler_status zsvsheet_move_hor(struct zsvsheet_display_info *d
       current_ui_buffer->buff_offset.col--;
     }
   }
-  return zsvsheet_handler_status_ok;
+  return zsvsheet_status_ok;
 }
 
 /* Common vertical movement between extremes */
-static zsvsheet_handler_status zsvsheet_move_ver_end(struct zsvsheet_display_info *di, bool top) {
+static zsvsheet_status zsvsheet_move_ver_end(struct zsvsheet_display_info *di, bool top) {
   size_t current;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
 
@@ -299,7 +301,7 @@ static zsvsheet_handler_status zsvsheet_move_ver_end(struct zsvsheet_display_inf
       zsvsheet_goto_input_raw_row(current_ui_buffer, 1, di->header_span, di->dimensions, di->dimensions->header_span);
   } else {
     if (current_ui_buffer->dimensions.row_count == 0)
-      return zsvsheet_handler_status_ok;
+      return zsvsheet_status_ok;
     if (current_ui_buffer->dimensions.row_count <= di->dimensions->rows - di->dimensions->footer_span) {
       current_ui_buffer->cursor_row = current_ui_buffer->dimensions.row_count - 1;
     } else {
@@ -308,11 +310,11 @@ static zsvsheet_handler_status zsvsheet_move_ver_end(struct zsvsheet_display_inf
                                     di->dimensions, di->dimensions->rows - di->dimensions->header_span - 1);
     }
   }
-  return zsvsheet_handler_status_ok;
+  return zsvsheet_status_ok;
 }
 
 /* Common horizontal movement between extremes */
-static zsvsheet_handler_status zsvsheet_move_hor_end(struct zsvsheet_display_info *di, bool right) {
+static zsvsheet_status zsvsheet_move_hor_end(struct zsvsheet_display_info *di, bool right) {
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
 
   if (right) {
@@ -329,7 +331,7 @@ static zsvsheet_handler_status zsvsheet_move_hor_end(struct zsvsheet_display_inf
     current_ui_buffer->cursor_col = 0;
     current_ui_buffer->buff_offset.col = 0;
   }
-  return zsvsheet_handler_status_ok;
+  return zsvsheet_status_ok;
 }
 
 // zsvsheet_handle_find_next: return non-zero if a result was found
@@ -340,12 +342,12 @@ char zsvsheet_handle_find_next(struct zsvsheet_ui_buffer *uib, const char *needl
     *update_buffer = zsvsheet_goto_input_raw_row(uib, zsvsheet_opts->found_rownum, header_span, ddims, (size_t)-1);
     return 1;
   }
-  zsvsheet_set_status(ddims, 1, "Not found");
+  zsvsheet_priv_set_status(ddims, 1, "Not found");
   return 0;
 }
 
 /* Find and find-next handler */
-static zsvsheet_handler_status zsvsheet_find(struct zsvsheet_builtin_proc_state *state, bool next) {
+static zsvsheet_status zsvsheet_find(struct zsvsheet_builtin_proc_state *state, bool next) {
   char prompt_buffer[256] = {0};
   struct zsvsheet_display_info *di = &state->display_info;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
@@ -368,10 +370,10 @@ static zsvsheet_handler_status zsvsheet_find(struct zsvsheet_builtin_proc_state 
   }
 
 no_input:
-  return zsvsheet_handler_status_ok;
+  return zsvsheet_status_ok;
 }
 
-static zsvsheet_handler_status zsvsheet_open_file_handler(struct zsvsheet_proc_context *ctx) {
+static zsvsheet_status zsvsheet_open_file_handler(struct zsvsheet_proc_context *ctx) {
   // TODO: should be PATH_MAX but that's going to be about a page and compiler
   //       might complain about stack being too large. Probably move to handler
   //       state or something.
@@ -391,18 +393,18 @@ static zsvsheet_handler_status zsvsheet_open_file_handler(struct zsvsheet_proc_c
   if ((err = zsvsheet_ui_buffer_open_file(prompt_buffer, NULL, NULL, state->custom_prop_handler, state->opts_used,
                                           di->ui_buffers.base, di->ui_buffers.current))) {
     if (err > 0)
-      zsvsheet_set_status(di->dimensions, 1, "%s: %s", prompt_buffer, strerror(err));
+      zsvsheet_priv_set_status(di->dimensions, 1, "%s: %s", prompt_buffer, strerror(err));
     else if (err < 0)
-      zsvsheet_set_status(di->dimensions, 1, "Unexpected error");
+      zsvsheet_priv_set_status(di->dimensions, 1, "Unexpected error");
     else
-      zsvsheet_set_status(di->dimensions, 1, "Not found: %s", prompt_buffer);
-    return zsvsheet_handler_status_ignore;
+      zsvsheet_priv_set_status(di->dimensions, 1, "Not found: %s", prompt_buffer);
+    return zsvsheet_status_ignore;
   }
 no_input:
-  return zsvsheet_handler_status_ok;
+  return zsvsheet_status_ok;
 }
 
-static zsvsheet_handler_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx) {
+static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx) {
   char prompt_buffer[256] = {0};
   struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state *)ctx->subcommand_context;
   struct zsvsheet_display_info *di = &state->display_info;
@@ -420,31 +422,31 @@ static zsvsheet_handler_status zsvsheet_filter_handler(struct zsvsheet_proc_cont
                                           state->custom_prop_handler, state->opts_used, di->ui_buffers.base,
                                           di->ui_buffers.current))) {
     if (err > 0)
-      zsvsheet_set_status(di->dimensions, 1, "%s: %s", current_ui_buffer->filename, strerror(err));
+      zsvsheet_priv_set_status(di->dimensions, 1, "%s: %s", current_ui_buffer->filename, strerror(err));
     else if (err < 0)
-      zsvsheet_set_status(di->dimensions, 1, "Unexpected error");
+      zsvsheet_priv_set_status(di->dimensions, 1, "Unexpected error");
     else
-      zsvsheet_set_status(di->dimensions, 1, "Not found: %s", prompt_buffer);
-    return zsvsheet_handler_status_ignore;
+      zsvsheet_priv_set_status(di->dimensions, 1, "Not found: %s", prompt_buffer);
+    return zsvsheet_status_ignore;
   }
   if (current_ui_buffer->dimensions.row_count < 2) {
     zsvsheet_ui_buffer_pop(di->ui_buffers.base, di->ui_buffers.current, NULL);
-    zsvsheet_set_status(di->dimensions, 1, "Not found: %s", prompt_buffer);
+    zsvsheet_priv_set_status(di->dimensions, 1, "Not found: %s", prompt_buffer);
   }
 no_input:
-  return zsvsheet_handler_status_ok;
+  return zsvsheet_status_ok;
 }
 
 /* We do most procedures in one handler. More complex procedures can be
  * separated into their own handlers.
  */
-zsvsheet_handler_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx) {
+zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx) {
   struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state *)ctx->subcommand_context;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(state->display_info.ui_buffers.current);
 
   switch (ctx->proc_id) {
   case zsvsheet_builtin_proc_quit:
-    return zsvsheet_handler_status_exit;
+    return zsvsheet_status_exit;
   case zsvsheet_builtin_proc_resize:
     *(state->display_info.dimensions) = get_display_dimensions(1, 1);
     break;
@@ -488,14 +490,14 @@ zsvsheet_handler_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_conte
     return zsvsheet_find(state, true);
   }
 
-  return zsvsheet_handler_status_error;
+  return zsvsheet_status_error;
 }
 
 /* clang-format off */
 struct builtin_proc_desc {
   int proc_id;
   const char *name;
-  zsvsheet_proc_handler_fn handler;
+  zsvsheet_proc_fn handler;
 } builtin_procedures[] = {
   { zsvsheet_builtin_proc_quit,             "quit", zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_escape,           NULL,   zsvsheet_builtin_proc_handler },
@@ -602,7 +604,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     .opts_used = opts_used,
   };
 
-  zsvsheet_handler_status status;
+  zsvsheet_status status;
 
   halfdelay(2); // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
 
@@ -621,13 +623,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
     pthread_mutex_unlock(&current_ui_buffer->mutex);
 
-    zsvsheet_set_status(&display_dims, 1, "");
+    zsvsheet_priv_set_status(&display_dims, 1, "");
 
     if (ch != ERR) {
       status = zsvsheet_key_press(ch, &handler_state);
-      if (status == zsvsheet_handler_status_exit)
+      if (status == zsvsheet_status_exit)
         break;
-      if (status != zsvsheet_handler_status_ok)
+      if (status != zsvsheet_status_ok)
         continue;
     }
 
@@ -635,13 +637,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       struct zsvsheet_opts zsvsheet_opts = {0};
       if (read_data(&current_ui_buffer, NULL, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col,
                     header_span, &zsvsheet_opts, custom_prop_handler, opts_used)) {
-        zsvsheet_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
+        zsvsheet_priv_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
         continue;
       }
     }
 
     if (status_msg)
-      zsvsheet_set_status(&display_dims, 1, status_msg);
+      zsvsheet_priv_set_status(&display_dims, 1, status_msg);
 
     display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
   }
@@ -753,7 +755,7 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
     }
   }
 
-  zsvsheet_set_status(ddims, 0, "? for help ");
+  zsvsheet_priv_set_status(ddims, 0, "? for help ");
   if (cursor_value)
     mvprintw(ddims->rows - ddims->footer_span, strlen(zsvsheet_status_text), "%s", cursor_value);
   refresh();

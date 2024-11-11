@@ -25,14 +25,14 @@ enum zsvsheet_key {
 
 struct zsvsheet_key_binding_context;
 
-typedef zsvsheet_handler_status (*zsvsheet_key_binding_handler_fn)(struct zsvsheet_key_binding_context *);
+typedef zsvsheet_status (*zsvsheet_key_binding_fn)(struct zsvsheet_key_binding_context *);
 
 /* Most key bindings will simply execute a procedure, handler then becomes
  * a simple wrapper around proc_invoke. More sophisticated key mappings can
  * be implemented if need be by defining a custom handler */
 struct zsvsheet_key_binding {
   int ch;
-  zsvsheet_key_binding_handler_fn handler;
+  zsvsheet_key_binding_fn handler;
   zsvsheet_proc_id_t proc_id;
 };
 
@@ -49,7 +49,7 @@ int zsvsheet_register_proc_key_binding(char ch, zsvsheet_proc_id_t proc_id);
 /* Use this one if you key binding is stateful and you need logic */
 int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding);
 
-zsvsheet_handler_status zsvsheet_key_press(int ch, void *subcommand_context);
+zsvsheet_status zsvsheet_key_press(int ch, void *subcommand_context);
 
 struct zsvsheet_key_binding *zsvsheet_find_key_binding(int ch);
 

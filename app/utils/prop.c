@@ -19,17 +19,17 @@
 // see arg.c
 
 static struct zsv_prop_handler *zsv_with_default_custom_prop_handler(char mode) {
-  ZSVTLS static char zsv_default_custom_prop_handler_initd = 0;
+  ZSVTLS static char zsv_default_custom_prop_initd = 0;
   ZSVTLS static struct zsv_prop_handler zsv_default_custom_prop_handler = {0};
 
   switch (mode) {
   case 'c': // clear
     memset(&zsv_default_custom_prop_handler, 0, sizeof(zsv_default_custom_prop_handler));
-    zsv_default_custom_prop_handler_initd = 0;
+    zsv_default_custom_prop_initd = 0;
     break;
   case 'g': // get
-    if (!zsv_default_custom_prop_handler_initd) {
-      zsv_default_custom_prop_handler_initd = 1;
+    if (!zsv_default_custom_prop_initd) {
+      zsv_default_custom_prop_initd = 1;
       zsv_default_custom_prop_handler.handler = NULL;
       zsv_default_custom_prop_handler.ctx = NULL;
     }
