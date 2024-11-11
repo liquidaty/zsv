@@ -54,7 +54,8 @@ Row indexing
 
 ### Extensions
 - update temp file management to centralized list with ref count
-- add option to cancel event handling before it is finished running
+- add options to stop or cancel event handling before it is finished running. Stop = stop running, and display any progress so far in a new buffer;
+  cancel = stop running, don't display anything and return as if the event handler had never started in the first place
 - add extension_id to each buffer; prevent extension A from modifying (e.g. set/get ext_ctx) buffer owned by extension B
 - high priority: support extension custom properties
   - saved in .zsv/data/<fn>/props-<ext>.json
