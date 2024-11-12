@@ -40,7 +40,7 @@ ifeq ($(EXE),)
   $(error EXE is not defined)
 endif
 
-test: test-1 test-2 test-excel-cells test-add test-echo-overwrite-auto test-timestamp
+test: test-1 test-2 test-excel-cells test-add test-remove test-old-value test-force test-echo-overwrite-auto test-timestamp
 
 test-1:
 	@${TEST_INIT}
@@ -73,6 +73,49 @@ test-add:
 		&& ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${ECHO_EXE} --overwrite-auto dummy2.csv > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-remove:
+	@${TEST_INIT}
+	@${PREFIX} ${EXE} dummy2.csv clear 
+	@${PREFIX} ${EXE} dummy2.csv add 1-1 V1 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 2-1 V2 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 3-1 V3 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 4-1 V4 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv remove 2-1
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n3,1,V3,,\n4,1,V4,,\n\"`" ] \
+		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${EXE} dummy2.csv remove 4-1
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n3,1,V3,,\n\"`" ] \
+		&& ${TEST_PASS} || ${TEST_FAIL}
+
+test-old-value:
+	@${TEST_INIT}
+	@${PREFIX} ${EXE} dummy2.csv clear 
+	@${PREFIX} ${EXE} dummy2.csv add 1-1 V1 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 2-1 V2 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 3-1 V3 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 4-1 V4 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv remove 2-1 --old-value V3 
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,V2,,\n3,1,V3,,\n4,1,V4,,\n\"`" ] \
+		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${EXE} dummy2.csv add 2-1 NEW_V2 --old-value V2 --no-timestamp
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,NEW_V2,,\n3,1,V3,,\n4,1,V4,,\n\"`" ] \
+		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${EXE} dummy2.csv remove 3-1 --old-value V3 
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,NEW_V2,,\n4,1,V4,,\n\"`" ] \
+		&& ${TEST_PASS} || ${TEST_FAIL}
+
+test-force:
+	@${TEST_INIT}
+	@${PREFIX} ${EXE} dummy2.csv clear 
+	@${PREFIX} ${EXE} dummy2.csv add 1-2 VAL1 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 2-2 VAL2 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 2-3 VAL3 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 2-4 VAL4 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 2-4 NEW_VAL4 --no-timestamp --force
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,2,VAL1,,\n2,2,VAL2,,\n2,3,VAL3,,\n2,4,NEW_VAL4,,\n\"`" ] \
+		&& ${TEST_PASS} || ${TEST_FAIL}
+
 
 STAT_MOD_TS=$(shell if stat -c %Y Makefile >/dev/null 2>/dev/null; then echo 'stat -c %Y' ; else echo 'stat -f %m' ; fi)
 test-timestamp:
