@@ -290,7 +290,7 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *sc
     } else {
       if (scanner->quote_close_position) {
         // the first char was a quote, and we have content after the closing quote
-        // the solution below is a generalized on that will work
+        // the solution below is a generalized one that will work
         // for the easy and usual case, but by handling separately
         // we avoid the memmove in the easy / usual case
         memmove(s + 1, s, scanner->quote_close_position);
@@ -308,24 +308,25 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *sc
         }
       }
     }
-  } else if (UNLIKELY(scanner->opts.delimiter != ',')) {
-    if (memchr(s, ',', n))
-      scanner->quoted = ZSV_PARSER_QUOTE_NEEDED;
   }
+  // } else if (UNLIKELY(scanner->opts.delimiter != ',')) {
+  //   if (memchr(s, ',', n))
+  //     scanner->quoted = ZSV_PARSER_QUOTE_NEEDED;
+  // }
   // end quote handling
 
-  if (scanner->opts.malformed_utf8_replace) {
-    if (scanner->opts.malformed_utf8_replace < 0)
-      n = zsv_strencode(s, n, 0, NULL, NULL);
-    else
-      n = zsv_strencode(s, n, scanner->opts.malformed_utf8_replace, NULL, NULL);
-  }
+  // if (scanner->opts.malformed_utf8_replace) {
+  //   if (scanner->opts.malformed_utf8_replace < 0)
+  //     n = zsv_strencode(s, n, 0, NULL, NULL);
+  //   else
+  //     n = zsv_strencode(s, n, scanner->opts.malformed_utf8_replace, NULL, NULL);
+  // }
 
-  if (UNLIKELY(scanner->opts.cell_handler != NULL))
-    scanner->opts.cell_handler(scanner->opts.ctx, s, n);
+  // if (UNLIKELY(scanner->opts.cell_handler != NULL))
+  //   scanner->opts.cell_handler(scanner->opts.ctx, s, n);
   if (VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
     struct zsv_row *row = &scanner->row;
-    struct zsv_cell c = {s, n, scanner->opts.no_quotes ? 1 : scanner->quoted, 0};
+    const struct zsv_cell c = {s, n, scanner->opts.no_quotes ? 1 : scanner->quoted, 0};
     row->cells[row->used++] = c;
   } else
     scanner->row.overflow++;
@@ -476,6 +477,7 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner, unsigned char *buff
 }
 
 #define ZSV_BOM "\xef\xbb\xbf"
+#define ZSV_BOM_LEN (sizeof(ZSV_BOM) - 1)
 
 // optional: set a filter function to filter data before it is processed
 // function should return the number of bytes to process. this may be smaller
@@ -648,7 +650,7 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
     need_buff_size = opts->max_row_size * 2;
   opts->delimiter = opts->delimiter ? opts->delimiter : ',';
   if (opts->delimiter == '\n' || opts->delimiter == '\r' || opts->delimiter == '"') {
-    fprintf(stderr, "warning: ignoring illegal delimiter\n");
+    fprintf(stderr, "Warning: ignoring illegal delimiter\n");
     opts->delimiter = ',';
   }
 

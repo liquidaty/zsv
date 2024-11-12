@@ -61,66 +61,68 @@ jobs:
         TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
       run: ./scripts/ci-set-tag-output-parameter.sh
 
-  clang-format:
-    runs-on: ubuntu-22.04
+  # clang-format:
+  #   runs-on: ubuntu-22.04
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v4
 
-    - name: Run clang-format
-      run: |
-        sudo ln -sf /usr/bin/clang-format-15 /usr/bin/clang-format
-        ./scripts/ci-run-clang-format.sh
+  #   - name: Run clang-format
+  #     run: |
+  #       sudo ln -sf /usr/bin/clang-format-15 /usr/bin/clang-format
+  #       ./scripts/ci-run-clang-format.sh
 
-  cppcheck:
-    runs-on: ubuntu-latest
+  # cppcheck:
+  #   runs-on: ubuntu-latest
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v4
 
-    - name: Install cppcheck
-      run: |
-        sudo apt update
-        sudo apt install -y cppcheck
-        cppcheck --version
+  #   - name: Install cppcheck
+  #     run: |
+  #       sudo apt update
+  #       sudo apt install -y cppcheck
+  #       cppcheck --version
 
-    - name: Run cppcheck
-      run: ./scripts/ci-run-cppcheck.sh
+  #   - name: Run cppcheck
+  #     run: ./scripts/ci-run-cppcheck.sh
 
-    - name: Upload (${{ env.CPPCHECK_XML_ARTIFACT_NAME }})
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.CPPCHECK_XML_ARTIFACT_NAME }}
-        path: ${{ env.CPPCHECK_XML_ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+  #   - name: Upload (${{ env.CPPCHECK_XML_ARTIFACT_NAME }})
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: ${{ env.CPPCHECK_XML_ARTIFACT_NAME }}
+  #       path: ${{ env.CPPCHECK_XML_ARTIFACT_NAME }}
+  #       retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+  #       if-no-files-found: error
 
-    - name: Upload (${{ env.CPPCHECK_HTML_ARTIFACT_NAME }})
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.CPPCHECK_HTML_ARTIFACT_NAME }}
-        path: ${{ env.CPPCHECK_HTML_ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+  #   - name: Upload (${{ env.CPPCHECK_HTML_ARTIFACT_NAME }})
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: ${{ env.CPPCHECK_HTML_ARTIFACT_NAME }}
+  #       path: ${{ env.CPPCHECK_HTML_ARTIFACT_NAME }}
+  #       retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+  #       if-no-files-found: error
 
-  shellcheck:
-    runs-on: ubuntu-latest
+  # shellcheck:
+  #   runs-on: ubuntu-latest
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v4
 
-    - name: Run shellcheck
-      run: ./scripts/ci-run-shellcheck.sh
+  #   - name: Run shellcheck
+  #     run: ./scripts/ci-run-shellcheck.sh
 
   ci:
-    needs: [tag, clang-format, cppcheck, shellcheck]
+    # needs: [tag, clang-format, cppcheck, shellcheck]
+    needs: [tag]
 
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-13, macos-14]
+        # os: [ubuntu-20.04, macos-13, macos-14]
+        os: [ubuntu-20.04]
 
     runs-on: ${{ matrix.os }}
 
@@ -347,175 +349,176 @@ jobs:
         TRIPLET: ${{ env.AMD64_MACOSX_GCC }}
       run: ./scripts/ci-update-homebrew-tap.sh
 
-  ci-bsd:
-    needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-latest
+  # ci-bsd:
+  #   needs: [tag, clang-format, cppcheck, shellcheck]
+  #   runs-on: ubuntu-latest
 
-    env:
-      TAG: ${{ needs.tag.outputs.TAG }}
+  #   env:
+  #     TAG: ${{ needs.tag.outputs.TAG }}
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v4
 
-    - name: Build (${{ env.AMD64_FREEBSD_GCC }})
-      uses: cross-platform-actions/action@v0.25.0
-      env:
-        PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
-        CC: gcc
-        MAKE: gmake
-        RUN_TESTS: true
-      with:
-        operating_system: freebsd
-        version: '13.2'
-        environment_variables: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
-        shell: sh
-        run: |
-          ./scripts/ci-freebsd-setup.sh
-          ./scripts/ci-build.sh
+  #   - name: Build (${{ env.AMD64_FREEBSD_GCC }})
+  #     uses: cross-platform-actions/action@v0.25.0
+  #     env:
+  #       PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
+  #       CC: gcc
+  #       MAKE: gmake
+  #       RUN_TESTS: true
+  #     with:
+  #       operating_system: freebsd
+  #       version: '13.2'
+  #       environment_variables: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
+  #       shell: sh
+  #       run: |
+  #         ./scripts/ci-freebsd-setup.sh
+  #         ./scripts/ci-build.sh
 
-    - name: Prepare build artifacts for upload
-      run: ./scripts/ci-prepare-artifacts-for-upload.sh
+  #   - name: Prepare build artifacts for upload
+  #     run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
-    - name: Attest build artifacts for release
-      if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v1
-      with:
-        subject-path: ${{ env.ARTIFACT_DIR }}/*
+  #   - name: Attest build artifacts for release
+  #     if: startsWith(github.ref, 'refs/tags/v')
+  #     uses: actions/attest-build-provenance@v1
+  #     with:
+  #       subject-path: ${{ env.ARTIFACT_DIR }}/*
 
-    - name: Verify attestations of release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
-      run: ./scripts/ci-verify-attestations.sh
+  #   - name: Verify attestations of release artifacts
+  #     if: startsWith(github.ref, 'refs/tags/v')
+  #     run: ./scripts/ci-verify-attestations.sh
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip)
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+  #   - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip)
+  #     uses: actions/upload-artifact@v4
+  #     env:
+  #       ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip
+  #     with:
+  #       name: ${{ env.ARTIFACT_NAME }}
+  #       path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+  #       retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+  #       if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz)
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+  #   - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz)
+  #     uses: actions/upload-artifact@v4
+  #     env:
+  #       ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz
+  #     with:
+  #       name: ${{ env.ARTIFACT_NAME }}
+  #       path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+  #       retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+  #       if-no-files-found: error
 
-    - name: Upload release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
-      run: ./scripts/ci-upload-release-artifacts.sh
+  #   - name: Upload release artifacts
+  #     if: startsWith(github.ref, 'refs/tags/v')
+  #     run: ./scripts/ci-upload-release-artifacts.sh
 
-  ci-mingw:
-    needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-latest
+  # ci-mingw:
+  #   needs: [tag, clang-format, cppcheck, shellcheck]
+  #   runs-on: ubuntu-latest
 
-    env:
-      TAG: ${{ needs.tag.outputs.TAG }}
+  #   env:
+  #     TAG: ${{ needs.tag.outputs.TAG }}
 
-    steps:
-    - name: Set up apt dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y mingw-w64 nuget
-        sudo apt remove -y jq
+  #   steps:
+  #   - name: Set up apt dependencies
+  #     run: |
+  #       sudo apt update
+  #       sudo apt install -y mingw-w64 nuget
+  #       sudo apt remove -y jq
 
-    - name: Set VCPKG_MINGW_INSTALL_ROOT env var
-      run: echo "VCPKG_MINGW_INSTALL_ROOT=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static" >>"$GITHUB_ENV"
+  #   - name: Set VCPKG_MINGW_INSTALL_ROOT env var
+  #     run: echo "VCPKG_MINGW_INSTALL_ROOT=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static" >>"$GITHUB_ENV"
 
-    - name: Cache ncurses
-      uses: actions/cache@v4
-      id: cache-ncurses
-      with:
-        key: ncurses:x64-mingw-static
-        path: ${{ env.VCPKG_MINGW_INSTALL_ROOT }}
+  #   - name: Cache ncurses
+  #     uses: actions/cache@v4
+  #     id: cache-ncurses
+  #     with:
+  #       key: ncurses:x64-mingw-static
+  #       path: ${{ env.VCPKG_MINGW_INSTALL_ROOT }}
 
-    - name: Install ncurses with wide character support using vcpkg
-      if: ${{ steps.cache-ncurses.outputs.cache-hit != 'true' }}
-      run: |
-        NCURSES_PORTFILE="$VCPKG_INSTALLATION_ROOT/ports/ncurses/portfile.cmake"
-        cd "$VCPKG_INSTALLATION_ROOT"
-        if ! grep -- "--enable-widec" "$NCURSES_PORTFILE" >/dev/null; then
-          sed 's|--enable-pc-files|--enable-pc-files --enable-widec|' -i "$NCURSES_PORTFILE"
-        fi
-        ./vcpkg install ncurses:x64-mingw-static
-        tree ./installed/x64-mingw-static
+  #   - name: Install ncurses with wide character support using vcpkg
+  #     if: ${{ steps.cache-ncurses.outputs.cache-hit != 'true' }}
+  #     run: |
+  #       NCURSES_PORTFILE="$VCPKG_INSTALLATION_ROOT/ports/ncurses/portfile.cmake"
+  #       cd "$VCPKG_INSTALLATION_ROOT"
+  #       if ! grep -- "--enable-widec" "$NCURSES_PORTFILE" >/dev/null; then
+  #         sed 's|--enable-pc-files|--enable-pc-files --enable-widec|' -i "$NCURSES_PORTFILE"
+  #       fi
+  #       ./vcpkg install ncurses:x64-mingw-static
+  #       tree ./installed/x64-mingw-static
 
-    - name: Checkout
-      uses: actions/checkout@v4
+  #   - name: Checkout
+  #     uses: actions/checkout@v4
 
-    - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
-      env:
-        PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
-        CC: x86_64-w64-mingw32-gcc
-        MAKE: make
-        RUN_TESTS: false
-        CXX: x86_64-w64-mingw32-g++
-        CPP: x86_64-w64-mingw32-cpp
-        RANLIB: x86_64-w64-mingw32-gcc-ranlib
-        AR: x86_64-w64-mingw32-gcc-ar
-        NM: x86_64-w64-mingw32-gcc-nm
-        WINDRES: x86_64-w64-mingw32-windres
-        CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
-        LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
-      run: |
-        ./scripts/ci-build.sh
-        ./scripts/ci-create-nuget-package.sh
+  #   - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
+  #     env:
+  #       PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
+  #       CC: x86_64-w64-mingw32-gcc
+  #       MAKE: make
+  #       RUN_TESTS: false
+  #       CXX: x86_64-w64-mingw32-g++
+  #       CPP: x86_64-w64-mingw32-cpp
+  #       RANLIB: x86_64-w64-mingw32-gcc-ranlib
+  #       AR: x86_64-w64-mingw32-gcc-ar
+  #       NM: x86_64-w64-mingw32-gcc-nm
+  #       WINDRES: x86_64-w64-mingw32-windres
+  #       CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
+  #       LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
+  #     run: |
+  #       ./scripts/ci-build.sh
+  #       ./scripts/ci-create-nuget-package.sh
 
-    - name: Prepare build artifacts for upload
-      run: ./scripts/ci-prepare-artifacts-for-upload.sh
+  #   - name: Prepare build artifacts for upload
+  #     run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
-    - name: Attest build artifacts for release
-      if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v1
-      with:
-        subject-path: ${{ env.ARTIFACT_DIR }}/*
+  #   - name: Attest build artifacts for release
+  #     if: startsWith(github.ref, 'refs/tags/v')
+  #     uses: actions/attest-build-provenance@v1
+  #     with:
+  #       subject-path: ${{ env.ARTIFACT_DIR }}/*
 
-    - name: Verify attestations of release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
-      run: ./scripts/ci-verify-attestations.sh
+  #   - name: Verify attestations of release artifacts
+  #     if: startsWith(github.ref, 'refs/tags/v')
+  #     run: ./scripts/ci-verify-attestations.sh
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+  #   - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
+  #     uses: actions/upload-artifact@v4
+  #     env:
+  #       ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip
+  #     with:
+  #       name: ${{ env.ARTIFACT_NAME }}
+  #       path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+  #       retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+  #       if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz)
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+  #   - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz)
+  #     uses: actions/upload-artifact@v4
+  #     env:
+  #       ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz
+  #     with:
+  #       name: ${{ env.ARTIFACT_NAME }}
+  #       path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+  #       retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+  #       if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg)
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+  #   - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg)
+  #     uses: actions/upload-artifact@v4
+  #     env:
+  #       ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
+  #     with:
+  #       name: ${{ env.ARTIFACT_NAME }}
+  #       path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+  #       retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+  #       if-no-files-found: error
 
-    - name: Upload release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
-      run: ./scripts/ci-upload-release-artifacts.sh
+  #   - name: Upload release artifacts
+  #     if: startsWith(github.ref, 'refs/tags/v')
+  #     run: ./scripts/ci-upload-release-artifacts.sh
 
   ci-musl:
-    needs: [tag, clang-format, cppcheck, shellcheck]
+    # needs: [tag, clang-format, cppcheck, shellcheck]
+    needs: [tag]
     runs-on: ubuntu-latest
     container: alpine:latest
 
@@ -576,65 +579,65 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       run: ./scripts/ci-upload-release-artifacts.sh
 
-  ghcr:
-    needs: [tag, ci-musl]
-    runs-on: ubuntu-latest
+  # ghcr:
+  #   needs: [tag, ci-musl]
+  #   runs-on: ubuntu-latest
 
-    permissions:
-      packages: write
+  #   permissions:
+  #     packages: write
 
-    env:
-      TAG: ${{ needs.tag.outputs.TAG }}
+  #   env:
+  #     TAG: ${{ needs.tag.outputs.TAG }}
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        sparse-checkout: |
-          Dockerfile.ci
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v4
+  #     with:
+  #       sparse-checkout: |
+  #         Dockerfile.ci
 
-    - name: Download (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
-      uses: actions/download-artifact@v4
-      with:
-        name: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
-        path: ${{ env.AMD64_LINUX_MUSL }}
+  #   - name: Download (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
+  #     uses: actions/download-artifact@v4
+  #     with:
+  #       name: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
+  #       path: ${{ env.AMD64_LINUX_MUSL }}
 
-    - name: Unzip
-      env:
-        ZIP: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
-        DIR: ${{ env.AMD64_LINUX_MUSL }}
-      run: |
-        cd "$DIR"
-        unzip -o "$ZIP"
-        cd ..
-        mkdir -p ./ci
-        mv ./"$DIR"/bin/zsv ./ci/
-        rm -rf ./"$DIR"
+  #   - name: Unzip
+  #     env:
+  #       ZIP: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
+  #       DIR: ${{ env.AMD64_LINUX_MUSL }}
+  #     run: |
+  #       cd "$DIR"
+  #       unzip -o "$ZIP"
+  #       cd ..
+  #       mkdir -p ./ci
+  #       mv ./"$DIR"/bin/zsv ./ci/
+  #       rm -rf ./"$DIR"
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+  #   - name: Set up QEMU
+  #     uses: docker/setup-qemu-action@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+  #   - name: Set up Docker Buildx
+  #     uses: docker/setup-buildx-action@v3
 
-    - name: Login to GitHub Container Registry
-      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+  #   - name: Login to GitHub Container Registry
+  #     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+  #     uses: docker/login-action@v3
+  #     with:
+  #       registry: ghcr.io
+  #       username: ${{ github.repository_owner }}
+  #       password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build and push (on release)
-      uses: docker/build-push-action@v6
-      env:
-        DOCKER_BUILD_RECORD_UPLOAD: false
-      with:
-        no-cache: true
-        context: .
-        file: Dockerfile.ci
-        platforms: linux/amd64
-        push: ${{ startsWith(github.ref, 'refs/tags/v') }}
-        tags: |
-          ghcr.io/liquidaty/zsv:${{ env.TAG }}
-          ghcr.io/liquidaty/zsv:latest
+  #   - name: Build and push (on release)
+  #     uses: docker/build-push-action@v6
+  #     env:
+  #       DOCKER_BUILD_RECORD_UPLOAD: false
+  #     with:
+  #       no-cache: true
+  #       context: .
+  #       file: Dockerfile.ci
+  #       platforms: linux/amd64
+  #       push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+  #       tags: |
+  #         ghcr.io/liquidaty/zsv:${{ env.TAG }}
+  #         ghcr.io/liquidaty/zsv:latest

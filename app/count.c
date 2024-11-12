@@ -40,7 +40,6 @@ static int count_usage() {
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
                                struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
-  struct data data = {0};
   const char *input_path = NULL;
   int err = 0;
   for (int i = 1; !err && i < argc; i++) {
@@ -77,14 +76,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #endif
 
   if (!err) {
-    opts->row_handler = opts->verbose ? row_verbose : row;
+    struct data data = {0};
     opts->ctx = &data;
+    opts->row_handler = opts->verbose ? row_verbose : row;
     if (zsv_new_with_properties(opts, custom_prop_handler, input_path, opts_used, &data.parser) != zsv_status_ok) {
       fprintf(stderr, "Unable to initialize parser\n");
       err = 1;
     } else {
-      enum zsv_status status;
-      while ((status = zsv_parse_more(data.parser)) == zsv_status_ok)
+      while (zsv_parse_more(data.parser) == zsv_status_ok)
         ;
       zsv_finish(data.parser);
       zsv_delete(data.parser);
