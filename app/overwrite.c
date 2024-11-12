@@ -272,7 +272,7 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
 
   if (args->old_value && (err = zsv_overwrites_compare(ctx, overwrite, args))) {
     return err;
-  } else {
+  } else if(args->old_value) {
     return zsv_overwrites_replace(ctx, overwrite, args);
   }
 
