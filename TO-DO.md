@@ -24,6 +24,11 @@ Row indexing
 
 ## Sheet
 
+### Filtering
+- Correctly display row #s after filter
+  - Write row #s into temp file
+  - On buffer reload, keep row # from file
+
 ### Help menu
 
 ### Key bindings
