@@ -28,10 +28,13 @@
 
 struct zsv_overwrite_args {
   char *filepath;
+  struct zsv_opts *opts;
   // options
   unsigned char force : 1;
   unsigned char a1 : 1;
   unsigned char timestamp : 1;
+  unsigned char bulk_add: 1;
+  unsigned char bulk_remove: 1;
   unsigned char *old_value;
   // commands
   unsigned char list : 1;
@@ -308,6 +311,34 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
   return err;
 }
 
+static void zsv_overwrites_bulk_add(void *ctx_v) {
+  struct zsv_overwrite_ctx *ctx = (struct zsv_overwrite_ctx*)ctx_v;
+  if(zsv_row_is_blank(ctx->csv.parser))
+    return;
+  struct zsv_overwrite_data overwrite = {0};
+  size_t c_count = zsv_cell_count(ctx->csv.parser);
+  if(c_count > 3) {
+    fprintf(stderr, "Author and timestamp rows are not supported yet\n");
+  }
+  for (size_t i = 0; i < c_count; i++) {
+    struct zsv_cell cell = zsv_get_cell(ctx->csv.parser, i);
+    if(cell.len > 0 && !strncmp((const char*)cell.str, "row", cell.len)) {
+      printf("Skipping header\n");
+      return;
+    }
+    if(!overwrite.row_ix)
+      overwrite.row_ix = atol((const char*)cell.str);
+    else if(!overwrite.col_ix)
+      overwrite.col_ix = atol((const char*)cell.str);
+    else if(!overwrite.val.str) {
+      overwrite.val.str = cell.str;
+      overwrite.val.len = cell.len;
+    }
+  }
+  struct zsv_overwrite_args args = {0};
+  zsv_overwrites_insert(ctx, &overwrite, &args);
+}
+
 static int zsv_overwrites_free(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
                                zsv_csv_writer writer) {
   if (writer)
@@ -497,12 +528,20 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         err = 1;
       }
     } else if (!strcmp(opt, "remove")) {
-      if (argc - i != 0) {
+      if (argc - i > 1) {
         args.remove = 1;
         err = zsv_overwrite_parse_pos(&overwrite, argv[++i]);
         if (err) {
           fprintf(stderr, "Expected row and column\n");
         }
+      } else {
+        fprintf(stderr, "Expected row and column\n");
+        err = 1;
+      }
+    } else if(!strcmp(opt, "bulk-add")) {
+      if(argc - i > 1) {
+        args.bulk_add = 1;
+        ctx.csv.f = fopen((const char*)argv[++i], "rb");
       } else {
         fprintf(stderr, "Expected row and column\n");
         err = 1;
@@ -532,6 +571,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     zsv_overwrites_insert(&ctx, &overwrite, &args);
   else if (args.remove && ctx.sqlite3.db)
     zsv_overwrites_remove(&ctx, &overwrite, &args);
+  else if ((args.bulk_add || args.bulk_remove) && ctx.sqlite3.db) {
+    opts->row_handler = zsv_overwrites_bulk_add;
+    opts->ctx = &ctx;
+    opts->stream = ctx.csv.f;
+    ctx.csv.parser = zsv_new(opts);
+    while(zsv_parse_more(ctx.csv.parser) == zsv_status_ok);
+  }
 
   zsv_overwrites_free(&ctx, &overwrite, writer);
 
