@@ -28,10 +28,14 @@ static void save_filtered_file_row_handler(void *ctx) {
   }
 
   char row_started = 0;
-  if(ixr->parent_rownum_display == zsvsheet_rownum_display_calculated) {
+  // if(ixr->parent_rownum_display == zsvsheet_rownum_display_calculated) {
+  if (ixr->parent_uib && ixr->parent_uib->rownum_display == zsvsheet_rownum_display_calculated) {
     // parent rownum was calculated; we need to create our own rownum column
+    // if(!ixr->parent_uib || !ixr->parent_uib->data_filename) { // parent_uib->rownum_display ==
+    // zsvsheet_rownum_display_calculated) {
+    //  ixr->parent_uib && ixr->parent_uib->data_filename)
     row_started = 1;
-    if(ixr->row_num == 1)
+    if (ixr->row_num == 1)
       zsv_writer_cell_s(ixr->writer, 1, (const unsigned char *)"Row #", 0); // to do: consolidate "Row #"
     else
       zsv_writer_cell_zu(ixr->writer, 1, ixr->row_num - 1);
@@ -55,7 +59,6 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *opts) {
   struct zsvsheet_indexer ixr = {0};
   ixr.filter = opts->row_filter;
   ixr.filter_len = opts->row_filter ? strlen(opts->row_filter) : 0;
-  ixr.parent_rownum_display = opts->parent_rownum_display;
 
   enum zsv_index_status ret = zsv_index_status_error;
   struct zsv_opts ix_zopts = opts->zsv_opts;
@@ -70,8 +73,11 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *opts) {
   ix_zopts.ctx = &ixr;
   ix_zopts.stream = fp;
 
+  ixr.parent_uib = opts->parent_uib;
+  //  ixr.parent_rownum_display = opts->parent_rownum_display;
   if (opts->row_filter) {
-    temp_filename = zsv_get_temp_filename("zsvsheet_filter_XXXXXXXX");
+    // temp_filename = zsv_get_temp_filename("zsvsheet_filter_XXXXXXXX");
+    asprintf(&temp_filename, "/tmp/zsvsheet-tmp-%s.tmp", opts->row_filter);
     if (!temp_filename)
       return ret;
 
@@ -129,7 +135,7 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *opts) {
   if (zst == zsv_status_no_more_input) {
     ret = zsv_index_status_ok;
     opts->uib->index = ixr.ix;
-    //    *opts->index = 
+    //    *opts->index =
   } else
     free(ixr.ix);
 

@@ -1,4 +1,5 @@
 int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zsv_optsp, const char *row_filter,
+                                 struct zsvsheet_ui_buffer *parent_uib, // if row_filter != NULL
                                  struct zsv_prop_handler *custom_prop_handler, const char *opts_used,
                                  struct zsvsheet_ui_buffer **ui_buffer_stack_bottom,
                                  struct zsvsheet_ui_buffer **ui_buffer_stack_top) {
@@ -6,11 +7,13 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
   struct zsvsheet_ui_buffer_opts uibopts = {0};
   struct zsvsheet_ui_buffer *current_ui_buff = *ui_buffer_stack_top;
   uibopts.filename = filename;
-  char in_filter = row_filter && current_ui_buff && current_ui_buff->filename == filename && current_ui_buff->data_filename != NULL;
-  if(in_filter)
-    uibopts.filename = current_ui_buff->data_filename;
-  if (zsv_optsp)
-    uibopts.zsv_opts = *zsv_optsp;
+  if (parent_uib && uibopts.filename == parent_uib->filename)
+    uibopts.parent_uib = parent_uib;
+  if (!(uibopts.parent_uib && uibopts.parent_uib->data_filename)) {
+    // use original zsv_opts
+    if (zsv_optsp)
+      uibopts.zsv_opts = *zsv_optsp;
+  }
   uibopts.buff_opts = &bopts;
   struct zsvsheet_opts zsvsheet_opts = {0};
   int err = 0;
@@ -24,15 +27,6 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
     return -1;
   }
   new_ui_buffer->cursor_row = 1; // first row is header
-  if(current_ui_buff) {
-    new_ui_buffer->rownum_display = current_ui_buff->rownum_display == zsvsheet_rownum_display_none ? zsvsheet_rownum_display_none :
-      zsvsheet_rownum_display_in_data;
-  }
-  if(in_filter) {
-     // in case it was previously set to current_ui_buff->data_filename
-    free(new_ui_buffer->filename);
-    new_ui_buffer->filename = strdup(filename);
-  }
   zsvsheet_ui_buffer_push(ui_buffer_stack_bottom, ui_buffer_stack_top, new_ui_buffer);
   return 0;
 }
@@ -48,7 +42,7 @@ zsvsheet_status zsvsheet_open_file(struct zsvsheet_proc_context *ctx, const char
   if (!di || !di->ui_buffers.base || !di->ui_buffers.current)
     return zsvsheet_status_error;
   int err =
-    zsvsheet_ui_buffer_open_file(filepath, zopts, NULL, NULL, NULL, di->ui_buffers.base, di->ui_buffers.current);
+    zsvsheet_ui_buffer_open_file(filepath, zopts, NULL, NULL, NULL, NULL, di->ui_buffers.base, di->ui_buffers.current);
   if (err)
     return zsvsheet_status_error;
   return zsvsheet_status_ok;

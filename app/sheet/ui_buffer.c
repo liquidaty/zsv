@@ -56,6 +56,7 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
 
 struct zsvsheet_ui_buffer_opts {
   struct zsvsheet_screen_buffer_opts *buff_opts;
+  struct zsvsheet_ui_buffer *parent_uib;
   const char *row_filter;
   const char *filename;
   struct zsv_opts zsv_opts; // options to use when opening this file

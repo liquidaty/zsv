@@ -50,7 +50,8 @@
 enum zsvsheet_rownum_display {
   zsvsheet_rownum_display_calculated = 0, // calculate and display a Row # column
   zsvsheet_rownum_display_none,           // just display data as-is
-  zsvsheet_rownum_display_in_data         // data already includes Row # as first column; display data as-is and retain for filters
+  zsvsheet_rownum_display_in_data // data already includes Row # as first column; display data as-is and retain for
+                                  // filters
 };
 
 struct zsvsheet_opts {
@@ -396,7 +397,7 @@ static zsvsheet_status zsvsheet_open_file_handler(struct zsvsheet_proc_context *
   if (*prompt_buffer == '\0')
     goto no_input;
 
-  if ((err = zsvsheet_ui_buffer_open_file(prompt_buffer, NULL, NULL, state->custom_prop_handler, state->opts_used,
+  if ((err = zsvsheet_ui_buffer_open_file(prompt_buffer, NULL, NULL, NULL, state->custom_prop_handler, state->opts_used,
                                           di->ui_buffers.base, di->ui_buffers.current))) {
     if (err > 0)
       zsvsheet_priv_set_status(di->dimensions, 1, "%s: %s", prompt_buffer, strerror(err));
@@ -425,8 +426,8 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
     goto no_input;
 
   if ((err = zsvsheet_ui_buffer_open_file(current_ui_buffer->filename, &current_ui_buffer->zsv_opts, prompt_buffer,
-                                          state->custom_prop_handler, state->opts_used, di->ui_buffers.base,
-                                          di->ui_buffers.current))) {
+                                          current_ui_buffer, state->custom_prop_handler, state->opts_used,
+                                          di->ui_buffers.base, di->ui_buffers.current))) {
     if (err > 0)
       zsvsheet_priv_set_status(di->dimensions, 1, "%s: %s", current_ui_buffer->filename, strerror(err));
     else if (err < 0)
@@ -573,7 +574,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   if (argc > 1) {
     const char *filename = argv[1];
-    if ((err = zsvsheet_ui_buffer_open_file(filename, optsp, NULL, custom_prop_handler, opts_used, &ui_buffers,
+    if ((err = zsvsheet_ui_buffer_open_file(filename, optsp, NULL, NULL, custom_prop_handler, opts_used, &ui_buffers,
                                             &current_ui_buffer))) {
       if (err > 0)
         perror(filename);
