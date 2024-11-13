@@ -180,7 +180,7 @@ test-echo-overwrite-auto: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@sqlite3 ${TEST_DATA_DIR}/.zsv/data/loans_2.csv/overwrite.sqlite3 < ${TEST_DATA_DIR}/loans_2_overwrite.sql
 	@${PREFIX} $< ${TEST_DATA_DIR}/loans_2.csv ${REDIRECT} ${TMP_DIR}/$@-after-ignored.out
 	@${CMP} ${TMP_DIR}/$@-after-ignored.out expected/$@-after-ignored.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} $< ${TEST_DATA_DIR}/loans_2.csv --overwrite-auto ${REDIRECT} ${TMP_DIR}/$@-after-applied.out
+	@${PREFIX} $< ${TEST_DATA_DIR}/loans_2.csv --apply-overwrites ${REDIRECT} ${TMP_DIR}/$@-after-applied.out
 	@${CMP} ${TMP_DIR}/$@-after-applied.out expected/$@-after-applied.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-echo-overwrite-csv: ${BUILD_DIR}/bin/zsv_echo${EXE} ${TEST_DATA_DIR}/loans_1-overwrite.csv

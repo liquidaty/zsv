@@ -360,6 +360,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return err;
   }
 
+  (void)(opts);
+  (void)(custom_prop_handler);
+  (void)(opts_used);
+
   struct zsv_overwrite_ctx ctx = {0};
   struct zsv_overwrite_args args = {0};
   // By default, save timestamps

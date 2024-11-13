@@ -71,7 +71,7 @@ test-add:
 	@${PREFIX} ${EXE} dummy2.csv add 2-4 VAL4 --no-timestamp
 	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,2,VAL1,,\n2,2,VAL2,,\n2,3,VAL3,,\n2,4,VAL4,,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} ${ECHO_EXE} --overwrite-auto dummy2.csv > ${TMP_DIR}/$@.out
+	@${PREFIX} ${ECHO_EXE} --apply-overwrites dummy2.csv > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 STAT_MOD_TS=$(shell if stat -c %Y Makefile >/dev/null 2>/dev/null; then echo 'stat -c %Y' ; else echo 'stat -f %m' ; fi)
@@ -94,7 +94,7 @@ test-echo-overwrite-auto:
 	@${PREFIX} ${EXE} dummy.csv clear 
 	@${PREFIX} ${EXE} dummy.csv add 1-0 ABC
 	@${PREFIX} ${EXE} dummy.csv add 2-2 123 
-	@${ECHO_EXE} --overwrite-auto dummy.csv > ${TMP_DIR}/$@.out 
+	@${ECHO_EXE} --apply-overwrites dummy.csv > ${TMP_DIR}/$@.out 
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
