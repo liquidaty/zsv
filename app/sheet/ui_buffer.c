@@ -32,6 +32,7 @@ struct zsvsheet_ui_buffer {
   // if non-null, called when buffer is closed
   void (*ext_on_close)(void *);
 
+  enum zsvsheet_rownum_display rownum_display; // rownum_display associated with underlying data
   unsigned char index_ready;
   unsigned char rownum_col_offset : 1;
   unsigned char index_started : 1;

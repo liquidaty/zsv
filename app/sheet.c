@@ -47,8 +47,14 @@
 /* TODO: move this somewhere else like common or utils */
 #define UNUSED(X) ((void)X)
 
+enum zsvsheet_rownum_display {
+  zsvsheet_rownum_display_calculated = 0, // calculate and display a Row # column
+  zsvsheet_rownum_display_none,           // just display data as-is
+  zsvsheet_rownum_display_in_data         // data already includes Row # as first column; display data as-is and retain for filters
+};
+
 struct zsvsheet_opts {
-  char hide_row_nums; // if 1, will load row nums
+  enum zsvsheet_rownum_display rownum_display;
   const char *find;
   size_t found_rownum;
 };

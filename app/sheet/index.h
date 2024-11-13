@@ -15,17 +15,20 @@ struct zsvsheet_indexer {
   size_t filter_len;
   zsv_csv_writer writer;
   FILE *filter_stream;
+  size_t row_num;
+  enum zsvsheet_rownum_display parent_rownum_display;
   char seen_header;
 };
 
 struct zsvsheet_index_opts {
+  enum zsvsheet_rownum_display parent_rownum_display;
   pthread_mutex_t *mutexp;
   const char *filename;
-  char **data_filenamep;
+  //  char **data_filenamep;
   const char *row_filter;
   struct zsv_opts zsv_opts;
-  struct zsv_index **index;
-  unsigned char *index_ready;
+  // struct zsv_index **index;
+  // unsigned char *index_ready;
   struct zsvsheet_ui_buffer *uib;
   int *errp;
   struct zsv_prop_handler *custom_prop_handler;
