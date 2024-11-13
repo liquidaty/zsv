@@ -1,32 +1,4 @@
 Row #     Country   City      AccentCit Region    Populatio Latitude  Longitude
-981       af        `abdul wa `Abdul Wa 10                  31.688852 64.303841
-982       mx        nuevo pro Nuevo Pro 05                  16.85     -91.15
-983       id        salukoni  Salukoni  21                  -.8941    119.6057
-984       pl        gory      Gory      74                  51.935054 20.057618
-985       mx        puente sa Puente Sa 27                  18        -93.3
-986       ru        teterki   Tetërki   69                  55.031861 31.564936
-987       us        staten    Staten    WV                  38.870277 -81.04916
-988       sd        kimposo   Kimposo   32                  7.6666667 26.2
-989       id        duluduo   Duluduo   31                  .5257     123.9527
-990       in        karavadi  Karavadi  02                  15.55     80.116667
-991       si        piro      Piro      04                  45.860555 14.065277
-992       id        tandulawa Tandulawa 18                  -10.2066  120.1874
-993       id        silir     Silir     07                  -7.491667 110.86944
-994       id        clibur    Clibur    07                  -7.465833 109.20944
-995       af        abdur rah Abdur Rah 28                  32.70046  66.714944
-996       af        `abd ur r `Abd ur R 23                  31.562358 66.335726
-997       af        `abdur ra `Abdur Ra 28                  32.70046  66.714944
-998       vn        suoi on   Suoi On   32                  20.916667 104.88333
-999       tn        dar chaou Dar Chaou 19                  36.844722 10.918889
-1000      af        `abd ur r `Abd ur R 35                  34.50872  70.23127
-1001      zr        kima      Kima      04                  -6.033333 24.483333
-1002      af        abdurrahi Abdurrahi 35                  34.446389 69.899722
-1003      id        palatiga  Palatiga  22                  -5.4701   122.6226
-1004      mg        anjavilav Anjavilav 01                  -13.5     49.983333
-1005      id        batuputih Batuputih 08                  -6.9      113.91666
-1006      gt        cardenas  Cardenas  09                  15.883333 -89.21666
-1007      af        abdurrahm Abdurrahm 19                  31.133611 61.822222
-1008      uz        aksultan  Aksultan  10                  39.783333 66.666666
 1009      pk        goth khal Goth Khal 02                  28.1074   67.9157
 1010      ht        vindio    Vindio    03                  19.748333 -73.04166
 1011      ht        petit bou Petit Bou 09                  19.816666 -72.56666
@@ -60,7 +32,7 @@ Row #     Country   City      AccentCit Region    Populatio Latitude  Longitude
 1039      us        olustee   Olustee   FL                  30.203888 -82.42888
 1040      af        abdurrakh Abdurrakh 29                  32.687827 68.11817
 1041      af        abdurrakh Abdurrakh 18                  34.226536 70.396255
-1042      zr        kakungu   Kakungu   10        52987     -2.216666 25.183333
+1042      zr        kakungu   Kakungu   10                  -2.216666 25.183333
 1043      ye        rababah   Rababah   13                  14.306666 44.075833
 1044      la        ban sadam Ban Sadam 02                  14.216667 105.83333
 1045      af        abdurrakh Abdurrakh 28                  32.077222 67.796058
@@ -75,26 +47,4 @@ Row #     Country   City      AccentCit Region    Populatio Latitude  Longitude
 1054      af        abdurrash Abdurrash 10                  31.802126 64.499738
 1055      af        `abd ur r `Abd ur R 10                  31.802126 64.499738
 1056      ir        dasht bar Dasht Bar 29                  28.4475   56.1341
-1057      mx        colonia a Colonia A 28                  25.866667 -97.48333
-1058      ro        lacu      Lacu      13                  46.883333 24.116667
-1059      af        abdurraza Abdurraza 23                  31.514004 65.377164
-1060      ir        qahreman  Qahreman  01                  39.2508   44.2627
-1061      ru        gridino   Gridino   88                  57.505511 39.573089
-1062      af        `abd ur r `Abd ur R 23                  31.514004 65.377164
-1063      ru        bazayevo  Bazayevo  73                  55.554351 48.397088
-1064      ir        ab barik  Ab Barik  42                  34.553769 58.24683
-1065      af        abdyan    Abdyan    18                  34.452759 70.473251
-1066      id        laokkola  Laokkola  08                  -7.0821   112.7698
-1067      af        abdzhoshi Abdzhoshi 17                  33.848611 68.831111
-1068      af        abdzhoshi Abdzhoshi 17                  33.851111 68.8725
-1069      tn        rhelissia Rhelissia 31                  33.436895 9.0095
-1070      af        ab-e `are Ab-e `Are 11                  35.11979  61.48511
-1071      af        ab-e `ari Ab-e `Ari 11                  35.11979  61.48511
-1072      ua        grydki    Grydki    24                  51.330504 24.587466
-1073      th        ban sai t Ban Sai T 43                  14.083333 101.2
-1074      af        ab-e bari Ab-e Bari 11                  34.739762 62.422353
-1075      tr        sofuolugu Sofuolugu 82                  40.687893 33.951667
-1076      af        ab-e bari Ab-e Bari 11                  34.902941 62.720077
-1077      id        tangsa    Tangsa    38                  -3.2512   119.805
-1078      th        naung cha Naung Cha 74                  13.9      101.53333
-? for help 981
+? for help 1009
