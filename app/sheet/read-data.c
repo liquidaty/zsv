@@ -93,6 +93,15 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     if (uibuff->index_ready) {
       opts.header_span = 0;
       opts.rows_to_ignore = 0;
+
+      if (uibuff->data_filename) {
+        struct zsv_opts filter_opts = {0};
+        filter_opts.stream = opts.stream;
+        filter_opts.max_columns = opts.max_columns;
+        filter_opts.max_row_size = opts.max_row_size;
+        filter_opts.max_rows = opts.max_rows;
+        opts = filter_opts;
+      }
       zst = zsv_index_seek_row(uibuff->index, &opts, start_row);
 
       zsv_delete(parser);
