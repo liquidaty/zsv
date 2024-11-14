@@ -23,6 +23,13 @@ struct zsv_index *zsv_index_new(void) {
   return ix;
 }
 
+void zsv_index_delete(struct zsv_index *ix) {
+  if (ix) {
+    free(ix->array);
+    free(ix);
+  }
+}
+
 enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, zsv_parser parser) {
   struct zsv_index_array *arr = ix->array;
   size_t len = arr->len, cap = arr->capacity;

@@ -119,7 +119,7 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
     ret = zsv_index_status_ok;
     *optsp->index = ixr.ix;
   } else
-    free(ixr.ix);
+    zsv_index_delete(ixr.ix);
 
 out:
   zsv_delete(ixr.parser);

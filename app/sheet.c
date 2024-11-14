@@ -412,15 +412,16 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
   int err;
 
-  UNUSED(ctx);
-
   get_subcommand("Filter", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row);
   if (*prompt_buffer == '\0')
     goto no_input;
 
-  if ((err = zsvsheet_ui_buffer_open_file(current_ui_buffer->filename, &current_ui_buffer->zsv_opts, prompt_buffer,
-                                          state->custom_prop_handler, state->opts_used, di->ui_buffers.base,
-                                          di->ui_buffers.current))) {
+  const char *data_filename = zsvsheet_buffer_data_filename(current_ui_buffer);
+  char is_filtered_file = !(data_filename == current_ui_buffer->filename);
+  struct zsv_opts *zsv_opts = is_filtered_file ? NULL : &current_ui_buffer->zsv_opts;
+  const char *opts_used = is_filtered_file ? NULL : state->opts_used;
+  if ((err = zsvsheet_ui_buffer_open_file(data_filename, zsv_opts, prompt_buffer, state->custom_prop_handler, opts_used,
+                                          di->ui_buffers.base, di->ui_buffers.current))) {
     if (err > 0)
       zsvsheet_priv_set_status(di->dimensions, 1, "%s: %s", current_ui_buffer->filename, strerror(err));
     else if (err < 0)
@@ -429,9 +430,18 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
       zsvsheet_priv_set_status(di->dimensions, 1, "Not found: %s", prompt_buffer);
     return zsvsheet_status_ignore;
   }
-  if (current_ui_buffer->dimensions.row_count < 2) {
+
+  struct zsvsheet_ui_buffer *new_ui_buffer = *state->display_info.ui_buffers.current;
+  /*
+  if (new_ui_buffer->dimensions.row_count < 2) {
     zsvsheet_ui_buffer_pop(di->ui_buffers.base, di->ui_buffers.current, NULL);
     zsvsheet_priv_set_status(di->dimensions, 1, "Not found: %s", prompt_buffer);
+    return zsvsheet_status_ignore;
+  }
+  */
+  if (is_filtered_file) {
+    free(new_ui_buffer->filename);
+    new_ui_buffer->filename = strdup(current_ui_buffer->filename);
   }
 no_input:
   return zsvsheet_status_ok;
@@ -446,6 +456,8 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
 
   switch (ctx->proc_id) {
   case zsvsheet_builtin_proc_quit:
+    //    while(*state->display_info.ui_buffers.current)
+    //      zsvsheet_ui_buffer_pop(state->display_info.ui_buffers.base, state->display_info.ui_buffers.current, NULL);
     return zsvsheet_status_exit;
   case zsvsheet_builtin_proc_resize:
     *(state->display_info.dimensions) = get_display_dimensions(1, 1);
@@ -650,7 +662,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   endwin();
   free(handler_state.find);
-  zsvsheet_ui_buffers_delete(ui_buffers);
+  zsvsheet_ui_buffers_delete(current_ui_buffer);
   zsvsheet_key_handlers_delete(&zsvsheet_key_handlers, &zsvsheet_next_key_handler);
   return 0;
 }

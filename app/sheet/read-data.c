@@ -29,19 +29,20 @@ static void *get_data_index(void *d);
 static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char *filename, struct zsv_opts *optsp,
                                  const char *row_filter, struct zsv_prop_handler *custom_prop_handler,
                                  const char *opts_used, pthread_mutex_t *mutexp) {
-  struct zsvsheet_index_opts *gdi = calloc(1, sizeof(*gdi));
-  gdi->mutexp = mutexp;
-  gdi->filename = filename;
-  gdi->data_filenamep = &uibuffp->data_filename;
-  gdi->zsv_opts = *optsp;
-  gdi->row_filter = row_filter;
-  gdi->index = &uibuffp->index;
-  gdi->index_ready = &uibuffp->index_ready;
-  gdi->custom_prop_handler = custom_prop_handler;
-  gdi->opts_used = opts_used;
-  gdi->uib = uibuffp;
+  struct zsvsheet_index_opts *ixopts = calloc(1, sizeof(*ixopts));
+  ixopts->mutexp = mutexp;
+  ixopts->filename = filename;
+  ixopts->data_filenamep = &uibuffp->data_filename;
+  ixopts->zsv_opts = *optsp;
+  ixopts->row_filter = row_filter;
+  ixopts->index = &uibuffp->index;
+  ixopts->index_ready = &uibuffp->index_ready;
+  ixopts->custom_prop_handler = custom_prop_handler;
+  ixopts->opts_used = opts_used;
+  ixopts->uib = uibuffp;
+  ixopts->uib->ixopts = ixopts;
   pthread_t thread;
-  pthread_create(&thread, NULL, get_data_index, gdi);
+  pthread_create(&thread, NULL, get_data_index, ixopts);
   pthread_detach(thread);
 }
 
@@ -221,9 +222,9 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   }
 
   if (ui_status) {
+    pthread_mutex_lock(&uibuff->mutex);
     if (uibuff->status)
       free(uibuff->status);
-    pthread_mutex_lock(&uibuff->mutex);
     uibuff->status = ui_status;
     pthread_mutex_unlock(&uibuff->mutex);
   }
@@ -251,17 +252,15 @@ static void *get_data_index(void *gdi) {
   pthread_mutex_lock(mutexp);
   *d->index_ready = 1;
 
-  if (d->uib && d->uib->status)
+  if (d->uib) {
     free(d->uib->status);
-
-  if (d->row_filter != NULL) {
-    if (d->uib->index->row_count > 0) {
-      d->uib->dimensions.row_count = d->uib->index->row_count + 1;
-      asprintf(&d->uib->status, "(%" PRIu64 " filtered rows) ", d->uib->index->row_count);
-    } else
-      d->uib->status = NULL;
-  } else {
     d->uib->status = NULL;
+    if (d->row_filter != NULL) {
+      if (d->uib->index->row_count > 0) {
+        d->uib->dimensions.row_count = d->uib->index->row_count + 1;
+        asprintf(&d->uib->status, "(%" PRIu64 " filtered rows) ", d->uib->index->row_count);
+      }
+    }
   }
   free(d);
   pthread_mutex_unlock(mutexp);
