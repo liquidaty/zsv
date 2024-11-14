@@ -1,6 +1,9 @@
 #ifndef ZSVSHEET_INTERNAL_H
 #define ZSVSHEET_INTERNAL_H
 
+#define ZSVSHEET_ROWNUM_HEADER "Row #"
+#define ZSVSHEET_ROWNUM_HEADER_LEN strlen(ZSVSHEET_ROWNUM_HEADER)
+
 enum zsvsheet_priv_status {
   zsvsheet_priv_status_ok = 0,
   zsvsheet_priv_status_memory,
