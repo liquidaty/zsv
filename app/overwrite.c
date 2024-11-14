@@ -304,7 +304,6 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
       err = 1;
       fprintf(stderr, "Value already exists at row %zu and column %zu, use --force to force insert\n",
               overwrite->row_ix, overwrite->col_ix);
-      return err;
     }
   } else {
     err = 1;
@@ -348,6 +347,10 @@ static void zsv_overwrites_bulk_add(void *ctx_v) {
   if(!overwrite.row_ix || !overwrite.col_ix || !overwrite.val.str)
     return; // cannot continue without a proper row, col, value overwrite
   zsv_overwrites_insert(ctx, &overwrite, &args);
+  if(overwrite.val.str)
+    free(overwrite.val.str);
+  if(args.author)
+    free(args.author);
 }
 
 static int zsv_overwrites_free(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
@@ -553,6 +556,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       if(argc - i > 1) {
         args.bulk_add = 1;
         ctx.csv.f = fopen((const char*)argv[++i], "rb");
+        opts->row_handler = zsv_overwrites_bulk_add;
       } else {
         fprintf(stderr, "Expected row and column\n");
         err = 1;
@@ -583,11 +587,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   else if (args.remove && ctx.sqlite3.db)
     zsv_overwrites_remove(&ctx, &overwrite, &args);
   else if ((args.bulk_add || args.bulk_remove) && ctx.sqlite3.db) {
-    opts->row_handler = zsv_overwrites_bulk_add;
     opts->ctx = &ctx;
     opts->stream = ctx.csv.f;
     ctx.csv.parser = zsv_new(opts);
     while(zsv_parse_more(ctx.csv.parser) == zsv_status_ok);
+    zsv_finish(ctx.csv.parser);
+    zsv_delete(ctx.csv.parser);
+    fclose(ctx.csv.f);
   }
 
   zsv_overwrites_free(&ctx, &overwrite, writer);
