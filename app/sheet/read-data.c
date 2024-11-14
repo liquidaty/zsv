@@ -102,6 +102,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
         filter_opts.max_row_size = opts.max_row_size;
         filter_opts.max_rows = opts.max_rows;
         opts = filter_opts;
+        uibuff->has_row_num = 1; // move this to coincide with when data_filename is assigned
       }
       zst = zsv_index_seek_row(uibuff->index, &opts, start_row);
 
