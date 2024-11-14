@@ -30,6 +30,8 @@ enum {
   zsvsheet_builtin_proc_open_file,
   zsvsheet_builtin_proc_resize,
   zsvsheet_builtin_proc_prompt,
+  zsvsheet_builtin_proc_help,
+  zsvsheet_builtin_proc_vim_g_key_binding_dmux,
 };
 
 #define ZSVSHEET_PROC_INVALID 0
@@ -73,9 +75,10 @@ zsvsheet_status zsvsheet_proc_invoke_from_keypress(zsvsheet_proc_id_t proc_id, i
 zsvsheet_status zsvsheet_proc_invoke(zsvsheet_proc_id_t proc_id, struct zsvsheet_proc_context *ctx);
 
 /* Register builtin procedure with fixed id */
-zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name, zsvsheet_proc_fn handler);
+zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name, const char *description,
+                                                  zsvsheet_proc_fn handler);
 
 /* Dynamically register a procedure, returns a positive id or negative error */
-zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, zsvsheet_proc_fn handler);
+zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, const char *description, zsvsheet_proc_fn handler);
 
 #endif /* ZSVSHEET_PROCEDURE_H */

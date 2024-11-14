@@ -355,10 +355,13 @@ static zsvsheet_status zsvsheet_find(struct zsvsheet_builtin_proc_state *state, 
   struct zsvsheet_opts zsvsheet_opts = {0};
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
 
+  if (!current_ui_buffer->filename)
+    goto out;
+
   if (!next) {
     get_subcommand("Find", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row);
     if (*prompt_buffer == '\0') {
-      goto no_input;
+      goto out;
     } else {
       free(state->find);
       state->find = strdup(prompt_buffer);
@@ -370,7 +373,7 @@ static zsvsheet_status zsvsheet_find(struct zsvsheet_builtin_proc_state *state, 
                               &di->update_buffer, state->custom_prop_handler, state->opts_used);
   }
 
-no_input:
+out:
   return zsvsheet_status_ok;
 }
 
@@ -413,9 +416,12 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
   int err;
 
+  if (!current_ui_buffer->filename)
+    goto out;
+
   get_subcommand("Filter", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row);
   if (*prompt_buffer == '\0')
-    goto no_input;
+    goto out;
 
   const char *data_filename = zsvsheet_buffer_data_filename(current_ui_buffer);
   char is_filtered_file = !(data_filename == current_ui_buffer->filename);
@@ -444,8 +450,83 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
     free(new_ui_buffer->filename);
     new_ui_buffer->filename = strdup(current_ui_buffer->filename);
   }
-no_input:
+out:
   return zsvsheet_status_ok;
+}
+
+static zsvsheet_status zsvsheet_help_handler(struct zsvsheet_proc_context *ctx) {
+  struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state *)ctx->subcommand_context;
+  struct zsvsheet_display_info *di = &state->display_info;
+  struct zsvsheet_screen_buffer_opts bopts = {
+    .no_rownum_column = 1,
+    .cell_buff_len = 64,
+    .max_cell_len = 0,
+    .rows = 256,
+  };
+  struct zsvsheet_ui_buffer_opts uibopts = {
+    .buff_opts = &bopts,
+    .filename = NULL,
+    .no_rownum_col_offset = 1,
+  };
+  struct zsvsheet_ui_buffer *uib;
+  zsvsheet_screen_buffer_t buffer;
+  enum zsvsheet_priv_status pstat;
+  enum zsvsheet_status stat = zsvsheet_status_error;
+  const size_t cols = 3;
+
+  buffer = zsvsheet_screen_buffer_new(cols, &bopts, &pstat);
+  if (pstat != zsvsheet_priv_status_ok)
+    goto free_buffer;
+
+  uib = zsvsheet_ui_buffer_new(buffer, &uibopts);
+  if (!uib)
+    goto free_buffer;
+
+  const char *head[3] = {"Key(s)", "Action", "Description"};
+  for (size_t j = 0; j < sizeof(head) / sizeof(head[0]); j++) {
+    pstat = zsvsheet_screen_buffer_write_cell(buffer, 0, j, (const unsigned char *)head[j]);
+    if (pstat != zsvsheet_priv_status_ok)
+      goto free_buffer;
+  }
+
+  size_t row = 1;
+  for (size_t i = 0; zsvsheet_get_key_binding(i) != NULL; i++) {
+    struct zsvsheet_key_binding *kb = zsvsheet_get_key_binding(i);
+    struct zsvsheet_procedure *proc = zsvsheet_find_procedure(kb->proc_id);
+
+    if (proc == NULL || kb->hidden)
+      continue;
+
+    const char *desc[3] = {
+      zsvsheet_key_binding_ch_name(kb),
+      proc->name,
+      proc->description,
+    };
+
+    for (size_t j = 0; j < cols; j++) {
+      pstat = zsvsheet_screen_buffer_write_cell(buffer, row, j, (const unsigned char *)desc[j]);
+      if (pstat != zsvsheet_priv_status_ok)
+        goto free_buffer;
+    }
+
+    row++;
+  }
+
+  uib->dimensions.col_count = cols;
+  uib->dimensions.row_count = row;
+  uib->buff_used_rows = row;
+
+  if (asprintf(&uib->status, "<esc> to exit help ") == -1)
+    goto free_buffer;
+
+  zsvsheet_ui_buffer_push(di->ui_buffers.base, di->ui_buffers.current, uib);
+  stat = zsvsheet_status_ok;
+  goto out;
+
+free_buffer:
+  zsvsheet_screen_buffer_delete(buffer);
+out:
+  return stat;
 }
 
 /* We do most procedures in one handler. More complex procedures can be
@@ -510,32 +591,34 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
 struct builtin_proc_desc {
   int proc_id;
   const char *name;
+  const char *description;
   zsvsheet_proc_fn handler;
 } builtin_procedures[] = {
-  { zsvsheet_builtin_proc_quit,             "quit", zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_escape,           NULL,   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_bottom,      NULL,   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_top,         NULL,   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_first_col,   NULL,   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_pg_down,          "pageup", zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_pg_up,            "pagedn", zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_last_col,    NULL,   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_up,          NULL,   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_down,        NULL,   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_left,        NULL,   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_right,       NULL,   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_find,             NULL,   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_find_next,        NULL,   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_resize,           NULL,   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_open_file,        "open",   zsvsheet_open_file_handler  },
-  { zsvsheet_builtin_proc_filter,           "filter", zsvsheet_filter_handler     },
+  { zsvsheet_builtin_proc_quit,           "quit",   "Exit the application",                                            zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_escape,         "escape", "Leave the current view or cancel a subcommand",                   zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_bottom,    "bottom", "Jump to the last row",                                            zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_top,       "top",    "Jump to the first row",                                           zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_first_col, "first",  "Jump to the first column",                                        zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_pg_down,        "pagedown", "Move down one page",                                              zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_pg_up,          "pageup", "Move up one page",                                                zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_last_col,  "last",   "Jump to the last column",                                         zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_up,        "up",     "Move up one row",                                                 zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_down,      "down",   "Move down one row",                                               zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_left,      "left",   "Move left one column",                                            zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_right,     "right",  "Move right one column",                                           zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_find,           "find",   "Set a search term and jump to the first result after the cursor", zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_find_next,      "next",   "Jump to the next search result",                                  zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_resize,         "resize", "Resize the layout to fit new terminal dimensions",                zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_open_file,      "open",   "Open a another CSV file",                                         zsvsheet_open_file_handler  },
+  { zsvsheet_builtin_proc_filter,         "filter", "Hide rows that do not contain the specified text",                zsvsheet_filter_handler     },
+  { zsvsheet_builtin_proc_help,           "help",   "Display a list of actions and key-bindings",                      zsvsheet_help_handler       },
   { -1, NULL, NULL }
 };
 /* clang-format on */
 
 void zsvsheet_register_builtin_procedures(void) {
   for (struct builtin_proc_desc *desc = builtin_procedures; desc->proc_id != -1; ++desc) {
-    if (zsvsheet_register_builtin_proc(desc->proc_id, desc->name, desc->handler) < 0) {
+    if (zsvsheet_register_builtin_proc(desc->proc_id, desc->name, desc->description, desc->handler) < 0) {
       fprintf(stderr, "failed to register builtin procedure\n");
     }
   }

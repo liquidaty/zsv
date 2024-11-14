@@ -15,6 +15,7 @@
 struct zsvsheet_procedure {
   zsvsheet_proc_id_t id;
   const char *name;
+  const char *description;
   zsvsheet_proc_fn handler;
 };
 
@@ -75,12 +76,14 @@ static zsvsheet_proc_id_t zsvsheet_do_register_proc(struct zsvsheet_procedure *p
   return proc->id;
 }
 
-zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name, zsvsheet_proc_fn handler) {
-  struct zsvsheet_procedure procedure = {.id = id, .name = name, .handler = handler};
+zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name, const char *description,
+                                                  zsvsheet_proc_fn handler) {
+  struct zsvsheet_procedure procedure = {.id = id, .name = name, .description = description, .handler = handler};
   return zsvsheet_do_register_proc(&procedure);
 }
 
-zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, zsvsheet_proc_fn handler) {
-  struct zsvsheet_procedure procedure = {.id = zsvsheet_generate_proc_id(), .name = name, .handler = handler};
+zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, const char *description, zsvsheet_proc_fn handler) {
+  struct zsvsheet_procedure procedure = {
+    .id = zsvsheet_generate_proc_id(), .name = name, .description = description, .handler = handler};
   return zsvsheet_do_register_proc(&procedure);
 }

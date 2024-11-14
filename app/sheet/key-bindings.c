@@ -1,7 +1,9 @@
 #include "procedure.h"
 #include "key-bindings.h"
 
+#include <errno.h>
 #include <stdio.h>
+#include <assert.h>
 
 #ifndef ZSVSHEET_CTRL
 /* clang-format off */
@@ -49,6 +51,16 @@ int zsvsheet_register_proc_key_binding(char ch, zsvsheet_proc_id_t proc_id) {
     .proc_id = proc_id,
   };
   return zsvsheet_register_key_binding(&binding);
+}
+
+struct zsvsheet_key_binding *zsvsheet_get_key_binding(size_t i) {
+  if (i >= MAX_KEY_BINDINGS)
+    return NULL;
+
+  if (key_bindings[i].ch != -1)
+    return &key_bindings[i];
+
+  return NULL;
 }
 
 struct zsvsheet_key_binding *zsvsheet_find_key_binding(int ch) {
@@ -111,8 +123,11 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
   { .ch = 'q',                 .proc_id = zsvsheet_builtin_proc_quit,          },
 
   { .ch = 27,                  .proc_id = zsvsheet_builtin_proc_escape,        },
-  { .ch = KEY_RESIZE,          .proc_id = zsvsheet_builtin_proc_resize,        },
-
+  {
+    .ch = KEY_RESIZE,
+    .proc_id = zsvsheet_builtin_proc_resize,
+    .hidden = 1,
+  },
   { .ch = '^',                 .proc_id = zsvsheet_builtin_proc_move_first_col,},
   { .ch = '$',                 .proc_id = zsvsheet_builtin_proc_move_last_col, },
   { .ch = KEY_SLEFT,           .proc_id = zsvsheet_builtin_proc_move_first_col,},
@@ -132,7 +147,12 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
   { .ch = KEY_NPAGE,           .proc_id = zsvsheet_builtin_proc_pg_down,       },
   { .ch = KEY_PPAGE,           .proc_id = zsvsheet_builtin_proc_pg_up,         },
 
-  { .ch = 'g',                 .handler = zsvsheet_vim_g_key_binding_dmux_handler },
+  {
+    .ch = 'g',
+    .ch_name = "g g",
+    .proc_id = zsvsheet_builtin_proc_move_top,
+    .handler = zsvsheet_vim_g_key_binding_dmux_handler
+  },
   { .ch = 'G',                 .proc_id = zsvsheet_builtin_proc_move_bottom,   },
   /* Shift up/down also move you to the top/bottom of the page but have a
    * slightly different behaviour in terms of what ends up in the view but 
@@ -150,6 +170,7 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
   /* Open is a subcommand only in vim. Keeping the binding for now */
   { .ch = 'e',                 .proc_id = zsvsheet_builtin_proc_open_file,     },
   { .ch = 'f',                 .proc_id = zsvsheet_builtin_proc_filter,        },
+  { .ch = '?',                 .proc_id = zsvsheet_builtin_proc_help,          },
 
   { .ch = -1                                                          }
 };
@@ -183,8 +204,11 @@ zsvsheet_status zsvsheet_emacs_Cs_key_binding_dmux_handler(struct zsvsheet_key_b
 /* clang-format off */
 struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
   { .ch = 27,                  .proc_id = zsvsheet_builtin_proc_escape,        },
-  { .ch = KEY_RESIZE,          .proc_id = zsvsheet_builtin_proc_resize,        },
-
+  {
+    .ch = KEY_RESIZE,
+    .proc_id = zsvsheet_builtin_proc_resize,
+    .hidden = 1,
+  },
   { .ch = ZSVSHEET_CTRL('a'),  .proc_id = zsvsheet_builtin_proc_move_first_col,},
   { .ch = ZSVSHEET_CTRL('e'),  .proc_id = zsvsheet_builtin_proc_move_last_col,},
 
@@ -206,6 +230,8 @@ struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
   { .ch = ZSVSHEET_CTRL('f'),     .handler = zsvsheet_emacs_Cf_key_binding_dmux_handler,  },
   /* No such thing in emacs, find a more suitable binding */
   { .ch = 'f',                    .proc_id = zsvsheet_builtin_proc_filter,        },
+  { .ch = ZSVSHEET_CTRL('h'),     .proc_id = zsvsheet_builtin_proc_help,          },
+
 
   { .ch = -1                                                          }
 };
@@ -213,4 +239,44 @@ struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
 
 void zsvsheet_register_emacs_key_bindings(void) {
   zsvsheet_register_builtin_key_bindings(zsvsheet_emacs_key_bindings);
+}
+
+struct zsvsheet_ch_name {
+  int ch;
+  const char *name;
+};
+
+/* clang-format off */
+struct zsvsheet_ch_name zsvsheet_common_ch_names[] = {
+  { .ch = KEY_RESIZE,         .name = "<resize>"        },
+  { .ch = 27,                 .name = "<esc>"           },
+  { .ch = KEY_SLEFT,          .name = "<shift><left>"   },
+  { .ch = KEY_SRIGHT,         .name = "<shift><right>"  },
+  { .ch = KEY_UP,             .name = "<up>"            },
+  { .ch = KEY_DOWN,           .name = "<down>"          },
+  { .ch = KEY_LEFT,           .name = "<left>"          },
+  { .ch = KEY_RIGHT,          .name = "<right>"         },
+  { .ch = ZSVSHEET_CTRL('a'), .name = "<ctrl>a"         },
+  { .ch = ZSVSHEET_CTRL('d'), .name = "<ctrl>d"         },
+  { .ch = ZSVSHEET_CTRL('e'), .name = "<ctrl>e"         },
+  { .ch = ZSVSHEET_CTRL('f'), .name = "<ctrl>f"         },
+  { .ch = ZSVSHEET_CTRL('h'), .name = "<ctrl>f"         },
+  { .ch = ZSVSHEET_CTRL('u'), .name = "<ctrl>u"         },
+  { .ch = ZSVSHEET_CTRL('v'), .name = "<ctrl>v"         },
+  { .ch = KEY_NPAGE,          .name = "<page up>"       },
+  { .ch = KEY_PPAGE,          .name = "<page down>"     },
+  { .ch = -1                                            },
+};
+/* clang-format on */
+
+const char *zsvsheet_key_binding_ch_name(struct zsvsheet_key_binding *binding) {
+  if (binding->ch_name)
+    return binding->ch_name;
+
+  for (int i = 0; zsvsheet_common_ch_names[i].ch != -1; i++) {
+    if (zsvsheet_common_ch_names[i].ch == binding->ch)
+      return zsvsheet_common_ch_names[i].name;
+  }
+
+  return keyname(binding->ch);
 }
