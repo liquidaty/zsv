@@ -32,10 +32,11 @@ struct zsv_overwrite_args {
   // options
   unsigned char force : 1;
   unsigned char a1 : 1;
-  unsigned char timestamp : 1;
   unsigned char bulk_add: 1;
   unsigned char bulk_remove: 1;
   unsigned char *old_value;
+  unsigned char *author;
+  size_t timestamp;
   // commands
   unsigned char list : 1;
   unsigned char clear : 1;
@@ -292,10 +293,13 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
     sqlite3_bind_int64(query, 2, overwrite->col_ix);
     sqlite3_bind_text(query, 3, (const char *)overwrite->val.str, -1, SQLITE_STATIC);
     if (args->timestamp)
-      sqlite3_bind_int64(query, 4, time(NULL));
+      sqlite3_bind_int64(query, 4, args->timestamp);
     else
       sqlite3_bind_null(query, 4);
-    sqlite3_bind_text(query, 5, "", -1, SQLITE_STATIC); // author
+    if(args->author)
+      sqlite3_bind_text(query, 5, (const char*)args->author, -1, SQLITE_STATIC);
+    else
+      sqlite3_bind_text(query, 5, "", -1, SQLITE_STATIC);
     if (sqlite3_step(query) != SQLITE_DONE) {
       err = 1;
       fprintf(stderr, "Value already exists at row %zu and column %zu, use --force to force insert\n",
@@ -318,10 +322,14 @@ static void zsv_overwrites_bulk_add(void *ctx_v) {
   if(zsv_row_is_blank(ctx->csv.parser))
     return;
   struct zsv_overwrite_data overwrite = {0};
+  struct zsv_overwrite_args args = {0};
+  args.timestamp = 0;
   size_t c_count = zsv_cell_count(ctx->csv.parser);
   for (size_t i = 0; i < c_count; i++) {
     struct zsv_cell cell = zsv_get_cell(ctx->csv.parser, i);
-    if(cell.len > 0 && !strncmp((const char*)cell.str, "row", cell.len)) {
+    if(cell.len == 0 || !cell.str)
+      continue;
+    if(!strncmp((const char*)cell.str, "row", cell.len)) {
       return;
     }
     if(!overwrite.row_ix)
@@ -329,16 +337,16 @@ static void zsv_overwrites_bulk_add(void *ctx_v) {
     else if(!overwrite.col_ix)
       overwrite.col_ix = atol((const char*)cell.str);
     else if(!overwrite.val.str) {
-      if(cell.len == 0 || !cell.str)
-        return;
       overwrite.val.str = (unsigned char*)strndup((const char*)cell.str, cell.len);
       overwrite.val.len = cell.len;
+    } else if(!args.timestamp) {
+      args.timestamp = (size_t)atol((const char*)cell.str);
+    } else if(!args.author) {
+      args.author = (unsigned char*)strndup((const char*)cell.str, cell.len);
     }
   }
   if(!overwrite.row_ix || !overwrite.col_ix || !overwrite.val.str)
     return; // cannot continue without a proper row, col, value overwrite
-  struct zsv_overwrite_args args = {0};
-  args.timestamp = 1;
   zsv_overwrites_insert(ctx, &overwrite, &args);
 }
 
@@ -495,7 +503,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   struct zsv_overwrite_ctx ctx = {0};
   struct zsv_overwrite_args args = {0};
   // By default, save timestamps
-  args.timestamp = 1;
+  args.timestamp = (size_t)time(NULL);
   struct zsv_overwrite_data overwrite = {0};
   struct zsv_csv_writer_options writer_opts = {0};
 
