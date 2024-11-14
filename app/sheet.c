@@ -585,10 +585,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         perror(filename);
       else
         fprintf(stderr, "%s: no data found", filename); // to do: change this to a base-buff status msg
-      return -1;
+
+      err = -1;
+      goto zsvsheet_exit;
     }
   }
 
+  err = 0;
   header_span = 1;
   initscr();
   noecho();
@@ -662,9 +665,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   endwin();
   free(handler_state.find);
+zsvsheet_exit:
   zsvsheet_ui_buffers_delete(current_ui_buffer);
   zsvsheet_key_handlers_delete(&zsvsheet_key_handlers, &zsvsheet_next_key_handler);
-  return 0;
+  return err;
 }
 
 const char *display_cell(struct zsvsheet_screen_buffer *buff, size_t data_row, size_t data_col, int row, int col,
