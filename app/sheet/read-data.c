@@ -121,6 +121,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   size_t find_len = zsvsheet_opts->find ? strlen(zsvsheet_opts->find) : 0;
   size_t rows_searched = 0;
   zsvsheet_screen_buffer_t buffer = uibuff ? uibuff->buffer : NULL;
+  if (uibuff && uibuff->has_row_num)
+    zsvsheet_opts->hide_row_nums = 1;
 
   while (zsv_next_row(parser) == zsv_status_row &&
          (rows_read == 0 || rows_read < zsvsheet_screen_buffer_rows(buffer))) { // for each row
@@ -138,6 +140,18 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       *uibufferp = uibuff = tmp_uibuff;
       row_filter = uibuff ? uibuff->row_filter : NULL;
       row_filter_len = row_filter ? strlen(row_filter) : 0;
+    }
+
+    // row number
+    size_t rownum_column_offset = 0;
+    if (rows_read == 0 && zsvsheet_opts->hide_row_nums == 0) {
+      // Check if we already have Row #
+      struct zsv_cell c = zsv_get_cell(parser, 0);
+      if (c.len == ZSVSHEET_ROWNUM_HEADER_LEN && !memcmp(c.str, ZSVSHEET_ROWNUM_HEADER, c.len)) {
+        zsvsheet_opts->hide_row_nums = 1;
+        if (uibuff)
+          uibuff->has_row_num = 1;
+      }
     }
 
     original_row_num++;
@@ -169,12 +183,9 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       continue;
     }
 
-    // row number
-    size_t rownum_column_offset = 0;
     if (zsvsheet_opts->hide_row_nums == 0) {
       if (rows_read == 0) // header
-        zsvsheet_screen_buffer_write_cell(buffer, 0, 0, (const unsigned char *)"Row #");
-      /////
+        zsvsheet_screen_buffer_write_cell(buffer, 0, 0, (const unsigned char *)ZSVSHEET_ROWNUM_HEADER);
       else {
         char buff[32];
         int n = snprintf(buff, sizeof(buff), "%zu", original_row_num - 1);
