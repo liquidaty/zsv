@@ -17,6 +17,7 @@ struct zsv_overwrite_ctx {
     sqlite3_stmt *stmt; // select row, column, overwrite
     const char *sql;
   } sqlite3;
+  size_t row_ix;
 };
 
 /**

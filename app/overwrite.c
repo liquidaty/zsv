@@ -44,6 +44,19 @@ struct zsv_overwrite_args {
   unsigned char remove : 1;
 };
 
+struct zsv_overwrite {
+  struct zsv_overwrite_ctx *ctx;
+  struct zsv_overwrite_args *args;
+  struct zsv_overwrite_data *overwrite;
+  // bulk indexes
+  size_t row_ix;
+  size_t col_ix;
+  size_t val_ix;
+  size_t old_value_ix;
+  size_t timestamp_ix;
+  size_t author_ix;
+};
+
 const char *zsv_overwrite_usage_msg[] = {
   APPNAME " - Manage overwrites associated with a CSV file",
   "",
@@ -317,44 +330,69 @@ static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overw
   return err;
 }
 
-static void zsv_overwrites_bulk(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
-                                struct zsv_overwrite_args *args) {
-  args->timestamp = 0;
-  size_t c_count = zsv_cell_count(ctx->csv.parser);
-  if (ctx->row_ix == 0) { // header
-    // TODO: handle header parsing
+static void zsv_overwrites_bulk(struct zsv_overwrite *data) {
+  data->args->timestamp = 0;
+  size_t c_count = zsv_cell_count(data->ctx->csv.parser);
+  if (data->ctx->row_ix == 0) { // header
+    for(size_t i = 0; i < c_count; i++) {
+      struct zsv_cell cell = zsv_get_cell(data->ctx->csv.parser, i);
+      if(cell.len == 0 || !cell.str)
+        continue;
+      if(!strncmp((const char*)cell.str, "row", cell.len))
+        data->row_ix = i;
+      else if(!strncmp((const char*)cell.str, "col", cell.len))
+        data->col_ix = i;
+      else if(!strncmp((const char*)cell.str, "value", cell.len))
+        data->val_ix = i;
+      else if(!strncmp((const char*)cell.str, "timestamp", cell.len))
+        data->timestamp_ix = i;
+      else if(!strncmp((const char*)cell.str, "old value", cell.len))
+        data->old_value_ix = i;
+      else if(!strncmp((const char*)cell.str, "author", cell.len))
+        data->author_ix = i;
+      else
+        fprintf(stderr, "Unregonized column %.*s\n", (int)cell.len, cell.str);
+    }
+    data->ctx->row_ix++;
     return;
   }
+
   for (size_t i = 0; i < c_count; i++) {
-    struct zsv_cell cell = zsv_get_cell(ctx->csv.parser, i);
+    struct zsv_cell cell = zsv_get_cell(data->ctx->csv.parser, i);
     if (cell.len == 0 || !cell.str)
       continue;
-    if (!overwrite->row_ix)
-      overwrite->row_ix = atol((const char *)cell.str);
-    else if (!overwrite->col_ix)
-      overwrite->col_ix = atol((const char *)cell.str);
-    else if (!overwrite->val.str) {
-      overwrite->val.str = (unsigned char *)strndup((const char *)cell.str, cell.len);
-      overwrite->val.len = cell.len;
-    } else if (!args->timestamp) {
-      args->timestamp = (size_t)atol((const char *)cell.str);
-    } else if (!args->author) {
-      args->author = (unsigned char *)strndup((const char *)cell.str, cell.len);
+    if (i == data->row_ix)
+      data->overwrite->row_ix = atol((const char *)cell.str);
+    else if (i == data->col_ix)
+      data->overwrite->col_ix = atol((const char *)cell.str);
+    else if (i == data->timestamp_ix) 
+      data->args->timestamp = (size_t)atol((const char *)cell.str);
+    else if (i == data->author_ix)
+      data->args->author = (unsigned char *)strndup((const char *)cell.str, cell.len);
+    else if (i == data->old_value_ix)
+      data->args->old_value = (unsigned char *)strndup((const char *)cell.str, cell.len);
+    else if (i == data->val_ix) {
+      data->overwrite->val.str = (unsigned char *)strndup((const char *)cell.str, cell.len);
+      data->overwrite->val.len = cell.len;
     }
   }
-  if (!overwrite->row_ix || !overwrite->col_ix || !overwrite->val.str)
+  if (!data->overwrite->row_ix || !data->overwrite->col_ix || !data->overwrite->val.str) {
+    printf("Overwrite failed: %zu %zu %zu\n", data->val_ix, data->row_ix, data->col_ix);
     return; // cannot continue without a proper row, col, value overwrite
-  ctx->row_ix++;
+  }
+  data->ctx->row_ix++;
 }
 
 static void zsv_overwrites_bulk_add(void *ctx_v) {
-  struct zsv_overwrite_ctx *ctx = (struct zsv_overwrite_ctx *)ctx_v;
-  if (zsv_row_is_blank(ctx->csv.parser))
+  struct zsv_overwrite *data = (struct zsv_overwrite *)ctx_v;
+  if (zsv_row_is_blank(data->ctx->csv.parser))
     return;
   struct zsv_overwrite_data overwrite = {0};
   struct zsv_overwrite_args args = {0};
-  zsv_overwrites_bulk(ctx, &overwrite, &args);
-  zsv_overwrites_insert(ctx, &overwrite, &args);
+  data->args = &args;
+  data->overwrite = &overwrite;
+  zsv_overwrites_bulk(data);
+  zsv_overwrites_insert(data->ctx, data->overwrite, data->args);
   if (overwrite.val.str)
     free(overwrite.val.str);
   if (args.author)
@@ -362,13 +400,15 @@ static void zsv_overwrites_bulk_add(void *ctx_v) {
 }
 
 static void zsv_overwrites_bulk_remove(void *ctx_v) {
-  struct zsv_overwrite_ctx *ctx = (struct zsv_overwrite_ctx *)ctx_v;
-  if (zsv_row_is_blank(ctx->csv.parser))
+  struct zsv_overwrite *data = (struct zsv_overwrite *)ctx_v;
+  if (zsv_row_is_blank(data->ctx->csv.parser))
     return;
   struct zsv_overwrite_data overwrite = {0};
   struct zsv_overwrite_args args = {0};
-  zsv_overwrites_bulk(ctx, &overwrite, &args);
-  zsv_overwrites_remove(ctx, &overwrite, &args);
+  data->args = &args;
+  data->overwrite = &overwrite;
+  zsv_overwrites_bulk(data);
+  zsv_overwrites_remove(data->ctx, data->overwrite, data->args);
   if (overwrite.val.str)
     free(overwrite.val.str);
   if (args.author)
@@ -601,6 +641,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
   }
 
+  struct zsv_overwrite data = {0};
+  data.ctx = &ctx;
+  data.args = &args;
+  data.overwrite = &overwrite;
+
   if (err)
     return err;
 
@@ -618,7 +663,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   else if (args.remove && ctx.sqlite3.db)
     zsv_overwrites_remove(&ctx, &overwrite, &args);
   else if ((args.bulk_add || args.bulk_remove) && ctx.sqlite3.db) {
-    opts->ctx = &ctx;
+    opts->ctx = &data;
     opts->stream = ctx.csv.f;
     ctx.csv.parser = zsv_new(opts);
     while (zsv_parse_more(ctx.csv.parser) == zsv_status_ok)
