@@ -119,7 +119,7 @@ static int zsv_overwrites_init(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
   }
   */
 
-  if (sqlite3_open_v2(overwrites_fn, &ctx->sqlite3.db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK || args->add ||
+  if (sqlite3_open_v2(overwrites_fn, &ctx->sqlite3.db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK || args->add || args->bulk_add || args->bulk_remove ||
       args->remove || args->clear) {
     sqlite3_close(ctx->sqlite3.db);
     if (sqlite3_open_v2(overwrites_fn, &ctx->sqlite3.db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL) !=
@@ -271,6 +271,8 @@ static int zsv_overwrites_replace(struct zsv_overwrite_ctx *ctx, struct zsv_over
 
 static int zsv_overwrites_insert(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
                                  const struct zsv_overwrite_args *args) {
+  if(!overwrite->val.str)
+    return 1;
   if (args->force && zsv_overwrites_has_value(ctx, overwrite))
     return zsv_overwrites_replace(ctx, overwrite, args);
 
@@ -317,13 +319,9 @@ static void zsv_overwrites_bulk_add(void *ctx_v) {
     return;
   struct zsv_overwrite_data overwrite = {0};
   size_t c_count = zsv_cell_count(ctx->csv.parser);
-  if(c_count > 3) {
-    fprintf(stderr, "Author and timestamp rows are not supported yet\n");
-  }
   for (size_t i = 0; i < c_count; i++) {
     struct zsv_cell cell = zsv_get_cell(ctx->csv.parser, i);
     if(cell.len > 0 && !strncmp((const char*)cell.str, "row", cell.len)) {
-      printf("Skipping header\n");
       return;
     }
     if(!overwrite.row_ix)
@@ -331,11 +329,16 @@ static void zsv_overwrites_bulk_add(void *ctx_v) {
     else if(!overwrite.col_ix)
       overwrite.col_ix = atol((const char*)cell.str);
     else if(!overwrite.val.str) {
-      overwrite.val.str = cell.str;
+      if(cell.len == 0 || !cell.str)
+        return;
+      overwrite.val.str = (unsigned char*)strndup((const char*)cell.str, cell.len);
       overwrite.val.len = cell.len;
     }
   }
+  if(!overwrite.row_ix || !overwrite.col_ix || !overwrite.val.str)
+    return; // cannot continue without a proper row, col, value overwrite
   struct zsv_overwrite_args args = {0};
+  args.timestamp = 1;
   zsv_overwrites_insert(ctx, &overwrite, &args);
 }
 
