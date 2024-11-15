@@ -681,6 +681,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   noecho();
   keypad(stdscr, TRUE);
   cbreak();
+  set_escdelay(30);
   struct zsvsheet_display_dimensions display_dims = get_display_dimensions(1, 1);
   display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
 
