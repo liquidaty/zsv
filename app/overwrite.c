@@ -334,21 +334,21 @@ static void zsv_overwrites_bulk(struct zsv_overwrite *data) {
   data->args->timestamp = 0;
   size_t c_count = zsv_cell_count(data->ctx->csv.parser);
   if (data->ctx->row_ix == 0) { // header
-    for(size_t i = 0; i < c_count; i++) {
+    for (size_t i = 0; i < c_count; i++) {
       struct zsv_cell cell = zsv_get_cell(data->ctx->csv.parser, i);
-      if(cell.len == 0 || !cell.str)
+      if (cell.len == 0 || !cell.str)
         continue;
-      if(!strncmp((const char*)cell.str, "row", cell.len))
+      if (!strncmp((const char *)cell.str, "row", cell.len))
         data->row_ix = i;
-      else if(!strncmp((const char*)cell.str, "col", cell.len))
+      else if (!strncmp((const char *)cell.str, "col", cell.len))
         data->col_ix = i;
-      else if(!strncmp((const char*)cell.str, "value", cell.len))
+      else if (!strncmp((const char *)cell.str, "value", cell.len))
         data->val_ix = i;
-      else if(!strncmp((const char*)cell.str, "timestamp", cell.len))
+      else if (!strncmp((const char *)cell.str, "timestamp", cell.len))
         data->timestamp_ix = i;
-      else if(!strncmp((const char*)cell.str, "old value", cell.len))
+      else if (!strncmp((const char *)cell.str, "old value", cell.len))
         data->old_value_ix = i;
-      else if(!strncmp((const char*)cell.str, "author", cell.len))
+      else if (!strncmp((const char *)cell.str, "author", cell.len))
         data->author_ix = i;
       else
         fprintf(stderr, "Unregonized column %.*s\n", (int)cell.len, cell.str);
