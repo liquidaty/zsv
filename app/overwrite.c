@@ -104,6 +104,17 @@ const char *zsv_overwrite_usage_msg[] = {
   "  and may optionally include \"old value\", \"timestamp\" and/or \"author\"",
   NULL};
 
+static const char* strdup_n(const char *str, size_t chars) {
+  char *buffer = malloc(chars+1);
+  size_t i;
+  if(buffer) {
+    for(i = 0; i < chars && str[i] != '\0'; i++)
+      buffer[i] = str[i];
+    buffer[i] = '\0';
+  }
+  return buffer;
+}
+
 static int zsv_overwrite_usage() {
   for (size_t i = 0; zsv_overwrite_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", zsv_overwrite_usage_msg[i]);
@@ -362,11 +373,11 @@ static void zsv_overwrites_bulk(struct zsv_overwrite *data) {
     else if (i == data->timestamp_ix)
       data->args->timestamp = (size_t)atol((const char *)cell.str);
     else if (i == data->author_ix)
-      data->args->author = (unsigned char *)strndup((const char *)cell.str, cell.len);
+      data->args->author = (unsigned char *)strdup_n((const char *)cell.str, cell.len);
     else if (i == data->old_value_ix)
-      data->args->old_value = (unsigned char *)strndup((const char *)cell.str, cell.len);
+      data->args->old_value = (unsigned char *)strdup_n((const char *)cell.str, cell.len);
     else if (i == data->val_ix) {
-      data->overwrite->val.str = (unsigned char *)strndup((const char *)cell.str, cell.len);
+      data->overwrite->val.str = (unsigned char *)strdup_n((const char *)cell.str, cell.len);
       data->overwrite->val.len = cell.len;
     }
   }
