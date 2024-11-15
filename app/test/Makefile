@@ -63,9 +63,9 @@ COLOR_RED=\033[1;31m
 COLOR_BLUE=\033[1;34m
 COLOR_PINK=\033[1;35m
 
-TEST_PASS=echo "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
-TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
-TEST_INIT=mkdir -p ${TMP_DIR} && echo "${COLOR_PINK}$@: ${COLOR_NONE}"
+TEST_PASS=echo -e "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
+TEST_FAIL=(echo -e "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
+TEST_INIT=mkdir -p ${TMP_DIR} && echo -e "${COLOR_PINK}$@: ${COLOR_NONE}"
 
 ARGS-sql='select [Loan Number] from data'
 
