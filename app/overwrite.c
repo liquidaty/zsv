@@ -28,7 +28,6 @@
 
 struct zsv_overwrite_args {
   char *filepath;
-  struct zsv_opts *opts;
   // options
   unsigned char force : 1;
   unsigned char a1 : 1;
@@ -224,7 +223,7 @@ static int zsv_overwrites_compare(struct zsv_overwrite_ctx *ctx, struct zsv_over
 }
 
 static int zsv_overwrites_remove(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
-                                 struct zsv_overwrite_args *args) {
+                                 const struct zsv_overwrite_args *args) {
   int err = 0;
   if (args->old_value && zsv_overwrites_compare(ctx, overwrite, args)) {
     err = 1;
@@ -253,8 +252,7 @@ static int zsv_overwrites_remove(struct zsv_overwrite_ctx *ctx, struct zsv_overw
 static int zsv_overwrites_has_value(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite) {
   sqlite3_stmt *query = zsv_overwrites_check_value(ctx, overwrite);
   if (query) {
-    if (query)
-      sqlite3_finalize(query);
+    sqlite3_finalize(query);
     return 1;
   }
   return 0;
@@ -415,7 +413,7 @@ static void zsv_overwrites_bulk_remove(void *ctx_v) {
     free(args.author);
 }
 
-static int zsv_overwrites_free(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
+static int zsv_overwrites_free(struct zsv_overwrite *data, struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
                                zsv_csv_writer writer) {
   if (writer)
     zsv_writer_delete(writer);
@@ -425,6 +423,8 @@ static int zsv_overwrites_free(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
   }
   if (overwrite)
     free(overwrite->val.str);
+  if(data)
+    free(data);
 
   // sqlite3_shutdown();
   return 0;
@@ -641,29 +641,32 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
   }
 
-  struct zsv_overwrite data = {0};
-  data.ctx = &ctx;
-  data.args = &args;
-  data.overwrite = &overwrite;
-
-  if (err)
-    return err;
+  struct zsv_overwrite *data = calloc(1, sizeof(struct zsv_overwrite));
+  data->ctx = &ctx;
+  data->args = &args;
+  data->overwrite = &overwrite;
 
   if ((err = zsv_overwrites_init(&ctx, &args))) {
     fprintf(stderr, "Failed to initalize database\n");
   }
 
   zsv_csv_writer writer = zsv_writer_new(&writer_opts);
+
+  if (err) {
+    zsv_overwrites_free(data, &ctx, &overwrite, writer);
+    return err;
+  }
+
   if (args.list)
     show_all_overwrites(&ctx, &args, writer);
   else if (args.clear)
     zsv_overwrites_clear(&ctx);
-  else if (!err && args.add && ctx.sqlite3.db)
+  else if (args.add && ctx.sqlite3.db)
     zsv_overwrites_insert(&ctx, &overwrite, &args);
   else if (args.remove && ctx.sqlite3.db)
     zsv_overwrites_remove(&ctx, &overwrite, &args);
   else if ((args.bulk_add || args.bulk_remove) && ctx.sqlite3.db) {
-    opts->ctx = &data;
+    opts->ctx = data;
     opts->stream = ctx.csv.f;
     ctx.csv.parser = zsv_new(opts);
     while (zsv_parse_more(ctx.csv.parser) == zsv_status_ok)
@@ -673,7 +676,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     fclose(ctx.csv.f);
   }
 
-  zsv_overwrites_free(&ctx, &overwrite, writer);
+  zsv_overwrites_free(data, &ctx, &overwrite, writer);
 
   return err;
 }
