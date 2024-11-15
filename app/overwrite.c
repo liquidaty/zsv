@@ -104,11 +104,11 @@ const char *zsv_overwrite_usage_msg[] = {
   "  and may optionally include \"old value\", \"timestamp\" and/or \"author\"",
   NULL};
 
-static const char* strdup_n(const char *str, size_t chars) {
-  char *buffer = malloc(chars+1);
+static const char *strdup_n(const char *str, size_t chars) {
+  char *buffer = malloc(chars + 1);
   size_t i;
-  if(buffer) {
-    for(i = 0; i < chars && str[i] != '\0'; i++)
+  if (buffer) {
+    for (i = 0; i < chars && str[i] != '\0'; i++)
       buffer[i] = str[i];
     buffer[i] = '\0';
   }
