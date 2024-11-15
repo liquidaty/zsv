@@ -271,7 +271,7 @@ static int zsv_overwrites_replace(struct zsv_overwrite_ctx *ctx, struct zsv_over
   }
   sqlite3_bind_text(query, 1, (const char *)overwrite->val.str, -1, SQLITE_STATIC);
   if (args->timestamp)
-    sqlite3_bind_int64(query, 2, time(NULL));
+    sqlite3_bind_int64(query, 2, args->timestamp);
   else
     sqlite3_bind_null(query, 2);
   sqlite3_bind_text(query, 3, "", -1, SQLITE_STATIC); // author
@@ -365,7 +365,7 @@ static void zsv_overwrites_bulk(struct zsv_overwrite *data) {
       data->overwrite->row_ix = atol((const char *)cell.str);
     else if (i == data->col_ix)
       data->overwrite->col_ix = atol((const char *)cell.str);
-    else if (i == data->timestamp_ix) 
+    else if (i == data->timestamp_ix)
       data->args->timestamp = (size_t)atol((const char *)cell.str);
     else if (i == data->author_ix)
       data->args->author = (unsigned char *)strndup((const char *)cell.str, cell.len);

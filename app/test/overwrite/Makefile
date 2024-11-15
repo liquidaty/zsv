@@ -40,7 +40,7 @@ ifeq ($(EXE),)
   $(error EXE is not defined)
 endif
 
-test: test-1 test-2 test-excel-cells test-add test-remove test-old-value test-force test-echo-overwrite-auto test-timestamp
+test: test-1 test-2 test-excel-cells test-add test-remove test-old-value test-force test-bulk-add test-echo-overwrite-auto test-timestamp
 
 test-1:
 	@${TEST_INIT}
@@ -116,6 +116,23 @@ test-force:
 	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,2,VAL1,,\n2,2,VAL2,,\n2,3,VAL3,,\n2,4,NEW_VAL4,,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 
+test-bulk-add:
+	@${TEST_INIT}
+	@${PREFIX} ${EXE} dummy2.csv clear 
+	@${PREFIX} ${EXE} dummy2.csv add 1-1 OLD_V1 --no-timestamp # for old value test
+	@${PREFIX} ${EXE} dummy2.csv add 2-1 OLD_VAL2 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv bulk-add overwrite.csv
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,VAL1,1731620001,\n2,1,OLD_VAL2,,\n3,1,VAL3,,\n4,1,VAL4,1731620001,\n\"`" ] \
+		&& ${TEST_PASS} || ${TEST_FAIL}
+
+test-bulk-remove:
+	@${TEST_INIT}
+	@${PREFIX} ${EXE} dummy2.csv clear 
+	@${PREFIX} ${EXE} dummy2.csv add 1-1 OLD_V1 --no-timestamp # for old value test
+	@${PREFIX} ${EXE} dummy2.csv add 2-1 OLD_VAL2 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv bulk-remove overwrite.csv
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,VAL1,1731620001,\n2,1,OLD_VAL2,,\n3,1,VAL3,,\n4,1,VAL4,1731620001,\n\"`" ] \
+		&& ${TEST_PASS} || ${TEST_FAIL}
 
 STAT_MOD_TS=$(shell if stat -c %Y Makefile >/dev/null 2>/dev/null; then echo 'stat -c %Y' ; else echo 'stat -f %m' ; fi)
 test-timestamp:
