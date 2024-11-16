@@ -59,10 +59,10 @@ const char *zsv_sql_usage_msg[] = {
   NULL,
 };
 
-static int zsv_sql_usage(FILE *f) {
+static int zsv_sql_usage(FILE *target) {
   for (size_t i = 0; zsv_sql_usage_msg[i]; i++)
-    fprintf(f, "%s\n", zsv_sql_usage_msg[i]);
-  return f == stderr ? 1 : 0;
+    fprintf(target, "%s\n", zsv_sql_usage_msg[i]);
+  return target == stdout ? 0 : 1;
 }
 
 struct zsv_sql_data {
@@ -170,7 +170,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       zsv_set_default_custom_prop_handler(*custom_prop_handler);
 
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
-    int err = 0;
+    err = 0;
     for (int arg_i = 1; !err && arg_i < argc; arg_i++) {
       const char *arg = argv[arg_i];
       if (!strcmp(arg, "--join-indexes")) {

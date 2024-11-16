@@ -530,7 +530,7 @@ A,100,A,there,
 B,90,B,you,zzz
 */
 
-static void flatten_usage() {
+static void flatten_usage(void) {
   for (size_t i = 0; flatten_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", flatten_usage_msg[i]);
 }

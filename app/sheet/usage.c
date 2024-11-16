@@ -1,3 +1,4 @@
+#include <stdio.h>
 
 const char *zsvsheet_usage_msg[] = {
   APPNAME ": opens interactive spreadsheet-like viewer in the console", "", "Usage: " APPNAME " filename", "", NULL,

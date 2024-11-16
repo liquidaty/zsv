@@ -116,10 +116,10 @@ const char *zsv_echo_usage_msg[] = {
   NULL,
 };
 
-static int zsv_echo_usage() {
+static int zsv_echo_usage(void) {
   for (size_t i = 0; zsv_echo_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", zsv_echo_usage_msg[i]);
-  return 1;
+  return 0;
 }
 
 static void zsv_echo_cleanup(struct zsv_echo_data *data) {

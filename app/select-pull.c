@@ -581,7 +581,7 @@ const char *zsv_select_usage_msg[] = {
   NULL,
 };
 
-static void zsv_select_usage() {
+static void zsv_select_usage(void) {
   for (size_t i = 0; zsv_select_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", zsv_select_usage_msg[i]);
 }

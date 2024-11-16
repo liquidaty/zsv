@@ -34,12 +34,12 @@ int zsv_fflush_clock(FILE *stream) {
   return i;
 }
 
-void zsv_clocks_begin() {
+void zsv_clocks_begin(void) {
   zsv_clock_in = zsv_clock_out = 0;
   zsv_clock_begin = clock();
 }
 
-void zsv_clocks_end() {
+void zsv_clocks_end(void) {
   clock_t clock_end = clock();
   clock_t clock_total = clock_end - zsv_clock_begin;
   clock_t clock_other = clock_total - zsv_clock_in - zsv_clock_out;

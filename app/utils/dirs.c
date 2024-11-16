@@ -55,6 +55,7 @@ size_t zsv_get_config_dir(char *buff, size_t buffsize, const char *prefix) {
     env_val = "C:\\temp";
   int written = snprintf(buff, buffsize, "%s", env_val);
 #elif defined(__EMSCRIPTEN__)
+  (void)(prefix);
   int written = snprintf(buff, buffsize, "/tmp");
 #else
   int written;

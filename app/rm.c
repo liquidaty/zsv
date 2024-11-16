@@ -40,8 +40,8 @@ const char *zsv_rm_usage_msg[] = {
 };
 
 static int zsv_rm_usage(FILE *target) {
-  for (size_t j = 0; zsv_rm_usage_msg[j]; j++)
-    fprintf(target, "%s\n", zsv_rm_usage_msg[j]);
+  for (size_t i = 0; zsv_rm_usage_msg[i]; i++)
+    fprintf(target, "%s\n", zsv_rm_usage_msg[i]);
   return target == stdout ? 0 : 1;
 }
 

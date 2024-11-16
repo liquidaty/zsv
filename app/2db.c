@@ -640,6 +640,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
                                struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
   (void)(zsv_opts);
   (void)(opts_used);
+  (void)(custom_prop_handler);
   FILE *f_in = NULL;
   int err = 0;
   struct zsv_2db_options opts = {0};
@@ -678,7 +679,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
 
   for (int i = 1; !err && i < argc; i++) {
     if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-      for (int j = 0; usage[j]; j++)
+      for (size_t j = 0; usage[j]; j++)
         fprintf(stdout, "%s\n", usage[j]);
       goto exit_2db;
     } else if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
