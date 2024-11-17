@@ -136,17 +136,22 @@ test-3: test-%: ${CLI} ${TARGET}
 	make -C ../test worldcitiespop_mil.csv
 
 TMP_DIR=/tmp
+TMUX_TERM=xterm-256color
 test-sheet-extension: ../test/worldcitiespop_mil.csv
-	@rm -f ${TMP_DIR}/zsvext-$@.out
-	@tmux kill-session -t $@ || echo
+	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
+	@tmux kill-session -t $@ || echo 'No tmux session to kill'
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
 	@${RUN_CLI} register my 2>&1 | grep -v [.]so || [ 1==1 ]
-	@(tmux new-session -x 80 -y 5 -d -s $@ "${RUN_CLI} sheet ../test/worldcitiespop_mil.csv" && \
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -v new-session -x 80 -y 5 -d -s $@ && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "${RUN_CLI} sheet ../test/worldcitiespop_mil.csv" ENTER && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "t" "hello" Enter && \
 	tmux capture-pane -t $@ -p > ${TMP_DIR}/$@.out && \
 	tmux kill-session -t $@ && \
-	cmp ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+	cmp ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && \
+	if [ -f ${TMP_DIR}/$@.out ]; then cat ${TMP_DIR}/$@.out; fi && for x in `ls tmux-*.log` ; do echo "Log $$x:" && cat $$x ; done && ${TEST_FAIL}))
 
 test-4: test-%: ${CLI} ${TARGET}
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
