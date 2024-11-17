@@ -157,8 +157,7 @@ struct zsv_ext_callbacks {
   /****************************************
    * Registering a custom `sheet` command *
    ****************************************/
-  zsvsheet_proc_id_t (*ext_sheet_register_proc)(const char *name,
-                                                const char *description,
+  zsvsheet_proc_id_t (*ext_sheet_register_proc)(const char *name, const char *description,
                                                 zsvsheet_status (*handler)(zsvsheet_proc_context_t ctx));
 
   /**
