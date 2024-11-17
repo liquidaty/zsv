@@ -658,11 +658,17 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     opts->ctx = data;
     opts->stream = ctx.csv.f;
     ctx.csv.parser = zsv_new(opts);
-    while (zsv_parse_more(ctx.csv.parser) == zsv_status_ok)
-      ;
-    zsv_finish(ctx.csv.parser);
-    zsv_delete(ctx.csv.parser);
-    fclose(ctx.csv.f);
+    if (sqlite3_exec(ctx.sqlite3.db, "BEGIN TRANSACTION", NULL, NULL, NULL) == SQLITE_OK) {
+      while (zsv_parse_more(ctx.csv.parser) == zsv_status_ok)
+        ;
+      zsv_finish(ctx.csv.parser);
+      zsv_delete(ctx.csv.parser);
+      fclose(ctx.csv.f);
+      if(sqlite3_exec(ctx.sqlite3.db, "COMMIT", NULL, NULL, NULL) != SQLITE_OK)
+        fprintf(stderr, "Could not commit changes: %s\n", sqlite3_errmsg(ctx.sqlite3.db));
+    } else 
+      fprintf(stderr, "Could not begin transaction: %s\n", sqlite3_errmsg(ctx.sqlite3.db));
+
   }
 
   zsv_overwrites_free(&ctx, &overwrite, &args, writer);
