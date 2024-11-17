@@ -261,38 +261,6 @@ static int zsv_overwrites_remove(struct zsv_overwrite *data) {
   return err;
 }
 
-static int zsv_overwrites_has_value(struct zsv_overwrite *data) {
-  sqlite3_stmt *query = zsv_overwrites_check_value(data);
-  if (query) {
-    sqlite3_finalize(query);
-    return 1;
-  }
-  return 0;
-}
-
-static int zsv_overwrites_replace(struct zsv_overwrite *data) {
-  sqlite3_stmt *query = NULL;
-  if (sqlite3_prepare_v2(data->ctx->sqlite3.db,
-                         "UPDATE overwrites SET value = ?, timestamp = ?, author = ? WHERE row = ? AND column = ?", -1,
-                         &query, NULL) != SQLITE_OK) {
-    fprintf(stderr, "Could not prepare: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
-    return 1;
-  }
-  sqlite3_bind_text(query, 1, (const char *)data->overwrite->val.str, -1, SQLITE_STATIC);
-  if (data->args->timestamp)
-    sqlite3_bind_int64(query, 2, data->args->timestamp);
-  else
-    sqlite3_bind_null(query, 2);
-  sqlite3_bind_text(query, 3, "", -1, SQLITE_STATIC); // author
-  sqlite3_bind_int64(query, 4, data->overwrite->row_ix);
-  sqlite3_bind_int64(query, 5, data->overwrite->col_ix);
-  if (sqlite3_step(query) != SQLITE_DONE) {
-    fprintf(stderr, "Could not step: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
-    return 1;
-  }
-  return 0;
-}
-
 static int zsv_overwrites_insert(struct zsv_overwrite *data) {
   if (!data->overwrite->val.str)
     return 1;
