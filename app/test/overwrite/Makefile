@@ -61,6 +61,7 @@ test-excel-cells:
 	@${PREFIX} ${EXE} dummy.csv clear 
 	@${PREFIX} ${EXE} dummy.csv add C2 EXCEL --no-timestamp
 	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf \"$(HEADER)\n1,2,EXCEL,,\n\"`" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv list --A1`" = "`printf \"$(HEADER)\nC2,EXCEL,,\n\"`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-add:
 	@${TEST_INIT}
@@ -87,6 +88,9 @@ test-remove:
 	@${PREFIX} ${EXE} dummy2.csv remove 4-1
 	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n3,1,V3,,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${EXE} dummy2.csv remove --all 
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n\"`" ] \
+		&& ${TEST_PASS} || ${TEST_FAIL}
 
 test-old-value:
 	@${TEST_INIT}
@@ -95,6 +99,10 @@ test-old-value:
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 V2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 3-1 V3 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 4-1 V4 --no-timestamp
+	@${PREFIX} ${EXE} dummy2.csv add 3-1 NEW_V4 --no-timestamp 2> ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/$@-fail.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,V2,,\n3,1,V3,,\n4,1,V4,,\n\"`" ] \
+		&& ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv remove 2-1 --old-value V3 
 	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,V2,,\n3,1,V3,,\n4,1,V4,,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
