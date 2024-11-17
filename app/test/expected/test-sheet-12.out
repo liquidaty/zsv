@@ -1,6 +1,6 @@
 Row #     Country   City      AccentCit Region    Populatio Latitude  Longitude
-117       pk        basti faz Basti Faz 04                  29.080758 70.984992
-415       mx        el salado El Salado 07                  29.644444 -101.7666
-590       af        abbaskhel Abbaskhel 29                  32.831993 69.12336
-807       af        `abdul `a `Abdul `A 10                  31.229677 64.206403
-(59456 filtered rows) 117
+4         id        selingon  Selingon  17                  -8.8374   116.4914
+23        ru        otdeleniy Otdeleniy 86                  51.726473 39.714345
+26        ad        el pui    El Pui    04                  42.55     1.5166667
+27        ad        els bons  Els Bons  03                  42.533333 1.5833333
+(59456 filtered rows) 4

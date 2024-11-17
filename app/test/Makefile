@@ -717,9 +717,7 @@ test-sheet-12: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv
 	@(tmux new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "f" "el" "Enter" && \
-	sleep 1 && \
-	tmux send-keys -t $@ "f" "al" "Enter" && \
-	sleep 1 && \
+	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
