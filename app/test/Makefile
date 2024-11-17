@@ -63,9 +63,9 @@ COLOR_RED=\033[1;31m
 COLOR_BLUE=\033[1;34m
 COLOR_PINK=\033[1;35m
 
-TEST_PASS=echo -e "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
-TEST_FAIL=(echo -e "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
-TEST_INIT=mkdir -p ${TMP_DIR} && echo -e "${COLOR_PINK}$@: ${COLOR_NONE}"
+TEST_PASS=printf "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}\n"
+TEST_FAIL=(printf "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}\n" && exit 1)
+TEST_INIT=mkdir -p ${TMP_DIR} && printf "${COLOR_PINK}$@: ${COLOR_NONE}\n"
 
 ARGS-sql='select [Loan Number] from data'
 
@@ -114,7 +114,7 @@ test-prop:
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
 	EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} ECHO_EXE=${BUILD_DIR}/bin/zsv_echo${EXE} CMP=$(CMP) ${MAKE} -C overwrite test
 
-test-echo : test-echo1 test-echo-overwrite-all test-echo-eol test-echo-chars test-echo-trim test-echo-skip-until test-echo-contiguous test-echo-trim-columns test-echo-trim-columns-2 test-echo-buffsize
+test-echo: test-echo1 test-echo-overwrite-all test-echo-eol test-echo-chars test-echo-trim test-echo-skip-until test-echo-contiguous test-echo-trim-columns test-echo-trim-columns-2 test-echo-buffsize
 
 test-echo-overwrite-all: test-echo-overwrite test-echo-overwrite-csv test-echo-overwrite-auto
 
@@ -223,7 +223,7 @@ test-merge-select test-merge-select-pull: test-merge-% : ${BUILD_DIR}/bin/zsv_%$
 
 test-quotebuff-select test-quotebuff-select-pull: test-quotebuff-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@${THIS_MAKEFILE_DIR}/select-quotebuff-gen.sh  | ${PREFIX} $< -B 4096 ${REDIRECT} /tmp/$@.out
+	@${THIS_MAKEFILE_DIR}/select-quotebuff-gen.sh | ${PREFIX} $< -B 4096 ${REDIRECT} /tmp/$@.out
 # use a dummy ${CMP} call so that it works with LEAKS=1
 	@${CMP} /dev/null /dev/null && sed 's/"/Q/g' < /tmp/$@.out | grep QQ >/dev/null && ${TEST_FAIL} || ${TEST_PASS}
 
@@ -245,13 +245,13 @@ test-n-select test-n-select-pull: test-n-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv -u "?" -R 4 -d 2 -N ${REDIRECT} ${TMP_DIR}/test-4-$*.out
 	@${CMP} ${TMP_DIR}/test-4-$*.out expected/test-4-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
-	@${PREFIX} $<  ${TEST_DATA_DIR}/quoted.csv -e 'x' ${REDIRECT} ${TMP_DIR}/test-5-$*.out
+	@${PREFIX} $< ${TEST_DATA_DIR}/quoted.csv -e 'x' ${REDIRECT} ${TMP_DIR}/test-5-$*.out
 	@${CMP} ${TMP_DIR}/test-5-$*.out expected/test-5-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
-	@${PREFIX} $<  ${TEST_DATA_DIR}/stack1.csv --no-header -H 10 ${REDIRECT} ${TMP_DIR}/test-no-header-$*.out
+	@${PREFIX} $< ${TEST_DATA_DIR}/stack1.csv --no-header -H 10 ${REDIRECT} ${TMP_DIR}/test-no-header-$*.out
 	@${CMP} ${TMP_DIR}/test-no-header-$*.out expected/test-no-header-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
-	@${PREFIX} $<  ${TEST_DATA_DIR}/stack1.csv --prepend-header 'my,Header.' -H 10 ${REDIRECT} ${TMP_DIR}/test-prepend-header-$*.out
+	@${PREFIX} $< ${TEST_DATA_DIR}/stack1.csv --prepend-header 'my,Header.' -H 10 ${REDIRECT} ${TMP_DIR}/test-prepend-header-$*.out
 	@${CMP} ${TMP_DIR}/test-prepend-header-$*.out expected/test-prepend-header-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-6-select test-6-select-pull: test-6-% : ${BUILD_DIR}/bin/zsv_%${EXE}
