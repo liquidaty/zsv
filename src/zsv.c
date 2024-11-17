@@ -107,7 +107,7 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   if (VERY_UNLIKELY(scanner->insert_string != NULL))
     zsv_insert_string(scanner);
 
-  size_t capacity = scanner_pre_parse(scanner);
+  const size_t capacity = scanner_pre_parse(scanner);
   size_t bytes_read;
   if (VERY_UNLIKELY(scanner->checked_bom == 0)) {
 #ifdef ZSV_EXTRAS
@@ -115,17 +115,16 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
     if (scanner->opts.progress.seconds_interval)
       scanner->progress.last_time = time(NULL);
 #endif
-    size_t bom_len = strlen(ZSV_BOM);
     scanner->checked_bom = 1;
-    if ((bytes_read = scanner->read(scanner->buff.buff, 1, bom_len, scanner->in)) == bom_len &&
-        !memcmp(scanner->buff.buff, ZSV_BOM, bom_len)) {
+    if ((bytes_read = scanner->read(scanner->buff.buff, 1, ZSV_BOM_LEN, scanner->in)) == ZSV_BOM_LEN &&
+        !memcmp(scanner->buff.buff, ZSV_BOM, ZSV_BOM_LEN)) {
       // have bom. disregard what we just read
       bytes_read = scanner->read(scanner->buff.buff, 1, capacity, scanner->in);
       scanner->had_bom = 1;
     } else { // no BOM. keep the bytes we just read
-      // bytes_read = bom_len + scanner->read(scanner->buff.buff + bom_len, 1, capacity - bom_len, scanner->in);
-      if (bytes_read == bom_len) // maybe we only read < 3 bytes
-        bytes_read += scanner->read(scanner->buff.buff + bom_len, 1, capacity - bom_len, scanner->in);
+      // bytes_read = ZSV_BOM_LEN + scanner->read(scanner->buff.buff + ZSV_BOM_LEN, 1, capacity - ZSV_BOM_LEN, scanner->in);
+      if (bytes_read == ZSV_BOM_LEN) // maybe we only read < 3 bytes
+        bytes_read += scanner->read(scanner->buff.buff + ZSV_BOM_LEN, 1, capacity - ZSV_BOM_LEN, scanner->in);
     }
   } else // already checked bom. read as usual
     bytes_read = scanner->read(scanner->buff.buff + scanner->partial_row_length, 1, capacity, scanner->in);
@@ -446,7 +445,7 @@ size_t zsv_scanned_length(zsv_parser parser) {
 ZSV_EXPORT
 size_t zsv_cum_scanned_length(zsv_parser parser) {
   return parser->cum_scanned_length + (parser->finished ? 0 : parser->scanned_length) +
-         (parser->had_bom ? strlen(ZSV_BOM) : 0);
+         (parser->had_bom ? ZSV_BOM_LEN : 0);
 }
 
 ZSV_EXPORT
