@@ -148,15 +148,15 @@ test-sheet-extension: ../test/worldcitiespop_mil.csv
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
 	@${RUN_CLI} register my 2>&1 | grep -v [.]so || [ 1==1 ]
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -v new-session -x 80 -y 5 -d -s $@ && \
+	@(ZSV_CONFIG_DIR=/tmp tmux -v new-session -x 80 -y 5 -d -s $@ && \
 	sleep 0.5 && \
-	ZSV_CONFIG_DIR=/tmp tmux send-keys -t $@ "${CLI} sheet ../test/worldcitiespop_mil.csv" ENTER && \
+	tmux send-keys -t $@ "${CLI} sheet ../test/worldcitiespop_mil.csv" ENTER && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "t" "hello" Enter && \
 	tmux capture-pane -t $@ -p > ${TMP_DIR}/$@.out && \
 	tmux kill-session -t $@ && \
 	cmp ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && \
-	if [ -f ${TMP_DIR}/$@.out ]; then cat ${TMP_DIR}/$@.out; fi && for x in `ls tmux-*.log` ; do echo "Log $$x:" && cat $$x ; done && ${TEST_FAIL}))
+	if [ -f ${TMP_DIR}/$@.out ]; then cat ${TMP_DIR}/$@.out; fi && ${TEST_FAIL}))
 
 test-4: test-%: ${CLI} ${TARGET}
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
