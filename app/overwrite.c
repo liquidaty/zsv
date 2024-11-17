@@ -245,6 +245,8 @@ static int zsv_overwrites_remove(struct zsv_overwrite *data) {
   if (sqlite3_prepare_v2(data->ctx->sqlite3.db, "DELETE FROM overwrites WHERE row = ? AND column = ?", -1, &query,
                          NULL) != SQLITE_OK) {
     err = 1;
+    if (data->args->bulk_remove)
+      sqlite3_exec(data->ctx->sqlite3.db, "ROLLBACK", NULL, NULL, NULL);
     fprintf(stderr, "Could not prepare: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
     return err;
   }
@@ -253,6 +255,8 @@ static int zsv_overwrites_remove(struct zsv_overwrite *data) {
 
   if (sqlite3_step(query) != SQLITE_DONE) {
     err = 1;
+    if (data->args->bulk_remove)
+      sqlite3_exec(data->ctx->sqlite3.db, "ROLLBACK", NULL, NULL, NULL);
     fprintf(stderr, "Could not step: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
     return err;
   }
@@ -291,11 +295,15 @@ static int zsv_overwrites_insert(struct zsv_overwrite *data) {
       sqlite3_bind_text(query, 5, "", -1, SQLITE_STATIC);
     if (sqlite3_step(query) != SQLITE_DONE) {
       err = 1;
+      if (data->args->bulk_add)
+        sqlite3_exec(data->ctx->sqlite3.db, "ROLLBACK", NULL, NULL, NULL);
       fprintf(stderr, "Value already exists at row %zu and column %zu, use --force to force insert\n",
               data->overwrite->row_ix, data->overwrite->col_ix);
     }
   } else {
     err = 1;
+    if (data->args->bulk_add)
+      sqlite3_exec(data->ctx->sqlite3.db, "ROLLBACK", NULL, NULL, NULL);
     fprintf(stderr, "Failed to prepare2: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
   }
 
@@ -664,11 +672,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       zsv_finish(ctx.csv.parser);
       zsv_delete(ctx.csv.parser);
       fclose(ctx.csv.f);
-      if(sqlite3_exec(ctx.sqlite3.db, "COMMIT", NULL, NULL, NULL) != SQLITE_OK)
+      if (sqlite3_exec(ctx.sqlite3.db, "COMMIT", NULL, NULL, NULL) != SQLITE_OK)
         fprintf(stderr, "Could not commit changes: %s\n", sqlite3_errmsg(ctx.sqlite3.db));
-    } else 
+    } else
       fprintf(stderr, "Could not begin transaction: %s\n", sqlite3_errmsg(ctx.sqlite3.db));
-
   }
 
   zsv_overwrites_free(&ctx, &overwrite, &args, writer);
