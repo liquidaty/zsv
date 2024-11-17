@@ -226,7 +226,7 @@ static int zsv_overwrites_compare(struct zsv_overwrite *data) {
 
 static int zsv_overwrites_remove(struct zsv_overwrite *data) {
   int err = 0;
-  if(data->args->all) {
+  if (data->args->all) {
     zsv_overwrites_clear(data->ctx);
     return err;
   }
@@ -431,7 +431,7 @@ static int zsv_overwrites_free(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
     zsv_writer_delete(writer);
   if (ctx) {
     sqlite3_close(ctx->sqlite3.db);
-    if(args->all)
+    if (args->all)
       remove(ctx->src);
     free(ctx->src);
   }
@@ -619,10 +619,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if (!strcmp(opt, "remove")) {
       if (argc - i > 1) {
         args.remove = 1;
-        if(!strcmp(argv[++i], "--all"))
-            args.all = 1;
+        if (!strcmp(argv[++i], "--all"))
+          args.all = 1;
         else
-            err = zsv_overwrite_parse_pos(&overwrite, argv[i]);
+          err = zsv_overwrite_parse_pos(&overwrite, argv[i]);
         if (err) {
           fprintf(stderr, "Expected row and column\n");
         }
