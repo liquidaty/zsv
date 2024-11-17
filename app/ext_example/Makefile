@@ -111,7 +111,7 @@ ${BUILD_DIR}/bin/cli:
 ${BUILD_DIR}/objs/utils/%.o:
 	(cd .. && ${MAKE} CONFIGFILE=${CONFIGFILEPATH} CC=${CC} DEBUG=${DEBUG} $@ )
 
-test: test-1 test-2 test-3 test-4 test-5 test-thirdparty
+test: test-1 test-2 test-3 test-4 test-5 test-thirdparty test-sheet-extension
 
 test-1: test-%: ${CLI} ${TARGET}
 	@${RUN_CLI} my-echo < ${THIS_LIB_BASE}/data/quoted.csv > /tmp/zsvext-$@.out
@@ -131,6 +131,22 @@ test-3: test-%: ${CLI} ${TARGET}
 	@${RUN_CLI} register my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
 	@${RUN_CLI} help 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
 	@cmp /tmp/zsvext-$@.out 2>&1 test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+../test/worldcitiespop_mil.csv:
+	make -C ../test worldcitiespop_mil.csv
+
+TMP_DIR=/tmp
+test-sheet-extension: ../test/worldcitiespop_mil.csv
+	@rm -f ${TMP_DIR}/zsvext-$@.out
+	@tmux kill-session -t $@ || echo
+	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
+	@${RUN_CLI} register my 2>&1 | grep -v [.]so || [ 1==1 ]
+	@(tmux new-session -x 80 -y 5 -d -s $@ "${RUN_CLI} sheet ../test/worldcitiespop_mil.csv" && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "t" "hello" Enter && \
+	tmux capture-pane -t $@ -p > ${TMP_DIR}/$@.out && \
+	tmux kill-session -t $@ && \
+	cmp ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-4: test-%: ${CLI} ${TARGET}
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
