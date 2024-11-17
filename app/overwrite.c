@@ -145,6 +145,12 @@ static int zsv_overwrites_init(struct zsv_overwrite *data) {
       return err;
     }
 
+    if (sqlite3_exec(data->ctx->sqlite3.db, "PRAGMA foreign_keys = on", NULL, NULL, NULL) != SQLITE_OK) {
+      err = 1;
+      fprintf(stderr, "Could not enable foreign keys: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
+      return err;
+    }
+
     if (sqlite3_prepare_v2(data->ctx->sqlite3.db,
                            "CREATE TABLE IF NOT EXISTS overwrites ( row integer, column integer, value string, "
                            "timestamp varchar(25), author varchar(25) );",
@@ -290,21 +296,20 @@ static int zsv_overwrites_replace(struct zsv_overwrite *data) {
 static int zsv_overwrites_insert(struct zsv_overwrite *data) {
   if (!data->overwrite->val.str)
     return 1;
-  if (data->args->force && zsv_overwrites_has_value(data))
-    return zsv_overwrites_replace(data);
+  if (data->args->force)
+    data->ctx->sqlite3.sql =
+      "INSERT OR REPLACE INTO overwrites (row, column, value, timestamp, author) VALUES (?, ?, ?, ?, ?)";
+  else
+    data->ctx->sqlite3.sql = "INSERT INTO overwrites (row, column, value, timestamp, author) VALUES (?, ?, ?, ?, ?)";
 
   int err = 0;
   sqlite3_stmt *query = NULL;
 
   if (data->args->old_value && (err = zsv_overwrites_compare(data))) {
     return err;
-  } else if (data->args->old_value) {
-    return zsv_overwrites_replace(data);
   }
 
-  if (sqlite3_prepare_v2(data->ctx->sqlite3.db,
-                         "INSERT INTO overwrites (row, column, value, timestamp, author) VALUES (?, ?, ?, ?, ?)", -1,
-                         &query, NULL) == SQLITE_OK) {
+  if (sqlite3_prepare_v2(data->ctx->sqlite3.db, data->ctx->sqlite3.sql, -1, &query, NULL) == SQLITE_OK) {
     sqlite3_bind_int64(query, 1, data->overwrite->row_ix);
     sqlite3_bind_int64(query, 2, data->overwrite->col_ix);
     sqlite3_bind_text(query, 3, (const char *)data->overwrite->val.str, -1, SQLITE_STATIC);
