@@ -99,10 +99,10 @@ test-old-value:
 	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,V2,,\n3,1,V3,,\n4,1,V4,,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 NEW_V2 --old-value V2 --no-timestamp
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,NEW_V2,,\n3,1,V3,,\n4,1,V4,,\n\"`" ] \
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n3,1,V3,,\n4,1,V4,,\n2,1,NEW_V2,,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv remove 3-1 --old-value V3 
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,NEW_V2,,\n4,1,V4,,\n\"`" ] \
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n4,1,V4,,\n2,1,NEW_V2,,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 
 test-force:
@@ -122,7 +122,7 @@ test-bulk-add:
 	@${PREFIX} ${EXE} dummy2.csv add 1-1 OLD_V1 --no-timestamp # for old value test
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 OLD_VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv bulk-add overwrite.csv
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,VAL1,1731620001,\n2,1,OLD_VAL2,,\n3,1,VAL3,,\n4,1,VAL4,1731620001,\n\"`" ] \
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n2,1,OLD_VAL2,,\n1,1,VAL1,1731620001,\n3,1,VAL3,,\n4,1,VAL4,1731620001,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 
 test-bulk-remove:

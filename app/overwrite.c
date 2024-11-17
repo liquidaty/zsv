@@ -264,7 +264,7 @@ static int zsv_overwrites_remove(struct zsv_overwrite *data) {
 static int zsv_overwrites_insert(struct zsv_overwrite *data) {
   if (!data->overwrite->val.str)
     return 1;
-  if (data->args->force)
+  if (data->args->force || data->args->old_value)
     data->ctx->sqlite3.sql =
       "INSERT OR REPLACE INTO overwrites (row, column, value, timestamp, author) VALUES (?, ?, ?, ?, ?)";
   else
