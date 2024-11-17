@@ -76,6 +76,15 @@ else
   # --enable-jq
 fi
 
+if [ "$CI" = true ]; then
+  {
+    echo '### config.mk'
+    echo '```'
+    cat config.mk
+    echo '```'
+  } >>"$GITHUB_STEP_SUMMARY"
+fi
+
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
   rm -rf build "$PREFIX"

@@ -1,10 +1,10 @@
-FROM alpine:latest AS build
+FROM alpine:3.12.12 AS build
 
 LABEL maintainer="Liquidaty"
 LABEL url="https://github.com/liquidaty/zsv"
 LABEL org.opencontainers.image.description="zsv: tabular data swiss-army knife CLI + world's fastest (simd) CSV parser"
 
-RUN apk add bash gcc make musl-dev perl ncurses-dev ncurses-static tmux file sqlite curl zip
+RUN apk add bash gcc make musl-dev perl ncurses-dev ncurses-static tmux file sqlite curl zip tree
 
 WORKDIR /zsv
 COPY . .
