@@ -22,6 +22,7 @@
 #include <zsv/utils/file.h>
 #include <zsv/utils/overwrite.h>
 #include <zsv/utils/clock.h>
+#include <zsv/utils/mem.h>
 
 #define ZSV_COMMAND overwrite
 #include "zsv_command.h"
@@ -31,6 +32,7 @@ struct zsv_overwrite_args {
   // options
   unsigned char force : 1;
   unsigned char a1 : 1;
+  unsigned char all : 1;
   unsigned char bulk_add : 1;
   unsigned char bulk_remove : 1;
   unsigned char *old_value;
@@ -89,6 +91,7 @@ const char *zsv_overwrite_usage_msg[] = {
   "                        For `remove`, exit without error even if no overwrite for",
   "                        the specified cell already exists",
   "  --no-timestamp      : For `add`, don't save timestamp when adding an overwrite",
+  "  --all               : For `remove`, remove all overwrites and delete sqlite file",
   "  --A1                : For `list`, Display addresses in A1-notation",
   "",
   "Description:",
@@ -103,17 +106,6 @@ const char *zsv_overwrite_usage_msg[] = {
   "  For bulk operations, the data file must be a CSV with \"row\", \"col\" and \"value\" columns",
   "  and may optionally include \"old value\", \"timestamp\" and/or \"author\"",
   NULL};
-
-static const char *strdup_n(const char *str, size_t chars) {
-  char *buffer = malloc(chars + 1);
-  size_t i;
-  if (buffer) {
-    for (i = 0; i < chars && str[i] != '\0'; i++)
-      buffer[i] = str[i];
-    buffer[i] = '\0';
-  }
-  return buffer;
-}
 
 static int zsv_overwrite_usage() {
   for (size_t i = 0; zsv_overwrite_usage_msg[i]; i++)
@@ -234,6 +226,11 @@ static int zsv_overwrites_compare(struct zsv_overwrite *data) {
 
 static int zsv_overwrites_remove(struct zsv_overwrite *data) {
   int err = 0;
+  if(data->args->all) {
+    zsv_overwrites_clear(data->ctx);
+    return err;
+  }
+
   if (data->args->old_value && zsv_overwrites_compare(data)) {
     err = 1;
     return err; // value does not match
@@ -373,11 +370,11 @@ static void zsv_overwrites_bulk(struct zsv_overwrite *data) {
     else if (i == data->timestamp_ix)
       data->args->timestamp = (size_t)atol((const char *)cell.str);
     else if (i == data->author_ix)
-      data->args->author = (unsigned char *)strdup_n((const char *)cell.str, cell.len);
+      data->args->author = (unsigned char *)zsv_memdup(cell.str, cell.len);
     else if (i == data->old_value_ix)
-      data->args->old_value = (unsigned char *)strdup_n((const char *)cell.str, cell.len);
+      data->args->old_value = (unsigned char *)zsv_memdup(cell.str, cell.len);
     else if (i == data->val_ix) {
-      data->overwrite->val.str = (unsigned char *)strdup_n((const char *)cell.str, cell.len);
+      data->overwrite->val.str = (unsigned char *)zsv_memdup((const char *)cell.str, cell.len);
       data->overwrite->val.len = cell.len;
     }
   }
@@ -433,8 +430,10 @@ static int zsv_overwrites_free(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
   if (writer)
     zsv_writer_delete(writer);
   if (ctx) {
-    free(ctx->src);
     sqlite3_close(ctx->sqlite3.db);
+    if(args->all)
+      remove(ctx->src);
+    free(ctx->src);
   }
   if (overwrite && (!args->bulk_add || !args->bulk_remove))
     free(overwrite->val.str);
@@ -597,6 +596,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       args.timestamp = 0;
     } else if (!strcmp(opt, "--A1")) {
       args.a1 = 1;
+    } else if (!strcmp(opt, "--all")) {
+      args.all = 1;
     } else if (!strcmp(opt, "list")) {
       args.list = 1;
     } else if (!strcmp(opt, "clear")) {
@@ -618,7 +619,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if (!strcmp(opt, "remove")) {
       if (argc - i > 1) {
         args.remove = 1;
-        err = zsv_overwrite_parse_pos(&overwrite, argv[++i]);
+        if(!strcmp(argv[++i], "--all"))
+            args.all = 1;
+        else
+            err = zsv_overwrite_parse_pos(&overwrite, argv[i]);
         if (err) {
           fprintf(stderr, "Expected row and column\n");
         }
