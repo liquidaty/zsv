@@ -150,8 +150,7 @@ test-sheet-extension: ../test/worldcitiespop_mil.csv
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux -v new-session -x 80 -y 5 -d -s $@ && \
 	sleep 0.5 && \
-	tmux setenv ZSV_CONFIG_DIR /tmp && \
-	tmux send-keys -t $@ "${CLI} sheet ../test/worldcitiespop_mil.csv" ENTER && \
+	ZSV_CONFIG_DIR=/tmp tmux send-keys -t $@ "${CLI} sheet ../test/worldcitiespop_mil.csv" ENTER && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "t" "hello" Enter && \
 	tmux capture-pane -t $@ -p > ${TMP_DIR}/$@.out && \
