@@ -100,4 +100,4 @@ test-echo-overwrite-auto:
 clean:
 	@rm -rf ${TMP_DIR}
 
-.PHONY: test% clean
+.PHONY: help test% clean
