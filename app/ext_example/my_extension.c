@@ -137,7 +137,7 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
   zsv_cb.ext_add_command(ctx, "echo", "print the input data back to stdout", echo_main);
 
 #ifdef ZSVSHEET_BUILD
-  int proc_id = zsv_cb.ext_sheet_register_proc("my-test-command", my_test_command_handler);
+  int proc_id = zsv_cb.ext_sheet_register_proc("my-test-command", "my test command", my_test_command_handler);
   if (proc_id < 0)
     return zsv_ext_status_error;
   zsv_cb.ext_sheet_register_proc_key_binding('t', proc_id);
