@@ -15,7 +15,10 @@ struct zsvsheet_indexer {
   size_t filter_len;
   zsv_csv_writer writer;
   FILE *filter_stream;
-  char seen_header;
+  size_t row_num; // 1-based row number (1 = header row, 2 = first data row)
+  unsigned char seen_header : 1;
+  unsigned char has_row_num : 1;
+  unsigned char _ : 6;
 };
 
 struct zsvsheet_index_opts {

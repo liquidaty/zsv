@@ -1,6 +1,7 @@
 #include <unistd.h> // unlink()
 #include <pthread.h>
 #include <zsv/utils/index.h>
+#include "index.h"
 
 struct zsvsheet_ui_buffer {
   char *filename;
@@ -13,6 +14,7 @@ struct zsvsheet_ui_buffer {
   size_t cursor_col;
   struct zsvsheet_input_dimensions dimensions;
   struct zsv_index *index;
+  struct zsvsheet_index_opts *ixopts;
   pthread_mutex_t mutex;
 
   // input_offset: location within the input from which the buffer is read
@@ -35,7 +37,8 @@ struct zsvsheet_ui_buffer {
   unsigned char index_ready;
   unsigned char rownum_col_offset : 1;
   unsigned char index_started : 1;
-  unsigned char _ : 6;
+  unsigned char has_row_num : 1;
+  unsigned char _ : 5;
 };
 
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
@@ -43,7 +46,10 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
     if (ub->ext_on_close)
       ub->ext_on_close(ub->ext_ctx);
     zsvsheet_screen_buffer_delete(ub->buffer);
+    if (ub->ixopts)
+      ub->ixopts->uib = NULL;
     free(ub->row_filter);
+    zsv_index_delete(ub->index);
     free(ub->status);
     if (ub->data_filename)
       unlink(ub->data_filename);

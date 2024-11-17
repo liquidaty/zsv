@@ -20,7 +20,8 @@ enum zsvsheet_key {
   zsvsheet_key_find,
   zsvsheet_key_find_next,
   zsvsheet_key_open_file,
-  zsvsheet_key_resize
+  zsvsheet_key_resize,
+  zsvsheet_key_question,
 };
 
 struct zsvsheet_key_binding_context;
@@ -32,6 +33,8 @@ typedef zsvsheet_status (*zsvsheet_key_binding_fn)(struct zsvsheet_key_binding_c
  * be implemented if need be by defining a custom handler */
 struct zsvsheet_key_binding {
   int ch;
+  const char *ch_name;
+  char hidden;
   zsvsheet_key_binding_fn handler;
   zsvsheet_proc_id_t proc_id;
 };
@@ -51,6 +54,7 @@ int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding);
 
 zsvsheet_status zsvsheet_key_press(int ch, void *subcommand_context);
 
+struct zsvsheet_key_binding *zsvsheet_get_key_binding(size_t i);
 struct zsvsheet_key_binding *zsvsheet_find_key_binding(int ch);
 
 /*
@@ -60,5 +64,7 @@ struct zsvsheet_key_binding *zsvsheet_find_key_binding(int ch);
 void zsvsheet_register_vim_key_bindings(void);
 
 void zsvsheet_register_emacs_key_bindings(void);
+
+const char *zsvsheet_key_binding_ch_name(struct zsvsheet_key_binding *binding);
 
 #endif

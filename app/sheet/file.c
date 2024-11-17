@@ -12,6 +12,8 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
   int err = 0;
   struct zsvsheet_ui_buffer *tmp_ui_buffer = NULL;
   uibopts.row_filter = row_filter;
+  if (!opts_used)
+    opts_used = "";
   if ((err = read_data(&tmp_ui_buffer, &uibopts, 0, 0, 0, &zsvsheet_opts, custom_prop_handler, opts_used)) != 0 ||
       !tmp_ui_buffer || !tmp_ui_buffer->buff_used_rows) {
     zsvsheet_ui_buffer_delete(tmp_ui_buffer);
