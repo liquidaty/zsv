@@ -111,7 +111,12 @@ ${BUILD_DIR}/bin/cli:
 ${BUILD_DIR}/objs/utils/%.o:
 	(cd .. && ${MAKE} CONFIGFILE=${CONFIGFILEPATH} CC=${CC} DEBUG=${DEBUG} $@ )
 
-test: test-1 test-2 test-3 test-4 test-5 test-thirdparty test-sheet-extension
+TESTS=test-1 test-2 test-3 test-4 test-5 test-thirdparty
+ifeq ($(ZSVSHEET_BUILD),1)
+  TESTS+=test-sheet-extension
+endif
+
+test: ${TESTS}
 
 test-1: test-%: ${CLI} ${TARGET}
 	@${RUN_CLI} my-echo < ${THIS_LIB_BASE}/data/quoted.csv > /tmp/zsvext-$@.out
@@ -145,7 +150,8 @@ test-sheet-extension: ../test/worldcitiespop_mil.csv
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux -v new-session -x 80 -y 5 -d -s $@ && \
 	sleep 0.5 && \
-	tmux send-keys -t $@ "${RUN_CLI} sheet ../test/worldcitiespop_mil.csv" ENTER && \
+	tmux setenv ZSV_CONFIG_DIR /tmp && \
+	tmux send-keys -t $@ "${CLI} sheet ../test/worldcitiespop_mil.csv" ENTER && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "t" "hello" Enter && \
 	tmux capture-pane -t $@ -p > ${TMP_DIR}/$@.out && \
