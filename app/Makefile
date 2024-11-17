@@ -99,10 +99,10 @@ ifeq ($(WIN),0)
     NO_THREADING ?= 1
     EXE=.em.js
     EXPORTED_FUNCTIONS='_free','_malloc'
-    CFLAGS+= -s EXPORTED_FUNCTIONS="[${EXPORTED_FUNCTIONS}]" -s EXPORTED_RUNTIME_METHODS="['setValue','allocateUTF8','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory']" -s RESERVED_FUNCTION_POINTERS=4 -s ALLOW_MEMORY_GROWTH=1
-    CFLAGS_EXE+= -s FORCE_FILESYSTEM=1 -lidbfs.js -s MAIN_MODULE
+    LDFLAGS += -s EXPORTED_FUNCTIONS="[${EXPORTED_FUNCTIONS}]" -s EXPORTED_RUNTIME_METHODS="['setValue','allocateUTF8','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory']" -s RESERVED_FUNCTION_POINTERS=4 -s ALLOW_MEMORY_GROWTH=1
+    CFLAGS_EXE += -s FORCE_FILESYSTEM=1 -lidbfs.js -s MAIN_MODULE
     ifeq ($(NO_THREADING),0)
-      CFLAGS_EXE+= -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2 -s PTHREAD_POOL_SIZE=8
+      CFLAGS_EXE += -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2 -s PTHREAD_POOL_SIZE=8
     endif
   endif
 else
@@ -418,7 +418,7 @@ ${JQ_BUNDLE_LIB}: ${JQ_SRC} # -D_REENTRANT needed for clang to not break
 	# copy the directory because its timestamp gets updated after libjq is built
 	@cp -a ${JQ_SRC} ${JQ_SRC}-conf
 	cd ${JQ_SRC}-conf \
-	&& CC="${CC}" CFLAGS="${CFLAGS} -D_REENTRANT" ./configure \
+	&& CC="${CC}" CFLAGS="${CFLAGS} -w -D_REENTRANT" ./configure \
 	    --prefix="${JQ_PREFIX}" \
 	    --disable-maintainer-mode \
 	    --without-oniguruma \
@@ -457,7 +457,7 @@ ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF
 
 ${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}-external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -o $@ -c $<
+	${CC} ${CFLAGS} -w -I${INCLUDE_DIR} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -o $@ -c $<
 
 ${YAJL_OBJ}: ${BUILD_DIR}-external/yajl/%.o : external/yajl/src/%.c
 	@mkdir -p `dirname "$@"`

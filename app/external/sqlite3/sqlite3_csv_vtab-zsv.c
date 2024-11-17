@@ -102,7 +102,7 @@ typedef struct zsvTable {
   sqlite_int64 rowCount;
 } zsvTable;
 
-struct zsvTable *zsvTable_new() {
+struct zsvTable *zsvTable_new(void) {
   struct zsvTable *z = sqlite3_malloc(sizeof(*z));
   if(z) {
     memset(z, 0, sizeof(*z));
