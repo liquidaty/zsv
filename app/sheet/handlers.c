@@ -137,3 +137,57 @@ struct zsv_opts zsvsheet_buffer_get_zsv_opts(zsvsheet_buffer_t h) {
   struct zsv_opts opts = {0};
   return opts;
 }
+
+enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx, void *user_context,
+                                                  void (*row_handler)(void *exec_ctx)) {
+  zsvsheet_buffer_t buff = zsvsheet_buffer_current(ctx);
+  const char *filename = zsvsheet_buffer_data_filename(buff);
+  enum zsvsheet_status stat = zsvsheet_status_error;
+
+  if (!filename)
+    filename = zsvsheet_buffer_filename(buff);
+
+  // TODO: custom_prop_handler is not passed to extensions?
+  struct zsvsheet_transformation_opts opts = {
+    .custom_prop_handler = NULL,
+    .input_filename = filename,
+  };
+  zsvsheet_transformation trn;
+  struct zsv_opts zopts = zsvsheet_buffer_get_zsv_opts(buff);
+
+  zopts.ctx = user_context;
+  zopts.row_handler = row_handler;
+  zopts.stream = fopen(filename, "rb");
+
+  if (!zopts.stream)
+    goto out;
+
+  opts.zsv_opts = zopts;
+
+  enum zsv_status zst = zsvsheet_transformation_new(opts, &trn);
+  if (zst != zsv_status_ok)
+    return stat;
+
+  zsv_parser parser = zsvsheet_transformation_parser(trn);
+
+  while ((zst = zsv_parse_more(parser)) == zsv_status_ok)
+    ;
+
+  switch (zst) {
+  case zsv_status_no_more_input:
+  case zsv_status_cancelled:
+    break;
+  default:
+    goto out;
+  }
+
+  zst = zsv_finish(parser);
+  if (zst != zsv_status_ok)
+    goto out;
+
+  stat = zsvsheet_open_file(ctx, zsvsheet_transformation_filename(trn), &zopts);
+
+out:
+  zsvsheet_transformation_delete(trn);
+  return stat;
+}

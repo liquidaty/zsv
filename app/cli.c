@@ -24,6 +24,7 @@
 #ifdef ZSVSHEET_BUILD
 #include "sheet/sheet_internal.h"
 #include "sheet/handlers_internal.h"
+#include "sheet/transformation.h"
 #endif
 #include "sheet/procedure.h"
 #include "sheet/key-bindings.h"
@@ -404,6 +405,11 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->ext_sheet_open_file = zsvsheet_open_file;
     e->ext_sheet_register_proc = zsvsheet_register_proc;
     e->ext_sheet_register_proc_key_binding = zsvsheet_register_proc_key_binding;
+    e->ext_sheet_push_transformation = zsvsheet_push_transformation;
+    e->ext_sheet_transformation_writer = zsvsheet_transformation_writer;
+    e->ext_sheet_transformation_parser = zsvsheet_transformation_parser;
+    e->ext_sheet_transformation_filename = zsvsheet_transformation_filename;
+    e->ext_sheet_transformation_user_context = zsvsheet_transformation_user_context;
 #endif
   }
   return e;

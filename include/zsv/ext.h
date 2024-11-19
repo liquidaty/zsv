@@ -17,6 +17,7 @@
 #include "ext/sheet.h"
 #include "utils/sql.h"
 #include "utils/prop.h"
+#include "utils/writer.h"
 
 /**
  * @file ext.h
@@ -255,6 +256,36 @@ struct zsv_ext_callbacks {
                              struct zsv_prop_handler *custom_prop_handler, const char *opts_used);
   void (*ext_sqlite3_db_delete)(zsv_sqlite3_db_t);
   zsv_sqlite3_db_t (*ext_sqlite3_db_new)(struct zsv_sqlite3_dbopts *dbopts);
+
+  /**
+   * Create a new buffer from the current one using a transformation
+   * and make the new buffer the current one
+   */
+  zsvsheet_status (*ext_sheet_push_transformation)(zsvsheet_proc_context_t ctx, void *user_context,
+                                                   void (*row_handler)(void *ctx));
+
+  /**
+   * Get the writer associated with a transformation.
+   *
+   * The transformation itself is passed as the context variable to the row handler
+   */
+  zsv_csv_writer (*ext_sheet_transformation_writer)(zsvsheet_transformation trn);
+
+  /**
+   * Get the user provided context from the context provided to a transformation row handler
+   */
+  void *(*ext_sheet_transformation_user_context)(zsvsheet_transformation trn);
+
+  /**
+   * Get the parser from the context provided to a transformation row handler
+   */
+  zsv_parser (*ext_sheet_transformation_parser)(zsvsheet_transformation trn);
+
+  /**
+   * Get the filename that the transformation writer outputs to from the context provided to a transformation row
+   * handler.
+   */
+  const char *(*ext_sheet_transformation_filename)(zsvsheet_transformation trn);
 };
 
 /** @} */
