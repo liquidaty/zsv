@@ -3,8 +3,7 @@
 
 #include "zsv.h"
 #include "zsv/utils/writer.h"
-
-typedef struct zsvsheet_transformation *zsvsheet_transformation;
+#include "zsv/ext/sheet.h"
 
 struct zsvsheet_transformation_opts {
   /**
@@ -21,6 +20,7 @@ void zsvsheet_transformation_delete(zsvsheet_transformation);
 
 zsv_parser zsvsheet_transformation_parser(zsvsheet_transformation);
 zsv_csv_writer zsvsheet_transformation_writer(zsvsheet_transformation);
-char *zsvsheet_transformation_filename(zsvsheet_transformation);
+const char *zsvsheet_transformation_filename(zsvsheet_transformation);
+void *zsvsheet_transformation_user_context(zsvsheet_transformation trn);
 
 #endif

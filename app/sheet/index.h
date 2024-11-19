@@ -1,24 +1,13 @@
 #ifndef SHEET_INDEX_H
 #define SHEET_INDEX_H
 
-#include <stdint.h>
-#include <stdio.h>
 #include <pthread.h>
 
 #include "zsv.h"
-#include "zsv/utils/writer.h"
 
 struct zsvsheet_indexer {
   zsv_parser parser;
   struct zsv_index *ix;
-  const char *filter;
-  size_t filter_len;
-  zsv_csv_writer writer;
-  FILE *filter_stream;
-  size_t row_num; // 1-based row number (1 = header row, 2 = first data row)
-  unsigned char seen_header : 1;
-  unsigned char has_row_num : 1;
-  unsigned char _ : 6;
 };
 
 struct zsvsheet_index_opts {

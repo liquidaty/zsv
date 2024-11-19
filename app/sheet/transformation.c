@@ -10,6 +10,7 @@ struct zsvsheet_transformation {
   char *output_filename;
   FILE *output_stream;
   struct zsvsheet_transformation_opts opts;
+  void *user_context;
 };
 
 enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts opts, zsvsheet_transformation *out) {
@@ -39,6 +40,8 @@ enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts 
   zsv_writer_set_temp_buff(temp_file_writer, temp_buff, sizeof(temp_buff));
   trn->writer = temp_file_writer;
   trn->output_stream = temp_f;
+  trn->user_context = opts.zsv_opts.ctx;
+  opts.zsv_opts.ctx = trn;
 
   zst = zsv_new_with_properties(&opts.zsv_opts, opts.custom_prop_handler, opts.input_filename, NULL, &trn->parser);
   if (zst != zsv_status_ok)
@@ -76,6 +79,10 @@ zsv_csv_writer zsvsheet_transformation_writer(zsvsheet_transformation trn) {
   return trn->writer;
 }
 
-char *zsvsheet_transformation_filename(zsvsheet_transformation trn) {
+const char *zsvsheet_transformation_filename(zsvsheet_transformation trn) {
   return trn->output_filename;
+}
+
+void *zsvsheet_transformation_user_context(zsvsheet_transformation trn) {
+  return trn->user_context;
 }
