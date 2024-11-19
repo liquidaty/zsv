@@ -21,4 +21,6 @@ typedef struct zsvsheet_subcommand_context *zsvsheet_subcommand_context_t;
 typedef void *zsvsheet_buffer_t;
 // int zsvsheet_ext_keypress(zsvsheet_proc_context_t);
 
+typedef struct zsvsheet_transformation *zsvsheet_transformation;
+
 #endif

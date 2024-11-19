@@ -107,6 +107,45 @@ zsvsheet_status my_test_command_handler(zsvsheet_proc_context_t ctx) {
   }
   return zsvsheet_status_ok;
 }
+
+struct transformation_context {
+  size_t col_count;
+  size_t row_count;
+};
+
+// Similar to a regular ZSV row handler used in ext_parse_all
+void my_transformation_row_handler(void *ctx) {
+  zsvsheet_transformation trn = ctx;
+  struct transformation_context *priv = zsv_cb.ext_sheet_transformation_user_context(trn);
+  zsv_parser parser = zsv_cb.ext_sheet_transformation_parser(trn);
+  zsv_csv_writer writer = zsv_cb.ext_sheet_transformation_writer(trn);
+
+  size_t j = zsv_cb.cell_count(parser);
+  for (size_t i = 0; i < j; i++) {
+    struct zsv_cell c = zsv_cb.get_cell(parser, i);
+    zsv_writer_cell(writer, i == 0, c.str, c.len, c.quoted);
+  }
+
+  priv->col_count += j;
+
+  if (!priv->row_count)
+    zsv_writer_cell_s(writer, 0, (const unsigned char *)"Column count", 0);
+  else
+    zsv_writer_cell_zu(writer, 0, priv->col_count);
+
+  priv->row_count++;
+}
+
+zsvsheet_status my_transformation_command_handler(zsvsheet_proc_context_t ctx) {
+  struct transformation_context my_ctx = {
+    .col_count = 0,
+    .row_count = 0,
+  };
+
+  // TODO: This probably should happen in another worker thread and while that is happening the status should display
+  //       that some work is in progress. The extension author will maybe want to have control over the status message.
+  return zsv_cb.ext_sheet_push_transformation(ctx, &my_ctx, my_transformation_row_handler);
+}
 #endif
 
 /**
@@ -141,6 +180,11 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
   if (proc_id < 0)
     return zsv_ext_status_error;
   zsv_cb.ext_sheet_register_proc_key_binding('t', proc_id);
+
+  proc_id = zsv_cb.ext_sheet_register_proc("my-transformation", "my transformation", my_transformation_command_handler);
+  if (proc_id < 0)
+    return zsv_ext_status_error;
+  zsv_cb.ext_sheet_register_proc_key_binding('T', proc_id);
 #endif
   return zsv_ext_status_ok;
 }
