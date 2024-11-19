@@ -509,9 +509,11 @@ static struct builtin_cmd *find_builtin(const char *cmd_name) {
 #include "builtin/version.c"
 #include "builtin/register.c"
 
+#define ZSV_EXTENSION_ID_MAX_LEN 8
 static const char *extension_cmd_from_arg(const char *arg) {
-  if (strlen(arg) > 3 && arg[2] == '-')
-    return arg + 3;
+  const char *dash = strchr(arg, '-');
+  if (dash && dash < arg + ZSV_EXTENSION_ID_MAX_LEN && dash[1] != '\0')
+    return dash + 1;
   return NULL;
 }
 
@@ -567,7 +569,7 @@ int ZSV_CLI_MAIN(int argc, const char *argv[]) {
   }
 
   int err = 1;
-  if (strlen(argv[1]) > 3 && argv[1][2] == '-') { // this is an extension command
+  if (extension_cmd_from_arg(argv[1]) != NULL) { // this is an extension command
     struct cli_config config;
     memset(&config, 0, sizeof(config));
     if (!(err = add_extension(argv[1], &config.extensions, 0, 0)))
