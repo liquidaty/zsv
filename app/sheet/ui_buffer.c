@@ -48,7 +48,7 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
       ub->ext_on_close(ub->ext_ctx);
     zsvsheet_screen_buffer_delete(ub->buffer);
     if (ub->mutex_inited)
-      pthread_mutex_destroy(ub->mutex);
+      pthread_mutex_destroy(&ub->mutex);
     if (ub->ixopts)
       ub->ixopts->uib = NULL;
     free(ub->row_filter);
