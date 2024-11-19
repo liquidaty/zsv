@@ -41,6 +41,7 @@ struct zsvsheet_opts {
 
 #include "sheet/utf8-width.c"
 #include "sheet/ui_buffer.c"
+#include "sheet/transformation.c"
 #include "sheet/index.c"
 #include "sheet/read-data.c"
 #include "sheet/key-bindings.c"
