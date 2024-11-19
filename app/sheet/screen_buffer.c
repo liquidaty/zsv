@@ -5,6 +5,7 @@ struct zsvsheet_screen_buffer {
   size_t long_cell_count;
   struct zsvsheet_screen_buffer_opts opts;
   unsigned char *data;
+  int *cell_attrs; // used for per-cell attron() and attroff()
   // to do: add hooks for extension
 };
 
@@ -141,6 +142,14 @@ enum zsvsheet_priv_status zsvsheet_screen_buffer_write_cell_w_len(zsvsheet_scree
 enum zsvsheet_priv_status zsvsheet_screen_buffer_write_cell(zsvsheet_screen_buffer_t buff, size_t row, size_t col,
                                                             const unsigned char *value) {
   return zsvsheet_screen_buffer_write_cell_w_len(buff, row, col, value, strlen((void *)value));
+}
+
+int zsvsheet_screen_buffer_cell_attrs(zsvsheet_screen_buffer_t buff, size_t row, size_t col) {
+  if (buff->cell_attrs) {
+    size_t offset = row * buff->cols * buff->opts.cell_buff_len + col * buff->opts.cell_buff_len;
+    return buff->cell_attrs[offset];
+  }
+  return 0;
 }
 
 const unsigned char *zsvsheet_screen_buffer_cell_display(zsvsheet_screen_buffer_t buff, size_t row, size_t col) {
