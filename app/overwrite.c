@@ -27,21 +27,25 @@
 #define ZSV_COMMAND overwrite
 #include "zsv_command.h"
 
+enum zsvsheet_mode {
+  zsvsheet_mode_add,
+  zsvsheet_mode_remove,
+  zsvsheet_mode_clear,
+  zsvsheet_mode_list,
+  zsvsheet_mode_bulk,
+};
+
 struct zsv_overwrite_args {
   char *filepath;
   // options
   unsigned char force : 1;
   unsigned char a1 : 1;
   unsigned char all : 1;
-  unsigned char bulk : 1;
   unsigned char *old_value;
   unsigned char *author;
   size_t timestamp;
   // commands
-  unsigned char list : 1;
-  unsigned char clear : 1;
-  unsigned char add : 1;
-  unsigned char remove : 1;
+  enum zsvsheet_mode mode;
 };
 
 struct zsv_overwrite {
@@ -135,7 +139,7 @@ static int zsv_overwrites_init(struct zsv_overwrite *data) {
   */
 
   if (sqlite3_open_v2(overwrites_fn, &data->ctx->sqlite3.db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK ||
-      data->args->add || data->args->bulk || data->args->remove || data->args->clear) {
+      data->args->mode == zsvsheet_mode_add || data->args->mode == zsvsheet_mode_bulk || data->args->mode == zsvsheet_mode_remove || data->args->mode == zsvsheet_mode_clear) {
     sqlite3_close(data->ctx->sqlite3.db);
     if (sqlite3_open_v2(overwrites_fn, &data->ctx->sqlite3.db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL) !=
         SQLITE_OK) {
@@ -216,7 +220,7 @@ static int zsv_overwrites_remove(struct zsv_overwrite *data) {
   sqlite3_stmt *query = NULL;
   if (sqlite3_prepare_v2(data->ctx->sqlite3.db, data->ctx->sqlite3.sql, -1, &query, NULL) != SQLITE_OK) {
     err = 1;
-    if (data->args->bulk)
+    if (data->args->mode == zsvsheet_mode_bulk)
       sqlite3_exec(data->ctx->sqlite3.db, "ROLLBACK", NULL, NULL, NULL);
     fprintf(stderr, "Could not prepare: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
     return err;
@@ -228,7 +232,7 @@ static int zsv_overwrites_remove(struct zsv_overwrite *data) {
 
   if (sqlite3_step(query) != SQLITE_DONE) {
     err = 1;
-    if (data->args->bulk)
+    if (data->args->mode == zsvsheet_mode_bulk)
       sqlite3_exec(data->ctx->sqlite3.db, "ROLLBACK", NULL, NULL, NULL);
     fprintf(stderr, "Could not step: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
     return err;
@@ -271,14 +275,14 @@ static int zsv_overwrites_insert(struct zsv_overwrite *data) {
 
     if (sqlite3_step(query) != SQLITE_DONE) {
       err = 1;
-      if (data->args->bulk)
+      if (data->args->mode == zsvsheet_mode_bulk)
         sqlite3_exec(data->ctx->sqlite3.db, "ROLLBACK", NULL, NULL, NULL);
       fprintf(stderr, "Value already exists at row %zu and column %zu, use --force to force insert\n",
               data->overwrite->row_ix, data->overwrite->col_ix);
     }
   } else {
     err = 1;
-    if (data->args->bulk)
+    if (data->args->mode == zsvsheet_mode_bulk)
       sqlite3_exec(data->ctx->sqlite3.db, "ROLLBACK", NULL, NULL, NULL);
     fprintf(stderr, "Failed to prepare2: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
   }
@@ -392,7 +396,7 @@ static int zsv_overwrites_free(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
       remove(ctx->src);
     free(ctx->src);
   }
-  if (overwrite && (!args->bulk))
+  if (overwrite && args->mode != zsvsheet_mode_bulk)
     free(overwrite->val.str);
 
   // sqlite3_shutdown();
@@ -556,12 +560,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if (!strcmp(opt, "--all")) {
       args.all = 1;
     } else if (!strcmp(opt, "list")) {
-      args.list = 1;
+      args.mode = zsvsheet_mode_list;
     } else if (!strcmp(opt, "clear")) {
-      args.clear = 1;
+      args.mode = zsvsheet_mode_clear;
     } else if (!strcmp(opt, "add")) {
       if (argc - i > 2) {
-        args.add = 1;
+        args.mode = zsvsheet_mode_add;
         err = zsv_overwrite_parse_pos(&overwrite, argv[++i]);
         overwrite.val.str = (unsigned char *)strdup(argv[++i]);
         overwrite.val.len = strlen((const char *)overwrite.val.str);
@@ -575,7 +579,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     } else if (!strcmp(opt, "remove")) {
       if (argc - i > 1) {
-        args.remove = 1;
+        args.mode = zsvsheet_mode_remove;
         if (!strcmp(argv[++i], "--all"))
           args.all = 1;
         else
@@ -589,7 +593,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     } else if (!strcmp(opt, "bulk-add")) {
       if (argc - i > 1) {
-        args.bulk = 1;
+        args.mode = zsvsheet_mode_bulk;
         ctx.csv.f = fopen((const char *)argv[++i], "rb");
         opts->row_handler = zsv_overwrites_bulk_add;
       } else {
@@ -598,7 +602,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     } else if (!strcmp(opt, "bulk-remove")) {
       if (argc - i > 1) {
-        args.bulk = 1;
+        args.mode = zsvsheet_mode_bulk;
         ctx.csv.f = fopen((const char *)argv[++i], "rb");
         opts->row_handler = zsv_overwrites_bulk_remove;
       } else {
@@ -630,15 +634,15 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return err;
   }
 
-  if (args.list)
+  if (args.mode == zsvsheet_mode_list)
     show_all_overwrites(data, writer);
-  else if (args.clear)
+  else if (args.mode == zsvsheet_mode_clear)
     zsv_overwrites_clear(&ctx);
-  else if (args.add && ctx.sqlite3.db)
+  else if (args.mode == zsvsheet_mode_add && ctx.sqlite3.db)
     zsv_overwrites_insert(data);
-  else if (args.remove && ctx.sqlite3.db)
+  else if (args.mode == zsvsheet_mode_remove && ctx.sqlite3.db)
     zsv_overwrites_remove(data);
-  else if (args.bulk && ctx.sqlite3.db) {
+  else if (args.mode == zsvsheet_mode_bulk && ctx.sqlite3.db) {
     opts->ctx = data;
     opts->stream = ctx.csv.f;
     ctx.csv.parser = zsv_new(opts);
