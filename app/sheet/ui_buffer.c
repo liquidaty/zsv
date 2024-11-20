@@ -38,7 +38,8 @@ struct zsvsheet_ui_buffer {
   unsigned char rownum_col_offset : 1;
   unsigned char index_started : 1;
   unsigned char has_row_num : 1;
-  unsigned char _ : 5;
+  unsigned char mutex_inited : 1;
+  unsigned char _ : 4;
 };
 
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
@@ -46,6 +47,8 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
     if (ub->ext_on_close)
       ub->ext_on_close(ub->ext_ctx);
     zsvsheet_screen_buffer_delete(ub->buffer);
+    if (ub->mutex_inited)
+      pthread_mutex_destroy(&ub->mutex);
     if (ub->ixopts)
       ub->ixopts->uib = NULL;
     free(ub->row_filter);
@@ -73,6 +76,7 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffe
   pthread_mutex_t init = PTHREAD_MUTEX_INITIALIZER;
   if (uib) {
     uib->buffer = buffer;
+    uib->mutex_inited = 1;
     memcpy(&uib->mutex, &init, sizeof(init));
     if (!(uibopts && uibopts->no_rownum_col_offset))
       uib->rownum_col_offset = 1;

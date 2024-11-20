@@ -760,6 +760,9 @@ const char *display_cell(struct zsvsheet_screen_buffer *buff, size_t data_row, s
                          size_t cell_display_width) {
   char *str = (char *)zsvsheet_screen_buffer_cell_display(buff, data_row, data_col);
   size_t len = str ? strlen(str) : 0;
+  int attrs = zsvsheet_screen_buffer_cell_attrs(buff, data_row, data_col);
+  if (attrs)
+    attron(attrs);
   if (len == 0 || has_multibyte_char(str, len < cell_display_width ? len : cell_display_width) == 0)
     mvprintw(row, col * cell_display_width, "%-*.*s", cell_display_width, cell_display_width - 1, str);
   else {
@@ -783,7 +786,7 @@ const char *display_cell(struct zsvsheet_screen_buffer *buff, size_t data_row, s
 #endif
     if (wlen == (size_t)-1) {
       fprintf(stderr, "Unable to convert to wide chars: %s\n", str);
-      return str;
+      goto out;
     }
 
     // move to the desired position
@@ -794,6 +797,9 @@ const char *display_cell(struct zsvsheet_screen_buffer *buff, size_t data_row, s
     for (size_t k = used_width; k < cell_display_width; k++)
       addch(' ');
   }
+out:
+  if (attrs)
+    attroff(attrs);
   return str;
 }
 
