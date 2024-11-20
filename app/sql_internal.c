@@ -1,6 +1,7 @@
 #include "sql_internal.h"
 
 struct zsv_sqlite3_db *zsv_sqlite3_db_new(const char *csv_filename, char in_memory, const char *opts_used,
+
                                           size_t max_cols, int sqlite3_flags) {
   struct zsv_sqlite3_db *zdb = calloc(1, sizeof(*zdb));
   if (!zdb) {
