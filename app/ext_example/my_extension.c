@@ -15,7 +15,7 @@
 /**
  * `zsv` can easily be extended by simply creating a shared library
  * that implements the interface specified in zsv/ext/implementation.h
- * for any two-character extension id
+ * for any extension id of up to 8 bytes
  *
  * Once the library file is created, you can run any commands it implements
  * by naming the library file zsvext<id>, placing it in any folder that is
@@ -30,21 +30,21 @@
  *
  * We will name our extension "my", so our shared library will be named
  * zsvextmy.so (non-win) or zsvextmy.dll (win). After the shared lib is built,
- * a user can place it anywhere in their path or in the same folder as the zsv
- * binary, and invoke our operations as follows:
+ * place it anywhere in the PATH or in the same folder as the zsv binary.
+ * Our extension commands can then be invoked by running:
  *   `zsv my-count`
  *   `zsv my-echo`
  *
- * in addition, users will see a brief description of our module if they execute:
+ * in addition, a description of our extension is available via:
  *   `zsv help`
  *
- * or
+ * and command-specific help displayed via:
  *   `zsv help my-<command>`
  *
  */
 
 /**
- * *Required*: define our extension id, which must be two characters in length
+ * *Required*: define our extension id, of up to 8 bytes in length
  */
 const char *zsv_ext_id(void) {
   return "my";
@@ -114,7 +114,7 @@ zsvsheet_status my_test_command_handler(zsvsheet_proc_context_t ctx) {
  * initialization routine uses `ext_add_command` to register our commands and
  * `ext_set_help` to set the help text. When we register a command, we provide a
  * callback-- in our cases, those will be `count_main()` and `echo_main()`-- for
- * zsv to invoke when a user runs our command
+ * zsv to invoke when our command is run
  *
  * @param callbacks pointers to zsvlib functions that we must save for later use
  * @param ctx context to be passed whenever we execute a zsvlib function from our init
@@ -137,7 +137,7 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
   zsv_cb.ext_add_command(ctx, "echo", "print the input data back to stdout", echo_main);
 
 #ifdef ZSVSHEET_BUILD
-  int proc_id = zsv_cb.ext_sheet_register_proc("my-test-command", my_test_command_handler);
+  int proc_id = zsv_cb.ext_sheet_register_proc("my-test-command", "my test command", my_test_command_handler);
   if (proc_id < 0)
     return zsv_ext_status_error;
   zsv_cb.ext_sheet_register_proc_key_binding('t', proc_id);

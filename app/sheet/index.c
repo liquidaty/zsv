@@ -13,23 +13,34 @@ static void save_filtered_file_row_handler(void *ctx) {
   struct zsvsheet_indexer *ixr = ctx;
   zsv_parser parser = ixr->parser;
   size_t col_count = zsv_cell_count(parser);
-
+  ixr->row_num++;
   if (col_count == 0)
     return;
 
+  struct zsv_cell first_cell = zsv_get_cell(parser, 0);
   if (ixr->seen_header) {
-    struct zsv_cell first_cell = zsv_get_cell(parser, 0);
     struct zsv_cell last_cell = zsv_get_cell(parser, col_count - 1);
-
     if (!memmem(first_cell.str, last_cell.str - first_cell.str + last_cell.len, ixr->filter, ixr->filter_len))
       return;
+    // future enhancement: optionally, handle if row may have unusual quotes e.g. cell1,"ce"ll2,cell3
   } else {
     ixr->seen_header = 1;
+    if (first_cell.len == ZSVSHEET_ROWNUM_HEADER_LEN && !memcmp(first_cell.str, ZSVSHEET_ROWNUM_HEADER, first_cell.len))
+      ixr->has_row_num = 1;
   }
 
+  char row_started = 0;
+  if (!ixr->has_row_num) {
+    // create our own rownum column
+    row_started = 1;
+    if (ixr->row_num == 1)
+      zsv_writer_cell_s(ixr->writer, 1, (const unsigned char *)"Row #", 0); // to do: consolidate "Row #"
+    else
+      zsv_writer_cell_zu(ixr->writer, 1, ixr->row_num - 1);
+  }
   for (size_t i = 0; i < col_count; i++) {
     struct zsv_cell cell = zsv_get_cell(parser, i);
-    zsv_writer_cell(ixr->writer, i == 0, cell.str, cell.len, cell.quoted);
+    zsv_writer_cell(ixr->writer, i == 0 && row_started == 0, cell.str, cell.len, cell.quoted);
   }
 }
 
@@ -79,7 +90,7 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
     ix_zopts.row_handler = save_filtered_file_row_handler;
 
     enum zsv_status zst =
-      zsv_new_with_properties(&ix_zopts, optsp->custom_prop_handler, optsp->filename, optsp->opts_used, &ixr.parser);
+      zsv_new_with_properties(&ix_zopts, optsp->custom_prop_handler, optsp->filename, NULL, &ixr.parser);
     if (zst != zsv_status_ok)
       goto out;
 
@@ -102,7 +113,7 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
   ix_zopts.row_handler = build_memory_index_row_handler;
 
   enum zsv_status zst =
-    zsv_new_with_properties(&ix_zopts, optsp->custom_prop_handler, optsp->filename, optsp->opts_used, &ixr.parser);
+    zsv_new_with_properties(&ix_zopts, optsp->custom_prop_handler, optsp->filename, NULL, &ixr.parser);
   if (zst != zsv_status_ok)
     goto out;
 
@@ -119,7 +130,7 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
     ret = zsv_index_status_ok;
     *optsp->index = ixr.ix;
   } else
-    free(ixr.ix);
+    zsv_index_delete(ixr.ix);
 
 out:
   zsv_delete(ixr.parser);

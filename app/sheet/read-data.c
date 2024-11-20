@@ -28,33 +28,38 @@ static void *get_data_index(void *d);
 
 static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char *filename, struct zsv_opts *optsp,
                                  const char *row_filter, struct zsv_prop_handler *custom_prop_handler,
-                                 const char *opts_used, pthread_mutex_t *mutexp) {
-  struct zsvsheet_index_opts *gdi = calloc(1, sizeof(*gdi));
-  gdi->mutexp = mutexp;
-  gdi->filename = filename;
-  gdi->data_filenamep = &uibuffp->data_filename;
-  gdi->zsv_opts = *optsp;
-  gdi->row_filter = row_filter;
-  gdi->index = &uibuffp->index;
-  gdi->index_ready = &uibuffp->index_ready;
-  gdi->custom_prop_handler = custom_prop_handler;
-  gdi->opts_used = opts_used;
-  gdi->uib = uibuffp;
+                                 // const char *opts_used,
+                                 pthread_mutex_t *mutexp) {
+  struct zsvsheet_index_opts *ixopts = calloc(1, sizeof(*ixopts));
+  ixopts->mutexp = mutexp;
+  ixopts->filename = filename;
+  ixopts->data_filenamep = &uibuffp->data_filename;
+  ixopts->zsv_opts = *optsp;
+  ixopts->row_filter = row_filter;
+  ixopts->index = &uibuffp->index;
+  ixopts->index_ready = &uibuffp->index_ready;
+  ixopts->custom_prop_handler = custom_prop_handler;
+  //  ixopts->opts_used = opts_used;
+  ixopts->uib = uibuffp;
+  ixopts->uib->ixopts = ixopts;
   pthread_t thread;
-  pthread_create(&thread, NULL, get_data_index, gdi);
+  pthread_create(&thread, NULL, get_data_index, ixopts);
   pthread_detach(thread);
 }
 
 static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_ui_buffer will be allocated
                      struct zsvsheet_ui_buffer_opts *uibopts, // if *uibufferp == NULL and uibopts != NULL
                      size_t start_row, size_t start_col, size_t header_span, struct zsvsheet_opts *zsvsheet_opts,
-                     struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                     struct zsv_prop_handler *custom_prop_handler) {
   const char *filename = (uibufferp && *uibufferp) ? (*uibufferp)->filename : uibopts ? uibopts->filename : NULL;
   struct zsv_opts opts = {0};
+  const char *opts_used = "";
   if (uibufferp && *uibufferp)
     opts = (*uibufferp)->zsv_opts;
-  else if (uibopts)
+  else if (uibopts) {
     opts = uibopts->zsv_opts;
+    opts_used = uibopts->opts_used;
+  }
   struct zsvsheet_ui_buffer *uibuff = uibufferp ? *uibufferp : NULL;
   size_t remaining_rows_to_skip = start_row;
   size_t remaining_header_to_skip = header_span;
@@ -76,6 +81,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     zsv_delete(parser);
     return errno ? errno : -1;
   }
+  // opts_used is no longer needed since opts will be updated
 
   if (uibuff) {
     pthread_mutex_lock(&uibuff->mutex);
@@ -93,6 +99,16 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     if (uibuff->index_ready) {
       opts.header_span = 0;
       opts.rows_to_ignore = 0;
+
+      if (uibuff->data_filename) {
+        struct zsv_opts filter_opts = {0};
+        filter_opts.stream = opts.stream;
+        filter_opts.max_columns = opts.max_columns;
+        filter_opts.max_row_size = opts.max_row_size;
+        filter_opts.max_rows = opts.max_rows;
+        opts = filter_opts;
+        uibuff->has_row_num = 1; // move this to coincide with when data_filename is assigned
+      }
       zst = zsv_index_seek_row(uibuff->index, &opts, start_row);
 
       zsv_delete(parser);
@@ -112,6 +128,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   size_t find_len = zsvsheet_opts->find ? strlen(zsvsheet_opts->find) : 0;
   size_t rows_searched = 0;
   zsvsheet_screen_buffer_t buffer = uibuff ? uibuff->buffer : NULL;
+  if (uibuff && uibuff->has_row_num)
+    zsvsheet_opts->hide_row_nums = 1;
 
   while (zsv_next_row(parser) == zsv_status_row &&
          (rows_read == 0 || rows_read < zsvsheet_screen_buffer_rows(buffer))) { // for each row
@@ -129,6 +147,18 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       *uibufferp = uibuff = tmp_uibuff;
       row_filter = uibuff ? uibuff->row_filter : NULL;
       row_filter_len = row_filter ? strlen(row_filter) : 0;
+    }
+
+    // row number
+    size_t rownum_column_offset = 0;
+    if (rows_read == 0 && zsvsheet_opts->hide_row_nums == 0) {
+      // Check if we already have Row #
+      struct zsv_cell c = zsv_get_cell(parser, 0);
+      if (c.len == ZSVSHEET_ROWNUM_HEADER_LEN && !memcmp(c.str, ZSVSHEET_ROWNUM_HEADER, c.len)) {
+        zsvsheet_opts->hide_row_nums = 1;
+        if (uibuff)
+          uibuff->has_row_num = 1;
+      }
     }
 
     original_row_num++;
@@ -160,12 +190,9 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       continue;
     }
 
-    // row number
-    size_t rownum_column_offset = 0;
     if (zsvsheet_opts->hide_row_nums == 0) {
       if (rows_read == 0) // header
-        zsvsheet_screen_buffer_write_cell(buffer, 0, 0, (const unsigned char *)"Row #");
-      /////
+        zsvsheet_screen_buffer_write_cell(buffer, 0, 0, (const unsigned char *)ZSVSHEET_ROWNUM_HEADER);
       else {
         char buff[32];
         int n = snprintf(buff, sizeof(buff), "%zu", original_row_num - 1);
@@ -194,16 +221,16 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       uibuff->index_started = 1;
       if (original_row_num > 1 && (row_filter == NULL || rows_read > 0)) {
         opts.stream = NULL;
-        get_data_index_async(uibuff, filename, &opts, row_filter, custom_prop_handler, opts_used, &uibuff->mutex);
+        get_data_index_async(uibuff, filename, &opts, row_filter, custom_prop_handler, /* opts_used, */ &uibuff->mutex);
         asprintf(&ui_status, "(building index) ");
       }
     }
   }
 
   if (ui_status) {
+    pthread_mutex_lock(&uibuff->mutex);
     if (uibuff->status)
       free(uibuff->status);
-    pthread_mutex_lock(&uibuff->mutex);
     uibuff->status = ui_status;
     pthread_mutex_unlock(&uibuff->mutex);
   }
@@ -231,17 +258,15 @@ static void *get_data_index(void *gdi) {
   pthread_mutex_lock(mutexp);
   *d->index_ready = 1;
 
-  if (d->uib && d->uib->status)
+  if (d->uib) {
     free(d->uib->status);
-
-  if (d->row_filter != NULL) {
-    if (d->uib->index->row_count > 0) {
-      d->uib->dimensions.row_count = d->uib->index->row_count + 1;
-      asprintf(&d->uib->status, "(%" PRIu64 " filtered rows) ", d->uib->index->row_count);
-    } else
-      d->uib->status = NULL;
-  } else {
     d->uib->status = NULL;
+    if (d->row_filter != NULL) {
+      if (d->uib->index->row_count > 0) {
+        d->uib->dimensions.row_count = d->uib->index->row_count + 1;
+        asprintf(&d->uib->status, "(%" PRIu64 " filtered rows) ", d->uib->index->row_count);
+      }
+    }
   }
   free(d);
   pthread_mutex_unlock(mutexp);
@@ -251,7 +276,7 @@ static void *get_data_index(void *gdi) {
 
 static size_t zsvsheet_find_next(struct zsvsheet_ui_buffer *uib, const char *needle,
                                  struct zsvsheet_opts *zsvsheet_opts, size_t header_span,
-                                 struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                                 struct zsv_prop_handler *custom_prop_handler) {
   struct zsvsheet_rowcol *input_offset = &uib->input_offset;
   struct zsvsheet_rowcol *buff_offset = &uib->buff_offset;
   size_t cursor_row = uib->cursor_row;
@@ -259,7 +284,7 @@ static size_t zsvsheet_find_next(struct zsvsheet_ui_buffer *uib, const char *nee
   zsvsheet_opts->found_rownum = 0;
   // TO DO: check if it exists in current row, later column (and change 'cursor_row - 1' below to 'cursor_row')
   read_data(&uib, NULL, input_offset->row + buff_offset->row + header_span + cursor_row - 1, 0, header_span,
-            zsvsheet_opts, custom_prop_handler, opts_used);
+            zsvsheet_opts, custom_prop_handler);
   zsvsheet_opts->find = NULL;
   return zsvsheet_opts->found_rownum;
 }

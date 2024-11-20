@@ -1,3 +1,9 @@
+# Next release
+- `overwrite` subcommand
+- sheet
+  - edit cell
+  - save buffer to file
+
 # Core Parser
 
 ### Performance

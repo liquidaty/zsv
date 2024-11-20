@@ -25,6 +25,8 @@ enum zsvsheet_priv_status zsvsheet_screen_buffer_write_cell_w_len(zsvsheet_scree
 
 const unsigned char *zsvsheet_screen_buffer_cell_display(zsvsheet_screen_buffer_t buff, size_t row, size_t col);
 
+int zsvsheet_screen_buffer_cell_attrs(zsvsheet_screen_buffer_t buff, size_t row, size_t col);
+
 void zsvsheet_screen_buffer_delete(zsvsheet_screen_buffer_t);
 
 size_t zsvsheet_screen_buffer_cols(zsvsheet_screen_buffer_t);

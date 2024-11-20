@@ -83,6 +83,21 @@ static int zsvsheet_goto_input_raw_row(struct zsvsheet_ui_buffer *uib, size_t in
   if (final_cursor_position > ddims->rows - ddims->footer_span - 1)
     final_cursor_position = ddims->rows - ddims->footer_span - 1;
   *cursor_rowp = final_cursor_position;
+
+  // we may still need to update the buffer if the row we are jumping to will be
+  // in the middle of the screen and therefore we still want to display additional
+  // rows, and those additional rows are not loaded into the buffer
+  if (!update_buffer && final_cursor_position < ddims->rows - 1) {
+    size_t last_raw_row_to_display = input_raw_num + (ddims->rows - 1 - final_cursor_position);
+    if (last_raw_row_to_display > input_dims->row_count)
+      last_raw_row_to_display = input_dims->row_count;
+    if (last_raw_row_to_display < input_offset->row + input_header_span                      // move the buffer up
+        || last_raw_row_to_display + input_header_span + 1 > input_offset->row + buffer_rows // move the buffer down
+    ) {
+      input_offset->row = input_offset_centered(input_dims, buffer_rows, input_raw_num);
+      update_buffer = 1;
+    }
+  }
   set_window_to_cursor(buff_offset, input_raw_num, input_offset, input_header_span, ddims, *cursor_rowp);
   return update_buffer;
 }

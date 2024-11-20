@@ -111,7 +111,12 @@ ${BUILD_DIR}/bin/cli:
 ${BUILD_DIR}/objs/utils/%.o:
 	(cd .. && ${MAKE} CONFIGFILE=${CONFIGFILEPATH} CC=${CC} DEBUG=${DEBUG} $@ )
 
-test: test-1 test-2 test-3 test-4 test-5 test-thirdparty
+TESTS=test-1 test-2 test-3 test-4 test-5 test-thirdparty
+ifeq ($(ZSVSHEET_BUILD),1)
+  TESTS+=test-sheet-extension
+endif
+
+test: ${TESTS}
 
 test-1: test-%: ${CLI} ${TARGET}
 	@${RUN_CLI} my-echo < ${THIS_LIB_BASE}/data/quoted.csv > /tmp/zsvext-$@.out
@@ -131,6 +136,27 @@ test-3: test-%: ${CLI} ${TARGET}
 	@${RUN_CLI} register my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
 	@${RUN_CLI} help 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
 	@cmp /tmp/zsvext-$@.out 2>&1 test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+../test/worldcitiespop_mil.csv:
+	make -C ../test worldcitiespop_mil.csv
+
+TMP_DIR=/tmp
+TMUX_TERM=xterm-256color
+test-sheet-extension: ../test/worldcitiespop_mil.csv
+	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
+	@tmux kill-session -t $@ || echo 'No tmux session to kill'
+	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
+	@${RUN_CLI} register my 2>&1 | grep -v [.]so || [ 1==1 ]
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(ZSV_CONFIG_DIR=/tmp tmux -v new-session -x 80 -y 5 -d -s $@ && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "${CLI} sheet ../test/worldcitiespop_mil.csv" ENTER && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "t" "hello" Enter && \
+	tmux capture-pane -t $@ -p > ${TMP_DIR}/$@.out && \
+	tmux kill-session -t $@ && \
+	cmp ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && \
+	if [ -f ${TMP_DIR}/$@.out ]; then cat ${TMP_DIR}/$@.out; fi && ${TEST_FAIL}))
 
 test-4: test-%: ${CLI} ${TARGET}
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]

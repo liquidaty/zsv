@@ -640,6 +640,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
                                struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
   (void)(zsv_opts);
   (void)(opts_used);
+  (void)(custom_prop_handler);
   FILE *f_in = NULL;
   int err = 0;
   struct zsv_2db_options opts = {0};
