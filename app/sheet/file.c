@@ -7,6 +7,7 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
   uibopts.filename = filename;
   if (zsv_optsp)
     uibopts.zsv_opts = *zsv_optsp;
+  uibopts.opts_used = opts_used;
   uibopts.buff_opts = &bopts;
   struct zsvsheet_opts zsvsheet_opts = {0};
   int err = 0;
@@ -14,7 +15,7 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
   uibopts.row_filter = row_filter;
   if (!opts_used)
     opts_used = "";
-  if ((err = read_data(&tmp_ui_buffer, &uibopts, 0, 0, 0, &zsvsheet_opts, custom_prop_handler, opts_used)) != 0 ||
+  if ((err = read_data(&tmp_ui_buffer, &uibopts, 0, 0, 0, &zsvsheet_opts, custom_prop_handler)) != 0 ||
       !tmp_ui_buffer || !tmp_ui_buffer->buff_used_rows) {
     zsvsheet_ui_buffer_delete(tmp_ui_buffer);
     if (err)

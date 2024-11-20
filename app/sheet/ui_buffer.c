@@ -7,6 +7,7 @@ struct zsvsheet_ui_buffer {
   char *filename;
   char *data_filename;              // if this dataset was filtered from another, the filtered data is stored here
   struct zsv_opts zsv_opts;         // options to use when opening this file
+  char *opts_used;                  // opts_used when opening this file
   struct zsvsheet_ui_buffer *prior; // previous buffer in this stack. If null, this is the first buffer in the stack
   struct zsvsheet_screen_buffer_opts *buff_opts;
   zsvsheet_screen_buffer_t buffer;
@@ -46,6 +47,7 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
   if (ub) {
     if (ub->ext_on_close)
       ub->ext_on_close(ub->ext_ctx);
+    free(ub->opts_used);
     zsvsheet_screen_buffer_delete(ub->buffer);
     if (ub->mutex_inited)
       pthread_mutex_destroy(&ub->mutex);
@@ -67,6 +69,7 @@ struct zsvsheet_ui_buffer_opts {
   const char *row_filter;
   const char *filename;
   struct zsv_opts zsv_opts; // options to use when opening this file
+  const char *opts_used;
   char no_rownum_col_offset;
 };
 
@@ -87,6 +90,7 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffe
         return NULL;
       }
       uib->zsv_opts = uibopts->zsv_opts;
+      uib->opts_used = uibopts->opts_used ? strdup(uibopts->opts_used) : NULL;
     }
   }
   return uib;
