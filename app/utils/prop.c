@@ -138,7 +138,8 @@ enum zsv_status zsv_properties_parser_destroy(struct zsv_properties_parser *pars
  * print a warning to stderr
  *
  * @param data_filepath            required file path
- * @param opts (optional)          parser options to load
+ * @param opts (optional)          parser options to load. will be updated to reflect
+ *                                 what is actually used
  * @param custom_prop_handler (optional) handler for custom properties
  * @param cmd_opts_used (optional) cmd option codes to skip + warn if found
  * @return zsv_status_ok on success

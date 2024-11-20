@@ -90,7 +90,7 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
     ix_zopts.row_handler = save_filtered_file_row_handler;
 
     enum zsv_status zst =
-      zsv_new_with_properties(&ix_zopts, optsp->custom_prop_handler, optsp->filename, optsp->opts_used, &ixr.parser);
+      zsv_new_with_properties(&ix_zopts, optsp->custom_prop_handler, optsp->filename, NULL, &ixr.parser);
     if (zst != zsv_status_ok)
       goto out;
 
@@ -113,7 +113,7 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
   ix_zopts.row_handler = build_memory_index_row_handler;
 
   enum zsv_status zst =
-    zsv_new_with_properties(&ix_zopts, optsp->custom_prop_handler, optsp->filename, optsp->opts_used, &ixr.parser);
+    zsv_new_with_properties(&ix_zopts, optsp->custom_prop_handler, optsp->filename, NULL, &ixr.parser);
   if (zst != zsv_status_ok)
     goto out;
 
