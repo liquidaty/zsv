@@ -89,8 +89,8 @@ test-remove:
 	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n3,1,V3,,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv remove --all 
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n\"`" ] \
-		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ ! -f ".zsv/overwrite/dummy2.csv/overwrite.sqlite3" ] \
+			&& ${TEST_PASS} || ${TEST_FAIL}
 
 test-old-value:
 	@${TEST_INIT}
