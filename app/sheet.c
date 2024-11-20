@@ -380,6 +380,7 @@ static zsvsheet_status zsvsheet_open_file_handler(struct zsvsheet_proc_context *
   // TODO: should be PATH_MAX but that's going to be about a page and compiler
   //       might complain about stack being too large. Probably move to handler
   //       state or something.
+  // TODO: allow additional zsv options
   char prompt_buffer[256] = {0};
   struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state *)ctx->subcommand_context;
 
@@ -426,7 +427,7 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   const char *data_filename = zsvsheet_buffer_data_filename(current_ui_buffer);
   char is_filtered_file = !(data_filename == current_ui_buffer->filename);
   struct zsv_opts *zsv_opts = is_filtered_file ? NULL : &current_ui_buffer->zsv_opts;
-  const char *opts_used = current_ui_buffer->opts_used;
+  const char *opts_used = NULL; // current_ui_buffer->opts_used;
   if ((err = zsvsheet_ui_buffer_open_file(data_filename, zsv_opts, prompt_buffer, state->custom_prop_handler, opts_used,
                                           di->ui_buffers.base, di->ui_buffers.current))) {
     if (err > 0)
