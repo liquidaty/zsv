@@ -5,8 +5,8 @@
 
 struct zsvsheet_ui_buffer {
   char *filename;
-  char *data_filename;              // if this dataset was filtered from another, the filtered data is stored here
-  struct zsv_opts zsv_opts;         // options to use when opening this file
+  char *data_filename;      // if this dataset was filtered from another, the filtered data is stored here
+  struct zsv_opts zsv_opts; // options to use when opening this file
   //  char *opts_used;                  // opts_used when opening this file
   struct zsvsheet_ui_buffer *prior; // previous buffer in this stack. If null, this is the first buffer in the stack
   struct zsvsheet_screen_buffer_opts *buff_opts;
