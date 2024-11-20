@@ -24,14 +24,14 @@ struct sqlite3_zsv_data *sqlite3_zsv_data_g = NULL;
 /**
  * Our shared memory structure should be locked for read/write
  */
-int sqlite3_zsv_data_lock(void *) {
+static int sqlite3_zsv_data_lock(void) {
 #ifndef NO_THREADING
   pthread_mutex_lock(&sqlite3_zsv_data_mutex);
 #endif
   return 0;
 }
 
-int sqlite3_zsv_data_unlock(void *) {
+static int sqlite3_zsv_data_unlock(void) {
 #ifndef NO_THREADING
   pthread_mutex_unlock(&sqlite3_zsv_data_mutex);
 #endif
@@ -80,14 +80,14 @@ int sqlite3_zsv_data_add(const char *filename, struct zsv_opts *opts, struct zsv
   struct sqlite3_zsv_data *e = sqlite3_zsv_data_new(filename, opts, custom_prop_handler);
   if (e) {
     struct sqlite3_zsv_data **next;
-    if (sqlite3_zsv_data_lock(NULL)) {
+    if (sqlite3_zsv_data_lock()) {
       sqlite3_zsv_data_delete(e);
       return -1;
     } else {
       for (next = list; *next; next = &(*next)->next)
         ;
       *next = e;
-      sqlite3_zsv_data_unlock(NULL);
+      sqlite3_zsv_data_unlock();
       return 0;
     }
   }
@@ -102,12 +102,12 @@ struct sqlite3_zsv_data *sqlite3_zsv_data_find(const char *filename) {
   struct sqlite3_zsv_data *list = sqlite3_zsv_data_g;
   struct sqlite3_zsv_data *found = NULL;
   pid_t pid = getpid();
-  if (!sqlite3_zsv_data_lock(NULL)) {
+  if (!sqlite3_zsv_data_lock()) {
     for (struct sqlite3_zsv_data *e = list; e && !found; e = e->next) {
       if (!sqlite3_zsv_data_cmp(e, filename, pid))
         found = e;
     }
-    if (sqlite3_zsv_data_unlock(NULL))
+    if (sqlite3_zsv_data_unlock())
       fprintf(stderr, "Error unlocking sqlite3-csv-zsv shared mem lock\n");
   }
   return found;
