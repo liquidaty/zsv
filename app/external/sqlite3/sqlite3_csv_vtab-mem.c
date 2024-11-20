@@ -1,6 +1,8 @@
 #ifndef SQLITE3_CSV_VTAB_ZSV_H
 #define SQLITE3_CSV_VTAB_ZSV_H
 
+#include <pthread.h>
+
 /**
  * see sqlite3_csv_vtab-mem.h for background info
  */
