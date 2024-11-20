@@ -107,10 +107,10 @@ test-old-value:
 	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,V2,,\n3,1,V3,,\n4,1,V4,,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 NEW_V2 --old-value V2 --no-timestamp
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n3,1,V3,,\n4,1,V4,,\n2,1,NEW_V2,,\n\"`" ] \
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,NEW_V2,,\n3,1,V3,,\n4,1,V4,,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv remove 3-1 --old-value V3 
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n4,1,V4,,\n2,1,NEW_V2,,\n\"`" ] \
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,NEW_V2,,\n4,1,V4,,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 
 test-force:
