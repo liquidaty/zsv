@@ -75,10 +75,15 @@ static enum zsv_status zsv_next_overwrite_sqlite3(void *h, struct zsv_overwrite_
         odata->col_ix = sqlite3_column_int64(stmt, 1);
         odata->val.str = (unsigned char *)sqlite3_column_text(stmt, 2);
         odata->val.len = sqlite3_column_bytes(stmt, 2);
+        odata->timestamp = sqlite3_column_int64(stmt, 3);
+        odata->author.str = (unsigned char *)sqlite3_column_text(stmt, 4);
+        odata->author.len = sqlite3_column_bytes(stmt, 4);
       } else {
         odata->row_ix = 0;
         odata->col_ix = 0;
         odata->val.len = 0;
+        odata->timestamp = 0;
+        odata->author.len = 0;
         odata->have = 0;
       }
     }
@@ -122,7 +127,7 @@ static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx,
     ok = 1;
   } else if (len > strlen(".sqlite3") && !strcmp(source + len - strlen(".sqlite3"), ".sqlite3")) {
     ctx->sqlite3.filename = strdup(source);
-    ctx->sqlite3.sql = "select row, column, value from overwrites order by row, column";
+    ctx->sqlite3.sql = "select row, column, value, timestamp, author from overwrites order by row, column";
     ok = 1;
   }
 
