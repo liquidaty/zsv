@@ -317,8 +317,7 @@ static int zsv_overwrites_free(struct zsv_overwrite_ctx *ctx, struct zsv_overwri
   if (writer)
     zsv_writer_delete(writer);
   if (ctx) {
-    sqlite3_close(ctx->sqlite3.db);
-    free(ctx->src);
+    zsv_overwrite_context_delete(ctx);
   }
   if (overwrite && args->mode != zsvsheet_mode_bulk)
     free(overwrite->val.str);
@@ -554,11 +553,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     zsv_overwrites_bulk(data);
   }
 
-  if (args.mode == zsvsheet_mode_list || args.mode == zsvsheet_mode_bulk) {
-    zsv_overwrite_context_delete(data->ctx);
-    zsv_writer_delete(writer);
-  } else
-    zsv_overwrites_free(ctx, &overwrite, &args, writer);
+  zsv_overwrites_free(ctx, &overwrite, &args, writer);
 
   if (data->args->all)
     remove(ctx->src);
