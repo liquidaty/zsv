@@ -25,7 +25,7 @@ void *zsv_overwrite_context_new(struct zsv_overwrite_opts *opts) {
 
 enum zsv_status zsv_overwrite_context_delete(void *h) {
   struct zsv_overwrite_ctx *ctx = h;
-  if(ctx->sqlite3.filename)
+  if (ctx->sqlite3.filename)
     free(ctx->sqlite3.filename);
   if (ctx->sqlite3.stmt)
     sqlite3_finalize(ctx->sqlite3.stmt);
