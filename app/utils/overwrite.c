@@ -48,6 +48,15 @@ static enum zsv_status zsv_next_overwrite_csv(void *h, struct zsv_overwrite_data
     struct zsv_cell row = zsv_get_cell(ctx->csv.parser, 0);
     struct zsv_cell col = zsv_get_cell(ctx->csv.parser, 1);
     struct zsv_cell val = zsv_get_cell(ctx->csv.parser, 2);
+    struct zsv_cell author = {0};
+    struct zsv_cell timestamp = {0};
+    struct zsv_cell old_value = {0};
+    if(ctx->author_ix)
+      author = zsv_get_cell(ctx->csv.parser, ctx->author_ix);
+    if(ctx->timestamp_ix)
+      timestamp = zsv_get_cell(ctx->csv.parser, ctx->timestamp_ix);
+    if(ctx->old_value_ix)
+      old_value = zsv_get_cell(ctx->csv.parser, ctx->old_value_ix);
     if (row.len && col.len) {
       char *end = (char *)(row.str + row.len);
       char **endp = &end;
@@ -55,10 +64,20 @@ static enum zsv_status zsv_next_overwrite_csv(void *h, struct zsv_overwrite_data
       end = (char *)(col.str + col.len);
       odata->col_ix = strtoumax((char *)col.str, endp, 10);
       odata->val = val;
+      odata->author = author;
+      odata->old_value = old_value;
     } else {
       odata->row_ix = 0;
       odata->col_ix = 0;
       odata->val.len = 0;
+      odata->old_value.len = 0;
+      odata->author.len = 0;
+    }
+
+    if(timestamp.len) {
+      char *end = (char *)(timestamp.str + timestamp.len);
+      char **endp = &end;
+      odata->timestamp = strtoumax((char *)timestamp.str, endp, 10);
     }
   }
   return zsv_status_ok;
@@ -186,6 +205,16 @@ enum zsv_status zsv_overwrite_open(void *h) {
           memcmp(val.str, "val", 3))
         fprintf(stderr, "Warning! overwrite expects 'row,col,value' header, got '%.*s,%.*s,%.*s'\n", (int)row.len,
                 row.str, (int)col.len, col.str, (int)val.len, val.str);
+      struct zsv_cell next; 
+      for(size_t i = 3; (next = zsv_get_cell(ctx->csv.parser, i)).len > 0; i++) {
+        if(!memcmp(next.str, "timestamp", 9)) {
+          ctx->timestamp_ix = i;
+        } else if(!memcmp(next.str, "author", 6)) {
+          ctx->author_ix = i;
+        } else if(!memcmp(next.str, "old value", 9)) {
+          ctx->old_value_ix = i;
+        }
+      }
     }
     ctx->next = zsv_next_overwrite_csv;
     ok = 1;

@@ -102,6 +102,7 @@ struct zsv_overwrite_data {
   size_t timestamp;
   struct zsv_cell val;
   struct zsv_cell author;
+  struct zsv_cell old_value;
   char have; // 1 = we have unprocessed overwrites
 };
 
