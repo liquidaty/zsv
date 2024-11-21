@@ -134,7 +134,6 @@ test-bulk-add:
 	@${PREFIX} ${EXE} dummy2.csv add 1-1 OLD_V1 --no-timestamp # for old value test
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 OLD_VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv bulk-add overwrite.csv
-	@${EXE} dummy2.csv list
 	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,VAL1,1731620001,\n2,1,OLD_VAL2,,\n3,1,VAL3,,\n4,1,VAL4,1731620001,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 

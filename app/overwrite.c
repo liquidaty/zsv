@@ -304,6 +304,7 @@ static void zsv_overwrites_bulk(struct zsv_overwrite *data) {
   if (sqlite3_exec(data->ctx->sqlite3.db, "BEGIN TRANSACTION", NULL, NULL, NULL) == SQLITE_OK) {
     while (data->ctx->next(data->ctx, data->overwrite) == zsv_status_ok && data->overwrite->have) {
       data->next(data);
+      data->overwrite->timestamp = 0;
     }
     if (sqlite3_exec(data->ctx->sqlite3.db, "COMMIT", NULL, NULL, NULL) != SQLITE_OK)
       fprintf(stderr, "Could not commit changes: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
