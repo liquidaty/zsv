@@ -69,8 +69,11 @@ cppcheck*
 tmp
 include/zsv.h
 app/test/worldcitiespop_mil.csv
+app/test/worldcitiespop_mil.tsv
 data/quoted5.csv
 data/loans_2.csv
 data/.zsv/data/loans_2.csv/overwrite.sqlite3
 compile_commands.json
 .cache
+zsvsheet_filter_*
+overwrite.sqlite3
