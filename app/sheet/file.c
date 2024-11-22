@@ -31,7 +31,7 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
  * Open a tabular file as a new buffer
  */
 zsvsheet_status zsvsheet_open_file(struct zsvsheet_proc_context *ctx, const char *filepath, struct zsv_opts *zopts) {
-  struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state *)ctx->subcommand_context;
+  struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_display_info *di = &state->display_info;
   if (!di || !di->ui_buffers.base || !di->ui_buffers.current)
     return zsvsheet_status_error;
