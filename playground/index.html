@@ -26,22 +26,42 @@
         };
       })()
     };
+
+    Module['onRuntimeInitialized'] = function () {
+      Module.FS.mkdir('/home/zsv');
+      Module.FS.chdir('/home/zsv');
+      Module.FS.writeFile('test.csv', 'a,b,c\n1,2,3\n4,5,6\n7,8,9');
+    }
   </script>
 </head>
 
 <body>
   <script type="text/javascript">
-    const greetings =
-      "Welcome to zsv playground! :)\n" +
+    // Logo generated from:
+    // https://patorjk.com/software/taag/#p=display&f=Doom&t=zsv%20playground
+    // Replaced backticks with single quotes
+    const logo = String.raw`
+                       _                                             _ 
+Welcome to            | |                                           | |
+ _________   __  _ __ | | __ _ _   _  __ _ _ __ ___  _   _ _ __   __| |
+|_  / __\ \ / / | '_ \| |/ _' | | | |/ _' | '__/ _ \| | | | '_ \ / _' |
+ / /\__ \\ V /  | |_) | | (_| | |_| | (_| | | | (_) | |_| | | | | (_| |
+/___|___/ \_/   | .__/|_|\__,_|\__, |\__, |_|  \___/ \__,_|_| |_|\__,_|
+                | |             __/ | __/ |                            
+                |_|            |___/ |___/                          :-)
+`;
+    const greetings = logo +
+      "\n" +
       "Version: __VERSION__\n" +
-      "GitHub: https://github.com/liquidaty/zsv\n" +
+      "GitHub repository: https://github.com/liquidaty/zsv\n" +
+      "Report any issues here: https://github.com/liquidaty/zsv/issues\n" +
       "\n" +
       "To get started, run `zsv help`.\n" +
       "Supported commands are: `zsv`, `clear`, and `ls`\n"
       ;
 
     function ls() {
-      const listing = FS.readdir('.');
+      const listing = Module.FS.readdir('.');
       const filtered = listing.filter((entry) => (entry !== '.' && entry !== '..'));
       $('body').terminal().echo(filtered);
     }
@@ -66,7 +86,7 @@
         default:
           const msg =
             "Unsupported command! [" + name + "]\n" +
-            "Supported commands are: `zsv`, `clear`, and `ls`\n";
+            "Supported commands are: `zsv`, `clear`, and `ls`";
           this.error(msg);
           break;
       }
