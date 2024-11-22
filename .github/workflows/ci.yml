@@ -520,6 +520,9 @@ jobs:
     runs-on: ubuntu-latest
     container: alpine:latest
 
+    outputs:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
 
@@ -578,14 +581,14 @@ jobs:
       run: ./scripts/ci-upload-release-artifacts.sh
 
   ghcr:
-    needs: [tag, ci-musl]
+    needs: ci-musl
     runs-on: ubuntu-latest
 
     permissions:
       packages: write
 
     env:
-      TAG: ${{ needs.tag.outputs.TAG }}
+      TAG: ${{ needs.ci-musl.outputs.TAG }}
 
     steps:
     - name: Checkout
@@ -672,13 +675,12 @@ jobs:
         sed "s|__VERSION__|$TAG|" -i playground/index.html
 
     - name: Upload GitHub Pages artifacts
-      # if: ${{ github.ref_name == 'main' }}
       uses: actions/upload-pages-artifact@v3
       with:
         path: playground
 
   deploy-playground:
-    # if: ${{ github.ref_name == 'main' }}
+    if: ${{ github.ref_name == 'main' }}
     needs: ci-wasm
     runs-on: ubuntu-latest
 

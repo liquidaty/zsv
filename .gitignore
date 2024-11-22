@@ -77,5 +77,6 @@ compile_commands.json
 .cache
 zsvsheet_filter_*
 overwrite.sqlite3
-playground/cli.em.js
-playground/cli.em.wasm
+playground/*
+!playground/index.html
+playground/favicon.ico
