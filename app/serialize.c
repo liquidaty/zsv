@@ -226,7 +226,7 @@ const char *serialize_usage_msg[] = {
   NULL,
 };
 
-static int serialize_usage() {
+static int serialize_usage(void) {
   for (size_t i = 0; serialize_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", serialize_usage_msg[i]);
   return 1;

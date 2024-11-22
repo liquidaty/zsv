@@ -14,8 +14,7 @@
 #define ZSV_COMMAND paste
 #include "zsv_command.h"
 
-static int zsv_paste_usage() {
-  /* clang-format off */
+static int zsv_paste_usage(void) {
   static const char *usage[] = {
     "Usage: paste <filename> [<filename> ...]",
     "",
@@ -27,10 +26,9 @@ static int zsv_paste_usage() {
     "",
     "Options:",
     "  -h,--help : show usage",
-    NULL
+    NULL,
   };
-  /* clang-format on */
-  for (int i = 0; usage[i]; i++)
+  for (size_t i = 0; usage[i]; i++)
     printf("%s\n", usage[i]);
   return 0;
 }

@@ -49,7 +49,7 @@ enum zsv_pretty_status {
 
 #ifdef WIN32
 #include <windows.h>
-static size_t get_console_width() {
+static size_t get_console_width(void) {
   CONSOLE_SCREEN_BUFFER_INFO csbi;
   int ret;
   ret = GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
@@ -63,13 +63,13 @@ static size_t get_console_width() {
 #include <stdlib.h>
 
 #ifndef HAVE_TGETENT
-static size_t get_console_width() {
+static size_t get_console_width(void) {
   return 0;
 }
 
 #else
 #include <termcap.h>
-static size_t get_console_width() {
+static size_t get_console_width(void) {
   char termbuf[2048];
   char *termtype = getenv("TERM");
   if (tgetent(termbuf, termtype) < 0)
@@ -511,7 +511,7 @@ const char *zsv_pretty_usage_msg[] = {
   NULL,
 };
 
-static void zsv_pretty_usage() {
+static void zsv_pretty_usage(void) {
   for (size_t i = 0; zsv_pretty_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", zsv_pretty_usage_msg[i]);
 }

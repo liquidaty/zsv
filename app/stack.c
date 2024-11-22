@@ -30,7 +30,7 @@ const char *zsv_stack_usage_msg[] = {
   NULL,
 };
 
-static int zsv_stack_usage() {
+static int zsv_stack_usage(void) {
   for (size_t i = 0; zsv_stack_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", zsv_stack_usage_msg[i]);
   return 0;

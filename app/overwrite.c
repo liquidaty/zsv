@@ -62,15 +62,15 @@ const char *zsv_overwrite_usage_msg[] = {
   "  bulk-remove <datafile> : Bulk remove overwrite entries from a CSV or JSON file",
   "",
   "Options:",
-  "  -h,--help           : Show this help message",
-  "  --old-value <value> : For `add` or `remove`, only proceed if the old value",
-  "                        matches the given value",
-  "  --force             : For `add`, proceed even if an overwrite for the specified",
-  "                        cell already exists",
-  "                        For `remove`, exit without error even if no overwrite for",
-  "                        the specified cell already exists",
-  "  --no-timestamp      : For `add`, don't save timestamp when adding an overwrite",
-  "  --A1                : For `list`, Display addresses in A1-notation",
+  "  -h,--help              : Show this help message",
+  "  --old-value <value>    : For `add` or `remove`, only proceed if the old value",
+  "                           matches the given value",
+  "  --force                : For `add`, proceed even if an overwrite for the specified",
+  "                           cell already exists",
+  "                           For `remove`, exit without error even if no overwrite for",
+  "                           the specified cell already exists",
+  "  --no-timestamp         : For `add`, don't save timestamp when adding an overwrite",
+  "  --A1                   : For `list`, Display addresses in A1-notation",
   "",
   "Description:",
   "  The  `overwrite`  utility  allows  you to manage a list of \"overwrites\" associated",
@@ -85,7 +85,7 @@ const char *zsv_overwrite_usage_msg[] = {
   "  and may optionally include \"old value\", \"timestamp\" and/or \"author\"",
   NULL};
 
-static int zsv_overwrite_usage() {
+static int zsv_overwrite_usage(void) {
   for (size_t i = 0; zsv_overwrite_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", zsv_overwrite_usage_msg[i]);
   return 1;

@@ -8,7 +8,9 @@
 #include "index.h"
 
 #if defined(WIN32) || defined(_WIN32)
+#ifndef NO_MEMMEM
 #define NO_MEMMEM
+#endif
 #include <zsv/utils/memmem.h>
 #endif
 #include <zsv/utils/writer.h>

@@ -37,7 +37,7 @@ struct zsvsheet_procedure *zsvsheet_find_procedure(zsvsheet_proc_id_t proc_id) {
   return proc;
 }
 
-static zsvsheet_proc_id_t zsvsheet_generate_proc_id() {
+static zsvsheet_proc_id_t zsvsheet_generate_proc_id(void) {
   for (zsvsheet_proc_id_t id = MAX_PROCEDURES - 1; id > ZSVSHEET_PROC_INVALID; --id) {
     if (!is_valid_proc_id(procedure_lookup[id].id))
       return id;
