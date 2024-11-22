@@ -34,6 +34,7 @@ env:
   AMD64_LINUX_CLANG: amd64-linux-clang
   AMD64_LINUX_MUSL: amd64-linux-musl
   AMD64_WINDOWS_MINGW: amd64-windows-mingw
+  AMD64_LINUX_WASM: amd64-linux-wasm
   AMD64_MACOSX_GCC: amd64-macosx-gcc
   ARM64_MACOSX_GCC: arm64-macosx-gcc
   AMD64_FREEBSD_GCC: amd64-freebsd-gcc
@@ -638,3 +639,58 @@ jobs:
         tags: |
           ghcr.io/liquidaty/zsv:${{ env.TAG }}
           ghcr.io/liquidaty/zsv:latest
+
+  ci-wasm:
+    needs: [tag, clang-format, cppcheck, shellcheck]
+    runs-on: ubuntu-latest
+
+    env:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
+    steps:
+    - name: Set up emsdk
+      uses: mymindstorm/setup-emsdk@v14
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build (${{ env.AMD64_LINUX_WASM }})
+      env:
+        PREFIX: ${{ env.AMD64_LINUX_WASM }}
+        CC: emcc
+        MAKE: make
+        RUN_TESTS: false
+        CONFIGFILE: "config.emcc"
+        CFLAGS: "-msse2 -msimd128"
+        CROSS_COMPILING: "yes"
+        NO_THREADING: "1"
+        STATIC_BUILD: "1"
+      run: |
+        emconfigure ./configure --enable-pic --disable-pie
+        emmake make build
+        cp "$PREFIX"/bin/cli.em.{js,wasm} playground
+        sed "s|__VERSION__|$TAG|" -i playground/index.html
+
+    - name: Upload GitHub Pages artifacts
+      # if: ${{ github.ref_name == 'main' }}
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: playground
+
+  deploy-playground:
+    # if: ${{ github.ref_name == 'main' }}
+    needs: ci-wasm
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

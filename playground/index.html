@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+  <title>zsv playground</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css" />
+
+  <script type="text/javascript">
+    var Module = {
+      print: (function () {
+        return (...args) => {
+          const output = args.join(' ');
+          $('body').terminal().echo(output);
+        };
+      })(),
+      printErr: (function () {
+        return (...args) => {
+          const output = args.join(' ');
+          $('body').terminal().error(output);
+        };
+      })()
+    };
+  </script>
+</head>
+
+<body>
+  <script type="text/javascript">
+    const greetings =
+      "Welcome to zsv playground! :)\n" +
+      "Version: __VERSION__\n" +
+      "GitHub: https://github.com/liquidaty/zsv\n" +
+      "\n" +
+      "To get started, run `zsv help`.\n" +
+      "Supported commands are: `zsv`, `clear`, and `ls`\n"
+      ;
+
+    function ls() {
+      const listing = FS.readdir('.');
+      const filtered = listing.filter((entry) => (entry !== '.' && entry !== '..'));
+      $('body').terminal().echo(filtered);
+    }
+
+    $('body').terminal(function (command) {
+      const parsed_command = $.terminal.parse_command(command);
+      const name = parsed_command.name;
+      const args = parsed_command.args;
+      switch (name) {
+        case 'help':
+          this.error('TODO: List all available commands');
+          break;
+
+        case 'zsv':
+          Module.callMain(args);
+          break;
+
+        case 'ls':
+          ls();
+          break;
+
+        default:
+          const msg =
+            "Unsupported command! [" + name + "]\n" +
+            "Supported commands are: `zsv`, `clear`, and `ls`\n";
+          this.error(msg);
+          break;
+      }
+    }, {
+      checkArity: false,
+      greetings: greetings,
+      prompt: "[[;lightgreen;]zsv@playground$ ]"
+    });
+  </script>
+
+  <script async type="text/javascript" src="cli.em.js"></script>
+</body>
+
+</html>
