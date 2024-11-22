@@ -29,9 +29,11 @@ static int main_help(int argc, const char *argv[]) {
 #endif
     "  zsv help [<command>]",
     "  zsv <command> <options> <arguments>  : run a command on data (see below for details)",
+#ifndef __EMSCRIPTEN__
     "  zsv <id>-<cmd> <options> <arguments> : invoke command 'cmd' of extension 'id'",
-    "  zsv thirdparty                       : view third-party licenses & acknowledgements",
     "  zsv license [<extension_id>]",
+#endif
+    "  zsv thirdparty                       : view third-party licenses & acknowledgements",
     "",
     "Options common to all commands except `prop`, `rm` and `jq`:",
 #ifdef ZSV_EXTRAS
@@ -83,6 +85,7 @@ static int main_help(int argc, const char *argv[]) {
   for (size_t i = 0; usage[i]; i++)
     fprintf(f, "%s\n", usage[i]);
 
+#ifndef __EMSCRIPTEN__
   char printed_init = 0;
   struct cli_config config;
   if (!config_init(&config, 1, 1, 0)) {
@@ -103,6 +106,6 @@ static int main_help(int argc, const char *argv[]) {
   }
   if (!printed_init)
     fprintf(f, "\n(No extended commands)\n");
-
+#endif
   return 0;
 }

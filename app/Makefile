@@ -97,12 +97,12 @@ ifeq ($(WIN),0)
 
   ifneq ($(findstring emcc,$(CC)),) # emcc
     NO_THREADING ?= 1
-    EXE=.em.js
+    EXE=.em.html
     EXPORTED_FUNCTIONS='_free','_malloc'
-    LDFLAGS += -s EXPORTED_FUNCTIONS="[${EXPORTED_FUNCTIONS}]" -s EXPORTED_RUNTIME_METHODS="['setValue','allocateUTF8','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory']" -s RESERVED_FUNCTION_POINTERS=4 -s ALLOW_MEMORY_GROWTH=1
-    CFLAGS_EXE += -s FORCE_FILESYSTEM=1 -lidbfs.js -s MAIN_MODULE
+    LDFLAGS += -sEXPORTED_FUNCTIONS="[${EXPORTED_FUNCTIONS}]" -sEXPORTED_RUNTIME_METHODS="['setValue','allocateUTF8','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory','FS','callMain']" -sRESERVED_FUNCTION_POINTERS=4 -sALLOW_MEMORY_GROWTH=1
+    CFLAGS_EXE += -sINVOKE_RUN=0 -sFORCE_FILESYSTEM=1 -lidbfs.js -sMAIN_MODULE
     ifeq ($(NO_THREADING),0)
-      CFLAGS_EXE += -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2 -s PTHREAD_POOL_SIZE=8
+      CFLAGS_EXE += -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=2 -sPTHREAD_POOL_SIZE=8
     endif
   endif
 else
@@ -124,7 +124,7 @@ CFLAGS+=-Wunused
 CFLAGS_O ?=
 ifeq ($(CFLAGS_O),)
   ifeq ($(DEBUG),0)
-    CFLAGS_O=-O3
+    CFLAGS_O=-O0
   else
     CFLAGS_O=-O0
   endif
@@ -223,7 +223,7 @@ CLI_OBJ_PFX=${BUILD_DIR}/objs/cli_
 CLI_APP_OBJECT=${CLI_OBJ_PFX}cli.o
 CLI=${BUILD_DIR}/bin/cli${EXE}
 ifneq ($(findstring emcc,$(CC)),) # emcc
-    CLI_ADDITIONAL=${BUILD_DIR}/bin/cli.em.wasm
+  CLI_ADDITIONAL=${BUILD_DIR}/bin/cli.em.wasm
 endif
 CLI_OBJECTS=$(addprefix ${CLI_OBJ_PFX},$(addsuffix .o,${CLI_SOURCES}))
 

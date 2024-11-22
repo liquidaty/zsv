@@ -105,13 +105,14 @@ ZSV_MAINEXT_FUNC_DEFINE(sheet);
 #endif
 
 struct builtin_cmd builtin_cmds[] = {
+  CLI_BUILTIN_CMD(version),
+  CLI_BUILTIN_CMD(help),
   CLI_BUILTIN_CMD(license),
   CLI_BUILTIN_CMD(thirdparty),
-  CLI_BUILTIN_CMD(help),
-  CLI_BUILTIN_CMD(version),
+#ifndef __EMSCRIPTEN__
   CLI_BUILTIN_CMD(register),
   CLI_BUILTIN_CMD(unregister),
-
+#endif
   CLI_BUILTIN_COMMAND(select),
   CLI_BUILTIN_COMMAND(count),
   CLI_BUILTIN_COMMAND(paste),
