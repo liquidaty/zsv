@@ -27,8 +27,6 @@ struct zsv_overwrite *zsv_overwrite_writer_new(struct zsv_overwrite_args *args, 
 }
 
 void zsv_overwrite_writer_delete(struct zsv_overwrite *data) {
-  // if(data->overwrite)
-  // free(data->overwrite);
   if (data->writer)
     zsv_writer_delete(data->writer);
   if (data->ctx)
@@ -44,7 +42,7 @@ void zsv_overwrite_writer_delete(struct zsv_overwrite *data) {
 
 enum zsv_status zsv_overwrite_writer_add(struct zsv_overwrite *data) {
   if (!data->overwrite->val.str)
-    return 1;
+    return zsv_status_error;
   if (data->force)
     data->ctx->sqlite3.sql =
       "INSERT OR REPLACE INTO overwrites (row, column, value, timestamp, author) VALUES (?, ?, ?, ?, ?)";
@@ -54,7 +52,7 @@ enum zsv_status zsv_overwrite_writer_add(struct zsv_overwrite *data) {
   else
     data->ctx->sqlite3.sql = "INSERT INTO overwrites (row, column, value, timestamp, author) VALUES (?, ?, ?, ?, ?)";
 
-  int err = 0;
+  enum zsv_status err = zsv_status_ok;
   sqlite3_stmt *query = NULL;
 
   if (sqlite3_prepare_v2(data->ctx->sqlite3.db, data->ctx->sqlite3.sql, -1, &query, NULL) == SQLITE_OK) {
@@ -76,14 +74,14 @@ enum zsv_status zsv_overwrite_writer_add(struct zsv_overwrite *data) {
                         SQLITE_STATIC);
 
     if (sqlite3_step(query) != SQLITE_DONE) {
-      err = 1;
+      err = zsv_status_error;
       if (data->mode == zsvsheet_mode_bulk)
         sqlite3_exec(data->ctx->sqlite3.db, "ROLLBACK", NULL, NULL, NULL);
       fprintf(stderr, "Value already exists at row %zu and column %zu, use --force to force insert\n",
               data->overwrite->row_ix, data->overwrite->col_ix);
     }
   } else {
-    err = 1;
+    err = zsv_status_error;
     if (data->mode == zsvsheet_mode_bulk)
       sqlite3_exec(data->ctx->sqlite3.db, "ROLLBACK", NULL, NULL, NULL);
     fprintf(stderr, "Failed to prepare2: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
@@ -96,9 +94,9 @@ enum zsv_status zsv_overwrite_writer_add(struct zsv_overwrite *data) {
 }
 
 enum zsv_status zsv_overwrite_writer_remove(struct zsv_overwrite *data) {
-  int err = 0;
+  enum zsv_status err = zsv_status_ok;
   if (data->all) {
-    zsv_overwrite_writer_clear(data);
+    err = zsv_overwrite_writer_clear(data);
     return err;
   }
 
@@ -108,7 +106,7 @@ enum zsv_status zsv_overwrite_writer_remove(struct zsv_overwrite *data) {
 
   sqlite3_stmt *query = NULL;
   if (sqlite3_prepare_v2(data->ctx->sqlite3.db, data->ctx->sqlite3.sql, -1, &query, NULL) != SQLITE_OK) {
-    err = 1;
+    err = zsv_status_error;
     if (data->mode == zsvsheet_mode_bulk)
       sqlite3_exec(data->ctx->sqlite3.db, "ROLLBACK", NULL, NULL, NULL);
     fprintf(stderr, "Could not prepare: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
@@ -121,7 +119,7 @@ enum zsv_status zsv_overwrite_writer_remove(struct zsv_overwrite *data) {
                       SQLITE_STATIC);
 
   if (sqlite3_step(query) != SQLITE_DONE) {
-    err = 1;
+    err = zsv_status_error;
     if (data->mode == zsvsheet_mode_bulk)
       sqlite3_exec(data->ctx->sqlite3.db, "ROLLBACK", NULL, NULL, NULL);
     fprintf(stderr, "Could not step: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
@@ -154,20 +152,19 @@ enum zsv_status zsv_overwrite_writer_bulk(struct zsv_overwrite *data) {
 }
 
 enum zsv_status zsv_overwrite_writer_clear(struct zsv_overwrite *data) {
-  int err = 0;
+  enum zsv_status err = zsv_status_ok;
   sqlite3_stmt *query = NULL;
   if (sqlite3_prepare_v2(data->ctx->sqlite3.db, "DELETE FROM overwrites", -1, &query, NULL) == SQLITE_OK) {
     if (sqlite3_step(query) != SQLITE_DONE) {
-      err = 1;
+      err = zsv_status_error;
       fprintf(stderr, "Failed to step: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
       return err;
     }
   } else {
-    err = 1;
+    err = zsv_status_error;
     fprintf(stderr, "Could not prepare: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
   }
   if (query)
     sqlite3_finalize(query);
   return err;
-  return zsv_status_ok;
 }

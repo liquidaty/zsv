@@ -367,15 +367,15 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   if (data->mode == zsvsheet_mode_list)
-    show_all_overwrites(data, data->writer);
+    err = show_all_overwrites(data, data->writer);
   else if (data->mode == zsvsheet_mode_clear)
-    zsv_overwrite_writer_clear(data);
+    err = zsv_overwrite_writer_clear(data);
   else if (data->mode == zsvsheet_mode_add && data->ctx->sqlite3.db)
-    zsv_overwrite_writer_add(data);
+    err = zsv_overwrite_writer_add(data);
   else if (data->mode == zsvsheet_mode_remove && data->ctx->sqlite3.db)
-    zsv_overwrite_writer_remove(data);
+    err = zsv_overwrite_writer_remove(data);
   else if (data->mode == zsvsheet_mode_bulk && data->ctx->sqlite3.db) {
-    zsv_overwrite_writer_bulk(data);
+    err = zsv_overwrite_writer_bulk(data);
   }
 
   zsv_overwrite_writer_delete(data);
