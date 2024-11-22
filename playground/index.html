@@ -69,7 +69,7 @@ Welcome to            | |                                           | |
     $('body').terminal(function (command) {
       const parsed_command = $.terminal.parse_command(command);
       const name = parsed_command.name;
-      const args = parsed_command.args;
+      const args = parsed_command.args.map(String);
       switch (name) {
         case 'help':
           this.error('TODO: List all available commands');
