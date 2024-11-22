@@ -99,8 +99,8 @@ test-old-value:
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 V2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 3-1 V3 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 4-1 V4 --no-timestamp
-	@${PREFIX} ${EXE} dummy2.csv add 3-1 NEW_V4 --no-timestamp 2> ${TMP_DIR}/$@.out 
-	@${CMP} ${TMP_DIR}/$@.out expected/$@-fail.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${EXE} dummy2.csv add 3-1 NEW_V4 --no-timestamp 2> $@.out 
+	@${CMP} $@.out expected/$@-fail.out && ${TEST_PASS} || ${TEST_FAIL}
 	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,V2,,\n3,1,V3,,\n4,1,V4,,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv remove 2-1 --old-value V3 
