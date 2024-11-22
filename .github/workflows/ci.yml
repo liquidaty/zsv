@@ -667,7 +667,7 @@ jobs:
         STATIC_BUILD: "1"
       run: |
         emconfigure ./configure --enable-pic --disable-pie
-        emmake make build
+        emmake make install
         cp "$PREFIX"/bin/cli.em.{js,wasm} playground
         sed "s|__VERSION__|$TAG|" -i playground/index.html
 
