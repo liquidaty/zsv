@@ -60,12 +60,15 @@ static int config_init(struct cli_config *c, char err_if_dl_not_found, char do_i
 
 #define CLI_BUILTIN_DECL_STATIC(x) static int main_##x(int argc, const char *argv[])
 
-CLI_BUILTIN_DECL_STATIC(license);
-CLI_BUILTIN_DECL_STATIC(thirdparty);
-CLI_BUILTIN_DECL_STATIC(help);
 CLI_BUILTIN_DECL_STATIC(version);
+CLI_BUILTIN_DECL_STATIC(help);
+CLI_BUILTIN_DECL_STATIC(thirdparty);
+
+#ifndef __EMSCRIPTEN__
 CLI_BUILTIN_DECL_STATIC(register);
 CLI_BUILTIN_DECL_STATIC(unregister);
+CLI_BUILTIN_DECL_STATIC(license);
+#endif
 
 ZSV_MAIN_DECL(select);
 ZSV_MAIN_DECL(count);
@@ -107,11 +110,11 @@ ZSV_MAINEXT_FUNC_DEFINE(sheet);
 struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_CMD(version),
   CLI_BUILTIN_CMD(help),
-  CLI_BUILTIN_CMD(license),
   CLI_BUILTIN_CMD(thirdparty),
 #ifndef __EMSCRIPTEN__
   CLI_BUILTIN_CMD(register),
   CLI_BUILTIN_CMD(unregister),
+  CLI_BUILTIN_CMD(license),
 #endif
   CLI_BUILTIN_COMMAND(select),
   CLI_BUILTIN_COMMAND(count),

@@ -89,7 +89,7 @@ void zsv_win_printLastError(void) {
 void zsv_perror(const char *s) {
   if (s && *s)
     fwrite(s, 1, strlen(s), stderr);
-  zsv_win_printLastError(0);
+  zsv_win_printLastError();
 }
 
 #endif
