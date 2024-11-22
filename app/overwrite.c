@@ -94,8 +94,8 @@ static int zsv_overwrites_init(struct zsv_overwrite *data) {
   sqlite3_stmt *query = NULL;
 
   if (sqlite3_open_v2(data->ctx->src, &data->ctx->sqlite3.db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK ||
-      data->mode == zsvsheet_mode_add || data->mode == zsvsheet_mode_bulk ||
-      data->mode == zsvsheet_mode_remove || data->mode == zsvsheet_mode_clear) {
+      data->mode == zsvsheet_mode_add || data->mode == zsvsheet_mode_bulk || data->mode == zsvsheet_mode_remove ||
+      data->mode == zsvsheet_mode_clear) {
     sqlite3_close(data->ctx->sqlite3.db);
     if (sqlite3_open_v2(data->ctx->src, &data->ctx->sqlite3.db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL) !=
         SQLITE_OK) {
@@ -282,7 +282,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       args.force = 1;
     } else if (!strcmp(opt, "--old-value")) {
       overwrite.old_value.str = (unsigned char *)strdup(argv[++i]);
-      overwrite.old_value.len = strlen((const char*)overwrite.old_value.str);
+      overwrite.old_value.len = strlen((const char *)overwrite.old_value.str);
     } else if (!strcmp(opt, "--no-timestamp")) {
       overwrite.timestamp = 0;
     } else if (!strcmp(opt, "--A1")) {
@@ -296,7 +296,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         args.mode = zsvsheet_mode_add;
         err = zsv_overwrite_parse_pos(&overwrite, argv[++i]);
         overwrite.val.str = (unsigned char *)strdup(argv[++i]);
-        overwrite.val.len= strlen((const char*)overwrite.val.str);
+        overwrite.val.len = strlen((const char *)overwrite.val.str);
         if (err || !overwrite.val.str) {
           fprintf(stderr, "Expected row, column, and value\n");
           err = 1;

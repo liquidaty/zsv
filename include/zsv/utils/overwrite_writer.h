@@ -49,5 +49,5 @@ enum zsv_status zsv_overwrite_writer_add(struct zsv_overwrite *data);
 enum zsv_status zsv_overwrite_writer_remove(struct zsv_overwrite *data);
 
 enum zsv_status zsv_overwrite_writer_bulk(struct zsv_overwrite *data);
-    
+
 enum zsv_status zsv_overwrite_writer_clear(struct zsv_overwrite *data);
