@@ -118,8 +118,8 @@ test-force:
 	@${PREFIX} ${EXE} dummy2.csv add 2-2 VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 2-3 VAL3 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 2-4 VAL4 --no-timestamp
-	@${EXE} dummy2.csv add 2-4 NEW_VAL4 --no-timestamp 2> ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@-fail.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`printf \"$$(${PREFIX} ${EXE} dummy2.csv add 2-4 NEW_VAL4 --no-timestamp 2>&1)\"`" = "`cat expected/$@-fail.out`" ] \
+		&& ${TEST_PASS} || ${TEST_FAIL}
 	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,2,VAL1,,\n2,2,VAL2,,\n2,3,VAL3,,\n2,4,VAL4,,\n\"`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv add 2-4 NEW_VAL4 --no-timestamp --force
