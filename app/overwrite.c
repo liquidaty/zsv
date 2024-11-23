@@ -18,11 +18,8 @@
 #include <zsv.h>
 #include <zsv/utils/writer.h>
 #include <zsv/utils/cache.h>
-#include <zsv/utils/file.h>
-#include <zsv/utils/os.h>
 #include <zsv/utils/overwrite.h>
 #include <zsv/utils/clock.h>
-#include <zsv/utils/mem.h>
 #include <zsv/utils/overwrite_writer.h>
 
 #define ZSV_COMMAND overwrite
