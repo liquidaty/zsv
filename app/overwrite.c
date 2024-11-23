@@ -83,19 +83,6 @@ static int zsv_overwrite_usage() {
   return 1;
 }
 
-static int zsv_overwrites_free(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
-                               const struct zsv_overwrite_args *args, zsv_csv_writer writer) {
-  if (writer)
-    zsv_writer_delete(writer);
-  if (ctx) {
-    zsv_overwrite_context_delete(ctx);
-  }
-  if (overwrite && args->mode != zsvsheet_mode_bulk)
-    free(overwrite->val.str);
-
-  return 0;
-}
-
 static char *row_col_to_a1(size_t col, size_t row) {
   char buffer[64];
   int index = 63;
@@ -293,15 +280,15 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   if (!err && data) {
     if (data->mode == zsvsheet_mode_list)
-      err = show_all_overwrites(data, data->writer) == zsv_status_ok;
+      err = show_all_overwrites(data, data->writer);
     else if (data->mode == zsvsheet_mode_clear)
-      err = zsv_overwrite_writer_clear(data) == zsv_status_ok;
+      err = zsv_overwrite_writer_clear(data);
     else if (data->mode == zsvsheet_mode_add && data->ctx->sqlite3.db)
-      err = zsv_overwrite_writer_add(data) == zsv_status_ok;
+      err = zsv_overwrite_writer_add(data);
     else if (data->mode == zsvsheet_mode_remove && data->ctx->sqlite3.db)
-      err = zsv_overwrite_writer_remove(data) == zsv_status_ok;
+      err = zsv_overwrite_writer_remove(data);
     else if (data->mode == zsvsheet_mode_bulk && data->ctx->sqlite3.db) {
-      err = zsv_overwrite_writer_bulk(data) == zsv_status_ok;
+      err = zsv_overwrite_writer_bulk(data);
     }
   }
 
