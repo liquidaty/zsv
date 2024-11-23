@@ -37,18 +37,21 @@
 
 <body>
   <script type="text/javascript">
+    function getSupportedCommands() {
+      return "Supported commands are: [ [[;blue;]zsv], [[;blue;]clear], [[;blue;]ls] ]";
+    }
+
     // Logo generated from:
     // https://patorjk.com/software/taag/#p=display&f=Doom&t=zsv%20playground
     // Replaced backticks with single quotes
     const logo = String.raw`
-                       _                                             _ 
-Welcome to            | |                                           | |
- _________   __  _ __ | | __ _ _   _  __ _ _ __ ___  _   _ _ __   __| |
-|_  / __\ \ / / | '_ \| |/ _' | | | |/ _' | '__/ _ \| | | | '_ \ / _' |
- / /\__ \\ V /  | |_) | | (_| | |_| | (_| | | | (_) | |_| | | | | (_| |
-/___|___/ \_/   | .__/|_|\__,_|\__, |\__, |_|  \___/ \__,_|_| |_|\__,_|
-                | |             __/ | __/ |                            
-                |_|            |___/ |___/                          :-)
+[[;red;]Welcome to     ] [[;blue;]      | |                                           | |]
+[[;red;] _________   __] [[;blue;] _ __ | | __ _ _   _  __ _ _ __ ___  _   _ _ __   __| |]
+[[;red;]|_  / __\ \ / /] [[;blue;]| '_ \| |/ _' | | | |/ _' | '__/ _ \| | | | '_ \ / _' |]
+[[;red;] / /\__ \\ V / ] [[;blue;]| |_) | | (_| | |_| | (_| | | | (_) | |_| | | | | (_| |]
+[[;red;]/___|___/ \_/  ] [[;blue;]| .__/|_|\__,_|\__, |\__, |_|  \___/ \__,_|_| |_|\__,_|]
+[[;blue;]                | |             __/ | __/ |]                            
+[[;blue;]                |_|            |___/ |___/ ]                         :-)
 `;
     const greetings = logo +
       "\n" +
@@ -56,9 +59,23 @@ Welcome to            | |                                           | |
       "GitHub repository: https://github.com/liquidaty/zsv\n" +
       "Report any issues here: https://github.com/liquidaty/zsv/issues\n" +
       "\n" +
-      "To get started, run `zsv help`.\n" +
-      "Supported commands are: `zsv`, `clear`, and `ls`\n"
+      "To get started, run [[;blue;]zsv help].\n" +
+      "To list all supported commands, run [[;blue;]help].\n" +
+      "\n"
       ;
+
+    function help() {
+      var help = "[[;red;]zsv playground help]";
+      const commands = {
+        zsv: 'run zsv CLI app',
+        clear: 'clear the screen',
+        ls: 'list current directory'
+      };
+      for (const key in commands) {
+        help += '\n- [[;blue;]' + key + '] : ' + commands[key]
+      }
+      $('body').terminal().echo(help);
+    }
 
     function ls() {
       const listing = Module.FS.readdir('.');
@@ -72,7 +89,7 @@ Welcome to            | |                                           | |
       const args = parsed_command.args.map(String);
       switch (name) {
         case 'help':
-          this.error('TODO: List all available commands');
+          help();
           break;
 
         case 'zsv':
@@ -84,10 +101,7 @@ Welcome to            | |                                           | |
           break;
 
         default:
-          const msg =
-            "Unsupported command! [" + name + "]\n" +
-            "Supported commands are: `zsv`, `clear`, and `ls`";
-          this.error(msg);
+          this.error("Unsupported command! [" + name + "]");
           break;
       }
     }, {
