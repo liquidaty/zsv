@@ -53,7 +53,8 @@ struct zsv_compare_input {
   unsigned char row_loaded : 1;
   unsigned char missing : 1;
   unsigned char done : 1;
-  unsigned char _ : 5;
+  unsigned char added : 1;
+  unsigned char _ : 4;
 };
 
 struct zsv_compare_key {
