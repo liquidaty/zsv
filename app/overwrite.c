@@ -198,7 +198,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   struct zsv_overwrite_data overwrite = {0};
   overwrite.timestamp = (size_t)time(NULL);
 
-  args.filepath = (char*)argv[1];
+  args.filepath = (char *)argv[1];
 
   for (int i = 2; !err && i < argc; i++) {
     const char *opt = argv[i];
@@ -272,7 +272,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   args.overwrite = &overwrite;
 
-  char *overwrites_fn = (char *)zsv_cache_filepath((const unsigned char *)args.filepath, zsv_cache_type_overwrite, 0, 0);
+  char *overwrites_fn =
+    (char *)zsv_cache_filepath((const unsigned char *)args.filepath, zsv_cache_type_overwrite, 0, 0);
   ctx_opts.src = (char *)overwrites_fn;
   struct zsv_overwrite *data = zsv_overwrite_writer_new(&args, &ctx_opts);
   free(overwrites_fn);
