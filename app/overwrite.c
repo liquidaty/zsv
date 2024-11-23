@@ -18,8 +18,8 @@
 #include <zsv.h>
 #include <zsv/utils/writer.h>
 #include <zsv/utils/cache.h>
-#include <zsv/utils/os.h>
 #include <zsv/utils/file.h>
+#include <zsv/utils/os.h>
 #include <zsv/utils/overwrite.h>
 #include <zsv/utils/clock.h>
 #include <zsv/utils/mem.h>
@@ -81,68 +81,6 @@ static int zsv_overwrite_usage() {
   for (size_t i = 0; zsv_overwrite_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", zsv_overwrite_usage_msg[i]);
   return 1;
-}
-
-static int zsv_overwrites_init(struct zsv_overwrite *data) {
-  int err = 0;
-  if (zsv_mkdirs(data->ctx->src, 1) && !zsv_file_readable(data->ctx->src, &err, NULL)) {
-    err = 1;
-    perror(data->ctx->src);
-    return err;
-  }
-
-  sqlite3_stmt *query = NULL;
-
-  if (sqlite3_open_v2(data->ctx->src, &data->ctx->sqlite3.db, SQLITE_OPEN_READONLY, NULL) != SQLITE_OK ||
-      data->mode == zsvsheet_mode_add || data->mode == zsvsheet_mode_bulk || data->mode == zsvsheet_mode_remove ||
-      data->mode == zsvsheet_mode_clear) {
-    sqlite3_close(data->ctx->sqlite3.db);
-    if (sqlite3_open_v2(data->ctx->src, &data->ctx->sqlite3.db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL) !=
-        SQLITE_OK) {
-      err = 1;
-      fprintf(stderr, "Failed to open conn: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
-      return err;
-    }
-
-    if (sqlite3_exec(data->ctx->sqlite3.db, "PRAGMA foreign_keys = on", NULL, NULL, NULL) != SQLITE_OK) {
-      err = 1;
-      fprintf(stderr, "Could not enable foreign keys: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
-      return err;
-    }
-
-    if (sqlite3_prepare_v2(data->ctx->sqlite3.db,
-                           "CREATE TABLE IF NOT EXISTS overwrites ( row integer, column integer, value string, "
-                           "timestamp varchar(25), author varchar(25) );",
-                           -1, &query, NULL) == SQLITE_OK) {
-      if (sqlite3_step(query) != SQLITE_DONE) {
-        err = 1;
-        fprintf(stderr, "Failed to step: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
-        return err;
-      }
-    } else {
-      err = 1;
-      fprintf(stderr, "Failed to prepare1: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
-    }
-
-    if (query)
-      sqlite3_finalize(query);
-
-    if (sqlite3_prepare_v2(data->ctx->sqlite3.db, "CREATE UNIQUE INDEX overwrites_uix ON overwrites (row, column)", -1,
-                           &query, NULL) == SQLITE_OK) {
-      if (sqlite3_step(query) != SQLITE_DONE) {
-        err = 1;
-        fprintf(stderr, "Failed to step: %s\n", sqlite3_errmsg(data->ctx->sqlite3.db));
-        return err;
-      }
-      if (query)
-        sqlite3_finalize(query);
-    }
-  }
-
-  if (!data->ctx->sqlite3.db)
-    err = 1;
-
-  return err;
 }
 
 static int zsv_overwrites_free(struct zsv_overwrite_ctx *ctx, struct zsv_overwrite_data *overwrite,
@@ -353,29 +291,18 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   struct zsv_overwrite *data = zsv_overwrite_writer_new(&args, &ctx_opts);
   free(overwrites_fn);
 
-  if (args.mode == zsvsheet_mode_list) {
-    if ((err = (zsv_overwrite_open(data->ctx) != zsv_status_ok)))
-      fprintf(stderr, "Failed to initalize database\n");
-  } else {
-    if ((err = zsv_overwrites_init(data)))
-      fprintf(stderr, "Failed to initalize database\n");
-  }
-
-  if (err) {
-    zsv_overwrite_writer_delete(data->ctx, &overwrite, &args, data->writer);
-    return err;
-  }
-
-  if (data->mode == zsvsheet_mode_list)
-    err = show_all_overwrites(data, data->writer);
-  else if (data->mode == zsvsheet_mode_clear)
-    err = zsv_overwrite_writer_clear(data);
-  else if (data->mode == zsvsheet_mode_add && data->ctx->sqlite3.db)
-    err = zsv_overwrite_writer_add(data);
-  else if (data->mode == zsvsheet_mode_remove && data->ctx->sqlite3.db)
-    err = zsv_overwrite_writer_remove(data);
-  else if (data->mode == zsvsheet_mode_bulk && data->ctx->sqlite3.db) {
-    err = zsv_overwrite_writer_bulk(data);
+  if (!err && data) {
+    if (data->mode == zsvsheet_mode_list)
+      err = show_all_overwrites(data, data->writer) == zsv_status_ok;
+    else if (data->mode == zsvsheet_mode_clear)
+      err = zsv_overwrite_writer_clear(data) == zsv_status_ok;
+    else if (data->mode == zsvsheet_mode_add && data->ctx->sqlite3.db)
+      err = zsv_overwrite_writer_add(data) == zsv_status_ok;
+    else if (data->mode == zsvsheet_mode_remove && data->ctx->sqlite3.db)
+      err = zsv_overwrite_writer_remove(data) == zsv_status_ok;
+    else if (data->mode == zsvsheet_mode_bulk && data->ctx->sqlite3.db) {
+      err = zsv_overwrite_writer_bulk(data) == zsv_status_ok;
+    }
   }
 
   zsv_overwrite_writer_delete(data);
