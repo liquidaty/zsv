@@ -199,11 +199,16 @@
       checkArity: false,
       greetings: greetings,
       prompt: "[[;lightgreen;]zsv@playground$ ]",
-      completion: function () {
-        const cmds = Object.keys(commands);
-        const files = getFiles();
-        return cmds.concat(files);
-      },
+      completion: function (string, callback) {
+        const cmd = this.get_command();
+        if (cmd.match(/^save /) || cmd.match(/^rm /) || cmd.match(/^zsv .*\b /)) {
+          callback(getFiles());
+        } else if (cmd.match(/^(info|help|load|ls) /)) {
+          // Do nothing for argument-less commands
+        } else {
+          callback(Object.keys(commands));
+        }
+      }
     });
   </script>
 </body>
