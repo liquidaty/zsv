@@ -667,11 +667,10 @@ jobs:
         CFLAGS: "-msse2 -msimd128"
         CROSS_COMPILING: "yes"
         NO_THREADING: "1"
-        NO_STDIN: "1"
         STATIC_BUILD: "1"
       run: |
         emconfigure ./configure --enable-pic --disable-pie
-        emmake make install
+        emmake make install NO_STDIN=1
         cp "$PREFIX"/bin/cli.em.{js,wasm} playground
         sed "s|__VERSION__|$TAG|g" -i playground/index.html
 
