@@ -46,15 +46,14 @@
 
     async function loadFiles(event) {
       const files = event.target.files;
-      for (var i = 0; i < files.length; i++) {
-        const filename = files[i].name;
+      for (const file of files) {
         const reader = new FileReader();
         reader.addEventListener('loadend', () => {
           const bytes = new Uint8Array(reader.result);
-          FS.writeFile(filename, bytes);
+          FS.writeFile(file.name, bytes);
         });
-        reader.readAsArrayBuffer(files[i]);
-        $('body').terminal().echo(`Loaded: ${filename}`);
+        reader.readAsArrayBuffer(file);
+        $('body').terminal().echo(`Loaded: ${file.name}`);
       }
     }
   </script>
@@ -95,8 +94,9 @@
       const commands = {
         info: ' : show playground info',
         clear: ': clear screen',
-        load: ' : load csv file (overwrite mode)',
+        load: ' : load csv file(s) (overwrite mode)',
         ls: '   : list current directory',
+        rm: '   : remove file(s) (force mode)',
         zsv: '  : run zsv CLI app',
       };
       for (const key in commands) {
@@ -113,6 +113,16 @@
       const files = getFiles();
       if (files.length !== 0) {
         $('body').terminal().echo(files);
+      }
+    }
+
+    function rm(files) {
+      for (const file of files) {
+        if (FS.analyzePath(file).exists) {
+          FS.unlink(file);
+        } else {
+          $('body').terminal().error(`rm: cannot remove '${file}': No such file or directory`);
+        }
       }
     }
 
@@ -140,6 +150,10 @@
 
         case 'ls':
           ls();
+          break;
+
+        case 'rm':
+          rm(args);
           break;
 
         case 'zsv':
