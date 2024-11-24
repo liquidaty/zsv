@@ -91,18 +91,25 @@ CONFIGURE_HOST=
 ifneq ($(HOST),)
   CONFIGURE_HOST=$(HOST)
 endif
+
 ifeq ($(WIN),0)
   BUILD_SUBDIR=$(shell uname)/${DBG_SUBDIR}
   EXE=
-
   ifneq ($(findstring emcc,$(CC)),) # emcc
     NO_THREADING ?= 1
+    NO_PLAYGROUND ?= 1
     EXE=.em.js
-    EXPORTED_FUNCTIONS='_free','_malloc'
-    LDFLAGS += -sEXPORTED_FUNCTIONS="[${EXPORTED_FUNCTIONS}]" -sEXPORTED_RUNTIME_METHODS="['setValue','allocateUTF8','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory','callMain']" -sINVOKE_RUN=0 -sRESERVED_FUNCTION_POINTERS=4 -sALLOW_MEMORY_GROWTH=1
-    CFLAGS_EXE += -sFORCE_FILESYSTEM=1 -lidbfs.js -sMAIN_MODULE
+    ifeq ($(NO_PLAYGROUND),0) # wasm playground
+      LDFLAGS += -sEXPORTED_RUNTIME_METHODS="['callMain']" -sINVOKE_RUN=0 -sALLOW_MEMORY_GROWTH=1
+    else
+      CFLAGS += -DNO_PLAYGROUND
+      LDFLAGS += -sEXPORTED_FUNCTIONS="['_free','_malloc']"
+      LDFLAGS += -sEXPORTED_RUNTIME_METHODS="['setValue','allocateUTF8','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory']"
+      LDFLAGS += -sRESERVED_FUNCTION_POINTERS=4 -sALLOW_MEMORY_GROWTH=1
+    endif
+    LDFLAGS += -sFORCE_FILESYSTEM=1 -lidbfs.js -sMAIN_MODULE
     ifeq ($(NO_THREADING),0)
-      CFLAGS_EXE += -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=2
+      LDFLAGS += -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=2
     endif
   endif
 else
