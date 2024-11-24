@@ -667,6 +667,7 @@ jobs:
         CFLAGS: "-msse2 -msimd128"
         CROSS_COMPILING: "yes"
         NO_THREADING: "1"
+        NO_STDIN: "1"
         STATIC_BUILD: "1"
       run: |
         emconfigure ./configure --enable-pic --disable-pie

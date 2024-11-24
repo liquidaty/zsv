@@ -35,11 +35,8 @@
       const root = '/home/zsv';
       FS.mkdir(root);
       FS.chdir(root);
-      // FS.writeFile('test.csv', 'a,b,c\n1,2,3\n4,5,6\n7,8,9');
-    }
-
-    function clearStdin() {
-      document.getElementById('stdin').value = '';
+      FS.writeFile('sample.csv', 'a,b,c\n1,2,3\n4,5,6\n7,8,9');
+      console.log('zsv playground initialized successfully!');
     }
 
     function getFiles() {
@@ -69,16 +66,6 @@
     </div>
 
     <div class="row flex-nowrap g-0">
-      <div class="col-9 p-3">
-        <label for="stdin" class="form-label">stdin (csv)</label>
-        <span>
-          <button id="clear" class="btn btn-outline-secondary btn-sm" type="button"
-            style="width: auto; padding: 0px 5px 0px 5px; float: right;" onclick="clearStdin();">clear</button>
-        </span>
-        <textarea id="stdin" class="form-control"
-          style="border-radius: 0px; height: 300px; max-height: 300px; resize: none; white-space: nowrap;"></textarea>
-      </div>
-
       <div class="col-3 p-3">
         <label for="files" class="form-label">files</label>
         <span>
@@ -87,7 +74,7 @@
           <input id="add" type="file" accept=".csv" style="display: none;" onchange="addFile(event);">
         </span>
         <pre id="files" class="form-control overflow-auto"
-          style="height: 300px; max-height: 300px; resize: none;"></pre>
+          style="border-radius: 0px; height: 300px; max-height: 300px; resize: none;"></pre>
       </div>
     </div>
 

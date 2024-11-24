@@ -199,7 +199,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #ifndef NO_STDIN
     data.in = stdin;
 #else
-    fprintf(stderr, "No input\n");
+    fprintf(stderr, "Please specify an input file\n");
     err = 1;
 #endif
   }
