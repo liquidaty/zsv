@@ -89,16 +89,18 @@
       $('body').terminal().echo(greetings);
     }
 
+    const commands = {
+      info: ' : show playground info',
+      clear: ': clear screen',
+      load: ' : load CSV file(s) (overwrite mode)',
+      save: ' : save CSV file(s)',
+      ls: '   : list current directory',
+      rm: '   : remove file(s) (force mode)',
+      zsv: '  : run zsv CLI app',
+    };
+
     function help() {
       var help = "[[;red;]zsv playground help]";
-      const commands = {
-        info: ' : show playground info',
-        clear: ': clear screen',
-        load: ' : load csv file(s) (overwrite mode)',
-        ls: '   : list current directory',
-        rm: '   : remove file(s) (force mode)',
-        zsv: '  : run zsv CLI app',
-      };
       for (const key in commands) {
         help += `\n  [[;blue;]${key}] ${commands[key]}`;
       }
@@ -107,6 +109,28 @@
 
     function load() {
       document.getElementById('load').click();
+    }
+
+    function save(files) {
+      for (const file of files) {
+        if (FS.analyzePath(file).exists) {
+          const content = FS.readFile(file);
+
+          const a = document.createElement('a');
+          a.download = file;
+          a.href = URL.createObjectURL(new Blob([content], { type: 'application/octet-stream' }));
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+          }, 2000);
+        } else {
+          $('body').terminal().error(`save: file not found [${file}]`);
+        }
+      }
     }
 
     function ls() {
@@ -121,7 +145,7 @@
         if (FS.analyzePath(file).exists) {
           FS.unlink(file);
         } else {
-          $('body').terminal().error(`rm: cannot remove '${file}': No such file or directory`);
+          $('body').terminal().error(`rm: file not found [${file}]`);
         }
       }
     }
@@ -148,6 +172,10 @@
           load();
           break;
 
+        case 'save':
+          save(args);
+          break;
+
         case 'ls':
           ls();
           break;
@@ -170,7 +198,7 @@
     }, {
       checkArity: false,
       greetings: greetings,
-      prompt: "[[;lightgreen;]zsv@playground$ ]"
+      prompt: "[[;lightgreen;]zsv@playground$ ]",
     });
   </script>
 </body>
