@@ -1,6 +1,13 @@
 #ifndef SQL_INTERNAL_H
 #define SQL_INTERNAL_H
 
+#include <stdlib.h>
+#include <string.h>
+#include "external/sqlite3/sqlite3.h"
+#include "external/sqlite3/sqlite3_csv_vtab-mem.h"
+#include <zsv/utils/prop.h>
+#include <zsv/utils/string.h>
+
 extern sqlite3_module CsvModule;
 
 struct zsv_sqlite3_csv_file {
@@ -18,11 +25,7 @@ struct zsv_sqlite3_db {
   int rc;
 };
 
-struct zsv_sqlite3_dbopts {
-  unsigned char in_memory : 1;
-  unsigned char _ : 7;
-  // int sqlite3_flags
-};
+#include "../include/zsv/utils/sql.h"
 
 struct zsv_sqlite3_db *zsv_sqlite3_db_new(struct zsv_sqlite3_dbopts *dbopts);
 void zsv_sqlite3_db_delete(struct zsv_sqlite3_db *zdb);

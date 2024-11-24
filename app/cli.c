@@ -27,6 +27,7 @@
 #endif
 #include "sheet/procedure.h"
 #include "sheet/key-bindings.h"
+#include "sql_internal.h"
 
 struct cli_config {
   struct zsv_ext *extensions;
@@ -385,6 +386,9 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->ext_parser_opts = ext_parser_opts;
     e->ext_opts_used = ext_opts_used;
 
+    e->ext_sqlite3_add_csv = zsv_sqlite3_add_csv;
+    e->ext_sqlite3_db_delete = zsv_sqlite3_db_delete;
+    e->ext_sqlite3_db_new = zsv_sqlite3_db_new;
 #ifdef ZSVSHEET_BUILD
     e->ext_sheet_keypress = zsvsheet_ext_keypress;
     e->ext_sheet_prompt = zsvsheet_ext_prompt;
@@ -509,7 +513,6 @@ static struct builtin_cmd *find_builtin(const char *cmd_name) {
 #include "builtin/version.c"
 #include "builtin/register.c"
 
-#define ZSV_EXTENSION_ID_MAX_LEN 8
 static const char *extension_cmd_from_arg(const char *arg) {
   const char *dash = strchr(arg, '-');
   if (dash && dash < arg + ZSV_EXTENSION_ID_MAX_LEN && dash[1] != '\0')

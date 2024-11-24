@@ -427,6 +427,7 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   const char *data_filename = zsvsheet_buffer_data_filename(current_ui_buffer);
   char is_filtered_file = !(data_filename == current_ui_buffer->filename);
   struct zsv_opts *zsv_opts = is_filtered_file ? NULL : &current_ui_buffer->zsv_opts;
+
   if ((err = zsvsheet_ui_buffer_open_file(data_filename, zsv_opts, prompt_buffer, state->custom_prop_handler, NULL,
                                           di->ui_buffers.base, di->ui_buffers.current))) {
     if (err > 0)
@@ -440,6 +441,7 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
 
   struct zsvsheet_ui_buffer *new_ui_buffer = *state->display_info.ui_buffers.current;
   if (is_filtered_file) {
+    // TO DO: move this into zsvsheet_ui_buffer_open_file()
     free(new_ui_buffer->filename);
     new_ui_buffer->filename = strdup(current_ui_buffer->filename);
   }

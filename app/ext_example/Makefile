@@ -1,4 +1,4 @@
-# Makefile for use with GNU make
+#Makefile for use with GNU make
 
 THIS_MAKEFILE_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 THIS_DIR:=$(shell basename "${THIS_MAKEFILE_DIR}")
@@ -65,6 +65,7 @@ THIS_LIB_BASE=$(shell cd ../.. && pwd)
 CCBN=$(shell basename ${CC})
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 TARGET=${BUILD_DIR}/bin/zsvextmy.${SO}
+TARGET_SHEET=${BUILD_DIR}/bin/zsvextmysheet.${SO}
 
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
@@ -88,15 +89,16 @@ endif
 UTILS1+=writer
 UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
 
-CFLAGS+= -I${THIS_LIB_BASE}/include
+CFLAGS+= -I${THIS_LIB_BASE}/include -I${PREFIX}/include
 
-all: ${TARGET}
+all: ${TARGET} ${TARGET_SHEET}
 	@echo Built ${TARGET}
+	@echo Built ${TARGET_SHEET}
 
 ifneq ($(findstring emcc,$(CC)),) # emcc
 install: ${INSTALLED_EXTENSION}
 
-${INSTALLED_EXTENSION}: ${TARGET}
+${INSTALLED_EXTENSION}: ${TARGET} ${TARGET_SHEET}
 	@mkdir -p `dirname "$@"`
 	cp -p $< $@
 endif
@@ -179,13 +181,14 @@ test-thirdparty: test-%: ${CLI} ${TARGET}
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
-	@rm -f ${TARGET} /tmp/zsvext-test*.out
+	@rm -f ${TARGET} ${TARGET_SHEET} /tmp/zsvext-test*.out
 
 ${BUILD_DIR}/objs/%.o : ${THIS_LIB_BASE}/src/%.c ${PARSER_DEPS}
 	${MAKE} -C ${THIS_LIB_BASE}/src CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} WIN=${WIN} $@
 
-${TARGET}: my_extension.c ${UTILS}
+${TARGET_SHEET}: LIBS="../external/sqlite3/sqlite3.c" -lzsv -lzsvutil -L${PREFIX}/lib
+${TARGET} ${TARGET_SHEET}: ${BUILD_DIR}/bin/zsvext%.${SO} : %_extension.c ${UTILS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${CFLAGS_SHARED} $< ${UTILS} -o $@
+	${CC} ${CFLAGS} ${CFLAGS_SHARED} $< ${UTILS} -o $@ ${LIBS}
 
 .PHONY: all test test-% clean install
