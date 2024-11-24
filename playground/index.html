@@ -40,8 +40,7 @@
 
     function getFiles() {
       const listing = FS.readdir('.');
-      const filtered = listing.filter((entry) => (entry !== '.' && entry !== '..'));
-      return filtered.join('  ');
+      return listing.filter((entry) => (entry !== '.' && entry !== '..'));
     }
 
     async function loadFiles(event) {
@@ -91,6 +90,7 @@
 
     const commands = {
       info: ' : show playground info',
+      help: ' : show help',
       clear: ': clear screen',
       load: ' : load CSV file(s) (overwrite mode)',
       save: ' : save CSV file(s)',
@@ -134,7 +134,7 @@
     }
 
     function ls() {
-      const files = getFiles();
+      const files = getFiles().join('  ');
       if (files.length !== 0) {
         $('body').terminal().echo(files);
       }
@@ -199,6 +199,11 @@
       checkArity: false,
       greetings: greetings,
       prompt: "[[;lightgreen;]zsv@playground$ ]",
+      completion: function () {
+        const cmds = Object.keys(commands);
+        const files = getFiles();
+        return cmds.concat(files);
+      },
     });
   </script>
 </body>
