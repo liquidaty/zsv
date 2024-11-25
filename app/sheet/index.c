@@ -76,7 +76,8 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
     if (!temp_filename)
       return ret;
 
-    *optsp->data_filenamep = temp_filename;
+    // *optsp->data_filenamep = temp_filename;
+    optsp->uib->data_filename = temp_filename;
 
     struct zsv_csv_writer_options writer_opts = {0};
     if (!(writer_opts.stream = temp_f = fopen(temp_filename, "w+")))
@@ -128,7 +129,8 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
 
   if (zst == zsv_status_no_more_input) {
     ret = zsv_index_status_ok;
-    *optsp->index = ixr.ix;
+    // *optsp->index = ixr.ix;
+    optsp->uib->index = ixr.ix;
   } else
     zsv_index_delete(ixr.ix);
 

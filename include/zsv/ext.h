@@ -237,6 +237,13 @@ struct zsv_ext_callbacks {
   enum zsv_ext_status (*ext_sheet_buffer_get_ctx)(zsvsheet_buffer_t h, void **ctx_out);
 
   /**
+   * Set custom cell attributes
+   */
+  void (*ext_sheet_buffer_set_cell_attrs)(zsvsheet_buffer_t h,
+                                          enum zsv_ext_status (*get_cell_attrs)(void *pdh, int *attrs, size_t start_row,
+                                                                                size_t row_count, size_t cols));
+
+  /**
    * Get zsv_opts used to open the buffer's data file
    */
   struct zsv_opts (*ext_sheet_buffer_get_zsv_opts)(zsvsheet_buffer_t h);

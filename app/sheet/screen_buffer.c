@@ -57,6 +57,7 @@ void zsvsheet_screen_buffer_delete(zsvsheet_screen_buffer_t buff) {
         free_long_cell(buff, offset);
       }
     }
+    free(buff->cell_attrs);
     free(buff->data);
     free(buff);
   }
@@ -146,7 +147,7 @@ enum zsvsheet_priv_status zsvsheet_screen_buffer_write_cell(zsvsheet_screen_buff
 
 int zsvsheet_screen_buffer_cell_attrs(zsvsheet_screen_buffer_t buff, size_t row, size_t col) {
   if (buff->cell_attrs) {
-    size_t offset = row * buff->cols * buff->opts.cell_buff_len + col * buff->opts.cell_buff_len;
+    size_t offset = row * buff->cols + col;
     return buff->cell_attrs[offset];
   }
   return 0;

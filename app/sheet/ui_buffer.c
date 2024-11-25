@@ -34,12 +34,15 @@ struct zsvsheet_ui_buffer {
   // if non-null, called when buffer is closed
   void (*ext_on_close)(void *);
 
-  unsigned char index_ready;
+  enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, int *attrs, size_t start_row, size_t row_count,
+                                        size_t col_count);
+
+  unsigned char index_ready : 1;
   unsigned char rownum_col_offset : 1;
   unsigned char index_started : 1;
   unsigned char has_row_num : 1;
   unsigned char mutex_inited : 1;
-  unsigned char _ : 4;
+  unsigned char _ : 3;
 };
 
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
@@ -91,6 +94,23 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffe
     }
   }
   return uib;
+}
+
+int zsvsheet_ui_buffer_update_cell_attr(struct zsvsheet_ui_buffer *uib) {
+  if (uib && uib->buffer && uib->buffer->opts.rows && uib->buffer->cols) {
+    size_t row_sz = uib->buffer->cols * sizeof(*uib->buffer->cell_attrs);
+    if (uib->get_cell_attrs) {
+      if (!uib->buffer->cell_attrs) {
+        uib->buffer->cell_attrs = calloc(uib->buffer->opts.rows, row_sz);
+        if (!uib->buffer->cell_attrs)
+          return ENOMEM;
+      }
+      memset(uib->buffer->cell_attrs, 0, uib->buffer->opts.rows * row_sz);
+      uib->get_cell_attrs(uib->ext_ctx, uib->buffer->cell_attrs, uib->input_offset.row, uib->buff_used_rows,
+                          uib->buffer->cols);
+    }
+  }
+  return 0;
 }
 
 enum zsvsheet_priv_status zsvsheet_ui_buffer_new_blank(struct zsvsheet_ui_buffer **uibp) {

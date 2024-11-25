@@ -15,6 +15,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/prop.h>
+#include "../curses.h"
 
 /**
  * This is an example to demonstrate various extension capabilities
@@ -50,6 +51,62 @@ static struct zsv_ext_callbacks zsv_cb;
 
 #include "../sql_internal.h"
 
+struct pivot_row {
+  char *value; // to do: this will be the drill-down criteria
+};
+
+struct pivot_data {
+  char *value_sql; // the sql expression entered by the user e.g. City
+  struct {
+    struct pivot_row *data; // for each row, the value of the sql expression e.g. New York
+    size_t capacity;
+    size_t used;
+  } rows;
+};
+
+static struct pivot_data *pivot_data_new(void) {
+  struct pivot_data *pd = calloc(1, sizeof(*pd));
+  return pd;
+}
+
+static void pivot_data_delete(void *h) {
+  struct pivot_data *pd = h;
+  if (pd) {
+    free(pd->rows.data);
+    free(pd);
+  }
+}
+
+#define ZSV_MYSHEET_EXTENSION_PIVOT_DATA_ROWS_INITIAL 32
+static int pivot_data_grow(struct pivot_data *pd) {
+  if (pd->rows.used == pd->rows.capacity) {
+    size_t new_capacity =
+      pd->rows.capacity == 0 ? ZSV_MYSHEET_EXTENSION_PIVOT_DATA_ROWS_INITIAL : pd->rows.capacity * 2;
+    struct pivot_row *new_data = realloc(pd->rows.data, new_capacity * sizeof(*pd->rows.data));
+    if (!new_data)
+      return ENOMEM;
+    pd->rows.data = new_data;
+    pd->rows.capacity = new_capacity;
+  }
+  return 0;
+}
+
+static int add_pivot_row(struct pivot_data *pd, const char *value, size_t len) {
+  int err = pivot_data_grow(pd);
+  if (!err)
+    pd->rows.data[pd->rows.used++].value = NULL; // to do: set a value
+  return err;
+}
+
+static enum zsv_ext_status get_cell_attrs(void *pdh, int *attrs, size_t start_row, size_t row_count, size_t cols) {
+  struct pivot_data *pd = pdh;
+  size_t end_row = start_row + row_count;
+  if (end_row > pd->rows.used)
+    end_row = pd->rows.used;
+  for (size_t i = start_row; i < end_row; i++)
+    attrs[i * cols] = A_ITALIC | A_BOLD | A_ITALIC;
+}
+
 /**
  * Here we define a custom command for the zsv `sheet` feature
  */
@@ -72,10 +129,10 @@ zsvsheet_status my_pivot_table_command_handler(zsvsheet_proc_context_t ctx) {
     return zsvsheet_status_ok;
 
   enum zsvsheet_status zst = zsvsheet_status_ok;
-  // zsvsheet_status rc = zsvsheet_status_ok;
   struct zsv_sqlite3_dbopts dbopts = {0};
   struct zsv_sqlite3_db *zdb = zsv_cb.ext_sqlite3_db_new(&dbopts);
   sqlite3_str *sql_str = NULL;
+  struct pivot_data *pd = NULL;
   char *tmp_fn = NULL;
   const char *err_msg = NULL;
   if (!zdb || !(sql_str = sqlite3_str_new(zdb->db)))
@@ -88,7 +145,7 @@ zsvsheet_status my_pivot_table_command_handler(zsvsheet_proc_context_t ctx) {
       tmp_fn = zsv_get_temp_filename("zsv_mysheet_ext_XXXXXXXX");
       struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
       zsv_csv_writer cw = NULL;
-      if (!tmp_fn)
+      if (!tmp_fn || !(pd = pivot_data_new()))
         zst = zsvsheet_status_memory;
       else if (!(writer_opts.stream = fopen(tmp_fn, "wb"))) {
         zst = zsvsheet_status_error;
@@ -104,6 +161,7 @@ zsvsheet_status my_pivot_table_command_handler(zsvsheet_proc_context_t ctx) {
         for (int i = 0; i < col_count; i++) {
           const char *colname = sqlite3_column_name(stmt, i);
           zsv_writer_cell(cw, !i, (const unsigned char *)colname, colname ? strlen(colname) : 0, 1);
+          add_pivot_row(pd, NULL, 0);
         }
 
         // write sql results
@@ -112,6 +170,8 @@ zsvsheet_status my_pivot_table_command_handler(zsvsheet_proc_context_t ctx) {
             const unsigned char *text = sqlite3_column_text(stmt, i);
             int len = text ? sqlite3_column_bytes(stmt, i) : 0;
             zsv_writer_cell(cw, !i, text, len, 1);
+            if (i == 0)
+              add_pivot_row(pd, text, len);
           }
         }
       }
@@ -136,6 +196,10 @@ zsvsheet_status my_pivot_table_command_handler(zsvsheet_proc_context_t ctx) {
         zsv_cb.ext_sheet_set_status(ctx, "Error: %s", err_msg);
     } else {
       zst = zsv_cb.ext_sheet_open_file(ctx, tmp_fn, NULL);
+      zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx);
+      zsv_cb.ext_sheet_buffer_set_ctx(buff, pd, pivot_data_delete);
+      zsv_cb.ext_sheet_buffer_set_cell_attrs(buff, get_cell_attrs);
+      pd = NULL; // so that it isn't cleaned up below
       // TO DO: add param to ext_sheet_open_file to set filename vs data_filename, and set buffer type or proc owner
       // TO DO: add way to attach custom context, and custom context destructor, to the new buffer
       // TO DO: add cell highlighting
@@ -148,6 +212,7 @@ out:
   free(tmp_fn);
   if (sql_str)
     sqlite3_free(sqlite3_str_finish(sql_str));
+  pivot_data_delete(pd);
   return zst;
 }
 
