@@ -201,10 +201,17 @@
       prompt: "[[;lightgreen;]zsv@playground$ ]",
       completion: function (string, callback) {
         const cmd = this.get_command();
-        if (cmd.match(/^save /) || cmd.match(/^rm /) || cmd.match(/^zsv .*\b /)) {
+        if (cmd.match(/^(info|help|load|ls) /)) {
+          callback([]);
+        } else if (cmd.match(/^save /) || cmd.match(/^rm /)) {
           callback(getFiles());
-        } else if (cmd.match(/^(info|help|load|ls) /)) {
-          // Do nothing for argument-less commands
+        } else if (cmd.match(/^zsv \w+ /)) {
+          callback(getFiles());
+        } else if (cmd.match(/^zsv /)) {
+          callback([]);
+          // TODO: Automate autocompletion of zsv commands/flags
+          // Might need to do this as part of the CI e.g.
+          // run `zsv help`, parse output, and populate here.
         } else {
           callback(Object.keys(commands));
         }
