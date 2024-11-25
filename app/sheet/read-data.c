@@ -35,11 +35,8 @@ static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char 
   struct zsvsheet_index_opts *ixopts = calloc(1, sizeof(*ixopts));
   ixopts->mutexp = mutexp;
   ixopts->filename = filename;
-  //  ixopts->data_filenamep = &uibuffp->data_filename;
   ixopts->zsv_opts = *optsp;
   ixopts->row_filter = row_filter;
-  // ixopts->index = &uibuffp->index;
-  //  ixopts->index_ready = &uibuffp->index_ready;
   ixopts->custom_prop_handler = custom_prop_handler;
   //  ixopts->opts_used = opts_used;
   ixopts->uib = uibuffp;
@@ -271,6 +268,7 @@ static void *get_data_index(void *gdi) {
       }
     }
   }
+  d->uib->ixopts = NULL;
   free(d);
   pthread_mutex_unlock(mutexp);
 

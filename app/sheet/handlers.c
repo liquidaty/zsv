@@ -185,7 +185,8 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx, v
   if (zst != zsv_status_ok)
     goto out;
 
-  stat = zsvsheet_open_file(ctx, zsvsheet_transformation_filename(trn), &zopts);
+  // TODO: need to free filename
+  stat = zsvsheet_open_file(ctx, strdup(zsvsheet_transformation_filename(trn)), &zopts);
 
 out:
   zsvsheet_transformation_delete(trn);
