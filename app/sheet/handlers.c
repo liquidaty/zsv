@@ -138,11 +138,82 @@ struct zsv_opts zsvsheet_buffer_get_zsv_opts(zsvsheet_buffer_t h) {
   return opts;
 }
 
+/**
+ * Get information about the type and state of the buffer and its backing file.
+ *
+ * This returns a copy of the information. Properties relating to the index and transformations
+ * are updated by background threads and may be stale upon return. However they only ever
+ * transition from false to true.
+ */
+struct zsvsheet_buffer_info zsvsheet_buffer_get_info(zsvsheet_buffer_t h) {
+  struct zsvsheet_buffer_info info = {0};
+
+  if (h) {
+    struct zsvsheet_ui_buffer *b = h;
+
+    pthread_mutex_lock(&b->mutex);
+    info.index_started = b->index_started;
+    info.index_ready = b->index_ready;
+    info.transform_started = b->transform_started;
+    info.transform_done = b->transform_done;
+    pthread_mutex_unlock(&b->mutex);
+  }
+
+  return info;
+}
+
+struct buffer_transform_ctx {
+  zsvsheet_transformation trn;
+  struct zsvsheet_ui_buffer *buff;
+};
+
+static void *run_buffer_transformation(void *arg) {
+  struct buffer_transform_ctx *ctx = arg;
+  struct zsvsheet_ui_buffer *buff = ctx->buff;
+  struct zsvsheet_transformation *trn = ctx->trn;
+  zsv_parser parser = trn->parser;
+  pthread_mutex_t *mutex = &buff->mutex;
+  enum zsv_status zst;
+
+  size_t c = trn->output_count;
+  char cancelled = 0;
+  while (!cancelled && (zst = zsv_parse_more(parser)) == zsv_status_ok) {
+    pthread_mutex_lock(mutex);
+    cancelled = buff->worker_cancelled;
+    if (trn->output_count != c)
+      buff->transform_progressed = 1;
+    pthread_mutex_unlock(mutex);
+  }
+
+  if (zst == zsv_status_no_more_input || zst == zsv_status_cancelled)
+    zst = zsv_finish(parser);
+
+  pthread_mutex_lock(mutex);
+  char *buff_status_old = buff->status;
+  buff->transform_done = 1;
+  buff->status = NULL;
+  pthread_mutex_unlock(mutex);
+  free(buff_status_old);
+
+  free(trn->user_context);
+  zsvsheet_transformation_delete(trn);
+  free(ctx);
+
+  return NULL;
+}
+
 enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx, void *user_context,
                                                   void (*row_handler)(void *exec_ctx)) {
   zsvsheet_buffer_t buff = zsvsheet_buffer_current(ctx);
   const char *filename = zsvsheet_buffer_data_filename(buff);
   enum zsvsheet_status stat = zsvsheet_status_error;
+  struct zsvsheet_buffer_info info = zsvsheet_buffer_get_info(buff);
+
+  // TODO: Starting a second transformation before the first ends works, but if the second is faster
+  //       than the first then it can end prematurely and read a partially written row.
+  //       We could override the input stream reader to wait for more data when it sees EOF
+  if (info.transform_started && !info.transform_done)
+    return zsvsheet_status_busy;
 
   if (!filename)
     filename = zsvsheet_buffer_filename(buff);
@@ -168,27 +239,55 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx, v
   if (zst != zsv_status_ok)
     return stat;
 
+  // Transform part of the file to initially populate the UI buffer
+  // TODO: If the transformation is a reduction that doesn't output for some time this will caus a pause
   zsv_parser parser = zsvsheet_transformation_parser(trn);
-
-  while ((zst = zsv_parse_more(parser)) == zsv_status_ok)
-    ;
+  while ((zst = zsv_parse_more(parser)) == zsv_status_ok) {
+    if (trn->output_count > 0)
+      break;
+  }
 
   switch (zst) {
   case zsv_status_no_more_input:
   case zsv_status_cancelled:
+    if (zsv_finish(parser) != zsv_status_ok)
+      goto out;
+    zsv_writer_flush(trn->writer);
+    break;
+  case zsv_status_ok:
     break;
   default:
     goto out;
   }
 
-  zst = zsv_finish(parser);
-  if (zst != zsv_status_ok)
+  struct zsvsheet_ui_buffer_opts uibopts = {0};
+
+  uibopts.filename = zsvsheet_transformation_filename(trn);
+  uibopts.transform = 1;
+
+  stat = zsvsheet_open_file_opts(ctx, &uibopts);
+  if (stat != zsvsheet_status_ok)
     goto out;
 
-  // TODO: need to free filename
-  stat = zsvsheet_open_file(ctx, strdup(zsvsheet_transformation_filename(trn)), &zopts);
+  struct zsvsheet_ui_buffer *nbuff = zsvsheet_buffer_current(ctx);
+
+  if (zst != zsv_status_ok) {
+    nbuff->transform_done = 1;
+    goto out;
+  }
+
+  asprintf(&nbuff->status, "(working) Press ESC to cancel");
+
+  struct buffer_transform_ctx *bctx = malloc(sizeof(*bctx));
+  bctx->trn = trn;
+  bctx->buff = nbuff;
+
+  zsvsheet_ui_buffer_create_worker(nbuff, run_buffer_transformation, bctx);
+  return stat;
 
 out:
-  zsvsheet_transformation_delete(trn);
+  if (trn)
+    zsvsheet_transformation_delete(trn);
+
   return stat;
 }

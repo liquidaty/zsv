@@ -137,14 +137,11 @@ void my_transformation_row_handler(void *ctx) {
 }
 
 zsvsheet_status my_transformation_command_handler(zsvsheet_proc_context_t ctx) {
-  struct transformation_context my_ctx = {
-    .col_count = 0,
-    .row_count = 0,
-  };
+  struct transformation_context *my_ctx = calloc(1, sizeof(*my_ctx));
 
   // TODO: This probably should happen in another worker thread and while that is happening the status should display
   //       that some work is in progress. The extension author will maybe want to have control over the status message.
-  return zsv_cb.ext_sheet_push_transformation(ctx, &my_ctx, my_transformation_row_handler);
+  return zsv_cb.ext_sheet_push_transformation(ctx, my_ctx, my_transformation_row_handler);
 }
 #endif
 

@@ -41,9 +41,10 @@ static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char 
   //  ixopts->opts_used = opts_used;
   ixopts->uib = uibuffp;
   ixopts->uib->ixopts = ixopts;
-  pthread_t thread;
-  pthread_create(&thread, NULL, get_data_index, ixopts);
-  pthread_detach(thread);
+
+  if (uibuffp->worker_active)
+    zsvsheet_ui_buffer_join_worker(uibuffp);
+  zsvsheet_ui_buffer_create_worker(uibuffp, get_data_index, ixopts);
 }
 
 static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_ui_buffer will be allocated
@@ -132,10 +133,12 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
   while (zsv_next_row(parser) == zsv_status_row &&
          (rows_read == 0 || rows_read < zsvsheet_screen_buffer_rows(buffer))) { // for each row
-    if (uibuff == NULL && uibufferp && uibopts && zsv_cell_count(parser) > 0) {
+
+    size_t col_count = zsv_cell_count(parser);
+    if (uibuff == NULL && uibufferp && uibopts && col_count > 0) {
       enum zsvsheet_priv_status stat;
       struct zsvsheet_ui_buffer *tmp_uibuff = NULL;
-      if (!(buffer = zsvsheet_screen_buffer_new(zsv_cell_count(parser), uibopts->buff_opts, &stat)) ||
+      if (!(buffer = zsvsheet_screen_buffer_new(col_count, uibopts->buff_opts, &stat)) ||
           stat != zsvsheet_priv_status_ok || !(tmp_uibuff = zsvsheet_ui_buffer_new(buffer, uibopts))) {
         if (tmp_uibuff)
           zsvsheet_ui_buffer_delete(tmp_uibuff);
@@ -165,8 +168,11 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       remaining_header_to_skip--;
       continue;
     }
-    size_t col_count = zsv_cell_count(parser);
     if (uibuff) {
+      if (col_count + !buffer->opts.no_rownum_column > buffer->cols) {
+        if (zsvsheet_screen_buffer_grow(buffer, col_count) != zsvsheet_priv_status_ok)
+          return -1;
+      }
       if (col_count > uibuff->dimensions.col_count)
         uibuff->dimensions.col_count = col_count;
     }
@@ -213,17 +219,24 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   fclose(fp);
   zsv_delete(parser);
 
+  if (!uibuff)
+    return 0;
+
   char *ui_status = NULL;
-  if (uibuff) {
-    if (!uibuff->index_started) {
-      uibuff->buff_used_rows = rows_read;
-      uibuff->index_started = 1;
-      if (original_row_num > 1 && (row_filter == NULL || rows_read > 0)) {
-        opts.stream = NULL;
-        get_data_index_async(uibuff, filename, &opts, row_filter, custom_prop_handler, /* opts_used, */ &uibuff->mutex);
-        asprintf(&ui_status, "(building index) ");
-      }
+  pthread_mutex_lock(&uibuff->mutex);
+  char need_index = !uibuff->index_started && (!uibuff->transform_started || uibuff->transform_done);
+  pthread_mutex_unlock(&uibuff->mutex);
+
+  if (need_index) {
+    uibuff->buff_used_rows = rows_read;
+    uibuff->index_started = 1;
+    if (original_row_num > 1 && (row_filter == NULL || rows_read > 0)) {
+      opts.stream = NULL;
+      get_data_index_async(uibuff, filename, &opts, row_filter, custom_prop_handler, /* opts_used, */ &uibuff->mutex);
+      asprintf(&ui_status, "(building index) ");
     }
+  } else if (rows_read > uibuff->buff_used_rows) {
+    uibuff->buff_used_rows = rows_read;
   }
 
   if (ui_status) {
@@ -254,23 +267,19 @@ static void *get_data_index(void *gdi) {
     return NULL;
   }
 
+  char *buff_status = NULL;
+  if (d->uib->row_filter && d->uib->index->row_count > 0)
+    asprintf(&buff_status, "(%" PRIu64 " filtered rows) ", d->uib->index->row_count);
+
   pthread_mutex_lock(mutexp);
   d->uib->index_ready = 1;
-  // *d->index_ready = 1;
-
-  if (d->uib) {
-    free(d->uib->status);
-    d->uib->status = NULL;
-    if (d->row_filter != NULL) {
-      if (d->uib->index->row_count > 0) {
-        d->uib->dimensions.row_count = d->uib->index->row_count + 1;
-        asprintf(&d->uib->status, "(%" PRIu64 " filtered rows) ", d->uib->index->row_count);
-      }
-    }
-  }
+  char *old_buff_status = d->uib->status;
+  d->uib->status = buff_status;
   d->uib->ixopts = NULL;
-  free(d);
   pthread_mutex_unlock(mutexp);
+
+  free(old_buff_status);
+  free(d);
 
   return NULL;
 }

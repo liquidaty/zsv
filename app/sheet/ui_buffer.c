@@ -16,6 +16,7 @@ struct zsvsheet_ui_buffer {
   struct zsv_index *index;
   struct zsvsheet_index_opts *ixopts;
   pthread_mutex_t mutex;
+  pthread_t worker_thread;
 
   // input_offset: location within the input from which the buffer is read
   // i.e. if row = 5, col = 3, the buffer data starts from cell D6
@@ -42,13 +43,37 @@ struct zsvsheet_ui_buffer {
   unsigned char index_started : 1;
   unsigned char has_row_num : 1;
   unsigned char mutex_inited : 1;
-  unsigned char _ : 3;
+  unsigned char transform_started : 1;
+  unsigned char transform_progressed : 1;
+  unsigned char transform_done : 1;
+  unsigned char worker_active : 1;
+  unsigned char worker_cancelled : 1;
+  unsigned char _ : 6;
 };
 
-// TODO: need to wait for any threads with references to this UI buffer, e.g. transformation or
-//       indexer
+void zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*start_func)(void *), void *arg) {
+  assert(!ub->worker_active);
+  assert(ub->mutex_inited);
+  assert(!pthread_create(&ub->worker_thread, NULL, start_func, arg));
+  ub->worker_active = 1;
+}
+
+void zsvsheet_ui_buffer_join_worker(struct zsvsheet_ui_buffer *ub) {
+  assert(ub->worker_active);
+  assert(ub->mutex_inited);
+  assert(!pthread_join(ub->worker_thread, NULL));
+  ub->worker_active = 0;
+}
+
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
   if (ub) {
+    if (ub->worker_active) {
+      pthread_mutex_lock(&ub->mutex);
+      ub->worker_cancelled = 1;
+      pthread_mutex_unlock(&ub->mutex);
+
+      zsvsheet_ui_buffer_join_worker(ub);
+    }
     if (ub->ext_on_close)
       ub->ext_on_close(ub->ext_ctx);
     zsvsheet_screen_buffer_delete(ub->buffer);
@@ -74,6 +99,7 @@ struct zsvsheet_ui_buffer_opts {
   struct zsv_opts zsv_opts; // options to use when opening this file
   const char *opts_used;
   char no_rownum_col_offset;
+  char transform;
 };
 
 struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffer,
@@ -93,6 +119,7 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffe
         return NULL;
       }
       uib->zsv_opts = uibopts->zsv_opts;
+      uib->transform_started = uibopts->transform;
     }
   }
   return uib;

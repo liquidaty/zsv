@@ -13,6 +13,7 @@ typedef enum zsvsheet_status {
   zsvsheet_status_duplicate,
   zsvsheet_status_memory,
   zsvsheet_status_exit,
+  zsvsheet_status_busy,
 } zsvsheet_status;
 
 typedef struct zsvsheet_context *zsvsheet_context_t;
@@ -22,5 +23,13 @@ typedef void *zsvsheet_buffer_t;
 // int zsvsheet_ext_keypress(zsvsheet_proc_context_t);
 
 typedef struct zsvsheet_transformation *zsvsheet_transformation;
+
+struct zsvsheet_buffer_info {
+  unsigned char index_started : 1;
+  unsigned char index_ready : 1;
+  unsigned char transform_started : 1;
+  unsigned char transform_done : 1;
+  unsigned char _ : 4;
+};
 
 #endif

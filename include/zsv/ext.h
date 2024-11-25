@@ -260,6 +260,9 @@ struct zsv_ext_callbacks {
   /**
    * Create a new buffer from the current one using a transformation
    * and make the new buffer the current one
+   *
+   * Note that the transformation is performed in a seperate thread so the user_context
+   * must not be a stack variable
    */
   zsvsheet_status (*ext_sheet_push_transformation)(zsvsheet_proc_context_t ctx, void *user_context,
                                                    void (*row_handler)(void *ctx));

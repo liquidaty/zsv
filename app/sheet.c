@@ -396,6 +396,7 @@ no_input:
   return zsvsheet_status_ok;
 }
 
+// TODO: Use same API as transformation extensions
 static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx) {
   char prompt_buffer[256] = {0};
   struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state *)ctx->subcommand_context;
@@ -403,6 +404,10 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   struct zsvsheet_ui_buffer *current_ui_buffer = *state->display_info.ui_buffers.current;
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
   int err;
+  struct zsvsheet_buffer_info binfo = zsvsheet_buffer_get_info(current_ui_buffer);
+
+  if (binfo.transform_started && !binfo.transform_done)
+    return zsvsheet_status_busy;
 
   if (!current_ui_buffer->filename)
     goto out;
@@ -449,6 +454,7 @@ static zsvsheet_status zsvsheet_help_handler(struct zsvsheet_proc_context *ctx) 
     .buff_opts = &bopts,
     .filename = NULL,
     .no_rownum_col_offset = 1,
+    .transform = 0,
   };
   struct zsvsheet_ui_buffer *uib;
   zsvsheet_screen_buffer_t buffer;
@@ -690,22 +696,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   halfdelay(2); // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
 
   while (true) {
-    char *status_msg = NULL;
     ch = getch();
 
     handler_state.display_info.update_buffer = false;
-
-    pthread_mutex_lock(&current_ui_buffer->mutex);
-    if (current_ui_buffer->status)
-      status_msg = strdup(current_ui_buffer->status);
-
-    if (current_ui_buffer->index_ready &&
-        current_ui_buffer->dimensions.row_count != current_ui_buffer->index->row_count + 1) {
-      current_ui_buffer->dimensions.row_count = current_ui_buffer->index->row_count + 1;
-      handler_state.display_info.update_buffer = true;
-    }
-    pthread_mutex_unlock(&current_ui_buffer->mutex);
-
     zsvsheet_priv_set_status(&display_dims, 1, "");
 
     if (ch != ERR) {
@@ -716,21 +709,29 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         continue;
     }
 
-    if (handler_state.display_info.update_buffer && current_ui_buffer->filename) {
+    struct zsvsheet_ui_buffer *ub = current_ui_buffer;
+    pthread_mutex_lock(&ub->mutex);
+    if (ub->status)
+      zsvsheet_priv_set_status(&display_dims, 1, ub->status);
+    if (ub->transform_progressed) {
+      handler_state.display_info.update_buffer = true;
+      ub->transform_progressed = 0;
+    } else if (ub->index_ready && ub->dimensions.row_count != current_ui_buffer->index->row_count + 1) {
+      ub->dimensions.row_count = current_ui_buffer->index->row_count + 1;
+      handler_state.display_info.update_buffer = true;
+    }
+    pthread_mutex_unlock(&ub->mutex);
+
+    if (handler_state.display_info.update_buffer && ub->filename) {
       struct zsvsheet_opts zsvsheet_opts = {0};
-      if (read_data(&current_ui_buffer, NULL, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col,
-                    header_span, &zsvsheet_opts, custom_prop_handler)) {
+      if (read_data(&ub, NULL, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col, header_span,
+                    &zsvsheet_opts, custom_prop_handler)) {
         zsvsheet_priv_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
         continue;
       }
     }
 
-    if (status_msg) {
-      zsvsheet_priv_set_status(&display_dims, 1, status_msg);
-      free(status_msg);
-    }
-
-    display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
+    display_buffer_subtable(ub, header_span, &display_dims);
   }
 
   endwin();

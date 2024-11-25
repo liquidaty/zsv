@@ -85,8 +85,15 @@ static enum zsv_status filter_file(struct zsvsheet_index_opts *optsp) {
 
   zsv_parser parser = zsvsheet_transformation_parser(trn);
 
-  while ((zst = zsv_parse_more(parser)) == zsv_status_ok)
-    ;
+  char cancelled = 0;
+  while (!cancelled && (zst = zsv_parse_more(parser)) == zsv_status_ok) {
+    pthread_mutex_lock(&optsp->uib->mutex);
+    if (optsp->uib->worker_cancelled) {
+      cancelled = 1;
+      zst = zsv_status_cancelled;
+    }
+    pthread_mutex_unlock(&optsp->uib->mutex);
+  }
 
   switch (zst) {
   case zsv_status_no_more_input:
@@ -147,12 +154,19 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
   if (!ixr.ix)
     goto out;
 
-  while ((zst = zsv_parse_more(ixr.parser)) == zsv_status_ok)
-    ;
+  char cancelled = 0;
+  while (!cancelled && (zst = zsv_parse_more(ixr.parser)) == zsv_status_ok) {
+    pthread_mutex_lock(&optsp->uib->mutex);
+    if (optsp->uib->worker_cancelled) {
+      cancelled = 1;
+      zst = zsv_status_cancelled;
+    }
+    pthread_mutex_unlock(&optsp->uib->mutex);
+  }
 
   zsv_finish(ixr.parser);
 
-  if (zst == zsv_status_no_more_input) {
+  if (zst == zsv_status_no_more_input || zst == zsv_status_cancelled) {
     ret = zsv_index_status_ok;
     optsp->uib->index = ixr.ix;
   } else
