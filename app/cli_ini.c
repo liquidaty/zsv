@@ -6,6 +6,7 @@
 #include <zsv/utils/string.h>
 #include <zsv/utils/os.h>
 #include <zsv/utils/dirs.h>
+#include <zsv/utils/mem.h>
 
 #define INI_HANDLER_LINENO 1
 #define INI_CALL_HANDLER_ON_NEW_SECTION 1
@@ -104,8 +105,14 @@ static struct zsv_ext *load_extension_dl(const unsigned char *extension_id, char
 // load an extension and if successful, add to config->extensions head
 static int add_extension(const char *id, struct zsv_ext **exts, char ignore_err, char verbose) {
   int err = 0;
-  size_t len = strlen(id);
-  unsigned char *extension_id = zsv_strtolowercase((const unsigned char *)id, &len);
+  const char *dash = strchr(id, '-');
+  unsigned char *extension_id = NULL;
+  size_t len;
+  if (dash)
+    len = dash - id;
+  else
+    len = strlen(id);
+  extension_id = zsv_strtolowercase((const unsigned char *)id, &len);
   if (extension_id) {
     struct zsv_ext *ext = NULL;
     if (!extension_id_ok(extension_id))
@@ -169,7 +176,7 @@ static int parse_extensions_ini(struct cli_config *config, char err_if_not_found
   if (!(f = fopen(config->filepath, "r"))) {
     if (err_if_not_found) {
       err = -1;
-      fprintf(stderr, "No extensions configured%s%s\n", verbose ? "or file not found: " : "",
+      fprintf(stderr, "No extensions configured%s%s\n", verbose ? " or file not found: " : "",
               verbose ? config->filepath : "");
     }
   } else {
