@@ -186,9 +186,13 @@ clean:
 ${BUILD_DIR}/objs/%.o : ${THIS_LIB_BASE}/src/%.c ${PARSER_DEPS}
 	${MAKE} -C ${THIS_LIB_BASE}/src CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} WIN=${WIN} $@
 
+
+YAJL_SRC_DIR=${THIS_MAKEFILE_DIR}/../external/yajl
+YAJL_INCLUDE=-I${YAJL_SRC_DIR}/build/yajl-2.1.1/include
+YAJL_HELPER_INCLUDE=-I${THIS_MAKEFILE_DIR}/../external/yajl_helper
 ${TARGET_SHEET}: LIBS="../external/sqlite3/sqlite3.c" -lzsv -lzsvutil -L${PREFIX}/lib
 ${TARGET} ${TARGET_SHEET}: ${BUILD_DIR}/bin/zsvext%.${SO} : %_extension.c ${UTILS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${CFLAGS_SHARED} $< ${UTILS} -o $@ ${LIBS}
+	${CC} ${CFLAGS} ${CFLAGS_SHARED} $< ${UTILS} -o $@ ${LIBS} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
 
 .PHONY: all test test-% clean install
