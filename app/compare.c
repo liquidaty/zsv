@@ -290,6 +290,8 @@ static void zsv_compare_print_row(struct zsv_compare_data *data,
 static void zsv_compare_input_free(struct zsv_compare_input *input) {
   zsv_delete(input->parser);
   zsv_compare_unique_colnames_delete(&input->colnames);
+  if (input->added)
+    sqlite3_zsv_list_remove(input->path);
   free(input->out2in);
   if (input->stream)
     fclose(input->stream);
@@ -447,6 +449,7 @@ static void zsv_compare_set_sorted_callbacks(struct zsv_compare_data *data) {
 
 static enum zsv_compare_status zsv_compare_init_sorted(struct zsv_compare_data *data) {
   int rc;
+  // to do: use sql_internal.h interface
   const char *db_url = data->sort_in_memory ? "file::memory:" : "";
   if ((rc = sqlite3_open_v2(db_url, &data->sort_db, SQLITE_OPEN_URI | SQLITE_OPEN_READWRITE, NULL)) == SQLITE_OK &&
       data->sort_db && (rc = sqlite3_create_module(data->sort_db, "csv", &CsvModule, 0) == SQLITE_OK)) {

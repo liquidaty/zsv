@@ -37,7 +37,7 @@ struct sqlite3_zsv_data;
 
 void sqlite3_zsv_list_delete(struct sqlite3_zsv_data **list);
 
-int sqlite3_zsv_data_add(const char *filename, struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler);
+int sqlite3_zsv_list_add(const char *filename, struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler);
 
 struct sqlite3_zsv_data *sqlite3_csv_vtab_zsv_find(const char *filename);
 

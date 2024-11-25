@@ -9,9 +9,14 @@
 #ifndef ZSV_EXT_H
 #define ZSV_EXT_H
 
+#define ZSV_EXTENSION_ID_MIN_LEN 2
+#define ZSV_EXTENSION_ID_MAX_LEN 8
+
 #include <stdio.h>
 #include "common.h"
 #include "ext/sheet.h"
+#include "utils/sql.h"
+#include "utils/prop.h"
 
 /**
  * @file ext.h
@@ -232,9 +237,24 @@ struct zsv_ext_callbacks {
   enum zsv_ext_status (*ext_sheet_buffer_get_ctx)(zsvsheet_buffer_t h, void **ctx_out);
 
   /**
+   * Set custom cell attributes
+   */
+  void (*ext_sheet_buffer_set_cell_attrs)(zsvsheet_buffer_t h,
+                                          enum zsv_ext_status (*get_cell_attrs)(void *pdh, int *attrs, size_t start_row,
+                                                                                size_t row_count, size_t cols));
+
+  /**
    * Get zsv_opts used to open the buffer's data file
    */
   struct zsv_opts (*ext_sheet_buffer_get_zsv_opts)(zsvsheet_buffer_t h);
+
+  /**
+   * SQLITE3 helpers
+   */
+  int (*ext_sqlite3_add_csv)(struct zsv_sqlite3_db *zdb, const char *csv_filename, struct zsv_opts *opts,
+                             struct zsv_prop_handler *custom_prop_handler, const char *opts_used);
+  void (*ext_sqlite3_db_delete)(zsv_sqlite3_db_t);
+  zsv_sqlite3_db_t (*ext_sqlite3_db_new)(struct zsv_sqlite3_dbopts *dbopts);
 };
 
 /** @} */
