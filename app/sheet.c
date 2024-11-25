@@ -696,7 +696,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     handler_state.display_info.update_buffer = false;
 
     pthread_mutex_lock(&current_ui_buffer->mutex);
-    status_msg = current_ui_buffer->status;
+    if (current_ui_buffer->status)
+      status_msg = strdup(current_ui_buffer->status);
+
     if (current_ui_buffer->index_ready &&
         current_ui_buffer->dimensions.row_count != current_ui_buffer->index->row_count + 1) {
       current_ui_buffer->dimensions.row_count = current_ui_buffer->index->row_count + 1;
@@ -723,8 +725,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     }
 
-    if (status_msg)
+    if (status_msg) {
       zsvsheet_priv_set_status(&display_dims, 1, status_msg);
+      free(status_msg);
+    }
 
     display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
   }

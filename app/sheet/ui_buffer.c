@@ -45,6 +45,8 @@ struct zsvsheet_ui_buffer {
   unsigned char _ : 3;
 };
 
+// TODO: need to wait for any threads with references to this UI buffer, e.g. transformation or
+//       indexer
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
   if (ub) {
     if (ub->ext_on_close)

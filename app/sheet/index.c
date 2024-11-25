@@ -100,7 +100,7 @@ static enum zsv_status filter_file(struct zsvsheet_index_opts *optsp) {
   if (zst != zsv_status_ok)
     goto out;
 
-  if (asprintf(optsp->data_filenamep, "%s", zsvsheet_transformation_filename(trn)) == -1)
+  if (!(optsp->uib->data_filename = strdup(zsvsheet_transformation_filename(trn))))
     zst = zsv_status_memory;
 
 out:
@@ -127,7 +127,7 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
     if (zst != zsv_status_ok)
       goto out;
 
-    ix_zopts.stream = fopen(*optsp->data_filenamep, "rb");
+    ix_zopts.stream = fopen(optsp->uib->data_filename, "rb");
   } else {
     ix_zopts.stream = fopen(optsp->filename, "rb");
   }
@@ -154,7 +154,6 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
 
   if (zst == zsv_status_no_more_input) {
     ret = zsv_index_status_ok;
-    // *optsp->index = ixr.ix;
     optsp->uib->index = ixr.ix;
   } else
     zsv_index_delete(ixr.ix);
