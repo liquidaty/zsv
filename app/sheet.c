@@ -16,21 +16,7 @@
 
 #include <zsv.h>
 
-#if defined(WIN32) || defined(_WIN32)
-#ifdef HAVE_NCURSESW
-#include <ncursesw/ncurses.h>
-#else
-#include <ncurses/ncurses.h>
-#endif // HAVE_NCURSESW
-#else
-#if __has_include(<curses.h>)
-#include <curses.h>
-#elif __has_include(<ncursesw/curses.h>)
-#include <ncursesw/curses.h>
-#else
-#error Cannot find ncurses include file!
-#endif
-#endif
+#include "curses.h"
 
 #include <locale.h>
 #include <wchar.h>
@@ -457,6 +443,7 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
 
   struct zsvsheet_ui_buffer *new_ui_buffer = *state->display_info.ui_buffers.current;
   if (is_filtered_file) {
+    // TO DO: move this into zsvsheet_ui_buffer_open_file()
     free(new_ui_buffer->filename);
     new_ui_buffer->filename = strdup(current_ui_buffer->filename);
   }
