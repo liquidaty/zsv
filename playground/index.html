@@ -6,7 +6,7 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <title>zsv playground __VERSION__</title>
+  <title>zsv playground v__VERSION__</title>
 
   <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
   <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
@@ -15,11 +15,88 @@
   <script defer type="text/javascript" src="cli.em.js"></script>
 
   <script type="text/javascript">
+    var zsvAutocompletionsPopulated = false;
+    var zsvAutocompletions = {};
+    var zsvFlags = [];
+    var zsvCommands = [];
+
+    function parseFlagsAndCommands(output) {
+      if (output.match(/^  -.*:/)) /* flags */ {
+        const tokens = output.trim().split(' ');
+        const flag = tokens[0].endsWith(':') ? tokens[0].slice(0, -1) : tokens[0];
+        zsvFlags.push(...flag.split(','));
+      } else if (output.match(/^  \w/)) /* commands */ {
+        if (output.startsWith('zsv') === false) {
+          const tokens = output.trim().split(' ');
+          if (tokens[0] !== 'zsv') {
+            const cmd = tokens[0].endsWith(':') ? tokens[0].slice(0, -1) : tokens[0];
+            zsvCommands.push(cmd);
+          }
+        }
+      }
+    }
+
+    function populateMainFlagsAndSubcommands() {
+      zsvFlags = [];
+      zsvCommands = [];
+      Module.callMain(['help']);
+
+      Object.assign(zsvAutocompletions, { globalFlags: zsvFlags });
+      Object.assign(zsvAutocompletions, { help: [] });
+      Object.assign(zsvAutocompletions, { version: [] });
+      Object.assign(zsvAutocompletions, { thirdparty: [] });
+
+      for (const subcommand of zsvCommands) {
+        zsvFlags = [];
+        zsvCommands = [];
+        Module.callMain(['help', subcommand]);
+        Object.assign(zsvAutocompletions, { [subcommand]: zsvFlags });
+      }
+
+      zsvAutocompletionsPopulated = true;
+    }
+
+    function autocomplete(command) {
+      const mainCommands = Object.keys(zsvAutocompletions).filter(cmd => cmd != 'globalFlags');
+
+      if (command.match(/^zsv\s+$/) || command.match(/^zsv\s+\w+$/)) {
+        console.log("1");
+        return mainCommands;
+      }
+
+      if (command.match(/^zsv\s+help\s+$/) || command.match(/^zsv\s+help\s+\w+$/)) {
+        console.log("2");
+        return mainCommands.filter(cmd => !['help', 'version', 'thirdparty'].includes(cmd));
+      }
+
+      if (command.match(/^zsv\s+\w+\s+$/)) {
+        const subcommand = command.match(/^zsv\s+(\w+)\s+/)[1];
+        if (['help', 'version', 'thirdparty'].includes(subcommand)) {
+          console.log("3");
+          return [];
+        } else {
+          console.log("4");
+          return getFiles();
+        }
+      } else if (command.match(/^zsv\s+\w+\s+.*\w+$/)) {
+        console.log("5");
+        return getFiles();
+      }
+
+      // TODO: Handle flags
+
+      return [];
+    }
+
     var Module = {
       print: (function () {
         return (...args) => {
           const output = args.join(' ');
-          $('body').terminal().echo(output);
+          if (zsvAutocompletionsPopulated) {
+            $('body').terminal().echo(output);
+          } else {
+            parseFlagsAndCommands(output);
+          }
         };
       })(),
       printErr: (function () {
@@ -35,6 +112,10 @@
       FS.mkdir(root);
       FS.chdir(root);
       FS.writeFile('sample.csv', 'a,b,c\n1,2,3\n4,5,6\n7,8,9');
+
+      // Populate autocompletions
+      populateMainFlagsAndSubcommands();
+
       console.log('zsv playground initialized successfully!');
     }
 
@@ -88,7 +169,7 @@
       $('body').terminal().echo(greetings);
     }
 
-    const commands = {
+    const playgroundCommands = {
       info: ' : show playground info',
       help: ' : show help',
       clear: ': clear screen',
@@ -101,8 +182,8 @@
 
     function help() {
       var help = "[[;red;]zsv playground help]";
-      for (const key in commands) {
-        help += `\n  [[;blue;]${key}] ${commands[key]}`;
+      for (const key in playgroundCommands) {
+        help += `\n  [[;blue;]${key}] ${playgroundCommands[key]}`;
       }
       $('body').terminal().echo(help);
     }
@@ -156,9 +237,9 @@
     }
 
     $('body').terminal(function (command) {
-      const parsed_command = $.terminal.parse_command(command);
-      const name = parsed_command.name;
-      const args = parsed_command.args.map(String);
+      const parsedCommand = $.terminal.parse_command(command);
+      const name = parsedCommand.name;
+      const args = parsedCommand.args.map(String);
       switch (name) {
         case 'info':
           info();
@@ -200,20 +281,15 @@
       greetings: greetings,
       prompt: "[[;lightgreen;]zsv@playground$ ]",
       completion: function (string, callback) {
-        const cmd = this.get_command();
-        if (cmd.match(/^(info|help|load|ls) /)) {
+        const command = this.get_command().trimLeft();
+        if (command.match(/^(info|help|load|ls) /)) {
           callback([]);
-        } else if (cmd.match(/^save /) || cmd.match(/^rm /)) {
+        } else if (command.match(/^save /) || command.match(/^rm /)) {
           callback(getFiles());
-        } else if (cmd.match(/^zsv \w+ /)) {
-          callback(getFiles());
-        } else if (cmd.match(/^zsv /)) {
-          callback([]);
-          // TODO: Automate autocompletion of zsv commands/flags
-          // Might need to do this as part of the CI e.g.
-          // run `zsv help`, parse output, and populate here.
+        } else if (command.startsWith('zsv')) {
+          callback(autocomplete(command));
         } else {
-          callback(Object.keys(commands));
+          callback(Object.keys(playgroundCommands));
         }
       }
     });
