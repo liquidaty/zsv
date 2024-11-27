@@ -50,9 +50,9 @@ TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
 TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help test-paste
 
-ifeq ($(ZSV_BUILD_SHEET),1)
+ifeq ($(ZSVSHEET_BUILD),1)
   SOURCES+=sheet
-  CFLAGS+=-DZSV_BUILD_SHEET
+  CFLAGS+=-DZSVSHEET_BUILD
   CFLAGS+=${CFLAGS_NCURSES}
   LDFLAGS+=${LDFLAGS_NCURSES}
   TESTS+=test-sheet
