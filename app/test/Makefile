@@ -651,13 +651,13 @@ test-sheet-6: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
 
 test-sheet-7: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
-	sleep 0.5 && \
+	sleep 1 && \
 	tmux send-keys -t $@ "G" "g" "g" "C-u" "/" "1234" "Enter" && \
 	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
@@ -670,7 +670,7 @@ test-sheet-8: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@(tmux new-session -x 160 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "f" "e" "Enter" && \
-	sleep 0.5 && \
+	sleep 1 && \
 	tmux send-keys -t $@ "G" "C-u" "k" && \
 	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
@@ -681,7 +681,7 @@ test-sheet-9: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
-	sleep 0.5 && \
+	sleep 1 && \
 	tmux send-keys -t $@ "G" && \
 	tmux send-keys -t $@ -N 4096 "k" && \
 	sleep 2 && \
@@ -705,7 +705,7 @@ test-sheet-11: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 50 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
-	sleep 0.5 && \
+	sleep 1 && \
 	tmux send-keys -t $@ -N 21 "C-d" && \
 	sleep 1 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
@@ -720,6 +720,7 @@ test-sheet-12: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv
 	tmux send-keys -t $@ "f" "el" "Enter" && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "f" "al" "Enter" && \
+	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))

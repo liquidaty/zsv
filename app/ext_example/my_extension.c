@@ -98,7 +98,7 @@ zsvsheet_status my_test_command_handler(zsvsheet_proc_context_t ctx) {
     // print a list of open buffers and filenames
     for (zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx); buff;
          buff = zsv_cb.ext_sheet_buffer_prior(buff), i--) {
-      const char *buff_filename = zsv_cb.ext_sheet_buffer_filename(buff);
+      const char *buff_filename = zsv_cb.ext_sheet_buffer_data_filename(buff);
       if (buff_filename)
         fprintf(f, "%i,%s\n", i, buff_filename); // assumes no need for quoting or escaping buff_filename...
     }
@@ -109,13 +109,13 @@ zsvsheet_status my_test_command_handler(zsvsheet_proc_context_t ctx) {
 }
 
 struct transformation_context {
+  zsvsheet_proc_context_t proc_ctx;
   size_t col_count;
   size_t row_count;
 };
 
 // Similar to a regular ZSV row handler used in ext_parse_all
-void my_transformation_row_handler(void *ctx) {
-  zsvsheet_transformation trn = ctx;
+void my_transformation_row_handler(zsvsheet_transformation trn) {
   struct transformation_context *priv = zsv_cb.ext_sheet_transformation_user_context(trn);
   zsv_parser parser = zsv_cb.ext_sheet_transformation_parser(trn);
   zsv_csv_writer writer = zsv_cb.ext_sheet_transformation_writer(trn);
@@ -137,11 +137,14 @@ void my_transformation_row_handler(void *ctx) {
 }
 
 zsvsheet_status my_transformation_command_handler(zsvsheet_proc_context_t ctx) {
-  struct transformation_context *my_ctx = calloc(1, sizeof(*my_ctx));
+  struct zsvsheet_buffer_transformation_opts opts = {
+    // Gets freed automatically
+    .user_context = calloc(1, sizeof(struct transformation_context)),
+    .row_handler = my_transformation_row_handler,
+    .on_done = NULL,
+  };
 
-  // TODO: This probably should happen in another worker thread and while that is happening the status should display
-  //       that some work is in progress. The extension author will maybe want to have control over the status message.
-  return zsv_cb.ext_sheet_push_transformation(ctx, my_ctx, my_transformation_row_handler);
+  return zsv_cb.ext_sheet_push_transformation(ctx, opts);
 }
 #endif
 

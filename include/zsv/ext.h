@@ -263,9 +263,11 @@ struct zsv_ext_callbacks {
    *
    * Note that the transformation is performed in a seperate thread so the user_context
    * must not be a stack variable
+   *
+   * See struct zsvsheet_buffer_transformation_opts in zsv/ext/sheet.h
    */
-  zsvsheet_status (*ext_sheet_push_transformation)(zsvsheet_proc_context_t ctx, void *user_context,
-                                                   void (*row_handler)(void *ctx));
+  zsvsheet_status (*ext_sheet_push_transformation)(zsvsheet_proc_context_t ctx,
+                                                   struct zsvsheet_buffer_transformation_opts opts);
 
   /**
    * Get the writer associated with a transformation.

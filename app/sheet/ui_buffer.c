@@ -27,7 +27,6 @@ struct zsvsheet_ui_buffer {
   struct zsvsheet_rowcol buff_offset;
   size_t buff_used_rows;
   char *status;
-  char *row_filter;
 
   void *ext_ctx; // extension context via zsvsheet_ext_set_ctx() zsvsheet_ext_get_ctx()
 
@@ -54,14 +53,16 @@ struct zsvsheet_ui_buffer {
 void zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*start_func)(void *), void *arg) {
   assert(!ub->worker_active);
   assert(ub->mutex_inited);
-  assert(!pthread_create(&ub->worker_thread, NULL, start_func, arg));
+
+  pthread_create(&ub->worker_thread, NULL, start_func, arg);
   ub->worker_active = 1;
 }
 
 void zsvsheet_ui_buffer_join_worker(struct zsvsheet_ui_buffer *ub) {
   assert(ub->worker_active);
   assert(ub->mutex_inited);
-  assert(!pthread_join(ub->worker_thread, NULL));
+
+  pthread_join(ub->worker_thread, NULL);
   ub->worker_active = 0;
 }
 
@@ -81,7 +82,6 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
       pthread_mutex_destroy(&ub->mutex);
     if (ub->ixopts)
       ub->ixopts->uib = NULL;
-    free(ub->row_filter);
     zsv_index_delete(ub->index);
     free(ub->status);
     if (ub->data_filename)
@@ -94,8 +94,8 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
 
 struct zsvsheet_ui_buffer_opts {
   struct zsvsheet_screen_buffer_opts *buff_opts;
-  const char *row_filter;
   const char *filename;
+  const char *data_filename;
   struct zsv_opts zsv_opts; // options to use when opening this file
   const char *opts_used;
   char no_rownum_col_offset;
@@ -113,8 +113,11 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffe
     if (!(uibopts && uibopts->no_rownum_col_offset))
       uib->rownum_col_offset = 1;
     if (uibopts) {
-      if ((uibopts->row_filter && !(uib->row_filter = strdup(uibopts->row_filter))) ||
-          (uibopts->filename && !(uib->filename = strdup(uibopts->filename)))) {
+      if (uibopts->filename && !(uib->filename = strdup(uibopts->filename))) {
+        zsvsheet_ui_buffer_delete(uib);
+        return NULL;
+      }
+      if (uibopts->data_filename && !(uib->data_filename = strdup(uibopts->data_filename))) {
         zsvsheet_ui_buffer_delete(uib);
         return NULL;
       }

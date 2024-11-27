@@ -13,6 +13,8 @@ struct zsvsheet_transformation_opts {
   struct zsv_opts zsv_opts;
   struct zsv_prop_handler *custom_prop_handler;
   const char *input_filename;
+  void (*on_done)(zsvsheet_transformation trn);
+  struct zsvsheet_ui_buffer *ui_buffer;
 };
 
 enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts, zsvsheet_transformation *);

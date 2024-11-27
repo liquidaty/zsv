@@ -13,7 +13,6 @@ struct zsvsheet_indexer {
 struct zsvsheet_index_opts {
   pthread_mutex_t *mutexp;
   const char *filename;
-  const char *row_filter;
   struct zsv_opts zsv_opts;
   struct zsvsheet_ui_buffer *uib;
   int *errp;

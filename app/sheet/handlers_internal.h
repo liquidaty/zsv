@@ -108,6 +108,6 @@ zsvsheet_status zsvsheet_register_command(int ch, const char *long_name,
 /**
  * Transform the current buffer's underlying file into a new one and open the new file in a buffer
  */
-enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx, void *user_context,
-                                                  void (*row_handler)(void *exec_ctx));
+enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
+                                                  struct zsvsheet_buffer_transformation_opts opts);
 #endif
