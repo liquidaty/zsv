@@ -50,12 +50,12 @@ TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
 TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help test-paste
 
-ifeq ($(ZSV_BUILD_SHEET),1)
+ifeq ($(ZSVSHEET_BUILD),1)
   SOURCES+=sheet
-  CFLAGS+=-DZSV_BUILD_SHEET
+  CFLAGS+=-DZSVSHEET_BUILD
   CFLAGS+=${CFLAGS_NCURSES}
   LDFLAGS+=${LDFLAGS_NCURSES}
-  TESTS+=test-sheet
+  TESTS+=test-sheet test-sheet-subcommand
 endif
 
 COLOR_NONE=\033[0m
@@ -64,9 +64,9 @@ COLOR_RED=\033[1;31m
 COLOR_BLUE=\033[1;34m
 COLOR_PINK=\033[1;35m
 
-TEST_PASS=echo -e "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
-TEST_FAIL=(echo -e "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
-TEST_INIT=mkdir -p ${TMP_DIR} && echo -e "${COLOR_PINK}$@: ${COLOR_NONE}"
+TEST_PASS=echo "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
+TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
+TEST_INIT=(mkdir -p ${TMP_DIR} && echo "${COLOR_PINK}$@: ${COLOR_NONE}")
 
 ARGS-sql='select [Loan Number] from data'
 
