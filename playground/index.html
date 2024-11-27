@@ -56,35 +56,43 @@
       zsvAutocompletionsPopulated = true;
     }
 
-    function autocomplete(command) {
+    function autocomplete(string, command) {
       const mainCommands = Object.keys(zsvAutocompletions).filter(cmd => cmd != 'globalFlags');
 
       if (command.match(/^zsv\s+$/) || command.match(/^zsv\s+\w+$/)) {
-        console.log("1");
         return mainCommands;
       }
 
       if (command.match(/^zsv\s+help\s+$/) || command.match(/^zsv\s+help\s+\w+$/)) {
-        console.log("2");
         return mainCommands.filter(cmd => !['help', 'version', 'thirdparty'].includes(cmd));
       }
 
       if (command.match(/^zsv\s+\w+\s+$/)) {
         const subcommand = command.match(/^zsv\s+(\w+)\s+/)[1];
         if (['help', 'version', 'thirdparty'].includes(subcommand)) {
-          console.log("3");
           return [];
         } else {
-          console.log("4");
           return getFiles();
         }
-      } else if (command.match(/^zsv\s+\w+\s+.*\w+$/)) {
-        console.log("5");
+      } else if (!string.match(/^-{1,2}/) && command.match(/^zsv\s+\w+\s+.*\w+$/)) {
         return getFiles();
       }
 
-      // TODO: Handle flags
+      if (string.match(/^-{1,2}/) || string.match(/^-{1,2}\w+/)) {
+        const subcommand = command.match(/^zsv\s+(\w+)/)[1];
+        const flags = zsvAutocompletions[subcommand];
+        if (['prop', 'rm', 'jq'].includes(subcommand)) {
+          return flags;
+        } else {
+          return flags.concat(zsvAutocompletions['globalFlags']);
+        }
+      }
 
+      if (string === '' && command.match(/^zsv\s+\w+\s+.*/)) {
+        return getFiles();
+      }
+
+      console.log("end");
       return [];
     }
 
@@ -287,7 +295,7 @@
         } else if (command.match(/^save /) || command.match(/^rm /)) {
           callback(getFiles());
         } else if (command.startsWith('zsv')) {
-          callback(autocomplete(command));
+          callback(autocomplete(string, command));
         } else {
           callback(Object.keys(playgroundCommands));
         }
