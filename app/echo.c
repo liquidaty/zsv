@@ -296,5 +296,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
   }
   zsv_echo_cleanup(&data);
+
+  if (writer_opts.stream && writer_opts.stream != stdout) {
+    fclose(writer_opts.stream);
+  }
+
   return err;
 }

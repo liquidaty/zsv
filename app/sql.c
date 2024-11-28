@@ -449,6 +449,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     zsv_sql_finalize(&data);
     zsv_sql_cleanup(&data);
 
+    if (writer_opts.stream && writer_opts.stream != stdout) {
+      fclose(writer_opts.stream);
+    }
+
     if (tmpfn) {
       unlink(tmpfn);
       free(tmpfn);

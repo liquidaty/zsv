@@ -565,6 +565,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     zsv_desc_finalize(&data);
     zsv_desc_print(&data);
     zsv_desc_cleanup(&data);
+
+    if (writer_opts.stream && writer_opts.stream != stdout) {
+      fclose(writer_opts.stream);
+    }
   }
   return 0;
 }

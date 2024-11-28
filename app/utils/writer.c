@@ -196,13 +196,6 @@ enum zsv_writer_status zsv_writer_delete(zsv_csv_writer w) {
   if (w->started)
     w->out.write("\n", 1, 1, w->out.stream);
 
-  /* closing the stream should be handled by whatever code first opened the stream
-  if (w->out.stream && w->out.stream != stdout) {
-    fclose(w->out.stream);
-    w->out.stream = NULL;
-  }
-  */
-
   if (w->out.buff)
     free(w->out.buff);
   free(w);

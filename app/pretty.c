@@ -686,7 +686,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *pa
     zsv_pretty_flush(h);
     zsv_pretty_destroy(h);
   }
-  if (opts.out)
+  if (opts.out && opts.out != stdout)
     fclose(opts.out);
   if (in && in != stdin)
     fclose(in);
