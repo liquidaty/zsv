@@ -189,8 +189,8 @@ struct flatten_data {
   const char *output_filename;
 
   FILE *in;
-  const char *input_path;
   FILE *out;
+  const char *input_path;
 
   zsv_csv_writer csv_writer;
 
@@ -607,9 +607,6 @@ static void flatten_cleanup(struct flatten_data *data) {
   if (data->in && data->in != stdin)
     fclose(data->in);
 
-  if (data->out && data->out != stdout)
-    fclose(data->out);
-
   struct flatten_column_name_and_ix *cnxlist[] = {&data->row_id_column, &data->column_name_column, &data->value_column};
   for (int i = 0; i < 3; i++) {
     struct flatten_column_name_and_ix *cnx = cnxlist[i];
@@ -625,6 +622,8 @@ static void flatten_cleanup(struct flatten_data *data) {
 
   FREEIF(data->agg_output_cols_vector);
   zsv_writer_delete(data->csv_writer);
+  if (data->out && data->out != stdout)
+    fclose(data->out);
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
@@ -722,7 +721,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
   }
 
-  if (!(data.out = data.output_filename ? fopen(data.output_filename, "wb") : stdout))
+  if (!(data.out = writer_opts.stream = data.output_filename ? fopen(data.output_filename, "wb") : stdout))
     err = zsv_printerr(1, "Unable to open %s for writing", data.output_filename);
 
   int passes = data.column_name_column.name || !data.have_agg ? 2 : 1;
