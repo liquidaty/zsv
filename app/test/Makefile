@@ -706,7 +706,7 @@ test-sheet-11: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 50 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	sleep 1 && \
-	tmux send-keys -t $@ -N 21 "C-d" && \
+	tmux send-keys -t $@ -N 11 "C-d" && \
 	sleep 1 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
