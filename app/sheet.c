@@ -629,14 +629,14 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_filter,         "filter", "Hide rows that do not contain the specified text",                zsvsheet_filter_handler     },
   { zsvsheet_builtin_proc_subcommand,     "subcommand",  "Editor subcommand",                                          zsvsheet_subcommand_handler },
   { zsvsheet_builtin_proc_help,           "help",   "Display a list of actions and key-bindings",                      zsvsheet_help_handler       },
-  { -1, NULL, NULL }
+  { -1, NULL, NULL, NULL }
 };
 /* clang-format on */
 
 void zsvsheet_register_builtin_procedures(void) {
   for (struct builtin_proc_desc *desc = builtin_procedures; desc->proc_id != -1; ++desc) {
     if (zsvsheet_register_builtin_proc(desc->proc_id, desc->name, desc->description, desc->handler) < 0) {
-      fprintf(stderr, "failed to register builtin procedure\n");
+      fprintf(stderr, "Failed to register builtin procedure\n");
     }
   }
 }
@@ -780,7 +780,7 @@ const char *display_cell(struct zsvsheet_screen_buffer *buff, size_t data_row, s
   if (attrs)
     attron(attrs);
   if (len == 0 || has_multibyte_char(str, len < cell_display_width ? len : cell_display_width) == 0)
-    mvprintw(row, col * cell_display_width, "%-*.*s", cell_display_width, cell_display_width - 1, str);
+    mvprintw(row, col * cell_display_width, "%-*.*s", (int)cell_display_width, (int)cell_display_width - 1, str);
   else {
     size_t used_width;
     int err = 0;

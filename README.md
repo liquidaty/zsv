@@ -16,6 +16,8 @@ lib only:
 [npm-url]: https://npmjs.org/package/zsv-lib
 [npm-version-image]: https://badgen.net/npm/v/zsv-lib
 
+Online playground: <https://liquidaty.github.io/zsv>
+
 zsv+lib is a fast CSV parser library and extensible command-line utility. It
 achieves high performance using SIMD operations, [efficient memory
 use](docs/memory.md) and other optimization techniques, and can also parse
@@ -413,7 +415,6 @@ helping, please post an issue.
 
 ### Possible enhancements and related developments
 
-- online "playground" (soon to be released)
 - optimize search; add search with hyperscan or re2 regex matching, possibly
   parallelize?
 - optional OpenMP or other multi-threading for row processing

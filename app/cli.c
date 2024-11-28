@@ -46,7 +46,7 @@ zsvsheet_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, char *buf
 typedef int(cmd_main)(int argc, const char *argv[]);
 typedef int(zsv_cmd)(int argc, const char *argv[], struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler,
                      const char *opts_used);
-typedef int (*cmd_reserved)();
+typedef int (*cmd_reserved)(void);
 
 struct builtin_cmd {
   const char *name;
@@ -61,12 +61,15 @@ static int config_init(struct cli_config *c, char err_if_dl_not_found, char do_i
 
 #define CLI_BUILTIN_DECL_STATIC(x) static int main_##x(int argc, const char *argv[])
 
-CLI_BUILTIN_DECL_STATIC(license);
-CLI_BUILTIN_DECL_STATIC(thirdparty);
-CLI_BUILTIN_DECL_STATIC(help);
 CLI_BUILTIN_DECL_STATIC(version);
+CLI_BUILTIN_DECL_STATIC(help);
+CLI_BUILTIN_DECL_STATIC(thirdparty);
+
+#ifndef __EMSCRIPTEN__
 CLI_BUILTIN_DECL_STATIC(register);
 CLI_BUILTIN_DECL_STATIC(unregister);
+CLI_BUILTIN_DECL_STATIC(license);
+#endif
 
 ZSV_MAIN_DECL(select);
 ZSV_MAIN_DECL(count);
@@ -106,13 +109,14 @@ ZSV_MAINEXT_FUNC_DEFINE(sheet);
 #endif
 
 struct builtin_cmd builtin_cmds[] = {
-  CLI_BUILTIN_CMD(license),
-  CLI_BUILTIN_CMD(thirdparty),
-  CLI_BUILTIN_CMD(help),
   CLI_BUILTIN_CMD(version),
+  CLI_BUILTIN_CMD(help),
+  CLI_BUILTIN_CMD(thirdparty),
+#ifndef __EMSCRIPTEN__
   CLI_BUILTIN_CMD(register),
   CLI_BUILTIN_CMD(unregister),
-
+  CLI_BUILTIN_CMD(license),
+#endif
   CLI_BUILTIN_COMMAND(select),
   CLI_BUILTIN_COMMAND(count),
   CLI_BUILTIN_COMMAND(paste),
@@ -664,12 +668,12 @@ static char *dl_name_from_func(const void *func) {
   if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                         (LPCTSTR)func, &hModule))
     return get_module_name(hModule);
-#endif
-
-#ifdef __APPLE__
+#elif defined __APPLE__
   Dl_info info;
   if (dladdr(func, &info))
     return strdup(info.dli_fname);
+#else
+  (void)(func);
 #endif
   return NULL;
 }

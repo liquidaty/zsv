@@ -28,7 +28,7 @@ static void row(void *ctx) {
   ((struct data *)ctx)->rows++;
 }
 
-static int count_usage() {
+static int count_usage(void) {
   static const char *usage = "Usage: count [options]\n"
                              "\n"
                              "Options:\n"

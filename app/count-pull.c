@@ -13,7 +13,7 @@
 #define ZSV_COMMAND count_pull
 #include "zsv_command.h"
 
-static int count_usage() {
+static int count_usage(void) {
   static const char *usage = "Usage: count [options]\n"
                              "\n"
                              "Options:\n"

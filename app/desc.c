@@ -431,7 +431,7 @@ const char *zsv_desc_usage_msg[] = {
   NULL,
 };
 
-static int zsv_desc_usage() {
+static int zsv_desc_usage(void) {
   for (size_t i = 0; zsv_desc_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", zsv_desc_usage_msg[i]);
   return 0;
