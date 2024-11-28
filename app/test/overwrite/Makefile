@@ -15,9 +15,9 @@ COLOR_PINK=\033[1;35m
 
 TMP_DIR=${THIS_MAKEFILE_DIR}/tmp
 
-TEST_PASS=echo "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
-TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
-TEST_INIT=mkdir -p ${TMP_DIR} && rm -rf ${TMP_DIR}/test* && echo "${COLOR_PINK}test-overwrite-$@: ${COLOR_NONE}"
+TEST_PASS=printf "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}\n"
+TEST_FAIL=(printf "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}\n" && exit 1)
+TEST_INIT=mkdir -p ${TMP_DIR} && rm -rf ${TMP_DIR}/test* && printf "${COLOR_PINK}test-overwrite-$@: ${COLOR_NONE}\n"
 
 LEAKS=
 ifneq ($(LEAKS),)
@@ -29,8 +29,6 @@ else
   SUFFIX=>${TMP_DIR}/$@.out
   CHECK=
 endif
-
-###
 
 help:
 	@echo "# run all tests:"
@@ -100,4 +98,4 @@ test-echo-overwrite-auto:
 clean:
 	@rm -rf ${TMP_DIR}
 
-.PHONY: test% clean
+.PHONY: help test% clean

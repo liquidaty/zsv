@@ -578,10 +578,12 @@ if [ "$usejq" = "yes" ] || [ "$usejq" = "auto" ] ; then
             echo "Error: --enable-jq specified, but not found"
             exit 1
         fi
-    if ! [ "$LDFLAGS_JQ" = "" ] ; then
+    if [ "$LDFLAGS_JQ" != "" ] ; then
         tryldflag LDFLAGS_JQ -lm
         tryldflag LDFLAGS_JQ -lshlwapi
-        tryldflag LDFLAGS_JQ -pthread
+        if [ "$NO_THREADING" != "1" ]; then
+            tryldflag LDFLAGS_JQ -pthread
+        fi
     fi
 fi
 

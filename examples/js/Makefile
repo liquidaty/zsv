@@ -61,12 +61,11 @@ COLOR_RED=\033[1;31m
 COLOR_BLUE=\033[1;34m
 COLOR_PINK=\033[1;35m
 
-TEST_PASS=echo "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
-TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
+TEST_PASS=printf "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}\n"
+TEST_FAIL=(printf "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}\n" && exit 1)
 #####
 
 .PHONY: help all run clean prep node setup benchmark count_compare select_compare node_ok
-
 
 help:
 	@echo "make [build|run|node|test|clean] [NODE=/path/to/node]" # e.g. NODE=/usr/local/Cellar/node/19.1.0/bin/node

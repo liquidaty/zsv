@@ -60,12 +60,12 @@ static struct zsv_opts *zsv_with_default_opts(char mode) {
 }
 
 ZSV_EXPORT
-void zsv_clear_default_opts() {
+void zsv_clear_default_opts(void) {
   zsv_with_default_opts('c');
 }
 
 ZSV_EXPORT
-struct zsv_opts zsv_get_default_opts() {
+struct zsv_opts zsv_get_default_opts(void) {
   return *zsv_with_default_opts('g');
 }
 

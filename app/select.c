@@ -397,7 +397,7 @@ static int zsv_select_check_exclusions_are_indexes(struct zsv_select_data *data)
 
 // demo_random_bw_1_and_100(): this is a poor random number generator. you probably
 // will want to use a better one
-static double demo_random_bw_1_and_100() {
+static double demo_random_bw_1_and_100(void) {
 #ifdef HAVE_ARC4RANDOM_UNIFORM
   return (long double)(arc4random_uniform(1000000)) / 10000;
 #else
@@ -600,7 +600,7 @@ const char *zsv_select_usage_msg[] = {
   NULL,
 };
 
-static void zsv_select_usage() {
+static void zsv_select_usage(void) {
   for (size_t i = 0; zsv_select_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", zsv_select_usage_msg[i]);
 }

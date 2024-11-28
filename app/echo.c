@@ -116,7 +116,7 @@ const char *zsv_echo_usage_msg[] = {
   NULL,
 };
 
-static int zsv_echo_usage() {
+static int zsv_echo_usage(void) {
   for (size_t i = 0; zsv_echo_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", zsv_echo_usage_msg[i]);
   return 1;
@@ -199,7 +199,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #ifndef NO_STDIN
     data.in = stdin;
 #else
-    fprintf(stderr, "No input\n");
+    fprintf(stderr, "Please specify an input file\n");
     err = 1;
 #endif
   }

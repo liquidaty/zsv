@@ -73,9 +73,9 @@ COLOR_RED=\033[1;31m
 COLOR_BLUE=\033[1;34m
 COLOR_PINK=\033[1;34m
 
-TEST_PASS=echo "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
-TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
-TEST_NAME=echo "${COLOR_PINK}$@: ${COLOR_NONE}"
+TEST_PASS=printf "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}\n"
+TEST_FAIL=(printf "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}\n" && exit 1)
+TEST_INIT=printf "${COLOR_PINK}$@: ${COLOR_NONE}\n"
 
 UTILS1=
 CFLAGS_SHARED=-shared
@@ -121,14 +121,17 @@ endif
 test: ${TESTS}
 
 test-1: test-%: ${CLI} ${TARGET}
+	@${TEST_INIT}
 	@${RUN_CLI} my-echo < ${THIS_LIB_BASE}/data/quoted.csv > /tmp/zsvext-$@.out
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-2: test-%: ${CLI} ${TARGET}
+	@${TEST_INIT}
 	@${RUN_CLI} my-echo -t < ${THIS_LIB_BASE}/data/hi.txt > /tmp/zsvext-$@.out
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-3: test-%: ${CLI} ${TARGET}
+	@${TEST_INIT}
 	@rm -f /tmp/zsvext-$@.out
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
 	@${RUN_CLI} register my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
@@ -145,6 +148,7 @@ test-3: test-%: ${CLI} ${TARGET}
 TMP_DIR=/tmp
 TMUX_TERM=xterm-256color
 test-sheet-extension: ../test/worldcitiespop_mil.csv
+	@${TEST_INIT}
 	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
 	@tmux kill-session -t $@ || echo 'No tmux session to kill'
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
@@ -161,6 +165,7 @@ test-sheet-extension: ../test/worldcitiespop_mil.csv
 	if [ -f ${TMP_DIR}/$@.out ]; then cat ${TMP_DIR}/$@.out; fi && ${TEST_FAIL}))
 
 test-4: test-%: ${CLI} ${TARGET}
+	@${TEST_INIT}
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
 	@${RUN_CLI} license > /tmp/zsvext-$@.out 2>> /tmp/zsvext-$@.err
 	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
@@ -169,11 +174,13 @@ test-4: test-%: ${CLI} ${TARGET}
 	@cmp /tmp/zsvext-$@.err test/expected/zsvext-$@.err && ${TEST_PASS} || ${TEST_FAIL}
 
 test-5: test-%:${TARGET}
+	@${TEST_INIT}
 	@${RUN_CLI} my-count newline.csv 2>/dev/null > /tmp/zsvext-$@.out
 	@${RUN_CLI} my-count -q newline.csv 2>/dev/null >> /tmp/zsvext-$@.out
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-thirdparty: test-%: ${CLI} ${TARGET}
+	@${TEST_INIT}
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
 	@${RUN_CLI} thirdparty > /tmp/zsvext-$@.out
 	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
