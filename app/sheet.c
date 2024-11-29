@@ -381,8 +381,8 @@ static zsvsheet_status zsvsheet_open_file_handler(struct zsvsheet_proc_context *
   if (*prompt_buffer == '\0')
     goto no_input;
 
-  if ((err = zsvsheet_ui_buffer_open_file(prompt_buffer, NULL, state->custom_prop_handler,
-                                          di->ui_buffers.base, di->ui_buffers.current))) {
+  if ((err = zsvsheet_ui_buffer_open_file(prompt_buffer, NULL, state->custom_prop_handler, di->ui_buffers.base,
+                                          di->ui_buffers.current))) {
     if (err > 0)
       zsvsheet_priv_set_status(di->dimensions, 1, "%s: %s", prompt_buffer, strerror(err));
     else if (err < 0)
@@ -634,8 +634,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   if (argc > 1) {
     const char *filename = argv[1];
-    if ((err = zsvsheet_ui_buffer_open_file(filename, optsp, custom_prop_handler, &ui_buffers,
-                                            &current_ui_buffer))) {
+    if ((err = zsvsheet_ui_buffer_open_file(filename, optsp, custom_prop_handler, &ui_buffers, &current_ui_buffer))) {
       if (err > 0)
         perror(filename);
       else

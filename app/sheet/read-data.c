@@ -29,8 +29,7 @@ static char *zsvsheet_found_in_row(zsv_parser parser, size_t col_count, const ch
 static void *get_data_index(void *d);
 
 static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char *filename, struct zsv_opts *optsp,
-                                 struct zsv_prop_handler *custom_prop_handler,
-                                 pthread_mutex_t *mutexp) {
+                                 struct zsv_prop_handler *custom_prop_handler, pthread_mutex_t *mutexp) {
   struct zsvsheet_index_opts *ixopts = calloc(1, sizeof(*ixopts));
   ixopts->mutexp = mutexp;
   ixopts->filename = filename;

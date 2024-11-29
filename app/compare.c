@@ -403,7 +403,8 @@ static unsigned zsv_compare_get_unsorted_colcount(struct zsv_compare_input *inpu
 }
 
 static enum zsv_compare_status input_init_unsorted(struct zsv_compare_data *data, struct zsv_compare_input *input,
-                                                   struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler) {
+                                                   struct zsv_opts *opts,
+                                                   struct zsv_prop_handler *custom_prop_handler) {
   if (!(input->stream = fopen(input->path, "rb"))) {
     perror(input->path);
     return zsv_compare_status_error;

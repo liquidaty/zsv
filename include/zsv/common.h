@@ -276,7 +276,7 @@ struct zsv_opts {
 #define ZSV_OPT_PROPERTY_OVERRIDE_HEADER_SPAN 1
 #define ZSV_OPT_PROPERTY_OVERRIDE_SKIP_HEAD 2
   unsigned int property_overrides;
-  
+
 #ifdef ZSV_EXTRAS
   struct {
     /**

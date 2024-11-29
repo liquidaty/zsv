@@ -4,14 +4,14 @@
 
 #include "external/sqlite3/sqlite3_csv_vtab-mem.h"
 
-static int zsv_compare_sort_prep_table(struct zsv_compare_data *data, const char *fname,
-                                       char **err_msg, unsigned int table_ix) {
+static int zsv_compare_sort_prep_table(struct zsv_compare_data *data, const char *fname, char **err_msg,
+                                       unsigned int table_ix) {
 #define ZSV_COMPARE_MAX_TABLES 1000
   char *sql = NULL;
   if (table_ix > ZSV_COMPARE_MAX_TABLES)
     return -1;
 
-  sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%i USING csv(filename=%Q,options_used=%Q)", table_ix, fname); //, max_columns);
+  sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%i USING csv(filename=%Q,options_used=%Q)", table_ix, fname);
 
   if (!sql)
     return -1;

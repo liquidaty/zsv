@@ -250,8 +250,7 @@ static int zsv_properties_parse_process_value(yajl_helper_t yh, struct json_valu
  * optional `struct zsv_file_properties` supports custom file property processing
  */
 enum zsv_status zsv_new_with_properties(struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler,
-                                        const char *input_path,
-                                        zsv_parser *handle_out) {
+                                        const char *input_path, zsv_parser *handle_out) {
   *handle_out = NULL;
   if (input_path) {
     struct zsv_file_properties fp = zsv_cache_load_props(input_path, opts, custom_prop_handler);

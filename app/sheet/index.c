@@ -34,8 +34,7 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
   ix_zopts.ctx = &ixr;
   ix_zopts.row_handler = build_memory_index_row_handler;
 
-  enum zsv_status zst =
-    zsv_new_with_properties(&ix_zopts, optsp->custom_prop_handler, optsp->filename, &ixr.parser);
+  enum zsv_status zst = zsv_new_with_properties(&ix_zopts, optsp->custom_prop_handler, optsp->filename, &ixr.parser);
   if (zst != zsv_status_ok)
     goto out;
 

@@ -239,8 +239,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       tmp_opts.row_handler = zsv_echo_get_max_nonempty_cols;
       tmp_opts.stream = data.in;
       tmp_opts.ctx = &data;
-      if (zsv_new_with_properties(&tmp_opts, custom_prop_handler, data.input_path, &data.parser) !=
-          zsv_status_ok) {
+      if (zsv_new_with_properties(&tmp_opts, custom_prop_handler, data.input_path, &data.parser) != zsv_status_ok) {
         zsv_echo_cleanup(&data);
         return 1;
       } else {

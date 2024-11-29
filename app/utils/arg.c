@@ -292,9 +292,9 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, co
       break;
     }
     if (processed && opts_out) {
-      if(arg == 'R')
+      if (arg == 'R')
         opts_out->property_overrides |= ZSV_OPT_PROPERTY_OVERRIDE_SKIP_HEAD;
-      else if(arg == 'd')
+      else if (arg == 'd')
         opts_out->property_overrides |= ZSV_OPT_PROPERTY_OVERRIDE_HEADER_SPAN;
     }
   }
