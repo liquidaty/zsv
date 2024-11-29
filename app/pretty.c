@@ -13,7 +13,6 @@
 
 #define ZSV_COMMAND pretty
 #include "zsv_command.h"
-#include <zsv/utils/writer.h>
 #include <zsv/utils/string.h>
 
 #define ZSV_PRETTY_DEFAULT_LINE_MAX_WIDTH 160
@@ -686,7 +685,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *pa
     zsv_pretty_flush(h);
     zsv_pretty_destroy(h);
   }
-  if (opts.out)
+  if (opts.out && opts.out != stdout)
     fclose(opts.out);
   if (in && in != stdin)
     fclose(in);

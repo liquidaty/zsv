@@ -12,6 +12,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
 // clang-format off
 
@@ -107,6 +108,8 @@ struct zsv_output_buff {
   size_t (*write)(const void *restrict, size_t size, size_t nitems, void *restrict stream);
   void *stream;
   size_t used;
+  unsigned char close_on_delete : 1;
+  unsigned char _ : 7;
 };
 
 struct zsv_writer_data {
@@ -152,19 +155,40 @@ void zsv_writer_set_temp_buff(zsv_csv_writer w, unsigned char *buff, size_t buff
   w->buffsize = buffsize;
 }
 
+static int writer_opts_ok(struct zsv_csv_writer_options *opts) {
+  if (opts) {
+    if (opts->output_path) {
+      if ((opts->write && opts->write != (size_t(*)(const void *restrict, size_t, size_t, void *restrict))fwrite) ||
+          (opts->stream && opts->stream != stdout)) {
+        fprintf(stderr, "Invalid zsv writer options: non-NULL 'output_path' with invalid 'write' and/or 'stream'\n");
+        errno = EINVAL;
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
+
 zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
   struct zsv_writer_data *w = calloc(1, sizeof(*w));
+  if (!(writer_opts_ok(opts)))
+    return NULL;
   if (w) {
-    if (!(w->out.buff = malloc(ZSV_OUTPUT_BUFF_SIZE))) {
-      free(w); // out of memory!
-      return NULL;
-    }
+    if (!(w->out.buff = malloc(ZSV_OUTPUT_BUFF_SIZE)))
+      goto zsv_writer_new_err;
 
     if (!opts) {
       w->out.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))fwrite;
       w->out.stream = stdout;
     } else {
-      if (opts->write) {
+      if (opts->output_path) {
+        if (!(w->out.stream = fopen(opts->output_path, "wb"))) {
+          perror(opts->output_path);
+          goto zsv_writer_new_err;
+        }
+        w->out.close_on_delete = 1;
+        w->out.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))fwrite;
+      } else if (opts->write) {
         w->out.write = opts->write;
         w->out.stream = opts->stream;
       } else {
@@ -178,6 +202,13 @@ zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
     }
   }
   return w;
+
+zsv_writer_new_err : {
+  int e = errno;
+  zsv_writer_delete(w);
+  errno = e;
+}
+  return NULL;
 }
 
 enum zsv_writer_status zsv_writer_flush(zsv_csv_writer w) {
@@ -192,19 +223,17 @@ enum zsv_writer_status zsv_writer_delete(zsv_csv_writer w) {
   if (!w)
     return zsv_writer_status_missing_handle;
 
-  zsv_output_buff_flush(&w->out);
+  if (w->out.stream && w->out.write && w->out.buff)
+    zsv_output_buff_flush(&w->out);
+
   if (w->started)
     w->out.write("\n", 1, 1, w->out.stream);
 
-  /* closing the stream should be handled by whatever code first opened the stream
-  if (w->out.stream && w->out.stream != stdout) {
-    fclose(w->out.stream);
-    w->out.stream = NULL;
-  }
-  */
-
   if (w->out.buff)
     free(w->out.buff);
+
+  if (w->out.close_on_delete && w->out.stream)
+    fclose(w->out.stream);
   free(w);
   return zsv_writer_status_ok;
 }
