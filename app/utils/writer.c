@@ -158,7 +158,8 @@ void zsv_writer_set_temp_buff(zsv_csv_writer w, unsigned char *buff, size_t buff
 static int writer_opts_ok(struct zsv_csv_writer_options *opts) {
   if (opts) {
     if (opts->output_path) {
-      if ((opts->write && opts->write != fwrite) || (opts->stream && opts->stream != stdout)) {
+      if ((opts->write && opts->write != (size_t(*)(const void *restrict, size_t, size_t, void *restrict))fwrite) ||
+          (opts->stream && opts->stream != stdout)) {
         fprintf(stderr, "Invalid zsv writer options: non-NULL 'output_path' with invalid 'write' and/or 'stream'\n");
         errno = EINVAL;
         return 0;
@@ -202,7 +203,7 @@ zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
   }
   return w;
 
-zsv_writer_new_err : {
+zsv_writer_new_err: {
   int e = errno;
   zsv_writer_delete(w);
   errno = e;
