@@ -505,15 +505,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
 
-    for (int arg_i = 1; !data.err && arg_i < argc; arg_i++) {
+    for (int arg_i = 1; !err && !data.err && arg_i < argc; arg_i++) {
       if (!strcmp(argv[arg_i], "-b") || !strcmp(argv[arg_i], "--with-bom"))
         writer_opts.with_bom = 1;
-      else if (!strcmp(argv[arg_i], "-o") || !strcmp(argv[arg_i], "--output")) {
-        if (++arg_i >= argc)
-          data.err = zsv_printerr(zsv_desc_status_error, "%s option requires a filename", argv[arg_i - 1]);
-        else if (!(writer_opts.stream = fopen(argv[arg_i], "wb")))
-          data.err = zsv_printerr(zsv_desc_status_error, "Unable to open for write: %s", argv[arg_i]);
-      } else if (!strcmp(argv[arg_i], "-a") || !strcmp(argv[arg_i], "--all"))
+      else if (!strcmp(argv[arg_i], "-o") || !strcmp(argv[arg_i], "--output"))
+        writer_opts.output_path = zsv_next_arg(++arg_i, argc, argv, (int *)&data.err);
+      else if (!strcmp(argv[arg_i], "-a") || !strcmp(argv[arg_i], "--all"))
         data.flags = 0xff;
       else if (!strcmp(argv[arg_i], "-q") || !strcmp(argv[arg_i], "--quick"))
         data.quick = 1;

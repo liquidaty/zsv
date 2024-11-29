@@ -188,15 +188,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
             err = 1;
           }
         }
-      } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
-        if (!(++arg_i < argc)) {
-          fprintf(stderr, "option %s requires a filename\n", arg);
-          err = 1;
-        } else if (!(writer_opts.stream = fopen(argv[arg_i], "wb"))) {
-          fprintf(stderr, "Could not open for writing: %s\n", argv[arg_i]);
-          err = 1;
-        }
-      } else if (!strcmp(arg, "--memory"))
+      } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output"))
+        writer_opts.output_path = zsv_next_arg(++arg_i, argc, argv, &err);
+      else if (!strcmp(arg, "--memory"))
         data.in_memory = 1;
       else if (!strcmp(arg, "-b"))
         writer_opts.with_bom = 1;
@@ -281,11 +275,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     }
 
-    if (f) {
+    zsv_csv_writer cw = zsv_writer_new(&writer_opts);
+    if (f && cw) {
       fclose(f); // to do: don't open in the first place
       f = NULL;
 
-      zsv_csv_writer cw = zsv_writer_new(&writer_opts);
       unsigned char cw_buff[1024];
       zsv_writer_set_temp_buff(cw, cw_buff, sizeof(cw_buff));
 
@@ -440,7 +434,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         else
           err = 0;
 
-        zsv_writer_delete(cw);
         zsv_sqlite3_db_delete(zdb);
       }
     }
@@ -448,6 +441,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       fclose(f);
     zsv_sql_finalize(&data);
     zsv_sql_cleanup(&data);
+    zsv_writer_delete(cw);
 
     if (tmpfn) {
       unlink(tmpfn);
