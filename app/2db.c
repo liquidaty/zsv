@@ -649,12 +649,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
   const char *usage[] = {
     APPNAME ": convert JSON to SQLite3 DB",
     "",
-    "Usage: " APPNAME " -o <output path> [-t <table name>] [input.json]\n",
+    "Usage: " APPNAME " -o <filename> [-t <table>] [input.json]\n",
     "",
     "Options:",
-    "  -h,--help            : show usage",
-    "  --table <table_name> : save as specified table name",
-    "  --overwrite          : overwrite existing database",
+    "  -h,--help              : show usage",
+    "  -t,--table <table>     : save as specified table name",
+    "  --overwrite            : overwrite existing database",
+    "  -o,--output <filename> : filename to save database",
     // TO DO:
     // --sql to output sql statements
     // --append: append to existing db
@@ -691,7 +692,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
         opts.db_fn = (char *)argv[i]; // we won't free this
     } else if (!strcmp(argv[i], "--overwrite")) {
       opts.overwrite = 1;
-    } else if (!strcmp(argv[i], "--table")) {
+    } else if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--table")) {
       if (++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i - 1]), err = 1;
       else if (opts.table_name)
