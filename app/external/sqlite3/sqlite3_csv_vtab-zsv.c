@@ -98,7 +98,6 @@ typedef struct zsvTable {
   char *zFilename;                /* Name of the CSV file */
   struct zsv_opts parser_opts;
   struct zsv_prop_handler custom_prop_handler;
-  char *opts_used;
   enum zsv_status parser_status;
   zsv_parser parser;
   sqlite_int64 rowCount;
@@ -150,7 +149,6 @@ static void zsvTable_delete(struct zsvTable *z) {
   if(z) {
     zsvTable_free(z);
     sqlite3_free(z->zFilename);
-    sqlite3_free(z->opts_used);
     sqlite3_free(z);
   }
 }
@@ -185,7 +183,6 @@ static int zsvtabConnect(
   char *azPValue[ZSVTABCONNECT_PARAM_MAX]; /* Parameter values */
   memset(azPValue, 0, sizeof(azPValue));
 # define CSV_FILENAME (azPValue[0])
-# define ZSV_OPTS_USED (azPValue[1])
 
   char *schema = NULL;
   zsvTable *pNew = NULL;
@@ -235,9 +232,8 @@ static int zsvtabConnect(
   }
 
   pNew->zFilename = CSV_FILENAME;
-  pNew->opts_used = ZSV_OPTS_USED;
-  CSV_FILENAME = ZSV_OPTS_USED = 0; // in use; don't free
-  if(zsv_new_with_properties(&pNew->parser_opts, &pNew->custom_prop_handler, pNew->zFilename, pNew->opts_used,
+  CSV_FILENAME = 0; // in use; don't free
+  if(zsv_new_with_properties(&pNew->parser_opts, &pNew->custom_prop_handler, pNew->zFilename,
                              &pNew->parser) != zsv_status_ok)
     goto zsvtab_connect_error;
 
@@ -384,7 +380,7 @@ static int zsvtabFilter(
   fseek(pTab->parser_opts.stream, 0, SEEK_SET);
 
   // reload and advance header, then first data row
-  if(zsv_new_with_properties(&pTab->parser_opts, &pTab->custom_prop_handler, pTab->zFilename, pTab->opts_used,
+  if(zsv_new_with_properties(&pTab->parser_opts, &pTab->custom_prop_handler, pTab->zFilename,
                              &pTab->parser) != zsv_status_ok
      || (pTab->parser_status = zsv_next_row(pTab->parser)) != zsv_status_row)
     return SQLITE_ERROR;

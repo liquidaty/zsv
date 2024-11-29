@@ -160,7 +160,7 @@ int zsv_2tsv_usage(int rc) {
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   struct zsv_2tsv_data data = {0};
   const char *input_path = NULL;
   int err = 0;
@@ -205,7 +205,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   opts->row_handler = zsv_2tsv_row;
   opts->ctx = &data;
-  if (zsv_new_with_properties(opts, custom_prop_handler, input_path, opts_used, &data.parser) == zsv_status_ok) {
+  if (zsv_new_with_properties(opts, custom_prop_handler, input_path, &data.parser) == zsv_status_ok) {
     char output[ZSV_2TSV_BUFF_SIZE];
     data.out.buff = output;
 

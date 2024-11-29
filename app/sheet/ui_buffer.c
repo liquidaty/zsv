@@ -97,7 +97,6 @@ struct zsvsheet_ui_buffer_opts {
   const char *filename;
   const char *data_filename;
   struct zsv_opts zsv_opts; // options to use when opening this file
-  const char *opts_used;
   char no_rownum_col_offset;
   char transform;
 };

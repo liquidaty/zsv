@@ -588,7 +588,7 @@ test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-she
 test-sheet-cleanup:
 	@rm -f tmux-*.log
 
-test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14
+test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-prop-cmd-opt
 	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null; done && ${TEST_PASS} || ${TEST_FAIL})
 
 TMUX_TERM=xterm-256color
@@ -748,3 +748,19 @@ test-sheet-14: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
+
+test-sheet-prop-cmd-opt: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_prop${EXE}
+	@echo "TO DO: test-sheet-prop-cmd-opt"
+#	@${TEST_INIT}
+#	@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} ${TEST_DATA_DIR}/echo-prop.csv --header-row-span 2 > /dev/null
+#	@tmux kill-session 2>/dev/null >/dev/null || printf ''
+#	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+#	@tmux -v new-session -x 80 -y 5 -d -s $@
+#	@sleep 0.5
+#	@tmux send-keys -t $@ "${PREFIX} $< ${TEST_DATA_DIR}/echo-prop.csv" ENTER
+#	@sleep 0.1
+#	@tmux send-keys -t $@ "f" "A" Enter
+#	@sleep 0.5
+#	@tmux -v capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out
+#	@tmux send-keys -t $@ "q"
+#	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL})

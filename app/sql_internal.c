@@ -31,7 +31,7 @@ void zsv_sqlite3_db_delete(struct zsv_sqlite3_db *zdb) {
   }
 }
 
-static int create_virtual_csv_table(const char *fname, sqlite3 *db, const char *opts_used, // int max_columns,
+static int create_virtual_csv_table(const char *fname, sqlite3 *db, // int max_columns,
                                     char **err_msgp, int table_ix) {
   // TO DO: set customizable maximum number of columns to prevent
   // runaway in case no line ends found
@@ -45,14 +45,7 @@ static int create_virtual_csv_table(const char *fname, sqlite3 *db, const char *
   else
     snprintf(table_name_suffix, sizeof(table_name_suffix), "%i", table_ix + 1);
 
-  /*
-  if (max_columns)
-    sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%s USING csv(filename=%Q,options_used=%Q,max_columns=%i)",
-                          table_name_suffix, fname, opts_used, max_columns);
-  else
-  */
-  sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%s USING csv(filename=%Q,options_used=%Q)", table_name_suffix, fname,
-                        opts_used);
+  sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%s USING csv(filename=%Q,options_used=%Q)", table_name_suffix, fname);
 
   char *err_msg_tmp;
   int rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg_tmp);
@@ -65,7 +58,7 @@ static int create_virtual_csv_table(const char *fname, sqlite3 *db, const char *
 }
 
 int zsv_sqlite3_add_csv(struct zsv_sqlite3_db *zdb, const char *csv_filename, struct zsv_opts *opts,
-                        struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                        struct zsv_prop_handler *custom_prop_handler) {
   struct zsv_sqlite3_csv_file *zcf = calloc(1, sizeof(*zcf));
   if (!zcf || !(zcf->path = strdup(csv_filename)))
     zdb->rc = SQLITE_ERROR;
@@ -81,7 +74,7 @@ int zsv_sqlite3_add_csv(struct zsv_sqlite3_db *zdb, const char *csv_filename, st
     else {
       zcf->next = zdb->csv_files;
       zdb->csv_files = zcf;
-      zdb->rc = create_virtual_csv_table(csv_filename, zdb->db, opts_used, &zdb->err_msg, zdb->table_count);
+      zdb->rc = create_virtual_csv_table(csv_filename, zdb->db, &zdb->err_msg, zdb->table_count);
       if (zdb->rc == SQLITE_OK) {
         zdb->table_count++;
         return SQLITE_OK;

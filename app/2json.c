@@ -225,7 +225,7 @@ static int zsv_db2json(const char *input_filename, char **tname, jsonwriter_hand
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   struct zsv_2json_data data = {0};
   data.headers_next = &data.headers;
 
@@ -357,7 +357,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       } else {
         opts->row_handler = zsv_2json_row;
         opts->ctx = &data;
-        if (zsv_new_with_properties(opts, custom_prop_handler, input_path, opts_used, &data.parser) == zsv_status_ok) {
+        if (zsv_new_with_properties(opts, custom_prop_handler, input_path, &data.parser) == zsv_status_ok) {
           zsv_handle_ctrl_c_signal();
           while (!data.err && !zsv_signal_interrupted && zsv_parse_more(data.parser) == zsv_status_ok)
             ;

@@ -447,7 +447,7 @@ static int merge_and_save_properties(const unsigned char *filepath, char save, c
   else {
     struct zsv_opts zsv_opts = {0};
     struct zsv_prop_handler custom_prop_handler = {0};
-    struct zsv_file_properties fp = zsv_cache_load_props((const char *)filepath, &zsv_opts, &custom_prop_handler, NULL);
+    struct zsv_file_properties fp = zsv_cache_load_props((const char *)filepath, &zsv_opts, &custom_prop_handler);
     err = fp.stat;
     if (!err) {
       if (save && !overwrite) {
@@ -969,7 +969,7 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
         break;
       case zsv_prop_mode_default: {
         struct zsv_opts zsv_opts;
-        zsv_args_to_opts(m_argc, m_argv, &m_argc, m_argv, &zsv_opts, NULL);
+        zsv_args_to_opts(m_argc, m_argv, &m_argc, m_argv, &zsv_opts);
         err = zsv_prop_execute_default(filepath, zsv_opts, opts);
       } break;
       }

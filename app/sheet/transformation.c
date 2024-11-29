@@ -79,7 +79,7 @@ enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts 
   trn->user_context = opts.zsv_opts.ctx;
   opts.zsv_opts.ctx = trn;
 
-  zst = zsv_new_with_properties(&opts.zsv_opts, opts.custom_prop_handler, opts.input_filename, NULL, &trn->parser);
+  zst = zsv_new_with_properties(&opts.zsv_opts, opts.custom_prop_handler, opts.input_filename, &trn->parser);
   if (zst != zsv_status_ok)
     goto free;
 

@@ -36,18 +36,14 @@ void zsv_clear_default_custom_prop_handler(void);
 
 /**
  * Load cached file properties into a zsp_opts and/or zsv_file_properties struct
- * If cmd_opts_used is provided, then do not set any zsv_opts values, if the
- * corresponding option code is already present in cmd_opts_used, and instead
- * print a warning to stderr
  *
  * @param data_filepath            required file path
  * @param opts (optional)          parser options to load
  * @param custom_prop              custom property handler
- * @param cmd_opts_used (optional) cmd option codes to skip + warn if found
  * @return struct zsv_file_properties, with .stat set to zsv_status_ok on success
  */
 struct zsv_file_properties zsv_cache_load_props(const char *data_filepath, struct zsv_opts *opts,
-                                                struct zsv_prop_handler *custom_prop, const char *cmd_opts_used);
+                                                struct zsv_prop_handler *custom_prop);
 
 /**
  * Create a new properties parser
@@ -80,13 +76,10 @@ enum zsv_status zsv_properties_parser_destroy(struct zsv_properties_parser *pars
  *                   param is used solely for loading properties and has no
  *                   impact on the data that is actually parsed, which is
  *                   determined by opts->stream
- * @param opts_used  string specifying which other command-line options were
- *                   already used (may be useful to differentiate between
- *                   unspecified default values vs specified values)
  * @param handle_out returns zsv parser handle, or NULL on fail
  */
 enum zsv_status zsv_new_with_properties(struct zsv_opts *opts, struct zsv_prop_handler *custom_prop,
-                                        const char *input_path, const char *opts_used, zsv_parser *handle_out);
+                                        const char *input_path, zsv_parser *handle_out);
 
 /**
  * If you are building your own CLI and incorporating zsv CLI commands into it,

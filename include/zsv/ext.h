@@ -71,7 +71,7 @@ typedef void *zsv_execution_context;
  * Signature of the function called for each implemented sub-command
  */
 typedef enum zsv_ext_status (*zsv_ext_main)(zsv_execution_context ctx, int argc, const char *argv[],
-                                            struct zsv_opts *opts, const char *opts_used);
+                                            struct zsv_opts *opts);
 
 /**
  * ZSV callbacks structure
@@ -129,11 +129,6 @@ struct zsv_ext_callbacks {
    * @return option values
    */
   struct zsv_opts (*ext_parser_opts)(zsv_execution_context ctx);
-
-  /**
-   * fetch options_used from execution context
-   */
-  const char *(*ext_opts_used)(zsv_execution_context ctx);
 
   /**
    * convenience function that calls ext_args_to_opts, allocates parser,
@@ -253,7 +248,7 @@ struct zsv_ext_callbacks {
    * SQLITE3 helpers
    */
   int (*ext_sqlite3_add_csv)(struct zsv_sqlite3_db *zdb, const char *csv_filename, struct zsv_opts *opts,
-                             struct zsv_prop_handler *custom_prop_handler, const char *opts_used);
+                             struct zsv_prop_handler *custom_prop_handler);
   void (*ext_sqlite3_db_delete)(zsv_sqlite3_db_t);
   zsv_sqlite3_db_t (*ext_sqlite3_db_new)(struct zsv_sqlite3_dbopts *dbopts);
 

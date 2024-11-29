@@ -627,7 +627,7 @@ static void flatten_cleanup(struct flatten_data *data) {
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     flatten_usage();
     return 0;
@@ -742,7 +742,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       opts->ctx = &data;
 
       zsv_parser handle;
-      if (zsv_new_with_properties(opts, custom_prop_handler, input_path, opts_used, &handle) != zsv_status_ok)
+      if (zsv_new_with_properties(opts, custom_prop_handler, input_path, &handle) != zsv_status_ok)
         err = data.cancelled = zsv_printerr(1, "Unable to create csv parser");
       else {
         zsv_set_scan_filter(handle, zsv_filter_write, tmp_f);
