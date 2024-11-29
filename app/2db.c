@@ -649,7 +649,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
   const char *usage[] = {
     APPNAME ": convert JSON to SQLite3 DB",
     "",
-    "Usage: " APPNAME " -o <filename> [-t <table>] [input.json]\n",
+    "Usage: " APPNAME " -o <filename> [-t <table>] [input.json]",
     "",
     "Options:",
     "  -h,--help              : show usage",
