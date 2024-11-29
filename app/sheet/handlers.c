@@ -137,3 +137,27 @@ struct zsv_opts zsvsheet_buffer_get_zsv_opts(zsvsheet_buffer_t h) {
   struct zsv_opts opts = {0};
   return opts;
 }
+
+/**
+ * Get information about the type and state of the buffer and its backing file.
+ *
+ * This returns a copy of the information. Properties relating to the index and transformations
+ * are updated by background threads and may be stale upon return. However they only ever
+ * transition from false to true.
+ */
+struct zsvsheet_buffer_info zsvsheet_buffer_get_info(zsvsheet_buffer_t h) {
+  struct zsvsheet_buffer_info info = {0};
+
+  if (h) {
+    struct zsvsheet_ui_buffer *b = h;
+
+    pthread_mutex_lock(&b->mutex);
+    info.index_started = b->index_started;
+    info.index_ready = b->index_ready;
+    info.transform_started = b->transform_started;
+    info.transform_done = b->transform_done;
+    pthread_mutex_unlock(&b->mutex);
+  }
+
+  return info;
+}
