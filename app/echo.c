@@ -151,13 +151,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     const char *arg = argv[arg_i];
     if (!strcmp(arg, "-b"))
       writer_opts.with_bom = 1;
-    else if (!strcmp(arg, "-o")) {
-      const char *output_filename = zsv_next_arg(++arg_i, argc, argv, &err);
-      if (output_filename && !err) {
-        if (!(writer_opts.stream = fopen(output_filename, "wb")))
-          perror(output_filename);
-      }
-    } else if (!strcmp(arg, "--contiguous"))
+    else if (!strcmp(arg, "-o"))
+      writer_opts.output_path = zsv_next_arg(++arg_i, argc, argv, &err);
+    else if (!strcmp(arg, "--contiguous"))
       data.contiguous = 1;
     else if (!strcmp(arg, "--trim-columns"))
       data.trim_columns = 1;
