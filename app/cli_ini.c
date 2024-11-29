@@ -192,8 +192,7 @@ static int parse_extensions_ini(struct cli_config *config, char err_if_not_found
 
 static struct zsv_ext_command *ext_command_new(const char *id, const char *help,
                                                enum zsv_ext_status (*extmain)(zsv_execution_context ctx, int argc,
-                                                                              const char *argv[], struct zsv_opts *,
-                                                                              const char *)) {
+                                                                              const char *argv[], struct zsv_opts *)) {
   struct zsv_ext_command *cmd = calloc(1, sizeof(*cmd));
   cmd->id = strdup(id ? id : "");
   cmd->help = help ? strdup(help) : NULL;
