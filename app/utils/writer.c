@@ -187,7 +187,7 @@ zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
           goto zsv_writer_new_err;
         }
         w->out.close_on_delete = 1;
-        w->out.write = fwrite;
+        w->out.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))fwrite;
       } else if (opts->write) {
         w->out.write = opts->write;
         w->out.stream = opts->stream;
