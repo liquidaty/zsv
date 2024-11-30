@@ -161,7 +161,6 @@ unsigned blank_column_name_count = 0;
 /**
  * Parameters:
  *    filename=FILENAME          Name of file containing CSV content
- *    options_used=OPTIONS_USED  Used options (passed to zsv_new_with_properties())
  *
  * The number of columns in the first row of the input file determines the
  * column names and column count
@@ -176,9 +175,9 @@ static int zsvtabConnect(
   (void)(_pAux);
   zsvTable pTmp = { 0 };
   int rc = SQLITE_OK;        /* Result code from this routine */
-  #define ZSVTABCONNECT_PARAM_MAX 3
+  #define ZSVTABCONNECT_PARAM_MAX 2
   static const char *azParam[ZSVTABCONNECT_PARAM_MAX] = {
-     "filename", "options_used"
+     "filename"
   };
   char *azPValue[ZSVTABCONNECT_PARAM_MAX]; /* Parameter values */
   memset(azPValue, 0, sizeof(azPValue));
@@ -198,15 +197,6 @@ static int zsvtabConnect(
     }
     if( j<sizeof(azParam)/sizeof(azParam[0]) ){
       if( errmsg ) goto zsvtab_connect_error;
-      /*
-    } else if((zValue = csv_parameter("max_columns",11,z))!=0 ){
-      // optional values
-      pTmp.parser_opts.max_columns = atoi(zValue);
-      if(pTmp.parser_opts.max_columns<=0 || pTmp.parser_opts.max_columns > 2000){
-        asprintf(&errmsg, "max_columns= value must be > 0 and < 2000");
-        goto zsvtab_connect_error;
-      }
-      */
     } else {
       asprintf(&errmsg, "bad parameter: '%s'", z);
       goto zsvtab_connect_error;

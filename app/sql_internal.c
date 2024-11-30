@@ -45,7 +45,7 @@ static int create_virtual_csv_table(const char *fname, sqlite3 *db, // int max_c
   else
     snprintf(table_name_suffix, sizeof(table_name_suffix), "%i", table_ix + 1);
 
-  sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%s USING csv(filename=%Q,options_used=%Q)", table_name_suffix, fname);
+  sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%s USING csv(filename=%Q)", table_name_suffix, fname);
 
   char *err_msg_tmp;
   int rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg_tmp);
