@@ -353,7 +353,7 @@ static int zsv_overwrite_parse_pos(struct zsv_overwrite_data *overwrite, const c
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   int err = 0;
   if (argc < 3 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
     zsv_overwrite_usage();
@@ -362,7 +362,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   (void)(opts);
   (void)(custom_prop_handler);
-  (void)(opts_used);
 
   struct zsv_overwrite_ctx ctx = {0};
   struct zsv_overwrite_args args = {0};

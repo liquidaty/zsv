@@ -9,8 +9,6 @@
 #ifndef ZSV_ARG_H
 #define ZSV_ARG_H
 
-#define ZSV_OPTS_SIZE_MAX 16
-
 #include <zsv/common.h>
 
 /* havearg(): case-insensitive partial arg matching */
@@ -68,15 +66,10 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx);
  * @param  argv_out  array of unprocessed arg values. Must be allocated by caller
  *                   with size of at least argc * sizeof(*argv)
  * @param  opts_out  options, updated to reflect any processed args
- * @param  opts_used optional; if provided:
- *                   - must point to >= ZSV_OPTS_SIZE_MAX bytes of storage
- *                   - all used options will be returned in this string
- *                   e.g. if -R and -q are used, then opts_used will be set to:
- *                     "     q R   "
  * @return           zero on success, non-zero on error
  */
 enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, const char **argv_out,
-                                 struct zsv_opts *opts_out, char *opts_used);
+                                 struct zsv_opts *opts_out);
 
 /**
  * Fetch the next arg, if it exists, else print an error message

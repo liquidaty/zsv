@@ -24,7 +24,7 @@ int zsvsheet_ui_buffer_open_file_opts(struct zsvsheet_ui_buffer_opts *uibopts,
 }
 
 int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zsv_optsp,
-                                 struct zsv_prop_handler *custom_prop_handler, const char *opts_used,
+                                 struct zsv_prop_handler *custom_prop_handler,
                                  struct zsvsheet_ui_buffer **ui_buffer_stack_bottom,
                                  struct zsvsheet_ui_buffer **ui_buffer_stack_top) {
   struct zsvsheet_ui_buffer_opts uibopts = {0};
@@ -32,7 +32,6 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
   uibopts.filename = filename;
   if (zsv_optsp)
     uibopts.zsv_opts = *zsv_optsp;
-  uibopts.opts_used = opts_used;
 
   return zsvsheet_ui_buffer_open_file_opts(&uibopts, custom_prop_handler, ui_buffer_stack_bottom, ui_buffer_stack_top);
 }
@@ -47,7 +46,7 @@ zsvsheet_status zsvsheet_open_file(struct zsvsheet_proc_context *ctx, const char
   struct zsvsheet_display_info *di = &state->display_info;
   if (!di || !di->ui_buffers.base || !di->ui_buffers.current)
     return zsvsheet_status_error;
-  int err = zsvsheet_ui_buffer_open_file(filepath, zopts, NULL, NULL, di->ui_buffers.base, di->ui_buffers.current);
+  int err = zsvsheet_ui_buffer_open_file(filepath, zopts, NULL, di->ui_buffers.base, di->ui_buffers.current);
   if (err)
     return zsvsheet_status_error;
   return zsvsheet_status_ok;

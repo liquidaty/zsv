@@ -464,14 +464,14 @@ static void zsv_desc_cleanup(struct zsv_desc_data *data) {
 #define ZSV_DESC_TMPFN_TEMPLATE "zsv_desc_XXXXXXXXXXXX"
 
 static void zsv_desc_execute(struct zsv_desc_data *data, struct zsv_prop_handler *custom_prop_handler,
-                             const char *input_path, const char *opts_used) {
+                             const char *input_path) {
   data->opts->cell_handler = zsv_desc_cell;
   data->opts->row_handler = zsv_desc_row;
   data->opts->ctx = data;
 
   if (!data->max_enum)
     data->max_enum = ZSV_DESC_MAX_ENUM_DEFAULT;
-  if (zsv_new_with_properties(data->opts, custom_prop_handler, input_path, opts_used, &data->parser) == zsv_status_ok) {
+  if (zsv_new_with_properties(data->opts, custom_prop_handler, input_path, &data->parser) == zsv_status_ok) {
     FILE *input_temp_file = NULL;
     enum zsv_status status;
     if (input_temp_file)
@@ -487,7 +487,7 @@ static void zsv_desc_execute(struct zsv_desc_data *data, struct zsv_prop_handler
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   if (argc < 1)
     zsv_desc_usage();
   else if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))
@@ -558,7 +558,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       return 1;
     }
 
-    zsv_desc_execute(&data, custom_prop_handler, input_path, opts_used);
+    zsv_desc_execute(&data, custom_prop_handler, input_path);
     zsv_desc_finalize(&data);
     zsv_desc_print(&data);
     zsv_desc_cleanup(&data);

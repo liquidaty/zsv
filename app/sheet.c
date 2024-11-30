@@ -381,9 +381,8 @@ static zsvsheet_status zsvsheet_open_file_handler(struct zsvsheet_proc_context *
   if (*prompt_buffer == '\0')
     goto no_input;
 
-  const char *opts_used = NULL;
-  if ((err = zsvsheet_ui_buffer_open_file(prompt_buffer, NULL, state->custom_prop_handler, opts_used,
-                                          di->ui_buffers.base, di->ui_buffers.current))) {
+  if ((err = zsvsheet_ui_buffer_open_file(prompt_buffer, NULL, state->custom_prop_handler, di->ui_buffers.base,
+                                          di->ui_buffers.current))) {
     if (err > 0)
       zsvsheet_priv_set_status(di->dimensions, 1, "%s: %s", prompt_buffer, strerror(err));
     else if (err < 0)
@@ -597,7 +596,7 @@ void zsvsheet_register_builtin_procedures(void) {
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     zsvsheet_usage();
     return zsv_status_ok;
@@ -635,8 +634,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   if (argc > 1) {
     const char *filename = argv[1];
-    if ((err = zsvsheet_ui_buffer_open_file(filename, optsp, custom_prop_handler, opts_used, &ui_buffers,
-                                            &current_ui_buffer))) {
+    if ((err = zsvsheet_ui_buffer_open_file(filename, optsp, custom_prop_handler, &ui_buffers, &current_ui_buffer))) {
       if (err > 0)
         perror(filename);
       else

@@ -170,9 +170,9 @@ static int writer_opts_ok(struct zsv_csv_writer_options *opts) {
 }
 
 zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
-  struct zsv_writer_data *w = calloc(1, sizeof(*w));
   if (!(writer_opts_ok(opts)))
     return NULL;
+  struct zsv_writer_data *w = calloc(1, sizeof(*w));
   if (w) {
     if (!(w->out.buff = malloc(ZSV_OUTPUT_BUFF_SIZE)))
       goto zsv_writer_new_err;

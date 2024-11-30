@@ -63,10 +63,8 @@ static struct zsv_ext_callbacks zsv_cb;
  * but with an additional preceding zsv_execution_context parameter.
  * Here, we just declare the functions; we fully define them further below
  */
-enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *opts,
-                               const char *opts_used);
-static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *opts,
-                                     const char *opts_used);
+enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *opts);
+static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *opts);
 
 #ifdef ZSVSHEET_BUILD
 
@@ -262,12 +260,10 @@ static void echo_rowhandler(void *ctx) {
  * `ext_xxx` functions. All we do here is initialize our data, call the parser, and
  * perform any final steps after all data has been processed
  */
-static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *optsp,
-                                     const char *opts_used) {
+static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *optsp) {
   (void)(argc);
   (void)(argv);
   (void)(optsp);
-  (void)(opts_used);
   /* initialize private data */
   struct my_data data;
   memset(&data, 0, sizeof(data));
@@ -335,10 +331,8 @@ static const char *count_help = "count: print the number of rows in a CSV data f
                                 "\n"
                                 "usage: count [-h,--help] [filename]\n";
 
-enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *optsp,
-                               const char *opts_used) {
+enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *optsp) {
   (void)(optsp);
-  (void)(opts_used);
   /* help */
   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     printf("%s", count_help);

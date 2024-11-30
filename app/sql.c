@@ -112,7 +112,7 @@ static char is_select_sql(const char *s) {
 #include "sql_internal.c"
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   /**
    * We need to pass the following data to the sqlite3 virtual table code:
    * a. zsv parser options indicated in the cmd line
@@ -290,11 +290,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       if (zdb && zdb->rc == SQLITE_OK) {
         const char *csv_filename = tmpfn ? (const char *)tmpfn : data.input_filename;
 
-        // for simplicity, we assume the same opts, custom_prop_handler and opts_used for every input
+        // for simplicity, we assume the same opts and custom_prop_handler for every input
         // it may be desirable later to make this customizable for each input
-        if (zsv_sqlite3_add_csv(zdb, csv_filename, opts, custom_prop_handler, opts_used) == SQLITE_OK) {
+        if (zsv_sqlite3_add_csv(zdb, csv_filename, opts, custom_prop_handler) == SQLITE_OK) {
           for (struct string_list *sl = data.more_input_filenames; sl; sl = sl->next)
-            if (zsv_sqlite3_add_csv(zdb, sl->value, opts, custom_prop_handler, opts_used) != SQLITE_OK)
+            if (zsv_sqlite3_add_csv(zdb, sl->value, opts, custom_prop_handler) != SQLITE_OK)
               break;
         }
 
@@ -327,7 +327,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
               err = 1;
             }
           }
-          if (!err) {
+          if (!err && stmt) {
             struct string_list **next_joined_column_name = &data.join_column_names;
             int col_count = sqlite3_column_count(stmt);
             for (char *ix_str = data.join_indexes; !err && ix_str && *ix_str && *(++ix_str);

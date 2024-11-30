@@ -10,7 +10,6 @@ struct zsvsheet_context {
   } ui_buffers;
   const struct zsvsheet_display_dimensions *display_dims;
   struct zsv_prop_handler *custom_prop_handler;
-  const char *opts_used;
 };
 
 struct zsvsheet_subcommand_context {

@@ -29,15 +29,12 @@ static char *zsvsheet_found_in_row(zsv_parser parser, size_t col_count, const ch
 static void *get_data_index(void *d);
 
 static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char *filename, struct zsv_opts *optsp,
-                                 struct zsv_prop_handler *custom_prop_handler,
-                                 // const char *opts_used,
-                                 pthread_mutex_t *mutexp) {
+                                 struct zsv_prop_handler *custom_prop_handler, pthread_mutex_t *mutexp) {
   struct zsvsheet_index_opts *ixopts = calloc(1, sizeof(*ixopts));
   ixopts->mutexp = mutexp;
   ixopts->filename = filename;
   ixopts->zsv_opts = *optsp;
   ixopts->custom_prop_handler = custom_prop_handler;
-  //  ixopts->opts_used = opts_used;
   ixopts->uib = uibuffp;
   ixopts->uib->ixopts = ixopts;
 
@@ -52,13 +49,11 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
                      struct zsv_prop_handler *custom_prop_handler) {
   const char *filename = (uibufferp && *uibufferp) ? (*uibufferp)->filename : uibopts ? uibopts->filename : NULL;
   struct zsv_opts opts = {0};
-  const char *opts_used = "";
   if (uibufferp && *uibufferp)
     opts = (*uibufferp)->zsv_opts;
-  else if (uibopts) {
+  else if (uibopts)
     opts = uibopts->zsv_opts;
-    opts_used = uibopts->opts_used;
-  }
+
   struct zsvsheet_ui_buffer *uibuff = uibufferp ? *uibufferp : NULL;
   size_t remaining_rows_to_skip = start_row;
   size_t remaining_header_to_skip = header_span;
@@ -87,12 +82,11 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   opts.stream = fp; // Input file stream
 
   zsv_parser parser = {0};
-  if (zsv_new_with_properties(&opts, custom_prop_handler, filename, opts_used, &parser) != zsv_status_ok) {
+  if (zsv_new_with_properties(&opts, custom_prop_handler, filename, &parser) != zsv_status_ok) {
     fclose(fp);
     zsv_delete(parser);
     return errno ? errno : -1;
   }
-  // opts_used is no longer needed since opts will be updated
 
   if (uibuff) {
     pthread_mutex_lock(&uibuff->mutex);
@@ -219,7 +213,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     uibuff->index_started = 1;
     if (original_row_num > 1 && rows_read > 0) {
       opts.stream = NULL;
-      get_data_index_async(uibuff, filename, &opts, custom_prop_handler, /* opts_used, */ &uibuff->mutex);
+      get_data_index_async(uibuff, filename, &opts, custom_prop_handler, &uibuff->mutex);
     }
   } else if (rows_read > uibuff->buff_used_rows) {
     uibuff->buff_used_rows = rows_read;

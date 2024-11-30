@@ -7,11 +7,10 @@ int main(int argc, const char *argv[]) {
   // with the original argc and argv arguments
   return ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(argc, argv);
 #else
-  char opts_used[ZSV_OPTS_SIZE_MAX];
   struct zsv_opts opts;
-  enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used);
+  enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &opts);
   if (stat != zsv_status_ok)
     return stat;
-  return ZSV_MAIN_FUNC(ZSV_COMMAND)(argc, argv, &opts, NULL, opts_used);
+  return ZSV_MAIN_FUNC(ZSV_COMMAND)(argc, argv, &opts, NULL);
 #endif
 }

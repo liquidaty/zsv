@@ -124,7 +124,7 @@ enum zsvsheet_priv_status zsvsheet_screen_buffer_grow(zsvsheet_screen_buffer_t b
     size_t old_row_off = i * old_row_len;
     size_t row_off = i * row_len;
 
-    memcpy(data + row_off, old_data + old_row_off, old_row_len);
+    memcpy((char *)data + row_off, (char *)old_data + old_row_off, old_row_len);
   }
 
   buff->data = data;

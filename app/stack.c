@@ -226,7 +226,7 @@ static void zsv_stack_data_row(void *ctx) {
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   int err = 0;
   if (argc < 2) {
     zsv_stack_usage();
@@ -293,7 +293,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
     // to do: max_cell_size
     opts->stream = input->f;
-    if (zsv_new_with_properties(opts, custom_prop_handler, input->fname, opts_used, &input->parser) != zsv_status_ok)
+    if (zsv_new_with_properties(opts, custom_prop_handler, input->fname, &input->parser) != zsv_status_ok)
       data.err = 1;
     else {
       zsv_handle_ctrl_c_signal();
@@ -366,7 +366,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       rewind(input->f);
       input->headers_done = 0;
       opts->stream = input->f;
-      if (zsv_new_with_properties(opts, custom_prop_handler, input->fname, opts_used, &input->parser) != zsv_status_ok)
+      if (zsv_new_with_properties(opts, custom_prop_handler, input->fname, &input->parser) != zsv_status_ok)
         data.err = 1;
       else {
         enum zsv_status status = zsv_status_ok;

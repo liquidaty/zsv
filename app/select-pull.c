@@ -611,7 +611,7 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     zsv_select_usage();
     return zsv_status_ok;
@@ -782,7 +782,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       stat = zsv_status_memory;
     else {
       zsv_parser parser;
-      if (zsv_new_with_properties(data.opts, custom_prop_handler, input_path, opts_used, &parser) == zsv_status_ok) {
+      if (zsv_new_with_properties(data.opts, custom_prop_handler, input_path, &parser) == zsv_status_ok) {
         // all done with
         data.any_clean = !data.no_trim_whitespace || data.clean_white || data.embedded_lineend;
 
