@@ -327,7 +327,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
               err = 1;
             }
           }
-          if (!err) {
+          if (!err && stmt) {
             struct string_list **next_joined_column_name = &data.join_column_names;
             int col_count = sqlite3_column_count(stmt);
             for (char *ix_str = data.join_indexes; !err && ix_str && *ix_str && *(++ix_str);

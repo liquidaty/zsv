@@ -64,10 +64,11 @@ static enum zsv_status zsv_compare_next_sorted_row(struct zsv_compare_input *inp
 }
 
 static struct zsv_cell zsv_compare_get_sorted_colname(struct zsv_compare_input *input, unsigned ix) {
-  struct zsv_cell c;
-  c.str = (unsigned char *)sqlite3_column_name(input->sort_stmt, (int)ix);
+  struct zsv_cell c = {
+    .str = (unsigned char *)sqlite3_column_name(input->sort_stmt, (int)ix),
+    .quoted = 1,
+  };
   c.len = c.str ? strlen((const char *)c.str) : 0;
-  c.quoted = 1;
   return c;
 }
 
@@ -79,11 +80,12 @@ static unsigned zsv_compare_get_sorted_colcount(struct zsv_compare_input *input)
 }
 
 static struct zsv_cell zsv_compare_get_sorted_cell(struct zsv_compare_input *input, unsigned ix) {
-  struct zsv_cell c;
-  c.str = (unsigned char *)sqlite3_column_text(input->sort_stmt, (int)ix);
+  struct zsv_cell c = {
+    .str = (unsigned char *)sqlite3_column_text(input->sort_stmt, (int)ix),
+    .quoted = 1,
+  };
   c.len = c.str ? sqlite3_column_bytes(input->sort_stmt, (int)ix) : 0;
   if (c.len)
     c.str = (unsigned char *)zsv_strtrim(c.str, &c.len);
-  c.quoted = 1;
   return c;
 }

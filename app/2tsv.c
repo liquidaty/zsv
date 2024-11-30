@@ -159,8 +159,9 @@ int zsv_2tsv_usage(int rc) {
   return rc;
 }
 
-int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
                                struct zsv_prop_handler *custom_prop_handler) {
+  struct zsv_opts opts = *optsp;
   struct zsv_2tsv_data data = {0};
   const char *input_path = NULL;
   int err = 0;
@@ -177,9 +178,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       else if (!(data.out.stream = fopen(argv[i], "wb")))
         fprintf(stderr, "Unable to open for writing: %s\n", argv[i]), err = 1;
     } else {
-      if (opts->stream)
+      if (opts.stream)
         fprintf(stderr, "Input file specified more than once\n"), err = 1;
-      else if (!(opts->stream = fopen(argv[i], "rb")))
+      else if (!(opts.stream = fopen(argv[i], "rb")))
         fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
       else
         input_path = argv[i];
@@ -190,22 +191,22 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     goto exit_2tsv;
   }
 
-  if (!opts->stream) {
+  if (!opts.stream) {
 #ifdef NO_STDIN
     fprintf(stderr, "Please specify an input file\n");
     err = 1;
     goto exit_2tsv;
 #else
-    opts->stream = stdin;
+    opts.stream = stdin;
 #endif
   }
 
   if (!data.out.stream)
     data.out.stream = stdout;
 
-  opts->row_handler = zsv_2tsv_row;
-  opts->ctx = &data;
-  if (zsv_new_with_properties(opts, custom_prop_handler, input_path, &data.parser) == zsv_status_ok) {
+  opts.row_handler = zsv_2tsv_row;
+  opts.ctx = &data;
+  if (zsv_new_with_properties(&opts, custom_prop_handler, input_path, &data.parser) == zsv_status_ok) {
     char output[ZSV_2TSV_BUFF_SIZE];
     data.out.buff = output;
 
@@ -219,8 +220,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
 exit_2tsv:
-  if (opts->stream && opts->stream != stdin)
-    fclose(opts->stream);
+  if (opts.stream && opts.stream != stdin)
+    fclose(opts.stream);
   if (data.out.stream && data.out.stream != stdout)
     fclose(data.out.stream);
   return err;

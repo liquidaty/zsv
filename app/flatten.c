@@ -626,13 +626,14 @@ static void flatten_cleanup(struct flatten_data *data) {
     fclose(data->out);
 }
 
-int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
                                struct zsv_prop_handler *custom_prop_handler) {
   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     flatten_usage();
     return 0;
   }
 
+  struct zsv_opts opts = *optsp;
   struct flatten_data data = {0};
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
 
@@ -735,14 +736,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     tmp_fn = zsv_get_temp_filename("zsv_flatten_XXXXXXXX");
     if (tmp_fn) {
       FILE *tmp_f = fopen(tmp_fn, "w+b");
-      opts->cell_handler = flatten_cell1;
-      opts->row_handler = flatten_row1;
-      opts->stream = data.in;
+      opts.cell_handler = flatten_cell1;
+      opts.row_handler = flatten_row1;
+      opts.stream = data.in;
       input_path = data.input_path;
-      opts->ctx = &data;
+      opts.ctx = &data;
 
       zsv_parser handle;
-      if (zsv_new_with_properties(opts, custom_prop_handler, input_path, &handle) != zsv_status_ok)
+      if (zsv_new_with_properties(&opts, custom_prop_handler, input_path, &handle) != zsv_status_ok)
         err = data.cancelled = zsv_printerr(1, "Unable to create csv parser");
       else {
         zsv_set_scan_filter(handle, zsv_filter_write, tmp_f);
