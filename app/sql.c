@@ -405,6 +405,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           if (err != SQLITE_OK)
             fprintf(stderr, "%s:\n  %s\n (or bad CSV/utf8 input)\n\n", sqlite3_errstr(err), my_sql);
           else {
+
             int col_count = sqlite3_column_count(stmt);
 
             // write header row
@@ -429,7 +430,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           fprintf(stderr, "Error: %s\n", zdb->err_msg);
         else if (!zdb->db)
           fprintf(stderr, "Error (unable to open db, code %i): %s\n", zdb->rc, sqlite3_errstr(zdb->rc));
-        else if (zdb->rc)
+        else if (zdb->rc != SQLITE_OK)
           fprintf(stderr, "Error (code %i): %s\n", zdb->rc, sqlite3_errstr(zdb->rc));
         else
           err = 0;

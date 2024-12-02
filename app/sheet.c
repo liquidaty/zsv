@@ -199,6 +199,7 @@ struct zsvsheet_key_data *zsvsheet_key_handlers = NULL;
 struct zsvsheet_key_data **zsvsheet_next_key_handler = &zsvsheet_key_handlers;
 
 /* Common page movement function */
+// TO DO: get rid of di->header_span. Just always assume it is 1
 static zsvsheet_status zsvsheet_move_page(struct zsvsheet_display_info *di, bool up) {
   size_t current, target;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
@@ -405,7 +406,7 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
   struct zsvsheet_buffer_info binfo = zsvsheet_buffer_get_info(current_ui_buffer);
 
-  if (binfo.transform_started && !binfo.transform_done)
+  if (binfo.write_in_progress && !binfo.write_done)
     return zsvsheet_status_busy;
 
   if (!zsvsheet_buffer_data_filename(current_ui_buffer))
@@ -434,7 +435,7 @@ static zsvsheet_status zsvsheet_help_handler(struct zsvsheet_proc_context *ctx) 
     .filename = NULL,
     .data_filename = NULL,
     .no_rownum_col_offset = 1,
-    .transform = 0,
+    .write_after_open = 0,
   };
   struct zsvsheet_ui_buffer *uib = NULL;
   zsvsheet_screen_buffer_t buffer;
@@ -499,6 +500,8 @@ free_buffer:
 out:
   return stat;
 }
+
+#include "sheet/newline_handler.c"
 
 /* We do most procedures in one handler. More complex procedures can be
  * separated into their own handlers.
@@ -580,9 +583,10 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_find,           "find",   "Set a search term and jump to the first result after the cursor", zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_find_next,      "next",   "Jump to the next search result",                                  zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_resize,         "resize", "Resize the layout to fit new terminal dimensions",                zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_open_file,      "open",   "Open a another CSV file",                                         zsvsheet_open_file_handler  },
-  { zsvsheet_builtin_proc_filter,         "filter", "Hide rows that do not contain the specified text",                zsvsheet_filter_handler     },
-  { zsvsheet_builtin_proc_help,           "help",   "Display a list of actions and key-bindings",                      zsvsheet_help_handler       },
+  { zsvsheet_builtin_proc_open_file,      "open",   "Open a another CSV file",                                         zsvsheet_open_file_handler    },
+  { zsvsheet_builtin_proc_filter,         "filter", "Hide rows that do not contain the specified text",                zsvsheet_filter_handler       },
+  { zsvsheet_builtin_proc_help,           "help",   "Display a list of actions and key-bindings",                      zsvsheet_help_handler         },
+  { zsvsheet_builtin_proc_newline,        "<Enter>","Follow hyperlink (if any)",                                       zsvsheet_newline_handler      },
   { -1, NULL, NULL, NULL }
 };
 /* clang-format on */
@@ -695,9 +699,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     pthread_mutex_lock(&ub->mutex);
     if (ub->status)
       zsvsheet_priv_set_status(&display_dims, 1, ub->status);
-    if (ub->transform_progressed) {
+    if (ub->write_progressed) {
       handler_state.display_info.update_buffer = true;
-      ub->transform_progressed = 0;
+      ub->write_progressed = 0;
     }
     if (ub->index_ready && ub->dimensions.row_count != ub->index->row_count + 1) {
       ub->dimensions.row_count = ub->index->row_count + 1;

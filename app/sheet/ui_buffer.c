@@ -32,6 +32,7 @@ struct zsvsheet_ui_buffer {
 
   // cleanup callback set by zsvsheet_ext_get_ctx()
   // if non-null, called when buffer is closed
+  zsvsheet_status (*on_newline)(zsvsheet_proc_context_t);
   void (*ext_on_close)(void *);
 
   enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, int *attrs, size_t start_row, size_t row_count,
@@ -42,9 +43,9 @@ struct zsvsheet_ui_buffer {
   unsigned char index_started : 1;
   unsigned char has_row_num : 1;
   unsigned char mutex_inited : 1;
-  unsigned char transform_started : 1;
-  unsigned char transform_progressed : 1;
-  unsigned char transform_done : 1;
+  unsigned char write_in_progress : 1;
+  unsigned char write_progressed : 1;
+  unsigned char write_done : 1;
   unsigned char worker_active : 1;
   unsigned char worker_cancelled : 1;
   unsigned char _ : 6;
@@ -98,7 +99,7 @@ struct zsvsheet_ui_buffer_opts {
   const char *data_filename;
   struct zsv_opts zsv_opts; // options to use when opening this file
   char no_rownum_col_offset;
-  char transform;
+  char write_after_open;
 };
 
 struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffer,
@@ -121,7 +122,7 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffe
         return NULL;
       }
       uib->zsv_opts = uibopts->zsv_opts;
-      uib->transform_started = uibopts->transform;
+      uib->write_in_progress = uibopts->write_after_open;
     }
   }
   return uib;

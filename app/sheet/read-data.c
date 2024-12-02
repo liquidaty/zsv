@@ -204,7 +204,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     return 0;
 
   pthread_mutex_lock(&uibuff->mutex);
-  char need_index = !uibuff->index_started && (!uibuff->transform_started || uibuff->transform_done);
+  char need_index = !uibuff->index_started && (!uibuff->write_in_progress || uibuff->write_done);
   pthread_mutex_unlock(&uibuff->mutex);
 
   if (need_index) {
