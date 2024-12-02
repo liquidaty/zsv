@@ -139,7 +139,7 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
     pthread_mutex_lock(mutex);
     cancelled = uib->worker_cancelled;
     if (trn->output_count != c)
-      uib->transform_progressed = 1;
+      uib->write_progressed = 1;
     pthread_mutex_unlock(mutex);
   }
 
@@ -151,8 +151,8 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
 
   pthread_mutex_lock(mutex);
   char *buff_status_old = uib->status;
-  uib->transform_progressed = 1;
-  uib->transform_done = 1;
+  uib->write_progressed = 1;
+  uib->write_done = 1;
   if (buff_status_old == trn->default_status)
     uib->status = NULL;
   pthread_mutex_unlock(mutex);
@@ -176,7 +176,7 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   // TODO: Starting a second transformation before the first ends works, but if the second is faster
   //       than the first then it can end prematurely and read a partially written row.
   //       We could override the input stream reader to wait for more data when it sees EOF
-  if (info.transform_started && !info.transform_done)
+  if (info.write_in_progress && !info.write_done)
     return zsvsheet_status_busy;
 
   // TODO: custom_prop_handler is not passed to extensions?
@@ -226,7 +226,7 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   struct zsvsheet_ui_buffer_opts uibopts = {0};
 
   uibopts.data_filename = zsvsheet_transformation_filename(trn);
-  uibopts.transform = 1;
+  uibopts.write_after_open = 1;
 
   stat = zsvsheet_open_file_opts(ctx, &uibopts);
   if (stat != zsvsheet_status_ok)
@@ -234,10 +234,10 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
 
   struct zsvsheet_ui_buffer *nbuff = zsvsheet_buffer_current(ctx);
   trn->ui_buffer = nbuff;
-  nbuff->transform_progressed = 1;
+  nbuff->write_progressed = 1;
 
   if (zst != zsv_status_ok) {
-    nbuff->transform_done = 1;
+    nbuff->write_done = 1;
     goto out;
   }
 

@@ -178,8 +178,8 @@ struct zsvsheet_buffer_info zsvsheet_buffer_get_info(zsvsheet_buffer_t h) {
     pthread_mutex_lock(&b->mutex);
     info.index_started = b->index_started;
     info.index_ready = b->index_ready;
-    info.transform_started = b->transform_started;
-    info.transform_done = b->transform_done;
+    info.write_in_progress = b->write_in_progress;
+    info.write_done = b->write_done;
     pthread_mutex_unlock(&b->mutex);
   }
 

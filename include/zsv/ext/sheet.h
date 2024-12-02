@@ -69,12 +69,4 @@ struct zsvsheet_rowcol {
   size_t col;
 };
 
-struct zsvsheet_buffer_info {
-  unsigned char index_started : 1;
-  unsigned char index_ready : 1;
-  unsigned char transform_started : 1;
-  unsigned char transform_done : 1;
-  unsigned char _ : 4;
-};
-
 #endif

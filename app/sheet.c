@@ -406,7 +406,7 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
   struct zsvsheet_buffer_info binfo = zsvsheet_buffer_get_info(current_ui_buffer);
 
-  if (binfo.transform_started && !binfo.transform_done)
+  if (binfo.write_in_progress && !binfo.write_done)
     return zsvsheet_status_busy;
 
   if (!zsvsheet_buffer_data_filename(current_ui_buffer))
@@ -435,7 +435,7 @@ static zsvsheet_status zsvsheet_help_handler(struct zsvsheet_proc_context *ctx) 
     .filename = NULL,
     .data_filename = NULL,
     .no_rownum_col_offset = 1,
-    .transform = 0,
+    .write_after_open = 0,
   };
   struct zsvsheet_ui_buffer *uib = NULL;
   zsvsheet_screen_buffer_t buffer;
@@ -699,9 +699,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     pthread_mutex_lock(&ub->mutex);
     if (ub->status)
       zsvsheet_priv_set_status(&display_dims, 1, ub->status);
-    if (ub->transform_progressed) {
+    if (ub->write_progressed) {
       handler_state.display_info.update_buffer = true;
-      ub->transform_progressed = 0;
+      ub->write_progressed = 0;
     }
     if (ub->index_ready && ub->dimensions.row_count != ub->index->row_count + 1) {
       ub->dimensions.row_count = ub->index->row_count + 1;

@@ -25,4 +25,13 @@ struct zsvsheet_display_dimensions {
   size_t footer_span;
 };
 
+struct zsvsheet_buffer_info {
+  unsigned char index_started : 1;
+  unsigned char index_ready : 1;
+  unsigned char write_in_progress : 1;
+  unsigned char write_done : 1;
+  unsigned char _ : 4;
+};
+
+
 #endif
