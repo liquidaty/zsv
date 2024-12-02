@@ -93,7 +93,7 @@ enum zsv_ext_status zsvsheet_buffer_get_ctx(zsvsheet_buffer_t h, void **ctx_out)
  * @return zsv_ext_status_ok on success, else zsv_ext_status error code
  */
 enum zsv_ext_status zsvsheet_buffer_on_newline(zsvsheet_buffer_t h,
-                                             zsvsheet_status (*on_newline)(zsvsheet_proc_context_t));
+                                               zsvsheet_status (*on_newline)(zsvsheet_proc_context_t));
 
 zsvsheet_status zsvsheet_buffer_get_selected_cell(zsvsheet_buffer_t h, struct zsvsheet_rowcol *rc);
 
