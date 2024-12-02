@@ -72,7 +72,7 @@ static struct pivot_data *pivot_data_new(void) {
 static void pivot_data_delete(void *h) {
   struct pivot_data *pd = h;
   if (pd) {
-    for(size_t i = 0; i < pd->rows.used; i++)
+    for (size_t i = 0; i < pd->rows.used; i++)
       free(pd->rows.data[i].value);
     free(pd->rows.data);
     free(pd);
@@ -98,7 +98,7 @@ static int add_pivot_row(struct pivot_data *pd, const char *value, size_t len) {
   char *value_dup = NULL;
   if (!err && value && len) {
     value_dup = malloc(len + 1);
-    if(value_dup) {
+    if (value_dup) {
       memcpy(value_dup, value, len);
       value_dup[len] = '\0';
     }
@@ -108,8 +108,8 @@ static int add_pivot_row(struct pivot_data *pd, const char *value, size_t len) {
 }
 
 static struct pivot_row *get_pivot_row_data(struct pivot_data *pd, size_t row_ix) {
-  if(pd && row_ix + 1 < pd->rows.used)
-    return &pd->rows.data[row_ix+1];
+  if (pd && row_ix + 1 < pd->rows.used)
+    return &pd->rows.data[row_ix + 1];
   return NULL;
 }
 
@@ -129,13 +129,14 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
   zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx);
   struct zsvsheet_rowcol rc;
   struct pivot_data *pd;
-  if(zsv_cb.ext_sheet_buffer_get_ctx(buff, (void **)&pd) != zsv_ext_status_ok
-     || zsv_cb.ext_sheet_buffer_get_selected_cell(buff, &rc) != zsvsheet_status_ok)
+  if (zsv_cb.ext_sheet_buffer_get_ctx(buff, (void **)&pd) != zsv_ext_status_ok ||
+      zsv_cb.ext_sheet_buffer_get_selected_cell(buff, &rc) != zsvsheet_status_ok)
     return zsvsheet_status_error;
   struct pivot_row *pr = get_pivot_row_data(pd, rc.row);
-  if(pr) {
+  if (pr) {
     return zsvsheet_filter_handler(ctx);
-    // zsv_cb.ext_sheet_prompt(ctx, result_buffer, sizeof(result_buffer), "You are in pivot_drill_down! row = %zu, value = %s\n", rc.row, pr->value ? pr->value : "(null)");
+    // zsv_cb.ext_sheet_prompt(ctx, result_buffer, sizeof(result_buffer), "You are in pivot_drill_down! row = %zu, value
+    // = %s\n", rc.row, pr->value ? pr->value : "(null)");
   }
   return zsvsheet_status_ok;
 }
