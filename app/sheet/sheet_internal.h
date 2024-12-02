@@ -33,5 +33,4 @@ struct zsvsheet_buffer_info {
   unsigned char _ : 4;
 };
 
-
 #endif
