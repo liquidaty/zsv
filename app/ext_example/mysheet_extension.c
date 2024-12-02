@@ -72,6 +72,8 @@ static struct pivot_data *pivot_data_new(void) {
 static void pivot_data_delete(void *h) {
   struct pivot_data *pd = h;
   if (pd) {
+    for(size_t i = 0; i < pd->rows.used; i++)
+      free(pd->rows.data[i].value);
     free(pd->rows.data);
     free(pd);
   }
@@ -93,11 +95,25 @@ static int pivot_data_grow(struct pivot_data *pd) {
 
 static int add_pivot_row(struct pivot_data *pd, const char *value, size_t len) {
   int err = pivot_data_grow(pd);
-  if (!err)
-    pd->rows.data[pd->rows.used++].value = NULL; // to do: set a value
+  char *value_dup = NULL;
+  if (!err && value && len) {
+    value_dup = malloc(len + 1);
+    if(value_dup) {
+      memcpy(value_dup, value, len);
+      value_dup[len] = '\0';
+    }
+  }
+  pd->rows.data[pd->rows.used++].value = value_dup;
   return err;
 }
 
+static struct pivot_row *get_pivot_row_data(struct pivot_data *pd, size_t row_ix) {
+  if(pd && row_ix + 1 < pd->rows.used)
+    return &pd->rows.data[row_ix+1];
+  return NULL;
+}
+
+// TO DO: return zsvsheet_status
 static enum zsv_ext_status get_cell_attrs(void *pdh, int *attrs, size_t start_row, size_t row_count, size_t cols) {
   struct pivot_data *pd = pdh;
   size_t end_row = start_row + row_count;
@@ -105,6 +121,23 @@ static enum zsv_ext_status get_cell_attrs(void *pdh, int *attrs, size_t start_ro
     end_row = pd->rows.used;
   for (size_t i = start_row; i < end_row; i++)
     attrs[i * cols] = A_ITALIC | A_BOLD | A_ITALIC;
+  return zsv_ext_status_ok;
+}
+
+zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
+  char result_buffer[256] = {0};
+  zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx);
+  struct zsvsheet_rowcol rc;
+  struct pivot_data *pd;
+  if(zsv_cb.ext_sheet_buffer_get_ctx(buff, (void **)&pd) != zsv_ext_status_ok
+     || zsv_cb.ext_sheet_buffer_get_selected_cell(buff, &rc) != zsvsheet_status_ok)
+    return zsvsheet_status_error;
+  struct pivot_row *pr = get_pivot_row_data(pd, rc.row);
+  if(pr) {
+    return zsvsheet_filter_handler(ctx);
+    // zsv_cb.ext_sheet_prompt(ctx, result_buffer, sizeof(result_buffer), "You are in pivot_drill_down! row = %zu, value = %s\n", rc.row, pr->value ? pr->value : "(null)");
+  }
+  return zsvsheet_status_ok;
 }
 
 /**
@@ -137,7 +170,7 @@ zsvsheet_status my_pivot_table_command_handler(zsvsheet_proc_context_t ctx) {
   const char *err_msg = NULL;
   if (!zdb || !(sql_str = sqlite3_str_new(zdb->db)))
     zst = zsvsheet_status_memory;
-  else if (zdb->rc == SQLITE_OK && zsv_cb.ext_sqlite3_add_csv(zdb, data_filename, NULL, NULL, NULL) == SQLITE_OK) {
+  else if (zdb->rc == SQLITE_OK && zsv_cb.ext_sqlite3_add_csv(zdb, data_filename, NULL, NULL) == SQLITE_OK) {
     sqlite3_stmt *stmt = NULL;
     sqlite3_str_appendf(sql_str, "select %s as value, count(1) as Count from data group by %s", result_buffer,
                         result_buffer);
@@ -199,6 +232,7 @@ zsvsheet_status my_pivot_table_command_handler(zsvsheet_proc_context_t ctx) {
       zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx);
       zsv_cb.ext_sheet_buffer_set_ctx(buff, pd, pivot_data_delete);
       zsv_cb.ext_sheet_buffer_set_cell_attrs(buff, get_cell_attrs);
+      zsv_cb.ext_sheet_buffer_on_newline(buff, pivot_drill_down);
       pd = NULL; // so that it isn't cleaned up below
       // TO DO: add param to ext_sheet_open_file to set filename vs data_filename, and set buffer type or proc owner
       // TO DO: add way to attach custom context, and custom context destructor, to the new buffer

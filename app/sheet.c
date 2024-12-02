@@ -199,6 +199,7 @@ struct zsvsheet_key_data *zsvsheet_key_handlers = NULL;
 struct zsvsheet_key_data **zsvsheet_next_key_handler = &zsvsheet_key_handlers;
 
 /* Common page movement function */
+// TO DO: get rid of di->header_span. Just always assume it is 1
 static zsvsheet_status zsvsheet_move_page(struct zsvsheet_display_info *di, bool up) {
   size_t current, target;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
@@ -500,6 +501,8 @@ out:
   return stat;
 }
 
+#include "sheet/newline_handler.c"
+
 /* We do most procedures in one handler. More complex procedures can be
  * separated into their own handlers.
  */
@@ -580,9 +583,10 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_find,           "find",   "Set a search term and jump to the first result after the cursor", zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_find_next,      "next",   "Jump to the next search result",                                  zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_resize,         "resize", "Resize the layout to fit new terminal dimensions",                zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_open_file,      "open",   "Open a another CSV file",                                         zsvsheet_open_file_handler  },
-  { zsvsheet_builtin_proc_filter,         "filter", "Hide rows that do not contain the specified text",                zsvsheet_filter_handler     },
-  { zsvsheet_builtin_proc_help,           "help",   "Display a list of actions and key-bindings",                      zsvsheet_help_handler       },
+  { zsvsheet_builtin_proc_open_file,      "open",   "Open a another CSV file",                                         zsvsheet_open_file_handler    },
+  { zsvsheet_builtin_proc_filter,         "filter", "Hide rows that do not contain the specified text",                zsvsheet_filter_handler       },
+  { zsvsheet_builtin_proc_help,           "help",   "Display a list of actions and key-bindings",                      zsvsheet_help_handler         },
+  { zsvsheet_builtin_proc_newline,        "<Enter>","Follow hyperlink (if any)",                                       zsvsheet_newline_handler      },
   { -1, NULL, NULL, NULL }
 };
 /* clang-format on */

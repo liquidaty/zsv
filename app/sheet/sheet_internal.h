@@ -13,11 +13,6 @@ enum zsvsheet_priv_status {
   //  zsvsheet_priv_status_duplicate
 };
 
-struct zsvsheet_rowcol {
-  size_t row;
-  size_t col;
-};
-
 struct zsvsheet_input_dimensions {
   size_t col_count;
   size_t row_count;

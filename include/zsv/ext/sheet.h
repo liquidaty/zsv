@@ -64,6 +64,11 @@ struct zsvsheet_buffer_transformation_opts {
   void (*on_done)(zsvsheet_transformation trn);
 };
 
+struct zsvsheet_rowcol {
+  size_t row;
+  size_t col;
+};
+
 struct zsvsheet_buffer_info {
   unsigned char index_started : 1;
   unsigned char index_ready : 1;

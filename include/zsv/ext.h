@@ -212,6 +212,11 @@ struct zsv_ext_callbacks {
   const char *(*ext_sheet_buffer_data_filename)(zsvsheet_buffer_t);
 
   /**
+   * Get the currently-selected cell
+   */
+  zsvsheet_status (*ext_sheet_buffer_get_selected_cell)(zsvsheet_buffer_t, struct zsvsheet_rowcol *);
+
+  /**
    * Open a tabular file as a new buffer
    */
   zsvsheet_status (*ext_sheet_open_file)(zsvsheet_proc_context_t, const char *filepath, struct zsv_opts *zopts);
@@ -238,6 +243,14 @@ struct zsv_ext_callbacks {
   void (*ext_sheet_buffer_set_cell_attrs)(zsvsheet_buffer_t h,
                                           enum zsv_ext_status (*get_cell_attrs)(void *pdh, int *attrs, size_t start_row,
                                                                                 size_t row_count, size_t cols));
+
+  /**
+   * Set custom handler on Enter key press
+   *
+   * @return zsv_ext_status_ok on success, else zsv_ext_status error code
+   */
+  enum zsv_ext_status (*ext_sheet_buffer_on_newline)(zsvsheet_buffer_t h,
+                                                     zsvsheet_status (*on_newline)(zsvsheet_proc_context_t));
 
   /**
    * Get zsv_opts used to open the buffer's data file

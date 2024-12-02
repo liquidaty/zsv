@@ -32,6 +32,7 @@ struct zsvsheet_ui_buffer {
 
   // cleanup callback set by zsvsheet_ext_get_ctx()
   // if non-null, called when buffer is closed
+  zsvsheet_status (*on_newline)(zsvsheet_proc_context_t);
   void (*ext_on_close)(void *);
 
   enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, int *attrs, size_t start_row, size_t row_count,

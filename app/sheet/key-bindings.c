@@ -171,6 +171,8 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
   { .ch = 'e',                 .proc_id = zsvsheet_builtin_proc_open_file,     },
   { .ch = 'f',                 .proc_id = zsvsheet_builtin_proc_filter,        },
   { .ch = '?',                 .proc_id = zsvsheet_builtin_proc_help,          },
+  { .ch = '\n',                .proc_id = zsvsheet_builtin_proc_newline,       },
+  { .ch = '\r',                .proc_id = zsvsheet_builtin_proc_newline,       },
 
   { .ch = -1                                                          }
 };
@@ -231,7 +233,8 @@ struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
   /* No such thing in emacs, find a more suitable binding */
   { .ch = 'f',                    .proc_id = zsvsheet_builtin_proc_filter,        },
   { .ch = ZSVSHEET_CTRL('h'),     .proc_id = zsvsheet_builtin_proc_help,          },
-
+  { .ch = '\n',                   .proc_id = zsvsheet_builtin_proc_newline,       },
+  { .ch = '\r',                   .proc_id = zsvsheet_builtin_proc_newline,       },
 
   { .ch = -1                                                          }
 };

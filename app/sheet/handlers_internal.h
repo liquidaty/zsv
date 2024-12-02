@@ -88,6 +88,16 @@ enum zsv_ext_status zsvsheet_buffer_set_ctx(zsvsheet_buffer_t h, void *ctx, void
 enum zsv_ext_status zsvsheet_buffer_get_ctx(zsvsheet_buffer_t h, void **ctx_out);
 
 /**
+ * Set custom handler on Enter key press
+ *
+ * @return zsv_ext_status_ok on success, else zsv_ext_status error code
+ */
+enum zsv_ext_status zsvsheet_buffer_on_newline(zsvsheet_buffer_t h,
+                                             zsvsheet_status (*on_newline)(zsvsheet_proc_context_t));
+
+zsvsheet_status zsvsheet_buffer_get_selected_cell(zsvsheet_buffer_t h, struct zsvsheet_rowcol *rc);
+
+/**
  * Set custom cell attributes
  */
 void zsvsheet_buffer_set_cell_attrs(zsvsheet_buffer_t h,

@@ -93,6 +93,30 @@ const char *zsvsheet_buffer_data_filename(zsvsheet_buffer_t h) {
 }
 
 /**
+ * Set custom handler on Enter key press
+ *
+ * @return zsv_ext_status_ok on success, else zsv_ext_status error code
+ */
+enum zsv_ext_status zsvsheet_buffer_on_newline(zsvsheet_buffer_t h,
+                                             zsvsheet_status (*on_newline)(zsvsheet_proc_context_t)) {
+  if(h)
+    ((struct zsvsheet_ui_buffer *)h)->on_newline = on_newline;
+  return zsv_ext_status_ok;
+}
+
+/**
+ * Get the currently-selected cell
+ */
+zsvsheet_status zsvsheet_buffer_get_selected_cell(zsvsheet_buffer_t h, struct zsvsheet_rowcol *rc) {
+  struct zsvsheet_ui_buffer *uib = h;
+  if(!uib)
+    return zsvsheet_status_error;
+  rc->row = uib->cursor_row + uib->input_offset.row;
+  rc->col = uib->cursor_col + uib->input_offset.col;
+  return zsvsheet_status_ok;
+}
+
+/**
  * Set custom context
  * @param on_close optional callback to invoke when the buffer is closed
  *
