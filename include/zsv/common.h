@@ -99,7 +99,10 @@ typedef void (*zsv_completed_callback)(void *ctx, int code);
 struct zsv_overwrite_data {
   size_t row_ix; // 0-based
   size_t col_ix; // 0-based
+  size_t timestamp;
   struct zsv_cell val;
+  struct zsv_cell author;
+  struct zsv_cell old_value;
   char have; // 1 = we have unprocessed overwrites
 };
 

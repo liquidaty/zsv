@@ -161,7 +161,7 @@ CFLAGS+= -I${PREFIX}/include
 THIS_LIB_BASE=$(shell cd .. && pwd)
 INCLUDE_DIR=${THIS_LIB_BASE}/include
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
-UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os overwrite index
+UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os overwrite index overwrite_writer
 
 ZSV_EXTRAS ?=
 
