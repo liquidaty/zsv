@@ -14,9 +14,36 @@
   <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css" />
 
-  <script defer type="text/javascript" src="cli.em.js"></script>
-
   <script type="text/javascript">
+    // https://stackoverflow.com/questions/9038625/detect-if-device-is-ios
+    function iOS() {
+      return [
+        'iPad Simulator',
+        'iPhone Simulator',
+        'iPod Simulator',
+        'iPad',
+        'iPhone',
+        'iPod'
+      ].includes(navigator.platform)
+        // iPad on iOS 13 detection
+        || (navigator.userAgent.includes("Mac") && "ontouchend" in document)
+    }
+
+    function loadScript(src) {
+      const script = document.createElement('script');
+      script.onerror = (e) => {
+        console.error(`Failed to load script! [${e.target.src}]`);
+      };
+      script.onload = (e) => {
+        console.log(`Script loaded successfully! [${e.target.src}]`);
+      };
+      document.currentScript.parentNode.insertBefore(script, document.currentScript);
+      script.defer = true;
+      script.src = src;
+    }
+
+    loadScript(iOS() ? 'non-simd/cli.em.js' : 'cli.em.js');
+
     var zsvAutocompletionsPopulated = false;
     var zsvAutocompletions = {};
     var zsvFlags = [];
