@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -30,10 +29,9 @@ void zsv_index_delete(struct zsv_index *ix) {
   }
 }
 
-enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, zsv_parser parser) {
+enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, uint64_t line_end) {
   struct zsv_index_array *arr = ix->array;
   size_t len = arr->len, cap = arr->capacity;
-  uint64_t line_end = zsv_cum_scanned_length(parser);
 
   if (!ix->header_line_end) {
     ix->header_line_end = line_end;

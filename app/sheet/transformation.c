@@ -5,6 +5,7 @@
 #include "transformation.h"
 #include "pthread.h"
 #include "zsv/utils/file.h"
+#include "zsv/utils/index.h"
 #include "zsv/utils/prop.h"
 
 struct zsvsheet_transformation {
@@ -60,6 +61,7 @@ enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts 
 
   struct zsv_csv_writer_options writer_opts = {
     .with_bom = 0,
+    .index = opts.index,
     .write = transformation_write,
     .stream = trn,
     .table_init = NULL,
@@ -153,6 +155,7 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   char *buff_status_old = uib->status;
   uib->write_progressed = 1;
   uib->write_done = 1;
+  uib->index_ready = 1;
   if (buff_status_old == trn->default_status)
     uib->status = NULL;
   pthread_mutex_unlock(mutex);
@@ -172,6 +175,7 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   const char *filename = zsvsheet_buffer_data_filename(buff);
   enum zsvsheet_status stat = zsvsheet_status_error;
   struct zsvsheet_buffer_info_internal info = zsvsheet_buffer_info_internal(buff);
+  struct zsv_index *index = NULL;
 
   // TODO: Starting a second transformation before the first ends works, but if the second is faster
   //       than the first then it can end prematurely and read a partially written row.
@@ -179,12 +183,16 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   if (info.write_in_progress && !info.write_done)
     return zsvsheet_status_busy;
 
+  if (!(index = zsv_index_new()))
+    return zsvsheet_status_memory;
+
   // TODO: custom_prop_handler is not passed to extensions?
   struct zsvsheet_transformation_opts trn_opts = {
     .custom_prop_handler = NULL,
     .input_filename = filename,
     .on_done = opts.on_done,
     .ui_buffer = NULL,
+    .index = index,
   };
   zsvsheet_transformation trn = NULL;
   struct zsv_opts zopts = zsvsheet_buffer_get_zsv_opts(buff);
@@ -194,13 +202,13 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   zopts.stream = fopen(filename, "rb");
 
   if (!zopts.stream)
-    goto out;
+    goto error;
 
   trn_opts.zsv_opts = zopts;
 
   enum zsv_status zst = zsvsheet_transformation_new(trn_opts, &trn);
   if (zst != zsv_status_ok)
-    return stat;
+    goto error;
 
   // Transform part of the file to initially populate the UI buffer
   // TODO: If the transformation is a reduction that doesn't output for some time this will caus a pause
@@ -214,13 +222,13 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   case zsv_status_no_more_input:
   case zsv_status_cancelled:
     if (zsv_finish(parser) != zsv_status_ok)
-      goto out;
+      goto error;
     zsv_writer_flush(trn->writer);
     break;
   case zsv_status_ok:
     break;
   default:
-    goto out;
+    goto error;
   }
 
   struct zsvsheet_ui_buffer_opts uibopts = {0};
@@ -230,14 +238,17 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
 
   stat = zsvsheet_open_file_opts(ctx, &uibopts);
   if (stat != zsvsheet_status_ok)
-    goto out;
+    goto error;
 
   struct zsvsheet_ui_buffer *nbuff = zsvsheet_buffer_current(ctx);
   trn->ui_buffer = nbuff;
   nbuff->write_progressed = 1;
+  nbuff->index_started = 1;
+  nbuff->index = index;
 
   if (zst != zsv_status_ok) {
     nbuff->write_done = 1;
+    nbuff->index_ready = 1;
     goto out;
   }
 
@@ -246,6 +257,9 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
 
   zsvsheet_ui_buffer_create_worker(nbuff, zsvsheet_run_buffer_transformation, trn);
   return stat;
+
+error:
+  free(index);
 
 out:
   if (trn && trn->on_done)

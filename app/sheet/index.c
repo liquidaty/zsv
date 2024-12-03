@@ -12,8 +12,9 @@ static void build_memory_index_row_handler(void *ctx) {
   struct zsvsheet_indexer *ixr = ctx;
   struct zsv_index *ix = ixr->ix;
   zsv_parser parser = ixr->parser;
+  uint64_t line_end = zsv_cum_scanned_length(parser);
 
-  if (zsv_index_add_row(ix, parser) != zsv_index_status_ok)
+  if (zsv_index_add_row(ix, line_end) != zsv_index_status_ok)
     zsv_abort(parser);
 }
 

@@ -2,8 +2,7 @@
 #define ZSV_UTILS_INDEX_H
 
 #include <stdint.h>
-#include <stdio.h>
-#include <pthread.h>
+#include <stddef.h>
 
 #include "zsv/common.h"
 
@@ -37,7 +36,7 @@ struct zsv_index {
 
 struct zsv_index *zsv_index_new(void);
 void zsv_index_delete(struct zsv_index *ix);
-enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, zsv_parser parser);
+enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, uint64_t line_end);
 enum zsv_index_status zsv_index_row_end_offset(const struct zsv_index *ix, uint64_t row, uint64_t *offset_out,
                                                uint64_t *remaining_rows_out);
 enum zsv_index_status zsv_index_seek_row(const struct zsv_index *ix, struct zsv_opts *opts, uint64_t row);
