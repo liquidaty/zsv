@@ -2,18 +2,17 @@
  * To implement sorting, we will use sqlite, create a table for each CSV file and run "select * order by ..."
  */
 
-static int zsv_compare_sort_prep_table(struct zsv_compare_data *data, const char *fname, const char *opts_used,
-                                       int max_columns, char **err_msg, unsigned int table_ix) {
+#include "external/sqlite3/sqlite3_csv_vtab-mem.h"
+
+static int zsv_compare_sort_prep_table(struct zsv_compare_data *data, const char *fname, char **err_msg,
+                                       unsigned int table_ix) {
 #define ZSV_COMPARE_MAX_TABLES 1000
   char *sql = NULL;
   if (table_ix > ZSV_COMPARE_MAX_TABLES)
     return -1;
 
-  if (max_columns == 0)
-    max_columns = 2048;
+  sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%i USING csv(filename=%Q)", table_ix, fname);
 
-  sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%i USING csv(filename=%Q,options_used=%Q,max_columns=%i)", table_ix,
-                        fname, opts_used, max_columns);
   if (!sql)
     return -1;
 
@@ -22,9 +21,7 @@ static int zsv_compare_sort_prep_table(struct zsv_compare_data *data, const char
   return rc;
 }
 
-static int zsv_compare_sort_stmt_prep(sqlite3 *db, sqlite3_stmt **stmtp,
-                                      // struct zsv_compare_sort *sort,
-                                      struct zsv_compare_key *keys, unsigned ix) {
+static int zsv_compare_sort_stmt_prep(sqlite3 *db, sqlite3_stmt **stmtp, struct zsv_compare_key *keys, unsigned ix) {
   sqlite3_str *select_clause = sqlite3_str_new(db);
   if (!select_clause) {
     fprintf(stderr, "Out of memory!\n");
@@ -43,12 +40,12 @@ static int zsv_compare_sort_stmt_prep(sqlite3 *db, sqlite3_stmt **stmtp,
 }
 
 static enum zsv_compare_status input_init_sorted(struct zsv_compare_data *data, struct zsv_compare_input *input,
-                                                 struct zsv_opts *_opts, struct zsv_prop_handler *_prop_handler,
-                                                 const char *opts_used) {
-  (void)(_opts);
-  (void)(_prop_handler);
+                                                 struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler) {
   char *err_msg = NULL;
-  int rc = zsv_compare_sort_prep_table(data, input->path, opts_used, 0, &err_msg, input->index);
+  if (!sqlite3_zsv_list_add(input->path, opts, custom_prop_handler))
+    input->added = 1;
+  int rc = zsv_compare_sort_prep_table(data, input->path, &err_msg, input->index);
+
   if (err_msg) {
     fprintf(stderr, "%s\n", err_msg);
     sqlite3_free(err_msg);
@@ -67,10 +64,11 @@ static enum zsv_status zsv_compare_next_sorted_row(struct zsv_compare_input *inp
 }
 
 static struct zsv_cell zsv_compare_get_sorted_colname(struct zsv_compare_input *input, unsigned ix) {
-  struct zsv_cell c;
-  c.str = (unsigned char *)sqlite3_column_name(input->sort_stmt, (int)ix);
+  struct zsv_cell c = {
+    .str = (unsigned char *)sqlite3_column_name(input->sort_stmt, (int)ix),
+    .quoted = 1,
+  };
   c.len = c.str ? strlen((const char *)c.str) : 0;
-  c.quoted = 1;
   return c;
 }
 
@@ -82,11 +80,12 @@ static unsigned zsv_compare_get_sorted_colcount(struct zsv_compare_input *input)
 }
 
 static struct zsv_cell zsv_compare_get_sorted_cell(struct zsv_compare_input *input, unsigned ix) {
-  struct zsv_cell c;
-  c.str = (unsigned char *)sqlite3_column_text(input->sort_stmt, (int)ix);
+  struct zsv_cell c = {
+    .str = (unsigned char *)sqlite3_column_text(input->sort_stmt, (int)ix),
+    .quoted = 1,
+  };
   c.len = c.str ? sqlite3_column_bytes(input->sort_stmt, (int)ix) : 0;
   if (c.len)
     c.str = (unsigned char *)zsv_strtrim(c.str, &c.len);
-  c.quoted = 1;
   return c;
 }

@@ -37,8 +37,9 @@ COLOR_RED=\033[1;31m
 COLOR_BLUE=\033[1;34m
 COLOR_PINK=\033[1;35m
 
-TEST_PASS=echo "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
-TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
+TEST_INIT=printf "${COLOR_PINK}$@: ${COLOR_NONE}\n"
+TEST_PASS=printf "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}\n"
+TEST_FAIL=(printf "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}\n" && exit 1)
 
 EXE=
 ifeq ($(WIN),1)
@@ -75,11 +76,13 @@ build: simple print_my_column parse_by_chunk pull
 test: test-eol test-tiny
 
 test-tiny: build/simple${EXE}
+	@${TEST_INIT}
 	@[ "`echo '' | $< - 2>&1`" = "" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-eol: test-eol-1 test-eol-2 test-eol-3 test-eol-4
 
 test-eol-%: ${BUILD_DIR}/simple${EXE} ${BUILD_DIR}/pull${EXE}
+	@${TEST_INIT}
 	@${BUILD_DIR}/simple${EXE} ${TEST_DATA_DIR}/test/no-eol-$*.csv > ${TMP_DIR}/$@.out
 	@cmp ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 

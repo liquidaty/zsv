@@ -34,6 +34,7 @@ env:
   AMD64_LINUX_CLANG: amd64-linux-clang
   AMD64_LINUX_MUSL: amd64-linux-musl
   AMD64_WINDOWS_MINGW: amd64-windows-mingw
+  AMD64_LINUX_WASM: amd64-linux-wasm
   AMD64_MACOSX_GCC: amd64-macosx-gcc
   ARM64_MACOSX_GCC: arm64-macosx-gcc
   AMD64_FREEBSD_GCC: amd64-freebsd-gcc
@@ -519,6 +520,9 @@ jobs:
     runs-on: ubuntu-latest
     container: alpine:latest
 
+    outputs:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
 
@@ -577,14 +581,14 @@ jobs:
       run: ./scripts/ci-upload-release-artifacts.sh
 
   ghcr:
-    needs: [tag, ci-musl]
+    needs: ci-musl
     runs-on: ubuntu-latest
 
     permissions:
       packages: write
 
     env:
-      TAG: ${{ needs.tag.outputs.TAG }}
+      TAG: ${{ needs.ci-musl.outputs.TAG }}
 
     steps:
     - name: Checkout
@@ -638,3 +642,75 @@ jobs:
         tags: |
           ghcr.io/liquidaty/zsv:${{ env.TAG }}
           ghcr.io/liquidaty/zsv:latest
+
+  ci-wasm:
+    needs: [tag, clang-format, cppcheck, shellcheck]
+    runs-on: ubuntu-latest
+
+    env:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
+    steps:
+    - name: Set up emsdk
+      uses: mymindstorm/setup-emsdk@v14
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Update version in index.html
+      run: sed "s|__VERSION__|$TAG|g" -i playground/index.html
+
+    - name: Build with SIMD (${{ env.AMD64_LINUX_WASM }})
+      env:
+        PREFIX: ${{ env.AMD64_LINUX_WASM }}
+        CC: emcc
+        MAKE: make
+        RUN_TESTS: false
+        CONFIGFILE: "config.emcc"
+        CFLAGS: "-msse2 -msimd128"
+        CROSS_COMPILING: "yes"
+        NO_THREADING: "1"
+        STATIC_BUILD: "1"
+      run: |
+        emconfigure ./configure --enable-pic --disable-pie
+        emmake make install NO_STDIN=1 NO_PLAYGROUND=0
+        cp "$PREFIX"/bin/cli.em.{js,wasm} playground
+
+    - name: Build without SIMD (${{ env.AMD64_LINUX_WASM }})
+      env:
+        PREFIX: ${{ env.AMD64_LINUX_WASM }}
+        CC: emcc
+        MAKE: make
+        RUN_TESTS: false
+        CONFIGFILE: "config.emcc"
+        CROSS_COMPILING: "yes"
+        NO_THREADING: "1"
+        STATIC_BUILD: "1"
+      run: |
+        emconfigure ./configure --enable-pic --disable-pie
+        emmake make clean install NO_STDIN=1 NO_PLAYGROUND=0
+        mkdir -p playground/non-simd
+        cp "$PREFIX"/bin/cli.em.{js,wasm} playground/non-simd
+
+    - name: Upload GitHub Pages artifacts
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: playground
+
+  deploy-playground:
+    if: ${{ github.ref_name == 'main' }}
+    needs: ci-wasm
+    runs-on: ubuntu-latest
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

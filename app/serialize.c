@@ -226,7 +226,7 @@ const char *serialize_usage_msg[] = {
   NULL,
 };
 
-static int serialize_usage() {
+static int serialize_usage(void) {
   for (size_t i = 0; serialize_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", serialize_usage_msg[i]);
   return 1;
@@ -272,7 +272,7 @@ static int serialize_append_additional_column(struct serialize_data *data, const
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     serialize_usage();
     return 0;
@@ -347,7 +347,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
     opts->ctx = &data;
     data.csv_writer = zsv_writer_new(&writer_opts);
-    if (zsv_new_with_properties(opts, custom_prop_handler, input_path, opts_used, &data.parser) != zsv_status_ok ||
+    if (zsv_new_with_properties(opts, custom_prop_handler, input_path, &data.parser) != zsv_status_ok ||
         !data.csv_writer) {
       serialize_cleanup(&data);
       return 1;

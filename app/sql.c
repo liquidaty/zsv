@@ -83,7 +83,6 @@ static void zsv_sql_finalize(struct zsv_sql_data *data) {
 static void zsv_sql_cleanup(struct zsv_sql_data *data) {
   if (data->in && data->in != stdin)
     fclose(data->in);
-  sqlite3_zsv_list_remove(data->input_filename);
   free(data->sql_dynamic);
   free(data->join_indexes);
   if (data->join_column_names) {
@@ -98,7 +97,6 @@ static void zsv_sql_cleanup(struct zsv_sql_data *data) {
   if (data->more_input_filenames) {
     struct string_list *next;
     for (struct string_list *tmp = data->more_input_filenames; tmp; tmp = next) {
-      sqlite3_zsv_list_remove(tmp->value);
       next = tmp->next;
       free(tmp);
     }
@@ -114,25 +112,19 @@ static char is_select_sql(const char *s) {
 #include "sql_internal.c"
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   /**
    * We need to pass the following data to the sqlite3 virtual table code:
    * a. zsv parser options indicated in the cmd line
    * b. input file path
    * c. cmd-line options used in (a), so that we can print warnings in case of
    *    conflict between (a) and properties of (b)
-   *
-   * For file path and options_used, we will pass as part of the
-   * CREATE VIRTUAL TABLE connection string.
-   * For zsv opts and custom_prop_handler, we will pass via
-   * sqlite3_zsv_data_add()
    */
   int err = 0;
   if (argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
     err = zsv_sql_usage(argc < 2 ? stderr : stdout);
   else {
     struct zsv_sql_data data = {0};
-    int max_cols = 0; // TO DO: remove this; use parser_opts.max_columns
     const char *my_sql = NULL;
     struct string_list **next_input_filename = &data.more_input_filenames;
 
@@ -196,33 +188,19 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
             err = 1;
           }
         }
-      } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
-        if (!(++arg_i < argc)) {
-          fprintf(stderr, "option %s requires a filename\n", arg);
-          err = 1;
-        } else if (!(writer_opts.stream = fopen(argv[arg_i], "wb"))) {
-          fprintf(stderr, "Could not open for writing: %s\n", argv[arg_i]);
-          err = 1;
-        }
-      } else if (!strcmp(arg, "--memory"))
+      } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output"))
+        writer_opts.output_path = zsv_next_arg(++arg_i, argc, argv, &err);
+      else if (!strcmp(arg, "--memory"))
         data.in_memory = 1;
       else if (!strcmp(arg, "-b"))
         writer_opts.with_bom = 1;
-      else if (!strcmp(arg, "-C") || !strcmp(arg, "--max-cols")) {
-        if (arg_i + 1 < argc && atoi(argv[arg_i + 1]) > 0 && atoi(argv[arg_i + 1]) <= 2000)
-          max_cols = atoi(argv[++arg_i]);
-        else {
-          fprintf(stderr, "maximum columns value not provided or not between 0 and 2000\n");
-          err = 1;
-        }
-      } else if (*arg != '-') {
+      else if (*arg != '-') {
         if (!data.input_filename) {
           data.input_filename = arg;
           if (!(data.in = fopen(arg, "rb"))) {
             fprintf(stderr, "Unable to open for reading: %s\n", arg);
             err = 1;
-          } else
-            err = sqlite3_zsv_data_add(arg, opts, custom_prop_handler);
+          }
         } else { // another input file
           FILE *tmp_f;
           if (!(tmp_f = fopen(arg, "rb"))) {
@@ -237,9 +215,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
               tmp->value = (char *)arg;
               *next_input_filename = tmp;
               next_input_filename = &tmp->next;
-
-              // TO DO: option to only apply specified opts to first input?
-              err = sqlite3_zsv_data_add(arg, opts, custom_prop_handler);
             }
           }
         }
@@ -300,21 +275,26 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     }
 
-    if (f) {
+    zsv_csv_writer cw = zsv_writer_new(&writer_opts);
+    if (f && cw) {
       fclose(f); // to do: don't open in the first place
       f = NULL;
 
-      zsv_csv_writer cw = zsv_writer_new(&writer_opts);
       unsigned char cw_buff[1024];
       zsv_writer_set_temp_buff(cw, cw_buff, sizeof(cw_buff));
 
-      const char *csv_filename = tmpfn ? (const char *)tmpfn : data.input_filename;
-      struct zsv_sqlite3_db *zdb =
-        zsv_sqlite3_db_new(csv_filename, data.in_memory, opts_used, max_cols, SQLITE_OPEN_URI | SQLITE_OPEN_READWRITE);
-      if (zdb) {
-        if (zdb->rc == SQLITE_OK) {
+      struct zsv_sqlite3_dbopts dbopts = {
+        .in_memory = data.in_memory,
+      };
+      struct zsv_sqlite3_db *zdb = zsv_sqlite3_db_new(&dbopts);
+      if (zdb && zdb->rc == SQLITE_OK) {
+        const char *csv_filename = tmpfn ? (const char *)tmpfn : data.input_filename;
+
+        // for simplicity, we assume the same opts and custom_prop_handler for every input
+        // it may be desirable later to make this customizable for each input
+        if (zsv_sqlite3_add_csv(zdb, csv_filename, opts, custom_prop_handler) == SQLITE_OK) {
           for (struct string_list *sl = data.more_input_filenames; sl; sl = sl->next)
-            if (zsv_sqlite3_add_csv(zdb, sl->value, opts_used, max_cols) != SQLITE_OK)
+            if (zsv_sqlite3_add_csv(zdb, sl->value, opts, custom_prop_handler) != SQLITE_OK)
               break;
         }
 
@@ -347,7 +327,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
               err = 1;
             }
           }
-          if (!err) {
+          if (!err && stmt) {
             struct string_list **next_joined_column_name = &data.join_column_names;
             int col_count = sqlite3_column_count(stmt);
             for (char *ix_str = data.join_indexes; !err && ix_str && *ix_str && *(++ix_str);
@@ -425,6 +405,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           if (err != SQLITE_OK)
             fprintf(stderr, "%s:\n  %s\n (or bad CSV/utf8 input)\n\n", sqlite3_errstr(err), my_sql);
           else {
+
             int col_count = sqlite3_column_count(stmt);
 
             // write header row
@@ -433,6 +414,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
               zsv_writer_cell(cw, !i, (const unsigned char *)colname, colname ? strlen(colname) : 0, 1);
             }
 
+            // write sql results
             while (sqlite3_step(stmt) == SQLITE_ROW) {
               for (int i = 0; i < col_count; i++) {
                 const unsigned char *text = sqlite3_column_text(stmt, i);
@@ -448,12 +430,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           fprintf(stderr, "Error: %s\n", zdb->err_msg);
         else if (!zdb->db)
           fprintf(stderr, "Error (unable to open db, code %i): %s\n", zdb->rc, sqlite3_errstr(zdb->rc));
-        else if (zdb->rc)
+        else if (zdb->rc != SQLITE_OK)
           fprintf(stderr, "Error (code %i): %s\n", zdb->rc, sqlite3_errstr(zdb->rc));
         else
           err = 0;
 
-        zsv_writer_delete(cw);
         zsv_sqlite3_db_delete(zdb);
       }
     }
@@ -461,6 +442,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       fclose(f);
     zsv_sql_finalize(&data);
     zsv_sql_cleanup(&data);
+    zsv_writer_delete(cw);
 
     if (tmpfn) {
       unlink(tmpfn);

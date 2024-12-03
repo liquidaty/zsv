@@ -72,7 +72,7 @@ int zsv_replace_file(const void *src, const void *dest) {
   return 1; // fail
 }
 
-void zsv_win_printLastError() {
+void zsv_win_printLastError(void) {
   DWORD dw = GetLastError();
   LPVOID lpMsgBuf;
   LPVOID lpDisplayBuf;
@@ -89,7 +89,7 @@ void zsv_win_printLastError() {
 void zsv_perror(const char *s) {
   if (s && *s)
     fwrite(s, 1, strlen(s), stderr);
-  zsv_win_printLastError(0);
+  zsv_win_printLastError();
 }
 
 #endif

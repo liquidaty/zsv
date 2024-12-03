@@ -1,6 +1,3 @@
-#ifndef SQLITE3_CSV_VTAB_ZSV_H
-#define SQLITE3_CSV_VTAB_ZSV_H
-
 #include <pthread.h>
 
 /**
@@ -77,7 +74,7 @@ static struct sqlite3_zsv_data *sqlite3_zsv_data_new(const char *filename, struc
   return NULL;
 }
 
-int sqlite3_zsv_data_add(const char *filename, struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler) {
+int sqlite3_zsv_list_add(const char *filename, struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler) {
   struct sqlite3_zsv_data **list = &sqlite3_zsv_data_g;
   struct sqlite3_zsv_data *e = sqlite3_zsv_data_new(filename, opts, custom_prop_handler);
   if (e) {
@@ -143,5 +140,3 @@ int sqlite3_zsv_list_remove(const char *filename) {
   }
   return ENOENT; // not found
 }
-
-#endif

@@ -60,12 +60,12 @@ static struct zsv_opts *zsv_with_default_opts(char mode) {
 }
 
 ZSV_EXPORT
-void zsv_clear_default_opts() {
+void zsv_clear_default_opts(void) {
   zsv_with_default_opts('c');
 }
 
 ZSV_EXPORT
-struct zsv_opts zsv_get_default_opts() {
+struct zsv_opts zsv_get_default_opts(void) {
   return *zsv_with_default_opts('g');
 }
 
@@ -132,22 +132,16 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx) {
  * @param  argv_out  array of unprocessed arg values. Must be allocated by caller
  *                   with size of at least argc * sizeof(*argv)
  * @param  opts_out  options, updated to reflect any processed args
- * @param  opts_used optional; if provided:
- *                   - must point to >= ZSV_OPTS_SIZE_MAX bytes of storage
- *                   - all used options will be returned in this string
- *                   e.g. if -R and -q are used, then opts_used will be set to:
- *                     "     q R   "
  * @return           zero on success, non-zero on error
  */
 ZSV_EXPORT
 enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, const char **argv_out,
-                                 struct zsv_opts *opts_out, char *opts_used) {
+                                 struct zsv_opts *opts_out) {
 #ifdef ZSV_EXTRAS
   static const char *short_args = "BcrtOqvRdSu01L";
 #else
   static const char *short_args = "BcrtOqvRdSu0";
 #endif
-  assert(strlen(short_args) < ZSV_OPTS_SIZE_MAX);
 
   static const char *long_args[] = {
     "buff-size",
@@ -175,10 +169,6 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, co
   int new_argc = 0;
   for (; new_argc < options_start && new_argc < argc; new_argc++)
     argv_out[new_argc] = argv[new_argc];
-  if (opts_used) {
-    memset(opts_used, ' ', ZSV_OPTS_SIZE_MAX - 1);
-    opts_used[ZSV_OPTS_SIZE_MAX - 1] = '\0';
-  }
 
   for (int i = options_start; !err && i < argc; i++) {
     char arg = 0;
@@ -301,8 +291,12 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, co
       argv_out[new_argc++] = argv[i];
       break;
     }
-    if (processed && opts_used)
-      opts_used[found_ix] = arg;
+    if (processed && opts_out) {
+      if (arg == 'R')
+        opts_out->property_overrides |= ZSV_OPT_PROPERTY_OVERRIDE_SKIP_HEAD;
+      else if (arg == 'd')
+        opts_out->property_overrides |= ZSV_OPT_PROPERTY_OVERRIDE_HEADER_SPAN;
+    }
   }
 
   *argc_out = new_argc;

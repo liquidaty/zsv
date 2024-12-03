@@ -53,7 +53,8 @@ struct zsv_compare_input {
   unsigned char row_loaded : 1;
   unsigned char missing : 1;
   unsigned char done : 1;
-  unsigned char _ : 5;
+  unsigned char added : 1;
+  unsigned char _ : 4;
 };
 
 struct zsv_compare_key {
@@ -100,8 +101,7 @@ struct zsv_compare_data {
   struct zsv_cell (*get_column_name)(struct zsv_compare_input *input, unsigned ix);
   unsigned (*get_column_count)(struct zsv_compare_input *input);
   enum zsv_compare_status (*input_init)(struct zsv_compare_data *data, struct zsv_compare_input *input,
-                                        struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler,
-                                        const char *opts_used);
+                                        struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler);
 
   sqlite3 *sort_db; // used when --sort option was specified
 

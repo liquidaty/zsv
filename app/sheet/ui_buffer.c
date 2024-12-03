@@ -16,6 +16,7 @@ struct zsvsheet_ui_buffer {
   struct zsv_index *index;
   struct zsvsheet_index_opts *ixopts;
   pthread_mutex_t mutex;
+  pthread_t worker_thread;
 
   // input_offset: location within the input from which the buffer is read
   // i.e. if row = 5, col = 3, the buffer data starts from cell D6
@@ -26,24 +27,55 @@ struct zsvsheet_ui_buffer {
   struct zsvsheet_rowcol buff_offset;
   size_t buff_used_rows;
   char *status;
-  char *row_filter;
 
   void *ext_ctx; // extension context via zsvsheet_ext_set_ctx() zsvsheet_ext_get_ctx()
 
   // cleanup callback set by zsvsheet_ext_get_ctx()
   // if non-null, called when buffer is closed
+  zsvsheet_status (*on_newline)(zsvsheet_proc_context_t);
   void (*ext_on_close)(void *);
 
-  unsigned char index_ready;
+  enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, int *attrs, size_t start_row, size_t row_count,
+                                        size_t col_count);
+
+  unsigned char index_ready : 1;
   unsigned char rownum_col_offset : 1;
   unsigned char index_started : 1;
   unsigned char has_row_num : 1;
   unsigned char mutex_inited : 1;
-  unsigned char _ : 4;
+  unsigned char write_in_progress : 1;
+  unsigned char write_progressed : 1;
+  unsigned char write_done : 1;
+  unsigned char worker_active : 1;
+  unsigned char worker_cancelled : 1;
+  unsigned char _ : 6;
 };
+
+void zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*start_func)(void *), void *arg) {
+  assert(!ub->worker_active);
+  assert(ub->mutex_inited);
+
+  pthread_create(&ub->worker_thread, NULL, start_func, arg);
+  ub->worker_active = 1;
+}
+
+void zsvsheet_ui_buffer_join_worker(struct zsvsheet_ui_buffer *ub) {
+  assert(ub->worker_active);
+  assert(ub->mutex_inited);
+
+  pthread_join(ub->worker_thread, NULL);
+  ub->worker_active = 0;
+}
 
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
   if (ub) {
+    if (ub->worker_active) {
+      pthread_mutex_lock(&ub->mutex);
+      ub->worker_cancelled = 1;
+      pthread_mutex_unlock(&ub->mutex);
+
+      zsvsheet_ui_buffer_join_worker(ub);
+    }
     if (ub->ext_on_close)
       ub->ext_on_close(ub->ext_ctx);
     zsvsheet_screen_buffer_delete(ub->buffer);
@@ -51,7 +83,6 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
       pthread_mutex_destroy(&ub->mutex);
     if (ub->ixopts)
       ub->ixopts->uib = NULL;
-    free(ub->row_filter);
     zsv_index_delete(ub->index);
     free(ub->status);
     if (ub->data_filename)
@@ -64,11 +95,11 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
 
 struct zsvsheet_ui_buffer_opts {
   struct zsvsheet_screen_buffer_opts *buff_opts;
-  const char *row_filter;
   const char *filename;
+  const char *data_filename;
   struct zsv_opts zsv_opts; // options to use when opening this file
-  const char *opts_used;
   char no_rownum_col_offset;
+  char write_after_open;
 };
 
 struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffer,
@@ -82,15 +113,36 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffe
     if (!(uibopts && uibopts->no_rownum_col_offset))
       uib->rownum_col_offset = 1;
     if (uibopts) {
-      if ((uibopts->row_filter && !(uib->row_filter = strdup(uibopts->row_filter))) ||
-          (uibopts->filename && !(uib->filename = strdup(uibopts->filename)))) {
+      if (uibopts->filename && !(uib->filename = strdup(uibopts->filename))) {
+        zsvsheet_ui_buffer_delete(uib);
+        return NULL;
+      }
+      if (uibopts->data_filename && !(uib->data_filename = strdup(uibopts->data_filename))) {
         zsvsheet_ui_buffer_delete(uib);
         return NULL;
       }
       uib->zsv_opts = uibopts->zsv_opts;
+      uib->write_in_progress = uibopts->write_after_open;
     }
   }
   return uib;
+}
+
+int zsvsheet_ui_buffer_update_cell_attr(struct zsvsheet_ui_buffer *uib) {
+  if (uib && uib->buffer && uib->buffer->opts.rows && uib->buffer->cols) {
+    size_t row_sz = uib->buffer->cols * sizeof(*uib->buffer->cell_attrs);
+    if (uib->get_cell_attrs) {
+      if (!uib->buffer->cell_attrs) {
+        uib->buffer->cell_attrs = calloc(uib->buffer->opts.rows, row_sz);
+        if (!uib->buffer->cell_attrs)
+          return ENOMEM;
+      }
+      memset(uib->buffer->cell_attrs, 0, uib->buffer->opts.rows * row_sz);
+      uib->get_cell_attrs(uib->ext_ctx, uib->buffer->cell_attrs, uib->input_offset.row, uib->buff_used_rows,
+                          uib->buffer->cols);
+    }
+  }
+  return 0;
 }
 
 enum zsvsheet_priv_status zsvsheet_ui_buffer_new_blank(struct zsvsheet_ui_buffer **uibp) {

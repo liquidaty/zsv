@@ -6,6 +6,7 @@
 #include <zsv/utils/string.h>
 #include <zsv/utils/os.h>
 #include <zsv/utils/dirs.h>
+#include <zsv/utils/mem.h>
 
 #define INI_HANDLER_LINENO 1
 #define INI_CALL_HANDLER_ON_NEW_SECTION 1
@@ -104,8 +105,14 @@ static struct zsv_ext *load_extension_dl(const unsigned char *extension_id, char
 // load an extension and if successful, add to config->extensions head
 static int add_extension(const char *id, struct zsv_ext **exts, char ignore_err, char verbose) {
   int err = 0;
-  size_t len = 2;
-  unsigned char *extension_id = zsv_strtolowercase((const unsigned char *)id, &len);
+  const char *dash = strchr(id, '-');
+  unsigned char *extension_id = NULL;
+  size_t len;
+  if (dash)
+    len = dash - id;
+  else
+    len = strlen(id);
+  extension_id = zsv_strtolowercase((const unsigned char *)id, &len);
   if (extension_id) {
     struct zsv_ext *ext = NULL;
     if (!extension_id_ok(extension_id))
@@ -133,8 +140,9 @@ static int config_ini_handler(void *ctx, const char *section, const char *name, 
   if (section) {
     if (!name && !value) { // initialize section
       if (zsv_stricmp((const unsigned char *)section, (const unsigned char *)"default")) {
-        if (strlen(section) != 2) {
-          fprintf(stderr, "Invalid extension id: %s\n", section);
+        if (!(strlen(section) >= ZSV_EXTENSION_ID_MIN_LEN && strlen(section) <= ZSV_EXTENSION_ID_MAX_LEN)) {
+          fprintf(stderr, "Invalid extension id: %s. Length must be between %i and %i\n", section,
+                  ZSV_EXTENSION_ID_MIN_LEN, ZSV_EXTENSION_ID_MAX_LEN);
           err = 1;
         } else {
           struct zsv_ext *ext = find_extension(config, section);
@@ -168,7 +176,7 @@ static int parse_extensions_ini(struct cli_config *config, char err_if_not_found
   if (!(f = fopen(config->filepath, "r"))) {
     if (err_if_not_found) {
       err = -1;
-      fprintf(stderr, "No extensions configured%s%s\n", verbose ? "or file not found: " : "",
+      fprintf(stderr, "No extensions configured%s%s\n", verbose ? " or file not found: " : "",
               verbose ? config->filepath : "");
     }
   } else {
@@ -184,8 +192,7 @@ static int parse_extensions_ini(struct cli_config *config, char err_if_not_found
 
 static struct zsv_ext_command *ext_command_new(const char *id, const char *help,
                                                enum zsv_ext_status (*extmain)(zsv_execution_context ctx, int argc,
-                                                                              const char *argv[], struct zsv_opts *,
-                                                                              const char *)) {
+                                                                              const char *argv[], struct zsv_opts *)) {
   struct zsv_ext_command *cmd = calloc(1, sizeof(*cmd));
   cmd->id = strdup(id ? id : "");
   cmd->help = help ? strdup(help) : NULL;

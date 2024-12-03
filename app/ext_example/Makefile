@@ -1,4 +1,4 @@
-# Makefile for use with GNU make
+#Makefile for use with GNU make
 
 THIS_MAKEFILE_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 THIS_DIR:=$(shell basename "${THIS_MAKEFILE_DIR}")
@@ -65,6 +65,7 @@ THIS_LIB_BASE=$(shell cd ../.. && pwd)
 CCBN=$(shell basename ${CC})
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 TARGET=${BUILD_DIR}/bin/zsvextmy.${SO}
+TARGET_SHEET=${BUILD_DIR}/bin/zsvextmysheet.${SO}
 
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
@@ -72,9 +73,9 @@ COLOR_RED=\033[1;31m
 COLOR_BLUE=\033[1;34m
 COLOR_PINK=\033[1;34m
 
-TEST_PASS=echo "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}"
-TEST_FAIL=(echo "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}" && exit 1)
-TEST_NAME=echo "${COLOR_PINK}$@: ${COLOR_NONE}"
+TEST_PASS=printf "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}\n"
+TEST_FAIL=(printf "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}\n" && exit 1)
+TEST_INIT=printf "${COLOR_PINK}$@: ${COLOR_NONE}\n"
 
 UTILS1=
 CFLAGS_SHARED=-shared
@@ -88,15 +89,16 @@ endif
 UTILS1+=writer
 UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
 
-CFLAGS+= -I${THIS_LIB_BASE}/include
+CFLAGS+= -I${THIS_LIB_BASE}/include -I${PREFIX}/include
 
-all: ${TARGET}
+all: ${TARGET} ${TARGET_SHEET}
 	@echo Built ${TARGET}
+	@echo Built ${TARGET_SHEET}
 
 ifneq ($(findstring emcc,$(CC)),) # emcc
 install: ${INSTALLED_EXTENSION}
 
-${INSTALLED_EXTENSION}: ${TARGET}
+${INSTALLED_EXTENSION}: ${TARGET} ${TARGET_SHEET}
 	@mkdir -p `dirname "$@"`
 	cp -p $< $@
 endif
@@ -113,20 +115,23 @@ ${BUILD_DIR}/objs/utils/%.o:
 
 TESTS=test-1 test-2 test-3 test-4 test-5 test-thirdparty
 ifeq ($(ZSVSHEET_BUILD),1)
-  TESTS+=test-sheet-extension
+  TESTS+=test-sheet-extension-1 test-sheet-extension-2
 endif
 
 test: ${TESTS}
 
 test-1: test-%: ${CLI} ${TARGET}
+	@${TEST_INIT}
 	@${RUN_CLI} my-echo < ${THIS_LIB_BASE}/data/quoted.csv > /tmp/zsvext-$@.out
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-2: test-%: ${CLI} ${TARGET}
+	@${TEST_INIT}
 	@${RUN_CLI} my-echo -t < ${THIS_LIB_BASE}/data/hi.txt > /tmp/zsvext-$@.out
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-3: test-%: ${CLI} ${TARGET}
+	@${TEST_INIT}
 	@rm -f /tmp/zsvext-$@.out
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
 	@${RUN_CLI} register my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
@@ -142,7 +147,8 @@ test-3: test-%: ${CLI} ${TARGET}
 
 TMP_DIR=/tmp
 TMUX_TERM=xterm-256color
-test-sheet-extension: ../test/worldcitiespop_mil.csv
+test-sheet-extension-1: ${CLI} ${TARGET} ../test/worldcitiespop_mil.csv
+	@${TEST_INIT}
 	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
 	@tmux kill-session -t $@ || echo 'No tmux session to kill'
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
@@ -158,7 +164,28 @@ test-sheet-extension: ../test/worldcitiespop_mil.csv
 	cmp ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && \
 	if [ -f ${TMP_DIR}/$@.out ]; then cat ${TMP_DIR}/$@.out; fi && ${TEST_FAIL}))
 
+test-sheet-extension-2: ${CLI} ${TARGET}
+	@${TEST_INIT}
+	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
+	@tmux kill-session -t $@ || echo 'No tmux session to kill'
+	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
+	@${RUN_CLI} register my 2>&1 | grep -v [.]so || [ 1==1 ]
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(ZSV_CONFIG_DIR=/tmp tmux -v new-session -x 120 -y 5 -d -s $@ && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "${CLI} sheet -d 3 ../../data/test/mixed-line-endings.csv" ENTER && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ T Enter && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ G && \
+	sleep 0.5 && \
+	tmux capture-pane -t $@ -p > ${TMP_DIR}/$@.out && \
+	tmux kill-session -t $@ && \
+	cmp ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && \
+	if [ -f ${TMP_DIR}/$@.out ]; then cat ${TMP_DIR}/$@.out; fi && ${TEST_FAIL}))
+
 test-4: test-%: ${CLI} ${TARGET}
+	@${TEST_INIT}
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
 	@${RUN_CLI} license > /tmp/zsvext-$@.out 2>> /tmp/zsvext-$@.err
 	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
@@ -167,11 +194,13 @@ test-4: test-%: ${CLI} ${TARGET}
 	@cmp /tmp/zsvext-$@.err test/expected/zsvext-$@.err && ${TEST_PASS} || ${TEST_FAIL}
 
 test-5: test-%:${TARGET}
+	@${TEST_INIT}
 	@${RUN_CLI} my-count newline.csv 2>/dev/null > /tmp/zsvext-$@.out
 	@${RUN_CLI} my-count -q newline.csv 2>/dev/null >> /tmp/zsvext-$@.out
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-thirdparty: test-%: ${CLI} ${TARGET}
+	@${TEST_INIT}
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
 	@${RUN_CLI} thirdparty > /tmp/zsvext-$@.out
 	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
@@ -179,13 +208,18 @@ test-thirdparty: test-%: ${CLI} ${TARGET}
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
-	@rm -f ${TARGET} /tmp/zsvext-test*.out
+	@rm -f ${TARGET} ${TARGET_SHEET} /tmp/zsvext-test*.out
 
 ${BUILD_DIR}/objs/%.o : ${THIS_LIB_BASE}/src/%.c ${PARSER_DEPS}
 	${MAKE} -C ${THIS_LIB_BASE}/src CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} WIN=${WIN} $@
 
-${TARGET}: my_extension.c ${UTILS}
+
+YAJL_SRC_DIR=${THIS_MAKEFILE_DIR}/../external/yajl
+YAJL_INCLUDE=-I${YAJL_SRC_DIR}/build/yajl-2.1.1/include
+YAJL_HELPER_INCLUDE=-I${THIS_MAKEFILE_DIR}/../external/yajl_helper
+${TARGET_SHEET}: LIBS="../external/sqlite3/sqlite3.c" -lzsv -lzsvutil -L${PREFIX}/lib -ljq -lutf8proc
+${TARGET} ${TARGET_SHEET}: ${BUILD_DIR}/bin/zsvext%.${SO} : %_extension.c ${UTILS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${CFLAGS_SHARED} $< ${UTILS} -o $@
+	${CC} ${CFLAGS} ${CFLAGS_SHARED} $< ${UTILS} -o $@ ${LIBS} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
 
 .PHONY: all test test-% clean install

@@ -14,8 +14,7 @@
 #define ZSV_COMMAND paste
 #include "zsv_command.h"
 
-static int zsv_paste_usage() {
-  /* clang-format off */
+static int zsv_paste_usage(void) {
   static const char *usage[] = {
     "Usage: paste <filename> [<filename> ...]",
     "",
@@ -27,10 +26,9 @@ static int zsv_paste_usage() {
     "",
     "Options:",
     "  -h,--help : show usage",
-    NULL
+    NULL,
   };
-  /* clang-format on */
-  for (int i = 0; usage[i]; i++)
+  for (size_t i = 0; usage[i]; i++)
     printf("%s\n", usage[i]);
   return 0;
 }
@@ -94,7 +92,7 @@ static void zsv_paste_delete_input(struct zsv_paste_input_file *pf) {
 // zsv_paste_add_input(): return error
 static enum zsv_paste_status zsv_paste_add_input(const char *fname, struct zsv_paste_input_file **next,
                                                  struct zsv_paste_input_file ***next_next, struct zsv_opts *opts,
-                                                 struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                                                 struct zsv_prop_handler *custom_prop_handler) {
   FILE *f = fopen(fname, "rb");
   if (!f) {
     perror(fname);
@@ -112,7 +110,7 @@ static enum zsv_paste_status zsv_paste_add_input(const char *fname, struct zsv_p
   *next = pf;
   *next_next = &pf->next;
 
-  if (zsv_new_with_properties(&pf->opts, custom_prop_handler, fname, opts_used, &pf->parser) != zsv_status_ok) {
+  if (zsv_new_with_properties(&pf->opts, custom_prop_handler, fname, &pf->parser) != zsv_status_ok) {
     fprintf(stderr, "Unable to initialize parser for %s\n", fname);
     return zsv_paste_status_error;
   } else {
@@ -125,7 +123,7 @@ static enum zsv_paste_status zsv_paste_add_input(const char *fname, struct zsv_p
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   for (int i = 1; i < argc; i++) {
     const char *arg = argv[i];
     if (!strcmp(arg, "-h") || !strcmp(arg, "--help"))
@@ -145,7 +143,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   for (int i = 1; status == zsv_paste_status_ok && i < argc; i++) {
     const char *arg = argv[i];
     if (!(!strcmp(arg, "-h") || !strcmp(arg, "--help")))
-      status = zsv_paste_add_input(arg, next_input, &next_input, opts, custom_prop_handler, opts_used);
+      status = zsv_paste_add_input(arg, next_input, &next_input, opts, custom_prop_handler);
   }
 
   if (status == zsv_paste_status_ok) {

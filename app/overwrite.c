@@ -50,16 +50,16 @@ const char *zsv_overwrite_usage_msg[] = {
   "  bulk-remove <datafile> : Bulk remove overwrite entries from a CSV or JSON file",
   "",
   "Options:",
-  "  -h,--help           : Show this help message",
-  "  --old-value <value> : For `add` or `remove`, only proceed if the old value",
-  "                        matches the given value",
-  "  --force             : For `add`, proceed even if an overwrite for the specified",
-  "                        cell already exists",
-  "                        For `remove`, exit without error even if no overwrite for",
-  "                        the specified cell already exists",
-  "  --no-timestamp      : For `add`, don't save timestamp when adding an overwrite",
-  "  --all               : For `remove`, remove all overwrites and delete sqlite file",
-  "  --A1                : For `list`, Display addresses in A1-notation",
+  "  -h,--help              : Show this help message",
+  "  --old-value <value>    : For `add` or `remove`, only proceed if the old value",
+  "                           matches the given value",
+  "  --force.               : For `add`, proceed even if an overwrite for the specified",
+  "                           cell already exists",
+  "                           For `remove`, exit without error even if no overwrite for",
+  "                           the specified cell already exists",
+  "  --no-timestamp.        : For `add`, don't save timestamp when adding an overwrite",
+  "  --all                  : For `remove`, remove all overwrites and delete sqlite file",
+  "  --A1                   : For `list`, Display addresses in A1-notation",
   "",
   "Description:",
   "  The  `overwrite`  utility  allows  you to manage a list of \"overwrites\" associated",
@@ -74,7 +74,7 @@ const char *zsv_overwrite_usage_msg[] = {
   "  and may optionally include \"old value\", \"timestamp\" and/or \"author\"",
   NULL};
 
-static int zsv_overwrite_usage() {
+static int zsv_overwrite_usage(void) {
   for (size_t i = 0; zsv_overwrite_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", zsv_overwrite_usage_msg[i]);
   return 1;
@@ -179,7 +179,7 @@ static int zsv_overwrite_parse_pos(struct zsv_overwrite_data *overwrite, const c
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   int err = 0;
   if (argc < 3 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
     zsv_overwrite_usage();
@@ -189,7 +189,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   struct zsv_overwrite_opts ctx_opts = {0};
   (void)(opts);
   (void)(custom_prop_handler);
-  (void)(opts_used);
+
   struct zsv_overwrite_args args = {0};
   // By default, save timestamps
   struct zsv_overwrite_data overwrite = {0};

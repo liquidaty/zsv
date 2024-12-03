@@ -1,50 +1,50 @@
 Row #     Country   City      AccentCit Region    Populatio Latitude  Longitude
-1009      pk        goth khal Goth Khal 02                  28.1074   67.9157
-1010      ht        vindio    Vindio    03                  19.748333 -73.04166
-1011      ht        petit bou Petit Bou 09                  19.816666 -72.56666
-1012      ua        kalynivka Kalynivka 08                  46.312572 34.436003
-1013      af        `abd ur r `Abd ur R 13                  34.398889 68.989444
-1014      kr        taeam     Taeam     05                  36.1367   127.7594
-1015      no        kviby i a Kviby i A 05                  70.118889 23.390833
-1016      ir        javanmard Javanmard 16                  35.2098   47.4197
-1017      af        `abdurrah `Abdurrah 23                  31.588034 65.482707
-1018      ph        mabubua   Mabubua   28                  18.628889 120.85805
-1019      th        ban bang  Ban Bang  61                  8.417528  98.45225
-1020      af        abdurrahm Abdurrahm 28                  32.077222 67.796058
-1021      ru        rusenikha Rusenikha 51                  56.905622 45.358762
-1022      af        `abdurrah `Abdurrah 40                  35.137029 69.055332
-1023      pe        astumarca Astumarca 15                  -12.88333 -75.81666
-1024      sn        sandjara  Sandjara  03                  14.7      -16.43333
-1025      tw        tapo      Tapo      04                  23.116666 121.21666
-1026      af        `abdur ra `Abdur Ra 28                  32.35163  66.66577
-1027      tw        erhpingti Erhpingti 04                  25.236666 121.55694
-1028      ph        agay-ayan Agay-ayan 37                  11.216667 124.53333
-1029      pk        mithrahu  Mithrahu  05                  26.383333 69.333333
-1030      us        ireland   Ireland   IN                  38.414722 -86.99944
-1031      ir        qom tappe Qom Tappe 33                  37.1107   46.6269
-1032      ru        khomyakov Khomyakov 85                  59.6056   39.1189
-1033      tr        chatalkhy Chatalkhy 31                  36.29863  36.544536
-1034      jp        chigusa-m Chigusa-m 01                  35.166667 136.93333
-1035      af        abdurrakh Abdurrakh 23                  31.562358 66.335726
-1036      ru        puudozi   Puudozi   28                  61.809882 36.534541
-1037      ph        labit     Labit     51                  15.956944 120.53027
-1038      ne        angoa dao Angoa Dao 03                  12.466666 3.55
-1039      us        olustee   Olustee   FL                  30.203888 -82.42888
-1040      af        abdurrakh Abdurrakh 29                  32.687827 68.11817
-1041      af        abdurrakh Abdurrakh 18                  34.226536 70.396255
-1042      zr        kakungu   Kakungu   10                  -2.216666 25.183333
-1043      ye        rababah   Rababah   13                  14.306666 44.075833
-1044      la        ban sadam Ban Sadam 02                  14.216667 105.83333
-1045      af        abdurrakh Abdurrakh 28                  32.077222 67.796058
-1046      ru        chernyshe Chernyshe 05                  52.633333 127.3
-1047      af        abdurrakh Abdurrakh 28                  32.086627 67.79654
-1048      mx        cuesta bl Cuesta Bl 26                  28.3      -109.3166
-1049      mm        man lok   Man Lok   11                  23.0      98.65
-1050      tr        buyukulat Büyükula  31                  36.274609 36.475775
-1051      pa        el tallo  El Tallo  07                  7.5666667 -80.46666
-1052      jm        george fo George Fo 01                  18.2      -77.21666
-1053      ru        danilovka Danilovka 57                  52.545192 45.383553
-1054      af        abdurrash Abdurrash 10                  31.802126 64.499738
-1055      af        `abd ur r `Abd ur R 10                  31.802126 64.499738
-1056      ir        dasht bar Dasht Bar 29                  28.4475   56.1341
-? for help 1009
+529       jp        nanseien  Nanseien  47                  24.857794 125.30431
+530       ir        nameq     Nameq     42                  35.412662 58.762751
+531       ae        western m Western M 01                  23.102651 53.581849
+532       pk        nari kade Nari Kade 01                  33.656111 71.133611
+533       us        harryhoga Harryhoga VA                  38.006944 -76.54444
+534       mm        tongyi    Tongyi    17                  16.826111 96.635
+535       td        tarik     Tarik     11                  10.083333 17.466666
+536       kr        sojongni  Sojongni  16                  34.364722 126.52722
+537       id        krandon   Krandon   10                  -7.714167 110.34
+538       id        remeng ki Remeng Ki 07                  -7.601667 110.49722
+539       pg        kamondo   Kamondo   04                  -8.9      147.8
+540       id        hutarau   Hutarau   26                  2.6714    99.3223
+541       mz        mavia     Mavia     01                  -13.33388 39.3725
+542       my        kampung j Kampung J 09                  5.206933  100.49987
+543       lt        balniai i Balniai I 62                  55.2      22.733333
+544       mg        andengind Andengind 03                  -14.75    48.233333
+545       ng        oke-igi   Oke-Igi   54                  7.951724  5.053791
+546       af        abakeh    Abakeh    24                  36.67363  69.078194
+547       ir        kapurabad Kapurabad 04                  26.2213   61.1204
+548       us        ebenezer  Ebenezer  NC                  35.151388 -84.06138
+549       af        abakheyl' Abakheyl' 35                  34.744167 70.287778
+550       iq        kuwayzah  Kuwayzah  05                  35.300555 45.100833
+551       af        aband     Aband     42                  35.474953 69.871144
+552       za        lokapane  Lokapane  10                  -26.95847 23.653217
+553       mx        la quebra La Quebra 25                  25.3      -107.3666
+554       jo        nu`aiyima Nu`aiyima 02                  32.416389 35.910885
+555       pk        madari ko Madari Ko 03                  34.415439 71.881229
+556       af        abasali   Abasali   39                  32.813402 65.968042
+557       gm        komansor  Komansor  05                  13.183333 -16.21666
+558       af        abaskhank Abaskhank 29                  32.503976 69.209795
+559       us        nelsontow Nelsontow TN                  36.556111 -82.54916
+560       af        abas khel Abas Khel 28                  31.975853 67.59182
+561       af        abaskheyl Abaskheyl 28                  31.975853 67.59182
+562       ng        amana     Amana     23                  10.716667 7.666667
+563       af        `abaskust `Abaskust 27                  34.331309 67.640744
+564       ro        cracu mar Cracu Mar 26                  45        22.516667
+565       ru        krasnaya  Krasnaya  39                  51.9      92.716667
+566       my        kampong s Kampong S 16                  5.8172    116.0384
+567       us        silver po Silver Po TN                  36.090555 -85.72972
+568       ph        igbabana  Igbabana  30                  10.8961   122.5534
+569       th        ban sop m Ban Sop M 02                  18.912639 98.317722
+570       ph        antipolo  Antipolo  03                  8.15      125.81666
+571       ph        simsim    Simsim    33                  14.1829   121.3769
+572       kr        chonha    Chonha    21                  35.508611 129.435
+573       sk        prievidza Prievidza 01        52987     48.766666 18.633333
+574       pk        basti ara Basti Ara 04                  28.54063  70.163677
+575       ir        dorakhsh  Dorakhsh  41                  33.162586 59.711625
+576       af        ab barik  Ab Barik  09                  34.651024 66.254311
+? for help 529

@@ -46,8 +46,8 @@ static int main_register_aux(int argc, const char *argv[]) {
     fprintf(stderr, "No extension id provided\n"), err = 1;
   else if (!strcmp(extension_id, "--help") || !strcmp(extension_id, "-h"))
     return register_help(do_register);
-  else if (strlen(extension_id) != 2)
-    fprintf(stderr, "Extension id must be exactly two characters\n"), err = 1;
+  else if (strlen(extension_id) < ZSV_EXTENSION_ID_MIN_LEN || strlen(extension_id) > ZSV_EXTENSION_ID_MAX_LEN)
+    fprintf(stderr, "Extension id must be 1 to 8 bytes\n"), err = 1;
   else if (config_init(&config, !do_register, 1, 1))
     config_free(&config); // unable to init config
   else {
