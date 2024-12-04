@@ -343,7 +343,7 @@ static zsvsheet_status zsvsheet_find(struct zsvsheet_sheet_context *state, bool 
   struct zsvsheet_opts zsvsheet_opts = {0};
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
 
-  if (!current_ui_buffer->filename)
+  if (!zsvsheet_buffer_data_filename(current_ui_buffer))
     goto out;
 
   if (!next) {
