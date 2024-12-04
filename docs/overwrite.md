@@ -1,6 +1,6 @@
 # Overwrite - Manage Overwrites Associated with a CSV File
 
-The `overwrite` utility allows you to manage a list of "overwrites" associated with a given CSV input file. Each overwrite entry is a tuple consisting of row, column, original value, and new value, along with optional timestamp and author metadata.
+The `overwrite` utility allows you to manage a list of "overwrites" associated with a given CSV input file. Each overwrite entry is a tuple consisting of row, column, and new value, along with optional timestamp and author metadata.
 
 ## Usage
 
@@ -53,7 +53,11 @@ Bulk add overwrite entries from a CSV or JSON file.
 `bulk-remove <datafile>`  
 Bulk remove overwrite entries from a CSV or JSON file.
 
-### Note:
+**List**  
+`list`  
+List all overwrites in the overwrites file.
+
+**Note:**
 JSON not currently supported.
 
 ### Options
