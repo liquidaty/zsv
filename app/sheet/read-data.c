@@ -204,7 +204,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     return 0;
 
   pthread_mutex_lock(&uibuff->mutex);
-  char need_index = !uibuff->index_started && (!uibuff->write_in_progress || uibuff->write_done);
+  char need_index = !uibuff->index_started && !uibuff->write_in_progress;
   pthread_mutex_unlock(&uibuff->mutex);
 
   if (need_index) {
@@ -258,7 +258,6 @@ static void *get_data_index(void *gdi) {
   }
 
   pthread_mutex_lock(mutexp);
-  uib->index_ready = 1;
   uib->status = old_ui_status;
   uib->ixopts = NULL;
   pthread_mutex_unlock(mutexp);

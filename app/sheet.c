@@ -737,10 +737,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     pthread_mutex_lock(&ub->mutex);
     if (ub->status)
       zsvsheet_priv_set_status(&display_dims, 1, ub->status);
-    if (ub->write_progressed) {
-      handler_state.display_info.update_buffer = true;
-      ub->write_progressed = 0;
-    }
     if (ub->index_ready && ub->dimensions.row_count != ub->index->row_count + 1) {
       ub->dimensions.row_count = ub->index->row_count + 1;
       handler_state.display_info.update_buffer = true;

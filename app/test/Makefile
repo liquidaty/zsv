@@ -624,7 +624,7 @@ test-sheet-3: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	sleep 2 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
 
 test-sheet-4: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}

@@ -44,11 +44,10 @@ struct zsvsheet_ui_buffer {
   unsigned char has_row_num : 1;
   unsigned char mutex_inited : 1;
   unsigned char write_in_progress : 1;
-  unsigned char write_progressed : 1;
   unsigned char write_done : 1;
   unsigned char worker_active : 1;
   unsigned char worker_cancelled : 1;
-  unsigned char _ : 6;
+  unsigned char _ : 7;
 };
 
 void zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*start_func)(void *), void *arg) {

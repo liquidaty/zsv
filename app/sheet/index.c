@@ -43,6 +43,8 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
   if (!ixr.ix)
     goto out;
 
+  optsp->uib->index = ixr.ix;
+
   char cancelled = 0;
   while (!cancelled && (zst = zsv_parse_more(ixr.parser)) == zsv_status_ok) {
     pthread_mutex_lock(&optsp->uib->mutex);
@@ -50,16 +52,19 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
       cancelled = 1;
       zst = zsv_status_cancelled;
     }
+    zsv_index_commit_rows(ixr.ix);
+    optsp->uib->index_ready = 1;
     pthread_mutex_unlock(&optsp->uib->mutex);
   }
 
   zsv_finish(ixr.parser);
+  pthread_mutex_lock(&optsp->uib->mutex);
+  zsv_index_commit_rows(ixr.ix);
+  optsp->uib->index_ready = 1;
+  pthread_mutex_unlock(&optsp->uib->mutex);
 
-  if (zst == zsv_status_no_more_input || zst == zsv_status_cancelled) {
+  if (zst == zsv_status_no_more_input || zst == zsv_status_cancelled)
     ret = zsv_index_status_ok;
-    optsp->uib->index = ixr.ix;
-  } else
-    zsv_index_delete(ixr.ix);
 
 out:
   if (ixr.parser)

@@ -15,7 +15,7 @@ struct zsvsheet_transformation {
   FILE *output_stream;
   unsigned char *output_buffer;
   int output_fileno;
-  size_t output_count;
+  char writer_wrote;
   struct zsvsheet_transformation_opts opts;
   void *user_context;
 
@@ -28,7 +28,7 @@ static size_t transformation_write(const void *restrict ptr, size_t size, size_t
   struct zsvsheet_transformation *trn = stream;
 
   const size_t count = fwrite(ptr, size, nitems, trn->output_stream);
-  trn->output_count += count;
+  trn->writer_wrote = count > 0;
 
   return count > 0 ? count : 0;
 }
@@ -134,14 +134,17 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   zsv_parser parser = trn->parser;
   pthread_mutex_t *mutex = &uib->mutex;
   enum zsv_status zst;
+  char *default_status = trn->default_status;
 
-  size_t c = trn->output_count;
   char cancelled = 0;
   while (!cancelled && (zst = zsv_parse_more(parser)) == zsv_status_ok) {
     pthread_mutex_lock(mutex);
     cancelled = uib->worker_cancelled;
-    if (trn->output_count != c)
-      uib->write_progressed = 1;
+    if (trn->writer_wrote) {
+      trn->writer_wrote = 0;
+      zsv_index_commit_rows(uib->index);
+      uib->index_ready = 1;
+    }
     pthread_mutex_unlock(mutex);
   }
 
@@ -151,20 +154,22 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   if (trn->on_done)
     trn->on_done(trn);
 
+  if (trn->user_context)
+    free(trn->user_context);
+
+  zsvsheet_transformation_delete(trn);
+
   pthread_mutex_lock(mutex);
   char *buff_status_old = uib->status;
-  uib->write_progressed = 1;
   uib->write_done = 1;
+  zsv_index_commit_rows(uib->index);
   uib->index_ready = 1;
-  if (buff_status_old == trn->default_status)
+  if (buff_status_old == default_status)
     uib->status = NULL;
   pthread_mutex_unlock(mutex);
 
-  if (buff_status_old == trn->default_status)
+  if (buff_status_old == default_status)
     free(buff_status_old);
-  if (trn->user_context)
-    free(trn->user_context);
-  zsvsheet_transformation_delete(trn);
 
   return NULL;
 }
@@ -214,9 +219,10 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   // TODO: If the transformation is a reduction that doesn't output for some time this will caus a pause
   zsv_parser parser = zsvsheet_transformation_parser(trn);
   while ((zst = zsv_parse_more(parser)) == zsv_status_ok) {
-    if (trn->output_count > 0)
+    if (trn->writer_wrote)
       break;
   }
+  trn->writer_wrote = 0;
 
   switch (zst) {
   case zsv_status_no_more_input:
@@ -242,14 +248,18 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
 
   struct zsvsheet_ui_buffer *nbuff = zsvsheet_buffer_current(ctx);
   trn->ui_buffer = nbuff;
-  nbuff->write_progressed = 1;
+  zsv_index_commit_rows(index);
   nbuff->index_started = 1;
   nbuff->index = index;
 
   if (zst != zsv_status_ok) {
     nbuff->write_done = 1;
     nbuff->index_ready = 1;
-    goto out;
+    if (trn->on_done)
+      opts.on_done(trn);
+    zsvsheet_transformation_delete(trn);
+    zsv_index_commit_rows(index);
+    return stat;
   }
 
   asprintf(&trn->default_status, "(working) Press ESC to cancel ");
@@ -259,9 +269,8 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   return stat;
 
 error:
-  free(index);
+  zsv_index_delete(index);
 
-out:
   if (trn && trn->on_done)
     opts.on_done(trn);
   if (trn)
