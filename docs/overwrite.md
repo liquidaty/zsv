@@ -111,7 +111,11 @@ Example layout of a bulk file [bulkdata.csv](../data/bulkdata.csv):
 
 bulk-add would add overwrites to the overwrite file, where bulk-remove would remove matching overwrites from the overwrite file.
 
-Table after adding the bulk overwrites above:
+```sh
+overwrite mydata.csv bulk-add bulkdata.csv
+select mydata.csv --apply-overwrites
+```
+Output:
 | Arabian 	       | Fertile Crescent | South Caucasus |
 | ---------------- | ---------------- | -------------- |
 | Saudi Arabia     | Palestine	      | Armenia        |
@@ -122,7 +126,11 @@ Table after adding the bulk overwrites above:
 | Saudi Arabia     | Jordan		      |   	           |
 | Kuwait 	       |       		      | 	           |
 
-If we now use the list command to display all of the overwrites after running bulk-add, the output would look like this (corresponds to the bulk overwrites file):
+Now we can list the overwrites
+```sh
+overwrite mydata.csv list
+```
+Output:
 ```
 row,column,value,timestamp,author
 1,2,Saudi Arabia,1733283235,
@@ -135,8 +143,15 @@ row,column,value,timestamp,author
 3,4,Azerbaijan,1733285510,
 ```
 
-If bulk remove was applied on the new overwrites, it would remove each of the new overwrites, leaving an empty overwrite table.
-
+Applying bulk-remove
+```sh
+overwrite mydata.csv bulk-remove bulkdata.csv
+overwrite mydata.csv list
+```
+Output:
+```
+row,column,value,timestamp,author
+```
 
 ### Basic Overwrite operations
 
@@ -145,8 +160,9 @@ To add an overwrite entry that changes the value in cell B2:
 To add a value:
 ```sh
 overwrite mydata.csv add B2 "Syria"
+select mydata.csv --apply-overwrites
 ```
-The table above after adding this overwrite:
+Output:
 | Arabian 	           | Fertile Crescent | South Caucasus |
 | -------------------- | ------------     | -------------- |
 | Kuwait               | Syria   	      | Armenia        |
@@ -160,14 +176,26 @@ The table above after adding this overwrite:
 To remove the added value:
 ```sh
 overwrite mydata.csv remove B2
+select mydata.csv --apply-overwrites
 ```
-The table would then be the same as the original table.
+Output:
+| Arabian 	           | Fertile Crescent | South Caucasus |
+| -------------------- | ------------     | -------------- |
+| Kuwait               | Iraq   	      | Armenia        |
+| Oman   	           | Jordan   	      | Azerbaijan     |
+| Qatar     	       | Lebanon   	      | Georgia        |
+| Yemen   	           | Palestine        |	               |
+| Bahrain   	       | Syria   	      |  	           |
+| Saudi Arabia         | Israel   	      |   	           |
+| United Arab Emirates |       		      | 	           |
 
-To force add a value, even if there is already a value in that cell:
+To force add a value, even if there is already a value in that cell.
+This overwrites the original value in B2 with the new selected value.
 ```sh
 overwrite mydata.csv add B2 "Lebanon" --force
+select mydata.csv --apply-overwrites
 ```
-After applying this overwrite:
+Output:
 | Arabian 	           | Fertile Crescent | South Caucasus |
 | -------------------- | ------------     | -------------- |
 | Kuwait               | Lebanon   	      | Armenia        |
@@ -177,14 +205,14 @@ After applying this overwrite:
 | Bahrain   	       | Syria   	      |  	           |
 | Saudi Arabia         | Israel   	      |   	           |
 | United Arab Emirates |       		      | 	           |
-This overwrites the original value in B2 with the new selected value.
 
 To remove/add a value, depending on the old value at the cell position.
 This will only trigger if the existing value is "Azerbaijan":
 ```sh
 overwrite mydata.csv add C3 "India" --old-value "Azerbaijan"
+select mydata.csv --apply-overwrites
 ```
-After applying this overwrite:
+Output:
 | Arabian 	           | Fertile Crescent | South Caucasus |
 | -------------------- | ------------     | -------------- |
 | Kuwait               | Iraq   	      | Armenia        |
@@ -198,15 +226,27 @@ After applying this overwrite:
 Alternatively, if the old value was not the same as the value in the table.
 ```sh
 overwrite mydata.csv add C3 "Pakistan" --old-value "Armenia"
+select mydata.csv --apply-overwrites
 ```
-The table would then not change.
+The output would remain the same, as no values would be changed.
 
 To remove all overwrites and delete the SQLite file:
 ```sh
 overwrite mydata.csv remove --all
+select mydata.csv --apply-overwrites
 ```
-The table will then revert to the original state, and the SQLite file would be removed. The CSV file would look like
-the original one above.
+Output:
+| Arabian 	           | Fertile Crescent | South Caucasus |
+| -------------------- | ------------     | -------------- |
+| Kuwait               | Iraq   	      | Armenia        |
+| Oman   	           | Jordan   	      | Azerbaijan     |
+| Qatar     	       | Lebanon   	      | Georgia        |
+| Yemen   	           | Palestine        |	               |
+| Bahrain   	       | Syria   	      |  	           |
+| Saudi Arabia         | Israel   	      |   	           |
+| United Arab Emirates |       		      | 	           |
+The table now looks like the original table.
+
 
 ## File Storage
 
