@@ -265,20 +265,24 @@ struct zsv_opts {
   char malformed_utf8_replace;
 
   /**
-   * `property_overrides` is a bitfield of ZSV_OPT_PROPERTY_OVERRIDE_xxx
-   * which, if set, indicates that the value of the related option in this
-   * zsv_opts structure should override any default value such as might be
-   * saved in an input file property
+   * `overrides` is a bitfield that indicates what ZSV options, if any, were
+   * specifically set in the command invocation and is used to ensure
+   * that option values set in the command invocation take priority over
+   * default values, or values saved in related property values such as
+   * .zsv/data/<filename>/props.json
    *
    * For example, if a file has a saved header row span of 2, but the
    * command-line arguments explicitly included `--header-row-span 3`,
-   * then setting header_span to 3 and setting property_overrides to
-   * ZSV_OPT_PROPERTY_OVERRIDE_HEADER_SPAN ensures that the value of 3
-   * is always used
+   * then setting header_span to 3 and setting overrides.header_row_span
+   * ensures that the value of 3 is used
    */
-#define ZSV_OPT_PROPERTY_OVERRIDE_HEADER_SPAN 1
-#define ZSV_OPT_PROPERTY_OVERRIDE_SKIP_HEAD 2
-  unsigned int property_overrides;
+  struct {
+    unsigned char header_row_span : 1;
+    unsigned char skip_head : 1;
+    unsigned char max_column_count : 1;
+    unsigned char malformed_utf8_replacement : 1;
+    unsigned char _ : 4;
+  } option_overrides;
 
 #ifdef ZSV_EXTRAS
   struct {

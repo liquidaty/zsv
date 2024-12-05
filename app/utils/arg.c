@@ -293,9 +293,13 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, co
     }
     if (processed && opts_out) {
       if (arg == 'R')
-        opts_out->property_overrides |= ZSV_OPT_PROPERTY_OVERRIDE_SKIP_HEAD;
+        opts_out->option_overrides.skip_head = 1;
       else if (arg == 'd')
-        opts_out->property_overrides |= ZSV_OPT_PROPERTY_OVERRIDE_HEADER_SPAN;
+        opts_out->option_overrides.header_row_span = 1;
+      else if (arg == 'c')
+        opts_out->option_overrides.max_column_count = 1;
+      else if (arg == 'u')
+        opts_out->option_overrides.malformed_utf8_replacement = 1;
     }
   }
 
