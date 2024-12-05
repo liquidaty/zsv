@@ -122,7 +122,7 @@ Table after adding the bulk overwrites above:
 | Saudi Arabia     | Jordan		      |   	           |
 | Kuwait 	       |       		      | 	           |
 
-If we now use the list command to display all of the overwrites after running bulk-add, the output would like like this:
+If we now use the list command to display all of the overwrites after running bulk-add, the output would look like this (corresponds to the bulk overwrites file):
 ```
 row,column,value,timestamp,author
 1,2,Saudi Arabia,1733283235,
@@ -167,9 +167,20 @@ To force add a value, even if there is already a value in that cell:
 ```sh
 overwrite mydata.csv add B2 "Lebanon" --force
 ```
+After applying this overwrite:
+| Arabian 	           | Fertile Crescent | South Caucasus |
+| -------------------- | ------------     | -------------- |
+| Kuwait               | Lebanon   	      | Armenia        |
+| Oman   	           | Jordan   	      | India          |
+| Qatar     	       | Lebanon   	      | Georgia        |
+| Yemen   	           | Palestine        |	               |
+| Bahrain   	       | Syria   	      |  	           |
+| Saudi Arabia         | Israel   	      |   	           |
+| United Arab Emirates |       		      | 	           |
+This overwrites the original value in B2 with the new selected value.
 
 To remove/add a value, depending on the old value at the cell position.
-This will only trigger if the existing value is "Lebanon":
+This will only trigger if the existing value is "Azerbaijan":
 ```sh
 overwrite mydata.csv add C3 "India" --old-value "Azerbaijan"
 ```
