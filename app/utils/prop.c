@@ -187,13 +187,13 @@ struct zsv_file_properties zsv_cache_load_props(const char *data_filepath, struc
   if (tmp.stat == zsv_status_ok) {
     // warn if the loaded properties conflict with command-line options
     if (fp->skip_specified) {
-      if (opts && (opts->property_overrides & ZSV_OPT_PROPERTY_OVERRIDE_SKIP_HEAD))
+      if (opts && opts->option_overrides.skip_head && opts->rows_to_ignore != fp->skip)
         fprintf(stderr, "Warning: file property 'skip-head' overridden by command option\n");
       else if (opts)
         opts->rows_to_ignore = fp->skip;
     }
     if (fp->header_span_specified) {
-      if (opts && (opts->property_overrides & ZSV_OPT_PROPERTY_OVERRIDE_HEADER_SPAN))
+      if (opts && opts->option_overrides.header_row_span && opts->header_span != fp->header_span)
         fprintf(stderr, "Warning: file property 'header-row-span' overridden by command option\n");
       else if (opts)
         opts->header_span = fp->header_span;

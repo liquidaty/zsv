@@ -504,6 +504,8 @@ char havearg(const char *arg, const char *form1, size_t min_len1, const char *fo
 
 static struct builtin_cmd *find_builtin(const char *cmd_name) {
   int builtin_cmd_count = sizeof(builtin_cmds) / sizeof(*builtin_cmds);
+  if (!strcmp(cmd_name, "-h") || !strcmp(cmd_name, "--help"))
+    cmd_name = "help";
   for (int i = 0; i < builtin_cmd_count; i++)
     if (havearg(cmd_name, builtin_cmds[i].name, 0, 0, 0))
       return &builtin_cmds[i];
