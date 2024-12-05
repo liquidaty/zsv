@@ -55,7 +55,7 @@ static int main_help(int argc, const char *argv[]) {
     "  -0,--header-row <header> : insert the provided CSV as the first row (in position 0)",
     "                             e.g. --header-row 'col1,col2,\"my col 3\"'",
 #ifdef ZSV_EXTRAS
-    "  -1,--apply-overwrites    : automatically apply cached overwrites",
+    "  -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command",
 #endif
     "  -v,--verbose             : verbose output",
     "",
