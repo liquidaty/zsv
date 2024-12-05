@@ -290,6 +290,10 @@ OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${BUILD_DIR}/objs/utils/json.o ${SQLITE
 MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -I${JQ_INCLUDE_DIR} ${SQLITE_EXT_INCLUDE}
 MORE_LIBS+=${JQ_LIB} ${LDFLAGS_JQ}
 
+#OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${BUILD_DIR}/objs/utils/json.o
+#MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
+#MORE_LIBS+=
+
 help:
 	@echo "To build: ${MAKE} [DEBUG=1] [STATIC_BUILD=1] [clean] [clean-all] [BINDIR=${BINDIR}] [JQ_PREFIX=/usr/local] <install|all|install-util-lib|test>"
 	@echo
@@ -312,6 +316,9 @@ uninstall:
 	rm -rf ${ZSV}
 
 ZSV_UTIL_A=${LIBDIR}/libzsvutil.a
+
+${ZSV_UTIL_A}:SQLITE_EXT=
+${ZSV_UTIL_A}:SQLITE_EXT_INCLUDE=
 ${ZSV_UTIL_A}: ${BUILD_DIR}/objs/utils/util.a
 	@mkdir -p `dirname $@`
 	cp -p $< $@
