@@ -124,6 +124,7 @@ jobs:
         os: [ubuntu-20.04, macos-13, macos-14]
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -351,6 +352,7 @@ jobs:
   ci-bsd:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -415,6 +417,7 @@ jobs:
   ci-mingw:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -519,6 +522,7 @@ jobs:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-latest
     container: alpine:latest
+    timeout-minutes: 15
 
     outputs:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -646,6 +650,7 @@ jobs:
   ci-wasm:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
