@@ -120,3 +120,5 @@ zsvsheet_status zsvsheet_register_command(int ch, const char *long_name,
 enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
                                                   struct zsvsheet_buffer_transformation_opts opts);
 #endif
+
+const struct zsvsheet_buffer_data zsvsheet_buffer_info(zsvsheet_buffer_t buff);

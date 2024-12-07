@@ -111,8 +111,8 @@ zsvsheet_status zsvsheet_buffer_get_selected_cell(zsvsheet_buffer_t h, struct zs
   struct zsvsheet_ui_buffer *uib = h;
   if (!uib)
     return zsvsheet_status_error;
-  rc->row = uib->cursor_row + uib->input_offset.row;
-  rc->col = uib->cursor_col + uib->input_offset.col;
+  rc->row = uib->cursor_row + uib->input_offset.row + uib->buff_offset.row;
+  rc->col = uib->cursor_col + uib->input_offset.col + uib->buff_offset.row;
   return zsvsheet_status_ok;
 }
 
@@ -184,4 +184,13 @@ struct zsvsheet_buffer_info zsvsheet_buffer_get_info(zsvsheet_buffer_t h) {
   }
 
   return info;
+}
+
+struct zsvsheet_buffer_data zsvsheet_buffer_info(zsvsheet_buffer_t h) {
+  struct zsvsheet_buffer_data d = {0};
+  struct zsvsheet_ui_buffer *b = h;
+  if (b) {
+    d.has_row_num = b->has_row_num;
+  }
+  return d;
 }

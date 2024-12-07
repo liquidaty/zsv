@@ -201,6 +201,15 @@ struct zsv_ext_callbacks {
   zsvsheet_buffer_t (*ext_sheet_buffer_prior)(zsvsheet_buffer_t b);
 
   /**
+   * Get info about a buffer
+   */
+  struct zsvsheet_buffer_data {
+    unsigned char has_row_num : 1;
+    unsigned char _ : 7;
+  };
+  struct zsvsheet_buffer_data (*ext_sheet_buffer_info)(zsvsheet_buffer_t);
+
+  /**
    * Get the filename associated with a buffer
    */
   const char *(*ext_sheet_buffer_filename)(zsvsheet_buffer_t);
