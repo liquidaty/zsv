@@ -169,8 +169,8 @@ struct zsv_opts zsvsheet_buffer_get_zsv_opts(zsvsheet_buffer_t h) {
  * are updated by background threads and may be stale upon return. However they only ever
  * transition from false to true.
  */
-struct zsvsheet_buffer_info zsvsheet_buffer_get_info(zsvsheet_buffer_t h) {
-  struct zsvsheet_buffer_info info = {0};
+struct zsvsheet_buffer_info_internal zsvsheet_buffer_info_internal(zsvsheet_buffer_t h) {
+  struct zsvsheet_buffer_info_internal info = {0};
 
   if (h) {
     struct zsvsheet_ui_buffer *b = h;

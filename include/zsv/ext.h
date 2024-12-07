@@ -85,6 +85,11 @@ typedef enum zsv_ext_status (*zsv_ext_main)(zsv_execution_context ctx, int argc,
  * For a description of each callback, see the corresponding zsv_-prefixed
  * function in zsv.h
  */
+struct zsvsheet_buffer_data {
+  unsigned char has_row_num : 1;
+  unsigned char _ : 7;
+};
+
 struct zsv_ext_callbacks {
   void (*set_row_handler)(zsv_parser handle, void (*row)(void *ctx));
   void (*set_context)(zsv_parser handle, void *ctx);
@@ -203,10 +208,6 @@ struct zsv_ext_callbacks {
   /**
    * Get info about a buffer
    */
-  struct zsvsheet_buffer_data {
-    unsigned char has_row_num : 1;
-    unsigned char _ : 7;
-  };
   struct zsvsheet_buffer_data (*ext_sheet_buffer_info)(zsvsheet_buffer_t);
 
   /**
