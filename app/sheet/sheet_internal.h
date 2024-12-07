@@ -25,7 +25,7 @@ struct zsvsheet_display_dimensions {
   size_t footer_span;
 };
 
-struct zsvsheet_buffer_info {
+struct zsvsheet_buffer_info_internal {
   unsigned char index_started : 1;
   unsigned char index_ready : 1;
   unsigned char write_in_progress : 1;
