@@ -731,7 +731,7 @@ test-sheet-13: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv
 	set -x
 	${TEST_INIT}
 	echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	(tmux new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "?" "/" "f" && \
 	sleep 0.5 && \
