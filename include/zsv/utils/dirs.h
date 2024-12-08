@@ -38,6 +38,16 @@ size_t zsv_get_config_dir(char *buff, size_t buffsize, const char *prefix);
 size_t zsv_get_executable_path(char *buff, size_t buffsize);
 
 /**
+ * Get current user's home dir, without trailing slash
+ * On win, any backslashes are replaced with fwd slash
+ *   ex: zsv_get_home_dir(char[MAX_PATH], MAX_PATH)
+ * returns 0 if no home dir could be found
+ * returns > 0 and < bufflen on success
+ * returns > 0 and >= bufflen if buffer was too small
+ */
+int zsv_get_home_dir(char *buff, size_t bufflen);
+
+/**
  * Check if a directory exists
  * return true (non-zero) or false (zero)
  */
