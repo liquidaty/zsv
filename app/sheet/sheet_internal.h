@@ -13,11 +13,6 @@ enum zsvsheet_priv_status {
   //  zsvsheet_priv_status_duplicate
 };
 
-struct zsvsheet_rowcol {
-  size_t row;
-  size_t col;
-};
-
 struct zsvsheet_input_dimensions {
   size_t col_count;
   size_t row_count;
@@ -28,6 +23,14 @@ struct zsvsheet_display_dimensions {
   size_t columns;
   size_t header_span;
   size_t footer_span;
+};
+
+struct zsvsheet_buffer_info_internal {
+  unsigned char index_started : 1;
+  unsigned char index_ready : 1;
+  unsigned char write_in_progress : 1;
+  unsigned char write_done : 1;
+  unsigned char _ : 4;
 };
 
 #endif

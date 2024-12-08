@@ -112,7 +112,7 @@ static char is_select_sql(const char *s) {
 #include "sql_internal.c"
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   /**
    * We need to pass the following data to the sqlite3 virtual table code:
    * a. zsv parser options indicated in the cmd line
@@ -188,15 +188,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
             err = 1;
           }
         }
-      } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
-        if (!(++arg_i < argc)) {
-          fprintf(stderr, "option %s requires a filename\n", arg);
-          err = 1;
-        } else if (!(writer_opts.stream = fopen(argv[arg_i], "wb"))) {
-          fprintf(stderr, "Could not open for writing: %s\n", argv[arg_i]);
-          err = 1;
-        }
-      } else if (!strcmp(arg, "--memory"))
+      } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output"))
+        writer_opts.output_path = zsv_next_arg(++arg_i, argc, argv, &err);
+      else if (!strcmp(arg, "--memory"))
         data.in_memory = 1;
       else if (!strcmp(arg, "-b"))
         writer_opts.with_bom = 1;
@@ -281,11 +275,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     }
 
-    if (f) {
+    zsv_csv_writer cw = zsv_writer_new(&writer_opts);
+    if (f && cw) {
       fclose(f); // to do: don't open in the first place
       f = NULL;
 
-      zsv_csv_writer cw = zsv_writer_new(&writer_opts);
       unsigned char cw_buff[1024];
       zsv_writer_set_temp_buff(cw, cw_buff, sizeof(cw_buff));
 
@@ -296,11 +290,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       if (zdb && zdb->rc == SQLITE_OK) {
         const char *csv_filename = tmpfn ? (const char *)tmpfn : data.input_filename;
 
-        // for simplicity, we assume the same opts, custom_prop_handler and opts_used for every input
+        // for simplicity, we assume the same opts and custom_prop_handler for every input
         // it may be desirable later to make this customizable for each input
-        if (zsv_sqlite3_add_csv(zdb, csv_filename, opts, custom_prop_handler, opts_used) == SQLITE_OK) {
+        if (zsv_sqlite3_add_csv(zdb, csv_filename, opts, custom_prop_handler) == SQLITE_OK) {
           for (struct string_list *sl = data.more_input_filenames; sl; sl = sl->next)
-            if (zsv_sqlite3_add_csv(zdb, sl->value, opts, custom_prop_handler, opts_used) != SQLITE_OK)
+            if (zsv_sqlite3_add_csv(zdb, sl->value, opts, custom_prop_handler) != SQLITE_OK)
               break;
         }
 
@@ -333,7 +327,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
               err = 1;
             }
           }
-          if (!err) {
+          if (!err && stmt) {
             struct string_list **next_joined_column_name = &data.join_column_names;
             int col_count = sqlite3_column_count(stmt);
             for (char *ix_str = data.join_indexes; !err && ix_str && *ix_str && *(++ix_str);
@@ -411,6 +405,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           if (err != SQLITE_OK)
             fprintf(stderr, "%s:\n  %s\n (or bad CSV/utf8 input)\n\n", sqlite3_errstr(err), my_sql);
           else {
+
             int col_count = sqlite3_column_count(stmt);
 
             // write header row
@@ -435,12 +430,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           fprintf(stderr, "Error: %s\n", zdb->err_msg);
         else if (!zdb->db)
           fprintf(stderr, "Error (unable to open db, code %i): %s\n", zdb->rc, sqlite3_errstr(zdb->rc));
-        else if (zdb->rc)
+        else if (zdb->rc != SQLITE_OK)
           fprintf(stderr, "Error (code %i): %s\n", zdb->rc, sqlite3_errstr(zdb->rc));
         else
           err = 0;
 
-        zsv_writer_delete(cw);
         zsv_sqlite3_db_delete(zdb);
       }
     }
@@ -448,6 +442,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       fclose(f);
     zsv_sql_finalize(&data);
     zsv_sql_cleanup(&data);
+    zsv_writer_delete(cw);
 
     if (tmpfn) {
       unlink(tmpfn);

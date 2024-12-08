@@ -588,8 +588,9 @@ test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-she
 
 test-sheet-cleanup:
 	@rm -f tmux-*.log
+	@tmux kill-server || printf ''
 
-test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand
+test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand test-sheet-prop-cmd-opt
 	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null; done && ${TEST_PASS} || ${TEST_FAIL})
 
 TMUX_TERM=xterm-256color
@@ -603,7 +604,7 @@ test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	tmux send-keys -t $@ "${PREFIX} $< worldcitiespop_mil.csv" ENTER && \
 	sleep 0.5 && \
 	tmux -v capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
-	tmux -v send-keys -t $@ "q" && \
+	tmux -v send-keys -t $@ "q" "exit" && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (for x in `ls tmux-*.log` ; do echo "Log $$x:" && cat $$x ; done && ${TEST_FAIL}))
 
 test-sheet-2: ${BUILD_DIR}/bin/zsv_sheet${EXE}
@@ -652,13 +653,13 @@ test-sheet-6: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
 
 test-sheet-7: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
-	sleep 0.5 && \
+	sleep 1 && \
 	tmux send-keys -t $@ "G" "g" "g" "C-u" "/" "1234" "Enter" && \
 	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
@@ -671,7 +672,7 @@ test-sheet-8: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@(tmux new-session -x 160 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "f" "e" "Enter" && \
-	sleep 0.5 && \
+	sleep 1 && \
 	tmux send-keys -t $@ "G" "C-u" "k" && \
 	sleep 0.5 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
@@ -682,7 +683,7 @@ test-sheet-9: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
-	sleep 0.5 && \
+	sleep 1 && \
 	tmux send-keys -t $@ "G" && \
 	tmux send-keys -t $@ -N 4096 "k" && \
 	sleep 2 && \
@@ -706,8 +707,8 @@ test-sheet-11: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 50 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
-	sleep 0.5 && \
-	tmux send-keys -t $@ -N 21 "C-d" && \
+	sleep 1 && \
+	tmux send-keys -t $@ -N 11 "C-d" && \
 	sleep 1 && \
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux send-keys -t $@ "q" && \
@@ -803,3 +804,19 @@ test-sheet-subcommand-filter-file-argument: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out  && \
 	tmux send-keys -t $@ "q" && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
+
+test-sheet-prop-cmd-opt: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_prop${EXE}
+	@echo "TO DO: test-sheet-prop-cmd-opt"
+#	@${TEST_INIT}
+#	@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} ${TEST_DATA_DIR}/echo-prop.csv --header-row-span 2 > /dev/null
+#	@tmux kill-session 2>/dev/null >/dev/null || printf ''
+#	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+#	@tmux -v new-session -x 80 -y 5 -d -s $@
+#	@sleep 0.5
+#	@tmux send-keys -t $@ "${PREFIX} $< ${TEST_DATA_DIR}/echo-prop.csv" ENTER
+#	@sleep 0.1
+#	@tmux send-keys -t $@ "f" "A" Enter
+#	@sleep 0.5
+#	@tmux -v capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out
+#	@tmux send-keys -t $@ "q"
+#	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL})

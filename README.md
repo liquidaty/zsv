@@ -16,7 +16,7 @@ lib only:
 [npm-url]: https://npmjs.org/package/zsv-lib
 [npm-version-image]: https://badgen.net/npm/v/zsv-lib
 
-Online playground: <https://liquidaty.github.io/zsv>
+Playground (without `sheet` viewer command): https://liquidaty.github.io/zsv
 
 zsv+lib is a fast CSV parser library and extensible command-line utility. It
 achieves high performance using SIMD operations, [efficient memory
@@ -28,9 +28,9 @@ The ZSV CLI can be compiled to virtually any target, including
 direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3
 conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste`, `overwrite` and more.
 
-The ZSV CLI also includes `sheet`, an in-console interactive grid viewer (TO DO:
-that can be extended with your custom code for manipulating and) for viewing
-data:
+The ZSV CLI also includes `sheet`, an in-console interactive grid viewer that includes
+basic navigation, filtering [[, data editing and pivot table with drill down]],
+and that supports custom extensions:
 
 <img src="https://github.com/user-attachments/assets/c2ae32a3-48c4-499d-8ef7-7748687bd24f" width="50%">
 
@@ -39,6 +39,9 @@ Pre-built CLI packages are available via `brew` and `nuget`.
 A pre-built library package is available for Node (`npm install zsv-lib`).
 Please note, this package is still in alpha and currently only exposes a small
 subset of the zsv library capabilities. More to come.
+
+An [online playground](https://liquidaty.github.io/zsv) is available as well
+(without the `sheet` feature due to browser limitations)
 
 If you like zsv+lib, do not forget to give it a star! 🌟
 
@@ -108,6 +111,7 @@ that implements the expected
     `jq`, `prop`, `rm`
   - easily [convert between CSV/JSON/sqlite3](docs/csv_json_sqlite.md)
   - [compare multiple files](docs/compare.md)
+  - [overwrite cells in files](docs/overwrite.md)
 - CLI is easy to extend/customize with a few lines of code via modular plug-in
   framework. Just write a few custom functions and compile into a distributable
   DLL that any existing zsv installation can use.

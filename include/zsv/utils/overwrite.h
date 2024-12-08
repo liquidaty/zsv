@@ -5,6 +5,9 @@
 
 struct zsv_overwrite_ctx {
   char *src;
+  size_t author_ix;
+  size_t timestamp_ix;
+  size_t old_value_ix;
   // enum zsv_overwrite_type type;
   enum zsv_status (*next)(void *ctx, struct zsv_overwrite_data *odata);
   struct {
@@ -17,6 +20,7 @@ struct zsv_overwrite_ctx {
     sqlite3_stmt *stmt; // select row, column, overwrite
     const char *sql;
   } sqlite3;
+  size_t row_ix;
 };
 
 /**

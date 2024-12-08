@@ -36,5 +36,5 @@ void zsv_sqlite3_db_delete(struct zsv_sqlite3_db *zdb);
  *              if NULL, csvModule will rely on any previously saved opts/custom_prop_handler
  */
 int zsv_sqlite3_add_csv(struct zsv_sqlite3_db *zdb, const char *csv_filename, struct zsv_opts *opts,
-                        struct zsv_prop_handler *custom_prop_handler, const char *opts_used);
+                        struct zsv_prop_handler *custom_prop_handler);
 #endif

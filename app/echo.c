@@ -135,7 +135,7 @@ static void zsv_echo_cleanup(struct zsv_echo_data *data) {
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   if (argc < 1 || (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")))) {
     zsv_echo_usage();
     return 0;
@@ -151,13 +151,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     const char *arg = argv[arg_i];
     if (!strcmp(arg, "-b"))
       writer_opts.with_bom = 1;
-    else if (!strcmp(arg, "-o")) {
-      const char *output_filename = zsv_next_arg(++arg_i, argc, argv, &err);
-      if (output_filename && !err) {
-        if (!(writer_opts.stream = fopen(output_filename, "wb")))
-          perror(output_filename);
-      }
-    } else if (!strcmp(arg, "--contiguous"))
+    else if (!strcmp(arg, "-o"))
+      writer_opts.output_path = zsv_next_arg(++arg_i, argc, argv, &err);
+    else if (!strcmp(arg, "--contiguous"))
       data.contiguous = 1;
     else if (!strcmp(arg, "--trim-columns"))
       data.trim_columns = 1;
@@ -243,8 +239,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       tmp_opts.row_handler = zsv_echo_get_max_nonempty_cols;
       tmp_opts.stream = data.in;
       tmp_opts.ctx = &data;
-      if (zsv_new_with_properties(&tmp_opts, custom_prop_handler, data.input_path, opts_used, &data.parser) !=
-          zsv_status_ok) {
+      if (zsv_new_with_properties(&tmp_opts, custom_prop_handler, data.input_path, &data.parser) != zsv_status_ok) {
         zsv_echo_cleanup(&data);
         return 1;
       } else {
@@ -278,7 +273,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   if (data.csv_writer && !err) {
-    if (zsv_new_with_properties(&opts, custom_prop_handler, data.input_path, opts_used, &data.parser) != zsv_status_ok)
+    if (zsv_new_with_properties(&opts, custom_prop_handler, data.input_path, &data.parser) != zsv_status_ok)
       err = 1;
     else {
       // create a local csv writer buff for faster performance

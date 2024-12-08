@@ -99,7 +99,10 @@ typedef void (*zsv_completed_callback)(void *ctx, int code);
 struct zsv_overwrite_data {
   size_t row_ix; // 0-based
   size_t col_ix; // 0-based
+  size_t timestamp;
   struct zsv_cell val;
+  struct zsv_cell author;
+  struct zsv_cell old_value;
   char have; // 1 = we have unprocessed overwrites
 };
 
@@ -261,6 +264,26 @@ struct zsv_opts {
 #define ZSV_MALFORMED_UTF8_REMOVE -1
   char malformed_utf8_replace;
 
+  /**
+   * `overrides` is a bitfield that indicates what ZSV options, if any, were
+   * specifically set in the command invocation and is used to ensure
+   * that option values set in the command invocation take priority over
+   * default values, or values saved in related property values such as
+   * .zsv/data/<filename>/props.json
+   *
+   * For example, if a file has a saved header row span of 2, but the
+   * command-line arguments explicitly included `--header-row-span 3`,
+   * then setting header_span to 3 and setting overrides.header_row_span
+   * ensures that the value of 3 is used
+   */
+  struct {
+    unsigned char header_row_span : 1;
+    unsigned char skip_head : 1;
+    unsigned char max_column_count : 1;
+    unsigned char malformed_utf8_replacement : 1;
+    unsigned char _ : 4;
+  } option_overrides;
+
 #ifdef ZSV_EXTRAS
   struct {
     /**
@@ -316,7 +339,7 @@ struct zsv_opts {
    */
   struct zsv_opt_overwrite overwrite;
 
-#endif
+#endif /* ZSV_EXTRAS */
 };
 
 #endif

@@ -44,7 +44,7 @@ env:
 
 jobs:
   tag:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     outputs:
       TAG: ${{ steps.tag.outputs.TAG }}
@@ -75,7 +75,7 @@ jobs:
         ./scripts/ci-run-clang-format.sh
 
   cppcheck:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout
@@ -107,7 +107,7 @@ jobs:
         if-no-files-found: error
 
   shellcheck:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout
@@ -121,9 +121,10 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-14, ubuntu-20.04, macos-13]
+        os: [ubuntu-22.04, macos-13, macos-14]
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -350,7 +351,8 @@ jobs:
 
   ci-bsd:
     needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -414,7 +416,8 @@ jobs:
 
   ci-mingw:
     needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -517,8 +520,9 @@ jobs:
 
   ci-musl:
     needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container: alpine:latest
+    timeout-minutes: 15
 
     outputs:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -582,7 +586,7 @@ jobs:
 
   ghcr:
     needs: ci-musl
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     permissions:
       packages: write
@@ -645,7 +649,8 @@ jobs:
 
   ci-wasm:
     needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -657,7 +662,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Build (${{ env.AMD64_LINUX_WASM }})
+    - name: Update version in index.html
+      run: sed "s|__VERSION__|$TAG|g" -i playground/index.html
+
+    - name: Build with SIMD (${{ env.AMD64_LINUX_WASM }})
       env:
         PREFIX: ${{ env.AMD64_LINUX_WASM }}
         CC: emcc
@@ -672,7 +680,22 @@ jobs:
         emconfigure ./configure --enable-pic --disable-pie
         emmake make install NO_STDIN=1 NO_PLAYGROUND=0
         cp "$PREFIX"/bin/cli.em.{js,wasm} playground
-        sed "s|__VERSION__|$TAG|g" -i playground/index.html
+
+    - name: Build without SIMD (${{ env.AMD64_LINUX_WASM }})
+      env:
+        PREFIX: ${{ env.AMD64_LINUX_WASM }}
+        CC: emcc
+        MAKE: make
+        RUN_TESTS: false
+        CONFIGFILE: "config.emcc"
+        CROSS_COMPILING: "yes"
+        NO_THREADING: "1"
+        STATIC_BUILD: "1"
+      run: |
+        emconfigure ./configure --enable-pic --disable-pie
+        emmake make clean install NO_STDIN=1 NO_PLAYGROUND=0
+        mkdir -p playground/non-simd
+        cp "$PREFIX"/bin/cli.em.{js,wasm} playground/non-simd
 
     - name: Upload GitHub Pages artifacts
       uses: actions/upload-pages-artifact@v3
@@ -682,7 +705,7 @@ jobs:
   deploy-playground:
     if: ${{ github.ref_name == 'main' }}
     needs: ci-wasm
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     permissions:
       pages: write

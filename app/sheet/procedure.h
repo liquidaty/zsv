@@ -33,6 +33,7 @@ enum {
   zsvsheet_builtin_proc_subcommand,
   zsvsheet_builtin_proc_help,
   zsvsheet_builtin_proc_vim_g_key_binding_dmux,
+  zsvsheet_builtin_proc_newline,
 };
 
 #define ZSVSHEET_PROC_INVALID 0

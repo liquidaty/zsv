@@ -102,6 +102,39 @@ zsvsheet_screen_buffer_t zsvsheet_screen_buffer_new(size_t cols, struct zsvsheet
   return NULL;
 }
 
+enum zsvsheet_priv_status zsvsheet_screen_buffer_grow(zsvsheet_screen_buffer_t buff, size_t cols) {
+  size_t old_cols = buff->cols;
+  size_t rows = buff->opts.rows;
+  size_t cell_buff_len = buff->opts.cell_buff_len;
+  size_t old_row_len = old_cols * cell_buff_len;
+
+  if (!buff->opts.no_rownum_column)
+    cols++;
+
+  size_t row_len = cols * cell_buff_len;
+
+  assert(cols > old_cols);
+
+  void *old_data = buff->data;
+  void *data = calloc(rows, cols * cell_buff_len);
+  if (!data)
+    return zsvsheet_priv_status_memory;
+
+  for (size_t i = 0; i < rows; i++) {
+    size_t old_row_off = i * old_row_len;
+    size_t row_off = i * row_len;
+
+    memcpy((char *)data + row_off, (char *)old_data + old_row_off, old_row_len);
+  }
+
+  buff->data = data;
+  buff->cols = cols;
+
+  free(old_data);
+
+  return zsvsheet_priv_status_ok;
+}
+
 #ifndef UTF8_NOT_FIRST_CHAR
 #define UTF8_NOT_FIRST_CHAR(x) ((x & 0xC0) == 0x80)
 #endif

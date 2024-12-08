@@ -194,11 +194,13 @@ static void zsvsheet_priv_set_status(const struct zsvsheet_display_dimensions *d
 #include "sheet/handlers.c"
 #include "sheet/file.c"
 #include "sheet/usage.c"
+#include "sheet/transformation.c"
 
 struct zsvsheet_key_data *zsvsheet_key_handlers = NULL;
 struct zsvsheet_key_data **zsvsheet_next_key_handler = &zsvsheet_key_handlers;
 
 /* Common page movement function */
+// TO DO: get rid of di->header_span. Just always assume it is 1
 static zsvsheet_status zsvsheet_move_page(struct zsvsheet_display_info *di, bool up) {
   size_t current, target;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
@@ -389,9 +391,8 @@ static zsvsheet_status zsvsheet_open_file_handler(struct zsvsheet_proc_context *
     filename = prompt_buffer;
   }
 
-  const char *opts_used = NULL;
-  if ((err = zsvsheet_ui_buffer_open_file(filename, NULL, NULL, state->custom_prop_handler, opts_used,
-                                          di->ui_buffers.base, di->ui_buffers.current))) {
+  if ((err = zsvsheet_ui_buffer_open_file(prompt_buffer, NULL, state->custom_prop_handler, di->ui_buffers.base,
+                                          di->ui_buffers.current))) {
     if (err > 0)
       zsvsheet_priv_set_status(di->dimensions, 1, "%s: %s", filename, strerror(err));
     else if (err < 0)
@@ -404,16 +405,22 @@ no_input:
   return zsvsheet_status_ok;
 }
 
+#include "sheet/filter.c"
+
 static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx) {
   char prompt_buffer[256] = {0};
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_display_info *di = &state->display_info;
   struct zsvsheet_ui_buffer *current_ui_buffer = *state->display_info.ui_buffers.current;
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
+  struct zsvsheet_buffer_info_internal binfo = zsvsheet_buffer_info_internal(current_ui_buffer);
   int err;
   const char *filter;
 
-  if (!current_ui_buffer->filename)
+  if (binfo.write_in_progress && !binfo.write_done)
+    return zsvsheet_status_busy;
+
+  if (!zsvsheet_buffer_data_filename(current_ui_buffer))
     goto out;
 
   if (ctx->num_params > 0) {
@@ -427,26 +434,7 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
     filter = prompt_buffer;
   }
 
-  const char *data_filename = zsvsheet_buffer_data_filename(current_ui_buffer);
-  char is_filtered_file = !(data_filename == current_ui_buffer->filename);
-  struct zsv_opts *zsv_opts = is_filtered_file ? NULL : &current_ui_buffer->zsv_opts;
-  if ((err = zsvsheet_ui_buffer_open_file(data_filename, zsv_opts, filter, state->custom_prop_handler, NULL,
-                                          di->ui_buffers.base, di->ui_buffers.current))) {
-    if (err > 0)
-      zsvsheet_priv_set_status(di->dimensions, 1, "%s: %s", current_ui_buffer->filename, strerror(err));
-    else if (err < 0)
-      zsvsheet_priv_set_status(di->dimensions, 1, "Unexpected error");
-    else
-      zsvsheet_priv_set_status(di->dimensions, 1, "Not found: %s", prompt_buffer);
-    return zsvsheet_status_ignore;
-  }
-
-  struct zsvsheet_ui_buffer *new_ui_buffer = *state->display_info.ui_buffers.current;
-  if (is_filtered_file) {
-    // TO DO: move this into zsvsheet_ui_buffer_open_file()
-    free(new_ui_buffer->filename);
-    new_ui_buffer->filename = strdup(current_ui_buffer->filename);
-  }
+  return zsvsheet_filter_file(ctx, filter);
 out:
   return zsvsheet_status_ok;
 }
@@ -482,9 +470,11 @@ static zsvsheet_status zsvsheet_help_handler(struct zsvsheet_proc_context *ctx) 
   struct zsvsheet_ui_buffer_opts uibopts = {
     .buff_opts = &bopts,
     .filename = NULL,
+    .data_filename = NULL,
     .no_rownum_col_offset = 1,
+    .write_after_open = 0,
   };
-  struct zsvsheet_ui_buffer *uib;
+  struct zsvsheet_ui_buffer *uib = NULL;
   zsvsheet_screen_buffer_t buffer;
   enum zsvsheet_priv_status pstat;
   enum zsvsheet_status stat = zsvsheet_status_error;
@@ -540,10 +530,15 @@ static zsvsheet_status zsvsheet_help_handler(struct zsvsheet_proc_context *ctx) 
   goto out;
 
 free_buffer:
-  zsvsheet_screen_buffer_delete(buffer);
+  if (uib)
+    zsvsheet_ui_buffer_delete(uib);
+  else
+    zsvsheet_screen_buffer_delete(buffer);
 out:
   return stat;
 }
+
+#include "sheet/newline_handler.c"
 
 /* We do most procedures in one handler. More complex procedures can be
  * separated into their own handlers.
@@ -625,10 +620,11 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_find,           "find",   "Set a search term and jump to the first result after the cursor", zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_find_next,      "next",   "Jump to the next search result",                                  zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_resize,         "resize", "Resize the layout to fit new terminal dimensions",                zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_open_file,      "open",   "Open a another CSV file",                                         zsvsheet_open_file_handler  },
-  { zsvsheet_builtin_proc_filter,         "filter", "Hide rows that do not contain the specified text",                zsvsheet_filter_handler     },
+  { zsvsheet_builtin_proc_open_file,      "open",   "Open a another CSV file",                                         zsvsheet_open_file_handler    },
+  { zsvsheet_builtin_proc_filter,         "filter", "Hide rows that do not contain the specified text",                zsvsheet_filter_handler       },
   { zsvsheet_builtin_proc_subcommand,     "subcommand",  "Editor subcommand",                                          zsvsheet_subcommand_handler },
-  { zsvsheet_builtin_proc_help,           "help",   "Display a list of actions and key-bindings",                      zsvsheet_help_handler       },
+  { zsvsheet_builtin_proc_help,           "help",   "Display a list of actions and key-bindings",                      zsvsheet_help_handler         },
+  { zsvsheet_builtin_proc_newline,        "<Enter>","Follow hyperlink (if any)",                                       zsvsheet_newline_handler      },
   { -1, NULL, NULL, NULL }
 };
 /* clang-format on */
@@ -642,7 +638,7 @@ void zsvsheet_register_builtin_procedures(void) {
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     zsvsheet_usage();
     return zsv_status_ok;
@@ -680,8 +676,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   if (argc > 1) {
     const char *filename = argv[1];
-    if ((err = zsvsheet_ui_buffer_open_file(filename, optsp, NULL, custom_prop_handler, opts_used, &ui_buffers,
-                                            &current_ui_buffer))) {
+    if ((err = zsvsheet_ui_buffer_open_file(filename, optsp, custom_prop_handler, &ui_buffers, &current_ui_buffer))) {
       if (err > 0)
         perror(filename);
       else
@@ -725,20 +720,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   halfdelay(2); // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
                 //
   while (true) {
-    char *status_msg = NULL;
     ch = getch();
 
     handler_state.display_info.update_buffer = false;
-
-    pthread_mutex_lock(&current_ui_buffer->mutex);
-    status_msg = current_ui_buffer->status;
-    if (current_ui_buffer->index_ready &&
-        current_ui_buffer->dimensions.row_count != current_ui_buffer->index->row_count + 1) {
-      current_ui_buffer->dimensions.row_count = current_ui_buffer->index->row_count + 1;
-      handler_state.display_info.update_buffer = true;
-    }
-    pthread_mutex_unlock(&current_ui_buffer->mutex);
-
     zsvsheet_priv_set_status(&display_dims, 1, "");
 
     if (ch != ERR) {
@@ -749,19 +733,30 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         continue;
     }
 
-    if (handler_state.display_info.update_buffer && current_ui_buffer->filename) {
+    struct zsvsheet_ui_buffer *ub = current_ui_buffer;
+    pthread_mutex_lock(&ub->mutex);
+    if (ub->status)
+      zsvsheet_priv_set_status(&display_dims, 1, ub->status);
+    if (ub->write_progressed) {
+      handler_state.display_info.update_buffer = true;
+      ub->write_progressed = 0;
+    }
+    if (ub->index_ready && ub->dimensions.row_count != ub->index->row_count + 1) {
+      ub->dimensions.row_count = ub->index->row_count + 1;
+      handler_state.display_info.update_buffer = true;
+    }
+    pthread_mutex_unlock(&ub->mutex);
+
+    if (handler_state.display_info.update_buffer && zsvsheet_buffer_data_filename(ub)) {
       struct zsvsheet_opts zsvsheet_opts = {0};
-      if (read_data(&current_ui_buffer, NULL, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col,
-                    header_span, &zsvsheet_opts, custom_prop_handler)) {
+      if (read_data(&ub, NULL, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col, header_span,
+                    &zsvsheet_opts, custom_prop_handler)) {
         zsvsheet_priv_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
         continue;
       }
     }
 
-    if (status_msg)
-      zsvsheet_priv_set_status(&display_dims, 1, status_msg);
-
-    display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
+    display_buffer_subtable(ub, header_span, &display_dims);
   }
 
   endwin();

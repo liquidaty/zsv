@@ -312,33 +312,34 @@ static struct zsv_file_properties guess_properties(struct detect_properties_data
 static int detect_properties(const unsigned char *filepath, struct zsv_file_properties *result,
                              int64_t detect_headerspan,   /* reserved for future use */
                              int64_t detect_rows_to_skip, /* reserved for future use */
-                             struct zsv_opts *opts) {
+                             const struct zsv_opts *optsp) {
   (void)(detect_headerspan);
   (void)(detect_rows_to_skip);
   struct detect_properties_data data = {0};
-  opts->row_handler = detect_properties_row;
-  opts->ctx = &data;
+  struct zsv_opts opts = *optsp;
+  opts.row_handler = detect_properties_row;
+  opts.ctx = &data;
   if (!strcmp((void *)filepath, "-"))
-    opts->stream = stdin;
+    opts.stream = stdin;
   else {
-    opts->stream = fopen((const char *)filepath, "rb");
-    if (!opts->stream) {
+    opts.stream = fopen((const char *)filepath, "rb");
+    if (!opts.stream) {
       perror((const char *)filepath);
       return 1;
     }
   }
 
-  opts->keep_empty_header_rows = 1;
-  data.parser = zsv_new(opts);
+  opts.keep_empty_header_rows = 1;
+  data.parser = zsv_new(&opts);
   while (!zsv_signal_interrupted && zsv_parse_more(data.parser) == zsv_status_ok)
     ;
   zsv_finish(data.parser);
   zsv_delete(data.parser);
 
-  fclose(opts->stream);
+  fclose(opts.stream);
   *result = guess_properties(&data);
-  result->header_span += opts->header_span;
-  result->skip += opts->rows_to_ignore;
+  result->header_span += opts.header_span;
+  result->skip += opts.rows_to_ignore;
 
   return 0;
 }
@@ -447,7 +448,7 @@ static int merge_and_save_properties(const unsigned char *filepath, char save, c
   else {
     struct zsv_opts zsv_opts = {0};
     struct zsv_prop_handler custom_prop_handler = {0};
-    struct zsv_file_properties fp = zsv_cache_load_props((const char *)filepath, &zsv_opts, &custom_prop_handler, NULL);
+    struct zsv_file_properties fp = zsv_cache_load_props((const char *)filepath, &zsv_opts, &custom_prop_handler);
     err = fp.stat;
     if (!err) {
       if (save && !overwrite) {
@@ -533,13 +534,13 @@ struct prop_opts {
   unsigned char _ : 3;
 };
 
-static int zsv_prop_execute_default(const unsigned char *filepath, struct zsv_opts zsv_opts, struct prop_opts opts) {
+static int zsv_prop_execute_default(const unsigned char *filepath, struct zsv_opts *zsv_opts, struct prop_opts opts) {
   int err = 0;
   struct zsv_file_properties fp = {0};
   if (opts.d >= 0 || opts.R >= 0 || opts.d == ZSV_PROP_ARG_REMOVE || opts.R == ZSV_PROP_ARG_REMOVE)
     opts.overwrite = 1;
   if (opts.d == ZSV_PROP_ARG_AUTO || opts.R == ZSV_PROP_ARG_AUTO) {
-    err = detect_properties(filepath, &fp, opts.d == ZSV_PROP_ARG_AUTO, opts.R == ZSV_PROP_ARG_AUTO, &zsv_opts);
+    err = detect_properties(filepath, &fp, opts.d == ZSV_PROP_ARG_AUTO, opts.R == ZSV_PROP_ARG_AUTO, zsv_opts);
   }
 
   if (!err) {
@@ -969,8 +970,8 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
         break;
       case zsv_prop_mode_default: {
         struct zsv_opts zsv_opts;
-        zsv_args_to_opts(m_argc, m_argv, &m_argc, m_argv, &zsv_opts, NULL);
-        err = zsv_prop_execute_default(filepath, zsv_opts, opts);
+        zsv_args_to_opts(m_argc, m_argv, &m_argc, m_argv, &zsv_opts);
+        err = zsv_prop_execute_default(filepath, &zsv_opts, opts);
       } break;
       }
     }
