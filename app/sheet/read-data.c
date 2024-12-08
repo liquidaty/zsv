@@ -235,7 +235,12 @@ static void *get_data_index(void *gdi) {
   pthread_mutex_unlock(&uib->mutex);
 
   char *ui_status;
-  asprintf(&ui_status, "%s(building index) ", old_ui_status ? old_ui_status : "");
+  /* I think there was a race between this print and a "? for help" which causes
+   * ci to fail. Once read-file is called the main thread displays its contents
+   * and this thread indexes the file. There is no synchronisation between the
+   * two so the status we end up with is random.
+   */
+  // asprintf(&ui_status, "%s(building index) ", old_ui_status ? old_ui_status : "");
 
   pthread_mutex_lock(&uib->mutex);
   uib->status = ui_status;
