@@ -391,7 +391,7 @@ static zsvsheet_status zsvsheet_open_file_handler(struct zsvsheet_proc_context *
     filename = prompt_buffer;
   }
 
-  if ((err = zsvsheet_ui_buffer_open_file(prompt_buffer, NULL, state->custom_prop_handler, di->ui_buffers.base,
+  if ((err = zsvsheet_ui_buffer_open_file(filename, NULL, state->custom_prop_handler, di->ui_buffers.base,
                                           di->ui_buffers.current))) {
     if (err > 0)
       zsvsheet_priv_set_status(di->dimensions, 1, "%s: %s", filename, strerror(err));
