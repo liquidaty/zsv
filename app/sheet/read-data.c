@@ -240,7 +240,7 @@ static void *get_data_index(void *gdi) {
    * and this thread indexes the file. There is no synchronisation between the
    * two so the status we end up with is random.
    */
-  //asprintf(&ui_status, "%s(building index) ", old_ui_status ? old_ui_status : "");
+  // asprintf(&ui_status, "%s(building index) ", old_ui_status ? old_ui_status : "");
 
   pthread_mutex_lock(&uib->mutex);
   uib->status = ui_status;
