@@ -780,3 +780,15 @@ test-sheet-prop-cmd-opt: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_p
 #	@tmux -v capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out
 #	@tmux send-keys -t $@ "q"
 #	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL})
+
+benchmark-sheet-index: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@if [ "${BIG_FILE}" = "none" ]; then \
+		echo "Need to set BIG_FILE to a CSV file; ideally 10GB+"; \
+	fi
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 50 -d -s "$@" "${PREFIX} $< ${BIG_FILE}" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ "G" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
