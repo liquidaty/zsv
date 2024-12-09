@@ -10,6 +10,7 @@
   - Open file: tab for autocomplete
   - View edits (cell highlight, status bar)
   - Edit file?
+  - Pivot and/or frequency table with drill-down
 - CI/CD:
   - use code signing to prevent os from quarantining by default
 
