@@ -637,6 +637,19 @@ void zsvsheet_register_builtin_procedures(void) {
   }
 }
 
+static void zsvsheet_check_buffer_worker_updates(struct zsvsheet_ui_buffer *ub,
+                                                 struct zsvsheet_display_dimensions *display_dims,
+                                                 struct zsvsheet_sheet_context *handler_state) {
+  pthread_mutex_lock(&ub->mutex);
+  if (ub->status)
+    zsvsheet_priv_set_status(display_dims, 1, ub->status);
+  if (ub->index_ready && ub->dimensions.row_count != ub->index->row_count + 1) {
+    ub->dimensions.row_count = ub->index->row_count + 1;
+    handler_state->display_info.update_buffer = true;
+  }
+  pthread_mutex_unlock(&ub->mutex);
+}
+
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
                                struct zsv_prop_handler *custom_prop_handler) {
   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
@@ -695,7 +708,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   cbreak();
   set_escdelay(30);
   struct zsvsheet_display_dimensions display_dims = get_display_dimensions(1, 1);
-  display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
 
   zsvsheet_register_builtin_procedures();
 
@@ -717,6 +729,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   zsvsheet_status status;
 
+  zsvsheet_check_buffer_worker_updates(current_ui_buffer, &display_dims, &handler_state);
+  display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
+
   halfdelay(2); // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
                 //
   while (true) {
@@ -734,14 +749,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
 
     struct zsvsheet_ui_buffer *ub = current_ui_buffer;
-    pthread_mutex_lock(&ub->mutex);
-    if (ub->status)
-      zsvsheet_priv_set_status(&display_dims, 1, ub->status);
-    if (ub->index_ready && ub->dimensions.row_count != ub->index->row_count + 1) {
-      ub->dimensions.row_count = ub->index->row_count + 1;
-      handler_state.display_info.update_buffer = true;
-    }
-    pthread_mutex_unlock(&ub->mutex);
+    zsvsheet_check_buffer_worker_updates(ub, &display_dims, &handler_state);
 
     if (handler_state.display_info.update_buffer && zsvsheet_buffer_data_filename(ub)) {
       struct zsvsheet_opts zsvsheet_opts = {0};
