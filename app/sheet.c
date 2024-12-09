@@ -381,14 +381,14 @@ static zsvsheet_status zsvsheet_open_file_handler(struct zsvsheet_proc_context *
   UNUSED(ctx);
 
   if (ctx->num_params > 0) {
-    filename = ctx->params[0].u.string;
+    filename = strdup(ctx->params[0].u.string);
   } else {
     if (!ctx->invocation.interactive)
       return zsvsheet_status_error;
     get_subcommand("File to open", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row);
     if (*prompt_buffer == '\0')
       goto no_input;
-    filename = prompt_buffer;
+    filename = strdup(prompt_buffer);
   }
 
   if ((err = zsvsheet_ui_buffer_open_file(filename, NULL, state->custom_prop_handler, di->ui_buffers.base,
