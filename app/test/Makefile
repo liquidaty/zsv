@@ -730,50 +730,37 @@ test-sheet-subcommand-open-file-prompt: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $<" && \
-	sleep 0.5 && \
+	${EXPECT} $@ blank && \
 	tmux send-keys -t $@ ":open" "Enter" && \
-	sleep 0.5 && \
+	${EXPECT} $@ open && \
 	tmux send-keys -t $@ "worldcitiespop_mil.csv" "Enter" && \
-	sleep 0.5 && \
-	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out  && \
-	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-subcommand-open-file-argument: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $<" && \
-	sleep 0.5 && \
+  ${EXPECT} $@ blank && \
 	tmux send-keys -t $@ ":open worldcitiespop_mil.csv" "Enter" && \
-	sleep 0.5 && \
-	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out  && \
-	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
-
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-subcommand-filter-file-prompt: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
-	sleep 0.5 && \
+  ${EXPECT} $@ blank && \
 	tmux send-keys -t $@ ":filter" "Enter" && \
-	sleep 0.5 && \
+	${EXPECT} $@ filter && \
 	tmux send-keys -t $@ "ireland" "Enter" && \
-	sleep 1.0 && \
-	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out  && \
-	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-subcommand-filter-file-argument: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
-	sleep 0.5 && \
+	${EXPECT} $@ blank && \
 	tmux send-keys -t $@ ":filter \"ireland\"" "Enter" && \
-	sleep 1.0 && \
-	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out  && \
-	tmux send-keys -t $@ "q" && \
-	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-prop-cmd-opt: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_prop${EXE}
 	@echo "TO DO: test-sheet-prop-cmd-opt"
