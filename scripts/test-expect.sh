@@ -9,9 +9,11 @@ else
   export STAGE=-"$2"
 fi
 export CAPTURE="${TMP_DIR}/$TARGET$STAGE".out
-EXPECTED="$(pwd)/expected/$TARGET$STAGE".out
+EXPECTED="$EXPECTED_PATH/$TARGET$STAGE".out
 export EXPECTED
 matched=false
+
+t=${EXPECT_TIMEOUT:-5}
 
 cleanup() {
   if $matched; then
@@ -33,7 +35,7 @@ trap cleanup INT TERM QUIT
 printf "\n%s, %s" "$TARGET" "${2:-}" >> "${TIMINGS_CSV}"
 
 set +e
-match_time=$(time -p timeout -k 6 5 "${script_dir}"/test-retry-capture-cmp.sh 2>&1)
+match_time=$(time -p timeout -k $(( t + 1 )) $t "${script_dir}"/test-retry-capture-cmp.sh 2>&1)
 status=$?
 set -e
 

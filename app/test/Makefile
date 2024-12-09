@@ -39,7 +39,7 @@ else
   EXE=.exe
 endif
 
-THIS_LIB_BASE=$(shell cd ../.. && pwd)
+export THIS_LIB_BASE=$(shell cd ../.. && pwd)
 CCBN=$(shell basename ${CC})
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 export TMP_DIR=${THIS_LIB_BASE}/tmp
@@ -86,7 +86,10 @@ else
   export CMP=cmp
 endif
 
+BIG_FILE ?= none
+EXPECT_TIMEOUT ?= 5
 EXPECT=../../scripts/test-expect.sh
+export EXPECTED_PATH=expected
 
 MAKE_BIN=$(notdir ${MAKE})
 
