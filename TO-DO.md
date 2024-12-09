@@ -13,6 +13,9 @@
   - Pivot and/or frequency table with drill-down
 - CI/CD:
   - use code signing to prevent os from quarantining by default
+- Documentation
+  - Review / update / fix errors (README and all other)
+  - Add intro + tutorial for each command (esp sheet)
 
 # Core Parser
 
