@@ -1,8 +1,21 @@
-# Next release
-- `overwrite` subcommand
+# v1.0 to do:
 - sheet
   - edit cell
-  - save buffer to file
+  - save buffer to file (with or without Row # column)
+  - bug fixes
+  - key bindings:
+    - align key bindings with vim
+    - add cmd to switch to emacs key bindings
+    - save sheet prefs in zsv.ini?
+  - Open file: tab for autocomplete
+  - View edits (cell highlight, status bar)
+  - Edit file?
+  - Pivot and/or frequency table with drill-down
+- CI/CD:
+  - use code signing to prevent os from quarantining by default
+- Documentation
+  - Review / update / fix errors (README and all other)
+  - Add intro + tutorial for each command (esp sheet)
 
 # Core Parser
 
@@ -18,39 +31,20 @@
 
 # CLI
 - add index-related parser options to general command-line options
-- change --overwrite-auto to --apply-overwrites
 - add `--all` option to `help` which will output all help messages for all commands (including extension commands)
 
 ---
 ## Performance
-
 Row indexing
 
 ---
 
 ## Sheet
-
-### Filtering
-- Correctly display row #s after filter
-  - Write row #s into temp file
-  - On buffer reload, keep row # from file
-
 ### Help menu
-
-### Key bindings
-- align key bindings with vim
-- support alternate key binding profiles (emacs, custom1, etc)
-- register built-in cmds before extension cmds
-- add subcommand invocation by name e.g. emacs style (M-x run-command) or vim style (':' + command)
-
-### Open/edit file
-- tab for autocomplete
-- multi-tab read and write (e.g. XLSX support via plug-in)
-- column operation plug-in (add, remove, modify column)
+    - multi-tab read and write (e.g. XLSX support via plug-in)
+    - column operation plug-in (add, remove, modify column)
 
 ### Data editing
-- add manual edit plug-in
-- add view-edits plug-in
 - needs to support buffer-level handlers
   - for example:
     - user opens mydata.csv
@@ -69,10 +63,10 @@ Row indexing
   cancel = stop running, don't display anything and return as if the event handler had never started in the first place
 - add extension_id to each buffer; prevent extension A from modifying (e.g. set/get ext_ctx) buffer owned by extension B
 - high priority: support extension custom properties
-  - saved in .zsv/data/<fn>/props-<ext>.json
-  - API should include means to (during ext initialization), functions to set/get
+  - save in ../zsv/extensions/xxx.ini
+  - API should include functions to set/get
 - Extend the my_extension.c such that when a buffer in the displayed list is selected, pressing Return will load that buffer
-- cell plug-in: display context menu
+- cell plug-in: display context menu (e.g. for drill-down menu options)
 
 ### Interface
 - progress tracking

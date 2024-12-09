@@ -171,7 +171,7 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   zsvsheet_buffer_t buff = zsvsheet_buffer_current(ctx);
   const char *filename = zsvsheet_buffer_data_filename(buff);
   enum zsvsheet_status stat = zsvsheet_status_error;
-  struct zsvsheet_buffer_info info = zsvsheet_buffer_get_info(buff);
+  struct zsvsheet_buffer_info_internal info = zsvsheet_buffer_info_internal(buff);
 
   // TODO: Starting a second transformation before the first ends works, but if the second is faster
   //       than the first then it can end prematurely and read a partially written row.

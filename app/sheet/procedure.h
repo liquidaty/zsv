@@ -30,18 +30,21 @@ enum {
   zsvsheet_builtin_proc_open_file,
   zsvsheet_builtin_proc_resize,
   zsvsheet_builtin_proc_prompt,
+  zsvsheet_builtin_proc_subcommand,
   zsvsheet_builtin_proc_help,
   zsvsheet_builtin_proc_vim_g_key_binding_dmux,
   zsvsheet_builtin_proc_newline,
 };
 
 #define ZSVSHEET_PROC_INVALID 0
+#define ZSVSHEET_PROC_MAX_ARGS 5
 
 /* Procedures perform various actions in the editor. Procedures can be invoked
  * by key-bindings, prompt invocation, another procedure or script. */
 
 enum zsvsheet_proc_invocation_type {
   zsvsheet_proc_invocation_type_keypress,
+  zsvsheet_proc_invocation_type_proc,
   /* Add more... */
 };
 
@@ -60,17 +63,38 @@ struct zsvsheet_proc_context {
       struct {
         int ch;
       } keypress;
+      struct {
+        zsvsheet_proc_id_t id;
+      } proc;
     } u;
   } invocation;
 
+  int num_params;
+  struct {
+    /* TODO: typing */
+    union {
+      const char *string;
+    } u;
+  } params[ZSVSHEET_PROC_MAX_ARGS];
+
   /* Within context of which subcommand has this proc been called? */
   void *subcommand_context;
+};
+
+enum zsvsheet_proc_arg_type {
+  ZSVSHEET_PROC_ARG_TYPE_INVALID,
+  ZSVSHEET_PROC_ARG_TYPE_INT,
+  ZSVSHEET_PROC_ARG_TYPE_STRING,
 };
 
 typedef zsvsheet_status (*zsvsheet_proc_fn)(struct zsvsheet_proc_context *ctx);
 
 /* Wrapper for procedure invocation from keypress */
 zsvsheet_status zsvsheet_proc_invoke_from_keypress(zsvsheet_proc_id_t proc_id, int ch, void *subcommand_context);
+
+/* Invoke a procedure based on subcommand/script statement. For script support
+ * this is likely too simple but its a nice simple API subcommand.  */
+zsvsheet_status zsvsheet_proc_invoke_from_command(const char *command, struct zsvsheet_proc_context *context);
 
 /* Base proc invocation function */
 zsvsheet_status zsvsheet_proc_invoke(zsvsheet_proc_id_t proc_id, struct zsvsheet_proc_context *ctx);
@@ -81,5 +105,8 @@ zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const c
 
 /* Dynamically register a procedure, returns a positive id or negative error */
 zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, const char *description, zsvsheet_proc_fn handler);
+
+/* Find procedure by name */
+struct zsvsheet_procedure *zsvsheet_find_procedure_by_name(const char *name);
 
 #endif /* ZSVSHEET_PROCEDURE_H */

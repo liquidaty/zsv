@@ -44,7 +44,7 @@ env:
 
 jobs:
   tag:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     outputs:
       TAG: ${{ steps.tag.outputs.TAG }}
@@ -75,7 +75,7 @@ jobs:
         ./scripts/ci-run-clang-format.sh
 
   cppcheck:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout
@@ -107,7 +107,7 @@ jobs:
         if-no-files-found: error
 
   shellcheck:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout
@@ -121,9 +121,10 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-13, macos-14]
+        os: [ubuntu-22.04, macos-13, macos-14]
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -196,7 +197,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v1
+      uses: actions/attest-build-provenance@v2
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
@@ -350,7 +351,8 @@ jobs:
 
   ci-bsd:
     needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -360,7 +362,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Build (${{ env.AMD64_FREEBSD_GCC }})
-      uses: cross-platform-actions/action@v0.25.0
+      uses: cross-platform-actions/action@v0.26.0
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc
@@ -380,7 +382,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v1
+      uses: actions/attest-build-provenance@v2
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
@@ -414,7 +416,8 @@ jobs:
 
   ci-mingw:
     needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -473,7 +476,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v1
+      uses: actions/attest-build-provenance@v2
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
@@ -517,8 +520,9 @@ jobs:
 
   ci-musl:
     needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container: alpine:latest
+    timeout-minutes: 15
 
     outputs:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -548,7 +552,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v1
+      uses: actions/attest-build-provenance@v2
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
@@ -582,7 +586,7 @@ jobs:
 
   ghcr:
     needs: ci-musl
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     permissions:
       packages: write
@@ -645,7 +649,8 @@ jobs:
 
   ci-wasm:
     needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -700,7 +705,7 @@ jobs:
   deploy-playground:
     if: ${{ github.ref_name == 'main' }}
     needs: ci-wasm
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     permissions:
       pages: write

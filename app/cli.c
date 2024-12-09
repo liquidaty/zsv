@@ -34,6 +34,8 @@ struct cli_config {
   struct zsv_ext *extensions;
   char err_if_not_found;
   char filepath[FILENAME_MAX];
+  char home_filepath[FILENAME_MAX];
+  const char *current_filepath; // path being currently parsed
   char verbose;
 };
 
@@ -55,6 +57,8 @@ struct builtin_cmd {
 };
 
 static int config_init(struct cli_config *c, char err_if_dl_not_found, char do_init, char verbose);
+static int config_init_2(struct cli_config *c, char err_if_dl_not_found, char do_init, char verbose, char global_only,
+                         char home_only);
 #include "zsv_main.h"
 
 #define CLI_BUILTIN_DECL(x) int main_##x(int argc, const char *argv[])
@@ -165,10 +169,18 @@ char **custom_cmd_names = NULL;
 
 static enum zsv_ext_status ext_init(struct zsv_ext *ext);
 
-static int config_init(struct cli_config *c, char err_if_dl_not_found, char do_init, char verbose) {
+static int config_init_2(struct cli_config *c, char err_if_dl_not_found, char do_init, char verbose, char global_only,
+                         char home_only) {
   memset(c, 0, sizeof(*c));
-  size_t len = get_ini_file(c->filepath, FILENAME_MAX);
-  if (!len) {
+  if (!global_only) { // find local (home dir) zsv.ini
+    if (!get_ini_file(c->home_filepath, FILENAME_MAX, 0))
+      *c->home_filepath = '\0';
+  }
+  if (!home_only) {
+    if (!get_ini_file(c->filepath, FILENAME_MAX, 1))
+      *c->filepath = '\0';
+  }
+  if (*c->home_filepath == '\0' && *c->filepath == '\0') {
     fprintf(stderr, "Unable to get config filepath!\n");
     return 1;
   }
@@ -181,6 +193,10 @@ static int config_init(struct cli_config *c, char err_if_dl_not_found, char do_i
     }
   }
   return rc;
+}
+
+static int config_init(struct cli_config *c, char err_if_dl_not_found, char do_init, char verbose) {
+  return config_init_2(c, err_if_dl_not_found, do_init, verbose, 0, 0);
 }
 
 static int config_free(struct cli_config *c) {
@@ -398,6 +414,7 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->ext_sheet_set_status = zsvsheet_set_status;
     e->ext_sheet_buffer_current = zsvsheet_buffer_current;
     e->ext_sheet_buffer_prior = zsvsheet_buffer_prior;
+    e->ext_sheet_buffer_info = zsvsheet_buffer_info;
     e->ext_sheet_buffer_filename = zsvsheet_buffer_filename;
     e->ext_sheet_buffer_data_filename = zsvsheet_buffer_data_filename;
     e->ext_sheet_open_file = zsvsheet_open_file;

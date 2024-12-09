@@ -228,7 +228,7 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
     if (!zdb || !(sql_str = sqlite3_str_new(zdb->db)))
       zst = zsvsheet_status_memory;
     else if (zdb->rc == SQLITE_OK && zsv_cb.ext_sqlite3_add_csv(zdb, pd->data_filename, NULL, NULL) == SQLITE_OK) {
-      if (0) // buff->has_row_num)
+      if (zsv_cb.ext_sheet_buffer_info(buff).has_row_num)
         sqlite3_str_appendf(sql_str, "select *");
       else
         sqlite3_str_appendf(sql_str, "select rowid as [Row #], *");

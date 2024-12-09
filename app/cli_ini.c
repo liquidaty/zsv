@@ -3,8 +3,10 @@
  * This file is part of zsv/lib, distributed under the license defined at
  * https://opensource.org/licenses/MIT
  */
+#include <errno.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/os.h>
+#include <zsv/utils/file.h>
 #include <zsv/utils/dirs.h>
 #include <zsv/utils/mem.h>
 
@@ -34,21 +36,41 @@ static void write_extension_config(struct zsv_ext *ext, FILE *f) {
 
 // config_save: return error
 static int config_save(struct cli_config *config) {
+  const char *config_filepath = NULL;
+  if (*config->filepath)
+    config_filepath = config->filepath;
+  if (*config->home_filepath) {
+    if (config_filepath) {
+      fprintf(stderr, "config_save: only home or global config filepath should exist, but got both\n");
+      return 1;
+    }
+    config_filepath = config->home_filepath;
+  }
+  if (!config_filepath) {
+    fprintf(stderr, "config_save: no home or global filepath found\n");
+    return 1;
+  }
   int err = 1;
-  char *tmp;
-  asprintf(&tmp, "%s.tmp", config->filepath);
+  char *tmp = zsv_get_temp_filename("zsv_config_XXXXXXXX");
   if (!tmp)
     fprintf(stderr, "Out of memory!\n");
   else {
     FILE *f = fopen(tmp, "wb");
     if (!f)
-      fprintf(stderr, "Unable to open config file temp %s\n", tmp);
+      perror(tmp);
     else {
       for (struct zsv_ext *ext = config->extensions; ext; ext = ext->next)
         write_extension_config(ext, f);
       fclose(f);
-      if ((err = zsv_replace_file(tmp, config->filepath)))
-        perror("Unable to update config file");
+      if ((err = zsv_replace_file(tmp, config_filepath)))
+        perror(config_filepath);
+      else if (config_filepath != config->home_filepath) {
+        // try to change permissions to allow anyone to read
+        mode_t new_permissions = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+        if (chmod(config_filepath, new_permissions) != 0) {
+          ; // maybe handle error here
+        }
+      }
     }
     free(tmp);
   }
@@ -95,7 +117,7 @@ static struct zsv_ext *load_extension_dl(const unsigned char *extension_id, char
   if (!extension_name)
     fprintf(stderr, "Out of memory!\n");
   else if ((ext = zsv_ext_new(extension_name, (const char *)extension_id, verbose))) {
-    if (verbose)
+    if (verbose && ext->dl)
       fprintf(stderr, "Loaded extension %s\n", extension_name);
     free(extension_name);
   }
@@ -133,7 +155,6 @@ static int add_extension(const char *id, struct zsv_ext **exts, char ignore_err,
   return err;
 }
 
-// get_config_file(): return zsv.ini
 static int config_ini_handler(void *ctx, const char *section, const char *name, const char *value, int lineno) {
   int err = 0;
   struct cli_config *config = ctx;
@@ -149,7 +170,7 @@ static int config_ini_handler(void *ctx, const char *section, const char *name, 
           if (!ext && add_extension(section, &config->extensions, 1, config->verbose)) {
             if (config->err_if_not_found) {
               err = 1;
-              fprintf(stderr, "At line %i in %s\n", lineno, config->filepath);
+              fprintf(stderr, "At line %i in %s\n", lineno, config->current_filepath);
             }
           }
         }
@@ -159,34 +180,84 @@ static int config_ini_handler(void *ctx, const char *section, const char *name, 
   return err ? 0 : 1;
 }
 
-static size_t get_ini_file(char *buff, size_t buffsize) {
-  size_t len = zsv_get_config_dir(buff, buffsize, PREFIX);
-  if (len) {
-    size_t n = snprintf(buff + len, buffsize - len, "%czsv.ini", FILESLASH);
-    if (n > 0 && n + len < buffsize)
-      return len + n;
+// get_config_file(): return non-zero on success
+static size_t get_ini_file(char *buff, size_t buffsize, char global) {
+  size_t len = 0;
+  int n = 0;
+  if (global) {
+    len = zsv_get_config_dir(buff, buffsize, PREFIX);
+    if (len > 0)
+      n = snprintf(buff + len, buffsize - len, "%czsv", FILESLASH);
+  } else {
+    n = zsv_get_home_dir(buff, buffsize);
+    if (n > 0 && (size_t)n < buffsize) {
+      len = (size_t)n;
+      n = snprintf(buff + len, buffsize - len, "%c.config%czsv", FILESLASH, FILESLASH);
+    }
+  }
+  if (len > 0) {
+    if (n > 0 && (size_t)n + len < buffsize)
+      len += (size_t)n;
+    else
+      len = 0;
+  }
+  if (len && buffsize > len) {
+    int dir_exists = zsv_dir_exists(buff);
+    if (!dir_exists) {
+      if (zsv_mkdirs(buff, 0)) // unable to create the config file parent dir
+        perror(buff);
+      else if (global) {
+        dir_exists = 1;
+        // try to make dir read-only for all
+        // Set permissions to rwxr-xr-x (0755)
+        mode_t new_permissions = S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+        chmod(buff, new_permissions); // to do: maybe handle error?
+      }
+    }
+    if (dir_exists) {
+      n = snprintf(buff + len, buffsize - len, "%czsv.ini", FILESLASH);
+      if (n > 0 && (size_t)n + len < buffsize)
+        return len + (size_t)n;
+    }
   }
   return 0;
+}
+
+static int parse_extensions_ini_file(struct cli_config *config, const char *path, int *opened_count) {
+  int err = 0;
+  if (path && *path) {
+    FILE *f = fopen(path, "r");
+    if (!f)
+      err = errno;
+    else {
+      (*opened_count)++;
+      config->current_filepath = path;
+      err = ini_parse_file(f, config_ini_handler, config);
+      fclose(f);
+      if (err > 0)
+        fprintf(stderr, "Error parsing %s on line %i\n", config->current_filepath, err);
+    }
+  }
+  return err;
 }
 
 // parse_extensions_ini: return -2 (unexpected), -1 (file open), 0 (success), > 0 (line number)
 static int parse_extensions_ini(struct cli_config *config, char err_if_not_found, char verbose) {
   int err = 0;
-  FILE *f;
-  if (!(f = fopen(config->filepath, "r"))) {
-    if (err_if_not_found) {
-      err = -1;
-      fprintf(stderr, "No extensions configured%s%s\n", verbose ? " or file not found: " : "",
-              verbose ? config->filepath : "");
-    }
-  } else {
-    config->err_if_not_found = err_if_not_found;
-    config->verbose = verbose;
-    err = ini_parse_file(f, config_ini_handler, config);
-    fclose(f);
-    if (err > 0)
-      fprintf(stderr, "Error parsing %s on line %i\n", config->filepath, err);
+  int opened_config_files = 0;
+  char old_err_if_not_found = config->err_if_not_found;
+  char old_verbose = config->verbose;
+  config->err_if_not_found = err_if_not_found;
+  config->verbose = verbose;
+  parse_extensions_ini_file(config, config->home_filepath, &opened_config_files);
+  parse_extensions_ini_file(config, config->filepath, &opened_config_files);
+  if (err_if_not_found && opened_config_files == 0) {
+    err = -1;
+    fprintf(stderr, "No extensions configured%s%s%s%s\n", verbose ? " or file(s) not found:\n  " : "",
+            verbose ? config->home_filepath : "", verbose ? "\n  " : "", verbose ? config->filepath : "");
   }
+  config->err_if_not_found = old_err_if_not_found;
+  config->verbose = old_verbose;
   return err;
 }
 

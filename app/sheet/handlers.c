@@ -38,7 +38,7 @@ zsvsheet_status zsvsheet_subcommand_prompt(zsvsheet_subcommand_context_t ctx, co
  * Set a status message
  */
 zsvsheet_status zsvsheet_set_status(struct zsvsheet_proc_context *ctx, const char *fmt, ...) {
-  struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state *)ctx->subcommand_context;
+  struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   va_list argv;
   va_start(argv, fmt);
   vsnprintf(zsvsheet_status_text, sizeof(zsvsheet_status_text), fmt, argv);
@@ -61,7 +61,7 @@ int zsvsheet_ext_keypress(zsvsheet_proc_context_t ctx) {
  * Get the current buffer
  */
 zsvsheet_buffer_t zsvsheet_buffer_current(struct zsvsheet_proc_context *ctx) {
-  struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state *)ctx->subcommand_context;
+  struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   return state && state->display_info.ui_buffers.current ? *state->display_info.ui_buffers.current : NULL;
 }
 
@@ -111,8 +111,8 @@ zsvsheet_status zsvsheet_buffer_get_selected_cell(zsvsheet_buffer_t h, struct zs
   struct zsvsheet_ui_buffer *uib = h;
   if (!uib)
     return zsvsheet_status_error;
-  rc->row = uib->cursor_row + uib->input_offset.row;
-  rc->col = uib->cursor_col + uib->input_offset.col;
+  rc->row = uib->cursor_row + uib->input_offset.row + uib->buff_offset.row;
+  rc->col = uib->cursor_col + uib->input_offset.col + uib->buff_offset.row;
   return zsvsheet_status_ok;
 }
 
@@ -169,8 +169,8 @@ struct zsv_opts zsvsheet_buffer_get_zsv_opts(zsvsheet_buffer_t h) {
  * are updated by background threads and may be stale upon return. However they only ever
  * transition from false to true.
  */
-struct zsvsheet_buffer_info zsvsheet_buffer_get_info(zsvsheet_buffer_t h) {
-  struct zsvsheet_buffer_info info = {0};
+struct zsvsheet_buffer_info_internal zsvsheet_buffer_info_internal(zsvsheet_buffer_t h) {
+  struct zsvsheet_buffer_info_internal info = {0};
 
   if (h) {
     struct zsvsheet_ui_buffer *b = h;
@@ -184,4 +184,13 @@ struct zsvsheet_buffer_info zsvsheet_buffer_get_info(zsvsheet_buffer_t h) {
   }
 
   return info;
+}
+
+struct zsvsheet_buffer_data zsvsheet_buffer_info(zsvsheet_buffer_t h) {
+  struct zsvsheet_buffer_data d = {0};
+  struct zsvsheet_ui_buffer *b = h;
+  if (b) {
+    d.has_row_num = b->has_row_num;
+  }
+  return d;
 }
