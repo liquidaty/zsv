@@ -33,7 +33,7 @@ trap cleanup INT TERM QUIT
 printf "\n%s, %s" "$TARGET" "${2:-}" >> "${TIMINGS_CSV}"
 
 set +e
-match_time=$(timeout 5 time -p "${script_dir}"/test-retry-capture-cmp.sh 2>&1)
+match_time=$(time -p timeout -k 6 5 "${script_dir}"/test-retry-capture-cmp.sh 2>&1)
 status=$?
 set -e
 
