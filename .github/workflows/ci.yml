@@ -533,7 +533,7 @@ jobs:
     steps:
     - name: Set up dependencies
       shell: sh
-      run: apk add bash gcc make musl-dev perl ncurses-dev ncurses-static tmux file sqlite curl zip
+      run: apk add bash gcc make musl-dev perl ncurses-dev ncurses-static tmux file sqlite curl zip wget tar
 
     - name: Checkout
       uses: actions/checkout@v4
@@ -555,6 +555,14 @@ jobs:
       uses: actions/attest-build-provenance@v2
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
+
+    - name: Set up GitHub CLI
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+        wget https://github.com/cli/cli/releases/download/v2.63.2/gh_2.63.2_linux_amd64.tar.gz
+        tar xvf gh_2.63.2_linux_amd64.tar.gz
+        cp gh_2.63.2_linux_amd64/bin/gh /usr/bin
+        rm -rf gh_2.63.2_linux_amd64
 
     - name: Verify attestations of release artifacts
       if: startsWith(github.ref, 'refs/tags/v')
