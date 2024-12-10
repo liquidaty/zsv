@@ -618,7 +618,7 @@ test-sheet-cleanup:
 	@rm -f tmux-*.log
 	@tmux kill-server || printf ''
 
-test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand test-sheet-prop-cmd-opt
+test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand test-sheet-prop-cmd-opt test-sheet-pivot
 	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null; done && ${TEST_PASS} || ${TEST_FAIL})
 
 TMUX_TERM=xterm-256color
@@ -806,6 +806,43 @@ test-sheet-prop-cmd-opt: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_p
 #	@tmux -v capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out
 #	@tmux send-keys -t $@ "q"
 #	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL})
+
+test-sheet-pivot: test-sheet-pivot-1 test-sheet-pivot-2 test-sheet-pivot-3
+
+test-sheet-pivot-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ l v && \
+	${EXPECT} $@ groups && \
+	tmux send-keys -t $@ j j Enter && \
+	${EXPECT} $@ drilldown && \
+	tmux send-keys -t $@ G && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-pivot-2: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< -d 3 ../../data/test/mixed-line-endings.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ l l l v && \
+	${EXPECT} $@ groups && \
+	tmux send-keys -t $@ j j Enter && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-pivot-3: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ V && \
+	${EXPECT} $@ prompt && \
+	tmux send-keys -l -t $@ "iif(coalesce(Population, '') = '', 'Unknown', 'Populated')" && \
+	tmux send-keys -t $@ Enter && \
+	${EXPECT} $@ groups && \
+	tmux send-keys -t $@ Enter && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 benchmark-sheet-index: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
