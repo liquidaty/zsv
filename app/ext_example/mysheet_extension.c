@@ -130,6 +130,17 @@ static enum zsv_ext_status get_cell_attrs(void *pdh, int *attrs, size_t start_ro
   return zsv_ext_status_ok;
 }
 
+static enum zsv_ext_status get_cell_overwrites(void *pdh, int *attrs, size_t start_row, size_t row_count, size_t cols) {
+  return zsv_ext_status_ok;
+  struct pivot_data *pd = pdh;
+  size_t end_row = start_row + row_count;
+  if (end_row > pd->rows.used)
+    end_row = pd->rows.used;
+  for (size_t i = start_row; i < end_row; i++)
+    attrs[i * cols] = A_ITALIC | A_BOLD | A_ITALIC;
+  return zsv_ext_status_ok;
+}
+
 static void pivot_on_header_cell(void *ctx, size_t col_ix, const char *colname) {
   if (col_ix == 0) {
     add_pivot_row(ctx, NULL, 0);

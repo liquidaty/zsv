@@ -644,6 +644,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return zsv_status_ok;
   }
 
+  char ignore_overwrites = 0;
+  if (argc > 1 && (!strcmp(argv[1], "--ignore-overwrites")))
+    ignore_overwrites = 1;
+
   const char *locale = setlocale(LC_ALL, "C.UTF-8");
   if (!locale || strstr(locale, "UTF-8") == NULL)
     locale = setlocale(LC_ALL, "");
@@ -722,6 +726,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   while (true) {
     ch = getch();
 
+    current_ui_buffer->ignore_overwrites = ignore_overwrites;
     handler_state.display_info.update_buffer = false;
     zsvsheet_priv_set_status(&display_dims, 1, "");
 

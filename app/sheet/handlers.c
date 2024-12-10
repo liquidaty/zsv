@@ -152,6 +152,18 @@ void zsvsheet_buffer_set_cell_attrs(zsvsheet_buffer_t h,
   }
 }
 
+/** Set callback for fetching cell overwrites**/
+void zsvsheet_buffer_set_cell_overwrites(zsvsheet_buffer_t h,
+                                         enum zsv_ext_status (*get_cell_overwrites)(void *ext_ctx, int *,
+                                                                                    size_t start_row, size_t row_count,
+                                                                                    size_t col_count)) {
+  if (h) {
+    struct zsvsheet_ui_buffer *buff = h;
+    buff->get_cell_overwrites = get_cell_overwrites;
+    zsvsheet_ui_buffer_update_cell_attr(buff);
+  }
+}
+
 /** Get zsv_opts use to open the buffer's data file **/
 struct zsv_opts zsvsheet_buffer_get_zsv_opts(zsvsheet_buffer_t h) {
   if (h) {

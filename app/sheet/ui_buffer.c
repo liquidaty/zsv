@@ -38,6 +38,9 @@ struct zsvsheet_ui_buffer {
   enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, int *attrs, size_t start_row, size_t row_count,
                                         size_t col_count);
 
+  enum zsv_ext_status (*get_cell_overwrites)(void *ext_ctx, int *attrs, size_t start_row, size_t row_count,
+                                             size_t col_count);
+
   unsigned char index_ready : 1;
   unsigned char rownum_col_offset : 1;
   unsigned char index_started : 1;
@@ -48,6 +51,7 @@ struct zsvsheet_ui_buffer {
   unsigned char write_done : 1;
   unsigned char worker_active : 1;
   unsigned char worker_cancelled : 1;
+  unsigned char ignore_overwrites : 1;
   unsigned char _ : 6;
 };
 
@@ -140,6 +144,10 @@ int zsvsheet_ui_buffer_update_cell_attr(struct zsvsheet_ui_buffer *uib) {
       memset(uib->buffer->cell_attrs, 0, uib->buffer->opts.rows * row_sz);
       uib->get_cell_attrs(uib->ext_ctx, uib->buffer->cell_attrs, uib->input_offset.row, uib->buff_used_rows,
                           uib->buffer->cols);
+    }
+    if (!uib->ignore_overwrites && uib->get_cell_overwrites) {
+      uib->get_cell_overwrites(uib->ext_ctx, uib->buffer->cell_attrs, uib->input_offset.row, uib->buff_used_rows,
+                               uib->buffer->cols);
     }
   }
   return 0;
