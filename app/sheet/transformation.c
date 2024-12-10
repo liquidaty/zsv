@@ -205,6 +205,7 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   zopts.ctx = opts.user_context;
   zopts.row_handler = (void (*)(void *))opts.row_handler;
   zopts.stream = fopen(filename, "rb");
+  zopts.buffsize = 2 * 1024 * 1024;
 
   if (!zopts.stream)
     goto error;

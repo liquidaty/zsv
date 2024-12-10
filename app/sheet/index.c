@@ -46,7 +46,12 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
   optsp->uib->index = ixr.ix;
 
   char cancelled = 0;
+  size_t committed_bytes = 0;
   while (!cancelled && (zst = zsv_parse_more(ixr.parser)) == zsv_status_ok) {
+    if (zsv_cum_scanned_length(ixr.parser) - committed_bytes < 32 * 1024 * 1024)
+      continue;
+    committed_bytes = zsv_cum_scanned_length(ixr.parser);
+
     pthread_mutex_lock(&optsp->uib->mutex);
     if (optsp->uib->worker_cancelled) {
       cancelled = 1;
