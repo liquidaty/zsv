@@ -193,3 +193,9 @@ int zsvsheet_ui_buffer_pop(struct zsvsheet_ui_buffer **base, struct zsvsheet_ui_
   }
   return 0;
 }
+
+static const char *zsvsheet_ui_buffer_get_header(struct zsvsheet_ui_buffer *uib, size_t col) {
+  struct zsvsheet_screen_buffer *sb = uib->buffer;
+
+  return (char *)zsvsheet_screen_buffer_cell_display(sb, 0, col);
+}
