@@ -26,6 +26,7 @@ struct zsv_csv_writer_options {
   void (*table_init)(void *);
   void *table_init_ctx;
   const char *output_path; // if provided, will be created by zsv_writer_new() and closed by zsv_writer_delete()
+  struct zsv_index *index;
 };
 
 void zsv_writer_set_default_opts(struct zsv_csv_writer_options opts);

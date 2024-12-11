@@ -15,6 +15,7 @@ struct zsvsheet_transformation_opts {
   const char *input_filename;
   void (*on_done)(zsvsheet_transformation trn);
   struct zsvsheet_ui_buffer *ui_buffer;
+  struct zsv_index *index;
 };
 
 enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts, zsvsheet_transformation *);

@@ -748,7 +748,11 @@ static struct zsv_ext *zsv_ext_new(const char *dl_name, const char *id, char ver
     }
   }
   if (!h)
+#if defined(WIN32) || defined(_WIN32)
     fprintf(stderr, "Library %s not found\n", dl_name);
+#else
+    fprintf(stderr, "Library %s failed to load: %s\n", dl_name, dlerror());
+#endif
 
   // run zsv_ext_init to add to our extension list, even if it's invalid
   tmp.ok = !zsv_ext_init(h, dl_name, &tmp);
