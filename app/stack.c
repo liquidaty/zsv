@@ -26,7 +26,8 @@ const char *zsv_stack_usage_msg[] = {
   "  -o <filename> : output file",
   "  -b            : output with BOM",
   "  -q            : always add double-quotes",
-  "  --unique      : only output unique column names",
+  "  --unique      : only output unique column names; in the case of duplicates,",
+  "                  only the last (right-most) column will be kept",
   NULL,
 };
 
