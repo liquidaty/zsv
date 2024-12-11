@@ -285,6 +285,8 @@ SQLITE_SRC=${THIS_MAKEFILE_DIR}/external/sqlite3/sqlite3*.c
 SQLITE_EXT=${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o
 SQLITE_EXT_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/sqlite3
 
+SQL_INTERNAL_OBJECT=${CLI_OBJ_PFX}sql_internal.o
+
 # everything uses prop, which in turn uses yajl and jq and json and sqlite3
 OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${BUILD_DIR}/objs/utils/json.o ${SQLITE_EXT}
 MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -I${JQ_INCLUDE_DIR} ${SQLITE_EXT_INCLUDE}
@@ -395,12 +397,16 @@ ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INIH_INCLUDE} -DINI_HANDLER_LINENO=1 -DINI_CALL_HANDLER_ON_NEW_SECTION=1 -c $< -o $@
 
+${SQL_INTERNAL_OBJECT}: ${CLI_OBJ_PFX}%.o: %.c %.h
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -c -o $@ $<
+
 ${CLI_APP_OBJECT} : cli_ini.c builtin/*.c ${JQ_LIB}
 ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8proc.c # ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} -I${THIS_MAKEFILE_DIR}/external/sglib -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -c $< -o $@ ${MORE_SOURCE}
 
-${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS}
+${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS} ${SQL_INTERNAL_OBJECT}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBDIR} ${LIBZSV_L} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
 	@echo Built $@
@@ -465,6 +471,7 @@ ${CLI} ${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/db.o
 # pretty uses termcap
 ${CLI} ${STANDALONE_PFX}pretty${EXE}: MORE_LIBS+=${LDFLAGS_TERMCAP}
 
+${CLI} ${STANDALONE_PFX}sheet${EXE} ${STANDALONE_PFX}sql${EXE}: MORE_OBJECTS+=${SQL_INTERNAL_OBJECT}
 
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
