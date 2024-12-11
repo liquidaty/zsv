@@ -5,7 +5,8 @@ struct zsvsheet_screen_buffer {
   size_t long_cell_count;
   struct zsvsheet_screen_buffer_opts opts;
   unsigned char *data;
-  int *cell_attrs; // used for per-cell attron() and attroff()
+  int *cell_attrs;        // used for per-cell attron() and attroff()
+  char **cell_overwrites; // array of pointers to overwrite strings
   // to do: add hooks for extension
 };
 
@@ -184,6 +185,14 @@ int zsvsheet_screen_buffer_cell_attrs(zsvsheet_screen_buffer_t buff, size_t row,
     return buff->cell_attrs[offset];
   }
   return 0;
+}
+
+char *zsvsheet_screen_buffer_cell_overwrites(zsvsheet_screen_buffer_t buff, size_t row, size_t col) {
+  if (buff->cell_overwrites) {
+    size_t offset = row * buff->cols + col;
+    return buff->cell_overwrites[offset];
+  }
+  return NULL;
 }
 
 const unsigned char *zsvsheet_screen_buffer_cell_display(zsvsheet_screen_buffer_t buff, size_t row, size_t col) {

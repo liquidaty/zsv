@@ -15,6 +15,10 @@
 #include <signal.h>
 
 #include <zsv.h>
+#include <zsv/utils/writer.h>
+#include <zsv/utils/overwrite.h>
+#include <zsv/utils/overwrite_writer.h>
+#include <zsv/utils/cache.h>
 
 #include "curses.h"
 
@@ -689,6 +693,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       err = -1;
       goto zsvsheet_exit;
     }
+    struct zsv_overwrite_opts overwrite_opts = {
+      .src = (const char *)zsv_cache_filepath((const unsigned char *)filename, zsv_cache_type_overwrite, 0, 0)};
+    struct zsv_overwrite_ctx *overwrite_ctx = zsv_overwrite_context_new(&overwrite_opts);
+    if (zsv_overwrite_open(overwrite_ctx) != zsv_status_ok) {
+      err = -1;
+      goto zsvsheet_exit;
+    }
   }
 
   err = 0;
@@ -774,7 +785,9 @@ zsvsheet_exit:
 
 const char *display_cell(struct zsvsheet_screen_buffer *buff, size_t data_row, size_t data_col, int row, int col,
                          size_t cell_display_width) {
-  char *str = (char *)zsvsheet_screen_buffer_cell_display(buff, data_row, data_col);
+  char *str = zsvsheet_screen_buffer_cell_overwrites(buff, data_row, data_col);
+  if (!str)
+    str = (char *)zsvsheet_screen_buffer_cell_display(buff, data_row, data_col);
   size_t len = str ? strlen(str) : 0;
   int attrs = zsvsheet_screen_buffer_cell_attrs(buff, data_row, data_col);
   if (attrs)

@@ -130,14 +130,14 @@ static enum zsv_ext_status get_cell_attrs(void *pdh, int *attrs, size_t start_ro
   return zsv_ext_status_ok;
 }
 
-static enum zsv_ext_status get_cell_overwrites(void *pdh, int *attrs, size_t start_row, size_t row_count, size_t cols) {
+static enum zsv_ext_status get_cell_overwrites(void *och, char **overwrites, size_t start_row, size_t row_count,
+                                               size_t cols) {
   return zsv_ext_status_ok;
-  struct pivot_data *pd = pdh;
+  struct overwrite_ctx *oc = och;
   size_t end_row = start_row + row_count;
-  if (end_row > pd->rows.used)
-    end_row = pd->rows.used;
-  for (size_t i = start_row; i < end_row; i++)
-    attrs[i * cols] = A_ITALIC | A_BOLD | A_ITALIC;
+  struct zsv_overwrite_data odata = {
+    .have = 1
+  } while (oc->next(oc, &odata) == zsv_status_ok) overwrites[odata.row_ix * (odata.col_ix * cols)] = odata.val.str;
   return zsv_ext_status_ok;
 }
 
@@ -304,6 +304,7 @@ zsvsheet_status my_pivot_table_command_handler(zsvsheet_proc_context_t ctx) {
         zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx);
         zsv_cb.ext_sheet_buffer_set_ctx(buff, pd, pivot_data_delete);
         zsv_cb.ext_sheet_buffer_set_cell_attrs(buff, get_cell_attrs);
+        zsv_cb.ext_sheet_buffer_set_cell_overwrites(buff, get_cell_overwrites);
         zsv_cb.ext_sheet_buffer_on_newline(buff, pivot_drill_down);
         pd = NULL; // so that it isn't cleaned up below
       }

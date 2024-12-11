@@ -29,6 +29,7 @@ struct zsvsheet_ui_buffer {
   char *status;
 
   void *ext_ctx; // extension context via zsvsheet_ext_set_ctx() zsvsheet_ext_get_ctx()
+  void *overwrite_ctx;
 
   // cleanup callback set by zsvsheet_ext_get_ctx()
   // if non-null, called when buffer is closed
@@ -145,8 +146,14 @@ int zsvsheet_ui_buffer_update_cell_attr(struct zsvsheet_ui_buffer *uib) {
       uib->get_cell_attrs(uib->ext_ctx, uib->buffer->cell_attrs, uib->input_offset.row, uib->buff_used_rows,
                           uib->buffer->cols);
     }
+    row_sz = uib->buffer->cols * sizeof(*uib->buffer->cell_overwrites);
     if (!uib->ignore_overwrites && uib->get_cell_overwrites) {
-      uib->get_cell_overwrites(uib->ext_ctx, uib->buffer->cell_attrs, uib->input_offset.row, uib->buff_used_rows,
+      if (!uib->buffer->cell_attrs) {
+        uib->buffer->cell_overwrites = calloc(uib->buffer->opts.rows, row_sz);
+        if (!uib->buffer->cell_attrs)
+          return ENOMEM;
+      }
+      uib->get_cell_overwrites(uib->overwrite_ctx, uib->buffer->cell_attrs, uib->input_offset.row, uib->buff_used_rows,
                                uib->buffer->cols);
     }
   }
