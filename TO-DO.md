@@ -1,5 +1,6 @@
 # v1.0 to do:
 - sheet
+  - navigate to row: vim N-G, emacs Esc-GG
   - edit cell
   - save buffer to file (with or without Row # column)
   - bug fixes
