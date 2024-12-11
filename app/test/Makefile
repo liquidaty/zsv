@@ -380,7 +380,7 @@ test-stack2: ${BUILD_DIR}/bin/zsv_stack${EXE}
 test-stack3: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${TEST_INIT}
 	@echo 'a,b,c' > /tmp/1.csv
-	@${PREFIX} $< /tmp/1.csv ${REDIRECT1} ${TMP_DIR}/$@.out
+	@${PREFIX} $< /tmp/1.csv ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-sql test-flatten : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
