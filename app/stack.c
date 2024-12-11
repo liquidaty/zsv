@@ -238,7 +238,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   struct zsv_opts saved_opts = *opts;
   struct zsv_stack_data data = {0};
-  char delimiter = 0; // defaults to csv
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   writer_opts.stream = stdout;
 
@@ -246,8 +245,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     const char *arg = argv[arg_i];
     if (!strcmp(arg, "-b"))
       writer_opts.with_bom = 1;
-    else if (!strcmp(arg, "-T"))
-      delimiter = '\t';
     else if (!strcmp(arg, "-o")) {
       arg_i++;
       if (arg_i >= argc)
@@ -289,7 +286,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     *opts = saved_opts;
     opts->row_handler = zsv_stack_header_row;
     opts->ctx = input;
-    opts->delimiter = delimiter;
 
     // to do: max_cell_size
     opts->stream = input->f;
@@ -360,8 +356,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       *opts = saved_opts;
       opts->row_handler = zsv_stack_data_row;
       opts->ctx = input;
-      if (delimiter == '\t')
-        opts->delimiter = delimiter;
 
       rewind(input->f);
       input->headers_done = 0;
