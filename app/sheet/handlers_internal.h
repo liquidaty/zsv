@@ -122,3 +122,6 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
 #endif
 
 struct zsvsheet_buffer_data zsvsheet_buffer_info(zsvsheet_buffer_t buff);
+
+/** cell formatting **/
+zsvsheet_cell_attr_t zsvsheet_cell_profile_attrs(enum zsvsheet_cell_profile_t);

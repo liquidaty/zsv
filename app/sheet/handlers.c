@@ -194,3 +194,16 @@ struct zsvsheet_buffer_data zsvsheet_buffer_info(zsvsheet_buffer_t h) {
   }
   return d;
 }
+
+/**
+ * Get the corresponding cell attributes for the given profile
+ */
+zsvsheet_cell_attr_t zsvsheet_cell_profile_attrs(enum zsvsheet_cell_profile_t t) {
+  switch (t) {
+  case zsvsheet_cell_attr_profile_link:
+    return A_ITALIC | A_BOLD;
+  default:
+    break;
+  }
+  return zsvsheet_cell_attr_profile_none;
+};

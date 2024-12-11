@@ -408,6 +408,7 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->ext_sheet_buffer_set_ctx = zsvsheet_buffer_set_ctx;
     e->ext_sheet_buffer_get_ctx = zsvsheet_buffer_get_ctx;
     e->ext_sheet_buffer_set_cell_attrs = zsvsheet_buffer_set_cell_attrs;
+    e->ext_sheet_cell_profile_attrs = zsvsheet_cell_profile_attrs;
     e->ext_sheet_buffer_get_zsv_opts = zsvsheet_buffer_get_zsv_opts;
     e->ext_sheet_buffer_on_newline = zsvsheet_buffer_on_newline;
     e->ext_sheet_buffer_get_selected_cell = zsvsheet_buffer_get_selected_cell;

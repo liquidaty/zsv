@@ -15,7 +15,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/prop.h>
-#include "../curses.h"
+// #include "../curses.h"
 
 /**
  * This is an example to demonstrate various extension capabilities
@@ -126,7 +126,7 @@ static enum zsv_ext_status get_cell_attrs(void *pdh, int *attrs, size_t start_ro
   if (end_row > pd->rows.used)
     end_row = pd->rows.used;
   for (size_t i = start_row; i < end_row; i++)
-    attrs[i * cols] = A_ITALIC | A_BOLD | A_ITALIC;
+    attrs[i * cols] = zsv_cb.zsvsheet_cell_profile_attrs(zsvsheet_cell_profile_link);
   return zsv_ext_status_ok;
 }
 
