@@ -144,12 +144,10 @@ static enum zsv_index_status seek_and_check_newline(long *offset, struct zsv_opt
   if (new_line[0] == '\n') {
     *offset += 1;
   } else if (new_line[0] == '\r') {
-    if (new_line[1] == '\n') {
-      *offset += 1;
-      return zsv_index_status_ok;
-    }
-
     *offset += 1;
+
+    if (new_line[1] == '\n')
+      *offset += 1;
   } else {
     return zsv_index_status_error;
   }

@@ -725,6 +725,16 @@ test-sheet-14: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS
 	tmux send-keys -t $@ "Escape" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
+test-sheet-15: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/crlf-line-ending.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ "G" && \
+	${EXPECT} $@ bottom && \
+	tmux send-keys -t $@ -N 4096 "k" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
 test-sheet-subcommand:\
 		test-sheet-subcommand-open-file-prompt test-sheet-subcommand-open-file-argument\
 		test-sheet-subcommand-filter-file-prompt test-sheet-subcommand-filter-file-argument
