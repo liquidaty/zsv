@@ -365,7 +365,7 @@ test-blank-leading-rows-4: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${PREFIX} $< -R 2 ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2>&1
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-stack: test-stack1 test-stack2 test-stack3
+test-stack: test-stack1 test-stack2 test-stack3 test-stack4
 
 test-stack1: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${TEST_INIT}
@@ -380,8 +380,19 @@ test-stack2: ${BUILD_DIR}/bin/zsv_stack${EXE}
 test-stack3: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${TEST_INIT}
 	@echo 'a,b,c' > /tmp/1.csv
-	@${PREFIX} $< /tmp/1.csv ${REDIRECT1} ${TMP_DIR}/$@.out
+	@${PREFIX} $< /tmp/1.csv ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-stack4: ${BUILD_DIR}/bin/zsv_stack${EXE}
+	@${TEST_INIT}
+	@echo 'a,b,c,a,b' > ${TMP_DIR}/$@-1.csv
+	@echo '1,2,3,4,5' >> ${TMP_DIR}/$@-1.csv
+	@echo 'a,b,c,a,b' > ${TMP_DIR}/$@-2.csv
+	@echo 'z1,z2,z3,z4,z5' >> ${TMP_DIR}/$@-2.csv
+	@${PREFIX} $< ${TMP_DIR}/$@-1.csv ${TMP_DIR}/$@-2.csv ${REDIRECT} ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --unique ${TMP_DIR}/$@-1.csv ${TMP_DIR}/$@-2.csv ${REDIRECT} ${TMP_DIR}/$@-2.out
+	@${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-sql test-flatten : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
