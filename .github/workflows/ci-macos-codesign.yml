@@ -1,6 +1,10 @@
 name: ci-macos-codesign
 
-on: workflow_dispatch
+on:
+  push:
+    paths:
+    - '.github/workflows/ci-macos-codesign.yml'
+  workflow_dispatch:
 
 defaults:
   run:
