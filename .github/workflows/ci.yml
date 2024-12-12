@@ -759,9 +759,10 @@ jobs:
         security default-keychain -s build.keychain
         security unlock-keychain -p actions build.keychain
         security set-keychain-settings -t 3600 -u build.keychain
-        if ! security import cert.p12 -k build.keychain -P "$MACOS_CERT_PWD" -A -T /usr/bin/codesign; then
-          openssl pkcs12 -in cert.p12 -nocerts -out "codesign.key" -nodes -passin pass:"$MACOS_CERT_PWD"
-          openssl pkcs12 -in cert.p12 -clcerts -nokeys -out "codesign.crt" -passin pass:"$MACOS_CERT_PWD"
+        openssl version
+        if ! security import cert.p12 -k build.keychain -P '${{ secrets.MACOS_CERT_PASSWORD }}' -A -T /usr/bin/codesign; then
+          openssl pkcs12 -in cert.p12 -nocerts -out "codesign.key" -nodes -passin pass:'${{ secrets.MACOS_CERT_PASSWORD }}'
+          openssl pkcs12 -in cert.p12 -clcerts -nokeys -out "codesign.crt" -passin pass:'${{ secrets.MACOS_CERT_PASSWORD }}'
           ls -hl codesign.{key,crt}
           security import "codesign.key" -k build.keychain -P "" -A -T /usr/bin/codesign
           security import "codesign.crt" -k build.keychain -P "" -A -T /usr/bin/codesign
