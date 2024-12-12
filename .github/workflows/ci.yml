@@ -748,7 +748,7 @@ jobs:
         ZSV_INSTALL_PATH: ${{ steps.zsv.outputs.install-path }}
       run: |
         ls -hl "$ZSV_INSTALL_PATH"/{bin,include,lib}
-        cp -r $"ZSV_INSTALL_PATH" .
+        cp -r "$ZSV_INSTALL_PATH" .
         echo "ZSV_ROOT=$PWD/zsv" >>"$GITHUB_ENV"
 
     - name: Codesign using thirdparty action
