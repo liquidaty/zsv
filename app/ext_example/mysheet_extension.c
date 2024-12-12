@@ -12,6 +12,7 @@
 #include "../external/sqlite3/sqlite3.h"
 #include <zsv/ext/implementation.h>
 #include <zsv/ext/sheet.h>
+#include <zsv/utils/overwrite.h>
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/prop.h>
@@ -132,12 +133,25 @@ static enum zsv_ext_status get_cell_attrs(void *pdh, int *attrs, size_t start_ro
 
 static enum zsv_ext_status get_cell_overwrites(void *och, char **overwrites, size_t start_row, size_t row_count,
                                                size_t cols) {
-  return zsv_ext_status_ok;
-  struct overwrite_ctx *oc = och;
+  if (!och) {
+    return zsv_ext_status_error;
+  }
+  struct zsv_overwrite_ctx *oc = och;
   size_t end_row = start_row + row_count;
-  struct zsv_overwrite_data odata = {
-    .have = 1
-  } while (oc->next(oc, &odata) == zsv_status_ok) overwrites[odata.row_ix * (odata.col_ix * cols)] = odata.val.str;
+  struct zsv_overwrite_data odata = {.have = 1};
+  if (!oc->next) {
+    fprintf(stderr, "err\n");
+    return zsv_ext_status_error;
+  }
+  while (oc->next(oc, &odata) == zsv_status_ok && odata.have) {
+    fprintf(stderr, "%.*s\n", (int)odata.val.len, odata.val.str);
+    char *val = calloc(odata.val.len + 1, sizeof(char));
+    if (!val)
+      return zsv_ext_status_error;
+    memcpy(val, odata.val.str, odata.val.len);
+    val[odata.val.len] = '\0';
+    overwrites[odata.row_ix * cols + odata.col_ix] = val;
+  }
   return zsv_ext_status_ok;
 }
 
@@ -265,6 +279,12 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
   return zst;
 }
 
+zsvsheet_status my_overwrite_command_handler(zsvsheet_proc_context_t ctx) {
+  zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx);
+  zsv_cb.ext_sheet_buffer_set_cell_overwrites(buff, get_cell_overwrites);
+  return zsvsheet_status_ok;
+}
+
 /**
  * Here we define a custom command for the zsv `sheet` feature
  */
@@ -304,7 +324,6 @@ zsvsheet_status my_pivot_table_command_handler(zsvsheet_proc_context_t ctx) {
         zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx);
         zsv_cb.ext_sheet_buffer_set_ctx(buff, pd, pivot_data_delete);
         zsv_cb.ext_sheet_buffer_set_cell_attrs(buff, get_cell_attrs);
-        zsv_cb.ext_sheet_buffer_set_cell_overwrites(buff, get_cell_overwrites);
         zsv_cb.ext_sheet_buffer_on_newline(buff, pivot_drill_down);
         pd = NULL; // so that it isn't cleaned up below
       }
@@ -339,6 +358,10 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
   if (proc_id < 0)
     return zsv_ext_status_error;
   zsv_cb.ext_sheet_register_proc_key_binding('v', proc_id);
+  proc_id = zsv_cb.ext_sheet_register_proc("my-sheet-overwrites", "my sheet overwrites", my_overwrite_command_handler);
+  if (proc_id < 0)
+    return zsv_ext_status_error;
+  zsv_cb.ext_sheet_register_proc_key_binding('o', proc_id);
   return zsv_ext_status_ok;
 }
 

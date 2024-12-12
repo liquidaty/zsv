@@ -695,8 +695,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
     struct zsv_overwrite_opts overwrite_opts = {
       .src = (const char *)zsv_cache_filepath((const unsigned char *)filename, zsv_cache_type_overwrite, 0, 0)};
-    struct zsv_overwrite_ctx *overwrite_ctx = zsv_overwrite_context_new(&overwrite_opts);
-    if (zsv_overwrite_open(overwrite_ctx) != zsv_status_ok) {
+    current_ui_buffer->overwrite_ctx = zsv_overwrite_context_new(&overwrite_opts);
+    if (zsv_overwrite_open(current_ui_buffer->overwrite_ctx) != zsv_status_ok) {
       err = -1;
       goto zsvsheet_exit;
     }

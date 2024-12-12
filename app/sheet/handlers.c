@@ -154,7 +154,7 @@ void zsvsheet_buffer_set_cell_attrs(zsvsheet_buffer_t h,
 
 /** Set callback for fetching cell overwrites**/
 void zsvsheet_buffer_set_cell_overwrites(zsvsheet_buffer_t h,
-                                         enum zsv_ext_status (*get_cell_overwrites)(void *ext_ctx, int *,
+                                         enum zsv_ext_status (*get_cell_overwrites)(void *ext_ctx, char **overwrites,
                                                                                     size_t start_row, size_t row_count,
                                                                                     size_t col_count)) {
   if (h) {

@@ -39,7 +39,7 @@ struct zsvsheet_ui_buffer {
   enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, int *attrs, size_t start_row, size_t row_count,
                                         size_t col_count);
 
-  enum zsv_ext_status (*get_cell_overwrites)(void *ext_ctx, int *attrs, size_t start_row, size_t row_count,
+  enum zsv_ext_status (*get_cell_overwrites)(void *ext_ctx, char **overwrites, size_t start_row, size_t row_count,
                                              size_t col_count);
 
   unsigned char index_ready : 1;
@@ -148,13 +148,13 @@ int zsvsheet_ui_buffer_update_cell_attr(struct zsvsheet_ui_buffer *uib) {
     }
     row_sz = uib->buffer->cols * sizeof(*uib->buffer->cell_overwrites);
     if (!uib->ignore_overwrites && uib->get_cell_overwrites) {
-      if (!uib->buffer->cell_attrs) {
+      if (!uib->buffer->cell_overwrites) {
         uib->buffer->cell_overwrites = calloc(uib->buffer->opts.rows, row_sz);
-        if (!uib->buffer->cell_attrs)
+        if (!uib->buffer->cell_overwrites)
           return ENOMEM;
       }
-      uib->get_cell_overwrites(uib->overwrite_ctx, uib->buffer->cell_attrs, uib->input_offset.row, uib->buff_used_rows,
-                               uib->buffer->cols);
+      uib->get_cell_overwrites(uib->overwrite_ctx, uib->buffer->cell_overwrites, uib->input_offset.row,
+                               uib->buff_used_rows, uib->buffer->cols);
     }
   }
   return 0;
