@@ -107,6 +107,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       original_row_num = header_span + start_row;
     }
     pthread_mutex_unlock(&uibuff->mutex);
+    assert(zst == zsv_index_status_ok);
     if (zst != zsv_index_status_ok)
       return errno ? errno : -1;
   }
