@@ -745,73 +745,60 @@ jobs:
 
     - name: List and set ZSV_ROOT env var
       env:
-        ZSV_INSTALL_PATH: ${{ steps.zsv.outputs.install-path }}
+        ZSV_ROOT: ${{ steps.zsv.outputs.install-path }}
       run: |
-        ls -hl "$ZSV_INSTALL_PATH"/{bin,include,lib}
-        cp -r "$ZSV_INSTALL_PATH" .
-        echo "ZSV_ROOT=$PWD/zsv" >>"$GITHUB_ENV"
+        ls -hl "$ZSV_ROOT"/{bin,include,lib}
+        echo "ZSV_ROOT=$ZSV_ROOT" >>"$GITHUB_ENV"
 
-    - name: Codesign using thirdparty action
-      uses: lando/code-sign-action@v2
-      with:
-        file: ./zsv/bin/zsv
-        certificate-data: ${{ secrets.MACOS_CERT_P12 }}
-        certificate-password: ${{ secrets.MACOS_CERT_PASSWORD }}
-        apple-notary-user: matt@liquidaty.com
-        apple-notary-password: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-        apple-team-id: HXK8Y6Q9K2
-        apple-product-id: dev.liquidty.zsv
-        options: --options runtime
+    - name: Install Developer Certificate
+      env:
+        MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+        MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+      run: |
+        echo "$MACOS_CERT_P12" | base64 --decode > cert.p12
+        security create-keychain -p actions build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p actions build.keychain
+        security set-keychain-settings -t 3600 -u build.keychain
+        if ! security import cert.p12 -k build.keychain -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -T /usr/bin/codesign; then
+          openssl pkcs12 -in cert.p12 -nocerts -out "codesign.key" -nodes -password pass:"$MACOS_CERT_PASSWORD"
+          openssl pkcs12 -in cert.p12 -clcerts -nokeys -out "codesign.crt" -password pass:"$MACOS_CERT_PASSWORD"
+          ls -hl codesign.{key,crt}
+          security import "codesign.key" -k build.keychain -P "" -A -T /usr/bin/codesign
+          security import "codesign.crt" -k build.keychain -P "" -A -T /usr/bin/codesign
+        fi
+        security set-key-partition-list -S apple-tool:,apple: -s -k actions build.keychain
+        security find-identity -v build.keychain
 
-    # - name: Install Developer Certificate
-    #   env:
-    #     MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
-    #     MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
-    #   run: |
-    #     echo "$MACOS_CERT_P12" | base64 --decode > cert.p12
-    #     security create-keychain -p actions build.keychain
-    #     security default-keychain -s build.keychain
-    #     security unlock-keychain -p actions build.keychain
-    #     security set-keychain-settings -t 3600 -u build.keychain
-    #     if ! security import cert.p12 -k build.keychain -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -T /usr/bin/codesign; then
-    #       openssl pkcs12 -in cert.p12 -nocerts -out "codesign.key" -nodes -password pass:"$MACOS_CERT_PASSWORD"
-    #       openssl pkcs12 -in cert.p12 -clcerts -nokeys -out "codesign.crt" -password pass:"$MACOS_CERT_PASSWORD"
-    #       ls -hl codesign.{key,crt}
-    #       security import "codesign.key" -k build.keychain -P "" -A -T /usr/bin/codesign
-    #       security import "codesign.crt" -k build.keychain -P "" -A -T /usr/bin/codesign
-    #     fi
-    #     security set-key-partition-list -S apple-tool:,apple: -s -k actions build.keychain
-    #     security find-identity -v build.keychain
+    - name: Codesign
+      env:
+        AC: 'Developer ID Application: matt wong (HXK8Y6Q9K2)'
+        AI: 'dev.liquidaty.zsv'
+      run: |
+        find "$ZSV_ROOT" -type f -exec \
+        codesign --verbose --deep --force --verify --options=runtime --timestamp \
+            --sign "$AC" --identifier "$AI" "$ZSV_ROOT" {} +
 
-    # - name: Codesign
-    #   env:
-    #     AC: 'Developer ID Application: matt wong (HXK8Y6Q9K2)'
-    #     AI: 'dev.liquidaty.zsv'
-    #   run: |
-    #     find "$ZSV_ROOT" -type f -exec \
-    #     codesign --verbose --deep --force --verify --options=runtime --timestamp \
-    #         --sign "$AC" --identifier "$AI" "$ZSV_ROOT" {} +
+        codesign --verbose --deep --force --verify --options=runtime --timestamp \
+            --identifier "$AI" --sign "$AC" "$ZSV_ROOT"
 
-    #     codesign --verbose --deep --force --verify --options=runtime --timestamp \
-    #         --identifier "$AI" --sign "$AC" "$ZSV_ROOT"
-
-    # - name: Notarize
-    #   env:
-    #     AID: matt@liquidaty.com
-    #     ASP: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-    #     TID: HXK8Y6Q9K2
-    #     ZIP: zsv.zip
-    #   run: |
-    #     echo "ZIP=$ZIP" >>"$GITHUB_ENV"
-    #     cd "$ZSV_ROOT"
-    #     zip -r "$ZIP" .
-    #     mv "$ZIP" ../
-    #     cd ..
-    #     xcrun notarytool submit "$ZIP" \
-    #       --apple-id "$AID" \
-    #       --password "$ASP" \
-    #       --team-id "$TID" \
-    #       --wait
+    - name: Notarize
+      env:
+        AID: matt@liquidaty.com
+        ASP: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        TID: HXK8Y6Q9K2
+        ZIP: zsv.zip
+      run: |
+        echo "ZIP=$ZIP" >>"$GITHUB_ENV"
+        cd "$ZSV_ROOT"
+        zip -r "$ZIP" .
+        mv "$ZIP" ../
+        cd ..
+        xcrun notarytool submit "$ZIP" \
+          --apple-id "$AID" \
+          --password "$ASP" \
+          --team-id "$TID" \
+          --wait
 
     - name: Staple
       run: |
