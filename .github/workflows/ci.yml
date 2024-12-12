@@ -761,7 +761,7 @@ jobs:
         security unlock-keychain -p actions build.keychain
         security set-keychain-settings -t 3600 -u build.keychain
         openssl version
-        CRT_PWD=$(echo "$MACOS_CERT_PWD" | base64 --decode)
+        CRT_PWD=$(echo "$MACOS_CERT_PWD" | tr -d '\n')
         if ! security import cert.p12 -k build.keychain -P "$CRT_PWD" -A -t cert -f pkcs12 -T /usr/bin/codesign; then
           openssl pkcs12 -in cert.p12 -nocerts -out "codesign.key" -nodes -passin pass:"$CRT_PWD"
           openssl pkcs12 -in cert.p12 -clcerts -nokeys -out "codesign.crt" -passin pass:"$CRT_PWD"
