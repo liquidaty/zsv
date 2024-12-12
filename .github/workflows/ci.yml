@@ -754,6 +754,7 @@ jobs:
         MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
         MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
       run: |
+        export PATH="/opt/homebrew/opt/openssl@1.1/bin:$PATH"
         echo "$MACOS_CERT_P12" | base64 --decode > cert.p12
         security create-keychain -p actions build.keychain
         security default-keychain -s build.keychain
