@@ -9,6 +9,7 @@ on:
     - '.github/workflows/codeql.yml'
     - '.github/workflows/benchmarks.yml'
     - 'scripts/ci-run-benchmarks.sh'
+    - '.github/workflows/ci-macos-codesign.yml'
   pull_request:
     branches: [main]
     paths-ignore:
@@ -17,6 +18,7 @@ on:
     - '.github/workflows/codeql.yml'
     - '.github/workflows/benchmarks.yml'
     - 'scripts/ci-run-benchmarks.sh'
+    - '.github/workflows/ci-macos-codesign.yml'
   release:
     types: [published]
 
