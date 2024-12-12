@@ -745,15 +745,16 @@ jobs:
 
     - name: List and set ZSV_ROOT env var
       env:
-        ZSV_ROOT: ${{ steps.zsv.outputs.install-path }}
+        ZSV_INSTALL_PATH: ${{ steps.zsv.outputs.install-path }}
       run: |
-        ls -hl "$ZSV_ROOT"/{bin,include,lib}
-        echo "ZSV_ROOT=$ZSV_ROOT" >>"$GITHUB_ENV"
+        ls -hl "$ZSV_INSTALL_PATH"/{bin,include,lib}
+        cp -r $"ZSV_INSTALL_PATH" .
+        echo "ZSV_ROOT=$PWD/zsv" >>"$GITHUB_ENV"
 
     - name: Codesign using thirdparty action
       uses: lando/code-sign-action@v2
       with:
-        file: ${{ env.ZSV_ROOT }}/bin/zsv
+        file: ./zsv/bin/zsv
         certificate-data: ${{ secrets.MACOS_CERT_P12 }}
         certificate-password: ${{ secrets.MACOS_CERT_PASSWORD }}
         apple-notary-user: matt@liquidaty.com
