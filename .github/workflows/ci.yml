@@ -20,27 +20,27 @@ on:
   release:
     types: [published]
 
-permissions:
-  contents: write
-  id-token: write
-  attestations: write
+# permissions:
+#   contents: write
+#   id-token: write
+#   attestations: write
 
 defaults:
   run:
     shell: bash
 
-env:
-  AMD64_LINUX_GCC: amd64-linux-gcc
-  AMD64_LINUX_CLANG: amd64-linux-clang
-  AMD64_LINUX_MUSL: amd64-linux-musl
-  AMD64_WINDOWS_MINGW: amd64-windows-mingw
-  AMD64_LINUX_WASM: amd64-linux-wasm
-  AMD64_MACOSX_GCC: amd64-macosx-gcc
-  ARM64_MACOSX_GCC: arm64-macosx-gcc
-  AMD64_FREEBSD_GCC: amd64-freebsd-gcc
-  ARTIFACT_DIR: .artifacts
-  ARTIFACT_RETENTION_DAYS: 5
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+# env:
+#   AMD64_LINUX_GCC: amd64-linux-gcc
+#   AMD64_LINUX_CLANG: amd64-linux-clang
+#   AMD64_LINUX_MUSL: amd64-linux-musl
+#   AMD64_WINDOWS_MINGW: amd64-windows-mingw
+#   AMD64_LINUX_WASM: amd64-linux-wasm
+#   AMD64_MACOSX_GCC: amd64-macosx-gcc
+#   ARM64_MACOSX_GCC: arm64-macosx-gcc
+#   AMD64_FREEBSD_GCC: amd64-freebsd-gcc
+#   ARTIFACT_DIR: .artifacts
+#   ARTIFACT_RETENTION_DAYS: 5
+#   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   # tag:
@@ -752,15 +752,19 @@ jobs:
     - name: Install Developer Certificate
       env:
         MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
-        MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        MACOS_CERT_PWD: ${{ secrets.MACOS_CERT_PASSWORD }}
       run: |
-        export PATH="/opt/homebrew/opt/openssl@1.1/bin:$PATH"
         echo "$MACOS_CERT_P12" | base64 --decode > cert.p12
         security create-keychain -p actions build.keychain
         security default-keychain -s build.keychain
         security unlock-keychain -p actions build.keychain
         security set-keychain-settings -t 3600 -u build.keychain
-        security import cert.p12 -k build.keychain -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -T /usr/bin/codesign
+        if ! security import cert.p12 -k build.keychain -P "$MACOS_CERT_PWD" -A -T /usr/bin/codesign; then
+          openssl pkcs12 -in cert.p12 -nocerts -out "codesign.key" -nodes -password pass:"$MACOS_CERT_PWD"
+          openssl pkcs12 -in cert.p12 -clcerts -nokeys -out "codesign.crt" -password pass:"$MACOS_CERT_PWD"
+          security import "codesign.key" -k build.keychain -P "" -A -T /usr/bin/codesign
+          security import "codesign.crt" -k build.keychain -P "" -A -T /usr/bin/codesign
+        fi
         security set-key-partition-list -S apple-tool:,apple: -s -k actions build.keychain
         security find-identity -v build.keychain
 
