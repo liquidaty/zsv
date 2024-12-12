@@ -39,9 +39,10 @@ else
   EXE=.exe
 endif
 
-export THIS_LIB_BASE=$(shell cd ../.. && pwd)
+THIS_LIB_BASE=$(shell cd ../.. && pwd)
 CCBN=$(shell basename ${CC})
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
+# exported for expect
 export TMP_DIR=${THIS_LIB_BASE}/tmp
 TEST_DATA_DIR=${THIS_LIB_BASE}/data
 
@@ -87,14 +88,18 @@ else
 endif
 
 BIG_FILE ?= none
-EXPECT_TIMEOUT ?= 5
+# test-expect.sh needs some of these to be exported
+export EXPECT_TIMEOUT ?= 5
 EXPECT=../../scripts/test-expect.sh
+export EXPECT_BIN=${BUILD_DIR}/bin/test-expect${EXE}
 export EXPECTED_PATH=expected
+
+${EXPECT_BIN}: ${THIS_LIB_BASE}/util/expect.c
+	${CC} ${CFLAGS} -Wall -o $@ $<
 
 MAKE_BIN=$(notdir ${MAKE})
 
-DATE_TIME:=$(shell date +%F-%H-%M-%S)
-export TIMINGS_CSV:=${TMP_DIR}/timings-${DATE_TIME}.csv
+export TIMINGS_CSV:=${TMP_DIR}/timings.csv
 
 help:
 	@echo "To run all tests: ${MAKE_BIN} test [LEAKS=1]"
@@ -116,7 +121,7 @@ test-paste:
 
 ${TIMINGS_CSV}:
 	@mkdir -p ${TMP_DIR}
-	@echo -n "Test, Stage, Time" > ${TIMINGS_CSV}
+	@echo -n "Git, Test, Stage, Date, Time, Elapsed (s)" > ${TIMINGS_CSV}
 
 .SECONDARY: worldcitiespop_mil.csv
 
@@ -613,7 +618,9 @@ test-sheet-cleanup:
 	@rm -f tmux-*.log
 	@tmux kill-server || printf ''
 
-test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand test-sheet-prop-cmd-opt
+ALL_SHEET_TESTS=test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand test-sheet-prop-cmd-opt
+${ALL_SHEET_TESTS}: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV} ${EXPECT_BIN}
+test-sheet-all: ${ALL_SHEET_TESTS}
 	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null; done && ${TEST_PASS} || ${TEST_FAIL})
 
 TMUX_TERM=xterm-256color
