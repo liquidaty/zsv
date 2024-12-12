@@ -762,8 +762,9 @@ jobs:
         if ! security import cert.p12 -k build.keychain -P "$MACOS_CERT_PWD" -A -T /usr/bin/codesign; then
           openssl pkcs12 -in cert.p12 -nocerts -out "codesign.key" -nodes -password pass:"$MACOS_CERT_PWD"
           openssl pkcs12 -in cert.p12 -clcerts -nokeys -out "codesign.crt" -password pass:"$MACOS_CERT_PWD"
-          security import "codesign.key" -k build.keychain -P "" -A -T /usr/bin/codesign
-          security import "codesign.crt" -k build.keychain -P "" -A -T /usr/bin/codesign
+          ls -hl codesign.{key,crt}
+          security import "codesign.key" -k build.keychain -P "$MACOS_CERT_PWD" -A -T /usr/bin/codesign
+          security import "codesign.crt" -k build.keychain -P "$MACOS_CERT_PWD" -A -T /usr/bin/codesign
         fi
         security set-key-partition-list -S apple-tool:,apple: -s -k actions build.keychain
         security find-identity -v build.keychain
