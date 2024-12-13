@@ -774,27 +774,27 @@ jobs:
       env:
         AC: 'Developer ID Application: matt wong (HXK8Y6Q9K2)'
         AI: 'dev.liquidaty.zsv'
+        ZIP: zsv.zip
       run: |
         find "$ZSV_ROOT" -type f -exec \
         codesign --verbose --deep --force --verify --options=runtime --timestamp \
             --sign "$AC" --identifier "$AI" "$ZSV_ROOT" {} +
 
+        cd "$ZSV_ROOT"
+        zip -r "$ZIP" .
+
         codesign --verbose --deep --force --verify --options=runtime --timestamp \
-            --identifier "$AI" --sign "$AC" "$ZSV_ROOT"
+            --identifier "$AI" --sign "$AC" "$ZSV_ROOT/$ZIP"
+
+        echo "ZIP=$ZIP" >>"$GITHUB_ENV"
 
     - name: Notarize
       env:
         AID: matt@liquidaty.com
         ASP: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         TID: HXK8Y6Q9K2
-        ZIP: zsv.zip
       run: |
-        echo "ZIP=$ZIP" >>"$GITHUB_ENV"
-        cd "$ZSV_ROOT"
-        zip -r "$ZIP" .
-        mv "$ZIP" ../
-        cd ..
-        xcrun notarytool submit "$ZIP" \
+        xcrun notarytool submit "$ZSV_ROOT/$ZIP" \
           --apple-id "$AID" \
           --password "$ASP" \
           --team-id "$TID" \
@@ -803,16 +803,17 @@ jobs:
 
     - name: Staple
       run: |
-        xcrun stapler staple -v "$ZIP"
-        xcrun stapler validate "$ZIP"
+        xcrun stapler staple -v "$ZSV_ROOT/$ZIP"
+        xcrun stapler validate "$ZSV_ROOT/$ZIP"
 
     - name: Cleanup
+      if: always()
       run: security delete-keychain build.keychain
 
     - name: Upload (${{ env.ZIP }})
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.ZIP }}
-        path: ${{ env.ZIP }}
+        path: ${{ env.ZSV_ROOT }}/${{ env.ZIP }}
         retention-days: 7
         if-no-files-found: error
