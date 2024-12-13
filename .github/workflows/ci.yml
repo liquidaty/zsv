@@ -798,6 +798,7 @@ jobs:
           --apple-id "$AID" \
           --password "$ASP" \
           --team-id "$TID" \
+          --output-format json \
           --wait
 
     - name: Staple
