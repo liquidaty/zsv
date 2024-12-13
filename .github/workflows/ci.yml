@@ -731,8 +731,8 @@ jobs:
   macos-codesign:
     strategy:
       matrix:
-        os: [macos-13, macos-14]
-        # os: [macos-13]
+        # os: [macos-13, macos-14]
+        os: [macos-13]
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -748,6 +748,7 @@ jobs:
         ZSV_ROOT: ${{ steps.zsv.outputs.install-path }}
       run: |
         ls -hl "$ZSV_ROOT"/{bin,include,lib}
+        rm "$ZSV_ROOT"/*.zip
         echo "ZSV_ROOT=$ZSV_ROOT" >>"$GITHUB_ENV"
 
     - name: Install Developer Certificate
@@ -794,11 +795,6 @@ jobs:
           --team-id "$TID" \
           --output-format json \
           --wait
-
-    - name: Staple
-      run: |
-        xcrun stapler staple -v "$ZSV_ROOT/$ZIP"
-        xcrun stapler validate "$ZSV_ROOT/$ZIP"
 
     - name: Cleanup
       if: always()
