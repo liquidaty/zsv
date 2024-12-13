@@ -731,8 +731,7 @@ jobs:
   macos-codesign:
     strategy:
       matrix:
-        # os: [macos-13, macos-14]
-        os: [macos-13]
+        os: [macos-13, macos-14]
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -769,7 +768,7 @@ jobs:
       env:
         AC: 'Developer ID Application: matt wong (HXK8Y6Q9K2)'
         AI: 'dev.liquidaty.zsv'
-        ZIP: zsv.zip
+        ZIP: ${{ format('zsv-{0}-{1}.zip', runner.arch, runner.os) }}
       run: |
         find "$ZSV_ROOT" -type f -exec \
           codesign --verbose --deep --force --verify --options=runtime --timestamp \
@@ -794,7 +793,8 @@ jobs:
           --password "$ASP" \
           --team-id "$TID" \
           --output-format json \
-          --wait
+          --wait \
+          | jq -e '.status == "Accepted"'
 
     - name: Cleanup
       if: always()
