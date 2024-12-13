@@ -4,6 +4,12 @@ set -e
 
 echo "[INF] Running $0"
 
+if [ "$CI" = true ] && [ "$RUNNER_OS" != "macOS" ]; then
+  echo "[ERR] Invalid OS! [$RUNNER_OS]"
+  echo "[ERR] Must be run on macOS in CI!"
+  exit 1
+fi
+
 MACOS_CERT_P12=${MACOS_CERT_P12:-}
 MACOS_CERT_PASSWORD=${MACOS_CERT_PASSWORD:-}
 
