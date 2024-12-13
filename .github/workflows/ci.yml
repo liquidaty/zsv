@@ -760,13 +760,7 @@ jobs:
         security default-keychain -s build.keychain
         security unlock-keychain -p actions build.keychain
         security set-keychain-settings -t 3600 -u build.keychain
-        if ! security import cert.p12 -k build.keychain -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -T /usr/bin/codesign; then
-          openssl pkcs12 -in cert.p12 -nocerts -out "codesign.key" -nodes -password pass:"$MACOS_CERT_PASSWORD"
-          openssl pkcs12 -in cert.p12 -clcerts -nokeys -out "codesign.crt" -password pass:"$MACOS_CERT_PASSWORD"
-          ls -hl codesign.{key,crt}
-          security import "codesign.key" -k build.keychain -P "" -A -T /usr/bin/codesign
-          security import "codesign.crt" -k build.keychain -P "" -A -T /usr/bin/codesign
-        fi
+        security import cert.p12 -k build.keychain -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -T /usr/bin/codesign
         security set-key-partition-list -S apple-tool:,apple: -s -k actions build.keychain
         security find-identity -v build.keychain
 
@@ -777,13 +771,13 @@ jobs:
         ZIP: zsv.zip
       run: |
         find "$ZSV_ROOT" -type f -exec \
-        codesign --verbose --deep --force --verify --options=runtime --timestamp \
-            --sign "$AC" --identifier "$AI" "$ZSV_ROOT" {} +
+          codesign --verbose --deep --force --verify --options=runtime --timestamp \
+              --sign "$AC" --identifier "$AI" {} +
 
         cd "$ZSV_ROOT"
         zip -r "$ZIP" .
 
-        codesign --verbose --deep --force --verify --options=runtime --timestamp \
+        codesign --verbose --force --verify --options=runtime --timestamp \
             --identifier "$AI" --sign "$AC" "$ZSV_ROOT/$ZIP"
 
         echo "ZIP=$ZIP" >>"$GITHUB_ENV"
