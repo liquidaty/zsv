@@ -4,29 +4,59 @@ set -e
 
 echo "[INF] Running $0"
 
-if [ "$CI" = true ] && [ "$RUNNER_OS" != "macOS" ]; then
-  echo "[ERR] Invalid OS! [$RUNNER_OS]"
-  echo "[ERR] Must be run on macOS in CI!"
+# Startup checks
+
+if [ "$#" -ne 1 ] || [ "$1" = "" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+  echo "[ERR] Usage: $0 [ARTIFACT_DIR/ARCHIVE]"
+  echo "[ERR] Only .zip and .tar.gz archives are supported!"
+  echo "[ERR] Following environment variables are required:"
+  echo "[ERR] - MACOS_CERT_P12              (base64 encoded)"
+  echo "[ERR] - MACOS_CERT_PASSWORD         (plaintext)"
+  echo "[ERR] - APPLE_APP_SPECIFIC_PASSWORD (plaintext)"
   exit 1
 fi
+
+if [ "$CI" != true ] || [ "$RUNNER_OS" != "macOS" ]; then
+  echo "[ERR] Must be run in GitHub Actions CI on macOS runners!"
+  exit 1
+fi
+
+# Inputs (CLI arguments + environment variables)
+
+APP_ARCHIVE=${1:-}
+APP_IDENTIFIER="com.liquidaty.zsv"
+APP_TEAM_ID="HXK8Y6Q9K2"
+APP_IDENTITY="Developer ID Application: matt wong ($APP_TEAM_ID)"
+APP_ENTITLEMENTS="entitlements.plist"
 
 MACOS_CERT_P12=${MACOS_CERT_P12:-}
 MACOS_CERT_PASSWORD=${MACOS_CERT_PASSWORD:-}
 
-APP_BUNDLE=${APP_BUNDLE:-"zsv.zip"}
-APP_IDENTIFIER=${APP_IDENTIFIER:-"com.liquidaty.zsv"}
-
-TEAM_ID=${TEAM_ID:-"HXK8Y6Q9K2"}
-APP_IDENTITY="Developer ID Application: matt wong ($TEAM_ID)"
-
 APPLE_ID="matt@liquidaty.com"
 APPLE_APP_SPECIFIC_PASSWORD=${APPLE_APP_SPECIFIC_PASSWORD:-}
 
-ENTITLEMENTS="entitlements.plist"
-
 # Validations
 
-echo "[INF] Validating required values"
+echo "[INF] Validating inputs"
+
+if [ ! -f "$APP_ARCHIVE" ]; then
+  echo "[ERR] Invalid archive! [$APP_ARCHIVE]"
+  echo "[ERR] Archive does not exist or is not a file!"
+  exit 1
+fi
+
+APP_ARCHIVE_TYPE=
+if echo "$APP_ARCHIVE" | grep '.zip$' >/dev/null &&
+  file --mime "$APP_ARCHIVE" | grep 'application/zip' >/dev/null; then
+  APP_ARCHIVE_TYPE="zip"
+elif echo "$APP_ARCHIVE" | grep '.tar.gz$' >/dev/null &&
+  file --mime "$APP_ARCHIVE" | grep 'application/gzip' >/dev/null; then
+  APP_ARCHIVE_TYPE="tar"
+else
+  echo "[ERR] Invalid archive type! [$APP_ARCHIVE]"
+  echo "[ERR] Only .zip and .tar.gz archives are supported!"
+  exit 1
+fi
 
 if [ "$MACOS_CERT_P12" = "" ]; then
   echo "[ERR] MACOS_CERT_P12 is not set!"
@@ -34,38 +64,30 @@ if [ "$MACOS_CERT_P12" = "" ]; then
 elif [ "$MACOS_CERT_PASSWORD" = "" ]; then
   echo "[ERR] MACOS_CERT_PASSWORD is not set!"
   exit 1
-elif [ "$APP_BUNDLE" = "" ]; then
-  echo "[ERR] APP_BUNDLE is not set!"
-  exit 1
-elif [ "$APP_BUNDLE" != "" ] && [ ! -f "$APP_BUNDLE" ]; then
-  echo "[ERR] APP_BUNDLE does not exist! [$APP_BUNDLE]"
-  exit 1
-elif [ "$APP_IDENTIFIER" = "" ]; then
-  echo "[ERR] APP_IDENTIFIER is not set!"
-  exit 1
-elif [ "$TEAM_ID" = "" ]; then
-  echo "[ERR] TEAM_ID is not set!"
-  exit 1
 elif [ "$APPLE_APP_SPECIFIC_PASSWORD" = "" ]; then
   echo "[ERR] APPLE_APP_SPECIFIC_PASSWORD is not set!"
   exit 1
-elif [ ! -f "$ENTITLEMENTS" ]; then
-  echo "[ERR] ENTITLEMENTS does not exist! [$ENTITLEMENTS]"
-  exit 1
 fi
 
+echo "[INF] APP_ARCHIVE                 : $APP_ARCHIVE"
+echo "[INF] APP_IDENTIFIER              : $APP_IDENTIFIER"
+echo "[INF] APP_TEAM_ID                 : $APP_TEAM_ID"
+echo "[INF] APP_IDENTITY                : $APP_IDENTITY"
+echo "[INF] APP_ENTITLEMENTS            : $APP_ENTITLEMENTS"
 echo "[INF] MACOS_CERT_P12              : $MACOS_CERT_P12"
 echo "[INF] MACOS_CERT_PASSWORD         : $MACOS_CERT_PASSWORD"
-echo "[INF] APP_BUNDLE                  : $APP_BUNDLE"
-echo "[INF] APP_IDENTIFIER              : $APP_IDENTIFIER"
-echo "[INF] TEAM_ID                     : $TEAM_ID"
-echo "[INF] APP_IDENTITY                : $APP_IDENTITY"
 echo "[INF] APPLE_ID                    : $APPLE_ID"
 echo "[INF] APPLE_APP_SPECIFIC_PASSWORD : $APPLE_APP_SPECIFIC_PASSWORD"
-echo "[INF] ENTITLEMENTS                : $ENTITLEMENTS"
-echo "[INF] openssl version             : $(openssl version)"
 
-echo "[INF] Validated required values successfully!"
+echo "[INF] Validated inputs successfully!"
+
+# TODO: Set up zsv directory
+
+if [ "$APP_ARCHIVE_TYPE" = "zip" ]; then
+  unzip "$APP_ARCHIVE"
+elif [ "$APP_ARCHIVE_TYPE" = "tar" ]; then
+  tar -xvf "$APP_ARCHIVE"
+fi
 
 # Keychain + Certificate
 
@@ -78,66 +100,62 @@ security create-keychain -p actions "$KEYCHAIN"
 security default-keychain -s "$KEYCHAIN"
 security unlock-keychain -p actions "$KEYCHAIN"
 security set-keychain-settings -t 3600 -u "$KEYCHAIN"
-if ! security import "$CERTIFICATE" -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -T /usr/bin/codesign; then
-  openssl pkcs12 -in "$CERTIFICATE" -nocerts -out "codesign.key" -nodes -password pass:"$MACOS_CERT_PASSWORD"
-  openssl pkcs12 -in "$CERTIFICATE" -clcerts -nokeys -out "codesign.crt" -password pass:"$MACOS_CERT_PASSWORD"
-  # TODO: Remove
-  ls -hl codesign.key codesign.crt
-  security import "codesign.key" -k "$KEYCHAIN" -P "" -A -T /usr/bin/codesign
-  security import "codesign.crt" -k "$KEYCHAIN" -P "" -A -T /usr/bin/codesign
-fi
+security import "$CERTIFICATE" -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -T /usr/bin/codesign
 security set-key-partition-list -S apple-tool:,apple: -s -k actions "$KEYCHAIN"
 security find-identity -v "$KEYCHAIN"
 
 echo "[INF] Set up keychain and imported certificate successfully!"
 
-# TODO: Set up zsv directory
-
 # Codesigning
 
-echo "[INF] Codesigning nested content"
+echo "[INF] Codesigning"
 
-find "$ZSV_ROOT" -type f -exec \
+echo "[INF] Codesigning all files and subdirectories"
+
+find "$APP_ARCHIVE" -type f -exec \
   codesign --verbose --deep --force --verify --options=runtime --timestamp \
-  --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" "$APP_BUNDLE" {} +
+  --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" {} +
 
-echo "[INF] Codesigned nested content successfully!"
+echo "[INF] Codesigned all files and subdirectories successfully!"
 
-echo "[INF] Codesigning bundle"
+# TODO: Create archive with codesigned files and subdirectories
+
+echo "[INF] Creating final archive"
+
+if [ "$APP_ARCHIVE_TYPE" = "zip" ]; then
+  zip -r "$APP_ARCHIVE" .
+elif [ "$APP_ARCHIVE_TYPE" = "tar" ]; then
+  tar -czvf "$APP_ARCHIVE" ./
+fi
+
+echo "[INF] Created final archive successfully!"
+
+echo "[INF] Codesigning final archive"
 
 codesign --verbose --force --verify --options=runtime --timestamp \
-  --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" "$APP_BUNDLE"
+  --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" "$APP_ARCHIVE"
 
 # TODO: Set up entitlements
-# --entitlements "$ENTITLEMENTS"
+# --entitlements "$APP_ENTITLEMENTS"
 
-echo "[INF] Codesigned bundle successfully!"
+echo "[INF] Codesigned final archive successfully!"
+
+echo "[INF] Codesigned successfully!"
 
 # Notarization
 
 echo "[INF] Notarizing"
 
-xcrun notarytool submit "$APP_BUNDLE" \
+xcrun notarytool submit "$APP_ARCHIVE" \
   --apple-id "$APPLE_ID" \
   --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-  --team-id "$TEAM_ID" \
+  --team-id "$APP_TEAM_ID" \
   --wait
 
 echo "[INF] Notarized successfully!"
 
-# Stapling
-
-echo "[INF] Stapling"
-
-xcrun stapler staple -v "$APP_BUNDLE"
-xcrun stapler validate "$APP_BUNDLE"
-
-echo "[INF] Stapled successfully!"
-
 # Cleanup
 
-if [ "$CI" = true ]; then
-  security delete-keychain "$KEYCHAIN"
-fi
+security delete-keychain "$KEYCHAIN"
 
 echo "[INF] --- [DONE] ---"
