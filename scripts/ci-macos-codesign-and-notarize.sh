@@ -75,7 +75,7 @@ echo "[INF] Validated inputs and environment variables successfully!"
 
 BASE_DIR="$PWD"
 TMP_ARCHIVE=$(basename "$APP_ARCHIVE")
-TMP_DIR="$RUNNER_TEMP/codesign-$RUNNER_ARCH-$RUNNER_ARCH"
+TMP_DIR="$RUNNER_TEMP/codesign-$RUNNER_ARCH-$RUNNER_OS"
 rm -rf "$TMP_DIR"
 mkdir -p "$TMP_DIR"
 cp "$APP_ARCHIVE" "$TMP_DIR/$TMP_ARCHIVE"
@@ -137,13 +137,15 @@ xcrun notarytool submit "$TMP_ARCHIVE" \
   --apple-id "$APPLE_ID" \
   --password "$APPLE_APP_SPECIFIC_PASSWORD" \
   --team-id "$APP_TEAM_ID" \
-  --wait
+  --output-format json \
+  --wait |
+  jq -e '.status == "Accepted"'
 
 echo "[INF] Notarized successfully!"
 
 # Update original archive
 
-cp -f "$TMP_ARCHIVE" "$APP_ARCHIVE"
+cp -f "$TMP_DIR/$TMP_ARCHIVE" "$APP_ARCHIVE"
 
 # Cleanup
 
