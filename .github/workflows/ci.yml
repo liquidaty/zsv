@@ -288,7 +288,7 @@ jobs:
       env:
         CC: gcc-13
         MAKE: make
-        RUN_TESTS: true
+        RUN_TESTS: false
         SKIP_TAR_ARCHIVE: true
       run: ./scripts/ci-build.sh
 

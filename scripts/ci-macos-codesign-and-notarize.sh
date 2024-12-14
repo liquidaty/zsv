@@ -102,7 +102,6 @@ security set-keychain-settings -t 3600 -u "$KEYCHAIN"
 security import "$CERTIFICATE" -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -T /usr/bin/codesign
 security set-key-partition-list -S apple-tool:,apple: -s -k actions "$KEYCHAIN"
 security find-identity -v "$KEYCHAIN"
-rm "$CERTIFICATE"
 
 echo "[INF] Set up keychain and imported certificate successfully!"
 
@@ -119,7 +118,7 @@ echo "[INF] Codesigned all files and subdirectories successfully!"
 # TODO: Create archive with codesigned files and subdirectories
 
 echo "[INF] Creating final archive"
-zip -r "$TMP_ARCHIVE" .
+zip -r "$TMP_ARCHIVE" bin include lib
 echo "[INF] Created final archive successfully!"
 
 echo "[INF] Codesigning final archive"
@@ -157,7 +156,7 @@ cp -f "$TMP_DIR/$TMP_ARCHIVE" "$APP_ARCHIVE"
 
 security delete-keychain "$KEYCHAIN"
 
-rm -rf "$TMP_DIR"
+rm -rf "$CERTIFICATE" "$TMP_DIR"
 cd "$BASE_DIR"
 
 echo "[INF] --- [DONE] ---"
