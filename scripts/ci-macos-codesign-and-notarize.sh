@@ -71,7 +71,9 @@ echo "[INF] APPLE_APP_SPECIFIC_PASSWORD : $APPLE_APP_SPECIFIC_PASSWORD"
 
 echo "[INF] Validated inputs and environment variables successfully!"
 
-# Set up temporary directory and archive
+# Archive
+
+echo "[INF] Set up temporary directory and archive"
 
 BASE_DIR="$PWD"
 TMP_ARCHIVE=$(basename "$APP_ARCHIVE")
@@ -82,6 +84,9 @@ cp "$APP_ARCHIVE" "$TMP_DIR/$TMP_ARCHIVE"
 cd "$TMP_DIR"
 unzip "$TMP_ARCHIVE"
 rm "$TMP_ARCHIVE"
+ls -hl
+
+echo "[INF] Set up temporary directory archive successfully!"
 
 # Keychain + Certificate
 

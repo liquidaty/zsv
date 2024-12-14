@@ -763,7 +763,7 @@ jobs:
         MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
         MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
         APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-      run: ./scripts/ci-macos-codesign-and-notarize.sh "$ZIP"
+      run: ./scripts/ci-macos-codesign-and-notarize.sh "$PWD/$ZIP"
 
     - name: Upload (${{ env.ZIP }})
       uses: actions/upload-artifact@v4
