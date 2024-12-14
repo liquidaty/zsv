@@ -259,8 +259,7 @@ jobs:
 
     strategy:
       matrix:
-        # os: [macos-13, macos-14]
-        os: [macos-13]
+        os: [macos-13, macos-14]
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -288,7 +287,7 @@ jobs:
       env:
         CC: gcc-13
         MAKE: make
-        RUN_TESTS: false
+        RUN_TESTS: true
         SKIP_TAR_ARCHIVE: true
       run: ./scripts/ci-build.sh
 
@@ -303,13 +302,13 @@ jobs:
       run: ./scripts/ci-macos-codesign-and-notarize.sh "$PWD/$ARTIFACT_DIR/$ZIP"
 
     - name: Attest build artifacts for release
-      if: startsWith(github.ref, 'refs/tags/v')
+      # if: startsWith(github.ref, 'refs/tags/v')
       uses: actions/attest-build-provenance@v2
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
     - name: Verify attestations of release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
+      # if: startsWith(github.ref, 'refs/tags/v')
       run: ./scripts/ci-verify-attestations.sh
 
     - name: Upload (${{ env.ZIP }})
