@@ -112,14 +112,9 @@ echo "[INF] Codesigning"
 
 echo "[INF] Codesigning all files and subdirectories"
 
-CODESIGN_OUTPUT=$(find "$TMP_DIR"/bin "$TMP_DIR"/include "$TMP_DIR"/lib -type f -exec \
+find "$TMP_DIR"/bin "$TMP_DIR"/include "$TMP_DIR"/lib -type f -exec \
   codesign --verbose --deep --force --verify --options=runtime --timestamp \
-  --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" {} +)
-
-if [ "$CODESIGN_OUTPUT" = "" ]; then
-  echo "[ERR] Failed to codesign!"
-  exit 1
-fi
+  --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" {} +
 
 echo "[INF] Codesigned all files and subdirectories successfully!"
 
