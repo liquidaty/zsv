@@ -294,6 +294,7 @@ jobs:
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
     - name: Codesign and notarize (${{ env.PREFIX }})
+      if: startsWith(github.ref, 'refs/tags/v')
       env:
         MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
         MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
