@@ -753,9 +753,9 @@ jobs:
         ZSV_ROOT: ${{ steps.zsv.outputs.install-path }}
       run: |
         pwd && ls -hl "$ZSV_ROOT"/*.zip
-        mv "$ZSV_ROOT"/*.zip .
+        cp "$ZSV_ROOT"/*.zip .
         pwd && ls -hl
-        ZIP=$(basename "$(ls "$ZSV_ROOT"/*.zip)")
+        ZIP=$(basename $(ls "$ZSV_ROOT"/*.zip))
         echo "ZIP=$ZIP" >>"$GITHUB_ENV"
 
     - name: Codesign and notarize
