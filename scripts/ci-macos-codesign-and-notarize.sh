@@ -73,9 +73,7 @@ echo "[INF] Validated inputs and environment variables successfully!"
 
 # Archive
 
-echo "[INF] Set up temporary directory and archive"
-
-BASE_DIR="$PWD"
+echo "[INF] Setting up temporary directory and archive"
 TMP_ARCHIVE=$(basename "$APP_ARCHIVE")
 TMP_DIR="$RUNNER_TEMP/codesign-$RUNNER_ARCH-$RUNNER_OS"
 rm -rf "$TMP_DIR"
@@ -85,13 +83,11 @@ cd "$TMP_DIR"
 unzip "$TMP_ARCHIVE"
 rm "$TMP_ARCHIVE"
 ls -hl
-
 echo "[INF] Set up temporary directory archive successfully!"
 
 # Keychain + Certificate
 
 echo "[INF] Setting up keychain and importing certificate"
-
 KEYCHAIN="build.keychain"
 CERTIFICATE="$RUNNER_TEMP/codesign-cert-$RUNNER_ARCH-$RUNNER_OS.p12"
 echo "$MACOS_CERT_P12" | base64 --decode >"$CERTIFICATE"
@@ -103,7 +99,6 @@ security import "$CERTIFICATE" -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" -A -t ce
 security set-key-partition-list -S apple-tool:,apple: -s -k actions "$KEYCHAIN"
 security find-identity -v "$KEYCHAIN"
 rm "$CERTIFICATE"
-
 echo "[INF] Set up keychain and imported certificate successfully!"
 
 # Codesigning
@@ -111,57 +106,45 @@ echo "[INF] Set up keychain and imported certificate successfully!"
 echo "[INF] Codesigning"
 
 echo "[INF] Codesigning all files and subdirectories"
-
 find "$TMP_DIR"/bin "$TMP_DIR"/include "$TMP_DIR"/lib -type f -exec \
   codesign --verbose --deep --force --verify --options=runtime --timestamp \
   --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" {} +
-
 echo "[INF] Codesigned all files and subdirectories successfully!"
 
-# TODO: Create archive with codesigned files and subdirectories
-
-echo "[INF] Creating final archive"
-zip -r "$TMP_ARCHIVE" bin include lib
+echo "[INF] Creating final archive [$PWD/$TMP_ARCHIVE]"
+zip -r ./"$TMP_ARCHIVE" ./bin ./include ./lib
 echo "[INF] Created final archive successfully!"
 
-echo "[INF] Codesigning final archive"
-
+echo "[INF] Codesigning final archive [$PWD/$TMP_ARCHIVE]"
 codesign --verbose --force --verify --options=runtime --timestamp \
   --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" "$TMP_ARCHIVE"
-
 echo "[INF] Codesigned final archive successfully!"
 
 echo "[INF] Codesigned successfully!"
 
 # Notarization
 
-echo "[INF] Notarizing"
-
+echo "[INF] Notarizing [$PWD/$TMP_ARCHIVE]"
 NOTARIZATION_OUTPUT=$(xcrun notarytool submit "$TMP_ARCHIVE" \
   --apple-id "$APPLE_ID" \
   --password "$APPLE_APP_SPECIFIC_PASSWORD" \
   --team-id "$APP_TEAM_ID" \
   --output-format json \
   --wait)
-
 echo "[INF] NOTARIZATION_OUTPUT: $NOTARIZATION_OUTPUT"
-
 if ! echo "$NOTARIZATION_OUTPUT" | jq -e '.status == "Accepted"' >/dev/null; then
   echo "[ERR] Failed to notarize! See above output for errors."
   exit 1
 fi
-
 echo "[INF] Notarized successfully!"
 
-# Update original archive
-
+echo "[INF] Placing final archive [$PWD/$TMP_ARCHIVE => $APP_ARCHIVE]"
 cp -f "$TMP_DIR/$TMP_ARCHIVE" "$APP_ARCHIVE"
+echo "[INF] Placed final archive successfully!"
 
 # Cleanup
 
 security delete-keychain "$KEYCHAIN"
-
 rm -rf "$TMP_DIR"
-cd "$BASE_DIR"
 
 echo "[INF] --- [DONE] ---"
