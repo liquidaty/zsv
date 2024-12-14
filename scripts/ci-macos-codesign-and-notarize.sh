@@ -27,7 +27,6 @@ APP_ARCHIVE=${1:-}
 APP_IDENTIFIER="com.liquidaty.zsv"
 APP_TEAM_ID="HXK8Y6Q9K2"
 APP_IDENTITY="Developer ID Application: matt wong ($APP_TEAM_ID)"
-APP_ENTITLEMENTS="entitlements.plist"
 
 MACOS_CERT_P12=${MACOS_CERT_P12:-}
 MACOS_CERT_PASSWORD=${MACOS_CERT_PASSWORD:-}
@@ -73,7 +72,6 @@ echo "[INF] APP_ARCHIVE                 : $APP_ARCHIVE"
 echo "[INF] APP_IDENTIFIER              : $APP_IDENTIFIER"
 echo "[INF] APP_TEAM_ID                 : $APP_TEAM_ID"
 echo "[INF] APP_IDENTITY                : $APP_IDENTITY"
-echo "[INF] APP_ENTITLEMENTS            : $APP_ENTITLEMENTS"
 echo "[INF] MACOS_CERT_P12              : $MACOS_CERT_P12"
 echo "[INF] MACOS_CERT_PASSWORD         : $MACOS_CERT_PASSWORD"
 echo "[INF] APPLE_ID                    : $APPLE_ID"
@@ -134,9 +132,6 @@ echo "[INF] Codesigning final archive"
 
 codesign --verbose --force --verify --options=runtime --timestamp \
   --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" "$APP_ARCHIVE"
-
-# TODO: Set up entitlements
-# --entitlements "$APP_ENTITLEMENTS"
 
 echo "[INF] Codesigned final archive successfully!"
 
