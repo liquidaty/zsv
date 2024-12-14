@@ -738,72 +738,33 @@ jobs:
     continue-on-error: true
 
     steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          scripts/ci-macos-codesign-and-notarize.sh
+
     - name: Set up zsv+lib
-      id: zsv
       uses: liquidaty/zsv/setup-action@main
 
-    - name: List and set ZSV_ROOT env var
-      env:
-        ZSV_ROOT: ${{ steps.zsv.outputs.install-path }}
+    - name: Move archive to working directory
       run: |
-        ls -hl "$ZSV_ROOT"/{bin,include,lib}
-        rm "$ZSV_ROOT"/*.zip
-        echo "ZSV_ROOT=$ZSV_ROOT" >>"$GITHUB_ENV"
+        ls -hl "$ZSV_ROOT"/*.zip
+        ZIP=$(ls *.zip)
+        mv "$ZSV_ROOT/$ZIP" .
+        echo "ZIP=$ZIP" >>"$GITHUB_ENV"
 
-    - name: Install Developer Certificate
+    - name: Codesign and notarize
       env:
         MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
         MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
-      run: |
-        echo "$MACOS_CERT_P12" | base64 --decode > cert.p12
-        security create-keychain -p actions build.keychain
-        security default-keychain -s build.keychain
-        security unlock-keychain -p actions build.keychain
-        security set-keychain-settings -t 3600 -u build.keychain
-        security import cert.p12 -k build.keychain -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -T /usr/bin/codesign
-        security set-key-partition-list -S apple-tool:,apple: -s -k actions build.keychain
-        security find-identity -v build.keychain
-
-    - name: Codesign
-      env:
-        AC: 'Developer ID Application: matt wong (HXK8Y6Q9K2)'
-        AI: 'dev.liquidaty.zsv'
-        ZIP: ${{ format('zsv-{0}-{1}.zip', runner.arch, runner.os) }}
-      run: |
-        find "$ZSV_ROOT" -type f -exec \
-          codesign --verbose --deep --force --verify --options=runtime --timestamp \
-              --sign "$AC" --identifier "$AI" {} +
-
-        cd "$ZSV_ROOT"
-        zip -r "$ZIP" .
-
-        codesign --verbose --force --verify --options=runtime --timestamp \
-            --identifier "$AI" --sign "$AC" "$ZSV_ROOT/$ZIP"
-
-        echo "ZIP=$ZIP" >>"$GITHUB_ENV"
-
-    - name: Notarize
-      env:
-        AID: matt@liquidaty.com
-        ASP: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-        TID: HXK8Y6Q9K2
-      run: |
-        xcrun notarytool submit "$ZSV_ROOT/$ZIP" \
-          --apple-id "$AID" \
-          --password "$ASP" \
-          --team-id "$TID" \
-          --output-format json \
-          --wait \
-          | jq -e '.status == "Accepted"'
-
-    - name: Cleanup
-      if: always()
-      run: security delete-keychain build.keychain
+        APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      run: ./scripts/ci-macos-codesign-and-notarize.sh "$ZIP"
 
     - name: Upload (${{ env.ZIP }})
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.ZIP }}
-        path: ${{ env.ZSV_ROOT }}/${{ env.ZIP }}
+        path: ${{ env.ZIP }}
         retention-days: 7
         if-no-files-found: error

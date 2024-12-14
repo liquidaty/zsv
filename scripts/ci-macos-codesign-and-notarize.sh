@@ -6,9 +6,8 @@ echo "[INF] Running $0"
 
 # Startup checks
 
-if [ "$#" -ne 1 ] || [ "$1" = "" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-  echo "[ERR] Usage: $0 [ARTIFACT_DIR/ARCHIVE]"
-  echo "[ERR] Only .zip and .tar.gz archives are supported!"
+if [ "$#" -ne 1 ] || [ "$1" = "" ]; then
+  echo "[ERR] Usage: $0 [ARCHIVE.zip]"
   echo "[ERR] Following environment variables are required:"
   echo "[ERR] - MACOS_CERT_P12              (base64 encoded)"
   echo "[ERR] - MACOS_CERT_PASSWORD         (plaintext)"
@@ -17,7 +16,7 @@ if [ "$#" -ne 1 ] || [ "$1" = "" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; th
 fi
 
 if [ "$CI" != true ] || [ "$RUNNER_OS" != "macOS" ]; then
-  echo "[ERR] Must be run in GitHub Actions CI on macOS runners!"
+  echo "[ERR] Must be run in GitHub Actions CI on a macOS runner!"
   exit 1
 fi
 
@@ -36,24 +35,16 @@ APPLE_APP_SPECIFIC_PASSWORD=${APPLE_APP_SPECIFIC_PASSWORD:-}
 
 # Validations
 
-echo "[INF] Validating inputs"
+echo "[INF] Validating arguments and environment variables"
 
 if [ ! -f "$APP_ARCHIVE" ]; then
   echo "[ERR] Invalid archive! [$APP_ARCHIVE]"
   echo "[ERR] Archive does not exist or is not a file!"
   exit 1
-fi
-
-APP_ARCHIVE_TYPE=
-if echo "$APP_ARCHIVE" | grep '.zip$' >/dev/null &&
-  file --mime "$APP_ARCHIVE" | grep 'application/zip' >/dev/null; then
-  APP_ARCHIVE_TYPE="zip"
-elif echo "$APP_ARCHIVE" | grep '.tar.gz$' >/dev/null &&
-  file --mime "$APP_ARCHIVE" | grep 'application/gzip' >/dev/null; then
-  APP_ARCHIVE_TYPE="tar"
-else
+elif ! echo "$APP_ARCHIVE" | grep '.zip$' >/dev/null ||
+  ! file --mime "$APP_ARCHIVE" | grep 'application/zip' >/dev/null; then
   echo "[ERR] Invalid archive type! [$APP_ARCHIVE]"
-  echo "[ERR] Only .zip and .tar.gz archives are supported!"
+  echo "[ERR] Only .zip archive is supported!"
   exit 1
 fi
 
@@ -68,6 +59,7 @@ elif [ "$APPLE_APP_SPECIFIC_PASSWORD" = "" ]; then
   exit 1
 fi
 
+echo "[INF] PWD                         : $PWD"
 echo "[INF] APP_ARCHIVE                 : $APP_ARCHIVE"
 echo "[INF] APP_IDENTIFIER              : $APP_IDENTIFIER"
 echo "[INF] APP_TEAM_ID                 : $APP_TEAM_ID"
@@ -77,15 +69,19 @@ echo "[INF] MACOS_CERT_PASSWORD         : $MACOS_CERT_PASSWORD"
 echo "[INF] APPLE_ID                    : $APPLE_ID"
 echo "[INF] APPLE_APP_SPECIFIC_PASSWORD : $APPLE_APP_SPECIFIC_PASSWORD"
 
-echo "[INF] Validated inputs successfully!"
+echo "[INF] Validated inputs and environment variables successfully!"
 
-# TODO: Set up zsv directory
+# Set up temporary directory and archive
 
-if [ "$APP_ARCHIVE_TYPE" = "zip" ]; then
-  unzip "$APP_ARCHIVE"
-elif [ "$APP_ARCHIVE_TYPE" = "tar" ]; then
-  tar -xvf "$APP_ARCHIVE"
-fi
+BASE_DIR="$PWD"
+TMP_ARCHIVE=$(basename "$APP_ARCHIVE")
+TMP_DIR="$RUNNER_TEMP/codesign-$RUNNER_ARCH-$RUNNER_ARCH"
+rm -rf "$TMP_DIR"
+mkdir -p "$TMP_DIR"
+cp "$APP_ARCHIVE" "$TMP_DIR/$TMP_ARCHIVE"
+cd "$TMP_DIR"
+unzip "$TMP_ARCHIVE"
+rm "$TMP_ARCHIVE"
 
 # Keychain + Certificate
 
@@ -110,7 +106,7 @@ echo "[INF] Codesigning"
 
 echo "[INF] Codesigning all files and subdirectories"
 
-find "$APP_ARCHIVE" -type f -exec \
+find "$TMP_DIR" -type f -exec \
   codesign --verbose --deep --force --verify --options=runtime --timestamp \
   --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" {} +
 
@@ -120,18 +116,14 @@ echo "[INF] Codesigned all files and subdirectories successfully!"
 
 echo "[INF] Creating final archive"
 
-if [ "$APP_ARCHIVE_TYPE" = "zip" ]; then
-  zip -r "$APP_ARCHIVE" .
-elif [ "$APP_ARCHIVE_TYPE" = "tar" ]; then
-  tar -czvf "$APP_ARCHIVE" ./
-fi
+zip -r "$TMP_ARCHIVE" .
 
 echo "[INF] Created final archive successfully!"
 
 echo "[INF] Codesigning final archive"
 
 codesign --verbose --force --verify --options=runtime --timestamp \
-  --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" "$APP_ARCHIVE"
+  --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" "$TMP_ARCHIVE"
 
 echo "[INF] Codesigned final archive successfully!"
 
@@ -141,7 +133,7 @@ echo "[INF] Codesigned successfully!"
 
 echo "[INF] Notarizing"
 
-xcrun notarytool submit "$APP_ARCHIVE" \
+xcrun notarytool submit "$TMP_ARCHIVE" \
   --apple-id "$APPLE_ID" \
   --password "$APPLE_APP_SPECIFIC_PASSWORD" \
   --team-id "$APP_TEAM_ID" \
@@ -149,8 +141,15 @@ xcrun notarytool submit "$APP_ARCHIVE" \
 
 echo "[INF] Notarized successfully!"
 
+# Update original archive
+
+cp -f "$TMP_ARCHIVE" "$APP_ARCHIVE"
+
 # Cleanup
 
 security delete-keychain "$KEYCHAIN"
+
+rm -rf "$TMP_DIR"
+cd "$BASE_DIR"
 
 echo "[INF] --- [DONE] ---"
