@@ -102,6 +102,7 @@ security set-keychain-settings -t 3600 -u "$KEYCHAIN"
 security import "$CERTIFICATE" -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -T /usr/bin/codesign
 security set-key-partition-list -S apple-tool:,apple: -s -k actions "$KEYCHAIN"
 security find-identity -v "$KEYCHAIN"
+rm "$CERTIFICATE"
 
 echo "[INF] Set up keychain and imported certificate successfully!"
 
@@ -110,9 +111,16 @@ echo "[INF] Set up keychain and imported certificate successfully!"
 echo "[INF] Codesigning"
 
 echo "[INF] Codesigning all files and subdirectories"
-find "$TMP_DIR" -type f -regex '.*\(bin\|include\|lib\).*' -exec \
+
+CODESIGN_OUTPUT=$(find "$TMP_DIR"/bin "$TMP_DIR"/include "$TMP_DIR"/lib -type f -exec \
   codesign --verbose --deep --force --verify --options=runtime --timestamp \
-  --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" {} +
+  --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" {} +)
+
+if [ "$CODESIGN_OUTPUT" = "" ]; then
+  echo "[ERR] Failed to codesign!"
+  exit 1
+fi
+
 echo "[INF] Codesigned all files and subdirectories successfully!"
 
 # TODO: Create archive with codesigned files and subdirectories
@@ -122,8 +130,10 @@ zip -r "$TMP_ARCHIVE" bin include lib
 echo "[INF] Created final archive successfully!"
 
 echo "[INF] Codesigning final archive"
+
 codesign --verbose --force --verify --options=runtime --timestamp \
   --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" "$TMP_ARCHIVE"
+
 echo "[INF] Codesigned final archive successfully!"
 
 echo "[INF] Codesigned successfully!"
@@ -132,16 +142,16 @@ echo "[INF] Codesigned successfully!"
 
 echo "[INF] Notarizing"
 
-OUTPUT=$(xcrun notarytool submit "$TMP_ARCHIVE" \
+NOTARIZATION_OUTPUT=$(xcrun notarytool submit "$TMP_ARCHIVE" \
   --apple-id "$APPLE_ID" \
   --password "$APPLE_APP_SPECIFIC_PASSWORD" \
   --team-id "$APP_TEAM_ID" \
   --output-format json \
   --wait)
 
-echo "[INF] OUTPUT: $OUTPUT"
+echo "[INF] NOTARIZATION_OUTPUT: $NOTARIZATION_OUTPUT"
 
-if ! echo "$OUTPUT" | jq -e '.status == "Accepted"' >/dev/null; then
+if ! echo "$NOTARIZATION_OUTPUT" | jq -e '.status == "Accepted"' >/dev/null; then
   echo "[ERR] Failed to notarize! See above output for errors."
   exit 1
 fi
@@ -156,7 +166,7 @@ cp -f "$TMP_DIR/$TMP_ARCHIVE" "$APP_ARCHIVE"
 
 security delete-keychain "$KEYCHAIN"
 
-rm -rf "$CERTIFICATE" "$TMP_DIR"
+rm -rf "$TMP_DIR"
 cd "$BASE_DIR"
 
 echo "[INF] --- [DONE] ---"
