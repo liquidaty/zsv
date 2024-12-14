@@ -138,13 +138,20 @@ echo "[INF] Codesigned successfully!"
 
 echo "[INF] Notarizing"
 
-xcrun notarytool submit "$TMP_ARCHIVE" \
+OUTPUT=$(xcrun notarytool submit "$TMP_ARCHIVE" \
   --apple-id "$APPLE_ID" \
   --password "$APPLE_APP_SPECIFIC_PASSWORD" \
   --team-id "$APP_TEAM_ID" \
   --output-format json \
-  --wait |
-  jq -e '.status == "Accepted"'
+  --wait)
+
+echo "[INF] OUTPUT: $OUTPUT"
+
+if ! echo "$OUTPUT" | jq -e '.status == "Accepted"' >/dev/null; then
+  echo "[ERR] Failed to notarize!"
+  echo "[ERR] See JSON output above for errors."
+  exit 1
+fi
 
 echo "[INF] Notarized successfully!"
 
