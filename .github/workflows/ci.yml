@@ -745,12 +745,15 @@ jobs:
           scripts/ci-macos-codesign-and-notarize.sh
 
     - name: Set up zsv+lib
+      id: zsv
       uses: liquidaty/zsv/setup-action@main
 
     - name: Move archive to working directory
+      env:
+        ZSV_ROOT: ${{ steps.zsv.outputs.install-path }}
       run: |
         ls -hl "$ZSV_ROOT"/*.zip
-        ZIP=$(ls *.zip)
+        ZIP=$(ls "$ZSV_ROOT"/*.zip)
         mv "$ZSV_ROOT/$ZIP" .
         echo "ZIP=$ZIP" >>"$GITHUB_ENV"
 
