@@ -93,7 +93,7 @@ echo "[INF] Set up temporary directory archive successfully!"
 echo "[INF] Setting up keychain and importing certificate"
 
 KEYCHAIN="build.keychain"
-CERTIFICATE="macos-codesign-cert.p12"
+CERTIFICATE="$RUNNER_TEMP/codesign-cert-$RUNNER_ARCH-$RUNNER_OS.p12"
 echo "$MACOS_CERT_P12" | base64 --decode >"$CERTIFICATE"
 security create-keychain -p actions "$KEYCHAIN"
 security default-keychain -s "$KEYCHAIN"
@@ -111,26 +111,20 @@ echo "[INF] Set up keychain and imported certificate successfully!"
 echo "[INF] Codesigning"
 
 echo "[INF] Codesigning all files and subdirectories"
-
 find "$TMP_DIR" -type f -regex '.*\(bin\|include\|lib\).*' -exec \
   codesign --verbose --deep --force --verify --options=runtime --timestamp \
   --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" {} +
-
 echo "[INF] Codesigned all files and subdirectories successfully!"
 
 # TODO: Create archive with codesigned files and subdirectories
 
 echo "[INF] Creating final archive"
-
-zip -r "$TMP_ARCHIVE" bin include lib
-
+zip -r "$TMP_ARCHIVE" .
 echo "[INF] Created final archive successfully!"
 
 echo "[INF] Codesigning final archive"
-
 codesign --verbose --force --verify --options=runtime --timestamp \
   --sign "$APP_IDENTITY" --identifier "$APP_IDENTIFIER" "$TMP_ARCHIVE"
-
 echo "[INF] Codesigned final archive successfully!"
 
 echo "[INF] Codesigned successfully!"
@@ -149,8 +143,7 @@ OUTPUT=$(xcrun notarytool submit "$TMP_ARCHIVE" \
 echo "[INF] OUTPUT: $OUTPUT"
 
 if ! echo "$OUTPUT" | jq -e '.status == "Accepted"' >/dev/null; then
-  echo "[ERR] Failed to notarize!"
-  echo "[ERR] See JSON output above for errors."
+  echo "[ERR] Failed to notarize! See above output for errors."
   exit 1
 fi
 
