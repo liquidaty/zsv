@@ -299,7 +299,7 @@ jobs:
         MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
         MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
         APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-      run: ./scripts/ci-macos-codesign-and-notarize.sh "$ARTIFACT_DIR/$ZIP"
+      run: ./scripts/ci-macos-codesign-and-notarize.sh "$PWD/$ARTIFACT_DIR/$ZIP"
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
