@@ -30,6 +30,7 @@ enum {
   zsvsheet_builtin_proc_open_file,
   zsvsheet_builtin_proc_resize,
   zsvsheet_builtin_proc_prompt,
+  zsvsheet_builtin_proc_open_cell_context_menu,
   zsvsheet_builtin_proc_help,
   zsvsheet_builtin_proc_vim_g_key_binding_dmux,
 };

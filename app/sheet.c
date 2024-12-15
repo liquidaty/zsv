@@ -43,6 +43,7 @@
 #include "sheet/sheet_internal.h"
 #include "sheet/screen_buffer.c"
 #include "sheet/procedure.c"
+#include "sheet/context-menu.c"
 
 /* TODO: move this somewhere else like common or utils */
 #define UNUSED(X) ((void)X)
@@ -447,6 +448,11 @@ out:
   return zsvsheet_status_ok;
 }
 
+static zsvsheet_status zsvsheet_open_cell_context_menu_handler(struct zsvsheet_proc_context *ctx)
+{
+  fprintf(stderr, "context menu\n");
+}
+
 static zsvsheet_status zsvsheet_help_handler(struct zsvsheet_proc_context *ctx) {
   struct zsvsheet_builtin_proc_state *state = (struct zsvsheet_builtin_proc_state *)ctx->subcommand_context;
   struct zsvsheet_display_info *di = &state->display_info;
@@ -604,6 +610,7 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_resize,         "resize", "Resize the layout to fit new terminal dimensions",                zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_open_file,      "open",   "Open a another CSV file",                                         zsvsheet_open_file_handler  },
   { zsvsheet_builtin_proc_filter,         "filter", "Hide rows that do not contain the specified text",                zsvsheet_filter_handler     },
+  { zsvsheet_builtin_proc_open_cell_context_menu,  "open-cell-context-menu", "Open cell context menu",                  zsvsheet_open_cell_context_menu_handler },
   { zsvsheet_builtin_proc_help,           "help",   "Display a list of actions and key-bindings",                      zsvsheet_help_handler       },
   { -1, NULL, NULL }
 };

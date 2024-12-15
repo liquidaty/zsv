@@ -26,8 +26,7 @@ zsvsheet_status zsvsheet_proc_key_binding_handler(struct zsvsheet_key_binding_co
   return zsvsheet_proc_invoke_from_keypress(ctx->binding->proc_id, ctx->ch, ctx->subcommand_context);
 }
 
-int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding) {
-  if (zsvsheet_find_key_binding(binding->ch))
+int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding) { if (zsvsheet_find_key_binding(binding->ch))
     return EEXIST; /* Key bound already */
 
   if (binding->proc_id != ZSVSHEET_PROC_INVALID && binding->handler == NULL)
@@ -170,6 +169,7 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
   /* Open is a subcommand only in vim. Keeping the binding for now */
   { .ch = 'e',                 .proc_id = zsvsheet_builtin_proc_open_file,     },
   { .ch = 'f',                 .proc_id = zsvsheet_builtin_proc_filter,        },
+  { .ch = 'c',                 .proc_id = zsvsheet_builtin_proc_open_cell_context_menu, },
   { .ch = '?',                 .proc_id = zsvsheet_builtin_proc_help,          },
 
   { .ch = -1                                                          }
