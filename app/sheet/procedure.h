@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <zsv/ext.h>
 
+struct zsvsheet_context_menu_entry;
+
 /* ID's of bulitin procedures, extensions can register more.
  *
  * TODO: What specific procedures are bulitin and what are their
@@ -35,6 +37,7 @@ enum {
   zsvsheet_builtin_proc_help,
   zsvsheet_builtin_proc_vim_g_key_binding_dmux,
   zsvsheet_builtin_proc_newline,
+  zsvsheet_builtin_proc_confirm,
 };
 
 #define ZSVSHEET_PROC_INVALID 0
@@ -46,6 +49,7 @@ enum {
 enum zsvsheet_proc_invocation_type {
   zsvsheet_proc_invocation_type_keypress,
   zsvsheet_proc_invocation_type_proc,
+  zsvsheet_proc_invocation_type_context_menu,
   /* Add more... */
 };
 
@@ -67,6 +71,9 @@ struct zsvsheet_proc_context {
       struct {
         zsvsheet_proc_id_t id;
       } proc;
+      struct {
+        struct zsvsheet_context_menu_entry *entry;
+      } context_menu;
     } u;
   } invocation;
 

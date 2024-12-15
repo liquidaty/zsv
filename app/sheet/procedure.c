@@ -132,3 +132,9 @@ zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, const char *descript
     .id = zsvsheet_generate_proc_id(), .name = name, .description = description, .handler = handler};
   return zsvsheet_do_register_proc(&procedure);
 }
+
+void zsvsheet_unregister_proc(zsvsheet_proc_id_t id) {
+  struct zsvsheet_procedure *proc = &procedure_lookup[id];
+  proc_debug("unregister proc %d %s\n", proc->id, proc->name ? proc->name : "(unnamed)");
+  proc->id = ZSVSHEET_PROC_INVALID;
+}
