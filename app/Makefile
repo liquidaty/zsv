@@ -91,18 +91,25 @@ CONFIGURE_HOST=
 ifneq ($(HOST),)
   CONFIGURE_HOST=$(HOST)
 endif
+
 ifeq ($(WIN),0)
   BUILD_SUBDIR=$(shell uname)/${DBG_SUBDIR}
   EXE=
-
   ifneq ($(findstring emcc,$(CC)),) # emcc
     NO_THREADING ?= 1
+    NO_PLAYGROUND ?= 1
     EXE=.em.js
-    EXPORTED_FUNCTIONS='_free','_malloc'
-    CFLAGS+= -s EXPORTED_FUNCTIONS="[${EXPORTED_FUNCTIONS}]" -s EXPORTED_RUNTIME_METHODS="['setValue','allocateUTF8','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory']" -s RESERVED_FUNCTION_POINTERS=4 -s ALLOW_MEMORY_GROWTH=1
-    CFLAGS_EXE+= -s FORCE_FILESYSTEM=1 -lidbfs.js -s MAIN_MODULE
+    ifeq ($(NO_PLAYGROUND),0) # wasm playground
+      LDFLAGS += -sEXPORTED_RUNTIME_METHODS="['callMain']" -sINVOKE_RUN=0 -sALLOW_MEMORY_GROWTH=1
+    else
+      CFLAGS += -DNO_PLAYGROUND
+      LDFLAGS += -sEXPORTED_FUNCTIONS="['_free','_malloc']"
+      LDFLAGS += -sEXPORTED_RUNTIME_METHODS="['setValue','allocateUTF8','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory']"
+      LDFLAGS += -sRESERVED_FUNCTION_POINTERS=4 -sALLOW_MEMORY_GROWTH=1
+    endif
+    LDFLAGS += -sFORCE_FILESYSTEM=1 -lidbfs.js -sMAIN_MODULE
     ifeq ($(NO_THREADING),0)
-      CFLAGS_EXE+= -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2 -s PTHREAD_POOL_SIZE=8
+      LDFLAGS += -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=2
     endif
   endif
 else
@@ -154,7 +161,7 @@ CFLAGS+= -I${PREFIX}/include
 THIS_LIB_BASE=$(shell cd .. && pwd)
 INCLUDE_DIR=${THIS_LIB_BASE}/include
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
-UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os overwrite index
+UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os overwrite index overwrite_writer
 
 ZSV_EXTRAS ?=
 
@@ -223,7 +230,7 @@ CLI_OBJ_PFX=${BUILD_DIR}/objs/cli_
 CLI_APP_OBJECT=${CLI_OBJ_PFX}cli.o
 CLI=${BUILD_DIR}/bin/cli${EXE}
 ifneq ($(findstring emcc,$(CC)),) # emcc
-    CLI_ADDITIONAL=${BUILD_DIR}/bin/cli.em.wasm
+  CLI_ADDITIONAL=${BUILD_DIR}/bin/cli.em.wasm
 endif
 CLI_OBJECTS=$(addprefix ${CLI_OBJ_PFX},$(addsuffix .o,${CLI_SOURCES}))
 
@@ -283,6 +290,10 @@ OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${BUILD_DIR}/objs/utils/json.o ${SQLITE
 MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -I${JQ_INCLUDE_DIR} ${SQLITE_EXT_INCLUDE}
 MORE_LIBS+=${JQ_LIB} ${LDFLAGS_JQ}
 
+#OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${BUILD_DIR}/objs/utils/json.o
+#MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
+#MORE_LIBS+=
+
 help:
 	@echo "To build: ${MAKE} [DEBUG=1] [STATIC_BUILD=1] [clean] [clean-all] [BINDIR=${BINDIR}] [JQ_PREFIX=/usr/local] <install|all|install-util-lib|test>"
 	@echo
@@ -305,11 +316,14 @@ uninstall:
 	rm -rf ${ZSV}
 
 ZSV_UTIL_A=${LIBDIR}/libzsvutil.a
+
+${ZSV_UTIL_A}:SQLITE_EXT=
+${ZSV_UTIL_A}:SQLITE_EXT_INCLUDE=
 ${ZSV_UTIL_A}: ${BUILD_DIR}/objs/utils/util.a
 	@mkdir -p `dirname $@`
 	cp -p $< $@
 
-UTIL_A_OBJ:=writer file dirs-no-jq os ${UTIL_A_OBJ_WIN}
+UTIL_A_OBJ:=index writer file dirs-no-jq os ${UTIL_A_OBJ_WIN}
 UTIL_A_OBJ:=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTIL_A_OBJ}))
 
 ${BUILD_DIR}/objs/utils/util.a: ${UTIL_A_OBJ}
@@ -418,7 +432,7 @@ ${JQ_BUNDLE_LIB}: ${JQ_SRC} # -D_REENTRANT needed for clang to not break
 	# copy the directory because its timestamp gets updated after libjq is built
 	@cp -a ${JQ_SRC} ${JQ_SRC}-conf
 	cd ${JQ_SRC}-conf \
-	&& CC="${CC}" CFLAGS="${CFLAGS} -D_REENTRANT" ./configure \
+	&& CC="${CC}" CFLAGS="${CFLAGS} -w -D_REENTRANT" ./configure \
 	    --prefix="${JQ_PREFIX}" \
 	    --disable-maintainer-mode \
 	    --without-oniguruma \
@@ -458,11 +472,11 @@ ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF
 
 ${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}-external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -o $@ -c $<
+	${CC} ${CFLAGS} -w -I${INCLUDE_DIR} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -o $@ -c $<
 
 ${YAJL_OBJ}: ${BUILD_DIR}-external/yajl/%.o : external/yajl/src/%.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${YAJL_INCLUDE} -c external/yajl/src/$*.c -o $@
+	${CC} ${CFLAGS} -w ${YAJL_INCLUDE} -c external/yajl/src/$*.c -o $@
 
 ${YAJL_HELPER_OBJ}: external/yajl_helper/yajl_helper.c
 	@mkdir -p `dirname "$@"`

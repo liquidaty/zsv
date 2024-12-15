@@ -54,7 +54,7 @@
 /**
  * *Required*: define our extension id, which must be two characters in length
  */
-const char *zsv_ext_id() {
+const char *zsv_ext_id(void) {
   return ZSV_THIS_EXT_ID;
 }
 
@@ -111,7 +111,7 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
  * If you allocated resources in `zsv_ext_init()`
  * then you can de-allocate them in `zsv_ext_exit()`
  */
-enum zsv_ext_status zsv_ext_exit() {
+enum zsv_ext_status zsv_ext_exit(void) {
   /* YOUR CODE GOES HERE */
   return zsv_ext_status_ok;
 }

@@ -13,7 +13,6 @@
 
 #define ZSV_COMMAND pretty
 #include "zsv_command.h"
-#include <zsv/utils/writer.h>
 #include <zsv/utils/string.h>
 
 #define ZSV_PRETTY_DEFAULT_LINE_MAX_WIDTH 160
@@ -49,7 +48,7 @@ enum zsv_pretty_status {
 
 #ifdef WIN32
 #include <windows.h>
-static size_t get_console_width() {
+static size_t get_console_width(void) {
   CONSOLE_SCREEN_BUFFER_INFO csbi;
   int ret;
   ret = GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
@@ -63,13 +62,13 @@ static size_t get_console_width() {
 #include <stdlib.h>
 
 #ifndef HAVE_TGETENT
-static size_t get_console_width() {
+static size_t get_console_width(void) {
   return 0;
 }
 
 #else
 #include <termcap.h>
-static size_t get_console_width() {
+static size_t get_console_width(void) {
   char termbuf[2048];
   char *termtype = getenv("TERM");
   if (tgetent(termbuf, termtype) < 0)
@@ -511,7 +510,7 @@ const char *zsv_pretty_usage_msg[] = {
   NULL,
 };
 
-static void zsv_pretty_usage() {
+static void zsv_pretty_usage(void) {
   for (size_t i = 0; zsv_pretty_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", zsv_pretty_usage_msg[i]);
 }
@@ -540,8 +539,7 @@ static void zsv_pretty_destroy(struct zsv_pretty_data *data) {
 }
 
 static struct zsv_pretty_data *zsv_pretty_init(struct zsv_pretty_opts *opts, struct zsv_opts *parser_opts,
-                                               struct zsv_prop_handler *custom_prop_handler, const char *input_path,
-                                               const char *opts_used) {
+                                               struct zsv_prop_handler *custom_prop_handler, const char *input_path) {
   struct zsv_pretty_data *data = calloc(1, sizeof(*data));
   if (!data)
     return NULL;
@@ -558,7 +556,7 @@ static struct zsv_pretty_data *zsv_pretty_init(struct zsv_pretty_opts *opts, str
 
   parser_opts->row_handler = zsv_pretty_row;
   parser_opts->ctx = data;
-  zsv_new_with_properties(parser_opts, custom_prop_handler, input_path, opts_used, &data->parser);
+  zsv_new_with_properties(parser_opts, custom_prop_handler, input_path, &data->parser);
 
   data->write = (size_t(*)(const void *, size_t, size_t, void *))fwrite;
   data->write_arg = opts->out ? opts->out : stdout;
@@ -584,7 +582,7 @@ static struct zsv_pretty_data *zsv_pretty_init(struct zsv_pretty_opts *opts, str
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *parser_opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     zsv_pretty_usage();
     return 0;
@@ -670,7 +668,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *pa
     rc = zsv_printerr(1, "Min column width cannot exceed max column width or max line width");
 
   parser_opts->stream = in;
-  struct zsv_pretty_data *h = zsv_pretty_init(&opts, parser_opts, custom_prop_handler, input_path, opts_used);
+  struct zsv_pretty_data *h = zsv_pretty_init(&opts, parser_opts, custom_prop_handler, input_path);
   if (!h)
     rc = 1;
   else {
@@ -686,7 +684,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *pa
     zsv_pretty_flush(h);
     zsv_pretty_destroy(h);
   }
-  if (opts.out)
+  if (opts.out && opts.out != stdout)
     fclose(opts.out);
   if (in && in != stdin)
     fclose(in);

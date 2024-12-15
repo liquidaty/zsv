@@ -290,6 +290,8 @@ static void zsv_compare_print_row(struct zsv_compare_data *data,
 static void zsv_compare_input_free(struct zsv_compare_input *input) {
   zsv_delete(input->parser);
   zsv_compare_unique_colnames_delete(&input->colnames);
+  if (input->added)
+    sqlite3_zsv_list_remove(input->path);
   free(input->out2in);
   if (input->stream)
     fclose(input->stream);
@@ -401,16 +403,15 @@ static unsigned zsv_compare_get_unsorted_colcount(struct zsv_compare_input *inpu
 }
 
 static enum zsv_compare_status input_init_unsorted(struct zsv_compare_data *data, struct zsv_compare_input *input,
-                                                   struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler,
-                                                   const char *opts_used) {
-  (void)(opts_used);
+                                                   struct zsv_opts *opts,
+                                                   struct zsv_prop_handler *custom_prop_handler) {
   if (!(input->stream = fopen(input->path, "rb"))) {
     perror(input->path);
     return zsv_compare_status_error;
   }
   struct zsv_opts these_opts = *opts;
   these_opts.stream = input->stream;
-  enum zsv_status stat = zsv_new_with_properties(&these_opts, custom_prop_handler, input->path, NULL, &input->parser);
+  enum zsv_status stat = zsv_new_with_properties(&these_opts, custom_prop_handler, input->path, &input->parser);
   if (stat != zsv_status_ok)
     return zsv_compare_status_error;
 
@@ -447,6 +448,7 @@ static void zsv_compare_set_sorted_callbacks(struct zsv_compare_data *data) {
 
 static enum zsv_compare_status zsv_compare_init_sorted(struct zsv_compare_data *data) {
   int rc;
+  // to do: use sql_internal.h interface
   const char *db_url = data->sort_in_memory ? "file::memory:" : "";
   if ((rc = sqlite3_open_v2(db_url, &data->sort_db, SQLITE_OPEN_URI | SQLITE_OPEN_READWRITE, NULL)) == SQLITE_OK &&
       data->sort_db && (rc = sqlite3_create_module(data->sort_db, "csv", &CsvModule, 0) == SQLITE_OK)) {
@@ -643,9 +645,8 @@ static int compare_usage(void) {
 
 // TO DO: consolidate w sql.c, move common code to utils/db.c
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   // See sql.c re passing options to sqlite3 when sorting is used
-  (void)(opts_used);
   if (argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
     compare_usage();
     return argc < 2 ? 1 : 0;
@@ -746,7 +747,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       for (unsigned ix = 0; data->status == zsv_compare_status_ok && ix < input_count; ix++) {
         struct zsv_compare_input *input = &data->inputs[ix];
         input->path = input_filenames[ix];
-        data->status = data->input_init(data, input, opts, custom_prop_handler, opts_used);
+        data->status = data->input_init(data, input, opts, custom_prop_handler);
       }
     }
 

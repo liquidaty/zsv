@@ -55,6 +55,7 @@ size_t zsv_get_config_dir(char *buff, size_t buffsize, const char *prefix) {
     env_val = "C:\\temp";
   int written = snprintf(buff, buffsize, "%s", env_val);
 #elif defined(__EMSCRIPTEN__)
+  (void)(prefix);
   int written = snprintf(buff, buffsize, "/tmp");
 #else
   int written;
@@ -199,6 +200,36 @@ size_t zsv_get_executable_path(char *buff, size_t buffsize) {
 #else
 // TODO: Add support for this OS!
 #endif /* end of: #if defined(_WIN32) */
+
+/**
+ * Get current user's home dir, without trailing slash
+ * On win, any backslashes are replaced with fwd slash
+ *   ex: zsv_get_home_dir(char[MAX_PATH], MAX_PATH)
+ * returns 0 if no home dir could be found
+ * returns > 0 and < bufflen on success
+ * returns > 0 and >= bufflen if buffer was too small
+ */
+int zsv_get_home_dir(char *buff, size_t bufflen) {
+  int written = 0;
+  if (getenv("HOME"))
+    written = snprintf(buff, bufflen, "%s", getenv("HOME"));
+#if defined(WIN32) || defined(_WIN32)
+  if (!written && getenv("HOMEDRIVE") && getenv("HOMEPATH"))
+    written = snprintf(buff, bufflen, "%s%s", getenv("HOMEDRIVE"), getenv("HOMEPATH"));
+#endif
+  if (written > 0 && ((size_t)written) < bufflen) {
+    if (buff[written - 1] == '\\' || buff[written - 1] == '/') {
+      buff[written - 1] = '\0';
+      written--;
+    }
+  }
+#if defined(WIN32) || defined(_WIN32)
+  for (int i = 0; i < written; i++)
+    if (buff[i] == '\\')
+      buff[i] = '/';
+#endif
+  return written;
+}
 
 struct dir_path {
   struct dir_path *next;

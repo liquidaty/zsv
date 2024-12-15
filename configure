@@ -739,7 +739,9 @@ tryldflag LDFLAGS_JQ -lshlwapi
 if [ "$MINGW" = "1" ]; then
     tryldflag LDFLAGS_TMP -pthread && STATIC_LIBS="$STATIC_LIBS -pthread"
 else
-    tryldflag LDFLAGS_JQ -pthread
+    if [ "$NO_THREADING" != "1" ]; then
+        tryldflag LDFLAGS_JQ -pthread
+    fi
 fi
 
 tryccfn CFLAGS_AUTO "arc4random_uniform" "stdlib.h" || tryccfn CFLAGS_AUTO "rand_s" "stdlib.h" "" "#define _CRT_RAND_S"

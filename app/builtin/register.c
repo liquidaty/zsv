@@ -29,9 +29,9 @@ static int check_extension(struct zsv_ext *ext) {
 
 static int register_help(char do_register) {
   static const char *register_help = "zsv register: register an extension\n\n"
-                                     "usage: zsv register <extension_id>";
+                                     "usage: zsv register [-g,--global] <extension_id>";
   static const char *unregister_help = "zsv unregister: unregister an extension\n\n"
-                                       "usage: zsv unregister <extension_id>";
+                                       "usage: zsv unregister [-g,--global] <extension_id>";
   printf("%s\n", do_register ? register_help : unregister_help);
   return 0;
 }
@@ -40,15 +40,26 @@ static int main_register_aux(int argc, const char *argv[]) {
   int err = 0;
   struct cli_config config;
   char do_register = *argv[0] == 'r';
-  const char *extension_id = argc < 2 ? NULL : argv[1];
+  const char *extension_id = NULL;
+  char global = 0;
+  for (int i = 1; i < argc; i++) {
+    const char *arg = argv[i];
+    if (!strcmp(arg, "--help") || !strcmp(arg, "-h"))
+      return register_help(do_register);
+    if (!strcmp(arg, "-g") || !strcmp(arg, "--global"))
+      global = 1;
+    else {
+      if (extension_id != NULL)
+        return register_help(do_register);
+      extension_id = arg;
+    }
+  }
 
-  if (argc < 2)
+  if (!extension_id)
     fprintf(stderr, "No extension id provided\n"), err = 1;
-  else if (!strcmp(extension_id, "--help") || !strcmp(extension_id, "-h"))
-    return register_help(do_register);
-  else if (strlen(extension_id) != 2)
-    fprintf(stderr, "Extension id must be exactly two characters\n"), err = 1;
-  else if (config_init(&config, !do_register, 1, 1))
+  else if (strlen(extension_id) < ZSV_EXTENSION_ID_MIN_LEN || strlen(extension_id) > ZSV_EXTENSION_ID_MAX_LEN)
+    fprintf(stderr, "Extension id must be 1 to 8 bytes\n"), err = 1;
+  else if (config_init_2(&config, !do_register, 1, 1, global, !global))
     config_free(&config); // unable to init config
   else {
     struct zsv_ext *found;

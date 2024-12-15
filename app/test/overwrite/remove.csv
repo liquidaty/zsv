@@ -1,0 +1,5 @@
+row,col,val,timestamp,author,old value
+1,1,VAL1,,,VAL1
+2,1,VAL2,,,OLD_VAL2
+3,1,VAL3,,,V3
+4,1,VAL4,,,

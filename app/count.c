@@ -28,7 +28,7 @@ static void row(void *ctx) {
   ((struct data *)ctx)->rows++;
 }
 
-static int count_usage() {
+static int count_usage(void) {
   static const char *usage = "Usage: count [options]\n"
                              "\n"
                              "Options:\n"
@@ -38,9 +38,10 @@ static int count_usage() {
   return 0;
 }
 
-int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
+                               struct zsv_prop_handler *custom_prop_handler) {
   struct data data = {0};
+  struct zsv_opts opts = *optsp;
   const char *input_path = NULL;
   int err = 0;
   for (int i = 1; !err && i < argc; i++) {
@@ -54,9 +55,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       if ((!strcmp(arg, "-i") || !strcmp(arg, "--input")) && ++i >= argc)
         fprintf(stderr, "%s option requires a filename\n", arg);
       else {
-        if (opts->stream)
+        if (opts.stream)
           fprintf(stderr, "Input may not be specified more than once\n");
-        else if (!(opts->stream = fopen(argv[i], "rb")))
+        else if (!(opts.stream = fopen(argv[i], "rb")))
           fprintf(stderr, "Unable to open for reading: %s\n", argv[i]);
         else {
           input_path = argv[i];
@@ -70,16 +71,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
 #ifdef NO_STDIN
-  if (!opts->stream || opts->stream == stdin) {
+  if (!opts.stream || opts.stream == stdin) {
     fprintf(stderr, "Please specify an input file\n");
     err = 1;
   }
 #endif
 
   if (!err) {
-    opts->row_handler = opts->verbose ? row_verbose : row;
-    opts->ctx = &data;
-    if (zsv_new_with_properties(opts, custom_prop_handler, input_path, opts_used, &data.parser) != zsv_status_ok) {
+    opts.row_handler = opts.verbose ? row_verbose : row;
+    opts.ctx = &data;
+    if (zsv_new_with_properties(&opts, custom_prop_handler, input_path, &data.parser) != zsv_status_ok) {
       fprintf(stderr, "Unable to initialize parser\n");
       err = 1;
     } else {
@@ -93,8 +94,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
 count_done:
-  if (opts->stream && opts->stream != stdin)
-    fclose(opts->stream);
+  if (opts.stream && opts.stream != stdin)
+    fclose(opts.stream);
 
   return err;
 }

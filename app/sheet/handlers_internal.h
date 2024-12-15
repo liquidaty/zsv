@@ -10,7 +10,6 @@ struct zsvsheet_context {
   } ui_buffers;
   const struct zsvsheet_display_dimensions *display_dims;
   struct zsv_prop_handler *custom_prop_handler;
-  const char *opts_used;
 };
 
 struct zsvsheet_subcommand_context {
@@ -88,6 +87,23 @@ enum zsv_ext_status zsvsheet_buffer_set_ctx(zsvsheet_buffer_t h, void *ctx, void
  */
 enum zsv_ext_status zsvsheet_buffer_get_ctx(zsvsheet_buffer_t h, void **ctx_out);
 
+/**
+ * Set custom handler on Enter key press
+ *
+ * @return zsv_ext_status_ok on success, else zsv_ext_status error code
+ */
+enum zsv_ext_status zsvsheet_buffer_on_newline(zsvsheet_buffer_t h,
+                                               zsvsheet_status (*on_newline)(zsvsheet_proc_context_t));
+
+zsvsheet_status zsvsheet_buffer_get_selected_cell(zsvsheet_buffer_t h, struct zsvsheet_rowcol *rc);
+
+/**
+ * Set custom cell attributes
+ */
+void zsvsheet_buffer_set_cell_attrs(zsvsheet_buffer_t h,
+                                    enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, int *, size_t start_row,
+                                                                          size_t row_count, size_t col_count));
+
 /** Get zsv_opts use to open the buffer's data file **/
 struct zsv_opts zsvsheet_buffer_get_zsv_opts(zsvsheet_buffer_t h);
 
@@ -98,4 +114,11 @@ zsvsheet_status zsvsheet_register_command(int ch, const char *long_name,
                                           zsvsheet_status (*subcommand_handler)(zsvsheet_subcommand_context_t),
                                           zsvsheet_status (*handler)(zsvsheet_context_t));
 
+/**
+ * Transform the current buffer's underlying file into a new one and open the new file in a buffer
+ */
+enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
+                                                  struct zsvsheet_buffer_transformation_opts opts);
 #endif
+
+struct zsvsheet_buffer_data zsvsheet_buffer_info(zsvsheet_buffer_t buff);

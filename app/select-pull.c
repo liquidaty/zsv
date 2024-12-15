@@ -385,7 +385,7 @@ static int zsv_select_check_exclusions_are_indexes(struct zsv_select_data *data)
 
 // demo_random_bw_1_and_100(): this is a poor random number generator. you probably
 // will want to use a better one
-static double demo_random_bw_1_and_100() {
+static double demo_random_bw_1_and_100(void) {
 #ifdef HAVE_ARC4RANDOM_UNIFORM
   return (long double)(arc4random_uniform(1000000)) / 10000;
 #else
@@ -581,7 +581,7 @@ const char *zsv_select_usage_msg[] = {
   NULL,
 };
 
-static void zsv_select_usage() {
+static void zsv_select_usage(void) {
   for (size_t i = 0; zsv_select_usage_msg[i]; i++)
     fprintf(stdout, "%s\n", zsv_select_usage_msg[i]);
 }
@@ -611,7 +611,7 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     zsv_select_usage();
     return zsv_status_ok;
@@ -782,7 +782,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       stat = zsv_status_memory;
     else {
       zsv_parser parser;
-      if (zsv_new_with_properties(data.opts, custom_prop_handler, input_path, opts_used, &parser) == zsv_status_ok) {
+      if (zsv_new_with_properties(data.opts, custom_prop_handler, input_path, &parser) == zsv_status_ok) {
         // all done with
         data.any_clean = !data.no_trim_whitespace || data.clean_white || data.embedded_lineend;
 

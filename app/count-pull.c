@@ -13,7 +13,7 @@
 #define ZSV_COMMAND count_pull
 #include "zsv_command.h"
 
-static int count_usage() {
+static int count_usage(void) {
   static const char *usage = "Usage: count [options]\n"
                              "\n"
                              "Options:\n"
@@ -24,7 +24,7 @@ static int count_usage() {
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   const char *input_path = NULL;
   int err = 0;
   for (int i = 1; !err && i < argc; i++) {
@@ -62,7 +62,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   if (!err) {
     zsv_parser parser;
-    if (zsv_new_with_properties(opts, custom_prop_handler, input_path, opts_used, &parser) != zsv_status_ok) {
+    if (zsv_new_with_properties(opts, custom_prop_handler, input_path, &parser) != zsv_status_ok) {
       fprintf(stderr, "Unable to initialize parser\n");
       err = 1;
     } else {

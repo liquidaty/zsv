@@ -23,6 +23,7 @@ static int main_thirdparty(int argc, const char *argv[]) {
   printf("Third-party licenses and acknowledgements");
   print_str_array("ZSV/lib third-party dependencies", "", zsv_thirdparty);
 
+#ifndef __EMSCRIPTEN__
   struct cli_config config;
   const char *ss[2];
   ss[1] = NULL;
@@ -34,6 +35,7 @@ static int main_thirdparty(int argc, const char *argv[]) {
       }
     }
   }
+#endif
   printf("\n");
   return 0;
 }

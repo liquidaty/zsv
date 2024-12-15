@@ -14,8 +14,8 @@ Usage:
   zsv help [<command>]
   zsv <command> <options> <arguments>  : run a command on data (see below for details)
   zsv <id>-<cmd> <options> <arguments> : invoke command 'cmd' of extension 'id'
-  zsv thirdparty                       : view third-party licenses & acknowledgements
   zsv license [<extension_id>]
+  zsv thirdparty                       : view third-party licenses & acknowledgements
 
 Options common to all commands except `prop`, `rm` and `jq`:
   -L,--limit-rows <n>      : limit processing to the given number of rows (including any header row(s))
@@ -32,6 +32,7 @@ Options common to all commands except `prop`, `rm` and `jq`:
   -S,--keep-blank-headers  : disable default behavior of ignoring leading blank rows
   -0,--header-row <header> : insert the provided CSV as the first row (in position 0)
                              e.g. --header-row 'col1,col2,"my col 3"'
+  -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command
   -v,--verbose             : verbose output
 
 Commands that parse CSV or other tabular data:
@@ -73,8 +74,8 @@ Usage:
   zsv help [<command>]
   zsv <command> <options> <arguments>  : run a command on data (see below for details)
   zsv <id>-<cmd> <options> <arguments> : invoke command 'cmd' of extension 'id'
-  zsv thirdparty                       : view third-party licenses & acknowledgements
   zsv license [<extension_id>]
+  zsv thirdparty                       : view third-party licenses & acknowledgements
 
 Options common to all commands except `prop`, `rm` and `jq`:
   -L,--limit-rows <n>      : limit processing to the given number of rows (including any header row(s))
@@ -91,6 +92,7 @@ Options common to all commands except `prop`, `rm` and `jq`:
   -S,--keep-blank-headers  : disable default behavior of ignoring leading blank rows
   -0,--header-row <header> : insert the provided CSV as the first row (in position 0)
                              e.g. --header-row 'col1,col2,"my col 3"'
+  -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command
   -v,--verbose             : verbose output
 
 Commands that parse CSV or other tabular data:

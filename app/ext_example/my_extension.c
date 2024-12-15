@@ -63,10 +63,8 @@ static struct zsv_ext_callbacks zsv_cb;
  * but with an additional preceding zsv_execution_context parameter.
  * Here, we just declare the functions; we fully define them further below
  */
-enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *opts,
-                               const char *opts_used);
-static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *opts,
-                                     const char *opts_used);
+enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *opts);
+static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *opts);
 
 #ifdef ZSVSHEET_BUILD
 
@@ -98,7 +96,7 @@ zsvsheet_status my_test_command_handler(zsvsheet_proc_context_t ctx) {
     // print a list of open buffers and filenames
     for (zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx); buff;
          buff = zsv_cb.ext_sheet_buffer_prior(buff), i--) {
-      const char *buff_filename = zsv_cb.ext_sheet_buffer_filename(buff);
+      const char *buff_filename = zsv_cb.ext_sheet_buffer_data_filename(buff);
       if (buff_filename)
         fprintf(f, "%i,%s\n", i, buff_filename); // assumes no need for quoting or escaping buff_filename...
     }
@@ -106,6 +104,45 @@ zsvsheet_status my_test_command_handler(zsvsheet_proc_context_t ctx) {
     return zsv_cb.ext_sheet_open_file(ctx, temp_filename, NULL);
   }
   return zsvsheet_status_ok;
+}
+
+struct transformation_context {
+  zsvsheet_proc_context_t proc_ctx;
+  size_t col_count;
+  size_t row_count;
+};
+
+// Similar to a regular ZSV row handler used in ext_parse_all
+void my_transformation_row_handler(zsvsheet_transformation trn) {
+  struct transformation_context *priv = zsv_cb.ext_sheet_transformation_user_context(trn);
+  zsv_parser parser = zsv_cb.ext_sheet_transformation_parser(trn);
+  zsv_csv_writer writer = zsv_cb.ext_sheet_transformation_writer(trn);
+
+  size_t j = zsv_cb.cell_count(parser);
+  for (size_t i = 0; i < j; i++) {
+    struct zsv_cell c = zsv_cb.get_cell(parser, i);
+    zsv_writer_cell(writer, i == 0, c.str, c.len, c.quoted);
+  }
+
+  priv->col_count += j;
+
+  if (!priv->row_count)
+    zsv_writer_cell_s(writer, 0, (const unsigned char *)"Column count", 0);
+  else
+    zsv_writer_cell_zu(writer, 0, priv->col_count);
+
+  priv->row_count++;
+}
+
+zsvsheet_status my_transformation_command_handler(zsvsheet_proc_context_t ctx) {
+  struct zsvsheet_buffer_transformation_opts opts = {
+    // Gets freed automatically
+    .user_context = calloc(1, sizeof(struct transformation_context)),
+    .row_handler = my_transformation_row_handler,
+    .on_done = NULL,
+  };
+
+  return zsv_cb.ext_sheet_push_transformation(ctx, opts);
 }
 #endif
 
@@ -141,6 +178,11 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
   if (proc_id < 0)
     return zsv_ext_status_error;
   zsv_cb.ext_sheet_register_proc_key_binding('t', proc_id);
+
+  proc_id = zsv_cb.ext_sheet_register_proc("my-transformation", "my transformation", my_transformation_command_handler);
+  if (proc_id < 0)
+    return zsv_ext_status_error;
+  zsv_cb.ext_sheet_register_proc_key_binding('T', proc_id);
 #endif
   return zsv_ext_status_ok;
 }
@@ -218,12 +260,10 @@ static void echo_rowhandler(void *ctx) {
  * `ext_xxx` functions. All we do here is initialize our data, call the parser, and
  * perform any final steps after all data has been processed
  */
-static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *optsp,
-                                     const char *opts_used) {
+static enum zsv_ext_status echo_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *optsp) {
   (void)(argc);
   (void)(argv);
   (void)(optsp);
-  (void)(opts_used);
   /* initialize private data */
   struct my_data data;
   memset(&data, 0, sizeof(data));
@@ -291,10 +331,8 @@ static const char *count_help = "count: print the number of rows in a CSV data f
                                 "\n"
                                 "usage: count [-h,--help] [filename]\n";
 
-enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *optsp,
-                               const char *opts_used) {
+enum zsv_ext_status count_main(zsv_execution_context ctx, int argc, const char *argv[], struct zsv_opts *optsp) {
   (void)(optsp);
-  (void)(opts_used);
   /* help */
   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     printf("%s", count_help);

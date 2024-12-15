@@ -6,12 +6,14 @@
  * https://opensource.org/licenses/MIT
  */
 
+#include "zsv/utils/index.h"
 #include <zsv/utils/writer.h>
 #include <zsv/utils/compiler.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
 // clang-format off
 
@@ -107,6 +109,9 @@ struct zsv_output_buff {
   size_t (*write)(const void *restrict, size_t size, size_t nitems, void *restrict stream);
   void *stream;
   size_t used;
+  uint64_t written;
+  unsigned char close_on_delete : 1;
+  unsigned char _ : 7;
 };
 
 struct zsv_writer_data {
@@ -119,6 +124,7 @@ struct zsv_writer_data {
   void *table_init_ctx;
 
   const char *cell_prepend;
+  struct zsv_index *index;
 
   unsigned char with_bom : 1;
   unsigned char started : 1;
@@ -129,6 +135,7 @@ struct zsv_writer_data {
 
 static inline void zsv_output_buff_flush(struct zsv_output_buff *b) {
   b->write(b->buff, b->used, 1, b->stream);
+  b->written += b->used;
   b->used = 0;
 }
 
@@ -138,6 +145,7 @@ static inline void zsv_output_buff_write(struct zsv_output_buff *b, const unsign
       zsv_output_buff_flush(b);
       if (n > ZSV_OUTPUT_BUFF_SIZE) { // n too big, so write directly
         b->write(s, n, 1, b->stream);
+        b->written += n;
         return;
       }
     }
@@ -152,19 +160,40 @@ void zsv_writer_set_temp_buff(zsv_csv_writer w, unsigned char *buff, size_t buff
   w->buffsize = buffsize;
 }
 
+static int writer_opts_ok(struct zsv_csv_writer_options *opts) {
+  if (opts) {
+    if (opts->output_path) {
+      if ((opts->write && opts->write != (size_t(*)(const void *restrict, size_t, size_t, void *restrict))fwrite) ||
+          (opts->stream && opts->stream != stdout)) {
+        fprintf(stderr, "Invalid zsv writer options: non-NULL 'output_path' with invalid 'write' and/or 'stream'\n");
+        errno = EINVAL;
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
+
 zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
+  if (!(writer_opts_ok(opts)))
+    return NULL;
   struct zsv_writer_data *w = calloc(1, sizeof(*w));
   if (w) {
-    if (!(w->out.buff = malloc(ZSV_OUTPUT_BUFF_SIZE))) {
-      free(w); // out of memory!
-      return NULL;
-    }
+    if (!(w->out.buff = malloc(ZSV_OUTPUT_BUFF_SIZE)))
+      goto zsv_writer_new_err;
 
     if (!opts) {
       w->out.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))fwrite;
       w->out.stream = stdout;
     } else {
-      if (opts->write) {
+      if (opts->output_path) {
+        if (!(w->out.stream = fopen(opts->output_path, "wb"))) {
+          perror(opts->output_path);
+          goto zsv_writer_new_err;
+        }
+        w->out.close_on_delete = 1;
+        w->out.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))fwrite;
+      } else if (opts->write) {
         w->out.write = opts->write;
         w->out.stream = opts->stream;
       } else {
@@ -175,9 +204,17 @@ zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
       w->with_bom = opts->with_bom;
       w->table_init = opts->table_init;
       w->table_init_ctx = opts->table_init_ctx;
+      w->index = opts->index;
     }
   }
   return w;
+
+zsv_writer_new_err : {
+  int e = errno;
+  zsv_writer_delete(w);
+  errno = e;
+}
+  return NULL;
 }
 
 enum zsv_writer_status zsv_writer_flush(zsv_csv_writer w) {
@@ -192,12 +229,21 @@ enum zsv_writer_status zsv_writer_delete(zsv_csv_writer w) {
   if (!w)
     return zsv_writer_status_missing_handle;
 
-  zsv_output_buff_flush(&w->out);
   if (w->started)
-    w->out.write("\n", 1, 1, w->out.stream);
+    zsv_output_buff_write(&w->out, (const unsigned char *)"\n", 1);
+
+  if (w->out.stream && w->out.write && w->out.buff)
+    zsv_output_buff_flush(&w->out);
+
+  if (w->started && w->index)
+    zsv_index_add_row(w->index, w->out.written);
 
   if (w->out.buff)
     free(w->out.buff);
+
+  if (w->out.close_on_delete && w->out.stream)
+    fclose(w->out.stream);
+
   free(w);
   return zsv_writer_status_ok;
 }
@@ -230,9 +276,11 @@ enum zsv_writer_status zsv_writer_cell(zsv_csv_writer w, char new_row, const uns
     if (w->with_bom)
       zsv_output_buff_write(&w->out, (const unsigned char *)"\xef\xbb\xbf", 3);
     w->started = 1;
-  } else if (new_row)
+  } else if (new_row) {
+    if (w->index)
+      zsv_index_add_row(w->index, (uint64_t)(w->out.used + w->out.written));
     zsv_output_buff_write(&w->out, (const unsigned char *)"\n", 1);
-  else
+  } else
     zsv_output_buff_write(&w->out, (const unsigned char *)",", 1);
 
   if (VERY_UNLIKELY(w->cell_prepend && *w->cell_prepend)) {

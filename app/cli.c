@@ -24,14 +24,18 @@
 #ifdef ZSVSHEET_BUILD
 #include "sheet/sheet_internal.h"
 #include "sheet/handlers_internal.h"
+#include "sheet/transformation.h"
 #endif
 #include "sheet/procedure.h"
 #include "sheet/key-bindings.h"
+#include "sql_internal.h"
 
 struct cli_config {
   struct zsv_ext *extensions;
   char err_if_not_found;
   char filepath[FILENAME_MAX];
+  char home_filepath[FILENAME_MAX];
+  const char *current_filepath; // path being currently parsed
   char verbose;
 };
 
@@ -43,9 +47,8 @@ zsvsheet_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, char *buf
 #include "cli_ini.c"
 
 typedef int(cmd_main)(int argc, const char *argv[]);
-typedef int(zsv_cmd)(int argc, const char *argv[], struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler,
-                     const char *opts_used);
-typedef int (*cmd_reserved)();
+typedef int(zsv_cmd)(int argc, const char *argv[], struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler);
+typedef int (*cmd_reserved)(void);
 
 struct builtin_cmd {
   const char *name;
@@ -54,18 +57,23 @@ struct builtin_cmd {
 };
 
 static int config_init(struct cli_config *c, char err_if_dl_not_found, char do_init, char verbose);
+static int config_init_2(struct cli_config *c, char err_if_dl_not_found, char do_init, char verbose, char global_only,
+                         char home_only);
 #include "zsv_main.h"
 
 #define CLI_BUILTIN_DECL(x) int main_##x(int argc, const char *argv[])
 
 #define CLI_BUILTIN_DECL_STATIC(x) static int main_##x(int argc, const char *argv[])
 
-CLI_BUILTIN_DECL_STATIC(license);
-CLI_BUILTIN_DECL_STATIC(thirdparty);
-CLI_BUILTIN_DECL_STATIC(help);
 CLI_BUILTIN_DECL_STATIC(version);
+CLI_BUILTIN_DECL_STATIC(help);
+CLI_BUILTIN_DECL_STATIC(thirdparty);
+
+#ifndef __EMSCRIPTEN__
 CLI_BUILTIN_DECL_STATIC(register);
 CLI_BUILTIN_DECL_STATIC(unregister);
+CLI_BUILTIN_DECL_STATIC(license);
+#endif
 
 ZSV_MAIN_DECL(select);
 ZSV_MAIN_DECL(count);
@@ -105,13 +113,14 @@ ZSV_MAINEXT_FUNC_DEFINE(sheet);
 #endif
 
 struct builtin_cmd builtin_cmds[] = {
-  CLI_BUILTIN_CMD(license),
-  CLI_BUILTIN_CMD(thirdparty),
-  CLI_BUILTIN_CMD(help),
   CLI_BUILTIN_CMD(version),
+  CLI_BUILTIN_CMD(help),
+  CLI_BUILTIN_CMD(thirdparty),
+#ifndef __EMSCRIPTEN__
   CLI_BUILTIN_CMD(register),
   CLI_BUILTIN_CMD(unregister),
-
+  CLI_BUILTIN_CMD(license),
+#endif
   CLI_BUILTIN_COMMAND(select),
   CLI_BUILTIN_COMMAND(count),
   CLI_BUILTIN_COMMAND(paste),
@@ -146,16 +155,10 @@ struct zsv_execution_data {
 
   int argc;
   const char **argv;
-  char opts_used[ZSV_OPTS_SIZE_MAX];
   void *custom_context; // user-defined
   void *state;          // program state relevant to the handler, e.g. cursor
                         // position in zsv sheet.
 };
-
-static const char *ext_opts_used(zsv_execution_context ctx) {
-  struct zsv_execution_data *d = ctx;
-  return d->opts_used;
-}
 
 static struct zsv_opts ext_parser_opts(zsv_execution_context ctx) {
   (void)(ctx);
@@ -166,10 +169,18 @@ char **custom_cmd_names = NULL;
 
 static enum zsv_ext_status ext_init(struct zsv_ext *ext);
 
-static int config_init(struct cli_config *c, char err_if_dl_not_found, char do_init, char verbose) {
+static int config_init_2(struct cli_config *c, char err_if_dl_not_found, char do_init, char verbose, char global_only,
+                         char home_only) {
   memset(c, 0, sizeof(*c));
-  size_t len = get_ini_file(c->filepath, FILENAME_MAX);
-  if (!len) {
+  if (!global_only) { // find local (home dir) zsv.ini
+    if (!get_ini_file(c->home_filepath, FILENAME_MAX, 0))
+      *c->home_filepath = '\0';
+  }
+  if (!home_only) {
+    if (!get_ini_file(c->filepath, FILENAME_MAX, 1))
+      *c->filepath = '\0';
+  }
+  if (*c->home_filepath == '\0' && *c->filepath == '\0') {
     fprintf(stderr, "Unable to get config filepath!\n");
     return 1;
   }
@@ -182,6 +193,10 @@ static int config_init(struct cli_config *c, char err_if_dl_not_found, char do_i
     }
   }
   return rc;
+}
+
+static int config_init(struct cli_config *c, char err_if_dl_not_found, char do_init, char verbose) {
+  return config_init_2(c, err_if_dl_not_found, do_init, verbose, 0, 0);
 }
 
 static int config_free(struct cli_config *c) {
@@ -383,22 +398,33 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
 
     e->ext_parse_all = ext_parse_all;
     e->ext_parser_opts = ext_parser_opts;
-    e->ext_opts_used = ext_opts_used;
 
+    e->ext_sqlite3_add_csv = zsv_sqlite3_add_csv;
+    e->ext_sqlite3_db_delete = zsv_sqlite3_db_delete;
+    e->ext_sqlite3_db_new = zsv_sqlite3_db_new;
 #ifdef ZSVSHEET_BUILD
     e->ext_sheet_keypress = zsvsheet_ext_keypress;
     e->ext_sheet_prompt = zsvsheet_ext_prompt;
     e->ext_sheet_buffer_set_ctx = zsvsheet_buffer_set_ctx;
     e->ext_sheet_buffer_get_ctx = zsvsheet_buffer_get_ctx;
+    e->ext_sheet_buffer_set_cell_attrs = zsvsheet_buffer_set_cell_attrs;
     e->ext_sheet_buffer_get_zsv_opts = zsvsheet_buffer_get_zsv_opts;
+    e->ext_sheet_buffer_on_newline = zsvsheet_buffer_on_newline;
+    e->ext_sheet_buffer_get_selected_cell = zsvsheet_buffer_get_selected_cell;
     e->ext_sheet_set_status = zsvsheet_set_status;
     e->ext_sheet_buffer_current = zsvsheet_buffer_current;
     e->ext_sheet_buffer_prior = zsvsheet_buffer_prior;
+    e->ext_sheet_buffer_info = zsvsheet_buffer_info;
     e->ext_sheet_buffer_filename = zsvsheet_buffer_filename;
     e->ext_sheet_buffer_data_filename = zsvsheet_buffer_data_filename;
     e->ext_sheet_open_file = zsvsheet_open_file;
     e->ext_sheet_register_proc = zsvsheet_register_proc;
     e->ext_sheet_register_proc_key_binding = zsvsheet_register_proc_key_binding;
+    e->ext_sheet_push_transformation = zsvsheet_push_transformation;
+    e->ext_sheet_transformation_writer = zsvsheet_transformation_writer;
+    e->ext_sheet_transformation_parser = zsvsheet_transformation_parser;
+    e->ext_sheet_transformation_filename = zsvsheet_transformation_filename;
+    e->ext_sheet_transformation_user_context = zsvsheet_transformation_user_context;
 #endif
   }
   return e;
@@ -459,11 +485,11 @@ static enum zsv_ext_status run_extension(int argc, const char *argv[], struct zs
     struct zsv_execution_data ctx = {0};
     if ((stat = execution_context_init(&ctx, argc, argv)) == zsv_ext_status_ok) {
       struct zsv_opts opts;
-      zsv_args_to_opts(argc, argv, &ctx.argc, ctx.argv, &opts, ctx.opts_used);
+      zsv_args_to_opts(argc, argv, &ctx.argc, ctx.argv, &opts);
       zsv_set_default_opts(opts);
       // need a corresponding zsv_set_default_custom_prop_handler?
 
-      stat = cmd->main(&ctx, ctx.argc - 1, &ctx.argv[1], &opts, ctx.opts_used);
+      stat = cmd->main(&ctx, ctx.argc - 1, &ctx.argv[1], &opts);
     }
 
     if (stat != zsv_ext_status_ok)
@@ -497,6 +523,8 @@ char havearg(const char *arg, const char *form1, size_t min_len1, const char *fo
 
 static struct builtin_cmd *find_builtin(const char *cmd_name) {
   int builtin_cmd_count = sizeof(builtin_cmds) / sizeof(*builtin_cmds);
+  if (!strcmp(cmd_name, "-h") || !strcmp(cmd_name, "--help"))
+    cmd_name = "help";
   for (int i = 0; i < builtin_cmd_count; i++)
     if (havearg(cmd_name, builtin_cmds[i].name, 0, 0, 0))
       return &builtin_cmds[i];
@@ -509,7 +537,6 @@ static struct builtin_cmd *find_builtin(const char *cmd_name) {
 #include "builtin/version.c"
 #include "builtin/register.c"
 
-#define ZSV_EXTENSION_ID_MAX_LEN 8
 static const char *extension_cmd_from_arg(const char *arg) {
   const char *dash = strchr(arg, '-');
   if (dash && dash < arg + ZSV_EXTENSION_ID_MAX_LEN && dash[1] != '\0')
@@ -535,9 +562,8 @@ int ZSV_CLI_MAIN(int argc, const char *argv[]) {
         if (help_builtin->main)
           return help_builtin->main(2, argv_tmp);
         else if (help_builtin->cmd) {
-          char opts_used[ZSV_OPTS_SIZE_MAX] = {0};
           struct zsv_opts opts = {0};
-          return help_builtin->cmd(2, argv_tmp, &opts, NULL, opts_used);
+          return help_builtin->cmd(2, argv_tmp, &opts, NULL);
         } else
           return fprintf(stderr, "Unexpected syntax!\n");
       } else {
@@ -559,11 +585,10 @@ int ZSV_CLI_MAIN(int argc, const char *argv[]) {
       if (builtin->main)
         return builtin->main(argc - 1, argc > 1 ? &argv[1] : NULL);
 
-      char opts_used[ZSV_OPTS_SIZE_MAX];
       struct zsv_opts opts;
-      enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &opts, opts_used);
+      enum zsv_status stat = zsv_args_to_opts(argc, argv, &argc, argv, &opts);
       if (stat == zsv_status_ok)
-        return builtin->cmd(argc - 1, argc > 1 ? &argv[1] : NULL, &opts, NULL, opts_used);
+        return builtin->cmd(argc - 1, argc > 1 ? &argv[1] : NULL, &opts, NULL);
       return stat;
     }
   }
@@ -660,12 +685,12 @@ static char *dl_name_from_func(const void *func) {
   if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                         (LPCTSTR)func, &hModule))
     return get_module_name(hModule);
-#endif
-
-#ifdef __APPLE__
+#elif defined __APPLE__
   Dl_info info;
   if (dladdr(func, &info))
     return strdup(info.dli_fname);
+#else
+  (void)(func);
 #endif
   return NULL;
 }
@@ -723,7 +748,11 @@ static struct zsv_ext *zsv_ext_new(const char *dl_name, const char *id, char ver
     }
   }
   if (!h)
+#if defined(WIN32) || defined(_WIN32)
     fprintf(stderr, "Library %s not found\n", dl_name);
+#else
+    fprintf(stderr, "Library %s failed to load: %s\n", dl_name, dlerror());
+#endif
 
   // run zsv_ext_init to add to our extension list, even if it's invalid
   tmp.ok = !zsv_ext_init(h, dl_name, &tmp);

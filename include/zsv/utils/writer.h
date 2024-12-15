@@ -14,13 +14,19 @@
 #define ZSV_WRITER_NEW_ROW 1
 #define ZSV_WRITER_SAME_ROW 0
 
-/*** csv writer ***/
+/**
+ * csv writer options
+ *
+ * If `output_path` is non-NULL, `stream` must be NULL or stdout and `write` must be NULL or fwrite
+ ***/
 struct zsv_csv_writer_options {
   char with_bom;
   size_t (*write)(const void *restrict, size_t size, size_t nitems, void *restrict stream);
   void *stream;
   void (*table_init)(void *);
   void *table_init_ctx;
+  const char *output_path; // if provided, will be created by zsv_writer_new() and closed by zsv_writer_delete()
+  struct zsv_index *index;
 };
 
 void zsv_writer_set_default_opts(struct zsv_csv_writer_options opts);
@@ -36,6 +42,11 @@ enum zsv_writer_status {
 struct zsv_writer_data;
 typedef struct zsv_writer_data *zsv_csv_writer;
 
+/**
+ * Get a new CSV writer
+ *
+ * @returns handle, or NULL on error, in which case errno will be set
+ */
 zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts);
 enum zsv_writer_status zsv_writer_delete(zsv_csv_writer w);
 

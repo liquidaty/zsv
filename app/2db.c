@@ -637,9 +637,8 @@ static yajl_handle zsv_2db_yajl_handle(zsv_2db_handle data) {
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zsv_opts,
-                               struct zsv_prop_handler *custom_prop_handler, const char *opts_used) {
+                               struct zsv_prop_handler *custom_prop_handler) {
   (void)(zsv_opts);
-  (void)(opts_used);
   (void)(custom_prop_handler);
   FILE *f_in = NULL;
   int err = 0;

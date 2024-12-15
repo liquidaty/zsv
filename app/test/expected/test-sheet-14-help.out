@@ -1,0 +1,25 @@
+Key(s)                    Action                    Description
+q                         quit                      Exit the application
+<esc>                     escape                    Leave the current view or
+^                         first                     Jump to the first column
+$                         last                      Jump to the last column
+<shift><left>             first                     Jump to the first column
+<shift><right>            last                      Jump to the last column
+k                         up                        Move up one row
+j                         down                      Move down one row
+h                         left                      Move left one column
+l                         right                     Move right one column
+<up>                      up                        Move up one row
+<down>                    down                      Move down one row
+<left>                    left                      Move left one column
+<right>                   right                     Move right one column
+<ctrl>d                   pagedown                  Move down one page
+<ctrl>u                   pageup                    Move up one page
+<page up>                 pagedown                  Move down one page
+<page down>               pageup                    Move up one page
+g g                       top                       Jump to the first row
+G                         bottom                    Jump to the last row
+/                         find                      Set a search term and jum
+n                         next                      Jump to the next search r
+e                         open                      Open a another CSV file
+<esc> to exit help Key(s)
