@@ -493,7 +493,7 @@ static zsvsheet_status zsvsheet_context_menu_open_link_handler(struct zsvsheet_p
   fprintf(stderr, "opening link '%s'...\n", contents);
   fprintf(stderr, "%s\n", command);
 
-  system(command);
+  //system(command);
   
   return zsvsheet_status_ok;
 }
