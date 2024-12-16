@@ -460,7 +460,7 @@ static zsvsheet_status zsvsheet_context_menu_filter_handler(struct zsvsheet_proc
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(state->display_info.ui_buffers.current);
   const char *contents = (const char *)zsvsheet_screen_buffer_cell_display(
-      current_ui_buffer->buffer, current_ui_buffer->cursor_row, current_ui_buffer->cursor_col);
+    current_ui_buffer->buffer, current_ui_buffer->cursor_row, current_ui_buffer->cursor_col);
 
   fprintf(stderr, "filtering for %s\n", contents);
   struct zsvsheet_proc_context context = {
@@ -482,7 +482,7 @@ static zsvsheet_status zsvsheet_context_menu_open_link_handler(struct zsvsheet_p
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(state->display_info.ui_buffers.current);
   const char *contents = (const char *)zsvsheet_screen_buffer_cell_display(
-      current_ui_buffer->buffer, current_ui_buffer->cursor_row, current_ui_buffer->cursor_col);
+    current_ui_buffer->buffer, current_ui_buffer->cursor_row, current_ui_buffer->cursor_col);
 
   char command[256];
 
