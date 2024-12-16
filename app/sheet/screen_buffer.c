@@ -58,6 +58,20 @@ void zsvsheet_screen_buffer_delete(zsvsheet_screen_buffer_t buff) {
         free_long_cell(buff, offset);
       }
     }
+    if(buff->cell_overwrites) {
+      for(size_t row = 0; row < buff->opts.rows; row++) {
+        for(size_t col = 0; col < buff->cols; col++) {
+          size_t offset = (row * buff->cols) + col;
+          if(offset > buff->opts.rows * buff->cols)
+            printf("TOO FAR\n");
+          if(buff->cell_overwrites[offset]) {
+            free(buff->cell_overwrites[offset]);
+            buff->cell_overwrites[offset] = NULL;
+          }
+        }
+      }
+      free(buff->cell_overwrites);
+    }
     free(buff->cell_attrs);
     free(buff->data);
     free(buff);

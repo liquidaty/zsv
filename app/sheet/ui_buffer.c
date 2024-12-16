@@ -92,6 +92,8 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
     free(ub->status);
     if (ub->data_filename)
       unlink(ub->data_filename);
+    if (ub->overwrite_ctx)
+      zsv_overwrite_context_delete(ub->overwrite_ctx);
     free(ub->data_filename);
     free(ub->filename);
     free(ub);
@@ -167,10 +169,10 @@ int zsvsheet_ui_buffer_update_cell_attr(struct zsvsheet_ui_buffer *uib) {
       uib->get_cell_attrs(uib->ext_ctx, uib->buffer->cell_attrs, uib->input_offset.row, uib->buff_used_rows,
                           uib->buffer->cols);
     }
-    row_sz = uib->buffer->cols * sizeof(*uib->buffer->cell_overwrites);
+    //row_sz = uib->buffer->cols * sizeof(*uib->buffer->cell_overwrites);
     if (!uib->ignore_overwrites && uib->get_cell_overwrites) {
       if (!uib->buffer->cell_overwrites) {
-        uib->buffer->cell_overwrites = calloc(uib->buffer->opts.rows, row_sz);
+        uib->buffer->cell_overwrites = calloc(uib->buffer->opts.rows*uib->buffer->cols, sizeof(*uib->buffer->cell_overwrites));
         if (!uib->buffer->cell_overwrites)
           return ENOMEM;
       }
