@@ -198,12 +198,14 @@ ZSV=$(BINDIR)/zsv${EXE}
 SOURCES=echo paste count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq overwrite
 CLI_SOURCES=echo select desc count paste 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq overwrite
 
+SHEET_INCLUDES=
 ifeq ($(ZSVSHEET_BUILD),1)
   SOURCES+=sheet
   CLI_SOURCES+=sheet
   CFLAGS+=-DZSVSHEET_BUILD
   CFLAGS+=${CFLAGS_NCURSES}
   LDFLAGS+=${LDFLAGS_NCURSES}
+  SHEET_INCLUDES=$(wildcard sheet/*.c sheet/*.h)
 endif
 
 CFLAGS+= -DUSE_JQ
@@ -404,6 +406,8 @@ ${SQL_INTERNAL_OBJECT}: ${CLI_OBJ_PFX}%.o: %.c %.h
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -c -o $@ $<
 
+${CLI_OBJ_PFX}sheet.o: ${SHEET_INCLUDES}
+
 ${CLI_APP_OBJECT} : cli_ini.c builtin/*.c ${JQ_LIB}
 ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8proc.c # ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
@@ -474,6 +478,9 @@ ${CLI} ${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/db.o
 # pretty uses termcap
 ${CLI} ${STANDALONE_PFX}pretty${EXE}: MORE_LIBS+=${LDFLAGS_TERMCAP}
 
+${STANDALONE_PFX}sheet${EXE}: ${SHEET_INCLUDES}
+
+${CLI} ${STANDALONE_PFX}sheet${EXE} ${STANDALONE_PFX}sql${EXE}: ${SQL_INTERNAL_OBJECT}
 ${CLI} ${STANDALONE_PFX}sheet${EXE} ${STANDALONE_PFX}sql${EXE}: MORE_OBJECTS+=${SQL_INTERNAL_OBJECT}
 
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
