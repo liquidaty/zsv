@@ -170,7 +170,7 @@ struct zsv_scanner {
     union {
       struct zsv_scan_delim_regs delim;
       struct zsv_scan_fixed_regs fixed;
-    } * regs;
+    } *regs;
     enum zsv_status stat; // last status
     unsigned char *buff;
     size_t bytes_read;

@@ -659,7 +659,10 @@ static int zsv_prop_foreach_clean(struct zsv_foreach_dirent_handle *h, size_t de
   return err;
 }
 
-enum zsv_prop_foreach_copy_mode { zsv_prop_foreach_copy_mode_check = 1, zsv_prop_foreach_copy_mode_copy };
+enum zsv_prop_foreach_copy_mode {
+  zsv_prop_foreach_copy_mode_check = 1,
+  zsv_prop_foreach_copy_mode_copy
+};
 
 struct zsv_prop_foreach_copy_ctx {
   struct zsv_dir_filter zsv_dir_filter;

@@ -21,7 +21,10 @@
 #include <zsv/utils/mem.h>
 #include <zsv/utils/string.h>
 
-enum flatten_agg_method { flatten_agg_method_none = 1, flatten_agg_method_array };
+enum flatten_agg_method {
+  flatten_agg_method_none = 1,
+  flatten_agg_method_array
+};
 
 struct flatten_column_name_and_ix {
   unsigned char *name;
