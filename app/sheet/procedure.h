@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <zsv/ext.h>
 
-struct zsvsheet_context_menu_entry;
+struct context_menu_entry;
 
 /* ID's of bulitin procedures, extensions can register more.
  *
@@ -72,7 +72,7 @@ struct zsvsheet_proc_context {
         zsvsheet_proc_id_t id;
       } proc;
       struct {
-        struct zsvsheet_context_menu_entry *entry;
+        struct context_menu_entry *entry;
       } context_menu;
     } u;
   } invocation;

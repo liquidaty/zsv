@@ -88,7 +88,7 @@ int context_menu_display(struct context_menu *menu, int row, int col,
   /* Make sure we don't overrun the screen horizontally */
   col -= MAX(0, col + menu_width - (int)display_dims->columns);
 
-  if (row + menu_height > display_dims->rows - display_dims->footer_span - display_dims->header_span)
+  if (row + menu_height > (int)(display_dims->rows - display_dims->footer_span - display_dims->header_span))
     row -= menu_height;
   else
     row += 1; /* Display the menu under the selected cell by default */

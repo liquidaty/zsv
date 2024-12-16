@@ -429,7 +429,6 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   struct zsvsheet_ui_buffer *current_ui_buffer = *state->display_info.ui_buffers.current;
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
   struct zsvsheet_buffer_info_internal binfo = zsvsheet_buffer_info_internal(current_ui_buffer);
-  int err;
   const char *filter;
 
   if (binfo.write_in_progress && !binfo.write_done)
@@ -460,8 +459,8 @@ static zsvsheet_status zsvsheet_context_menu_filter_handler(struct zsvsheet_proc
 
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(state->display_info.ui_buffers.current);
-  const char *contents = zsvsheet_screen_buffer_cell_display(current_ui_buffer->buffer, current_ui_buffer->cursor_row,
-                                                             current_ui_buffer->cursor_col);
+  const char *contents = (const char *)zsvsheet_screen_buffer_cell_display(
+      current_ui_buffer->buffer, current_ui_buffer->cursor_row, current_ui_buffer->cursor_col);
 
   fprintf(stderr, "filtering for %s\n", contents);
   struct zsvsheet_proc_context context = {
@@ -482,8 +481,8 @@ static zsvsheet_status zsvsheet_context_menu_open_link_handler(struct zsvsheet_p
 
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(state->display_info.ui_buffers.current);
-  const char *contents = zsvsheet_screen_buffer_cell_display(current_ui_buffer->buffer, current_ui_buffer->cursor_row,
-                                                             current_ui_buffer->cursor_col);
+  const char *contents = (const char *)zsvsheet_screen_buffer_cell_display(
+      current_ui_buffer->buffer, current_ui_buffer->cursor_row, current_ui_buffer->cursor_col);
 
   char command[256];
 
