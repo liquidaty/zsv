@@ -137,14 +137,11 @@ static enum zsv_ext_status get_cell_overwrites(void *och, char **overwrites, siz
     return zsv_ext_status_error;
   }
   struct zsv_overwrite_ctx *oc = och;
-  size_t end_row = start_row + row_count;
   struct zsv_overwrite_data odata = {.have = 1};
   if (!oc->next) {
-    fprintf(stderr, "err\n");
     return zsv_ext_status_error;
   }
   while (oc->next(oc, &odata) == zsv_status_ok && odata.have) {
-    fprintf(stderr, "%.*s\n", (int)odata.val.len, odata.val.str);
     char *val = calloc(odata.val.len + 1, sizeof(char));
     if (!val)
       return zsv_ext_status_error;

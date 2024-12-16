@@ -159,6 +159,17 @@ void zsvsheet_buffer_set_cell_overwrites(zsvsheet_buffer_t h,
                                                                                     size_t col_count)) {
   if (h) {
     struct zsvsheet_ui_buffer *buff = h;
+    if(buff->ignore_overwrites)
+      return;
+    struct zsv_overwrite_opts overwrite_opts = {
+      .src = (const char *)zsv_cache_filepath((const unsigned char *)buff->filename, zsv_cache_type_overwrite, 0, 0)};
+    buff->overwrite_ctx = zsv_overwrite_context_new(&overwrite_opts);
+    if (zsv_overwrite_open(buff->overwrite_ctx) != zsv_status_ok) {
+      // set to ignore for any future attempts
+      buff->ignore_overwrites = 1;
+      zsv_overwrite_context_delete(buff->overwrite_ctx);
+      return;
+    }
     buff->get_cell_overwrites = get_cell_overwrites;
     zsvsheet_ui_buffer_update_cell_attr(buff);
   }
