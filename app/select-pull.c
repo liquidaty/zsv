@@ -64,7 +64,7 @@ struct zsv_select_data {
     struct {         // merge data: only used with --merge
       struct zsv_select_uint_list *indexes, **last_index;
     } merge;
-  } *out2in; // array of .output_cols_count length; out2in[x] = y where x = output ix, y = input info
+  } * out2in; // array of .output_cols_count length; out2in[x] = y where x = output ix, y = input info
 
   unsigned int output_cols_count; // total count of output columns
 

@@ -6,7 +6,7 @@ echo "[INF] Running $0"
 
 VERSION=$(clang-format --version | sed 's/^[^0-9]*//g' | sed 's/ .*$//g')
 MAJOR_VERSION=$(echo "$VERSION" | cut -d '.' -f1)
-REQUIRED_VERSION="15"
+REQUIRED_VERSION="10"
 
 if [ "$VERSION" = "" ]; then
   echo "[ERR] clang-format is not installed!"

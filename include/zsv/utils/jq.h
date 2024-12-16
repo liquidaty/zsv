@@ -4,12 +4,7 @@
 #include <ctype.h>
 #include <jq.h>
 
-enum zsv_jq_status {
-  zsv_jq_status_ok = 0,
-  zsv_jq_status_compile,
-  zsv_jq_status_memory,
-  zsv_jq_status_error
-};
+enum zsv_jq_status { zsv_jq_status_ok = 0, zsv_jq_status_compile, zsv_jq_status_memory, zsv_jq_status_error };
 
 size_t zsv_jq_fwrite1(void *restrict FILE_ptr, const void *restrict buff, size_t len);
 

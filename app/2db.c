@@ -24,17 +24,9 @@
 
 #define ZSV_2DB_DEFAULT_TABLE_NAME "mytable"
 
-enum zsv_2db_action {
-  zsv_2db_action_create = 1,
-  zsv_2db_action_append,
-  zsv_2db_action_index
-};
+enum zsv_2db_action { zsv_2db_action_create = 1, zsv_2db_action_append, zsv_2db_action_index };
 
-enum zsv_2db_state {
-  zsv_2db_state_header = 1,
-  zsv_2db_state_data,
-  zsv_2db_state_done
-};
+enum zsv_2db_state { zsv_2db_state_header = 1, zsv_2db_state_data, zsv_2db_state_done };
 
 #define LQ_2DB_MAX_INDEXES 32
 

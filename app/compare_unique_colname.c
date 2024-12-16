@@ -1,8 +1,7 @@
 static int zsv_compare_unique_colname_cmp(zsv_compare_unique_colname *x, zsv_compare_unique_colname *y) {
-  return x->instance_num == y->instance_num  ? zsv_stricmp(x->name, y->name)
-         : x->instance_num > y->instance_num ? 1
-         : x->instance_num < y->instance_num ? -1
-                                             : 0;
+  return x->instance_num == y->instance_num
+           ? zsv_stricmp(x->name, y->name)
+           : x->instance_num > y->instance_num ? 1 : x->instance_num < y->instance_num ? -1 : 0;
 }
 
 SGLIB_DEFINE_RBTREE_FUNCTIONS(zsv_compare_unique_colname, left, right, color, zsv_compare_unique_colname_cmp);

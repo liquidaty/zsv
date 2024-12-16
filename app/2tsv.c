@@ -14,10 +14,7 @@
 
 #include <zsv/utils/utf8.h>
 
-enum zsv_2tsv_status {
-  zsv_2tsv_status_ok = 0,
-  zsv_2tsv_status_out_of_memory
-};
+enum zsv_2tsv_status { zsv_2tsv_status_ok = 0, zsv_2tsv_status_out_of_memory };
 
 #define ZSV_2TSV_BUFF_SIZE 65536
 

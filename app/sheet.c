@@ -84,11 +84,10 @@ struct zsvsheet_sheet_context {
   } context_menu;
 };
 
-void zsvsheet_display_context_menu(struct zsvsheet_sheet_context *state)
-{
-  if(state->context_menu.active) {
-    context_menu_display(&state->context_menu.menu,
-        state->context_menu.row, state->context_menu.col, state->display_info.dimensions);
+void zsvsheet_display_context_menu(struct zsvsheet_sheet_context *state) {
+  if (state->context_menu.active) {
+    context_menu_display(&state->context_menu.menu, state->context_menu.row, state->context_menu.col,
+                         state->display_info.dimensions);
   }
 }
 
@@ -456,14 +455,14 @@ out:
 }
 
 static zsvsheet_status zsvsheet_context_menu_filter_handler(struct zsvsheet_proc_context *ctx) {
-  if(ctx->invocation.type != zsvsheet_proc_invocation_type_context_menu)
+  if (ctx->invocation.type != zsvsheet_proc_invocation_type_context_menu)
     return zsvsheet_status_error;
 
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(state->display_info.ui_buffers.current);
-  const char *contents = zsvsheet_screen_buffer_cell_display(current_ui_buffer->buffer,
-        current_ui_buffer->cursor_row, current_ui_buffer->cursor_col);
-  
+  const char *contents = zsvsheet_screen_buffer_cell_display(current_ui_buffer->buffer, current_ui_buffer->cursor_row,
+                                                             current_ui_buffer->cursor_col);
+
   fprintf(stderr, "filtering for %s\n", contents);
   struct zsvsheet_proc_context context = {
     .proc_id = zsvsheet_builtin_proc_filter,
@@ -478,13 +477,13 @@ static zsvsheet_status zsvsheet_context_menu_filter_handler(struct zsvsheet_proc
 }
 
 static zsvsheet_status zsvsheet_context_menu_open_link_handler(struct zsvsheet_proc_context *ctx) {
-  if(ctx->invocation.type != zsvsheet_proc_invocation_type_context_menu)
+  if (ctx->invocation.type != zsvsheet_proc_invocation_type_context_menu)
     return zsvsheet_status_error;
 
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(state->display_info.ui_buffers.current);
-  const char *contents = zsvsheet_screen_buffer_cell_display(current_ui_buffer->buffer,
-        current_ui_buffer->cursor_row, current_ui_buffer->cursor_col);
+  const char *contents = zsvsheet_screen_buffer_cell_display(current_ui_buffer->buffer, current_ui_buffer->cursor_row,
+                                                             current_ui_buffer->cursor_col);
 
   char command[256];
 
@@ -493,13 +492,12 @@ static zsvsheet_status zsvsheet_context_menu_open_link_handler(struct zsvsheet_p
   fprintf(stderr, "opening link '%s'...\n", contents);
   fprintf(stderr, "%s\n", command);
 
-  //system(command);
-  
+  // system(command);
+
   return zsvsheet_status_ok;
 }
 
-void zsvsheet_open_context_menu(struct zsvsheet_sheet_context *state)
-{
+void zsvsheet_open_context_menu(struct zsvsheet_sheet_context *state) {
   /* create context menu based on the cell contents/metadata */
   struct zsvsheet_ui_buffer *current_ui_buffer = *(state->display_info.ui_buffers.current);
   struct zsvsheet_display_dimensions *ddims = state->display_info.dimensions;
@@ -507,15 +505,15 @@ void zsvsheet_open_context_menu(struct zsvsheet_sheet_context *state)
   char entry_name[64];
 
   context_menu_cleanup(&state->context_menu.menu);
-  if(context_menu_init(&state->context_menu.menu))
+  if (context_menu_init(&state->context_menu.menu))
     return;
 
   snprintf(entry_name, sizeof(entry_name), "Filter for '%s'",
-      zsvsheet_screen_buffer_cell_display(current_ui_buffer->buffer,
-        current_ui_buffer->cursor_row, current_ui_buffer->cursor_col));
-  if(context_menu_new_entry_func(&state->context_menu.menu, entry_name, zsvsheet_context_menu_filter_handler))
+           zsvsheet_screen_buffer_cell_display(current_ui_buffer->buffer, current_ui_buffer->cursor_row,
+                                               current_ui_buffer->cursor_col));
+  if (context_menu_new_entry_func(&state->context_menu.menu, entry_name, zsvsheet_context_menu_filter_handler))
     return;
-  if(context_menu_new_entry_func(&state->context_menu.menu, "Open link...", zsvsheet_context_menu_open_link_handler))
+  if (context_menu_new_entry_func(&state->context_menu.menu, "Open link...", zsvsheet_context_menu_open_link_handler))
     return;
 
   state->context_menu.row = current_ui_buffer->cursor_row;
@@ -523,8 +521,7 @@ void zsvsheet_open_context_menu(struct zsvsheet_sheet_context *state)
   state->context_menu.active = true;
 }
 
-static zsvsheet_status zsvsheet_open_cell_context_menu_handler(struct zsvsheet_proc_context *ctx)
-{
+static zsvsheet_status zsvsheet_open_cell_context_menu_handler(struct zsvsheet_proc_context *ctx) {
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   zsvsheet_open_context_menu(state);
   zsvsheet_display_context_menu(state);
@@ -639,25 +636,25 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(state->display_info.ui_buffers.current);
 
-  if(state->context_menu.active) {
+  if (state->context_menu.active) {
     zsvsheet_status context_menu_status = zsvsheet_status_ok;
-    switch(ctx->proc_id) {
-      case zsvsheet_builtin_proc_move_up:
-        context_menu_move_up(&state->context_menu.menu);
-        break;
-      case zsvsheet_builtin_proc_move_down:
-        context_menu_move_down(&state->context_menu.menu);
-        break;
-      case zsvsheet_builtin_proc_escape:
-        state->context_menu.active = false;
-        break;
-      case zsvsheet_builtin_proc_confirm:
-        context_menu_status = context_menu_confirm(&state->context_menu.menu, state);
-        state->context_menu.active = false;
-        break;
-      default:
-        state->context_menu.active = false;
-        goto non_context_menu_action;
+    switch (ctx->proc_id) {
+    case zsvsheet_builtin_proc_move_up:
+      context_menu_move_up(&state->context_menu.menu);
+      break;
+    case zsvsheet_builtin_proc_move_down:
+      context_menu_move_down(&state->context_menu.menu);
+      break;
+    case zsvsheet_builtin_proc_escape:
+      state->context_menu.active = false;
+      break;
+    case zsvsheet_builtin_proc_confirm:
+      context_menu_status = context_menu_confirm(&state->context_menu.menu, state);
+      state->context_menu.active = false;
+      break;
+    default:
+      state->context_menu.active = false;
+      goto non_context_menu_action;
     }
     zsvsheet_display_context_menu(state);
     return context_menu_status;

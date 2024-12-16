@@ -26,7 +26,8 @@ zsvsheet_status zsvsheet_proc_key_binding_handler(struct zsvsheet_key_binding_co
   return zsvsheet_proc_invoke_from_keypress(ctx->binding->proc_id, ctx->ch, ctx->subcommand_context);
 }
 
-int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding) { if (zsvsheet_find_key_binding(binding->ch))
+int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding) {
+  if (zsvsheet_find_key_binding(binding->ch))
     return EEXIST; /* Key bound already */
 
   if (binding->proc_id != ZSVSHEET_PROC_INVALID && binding->handler == NULL)

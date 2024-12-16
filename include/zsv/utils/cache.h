@@ -30,11 +30,7 @@
  */
 unsigned char *zsv_cache_path(const unsigned char *data_filepath, const unsigned char *cache_filename, char temp_file);
 
-enum zsv_cache_type {
-  zsv_cache_type_property = 1,
-  zsv_cache_type_tag,
-  zsv_cache_type_overwrite
-};
+enum zsv_cache_type { zsv_cache_type_property = 1, zsv_cache_type_tag, zsv_cache_type_overwrite };
 
 unsigned char *zsv_cache_filepath(const unsigned char *data_filepath, enum zsv_cache_type type, char create_dir,
                                   char temp_file);
