@@ -1,6 +1,7 @@
 #include <unistd.h> // unlink()
 #include <pthread.h>
 #include <zsv/utils/index.h>
+#include <zsv/utils/overwrite.h>
 #include "index.h"
 
 struct zsvsheet_ui_buffer {
@@ -29,7 +30,7 @@ struct zsvsheet_ui_buffer {
   char *status;
 
   void *ext_ctx; // extension context via zsvsheet_ext_set_ctx() zsvsheet_ext_get_ctx()
-  void *overwrite_ctx;
+  struct zsv_overwrite_ctx *overwrite_ctx;
 
   // cleanup callback set by zsvsheet_ext_get_ctx()
   // if non-null, called when buffer is closed
@@ -39,8 +40,7 @@ struct zsvsheet_ui_buffer {
   enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, int *attrs, size_t start_row, size_t row_count,
                                         size_t col_count);
 
-  enum zsv_ext_status (*get_cell_overwrites)(void *ext_ctx, char **overwrites, size_t start_row, size_t row_count,
-                                             size_t col_count);
+  enum zsv_ext_status (*get_cell_overwrites)(void *uibp);
 
   unsigned char index_ready : 1;
   unsigned char rownum_col_offset : 1;
@@ -133,6 +133,27 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffe
   return uib;
 }
 
+static enum zsv_ext_status get_cell_overwrites(void *uibp) {
+  struct zsvsheet_ui_buffer *uib = uibp;
+  if (!uib->overwrite_ctx) {
+    return zsv_ext_status_error;
+  }
+  struct zsv_overwrite_data odata = {.have = 1};
+  if (!uib->overwrite_ctx->next) {
+    return zsv_ext_status_error;
+  }
+  while (uib->overwrite_ctx->next(uib->overwrite_ctx, &odata) == zsv_status_ok && odata.have) {
+    char *val = calloc(odata.val.len + 1, sizeof(char));
+    if (!val)
+      return zsv_ext_status_error;
+    memcpy(val, odata.val.str, odata.val.len);
+    val[odata.val.len] = '\0';
+    uib->buffer->cell_overwrites[odata.row_ix * uib->buffer->cols + odata.col_ix] = val;
+  }
+  return zsv_ext_status_ok;
+}
+
+
 int zsvsheet_ui_buffer_update_cell_attr(struct zsvsheet_ui_buffer *uib) {
   if (uib && uib->buffer && uib->buffer->opts.rows && uib->buffer->cols) {
     size_t row_sz = uib->buffer->cols * sizeof(*uib->buffer->cell_attrs);
@@ -153,8 +174,7 @@ int zsvsheet_ui_buffer_update_cell_attr(struct zsvsheet_ui_buffer *uib) {
         if (!uib->buffer->cell_overwrites)
           return ENOMEM;
       }
-      uib->get_cell_overwrites(uib->overwrite_ctx, uib->buffer->cell_overwrites, uib->input_offset.row,
-                               uib->buff_used_rows, uib->buffer->cols);
+      uib->get_cell_overwrites(uib);
     }
   }
   return 0;

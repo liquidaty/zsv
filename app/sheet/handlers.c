@@ -153,10 +153,7 @@ void zsvsheet_buffer_set_cell_attrs(zsvsheet_buffer_t h,
 }
 
 /** Set callback for fetching cell overwrites**/
-void zsvsheet_buffer_set_cell_overwrites(zsvsheet_buffer_t h,
-                                         enum zsv_ext_status (*get_cell_overwrites)(void *ext_ctx, char **overwrites,
-                                                                                    size_t start_row, size_t row_count,
-                                                                                    size_t col_count)) {
+void zsvsheet_buffer_set_cell_overwrites(zsvsheet_buffer_t h, enum zsv_ext_status (*get_overwrites)(void *uibp)) {
   if (h) {
     struct zsvsheet_ui_buffer *buff = h;
     if(buff->ignore_overwrites)
@@ -170,7 +167,7 @@ void zsvsheet_buffer_set_cell_overwrites(zsvsheet_buffer_t h,
       zsv_overwrite_context_delete(buff->overwrite_ctx);
       return;
     }
-    buff->get_cell_overwrites = get_cell_overwrites;
+    buff->get_cell_overwrites = get_overwrites;
     zsvsheet_ui_buffer_update_cell_attr(buff);
   }
 }

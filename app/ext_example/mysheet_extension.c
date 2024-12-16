@@ -12,7 +12,6 @@
 #include "../external/sqlite3/sqlite3.h"
 #include <zsv/ext/implementation.h>
 #include <zsv/ext/sheet.h>
-#include <zsv/utils/overwrite.h>
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/prop.h>
@@ -128,27 +127,6 @@ static enum zsv_ext_status get_cell_attrs(void *pdh, int *attrs, size_t start_ro
     end_row = pd->rows.used;
   for (size_t i = start_row; i < end_row; i++)
     attrs[i * cols] = A_ITALIC | A_BOLD | A_ITALIC;
-  return zsv_ext_status_ok;
-}
-
-static enum zsv_ext_status get_cell_overwrites(void *och, char **overwrites, size_t start_row, size_t row_count,
-                                               size_t cols) {
-  if (!och) {
-    return zsv_ext_status_error;
-  }
-  struct zsv_overwrite_ctx *oc = och;
-  struct zsv_overwrite_data odata = {.have = 1};
-  if (!oc->next) {
-    return zsv_ext_status_error;
-  }
-  while (oc->next(oc, &odata) == zsv_status_ok && odata.have) {
-    char *val = calloc(odata.val.len + 1, sizeof(char));
-    if (!val)
-      return zsv_ext_status_error;
-    memcpy(val, odata.val.str, odata.val.len);
-    val[odata.val.len] = '\0';
-    overwrites[odata.row_ix * cols + odata.col_ix] = val;
-  }
   return zsv_ext_status_ok;
 }
 
@@ -276,12 +254,6 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
   return zst;
 }
 
-zsvsheet_status my_overwrite_command_handler(zsvsheet_proc_context_t ctx) {
-  zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx);
-  zsv_cb.ext_sheet_buffer_set_cell_overwrites(buff, get_cell_overwrites);
-  return zsvsheet_status_ok;
-}
-
 /**
  * Here we define a custom command for the zsv `sheet` feature
  */
@@ -355,10 +327,6 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
   if (proc_id < 0)
     return zsv_ext_status_error;
   zsv_cb.ext_sheet_register_proc_key_binding('v', proc_id);
-  proc_id = zsv_cb.ext_sheet_register_proc("my-sheet-overwrites", "my sheet overwrites", my_overwrite_command_handler);
-  if (proc_id < 0)
-    return zsv_ext_status_error;
-  zsv_cb.ext_sheet_register_proc_key_binding('o', proc_id);
   return zsv_ext_status_ok;
 }
 

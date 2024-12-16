@@ -255,13 +255,6 @@ struct zsv_ext_callbacks {
                                                                                 size_t row_count, size_t cols));
 
   /**
-   * Set custom cell overwrites
-   */
-  void (*ext_sheet_buffer_set_cell_overwrites)(
-    zsvsheet_buffer_t h, enum zsv_ext_status (*get_cell_overwrites)(void *ovh, char **overwrites, size_t start_row,
-                                                                    size_t row_count, size_t cols));
-
-  /**
    * Set custom handler on Enter key press
    *
    * @return zsv_ext_status_ok on success, else zsv_ext_status error code

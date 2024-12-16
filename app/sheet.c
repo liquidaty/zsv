@@ -693,6 +693,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       err = -1;
       goto zsvsheet_exit;
     }
+    current_ui_buffer->ignore_overwrites = ignore_overwrites;
+    if(!current_ui_buffer->ignore_overwrites && !current_ui_buffer->buffer->cell_overwrites)
+      zsvsheet_buffer_set_cell_overwrites(current_ui_buffer, get_cell_overwrites);
   }
 
   err = 0;
@@ -730,7 +733,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   while (true) {
     ch = getch();
 
-    current_ui_buffer->ignore_overwrites = ignore_overwrites;
     handler_state.display_info.update_buffer = false;
     zsvsheet_priv_set_status(&display_dims, 1, "");
 

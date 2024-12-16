@@ -105,8 +105,7 @@ void zsvsheet_buffer_set_cell_attrs(zsvsheet_buffer_t h,
                                                                           size_t row_count, size_t col_count));
 
 void zsvsheet_buffer_set_cell_overwrites(zsvsheet_buffer_t h,
-                                         enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, char **, size_t start_row,
-                                                                               size_t row_count, size_t col_count));
+                                         enum zsv_ext_status (*get_cell_attrs)(void *uib));
 
 /** Get zsv_opts use to open the buffer's data file **/
 struct zsv_opts zsvsheet_buffer_get_zsv_opts(zsvsheet_buffer_t h);
