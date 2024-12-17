@@ -574,7 +574,9 @@ jobs:
 
     - name: Upload release artifacts
       if: startsWith(github.ref, 'refs/tags/v')
-      run: ./scripts/ci-upload-release-artifacts.sh
+      run: |
+        git config --global --add safe.directory "$PWD"
+        ./scripts/ci-upload-release-artifacts.sh
 
   ghcr:
     needs: ci-musl
