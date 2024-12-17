@@ -16,7 +16,7 @@
 
 #include <zsv.h>
 
-#include "curses.h"
+#include "sheet/curses.h"
 
 #include <locale.h>
 #include <wchar.h>

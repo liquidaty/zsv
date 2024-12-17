@@ -1,11 +1,13 @@
 #include "screen_buffer.h"
 
+#include <zsv/ext.h> // zsvsheet_cell_attr_t
+
 struct zsvsheet_screen_buffer {
   size_t cols;
   size_t long_cell_count;
   struct zsvsheet_screen_buffer_opts opts;
   unsigned char *data;
-  int *cell_attrs; // used for per-cell attron() and attroff()
+  zsvsheet_cell_attr_t *cell_attrs; // used for per-cell attron() and attroff()
   // to do: add hooks for extension
 };
 

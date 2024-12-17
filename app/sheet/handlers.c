@@ -143,8 +143,9 @@ enum zsv_ext_status zsvsheet_buffer_get_ctx(zsvsheet_buffer_t h, void **ctx_out)
 
 /** Set callback for fetching cell attributes **/
 void zsvsheet_buffer_set_cell_attrs(zsvsheet_buffer_t h,
-                                    enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, int *, size_t start_row,
-                                                                          size_t row_count, size_t col_count)) {
+                                    enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, zsvsheet_cell_attr_t *,
+                                                                          size_t start_row, size_t row_count,
+                                                                          size_t col_count)) {
   if (h) {
     struct zsvsheet_ui_buffer *buff = h;
     buff->get_cell_attrs = get_cell_attrs;
@@ -194,3 +195,20 @@ struct zsvsheet_buffer_data zsvsheet_buffer_info(zsvsheet_buffer_t h) {
   }
   return d;
 }
+
+/**
+ * Get the corresponding cell attributes for the given profile
+ */
+zsvsheet_cell_attr_t zsvsheet_cell_profile_attrs(enum zsvsheet_cell_profile_t t) {
+  switch (t) {
+  case zsvsheet_cell_attr_profile_link:
+#ifndef A_ITALIC
+    return A_BOLD;
+#else
+    return A_ITALIC | A_BOLD;
+#endif
+  default:
+    break;
+  }
+  return zsvsheet_cell_attr_profile_none;
+};
