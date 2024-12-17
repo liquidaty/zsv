@@ -13,7 +13,7 @@ fi
 AMD64_ZIP="zsv-$TAG-amd64-macosx-gcc.zip"
 AMD64_URL="https://github.com/liquidaty/zsv/releases/download/v$TAG/$AMD64_ZIP"
 ARM64_ZIP="zsv-$TAG-arm64-macosx-gcc.zip"
-ARM64_URL="https://github.com/liquidaty/zsv/releases/download/v$TAG/$AMD64_ZIP"
+ARM64_URL="https://github.com/liquidaty/zsv/releases/download/v$TAG/$ARM64_ZIP"
 
 HOMEBREW_TAP_REPO="git@github.com:liquidaty/homebrew-zsv.git"
 HOMEBREW_TAP_DIR="homebrew-zsv"
@@ -32,7 +32,7 @@ echo "[INF] HOMEBREW_TAP_REPO:    $HOMEBREW_TAP_REPO"
 echo "[INF] HOMEBREW_TAP_DIR:     $HOMEBREW_TAP_DIR"
 echo "[INF] HOMEBREW_TAP_FORMULA: $HOMEBREW_TAP_FORMULA"
 
-echo "[INF] Downloading release archives [$AMD64_URL, $ARM64_URL]"
+echo "[INF] Downloading release archives [$AMD64_ZIP, $ARM64_ZIP]"
 wget -q "$AMD64_URL" "$ARM64_URL"
 ls -hl "$AMD64_ZIP" "$ARM64_ZIP"
 
@@ -53,14 +53,15 @@ git config --global user.email "zsv-ci@localhost"
 
 rm -rf "$HOMEBREW_TAP_DIR"
 
+echo "[INF] Cloning homebrew tap repository [$HOMEBREW_TAP_REPO]"
 git clone "$HOMEBREW_TAP_REPO"
 cd "$HOMEBREW_TAP_DIR"
 
 echo "[INF] Updating URLs and SHA256 hashes [$HOMEBREW_TAP_FORMULA]"
 sed -i -e "s|AMD64_URL = .*|AMD64_URL = '$AMD64_URL'|" "$HOMEBREW_TAP_FORMULA"
 sed -i -e "s|AMD64_HASH = .*|AMD64_HASH = '$AMD64_HASH'|" "$HOMEBREW_TAP_FORMULA"
-sed -i -e "s|ARM64_URL = .*|ARM64_URL = '$AMD64_URL'|" "$HOMEBREW_TAP_FORMULA"
-sed -i -e "s|ARM64_HASH = .*|ARM64_HASH = '$AMD64_HASH'|" "$HOMEBREW_TAP_FORMULA"
+sed -i -e "s|ARM64_URL = .*|ARM64_URL = '$ARM64_URL'|" "$HOMEBREW_TAP_FORMULA"
+sed -i -e "s|ARM64_HASH = .*|ARM64_HASH = '$ARM64_HASH'|" "$HOMEBREW_TAP_FORMULA"
 
 DIFF=$(git diff "$HOMEBREW_TAP_FORMULA")
 if [ "$DIFF" = "" ]; then
