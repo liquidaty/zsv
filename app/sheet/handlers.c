@@ -202,7 +202,11 @@ struct zsvsheet_buffer_data zsvsheet_buffer_info(zsvsheet_buffer_t h) {
 zsvsheet_cell_attr_t zsvsheet_cell_profile_attrs(enum zsvsheet_cell_profile_t t) {
   switch (t) {
   case zsvsheet_cell_attr_profile_link:
+#ifndef A_ITALIC
+    return A_BOLD;
+#else
     return A_ITALIC | A_BOLD;
+#endif
   default:
     break;
   }
