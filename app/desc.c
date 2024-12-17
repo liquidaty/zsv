@@ -405,8 +405,10 @@ static void zsv_desc_row(void *ctx) {
       col->unique_values_ci.max_count = data->max_enum;
     }
 
-    if (data->header_only)
+    if (data->header_only) {
       data->done = 1;
+      zsv_abort(data->parser);
+    }
   } else {
     if (data->row_count % 50000 == 0 && data->opts->verbose)
       fprintf(stderr, "%zu rows read\n", data->row_count);
@@ -423,7 +425,7 @@ const char *zsv_desc_usage_msg[] = {
   "",
   "Options:",
   "  -b,--with-bom            : output with BOM",
-  "  -C <max_num_of_columns>  : maximum number of columns (default: 1024)",
+  "  -C <max_num_of_columns>  : maximum number of columns (default: " ZSV_DESC_MAX_COLS_DEFAULT_S ")",
   "  -H                       : output header names only",
   "  -q,--quick               : minimize example counts",
   "  -a,--all                 : calculate all metadata (for now, this only adds uniqueness info)",
