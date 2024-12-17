@@ -35,8 +35,7 @@ struct zsvsheet_ui_buffer {
   zsvsheet_status (*on_newline)(zsvsheet_proc_context_t);
   void (*ext_on_close)(void *);
 
-  enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, int *attrs, size_t start_row, size_t row_count,
-                                        size_t col_count);
+  enum zsv_ext_status (*get_cell_attrs)(void *, zsvsheet_cell_attr_t *, size_t, size_t, size_t);
 
   unsigned char index_ready : 1;
   unsigned char rownum_col_offset : 1;
