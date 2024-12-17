@@ -517,7 +517,7 @@ jobs:
     steps:
     - name: Set up dependencies
       shell: sh
-      run: apk add bash gcc make musl-dev perl ncurses-dev ncurses-static tmux file sqlite curl zip wget tar
+      run: apk add bash gcc make musl-dev perl ncurses-dev ncurses-static tmux file sqlite curl zip wget tar git
 
     - name: Checkout
       uses: actions/checkout@v4
@@ -695,7 +695,7 @@ jobs:
         path: playground
 
   deploy-wasm-playground:
-    if: ${{ github.ref_name == 'main' }}
+    if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
     needs: ci-wasm
     runs-on: ubuntu-22.04
 
