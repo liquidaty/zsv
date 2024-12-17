@@ -1,5 +1,7 @@
 #include "screen_buffer.h"
 
+#include <zsv/ext.h> // zsvsheet_cell_attr_t
+
 struct zsvsheet_screen_buffer {
   size_t cols;
   size_t long_cell_count;
