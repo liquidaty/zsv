@@ -263,6 +263,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
 
+    outputs:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
 
@@ -325,12 +328,24 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       run: ./scripts/ci-upload-release-artifacts.sh
 
-    - name: Update homebrew tap (liquidaty/homebrew-zsv)
-      if: ${{ startsWith(github.ref, 'refs/tags/v') && matrix.os == 'macos-13' }}
+  update-homebrew-tap:
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    needs: ci-macos
+    runs-on: ubuntu-22.04
+
+    env:
+      TAG: ${{ needs.ci-macos.outputs.TAG }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          scripts/ci-update-homebrew-tap.sh
+
+    - name: Update
       env:
         HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-        TAG: ${{ env.TAG }}
-        TRIPLET: ${{ env.AMD64_MACOSX_GCC }}
       run: ./scripts/ci-update-homebrew-tap.sh
 
   ci-bsd:
