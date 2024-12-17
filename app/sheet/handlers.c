@@ -45,6 +45,7 @@ zsvsheet_status zsvsheet_set_status(struct zsvsheet_proc_context *ctx, const cha
   va_end(argv);
   // note: if (n < (int)sizeof(zsvsheet_status_text)), then we just ignore
   zsvsheet_display_status_text(state->display_info.dimensions);
+  zsvsheet_status_priority = ZSVSHEET_STATUS_HIGH_PRIO;
   return zsvsheet_status_ok;
 }
 
