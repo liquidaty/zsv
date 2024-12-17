@@ -143,8 +143,9 @@ enum zsv_ext_status zsvsheet_buffer_get_ctx(zsvsheet_buffer_t h, void **ctx_out)
 
 /** Set callback for fetching cell attributes **/
 void zsvsheet_buffer_set_cell_attrs(zsvsheet_buffer_t h,
-                                    enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, int *, size_t start_row,
-                                                                          size_t row_count, size_t col_count)) {
+                                    enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, zsvsheet_cell_attr_t *,
+                                                                          size_t start_row, size_t row_count,
+                                                                          size_t col_count)) {
   if (h) {
     struct zsvsheet_ui_buffer *buff = h;
     buff->get_cell_attrs = get_cell_attrs;
