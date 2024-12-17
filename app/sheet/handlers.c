@@ -1,3 +1,4 @@
+#include "curses.h"
 #include "file.h"
 #include "procedure.h"
 
