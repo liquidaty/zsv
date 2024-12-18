@@ -49,8 +49,8 @@ struct zsvsheet_opts {
 #define ZSVSHEET_CELL_DISPLAY_MIN_WIDTH 10
 static size_t zsvsheet_cell_display_width(struct zsvsheet_ui_buffer *ui_buffer,
                                           struct zsvsheet_display_dimensions *ddims) {
-  size_t width = ddims->columns /
-                 (ui_buffer->dimensions.col_count + (rownum_col_offset(ui_buffer) ? 1 : 0));
+  size_t width =
+      ddims->columns / (ui_buffer->dimensions.col_count + (rownum_col_offset(ui_buffer) ? 1 : 0));
   return width < ZSVSHEET_CELL_DISPLAY_MIN_WIDTH ? ZSVSHEET_CELL_DISPLAY_MIN_WIDTH : width;
 }
 
