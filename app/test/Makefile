@@ -590,7 +590,7 @@ test-sheet-cleanup:
 	@rm -f tmux-*.log
 	@tmux kill-server || printf ''
 
-test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand test-sheet-prop-cmd-opt
+test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-overwrites test-sheet-ignore-overwrites test-sheet-subcommand test-sheet-prop-cmd-opt
 	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null; done && ${TEST_PASS} || ${TEST_FAIL})
 
 TMUX_TERM=xterm-256color
@@ -804,6 +804,35 @@ test-sheet-subcommand-filter-file-argument: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out  && \
 	tmux send-keys -t $@ "q" && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
+
+test-sheet-overwrites: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_overwrite${EXE}
+	@${TEST_INIT}
+	@${PREFIX} $(word 2,$^) worldcitiespop_mil.csv clear
+	@${PREFIX} $(word 2,$^) worldcitiespop_mil.csv add E15 L2
+	@${PREFIX} $(word 2,$^) worldcitiespop_mil.csv add G23 42.102 
+	@${PREFIX} $(word 2,$^) worldcitiespop_mil.csv add B2 test 
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	sleep 0.5 && \
+	tmux send-keys -t $@ "l" && \
+	sleep 1.0 && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out  && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
+	@${PREFIX} $(word 2,$^) worldcitiespop_mil.csv clear
+
+test-sheet-ignore-overwrites: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_overwrite${EXE}
+	@${TEST_INIT}
+	@${PREFIX} $(word 2,$^) worldcitiespop_mil.csv clear
+	@${PREFIX} $(word 2,$^) worldcitiespop_mil.csv add E15 L2
+	@${PREFIX} $(word 2,$^) worldcitiespop_mil.csv add G23 42.102 
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv --ignore-overwrites" && \
+	sleep 1.0 && \
+	tmux capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out  && \
+	tmux send-keys -t $@ "q" && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL}))
+	@${PREFIX} $(word 2,$^) worldcitiespop_mil.csv clear
 
 test-sheet-prop-cmd-opt: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_prop${EXE}
 	@echo "TO DO: test-sheet-prop-cmd-opt"
