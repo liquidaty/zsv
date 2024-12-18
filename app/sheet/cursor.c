@@ -52,6 +52,10 @@ static void set_window_to_cursor(struct zsvsheet_rowcol *buff_offset, size_t tar
 
 static int zsvsheet_goto_input_raw_row(struct zsvsheet_ui_buffer *uib, size_t input_raw_num, size_t input_header_span,
                                        struct zsvsheet_display_dimensions *ddims, size_t final_cursor_position) {
+  if (!atomic_test_bit(uib->flags.flags, INDEX_READY_BIT))
+    return 0;
+  __sync_synchronize(); // Memory barrier after checking index readiness
+
   zsvsheet_screen_buffer_t buffer = uib->buffer;
   struct zsvsheet_rowcol *input_offset = &uib->input_offset;
   struct zsvsheet_rowcol *buff_offset = &uib->buff_offset;

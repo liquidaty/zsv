@@ -139,11 +139,11 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   char cancelled = 0;
   while (!cancelled && (zst = zsv_parse_more(parser)) == zsv_status_ok) {
     pthread_mutex_lock(mutex);
-    cancelled = uib->worker_cancelled;
+    cancelled = atomic_test_bit(uib->flags.flags, WORKER_CANCELLED_BIT);
     if (trn->writer_wrote) {
       trn->writer_wrote = 0;
       zsv_index_commit_rows(uib->index);
-      uib->index_ready = 1;
+      atomic_set_bit(uib->flags.flags, INDEX_READY_BIT);
     }
     pthread_mutex_unlock(mutex);
   }
@@ -161,9 +161,9 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
 
   pthread_mutex_lock(mutex);
   char *buff_status_old = uib->status;
-  uib->write_done = 1;
+  atomic_set_bit(uib->flags.flags, WRITE_DONE_BIT);
   zsv_index_commit_rows(uib->index);
-  uib->index_ready = 1;
+  atomic_set_bit(uib->flags.flags, INDEX_READY_BIT);
   uib->dimensions.row_count = zsv_index_count(uib->index);
   __sync_synchronize(); // Add memory barrier after dimension update
   if (buff_status_old == default_status)
@@ -187,7 +187,7 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   // TODO: Starting a second transformation before the first ends works, but if the second is faster
   //       than the first then it can end prematurely and read a partially written row.
   //       We could override the input stream reader to wait for more data when it sees EOF
-  if (info.write_in_progress && !info.write_done)
+  if (atomic_test_bit(&info.flags, WRITE_IN_PROGRESS_BIT) && !atomic_test_bit(&info.flags, WRITE_DONE_BIT))
     return zsvsheet_status_busy;
 
   if (!(index = zsv_index_new()))
@@ -252,13 +252,14 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   struct zsvsheet_ui_buffer *nbuff = zsvsheet_buffer_current(ctx);
   trn->ui_buffer = nbuff;
   zsv_index_commit_rows(index);
-  nbuff->index_started = 1;
+  atomic_set_bit(nbuff->flags.flags, INDEX_STARTED_BIT);
   nbuff->index = index;
   nbuff->dimensions.row_count = zsv_index_count(index);
+  __sync_synchronize();
 
   if (zst != zsv_status_ok) {
-    nbuff->write_done = 1;
-    nbuff->index_ready = 1;
+    atomic_set_bit(nbuff->flags.flags, WRITE_DONE_BIT);
+    atomic_set_bit(nbuff->flags.flags, INDEX_READY_BIT);
     if (trn->on_done)
       opts.on_done(trn);
     zsvsheet_transformation_delete(trn);

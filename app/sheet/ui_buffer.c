@@ -1,5 +1,9 @@
-#include <unistd.h> // unlink()
+#include "ui_buffer.h"
+#include "sheet_internal.h"
+#include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
+#include <unistd.h> // for unlink()
 #include <zsv/utils/index.h>
 #include "index.h"
 
@@ -37,39 +41,31 @@ struct zsvsheet_ui_buffer {
 
   enum zsv_ext_status (*get_cell_attrs)(void *, zsvsheet_cell_attr_t *, size_t, size_t, size_t);
 
-  unsigned char index_ready : 1;
-  unsigned char rownum_col_offset : 1;
-  unsigned char index_started : 1;
-  unsigned char has_row_num : 1;
-  unsigned char mutex_inited : 1;
-  unsigned char write_in_progress : 1;
-  unsigned char write_done : 1;
-  unsigned char worker_active : 1;
-  unsigned char worker_cancelled : 1;
-  unsigned char _ : 7;
+  // Atomic flags structure
+  struct zsvsheet_ui_flags flags;
 };
 
 void zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*start_func)(void *), void *arg) {
-  assert(!ub->worker_active);
-  assert(ub->mutex_inited);
+  assert(!atomic_test_bit(ub->flags.flags, WORKER_ACTIVE_BIT));
+  assert(atomic_test_bit(ub->flags.flags, MUTEX_INITED_BIT));
 
   pthread_create(&ub->worker_thread, NULL, start_func, arg);
-  ub->worker_active = 1;
+  atomic_set_bit(ub->flags.flags, WORKER_ACTIVE_BIT);
 }
 
 void zsvsheet_ui_buffer_join_worker(struct zsvsheet_ui_buffer *ub) {
-  assert(ub->worker_active);
-  assert(ub->mutex_inited);
+  assert(atomic_test_bit(ub->flags.flags, WORKER_ACTIVE_BIT));
+  assert(atomic_test_bit(ub->flags.flags, MUTEX_INITED_BIT));
 
   pthread_join(ub->worker_thread, NULL);
-  ub->worker_active = 0;
+  atomic_clear_bit(ub->flags.flags, WORKER_ACTIVE_BIT);
 }
 
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
   if (ub) {
-    if (ub->worker_active) {
+    if (atomic_test_bit(ub->flags.flags, WORKER_ACTIVE_BIT)) {
       pthread_mutex_lock(&ub->mutex);
-      ub->worker_cancelled = 1;
+      atomic_set_bit(ub->flags.flags, WORKER_CANCELLED_BIT);
       pthread_mutex_unlock(&ub->mutex);
 
       zsvsheet_ui_buffer_join_worker(ub);
@@ -77,7 +73,7 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
     if (ub->ext_on_close)
       ub->ext_on_close(ub->ext_ctx);
     zsvsheet_screen_buffer_delete(ub->buffer);
-    if (ub->mutex_inited)
+    if (atomic_test_bit(ub->flags.flags, MUTEX_INITED_BIT))
       pthread_mutex_destroy(&ub->mutex);
     if (ub->ixopts)
       ub->ixopts->uib = NULL;
@@ -106,10 +102,10 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffe
   pthread_mutex_t init = PTHREAD_MUTEX_INITIALIZER;
   if (uib) {
     uib->buffer = buffer;
-    uib->mutex_inited = 1;
+    atomic_set_bit(uib->flags.flags, MUTEX_INITED_BIT);
     memcpy(&uib->mutex, &init, sizeof(init));
     if (!(uibopts && uibopts->no_rownum_col_offset))
-      uib->rownum_col_offset = 1;
+      atomic_set_bit(uib->flags.flags, ROWNUM_COL_OFFSET_BIT);
     if (uibopts) {
       if (uibopts->filename && !(uib->filename = strdup(uibopts->filename))) {
         zsvsheet_ui_buffer_delete(uib);
@@ -120,7 +116,8 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffe
         return NULL;
       }
       uib->zsv_opts = uibopts->zsv_opts;
-      uib->write_in_progress = uibopts->write_after_open;
+      if (uibopts->write_after_open)
+        atomic_set_bit(uib->flags.flags, WRITE_IN_PROGRESS_BIT);
     }
   }
   return uib;
@@ -136,6 +133,8 @@ int zsvsheet_ui_buffer_update_cell_attr(struct zsvsheet_ui_buffer *uib) {
           return ENOMEM;
       }
       memset(uib->buffer->cell_attrs, 0, uib->buffer->opts.rows * row_sz);
+      // Add memory barrier before accessing flags
+      __sync_synchronize();
       uib->get_cell_attrs(uib->ext_ctx, uib->buffer->cell_attrs, uib->input_offset.row, uib->buff_used_rows,
                           uib->buffer->cols);
     }

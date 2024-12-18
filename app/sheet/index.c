@@ -53,19 +53,21 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
     committed_bytes = zsv_cum_scanned_length(ixr.parser);
 
     pthread_mutex_lock(&optsp->uib->mutex);
-    if (optsp->uib->worker_cancelled) {
+    if (atomic_test_bit(optsp->uib->flags.flags, WORKER_CANCELLED_BIT)) {
       cancelled = 1;
       zst = zsv_status_cancelled;
     }
     zsv_index_commit_rows(ixr.ix);
-    optsp->uib->index_ready = 1;
+    __sync_synchronize();
+    atomic_set_bit(optsp->uib->flags.flags, INDEX_READY_BIT);
     pthread_mutex_unlock(&optsp->uib->mutex);
   }
 
   zsv_finish(ixr.parser);
   pthread_mutex_lock(&optsp->uib->mutex);
   zsv_index_commit_rows(ixr.ix);
-  optsp->uib->index_ready = 1;
+  __sync_synchronize();
+  atomic_set_bit(optsp->uib->flags.flags, INDEX_READY_BIT);
   pthread_mutex_unlock(&optsp->uib->mutex);
 
   if (zst == zsv_status_no_more_input || zst == zsv_status_cancelled)
