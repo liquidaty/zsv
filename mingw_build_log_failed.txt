@@ -1,0 +1,550 @@
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0664507Z ##[group]Run ./scripts/ci-build.sh
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0665047Z [36;1m./scripts/ci-build.sh[0m
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0665415Z [36;1m./scripts/ci-create-nuget-package.sh[0m
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0722650Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0723096Z env:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0723457Z   AMD64_LINUX_GCC: amd64-linux-gcc
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0723838Z   AMD64_LINUX_CLANG: amd64-linux-clang
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0724149Z   AMD64_LINUX_MUSL: amd64-linux-musl
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0724550Z   AMD64_WINDOWS_MINGW: amd64-windows-mingw
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0724952Z   AMD64_LINUX_WASM: amd64-linux-wasm
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0725279Z   AMD64_MACOSX_GCC: amd64-macosx-gcc
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0725845Z   ARM64_MACOSX_GCC: arm64-macosx-gcc
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0726197Z   AMD64_FREEBSD_GCC: amd64-freebsd-gcc
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0726492Z   ARTIFACT_DIR: .artifacts
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0726859Z   ARTIFACT_RETENTION_DAYS: 5
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0727497Z   GH_TOKEN: ***
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0727780Z   TAG: 0.4.2-alpha
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0728367Z   VCPKG_MINGW_INSTALL_ROOT: /usr/local/share/vcpkg/installed/x64-mingw-static
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0728833Z   PREFIX: amd64-windows-mingw
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0729246Z   CC: x86_64-w64-mingw32-gcc
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0729549Z   MAKE: make
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0729797Z   RUN_TESTS: false
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0730142Z   CXX: x86_64-w64-mingw32-g++
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0730448Z   CPP: x86_64-w64-mingw32-cpp
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0730750Z   RANLIB: x86_64-w64-mingw32-gcc-ranlib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0731186Z   AR: x86_64-w64-mingw32-gcc-ar
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0731504Z   NM: x86_64-w64-mingw32-gcc-nm
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0731791Z   WINDRES: x86_64-w64-mingw32-windres
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0732311Z   CFLAGS: -I/usr/local/share/vcpkg/installed/x64-mingw-static/include
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0732831Z   LDFLAGS: -L/usr/local/share/vcpkg/installed/x64-mingw-static/lib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0733322Z ##[endgroup]
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0817793Z [INF] Running ./scripts/ci-build.sh
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0818441Z [WRN] Artifact directory not found! [.artifacts]
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0819003Z [WRN] Artifact directory will be created!
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0819705Z [INF] Building and generating artifacts
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0820264Z [INF] PWD:              /home/runner/work/zsv/zsv
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0820672Z [INF] PREFIX:           amd64-windows-mingw
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0821152Z [INF] CC:               x86_64-w64-mingw32-gcc
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0821590Z [INF] CFLAGS:           -I/usr/local/share/vcpkg/installed/x64-mingw-static/include
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0822147Z [INF] LDFLAGS:          -L/usr/local/share/vcpkg/installed/x64-mingw-static/lib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0822664Z [INF] MAKE:             make
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0823234Z [INF] RUN_TESTS:        false
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0823635Z [INF] ARTIFACT_DIR:     .artifacts
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0823993Z [INF] WITHOUT_SIMD:     false
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0824266Z [INF] SKIP_ZIP_ARCHIVE: false
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0824624Z [INF] SKIP_TAR_ARCHIVE: false
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0825014Z [INF] Listing compiler version [x86_64-w64-mingw32-gcc]
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0835455Z x86_64-w64-mingw32-gcc (GCC) 10-win32 20220113
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0836063Z Copyright (C) 2020 Free Software Foundation, Inc.
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0836532Z This is free software; see the source for copying conditions.  There is NO
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0837073Z warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0837753Z 
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0837954Z [INF] Configuring zsv
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0846304Z config will be saved to config.mk
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0865924Z checking for AWK tool... awk
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0867130Z checking for MAKE tool... make
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.0867799Z checking for C compiler... x86_64-w64-mingw32-gcc
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.1009360Z checking whether C compiler works... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.1106689Z checking for ar... x86_64-w64-mingw32-gcc-ar
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.1107340Z checking for ranlib... x86_64-w64-mingw32-gcc-ranlib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.1123728Z checking host system type... x86_64-w64-mingw32
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.1254664Z checking whether compiler accepts -Werror=unknown-warning-option... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.1376982Z checking whether compiler accepts -Werror=unused-command-line-argument... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.1501245Z checking whether compiler accepts -Werror=ignored-optimization-argument... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.1813225Z checking whether linker accepts -static ... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.1941956Z checking whether linker accepts -Werror=unknown-warning-option ... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.2065025Z checking whether linker accepts -Werror=unused-command-line-argument ... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.2190798Z checking whether linker accepts -Werror=ignored-optimization-argument ... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.2226253Z checking whether compiler accepts -fvectorize... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.2361035Z checking whether compiler accepts -ftree-vectorize... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.2493367Z checking whether compiler accepts -fopt-info-vec-optimized... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.2621138Z checking whether compiler accepts -fopt-info-vec-missed... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.2751610Z checking whether compiler accepts -fopt-info-vec-all... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.2886411Z checking whether compiler accepts -fopenmp... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.3221664Z checking whether linker accepts -lncursesw -L/home/runner/work/zsv/zsv/amd64-windows-mingw/lib... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.3476125Z checking whether linker accepts -lncurses -L/home/runner/work/zsv/zsv/amd64-windows-mingw/lib... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.3607347Z checking whether compiler accepts -fno-pie... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.3738465Z checking whether compiler accepts -fno-pic... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.4055488Z checking whether linker accepts -no-pie ... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.4306677Z checking whether linker accepts -fno-pic... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.4416891Z checking whether compiler accepts -pipe... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.4543865Z checking whether compiler accepts -ffunction-sections... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.4668531Z checking whether compiler accepts -fdata-sections... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.5297713Z Cannot open assembly './conf2870-2868-1._': File does not contain a valid CIL image.
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.6016902Z checking whether CPU accepts avx2... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.6425942Z Cannot open assembly './conf2870-2868-1._': File does not contain a valid CIL image.
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.6477172Z checking whether CPU accepts avx... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.6901462Z Cannot open assembly './conf2870-2868-1._': File does not contain a valid CIL image.
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.6952872Z checking whether CPU accepts sse2... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.7277300Z checking whether linker accepts -fwhole-program ... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.7413355Z checking whether compiler accepts -fvisibility=hidden... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.7729473Z checking whether linker accepts -Wl,--gc-sections ... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.7987708Z checking whether linker accepts -ldl ... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.8139402Z checking whether compiler accepts memmem from string.h...no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.8479524Z checking whether linker accepts -lm ... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.8804053Z checking whether linker accepts -lshlwapi ... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.9131631Z checking whether linker accepts -pthread ... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.9294664Z checking whether compiler accepts arc4random_uniform from stdlib.h...no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:41.9711291Z checking whether compiler accepts rand_s from stdlib.h with #define _CRT_RAND_S... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0071657Z checking whether compiler accepts __builtin_expect(0,0)...yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0443446Z checking whether compiler accepts __builtin_expect_with_probability(0,0,0.5)...yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0504523Z creating config.mk... done
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0504893Z 
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0505332Z ****************************************************************
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0505985Z *  zsv configuration                                           *
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0506661Z ****************************************************************
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0507730Z *  - termcap: no. `pretty` will use default width assumption   *
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0508257Z *  - build shared library: no                                  *
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0508672Z *  - build sheet feature: yes                                  *
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0509209Z *    ncurses library:     ncursesw                             *
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0509595Z *  - using 128-bit vector size, no AVX                         *
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0509957Z ****************************************************************
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0510297Z 
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0510412Z To build and install, run
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0515269Z   ./install.sh
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0515827Z or
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0516307Z   make install
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0516538Z 
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0516721Z Other common commands:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0517350Z   make                     # print available make commands
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0517820Z   (cd src && make install) # install library
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0518236Z   (cd app && make install) # install library and zsv CLI
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0518738Z   make uninstall           # uninstall library and zsv CLI
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0519107Z   make clean               # remove build artifacts
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0519355Z 
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0552100Z [INF] Building
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0712183Z make[1]: Entering directory '/home/runner/work/zsv/zsv/src'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0737098Z Using config file /home/runner/work/zsv/zsv/config.mk
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.0763780Z No profiling set. To use PGO, compile with PGO=1, then run with data, then compile again with PGO=2
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.1275456Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections   -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -fsigned-char   -DZSV_EXTRAS -DNDEBUG -O3   -fpie -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -Wl,--strip-all -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -D_GNU_SOURCE  -fopenmp -DZSV_VERSION=\"3637c0e\" -I/home/runner/work/zsv/zsv/include -DNO_UTF8_CHECK -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/zsv.o -c zsv.c -I../app/external/sqlite3
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.6653877Z x86_64-w64-mingw32-gcc-ar rcv /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/lib/libzsv.a /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/zsv.o
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.6674555Z a - /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/zsv.o
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.6677474Z x86_64-w64-mingw32-gcc-ranlib /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/lib/libzsv.a
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.6701732Z x86_64-w64-mingw32-gcc-ar -t /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/lib/libzsv.a # check it is there
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.6722028Z zsv.o
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.6734029Z Built /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/lib/libzsv.a
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.6763699Z cp -p "/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/lib/libzsv.a" "/home/runner/work/zsv/zsv/amd64-windows-mingw/lib/libzsv.a"
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.6790236Z libzsv.a installed to /home/runner/work/zsv/zsv/amd64-windows-mingw/lib/libzsv.a
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.6858719Z include files copied to /home/runner/work/zsv/zsv/amd64-windows-mingw/include
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.6859788Z make[1]: Leaving directory '/home/runner/work/zsv/zsv/src'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.6872341Z make[1]: Entering directory '/home/runner/work/zsv/zsv/app'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.6883207Z Using config file /home/runner/work/zsv/zsv/config.mk
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.8168479Z cat /home/runner/work/zsv/zsv/app/../include/zsv/ext/implementation_private.h | perl -ne 'print if /ZSV_EXT_EXPORT/ .. /;/' | sed 's/ZSV_EXT_EXPORT *//g' | sed $'s/ *;.*/;\\\n/' | sed 's/(/)(/' | sed 's/zsv_ext_\([a-z]*\))/(*\1)/' | grep -v '^$' > cli_internal.h.in
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.8212190Z cat cli_internal.h.in | sed 's/\(.*(\*\)\([^)]*\)\(.*\);/zsv_ext_func_assign((\1\3), \2);/' > cli_internal.c.in
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.8418664Z cd /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-src-tmp && tar xf /home/runner/work/zsv/zsv/app/external/jq-1.6.tar.gz
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.8893562Z mv /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-src-tmp/jq-1.6 /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-src
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.8907283Z rm -rf /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-src-tmp
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.9016885Z # copy the directory because its timestamp gets updated after libjq is built
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.9311978Z cd /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-src-conf \
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.9316326Z && CC="x86_64-w64-mingw32-gcc" CFLAGS="-I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -w -D_REENTRANT" ./configure \
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.9319789Z     --prefix="/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build" \
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.9320579Z     --disable-maintainer-mode \
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.9320904Z     --without-oniguruma \
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.9321329Z     --no-recursion \
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.9321620Z     --disable-docs \
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.9321867Z     --disable-shared \
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.9322240Z     --enable-static \
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.9322528Z     --host=x86_64-w64-mingw32 \
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:42.9322898Z && (make install -k)
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.1540263Z checking for a BSD-compatible install... /usr/bin/install -c
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.1567472Z checking whether build environment is sane... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.1632391Z checking for x86_64-w64-mingw32-strip... x86_64-w64-mingw32-strip
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.1652053Z checking for a thread-safe mkdir -p... /usr/bin/mkdir -p
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.1655478Z checking for gawk... gawk
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.1721106Z checking whether make sets $(MAKE)... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.1775317Z checking whether make supports nested variables... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.1835172Z checking whether make supports nested variables... (cached) yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.1874016Z checking for style of include used by make... GNU
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.1885088Z checking for x86_64-w64-mingw32-gcc... x86_64-w64-mingw32-gcc
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.2427558Z checking whether the C compiler works... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.2428414Z checking for C compiler default output file name... a.exe
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.2731734Z checking for suffix of executables... .exe
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.3219485Z checking whether we are cross compiling... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.3402372Z checking for suffix of object files... o
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.3555800Z checking whether we are using the GNU C compiler... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.3717558Z checking whether x86_64-w64-mingw32-gcc accepts -g... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.3992231Z checking for x86_64-w64-mingw32-gcc option to accept ISO C89... none needed
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.4277115Z checking whether x86_64-w64-mingw32-gcc understands -c and -o together... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.4562529Z checking dependency style of x86_64-w64-mingw32-gcc... gcc3
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.4563658Z checking for x86_64-w64-mingw32-ar... x86_64-w64-mingw32-gcc-ar
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.4709385Z checking the archiver (x86_64-w64-mingw32-gcc-ar) interface... ar
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.4710714Z checking whether to enable maintainer-specific portions of Makefiles... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.4711854Z checking for x86_64-w64-mingw32-gcc... (cached) x86_64-w64-mingw32-gcc
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.4923180Z checking whether we are using the GNU C compiler... (cached) yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.4924222Z checking whether x86_64-w64-mingw32-gcc accepts -g... (cached) yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.4926116Z checking for x86_64-w64-mingw32-gcc option to accept ISO C89... (cached) none needed
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.4927735Z checking whether x86_64-w64-mingw32-gcc understands -c and -o together... (cached) yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.4930197Z checking dependency style of x86_64-w64-mingw32-gcc... (cached) gcc3
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.5315238Z checking for x86_64-w64-mingw32-gcc option to accept ISO C99... none needed
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.5316712Z checking for x86_64-w64-mingw32-gcc option to accept ISO Standard C... (cached) none needed
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.5318129Z checking how to run the C preprocessor... x86_64-w64-mingw32-cpp
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.5567322Z checking for bison... bison -y
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.5991472Z checking build system type... x86_64-unknown-linux-gnu
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6091207Z checking host system type... x86_64-w64-mingw32
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6338924Z checking how to print strings... printf
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6379764Z checking for a sed that does not truncate output... /usr/bin/sed
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6409024Z checking for grep that handles long lines and -e... /usr/bin/grep
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6425321Z checking for egrep... /usr/bin/grep -E
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6441504Z checking for fgrep... /usr/bin/grep -F
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6504040Z checking for ld used by x86_64-w64-mingw32-gcc... /usr/bin/x86_64-w64-mingw32-ld
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6524011Z checking if the linker (/usr/bin/x86_64-w64-mingw32-ld) is GNU ld... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6525212Z checking for BSD- or MS-compatible name lister (nm)... x86_64-w64-mingw32-gcc-nm
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6697989Z checking the name lister (x86_64-w64-mingw32-gcc-nm) interface... BSD nm
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6698763Z checking whether ln -s works... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6746069Z checking the maximum length of command line arguments... 3145728
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6773867Z checking how to convert x86_64-unknown-linux-gnu file names to x86_64-w64-mingw32 format... func_convert_file_nix_to_w32
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6775293Z checking how to convert x86_64-unknown-linux-gnu file names to toolchain format... func_convert_file_noop
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6776453Z checking for /usr/bin/x86_64-w64-mingw32-ld option to reload object files... -r
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.6780336Z checking for x86_64-w64-mingw32-objdump... x86_64-w64-mingw32-objdump
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.7872798Z checking how to recognize dependent libraries... file_magic ^x86 archive import|^x86 DLL
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.7878222Z checking for x86_64-w64-mingw32-dlltool... x86_64-w64-mingw32-dlltool
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.7898080Z checking how to associate runtime and link libraries... func_cygming_dll_for_implib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.7899392Z checking for x86_64-w64-mingw32-ar... (cached) x86_64-w64-mingw32-gcc-ar
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.8129314Z checking for archiver @FILE support... @
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.8130545Z checking for x86_64-w64-mingw32-strip... (cached) x86_64-w64-mingw32-strip
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.8132552Z checking for x86_64-w64-mingw32-ranlib... x86_64-w64-mingw32-gcc-ranlib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.8706520Z checking command to parse x86_64-w64-mingw32-gcc-nm output from x86_64-w64-mingw32-gcc object... ok
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.8729170Z checking for sysroot... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.8782284Z checking for a working dd... /usr/bin/dd
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.8819929Z checking how to truncate binary pipes... /usr/bin/dd bs=4096 count=1
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.8826826Z checking for x86_64-w64-mingw32-mt... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.8830102Z checking for mt... mt
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.8830753Z configure: WARNING: using cross tools not prefixed with host triplet
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.9156873Z checking if mt is a manifest tool... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.9612519Z checking for ANSI C header files... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:43.9829973Z checking for sys/types.h... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.0112709Z checking for sys/stat.h... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.0401431Z checking for stdlib.h... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.0688700Z checking for string.h... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.0973304Z checking for memory.h... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.1255128Z checking for strings.h... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.1545292Z checking for inttypes.h... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.1835794Z checking for stdint.h... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.2137609Z checking for unistd.h... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.2460631Z checking for dlfcn.h... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.2467428Z checking for x86_64-w64-mingw32-as... x86_64-w64-mingw32-as
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.2468334Z checking for x86_64-w64-mingw32-dlltool... (cached) x86_64-w64-mingw32-dlltool
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.2469463Z checking for x86_64-w64-mingw32-objdump... (cached) x86_64-w64-mingw32-objdump
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.2502098Z checking for objdir... .libs
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.3132723Z checking if x86_64-w64-mingw32-gcc supports -fno-rtti -fno-exceptions... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.3133760Z checking for x86_64-w64-mingw32-gcc option to produce PIC... -DDLL_EXPORT -DPIC
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.3293547Z checking if x86_64-w64-mingw32-gcc PIC flag -DDLL_EXPORT -DPIC works... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.3567954Z checking if x86_64-w64-mingw32-gcc static flag -static works... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.3801590Z checking if x86_64-w64-mingw32-gcc supports -c -o file.o... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.3802673Z checking if x86_64-w64-mingw32-gcc supports -c -o file.o... (cached) yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.3856652Z checking whether the x86_64-w64-mingw32-gcc linker (/usr/bin/x86_64-w64-mingw32-ld) supports shared libraries... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.4003273Z checking dynamic linker characteristics... Win32 ld.exe
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.4004353Z checking how to hardcode library paths into programs... immediate
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.4020687Z checking whether stripping libraries is possible... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.4021602Z checking if libtool supports shared libraries... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.4022353Z checking whether to build shared libraries... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.4022996Z checking whether to build static libraries... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.4032309Z checking for valgrind... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.4033009Z configure: WARNING: valgrind is required to test jq.
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.4411037Z checking for memmem... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.4742643Z checking for mkstemp... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:44.9862656Z checking shlwapi.h usability... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.2482833Z checking shlwapi.h presence... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.2483502Z checking for shlwapi.h... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.3066644Z checking for size_t... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.3241237Z checking for working alloca.h... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.3550962Z checking for alloca... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.3957880Z checking for isatty... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.4350721Z checking for _isatty... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.5124654Z checking for strptime... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.5502069Z checking for strftime... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.6273265Z checking for timegm... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.7045759Z checking for gmtime_r... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.7426073Z checking for gmtime... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.8203878Z checking for localtime_r... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.8585874Z checking for localtime... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.8985133Z checking for gettimeofday... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.9349075Z checking for struct tm.tm_gmtoff... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:45.9710467Z checking for struct tm.__tm_gmtoff... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.0031660Z checking for acos in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.0379741Z checking for acosh in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.0722654Z checking for asin in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.1068711Z checking for asinh in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.1416517Z checking for atan2 in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.1757491Z checking for atan in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.2098977Z checking for atanh in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.2441799Z checking for cbrt in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.2783302Z checking for ceil in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.3127168Z checking for copysign in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.3473296Z checking for cos in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.3818501Z checking for cosh in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.4206913Z checking for drem in -lm... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.4524310Z checking for erf in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.4876222Z checking for erfc in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.5269556Z checking for exp10 in -lm... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.5590958Z checking for exp2 in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.5939662Z checking for exp in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.6284375Z checking for expm1 in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.6628266Z checking for fabs in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.6972140Z checking for fdim in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.7314819Z checking for floor in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.7659052Z checking for fma in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.7999107Z checking for fmax in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.8341737Z checking for fmin in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.8683895Z checking for fmod in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.9028881Z checking for frexp in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.9416482Z checking for gamma in -lm... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:46.9734024Z checking for hypot in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.0078236Z checking for j0 in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.0421523Z checking for j1 in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.0761108Z checking for jn in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.1106728Z checking for ldexp in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.1454539Z checking for lgamma in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.1794424Z checking for log10 in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.2136166Z checking for log1p in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.2483456Z checking for log2 in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.2830676Z checking for log in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.3172747Z checking for logb in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.3516679Z checking for modf in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.3905396Z checking for lgamma_r in -lm... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.4222626Z checking for nearbyint in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.4567412Z checking for nextafter in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.4914133Z checking for nexttoward in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.5301820Z checking for pow10 in -lm... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.5621907Z checking for pow in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.5965495Z checking for remainder in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.6308257Z checking for rint in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.6652521Z checking for round in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.7039533Z checking for scalb in -lm... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.7353534Z checking for scalbln in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.7741409Z checking for significand in -lm... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.8072268Z checking for sin in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.8421719Z checking for sinh in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.8767175Z checking for sqrt in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.9112749Z checking for tan in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.9455923Z checking for tanh in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:47.9809408Z checking for tgamma in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.0151830Z checking for trunc in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.0494453Z checking for y0 in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.0839193Z checking for y1 in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.1190997Z checking for yn in -lm... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.1544129Z checking for thread-local storage... yes
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.2054131Z checking whether byte ordering is bigendian... no
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.2289455Z checking that generated files are newer than configure... done
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.2291032Z configure: creating ./config.status
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.6607811Z config.status: creating Makefile
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.6723607Z config.status: executing depfiles commands
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.7136057Z config.status: executing libtool commands
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.7507355Z make[2]: Entering directory '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-src-conf'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.7520471Z   GEN      src/builtin.inc
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.7603896Z   GEN      src/version.h
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.7627278Z make  install-recursive
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.7669710Z make[3]: Entering directory '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-src-conf'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.7739358Z make[4]: Entering directory '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-src-conf'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:48.7830855Z   CC       src/builtin.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:49.7618055Z   CC       src/bytecode.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:50.1850355Z   CC       src/compile.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:51.3255044Z   CC       src/execute.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:52.5730516Z   CC       src/jq_test.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:53.0186338Z   CC       src/jv.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:54.7532415Z   CC       src/jv_alloc.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:55.1430627Z   CC       src/jv_aux.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:55.6985542Z   CC       src/jv_dtoa.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:56.6459918Z   CC       src/jv_file.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:57.0402981Z   CC       src/jv_parse.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:57.6521719Z   CC       src/jv_print.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:58.6768261Z   CC       src/jv_unicode.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:37:59.0786322Z   CC       src/linker.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:00.0404590Z   CC       src/locfile.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:00.4406399Z   CC       src/util.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:01.3846090Z   CC       src/lexer.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:02.0391841Z   CC       src/parser.lo
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:02.8067670Z   CCLD     libjq.la
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:02.8968856Z libtool: warning: undefined symbols not allowed in x86_64-w64-mingw32 shared libraries; building static only
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:02.9109742Z /usr/lib/gcc/x86_64-w64-mingw32/10-win32/../../../../x86_64-w64-mingw32/bin/ar: `u' modifier ignored since `D' is the default (see `U')
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:02.9451951Z   GEN      src/version.h
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:02.9489195Z   CC       src/main.o
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:03.6300839Z   CCLD     jq.exe
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:03.7783785Z   GEN      jq.1
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:03.7873076Z make[5]: Entering directory '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-src-conf'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:03.7937749Z   GEN      src/version.h
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:03.8116529Z   CC       src/main.o
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.4942861Z   CCLD     jq.exe
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.6322920Z  /usr/bin/mkdir -p '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/lib'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.6338461Z  /bin/bash ./libtool   --mode=install /usr/bin/install -c   libjq.la '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/lib'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.6494212Z libtool: install: /usr/bin/install -c .libs/libjq.lai /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/lib/libjq.la
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.6508784Z libtool: install: /usr/bin/install -c .libs/libjq.a /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/lib/libjq.a
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.6531088Z libtool: install: chmod 644 /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/lib/libjq.a
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.6542217Z libtool: install: x86_64-w64-mingw32-gcc-ranlib /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/lib/libjq.a
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.6858464Z  /usr/bin/mkdir -p '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/bin'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.6904449Z   /bin/bash ./libtool   --mode=install /usr/bin/install -c jq.exe '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/bin'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.7077763Z libtool: install: /usr/bin/install -c jq.exe /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/bin/jq.exe
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.7123436Z  /usr/bin/mkdir -p '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/share/doc/jq'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.7154018Z  /usr/bin/install -c -m 644 README.md COPYING AUTHORS README '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/share/doc/jq'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.7189570Z  /usr/bin/mkdir -p '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.7220176Z  /usr/bin/install -c -m 644 src/jv.h src/jq.h '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.7258917Z  /usr/bin/mkdir -p '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/share/man/man1'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.7316910Z  /usr/bin/install -c -m 644 jq.1 '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/share/man/man1'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.7339391Z make[5]: Leaving directory '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-src-conf'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.7343133Z make[4]: Leaving directory '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-src-conf'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.7348031Z make[3]: Leaving directory '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-src-conf'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.7350345Z make[2]: Leaving directory '/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-src-conf'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:04.7450719Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c cli.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_cli.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2312058Z In file included from cli_internal.h:31,
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2313043Z                  from cli.c:21:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2313735Z cli_internal.h.in:9:37: warning: backslash-newline at end of file
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2314518Z     9 | const char *const *(*version)(void);\
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2315615Z       |                                      
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2408988Z In file included from cli.c:644:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2412118Z cli_internal.c.in: In function ‘zsv_ext_init’:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2412807Z cli_internal.c.in:9:62: warning: backslash-newline at end of file
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2413329Z     9 | zsv_ext_func_assign((const char *const *(*)(void)), version);\
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2413779Z       |                                                               
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2415739Z cli.c: In function ‘zsv_ext_new’:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2416624Z cli.c:769:44: warning: ISO C forbids conversion of function pointer to object pointer type [-Wpedantic]
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2417704Z   769 |       char *image_name = dl_name_from_func((const void *)tmp.module.id);
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2418433Z       |                                            ^
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2498619Z At top level:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2501075Z cli.c:221:14: warning: ‘ext_get_state’ defined but not used [-Wunused-function]
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2501696Z   221 | static void *ext_get_state(zsv_execution_context ctx) {
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2502148Z       |              ^~~~~~~~~~~~~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2502757Z cli.c:216:13: warning: ‘ext_set_state’ defined but not used [-Wunused-function]
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2503796Z   216 | static void ext_set_state(zsv_execution_context ctx, void *state) {
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.2504212Z       |             ^~~~~~~~~~~~~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.4536685Z cc1: note: unrecognized command-line option ‘-Wno-gnu-statement-expression’ may have been intended to silence earlier diagnostics
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.4719457Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c echo.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_echo.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.5833080Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c select.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_select.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:05.8512469Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c desc.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_desc.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/app/external/json_writer-1.0 -I/home/runner/work/zsv/zsv/app/external/sqlite3
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:06.2056331Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c count.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_count.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:06.2638569Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c paste.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_paste.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:06.3346614Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c 2tsv.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_2tsv.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:06.4462208Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c pretty.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_pretty.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:07.1308681Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c sql.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_sql.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:07.2929375Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c flatten.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_flatten.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:07.7013476Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c 2json.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_2json.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/app/external/json_writer-1.0 -I/home/runner/work/zsv/zsv/app/external/sqlite3
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:07.8283414Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c serialize.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_serialize.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:07.9447980Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c stack.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_stack.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:08.2646000Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c 2db.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_2db.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:08.8881064Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c compare.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_compare.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/app/external/json_writer-1.0 -I/home/runner/work/zsv/zsv/app/external/sqlite3
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:09.4656694Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c prop.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_prop.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:09.9619481Z In file included from /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include/jq.h:5,
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:09.9620491Z                  from /home/runner/work/zsv/zsv/amd64-windows-mingw/include/zsv/utils/jq.h:5,
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:09.9621321Z                  from prop.c:27:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:09.9623029Z /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include/jv.h:41:12: warning: ‘jv_is_valid’ defined but not used [-Wunused-function]
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:09.9624055Z    41 | static int jv_is_valid(jv x) { return jv_get_kind(x) != JV_KIND_INVALID; }
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:09.9624497Z       |            ^~~~~~~~~~~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.1550760Z cc1: note: unrecognized command-line option ‘-Wno-gnu-statement-expression’ may have been intended to silence earlier diagnostics
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.1753068Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c rm.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_rm.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.2431686Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c mv.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_mv.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.7833572Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c jq.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_jq.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.8030676Z In file included from /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include/jq.h:5,
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.8031582Z                  from /home/runner/work/zsv/zsv/amd64-windows-mingw/include/zsv/utils/jq.h:5,
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.8032178Z                  from jq.c:8:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.8033238Z /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include/jv.h:41:12: warning: ‘jv_is_valid’ defined but not used [-Wunused-function]
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.8034366Z    41 | static int jv_is_valid(jv x) { return jv_get_kind(x) != JV_KIND_INVALID; }
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.8034861Z       |            ^~~~~~~~~~~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.8292978Z cc1: note: unrecognized command-line option ‘-Wno-gnu-statement-expression’ may have been intended to silence earlier diagnostics
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.8406217Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c overwrite.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_overwrite.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9419549Z x86_64-w64-mingw32-gcc -I/usr/local/share/vcpkg/installed/x64-mingw-static/include -pipe -ffunction-sections -fdata-sections -fsigned-char  -fno-pic -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE -Wl,--strip-all -Dsetenv\(a,b,c\)=_putenv_s\(a,b\) -std=gnu11 -Wunused -O3 -Wshadow -Wall -Wextra -DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE   -I/home/runner/work/zsv/zsv/amd64-windows-mingw/include   -DZSV_EXTRAS -DNO_MEMMEM -DZSVSHEET_BUILD -DHAVE_NCURSESW -DNCURSES_STATIC -DUSE_JQ -DHAVE_RAND_S -DHAVE___BUILTIN_EXPECT -DHAVE___BUILTIN_EXPECT_WITH_PROBABILITY -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -DUTF8PROC -DUTF8PROC_STATIC -DVERSION=\"3637c0e\" -DZSV_CLI -I/home/runner/work/zsv/zsv/app/external/inih -I/home/runner/work/zsv/zsv/app/external/sglib -I/home/runner/work/zsv/zsv/include -I/home/runner/work/zsv/zsv/app/external/utf8proc-2.6.1 -c sheet.c -o /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_sheet.o -I/home/runner/work/zsv/zsv/app/external/yajl/build/yajl-2.1.1/include -I/home/runner/work/zsv/zsv/app/external/yajl_helper -I/home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc-external/jq-build/include -I/home/runner/work/zsv/zsv/app/external/sqlite3 -I/home/runner/work/zsv/zsv/app/external/sglib
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9779106Z In file included from sheet.c:46:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9779988Z sheet/read-data.c: In function ‘get_data_index_async’:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9780922Z sheet/read-data.c:42:14: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘worker_active’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9781795Z    42 |   if (uibuffp->worker_active)
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9782215Z       |              ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9782937Z sheet/read-data.c: In function ‘read_data’:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9783608Z sheet/read-data.c:96:15: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘index_ready’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9784224Z    96 |     if (uibuff->index_ready) {
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9784833Z       |               ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9785800Z sheet/read-data.c:119:23: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘has_row_num’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9786298Z   119 |   if (uibuff && uibuff->has_row_num)
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9786820Z       |                       ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9787733Z sheet/read-data.c:148:17: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘has_row_num’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9788432Z   148 |           uibuff->has_row_num = 1;
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9788953Z       |                 ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9789791Z sheet/read-data.c:208:28: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘index_started’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9790825Z   208 |   char need_index = !uibuff->index_started && !uibuff->write_in_progress;
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9791583Z       |                            ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9792519Z sheet/read-data.c:208:54: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘write_in_progress’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9793414Z   208 |   char need_index = !uibuff->index_started && !uibuff->write_in_progress;
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9793885Z       |                                                      ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9794428Z sheet/read-data.c:218:11: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘index_started’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9795003Z   218 |     uibuff->index_started = 1;
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9795319Z       |           ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9800909Z sheet.c: In function ‘zsvsheet_cell_display_width’:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9802070Z sheet.c:53:63: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘rownum_col_offset’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9803158Z    53 |                  (ui_buffer->dimensions.col_count + (ui_buffer->rownum_col_offset && !ui_buffer->has_row_num ? 1 : 0));
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9803990Z       |                                                               ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9804971Z sheet.c:53:96: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘has_row_num’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9805744Z    53 |                  (ui_buffer->dimensions.col_count + (ui_buffer->rownum_col_offset && !ui_buffer->has_row_num ? 1 : 0));
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9806376Z       |                                                                                                ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9820679Z In file included from sheet.c:194:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9821483Z sheet/handlers.c: In function ‘zsvsheet_buffer_info_internal’:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9822645Z sheet/handlers.c:180:27: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘index_started’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9823553Z   180 |     info.index_started = b->index_started;
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9824258Z       |                           ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9825450Z sheet/handlers.c:181:25: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘index_ready’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9826835Z   181 |     info.index_ready = b->index_ready;
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9827476Z       |                         ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9828702Z sheet/handlers.c:182:31: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘write_in_progress’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9829696Z   182 |     info.write_in_progress = b->write_in_progress;
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9830140Z       |                               ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9830934Z sheet/handlers.c:183:24: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘write_done’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9831566Z   183 |     info.write_done = b->write_done;
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9831937Z       |                        ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9832621Z sheet/handlers.c: In function ‘zsvsheet_buffer_info’:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9833239Z sheet/handlers.c:194:22: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘has_row_num’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9833781Z   194 |     d.has_row_num = b->has_row_num;
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9834207Z       |                      ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9834514Z sheet/handlers.c: At top level:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9835077Z sheet/handlers.c:214:2: warning: ISO C does not allow extra ‘;’ outside of a function [-Wpedantic]
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9835583Z   214 | };
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9835834Z       |  ^
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9836907Z In file included from sheet.c:197:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9837758Z sheet/transformation.c: In function ‘zsvsheet_push_transformation’:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9838870Z sheet/transformation.c:190:28: error: ‘struct zsvsheet_buffer_info_internal’ has no member named ‘flags’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9840499Z   190 |   if (atomic_test_bit(&info.flags, WRITE_IN_PROGRESS_BIT) && !atomic_test_bit(&info.flags, WRITE_DONE_BIT))
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9841343Z       |                            ^
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9842411Z sheet/transformation.c:190:84: error: ‘struct zsvsheet_buffer_info_internal’ has no member named ‘flags’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9843617Z   190 |   if (atomic_test_bit(&info.flags, WRITE_IN_PROGRESS_BIT) && !atomic_test_bit(&info.flags, WRITE_DONE_BIT))
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9844494Z       |                                                                                    ^
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9845649Z sheet/transformation.c:184:40: warning: variable ‘info’ set but not used [-Wunused-but-set-variable]
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9846692Z   184 |   struct zsvsheet_buffer_info_internal info = zsvsheet_buffer_info_internal(buff);
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9847452Z       |                                        ^~~~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9848200Z sheet.c: In function ‘zsvsheet_move_hor’:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9849086Z sheet.c:264:77: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘rownum_col_offset’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9850075Z   264 |                  current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset >
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9850951Z       |                                                                             ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9851689Z sheet.c:267:81: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘rownum_col_offset’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9852306Z   267 |                    : current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset,
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9852883Z       |                                                                                 ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9853324Z sheet.c: In function ‘zsvsheet_move_hor_end’:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9853932Z sheet.c:312:84: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘rownum_col_offset’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9854501Z   312 |                         current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset >
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9854994Z       |                                                                                    ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9855580Z sheet.c:315:88: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘rownum_col_offset’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9856175Z   315 |                           : current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset,
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9856861Z       |                                                                                        ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9857758Z sheet.c: In function ‘zsvsheet_filter_handler’:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9858600Z sheet.c:417:7: warning: unused variable ‘err’ [-Wunused-variable]
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9859019Z   417 |   int err;
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9859383Z       |       ^~~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9867144Z sheet.c: In function ‘zsvsheet_check_buffer_worker_updates’:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9868099Z sheet.c:646:9: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘index_ready’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9868745Z   646 |   if (ub->index_ready && ub->dimensions.row_count != ub->index->row_count + 1) {
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9869177Z       |         ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9874509Z sheet.c: In function ‘zsvsheet_max_buffer_cols’:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9875493Z sheet.c:822:66: error: ‘struct zsvsheet_ui_buffer’ has no member named ‘rownum_col_offset’
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9876345Z   822 |   size_t col_count = ui_buffer->dimensions.col_count + (ui_buffer->rownum_col_offset ? 1 : 0);
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9876971Z       |                                                                  ^~
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9949583Z sheet.c: At top level:
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9950875Z cc1: note: unrecognized command-line option ‘-Wno-gnu-statement-expression’ may have been intended to silence earlier diagnostics
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9966593Z make[1]: *** [Makefile:401: /home/runner/work/zsv/zsv/build/win/rel/x86_64-w64-mingw32-gcc/objs/cli_sheet.o] Error 1
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9967587Z make[1]: Leaving directory '/home/runner/work/zsv/zsv/app'
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9969339Z make: *** [Makefile:64: install] Error 2
+ci-mingw	Build (amd64-windows-mingw)	2024-12-18T20:38:10.9986285Z ##[error]Process completed with exit code 2.
