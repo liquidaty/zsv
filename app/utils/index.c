@@ -72,7 +72,9 @@ enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, uint64_t line_end)
 }
 
 void zsv_index_commit_rows(struct zsv_index *ix) {
+  __sync_synchronize(); // Add memory barrier before update
   ix->row_count = ix->row_count_local;
+  __sync_synchronize(); // Add memory barrier after update
 }
 
 enum zsv_index_status zsv_index_row_end_offset(const struct zsv_index *ix, uint64_t row, uint64_t *offset_out,
@@ -194,4 +196,8 @@ enum zsv_index_status zsv_index_seek_row(const struct zsv_index *ix, struct zsv_
   zsv_delete(parser);
 
   return seek_and_check_newline((long *)&offset, opts);
+}
+
+uint64_t zsv_index_count(const struct zsv_index *ix) {
+  return ix->row_count;
 }

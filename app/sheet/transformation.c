@@ -164,6 +164,8 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   uib->write_done = 1;
   zsv_index_commit_rows(uib->index);
   uib->index_ready = 1;
+  uib->dimensions.row_count = zsv_index_count(uib->index);
+  __sync_synchronize(); // Add memory barrier after dimension update
   if (buff_status_old == default_status)
     uib->status = NULL;
   pthread_mutex_unlock(mutex);
@@ -252,6 +254,7 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   zsv_index_commit_rows(index);
   nbuff->index_started = 1;
   nbuff->index = index;
+  nbuff->dimensions.row_count = zsv_index_count(index);
 
   if (zst != zsv_status_ok) {
     nbuff->write_done = 1;

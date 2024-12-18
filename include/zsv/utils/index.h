@@ -46,4 +46,12 @@ enum zsv_index_status zsv_index_row_end_offset(const struct zsv_index *ix, uint6
                                                uint64_t *remaining_rows_out);
 enum zsv_index_status zsv_index_seek_row(const struct zsv_index *ix, struct zsv_opts *opts, uint64_t row);
 
+/**
+ * Thread-safe function to get current row count.
+ * Ensures memory ordering with zsv_index_commit_rows.
+ * @param ix The index structure
+ * @return The current committed row count
+ */
+uint64_t zsv_index_count(const struct zsv_index *ix);
+
 #endif
