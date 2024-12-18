@@ -1,7 +1,7 @@
 #ifndef ZSVSHEET_HANDLER_INTERNAL_H
 #define ZSVSHEET_HANDLER_INTERNAL_H
 
-#include "ui_buffer.h"  // Include this first for all required types
+#include "ui_buffer.h" // Include this first for all required types
 
 struct zsvsheet_context {
   const char *subcommand_value; // e.g. "/path/to/myfile.csv"

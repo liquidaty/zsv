@@ -84,7 +84,7 @@ struct zsvsheet_ui_buffer {
   struct zsvsheet_rowcol buff_offset;
   void *buffer; // screen buffer
   enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, zsvsheet_cell_attr_t *, size_t start_row, size_t row_count,
-                                       size_t col_count);
+                                        size_t col_count);
   zsvsheet_status (*on_newline)(struct zsvsheet_proc_context *);
 };
 
