@@ -4,6 +4,9 @@
 #define ZSVSHEET_ROWNUM_HEADER "Row #"
 #define ZSVSHEET_ROWNUM_HEADER_LEN strlen(ZSVSHEET_ROWNUM_HEADER)
 
+// Forward declaration
+struct zsvsheet_ui_flags;
+
 enum zsvsheet_priv_status {
   zsvsheet_priv_status_ok = 0,
   zsvsheet_priv_status_memory,

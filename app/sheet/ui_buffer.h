@@ -4,7 +4,10 @@
 #include <stddef.h>
 #include <stdatomic.h>
 #include <pthread.h>
-#include "sheet_internal.h"
+
+// Forward declarations
+struct zsv_index;
+struct zsvsheet_input_dimensions;
 
 // Bit positions for flags
 #define INDEX_READY_BIT 0
@@ -38,7 +41,8 @@ struct zsvsheet_ui_flags {
 // Buffer structure forward declaration
 struct zsvsheet_ui_buffer;
 typedef struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_t;
-struct zsvsheet_buffer_info_internal;
+
+#include "sheet_internal.h"
 
 // Row/column position structure
 struct zsvsheet_rowcol {
