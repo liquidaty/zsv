@@ -186,7 +186,7 @@ struct zsvsheet_buffer_info_internal zsvsheet_buffer_info_internal(zsvsheet_buff
     info.has_row_num = has_row_num(b);
     info.rownum_col_offset = rownum_col_offset(b);
     info.flags = b->flags.flags[0];
-    info.dimensions = b->dimensions; //Now safe since types match
+    info.dimensions = b->dimensions; // Now safe since types match
     pthread_mutex_unlock(&b->mutex);
   }
 
@@ -194,8 +194,8 @@ struct zsvsheet_buffer_info_internal zsvsheet_buffer_info_internal(zsvsheet_buff
 }
 
 struct zsvsheet_buffer_info zsvsheet_buffer_info(zsvsheet_buffer_t h) {
-  struct zsvsheet_buffer_info d = { 0 };
-  if(h) {
+  struct zsvsheet_buffer_info d = {0};
+  if (h) {
     struct zsvsheet_ui_buffer *b = (struct zsvsheet_ui_buffer *)h;
     pthread_mutex_lock(&b->mutex);
     d.has_row_num = has_row_num(b);
