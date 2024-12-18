@@ -649,7 +649,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   char ignore_overwrites = 0;
-  if (argc > 1 && (!strcmp(argv[1], "--ignore-overwrites")))
+  if (argc > 2 && (!strcmp(argv[2], "--ignore-overwrites")))
     ignore_overwrites = 1;
 
   const char *locale = setlocale(LC_ALL, "C.UTF-8");
