@@ -18,7 +18,7 @@ struct zsvsheet_buffer_info_internal {
   int has_row_num;
   int rownum_col_offset;
   unsigned char flags;
-  struct zsvsheet_input_dimensions dimensions;  // Match the type used in ui_buffer.h
+  struct zsvsheet_input_dimensions dimensions; // Match the type used in ui_buffer.h
 };
 
 #endif /* ZSVSHEET_BUFFER_INFO_H */
