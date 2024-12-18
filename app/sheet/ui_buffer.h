@@ -4,7 +4,6 @@
 #include <stddef.h>
 #include <stdatomic.h>
 #include <pthread.h>
-#include "sheet_internal.h"
 
 // Bit positions for flags
 #define INDEX_READY_BIT 0
@@ -34,6 +33,8 @@ static inline int atomic_test_bit(const volatile atomic_uchar *addr, int bit) {
 struct zsvsheet_ui_flags {
   volatile atomic_uchar flags[2]; // Using 2 bytes to accommodate all bits
 };
+
+#include "sheet_internal.h"
 
 // Buffer structure forward declaration
 struct zsvsheet_ui_buffer;

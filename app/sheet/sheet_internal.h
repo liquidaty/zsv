@@ -25,6 +25,9 @@ struct zsvsheet_display_dimensions {
   size_t footer_span;
 };
 
+// Forward declaration of zsv_index
+struct zsv_index;
+
 struct zsvsheet_buffer_info_internal {
   struct zsvsheet_ui_flags flags;
   struct zsv_index *index;
