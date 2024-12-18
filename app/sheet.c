@@ -259,12 +259,15 @@ static zsvsheet_status zsvsheet_move_hor(struct zsvsheet_display_info *di, bool 
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
 
   if (right) {
-    cursor_right(di->dimensions->columns, zsvsheet_cell_display_width(current_ui_buffer, di->dimensions),
-                 current_ui_buffer->dimensions.col_count + (current_ui_buffer->dimensions.rownum_col_offset ? 1 : 0) >
-                     zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
-                   ? zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
-                   : current_ui_buffer->dimensions.col_count + (current_ui_buffer->dimensions.rownum_col_offset ? 1 : 0),
-                 &current_ui_buffer->cursor_col, &current_ui_buffer->buff_offset.col);
+    if (cursor_right(di->dimensions->columns, zsvsheet_cell_display_width(current_ui_buffer, di->dimensions),
+                    current_ui_buffer->dimensions.col_count +
+                            (current_ui_buffer->dimensions.rownum_col_offset ? 1 : 0) >
+                        zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
+                    ? zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
+                    : current_ui_buffer->dimensions.col_count +
+                        (current_ui_buffer->dimensions.rownum_col_offset ? 1 : 0),
+                    &current_ui_buffer->cursor_col, &current_ui_buffer->buff_offset.col) > 0)
+      ;
   } else {
     if (current_ui_buffer->cursor_col > 0) {
       current_ui_buffer->cursor_col--;
