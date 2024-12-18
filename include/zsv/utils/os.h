@@ -28,8 +28,8 @@ int zsv_replace_file(const void *src, const void *dest);
 
 /**
  * Windows does not have perror(), so we define our own printLastError()
+void zsv_win_printLastError(const char *prefix);
  */
-void zsv_win_printLastError();
 
 #endif
 

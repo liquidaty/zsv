@@ -243,7 +243,8 @@ struct dir_path {
 static int rmdir_w_msg(const char *path, int *err) {
 #ifdef WIN32
   if (!RemoveDirectoryA(path)) {
-    zsv_win_printLastError();
+    zsv_perror(path);
+    // zsv_win_printLastError();
     *err = 1;
   }
 #else
