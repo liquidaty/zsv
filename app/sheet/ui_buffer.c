@@ -153,7 +153,6 @@ static enum zsv_ext_status get_cell_overwrites(void *uibp) {
   return zsv_ext_status_ok;
 }
 
-
 int zsvsheet_ui_buffer_update_cell_attr(struct zsvsheet_ui_buffer *uib) {
   if (uib && uib->buffer && uib->buffer->opts.rows && uib->buffer->cols) {
     size_t row_sz = uib->buffer->cols * sizeof(*uib->buffer->cell_attrs);
@@ -167,10 +166,11 @@ int zsvsheet_ui_buffer_update_cell_attr(struct zsvsheet_ui_buffer *uib) {
       uib->get_cell_attrs(uib->ext_ctx, uib->buffer->cell_attrs, uib->input_offset.row, uib->buff_used_rows,
                           uib->buffer->cols);
     }
-    //row_sz = uib->buffer->cols * sizeof(*uib->buffer->cell_overwrites);
+    // row_sz = uib->buffer->cols * sizeof(*uib->buffer->cell_overwrites);
     if (!uib->ignore_overwrites && uib->get_cell_overwrites) {
       if (!uib->buffer->cell_overwrites) {
-        uib->buffer->cell_overwrites = calloc(uib->buffer->opts.rows*uib->buffer->cols, sizeof(*uib->buffer->cell_overwrites));
+        uib->buffer->cell_overwrites =
+          calloc(uib->buffer->opts.rows * uib->buffer->cols, sizeof(*uib->buffer->cell_overwrites));
         if (!uib->buffer->cell_overwrites)
           return ENOMEM;
       }

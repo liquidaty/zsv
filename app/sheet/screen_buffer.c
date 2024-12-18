@@ -7,7 +7,7 @@ struct zsvsheet_screen_buffer {
   size_t long_cell_count;
   struct zsvsheet_screen_buffer_opts opts;
   unsigned char *data;
-  char **cell_overwrites; // array of pointers to overwrite strings
+  char **cell_overwrites;           // array of pointers to overwrite strings
   zsvsheet_cell_attr_t *cell_attrs; // used for per-cell attron() and attroff()
   // to do: add hooks for extension
 };
@@ -60,13 +60,13 @@ void zsvsheet_screen_buffer_delete(zsvsheet_screen_buffer_t buff) {
         free_long_cell(buff, offset);
       }
     }
-    if(buff->cell_overwrites) {
-      for(size_t row = 0; row < buff->opts.rows; row++) {
-        for(size_t col = 0; col < buff->cols; col++) {
+    if (buff->cell_overwrites) {
+      for (size_t row = 0; row < buff->opts.rows; row++) {
+        for (size_t col = 0; col < buff->cols; col++) {
           size_t offset = (row * buff->cols) + col;
-          if(offset > buff->opts.rows * buff->cols)
+          if (offset > buff->opts.rows * buff->cols)
             printf("TOO FAR\n");
-          if(buff->cell_overwrites[offset]) {
+          if (buff->cell_overwrites[offset]) {
             free(buff->cell_overwrites[offset]);
             buff->cell_overwrites[offset] = NULL;
           }

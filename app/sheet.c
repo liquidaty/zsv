@@ -707,7 +707,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       goto zsvsheet_exit;
     }
     current_ui_buffer->ignore_overwrites = ignore_overwrites;
-    if(!current_ui_buffer->ignore_overwrites && !current_ui_buffer->buffer->cell_overwrites)
+    if (!current_ui_buffer->ignore_overwrites && !current_ui_buffer->buffer->cell_overwrites)
       zsvsheet_buffer_set_cell_overwrites(current_ui_buffer, get_cell_overwrites);
   }
 
@@ -792,8 +792,9 @@ const char *display_cell(struct zsvsheet_screen_buffer *buff, size_t data_row, s
   if (attrs)
     attron(attrs);
   if (len == 0 || has_multibyte_char(str, len < cell_display_width ? len : cell_display_width) == 0) {
-    if(overwrite)
-      mvprintw(row, col * cell_display_width, "%-*.*s", (int)cell_display_width, (int)cell_display_width - 1, overwrite);
+    if (overwrite)
+      mvprintw(row, col * cell_display_width, "%-*.*s", (int)cell_display_width, (int)cell_display_width - 1,
+               overwrite);
     else
       mvprintw(row, col * cell_display_width, "%-*.*s", (int)cell_display_width, (int)cell_display_width - 1, str);
   } else {
@@ -897,8 +898,9 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
 
   zsvsheet_priv_set_status(ddims, 0, "? for help ");
   if (cursor_value) {
-    if(overwrite)
-      mvprintw(ddims->rows - ddims->footer_span, strlen(zsvsheet_status_text), "old: %s, new: %s", cursor_value, overwrite);
+    if (overwrite)
+      mvprintw(ddims->rows - ddims->footer_span, strlen(zsvsheet_status_text), "old: %s, new: %s", cursor_value,
+               overwrite);
     else
       mvprintw(ddims->rows - ddims->footer_span, strlen(zsvsheet_status_text), "%s", cursor_value);
   }

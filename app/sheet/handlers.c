@@ -157,11 +157,10 @@ void zsvsheet_buffer_set_cell_attrs(zsvsheet_buffer_t h,
 void zsvsheet_buffer_set_cell_overwrites(zsvsheet_buffer_t h, enum zsv_ext_status (*get_overwrites)(void *uibp)) {
   if (h) {
     struct zsvsheet_ui_buffer *buff = h;
-    if(buff->ignore_overwrites)
+    if (buff->ignore_overwrites)
       return;
     unsigned char *filepath = zsv_cache_filepath((const unsigned char *)buff->filename, zsv_cache_type_overwrite, 0, 0);
-    struct zsv_overwrite_opts overwrite_opts = {
-      .src = (const char *)filepath};
+    struct zsv_overwrite_opts overwrite_opts = {.src = (const char *)filepath};
     buff->overwrite_ctx = zsv_overwrite_context_new(&overwrite_opts);
     free(filepath);
     if (zsv_overwrite_open(buff->overwrite_ctx) != zsv_status_ok) {
