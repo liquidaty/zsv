@@ -103,7 +103,7 @@ zsvsheet_status zsvsheet_buffer_get_selected_cell(zsvsheet_buffer_t h, struct zs
  * Set custom cell attributes
  */
 void zsvsheet_buffer_set_cell_attrs(zsvsheet_buffer_t h,
-                                    enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, zsvsheet_cell_attr_t *,
+                                    enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, zsvsheet_cell_attr_t *attrs,
                                                                           size_t start_row, size_t row_count,
                                                                           size_t col_count));
 

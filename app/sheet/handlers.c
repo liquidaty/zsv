@@ -146,23 +146,26 @@ enum zsv_ext_status zsvsheet_buffer_get_ctx(zsvsheet_buffer_t h, void **ctx_out)
 
 /** Set callback for fetching cell attributes **/
 void zsvsheet_buffer_set_cell_attrs(zsvsheet_buffer_t h,
-                                    enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, zsvsheet_cell_attr_t *,
+                                    enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, zsvsheet_cell_attr_t *attrs,
                                                                           size_t start_row, size_t row_count,
                                                                           size_t col_count)) {
   if (h) {
-    struct zsvsheet_ui_buffer *buff = h;
-    buff->get_cell_attrs = get_cell_attrs;
-    zsvsheet_ui_buffer_update_cell_attr(buff);
+    struct zsvsheet_ui_buffer *b = (struct zsvsheet_ui_buffer *)h;
+    pthread_mutex_lock(&b->mutex);
+    b->get_cell_attrs = get_cell_attrs;
+    pthread_mutex_unlock(&b->mutex);
   }
 }
 
 /** Get zsv_opts use to open the buffer's data file **/
 struct zsv_opts zsvsheet_buffer_get_zsv_opts(zsvsheet_buffer_t h) {
-  if (h) {
-    struct zsvsheet_ui_buffer *buff = h;
-    return buff->zsv_opts;
-  }
   struct zsv_opts opts = {0};
+  if (h) {
+    struct zsvsheet_ui_buffer *b = (struct zsvsheet_ui_buffer *)h;
+    pthread_mutex_lock(&b->mutex);
+    opts = b->zsv_opts;
+    pthread_mutex_unlock(&b->mutex);
+  }
   return opts;
 }
 
@@ -177,11 +180,13 @@ struct zsvsheet_buffer_info_internal zsvsheet_buffer_info_internal(zsvsheet_buff
   struct zsvsheet_buffer_info_internal info = {0};
 
   if (h) {
-    struct zsvsheet_ui_buffer *b = h;
+    struct zsvsheet_ui_buffer *b = (struct zsvsheet_ui_buffer *)h;
 
     pthread_mutex_lock(&b->mutex);
-    info.flags = b->flags;
-    info.dimensions = b->dimensions;
+    info.has_row_num = has_row_num(b);
+    info.rownum_col_offset = rownum_col_offset(b);
+    info.flags = b->flags.flags[0];
+    info.dimensions = b->dimensions;  // Now safe since types match
     pthread_mutex_unlock(&b->mutex);
   }
 
@@ -189,13 +194,14 @@ struct zsvsheet_buffer_info_internal zsvsheet_buffer_info_internal(zsvsheet_buff
 }
 
 struct zsvsheet_buffer_info zsvsheet_buffer_info(zsvsheet_buffer_t h) {
-  struct zsvsheet_buffer_info d;
-  struct zsvsheet_buffer_info_internal info = zsvsheet_get_buffer_info(h);
-
-  // Copy only the public fields
-  d.has_row_num = has_row_num(h);
-  d.rownum_col_offset = rownum_col_offset(h);
-
+  struct zsvsheet_buffer_info d = { 0 };
+  if(h) {
+    struct zsvsheet_ui_buffer *b = (struct zsvsheet_ui_buffer *)h;
+    pthread_mutex_lock(&b->mutex);
+    d.has_row_num = has_row_num(b);
+    d.rownum_col_offset = rownum_col_offset(b);
+    pthread_mutex_unlock(&b->mutex);
+  }
   return d;
 }
 

@@ -187,7 +187,8 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   // TODO: Starting a second transformation before the first ends works, but if the second is faster
   //       than the first then it can end prematurely and read a partially written row.
   //       We could override the input stream reader to wait for more data when it sees EOF
-  if (write_in_progress((struct zsvsheet_ui_buffer *)buff) && !write_done((struct zsvsheet_ui_buffer *)buff))
+  struct zsvsheet_ui_buffer *ui_buff = (struct zsvsheet_ui_buffer *)buff;
+  if (write_in_progress(ui_buff) && !write_done(ui_buff))
     return zsvsheet_status_busy;
 
   if (!(index = zsv_index_new()))
