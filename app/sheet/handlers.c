@@ -1,6 +1,8 @@
+#include "handlers_internal.h"
 #include "file.h"
 #include "procedure.h"
 #include "buffer_info.h"
+#include "ui_buffer.h"
 
 static void zsvsheet_key_handlers_delete(struct zsvsheet_key_data **root, struct zsvsheet_key_data ***nextp) {
   for (struct zsvsheet_key_data *next, *e = *root; e; e = next) {
@@ -9,7 +11,7 @@ static void zsvsheet_key_handlers_delete(struct zsvsheet_key_data **root, struct
     free(e);
   }
   *root = NULL;
-  *nextp = &(*root)->next;
+  *nextp = &(*root);
 }
 
 struct zsvsheet_key_data *zsvsheet_get_registered_key_handler(int ch, const char *long_name,
@@ -187,14 +189,13 @@ struct zsvsheet_buffer_info_internal zsvsheet_buffer_info_internal(zsvsheet_buff
 }
 
 struct zsvsheet_buffer_info zsvsheet_buffer_info(zsvsheet_buffer_t h) {
-  struct zsvsheet_buffer_info d = {0};
-  if (h) {
-    struct zsvsheet_ui_buffer *b = h;
-    pthread_mutex_lock(&b->mutex);
-    d.has_row_num = has_row_num(b);
-    d.rownum_col_offset = rownum_col_offset(b);
-    pthread_mutex_unlock(&b->mutex);
-  }
+  struct zsvsheet_buffer_info d;
+  struct zsvsheet_buffer_info_internal info = zsvsheet_get_buffer_info(h);
+
+  // Copy only the public fields
+  d.has_row_num = has_row_num(h);
+  d.rownum_col_offset = rownum_col_offset(h);
+
   return d;
 }
 

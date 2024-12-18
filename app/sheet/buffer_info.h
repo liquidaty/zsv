@@ -2,7 +2,10 @@
 #define ZSVSHEET_BUFFER_INFO_H
 
 #include <stddef.h>
-#include "ui_buffer.h"
+
+// Forward declarations
+struct zsvsheet_ui_buffer;
+typedef struct zsvsheet_ui_buffer *zsvsheet_buffer_t;
 
 // Public buffer info structure
 struct zsvsheet_buffer_info {

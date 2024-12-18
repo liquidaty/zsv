@@ -1,12 +1,13 @@
-#include <stdlib.h>
-#include <string.h>
-
 #include "handlers_internal.h"
+#include "buffer_info.h"
+#include "ui_buffer.h"
 #include "transformation.h"
 #include "pthread.h"
 #include "zsv/utils/file.h"
 #include "zsv/utils/index.h"
 #include "zsv/utils/prop.h"
+#include <stdlib.h>
+#include <string.h>
 
 struct zsvsheet_transformation {
   zsv_parser parser;
@@ -186,7 +187,7 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   // TODO: Starting a second transformation before the first ends works, but if the second is faster
   //       than the first then it can end prematurely and read a partially written row.
   //       We could override the input stream reader to wait for more data when it sees EOF
-  if (write_in_progress(buff) && !write_done(buff))
+  if (write_in_progress((struct zsvsheet_ui_buffer *)buff) && !write_done((struct zsvsheet_ui_buffer *)buff))
     return zsvsheet_status_busy;
 
   if (!(index = zsv_index_new()))
