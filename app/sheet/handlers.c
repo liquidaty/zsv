@@ -1,5 +1,6 @@
 #include "file.h"
 #include "procedure.h"
+#include "buffer_info.h"
 
 static void zsvsheet_key_handlers_delete(struct zsvsheet_key_data **root, struct zsvsheet_key_data ***nextp) {
   for (struct zsvsheet_key_data *next, *e = *root; e; e = next) {

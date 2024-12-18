@@ -29,8 +29,8 @@ struct zsvsheet_display_dimensions {
 
 struct zsvsheet_buffer_info_internal {
   struct zsvsheet_ui_flags flags;
-  struct zsv_index *index;
   struct zsvsheet_dimensions dimensions;
+  struct zsv_index *index;
 };
 
 #endif

@@ -94,12 +94,11 @@ void zsvsheet_ui_buffer_join_worker(struct zsvsheet_ui_buffer *ub);
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub);
 struct zsvsheet_buffer_info_internal zsvsheet_get_buffer_info(struct zsvsheet_ui_buffer *ub);
 
-// Compatibility macros for struct access
-#define has_row_num(b) atomic_test_bit(&(b)->flags.flags[0], HAS_ROW_NUM_BIT)
-#define rownum_col_offset(b) atomic_test_bit(&(b)->flags.flags[0], ROWNUM_COL_OFFSET_BIT)
-#define index_ready(b) atomic_test_bit(&(b)->flags.flags[0], INDEX_READY_BIT)
-#define index_started(b) atomic_test_bit(&(b)->flags.flags[0], INDEX_STARTED_BIT)
-#define write_in_progress(b) atomic_test_bit(&(b)->flags.flags[0], WRITE_IN_PROGRESS_BIT)
-#define write_done(b) atomic_test_bit(&(b)->flags.flags[0], WRITE_DONE_BIT)
+#define has_row_num(b) atomic_test_bit(&((struct zsvsheet_ui_buffer *)(b))->flags.flags[0], HAS_ROW_NUM_BIT)
+#define rownum_col_offset(b) atomic_test_bit(&((struct zsvsheet_ui_buffer *)(b))->flags.flags[0], ROWNUM_COL_OFFSET_BIT)
+#define index_ready(b) atomic_test_bit(&((struct zsvsheet_ui_buffer *)(b))->flags.flags[0], INDEX_READY_BIT)
+#define index_started(b) atomic_test_bit(&((struct zsvsheet_ui_buffer *)(b))->flags.flags[0], INDEX_STARTED_BIT)
+#define write_in_progress(b) atomic_test_bit(&((struct zsvsheet_ui_buffer *)(b))->flags.flags[0], WRITE_IN_PROGRESS_BIT)
+#define write_done(b) atomic_test_bit(&((struct zsvsheet_ui_buffer *)(b))->flags.flags[0], WRITE_DONE_BIT)
 
 #endif /* ZSV_UI_BUFFER_H */
