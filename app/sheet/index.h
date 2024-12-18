@@ -17,6 +17,7 @@ struct zsvsheet_index_opts {
   struct zsvsheet_ui_buffer *uib;
   int *errp;
   struct zsv_prop_handler *custom_prop_handler;
+  char *old_ui_status;
 };
 
 enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp);

@@ -37,8 +37,7 @@ struct zsvsheet_ui_buffer {
   zsvsheet_status (*on_newline)(zsvsheet_proc_context_t);
   void (*ext_on_close)(void *);
 
-  enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, int *attrs, size_t start_row, size_t row_count,
-                                        size_t col_count);
+  enum zsv_ext_status (*get_cell_attrs)(void *, zsvsheet_cell_attr_t *, size_t, size_t, size_t);
 
   enum zsv_ext_status (*get_cell_overwrites)(void *uibp);
 
@@ -48,12 +47,11 @@ struct zsvsheet_ui_buffer {
   unsigned char has_row_num : 1;
   unsigned char mutex_inited : 1;
   unsigned char write_in_progress : 1;
-  unsigned char write_progressed : 1;
   unsigned char write_done : 1;
   unsigned char worker_active : 1;
   unsigned char worker_cancelled : 1;
   unsigned char ignore_overwrites : 1;
-  unsigned char _ : 6;
+  unsigned char _ : 7;
 };
 
 void zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*start_func)(void *), void *arg) {

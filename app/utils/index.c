@@ -1,5 +1,4 @@
 #include <assert.h>
-#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -8,51 +7,62 @@
 #include <zsv/utils/index.h>
 
 struct zsv_index *zsv_index_new(void) {
-  struct zsv_index *ix = malloc(sizeof(*ix));
+  struct zsv_index *ix = calloc(1, sizeof(*ix));
 
   if (!ix)
     return ix;
 
-  memset(ix, 0, sizeof(*ix));
-
-  const size_t init_cap = 256;
-  ix->array = malloc(sizeof(*ix->array) + init_cap * sizeof(ix->array->u64s[0]));
-  ix->array->capacity = init_cap;
-  ix->array->len = 0;
+  const size_t init_cap = 512;
+  ix->first = calloc(1, sizeof(*ix->first) + init_cap * sizeof(ix->first->u64s[0]));
+  ix->first->capacity = init_cap;
 
   return ix;
 }
 
 void zsv_index_delete(struct zsv_index *ix) {
   if (ix) {
-    free(ix->array);
+    struct zsv_index_array *arr = ix->first;
+
+    while (arr) {
+      struct zsv_index_array *a = arr;
+      arr = arr->next;
+      free(a);
+    }
+
     free(ix);
   }
 }
 
-enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, zsv_parser parser) {
-  struct zsv_index_array *arr = ix->array;
+enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, uint64_t line_end) {
+  struct zsv_index_array *arr = ix->first;
   size_t len = arr->len, cap = arr->capacity;
-  uint64_t line_end = zsv_cum_scanned_length(parser);
 
   if (!ix->header_line_end) {
     ix->header_line_end = line_end;
     return zsv_index_status_ok;
   }
 
-  ix->row_count++;
+  ix->row_count_local++;
 
-  if ((ix->row_count & (ZSV_INDEX_ROW_N - 1)) != 0)
+  if ((ix->row_count_local & (ZSV_INDEX_ROW_N - 1)) != 0)
     return zsv_index_status_ok;
 
-  if (len >= cap) {
-    cap *= 2;
-    arr = realloc(arr, sizeof(*arr) + cap * sizeof(arr->u64s[0]));
-    if (!arr)
-      return zsv_index_status_memory;
+  while (len >= cap) {
+    assert(len == cap);
 
-    arr->capacity = cap;
-    ix->array = arr;
+    if (!arr->next) {
+      len = 0;
+      cap *= 2;
+      arr->next = calloc(1, sizeof(*arr) + cap * sizeof(arr->u64s[0]));
+      arr = arr->next;
+      if (!arr)
+        return zsv_index_status_memory;
+      arr->capacity = cap;
+    } else {
+      arr = arr->next;
+      len = arr->len;
+      cap = arr->capacity;
+    }
   }
 
   arr->u64s[len] = line_end;
@@ -61,21 +71,37 @@ enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, zsv_parser parser)
   return zsv_index_status_ok;
 }
 
+void zsv_index_commit_rows(struct zsv_index *ix) {
+  ix->row_count = ix->row_count_local;
+}
+
 enum zsv_index_status zsv_index_row_end_offset(const struct zsv_index *ix, uint64_t row, uint64_t *offset_out,
                                                uint64_t *remaining_rows_out) {
+  assert(ix->row_count <= ix->row_count_local);
+
   if (row > ix->row_count)
     return zsv_index_status_error;
 
   if (row < ZSV_INDEX_ROW_N) {
     *offset_out = ix->header_line_end;
     *remaining_rows_out = row;
-  } else {
-    const size_t i = (row >> ZSV_INDEX_ROW_SHIFT) - 1;
 
-    assert(i < ix->array->len);
-    *offset_out = (long)ix->array->u64s[i];
-    *remaining_rows_out = row & (ZSV_INDEX_ROW_N - 1);
+    return zsv_index_status_ok;
   }
+
+  const size_t i = (row >> ZSV_INDEX_ROW_SHIFT) - 1;
+  struct zsv_index_array *arr = ix->first;
+  size_t lens = 0;
+
+  while (i >= lens + arr->len) {
+    assert(arr->next);
+
+    lens += arr->len;
+    arr = arr->next;
+  }
+
+  *offset_out = (long)arr->u64s[i - lens];
+  *remaining_rows_out = row & (ZSV_INDEX_ROW_N - 1);
 
   return zsv_index_status_ok;
 }
@@ -118,12 +144,10 @@ static enum zsv_index_status seek_and_check_newline(long *offset, struct zsv_opt
   if (new_line[0] == '\n') {
     *offset += 1;
   } else if (new_line[0] == '\r') {
-    if (new_line[1] == '\n') {
-      *offset += 1;
-      return zsv_index_status_ok;
-    }
-
     *offset += 1;
+
+    if (new_line[1] == '\n')
+      *offset += 1;
   } else {
     return zsv_index_status_error;
   }

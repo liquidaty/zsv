@@ -2,8 +2,7 @@
 #define ZSV_UTILS_INDEX_H
 
 #include <stdint.h>
-#include <stdio.h>
-#include <pthread.h>
+#include <stddef.h>
 
 #include "zsv/common.h"
 
@@ -24,20 +23,25 @@ enum zsv_index_status {
 struct zsv_index_array {
   size_t capacity;
   size_t len;
+  struct zsv_index_array *next;
   uint64_t u64s[];
 };
 
 struct zsv_index {
   uint64_t header_line_end;
+  // Reading and writing should be protected with a lock
   uint64_t row_count;
+  // Should only be updated by the thread building the index
+  uint64_t row_count_local;
 
   // array containing the offsets of every ZSV_INDEX_ROW_N line end
-  struct zsv_index_array *array;
+  struct zsv_index_array *first;
 };
 
 struct zsv_index *zsv_index_new(void);
 void zsv_index_delete(struct zsv_index *ix);
-enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, zsv_parser parser);
+enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, uint64_t line_end);
+void zsv_index_commit_rows(struct zsv_index *ix);
 enum zsv_index_status zsv_index_row_end_offset(const struct zsv_index *ix, uint64_t row, uint64_t *offset_out,
                                                uint64_t *remaining_rows_out);
 enum zsv_index_status zsv_index_seek_row(const struct zsv_index *ix, struct zsv_opts *opts, uint64_t row);

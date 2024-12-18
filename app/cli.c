@@ -408,6 +408,7 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->ext_sheet_buffer_set_ctx = zsvsheet_buffer_set_ctx;
     e->ext_sheet_buffer_get_ctx = zsvsheet_buffer_get_ctx;
     e->ext_sheet_buffer_set_cell_attrs = zsvsheet_buffer_set_cell_attrs;
+    e->ext_sheet_cell_profile_attrs = zsvsheet_cell_profile_attrs;
     e->ext_sheet_buffer_get_zsv_opts = zsvsheet_buffer_get_zsv_opts;
     e->ext_sheet_buffer_on_newline = zsvsheet_buffer_on_newline;
     e->ext_sheet_buffer_get_selected_cell = zsvsheet_buffer_get_selected_cell;
@@ -748,7 +749,11 @@ static struct zsv_ext *zsv_ext_new(const char *dl_name, const char *id, char ver
     }
   }
   if (!h)
+#if defined(WIN32) || defined(_WIN32)
     fprintf(stderr, "Library %s not found\n", dl_name);
+#else
+    fprintf(stderr, "Library %s failed to load: %s\n", dl_name, dlerror());
+#endif
 
   // run zsv_ext_init to add to our extension list, even if it's invalid
   tmp.ok = !zsv_ext_init(h, dl_name, &tmp);

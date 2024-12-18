@@ -28,8 +28,8 @@ prepare() {
   [ "$1" = "" ] && return
   for ARTIFACT_NAME in *."$1"; do
     [ -e "$ARTIFACT_NAME" ] || break
-    FILE_PREFIX="$(echo "$ARTIFACT_NAME" | cut -c -${#ARTIFACT_PREFIX})"
-    [ "$FILE_PREFIX" = "$ARTIFACT_PREFIX" ] && continue
+    FILE_PREFIX="$(echo "$ARTIFACT_NAME" | cut -d '-' -f1)"
+    [ "$FILE_PREFIX" = "zsv" ] && continue
     UPDATED_ARTIFACT_NAME="$ARTIFACT_PREFIX-$ARTIFACT_NAME"
     echo "[INF] [$ARTIFACT_NAME] => [$UPDATED_ARTIFACT_NAME]"
     mv -f "$ARTIFACT_NAME" "$UPDATED_ARTIFACT_NAME"

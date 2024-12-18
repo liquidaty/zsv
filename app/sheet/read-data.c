@@ -29,14 +29,15 @@ static char *zsvsheet_found_in_row(zsv_parser parser, size_t col_count, const ch
 static void *get_data_index(void *d);
 
 static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char *filename, struct zsv_opts *optsp,
-                                 struct zsv_prop_handler *custom_prop_handler, pthread_mutex_t *mutexp) {
+                                 struct zsv_prop_handler *custom_prop_handler, char *old_ui_status) {
   struct zsvsheet_index_opts *ixopts = calloc(1, sizeof(*ixopts));
-  ixopts->mutexp = mutexp;
+  ixopts->mutexp = &uibuffp->mutex;
   ixopts->filename = filename;
   ixopts->zsv_opts = *optsp;
   ixopts->custom_prop_handler = custom_prop_handler;
   ixopts->uib = uibuffp;
   ixopts->uib->ixopts = ixopts;
+  ixopts->old_ui_status = old_ui_status;
 
   if (uibuffp->worker_active)
     zsvsheet_ui_buffer_join_worker(uibuffp);
@@ -204,16 +205,20 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     return 0;
 
   pthread_mutex_lock(&uibuff->mutex);
-  char need_index = !uibuff->index_started && (!uibuff->write_in_progress || uibuff->write_done);
+  char need_index = !uibuff->index_started && !uibuff->write_in_progress;
+  char *old_ui_status = uibuff->status;
   pthread_mutex_unlock(&uibuff->mutex);
 
   if (need_index) {
+    if (asprintf(&uibuff->status, "%s(building index) ", old_ui_status ? old_ui_status : "") == -1)
+      return -1;
+
     uibuff->buff_used_rows = rows_read;
     uibuff->dimensions.row_count = rows_read;
     uibuff->index_started = 1;
     if (original_row_num > 1 && rows_read > 0) {
       opts.stream = NULL;
-      get_data_index_async(uibuff, filename, &opts, custom_prop_handler, &uibuff->mutex);
+      get_data_index_async(uibuff, filename, &opts, custom_prop_handler, old_ui_status);
     }
   } else if (rows_read > uibuff->buff_used_rows) {
     uibuff->buff_used_rows = rows_read;
@@ -229,22 +234,7 @@ static void *get_data_index(void *gdi) {
   pthread_mutex_t *mutexp = d->mutexp;
   int *errp = d->errp;
   struct zsvsheet_ui_buffer *uib = d->uib;
-
-  pthread_mutex_lock(&uib->mutex);
-  char *old_ui_status = uib->status;
-  pthread_mutex_unlock(&uib->mutex);
-
-  char *ui_status;
-  /* I think there was a race between this print and a "? for help" which causes
-   * ci to fail. Once read-file is called the main thread displays its contents
-   * and this thread indexes the file. There is no synchronisation between the
-   * two so the status we end up with is random.
-   */
-  // asprintf(&ui_status, "%s(building index) ", old_ui_status ? old_ui_status : "");
-
-  pthread_mutex_lock(&uib->mutex);
-  uib->status = ui_status;
-  pthread_mutex_unlock(&uib->mutex);
+  char *ui_status = uib->status;
 
   enum zsv_index_status ix_status = build_memory_index(d);
 
@@ -258,8 +248,7 @@ static void *get_data_index(void *gdi) {
   }
 
   pthread_mutex_lock(mutexp);
-  uib->index_ready = 1;
-  uib->status = old_ui_status;
+  uib->status = d->old_ui_status;
   uib->ixopts = NULL;
   pthread_mutex_unlock(mutexp);
 

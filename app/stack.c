@@ -23,10 +23,11 @@ const char *zsv_stack_usage_msg[] = {
   "Usage: " APPNAME " [options] filename [filename...]",
   "",
   "Options:",
-  "  -o <filename>: output file",
-  "  -b           : output with BOM",
-  "  -q           : always add double-quotes",
-  "  -T           : input is tab-delimited, instead of comma-delimited",
+  "  -o <filename> : output file",
+  "  -b            : output with BOM",
+  "  -q            : always add double-quotes",
+  "  --unique      : only output unique column names; in the case of duplicates,",
+  "                  only the last (right-most) column will be kept",
   NULL,
 };
 
@@ -40,6 +41,8 @@ typedef struct zsv_stack_colname {
   struct zsv_stack_colname *next;
   char unsigned *orig_name;
   char unsigned *name;
+  unsigned occurrence;
+  unsigned dupes;
   size_t global_position;
   unsigned char color;
   struct zsv_stack_colname *left;
@@ -48,12 +51,13 @@ typedef struct zsv_stack_colname {
 } zsv_stack_colname;
 
 static struct zsv_stack_colname *zsv_stack_colname_init(struct zsv_stack_colname *e, const unsigned char *name,
-                                                        size_t len) {
+                                                        size_t len, unsigned occurrence) {
   memset(e, 0, sizeof(*e));
   if (len)
     e->name = zsv_strtolowercase(name, &len);
   else
     e->name = calloc(1, 2);
+  e->occurrence = occurrence;
   return e;
 }
 
@@ -70,7 +74,10 @@ static void zsv_stack_colname_delete(struct zsv_stack_colname *e) {
 }
 
 static int zsv_stack_colname_cmp(zsv_stack_colname *x, zsv_stack_colname *y) {
-  return strcmp((const char *)x->name, (const char *)y->name);
+  int i = strcmp((const char *)x->name, (const char *)y->name);
+  if (i == 0)
+    return x->occurrence == y->occurrence ? 0 : x->occurrence > y->occurrence ? 1 : -1;
+  return i;
 }
 
 SGLIB_DEFINE_RBTREE_PROTOTYPES(zsv_stack_colname, left, right, color, zsv_stack_colname_cmp);
@@ -94,6 +101,7 @@ struct zsv_stack_input_file {
   zsv_parser parser;
 
   // output_column_map[x] = n where x = output col ix, n = 0 if no map, else raw_column_ix
+  zsv_stack_colname *colnames;
   size_t *output_column_map;
   size_t output_column_map_size;
   size_t header_row_end_offset; // location in buff at which the data row begins
@@ -115,6 +123,9 @@ struct zsv_stack_data {
   int err;
 
   zsv_csv_writer csv_writer;
+
+  unsigned char unique_column_names : 1;
+  unsigned char _ : 7;
 };
 
 static struct zsv_stack_input_file **zsv_stack_input_file_add(const char *filename,
@@ -139,6 +150,7 @@ static void zsv_stack_input_files_delete(struct zsv_stack_input_file *list) {
       fclose(e->f);
     if (e->output_column_map)
       free(e->output_column_map);
+    zsv_stack_colname_tree_delete(&e->colnames);
     zsv_delete(e->parser);
     free(e);
   }
@@ -150,14 +162,17 @@ static void zsv_stack_cleanup(struct zsv_stack_data *data) {
   zsv_writer_delete(data->csv_writer);
 }
 
-static struct zsv_stack_colname *zsv_stack_colname_get_or_add(const unsigned char *name, size_t name_len,
+static struct zsv_stack_colname *zsv_stack_colname_get_or_add(struct zsv_cell c, unsigned occurrence,
                                                               struct zsv_stack_colname **tree, int *added) {
+  const unsigned char *name = c.str;
+  size_t name_len = c.len;
   struct zsv_stack_colname e;
-  zsv_stack_colname_init(&e, name, name_len);
+  zsv_stack_colname_init(&e, name, name_len, occurrence);
   struct zsv_stack_colname *found = sglib_zsv_stack_colname_find_member(*tree, &e);
-  if (found)
+  if (found) {
+    found->dupes++;
     zsv_stack_colname_free(&e);
-  else {
+  } else {
     found = calloc(1, sizeof(*found));
     if (found) {
       *added = 1;
@@ -171,9 +186,9 @@ static struct zsv_stack_colname *zsv_stack_colname_get_or_add(const unsigned cha
 }
 
 // zsv_stack_consolidate_header(): return global position
-static unsigned zsv_stack_consolidate_header(struct zsv_stack_data *d, const unsigned char *name, size_t name_len) {
+static unsigned zsv_stack_consolidate_header(struct zsv_stack_data *d, struct zsv_cell cell, unsigned occurrence) {
   int added = 0;
-  zsv_stack_colname *c = zsv_stack_colname_get_or_add(name, name_len, &d->colnames, &added);
+  zsv_stack_colname *c = zsv_stack_colname_get_or_add(cell, occurrence, &d->colnames, &added);
   if (!c)
     d->err = 1;
   else {
@@ -189,14 +204,6 @@ static unsigned zsv_stack_consolidate_header(struct zsv_stack_data *d, const uns
   }
   return 0;
 }
-
-/*
-static void zsv_stack_header_cell_wrapper(void *ctx, unsigned char *restrict utf8_value, size_t len) {
-  struct zsv_stack_input_file *input = ctx;
-  if(!input->headers_done)
-    zsv_stack_header_cell(ctx, utf8_value, len);
-}
-*/
 
 static void zsv_stack_header_row(void *ctx) {
   struct zsv_stack_input_file *input = ctx;
@@ -238,16 +245,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   struct zsv_opts saved_opts = *opts;
   struct zsv_stack_data data = {0};
-  char delimiter = 0; // defaults to csv
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   writer_opts.stream = stdout;
 
+  struct zsv_stack_input_file **next_input = &data.inputs;
   for (int arg_i = 1; !data.err && arg_i < argc; arg_i++) {
     const char *arg = argv[arg_i];
     if (!strcmp(arg, "-b"))
       writer_opts.with_bom = 1;
-    else if (!strcmp(arg, "-T"))
-      delimiter = '\t';
+    else if (!strcmp(arg, "--unique"))
+      data.unique_column_names = 1;
     else if (!strcmp(arg, "-o")) {
       arg_i++;
       if (arg_i >= argc)
@@ -258,22 +265,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           fprintf(stderr, "Unable to open file for writing: %s\n", argv[arg_i]);
         }
       }
-    }
-  }
-
-  if (!(data.csv_writer = zsv_writer_new(&writer_opts)))
-    data.err = 1;
-
-  if (!data.err) {
-    struct zsv_stack_input_file **next_input = &data.inputs;
-    for (int arg_i = 1; !data.err && arg_i < argc; arg_i++) {
-      const char *arg = argv[arg_i];
-      if (*arg == '-') {
-        if (!strcmp(arg, "-o"))
-          arg_i++;
-        continue;
-      }
-
+    } else if (*arg == '-') {
+      fprintf(stderr, "Unrecognized option: %s\n", arg);
+      data.err = 1;
+    } else {
       FILE *f = fopen(arg, "rb");
       if (!f) {
         fprintf(stderr, "Could not open file for reading: %s\n", arg);
@@ -283,13 +278,15 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
   }
 
+  if (!(data.csv_writer = zsv_writer_new(&writer_opts)))
+    data.err = 1;
+
   // collect all header names so we can line them up
   unsigned i = 0;
   for (struct zsv_stack_input_file *input = data.inputs; !data.err && input; input = input->next, i++) {
     *opts = saved_opts;
     opts->row_handler = zsv_stack_header_row;
     opts->ctx = input;
-    opts->delimiter = delimiter;
 
     // to do: max_cell_size
     opts->stream = input->f;
@@ -311,7 +308,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   // of all inputs
   size_t max_columns_count = 0;
   for (struct zsv_stack_input_file *input = data.inputs; !data.err && input; input = input->next)
-    max_columns_count += zsv_cell_count(input->parser); // zsv_row_cells_count(input->row);
+    max_columns_count += zsv_cell_count(input->parser);
 
   // next, for each input, align the input columns with the output columns
   for (struct zsv_stack_input_file *input = data.inputs; input && !data.err; input = input->next) {
@@ -324,7 +321,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         size_t cols_used = zsv_cell_count(input->parser);
         for (unsigned col_ix = 0; col_ix < cols_used; col_ix++) {
           struct zsv_cell cell = zsv_get_cell(input->parser, col_ix);
-          size_t output_ix = zsv_stack_consolidate_header(&data, cell.str, cell.len);
+          unsigned occurrence = 0;
+          if (!data.unique_column_names) {
+            int added;
+            zsv_stack_colname *c = zsv_stack_colname_get_or_add(cell, 0, &input->colnames, &added);
+            if (c)
+              occurrence = c->dupes;
+          }
+          size_t output_ix = zsv_stack_consolidate_header(&data, cell, occurrence);
           if (output_ix)
             input->output_column_map[output_ix - 1] = col_ix + 1;
         }
@@ -360,8 +364,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       *opts = saved_opts;
       opts->row_handler = zsv_stack_data_row;
       opts->ctx = input;
-      if (delimiter == '\t')
-        opts->delimiter = delimiter;
 
       rewind(input->f);
       input->headers_done = 0;

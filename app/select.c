@@ -742,7 +742,9 @@ static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struc
   if (!first) {
     if (verbose)
       fprintf(stderr, "%s%zu", count ? "," : "", i);
-    fixed->offsets[count++] = i;
+    if (i)
+      fixed->offsets[count++] = i;
+    fixed->count = count;
   }
   if (verbose)
     fprintf(stderr, "\n");
