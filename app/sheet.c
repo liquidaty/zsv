@@ -49,8 +49,7 @@ struct zsvsheet_opts {
 #define ZSVSHEET_CELL_DISPLAY_MIN_WIDTH 10
 static size_t zsvsheet_cell_display_width(struct zsvsheet_ui_buffer *ui_buffer,
                                           struct zsvsheet_display_dimensions *ddims) {
-  size_t width =
-      ddims->columns / (ui_buffer->dimensions.col_count + (rownum_col_offset(ui_buffer) ? 1 : 0));
+  size_t width = ddims->columns / (ui_buffer->dimensions.col_count + (rownum_col_offset(ui_buffer) ? 1 : 0));
   return width < ZSVSHEET_CELL_DISPLAY_MIN_WIDTH ? ZSVSHEET_CELL_DISPLAY_MIN_WIDTH : width;
 }
 
@@ -308,12 +307,13 @@ static zsvsheet_status zsvsheet_move_hor_end(struct zsvsheet_display_info *di, b
 
   if (right) {
     // to do: directly set current_ui_buffer->cursor_col and buff_offset.col
-    while (cursor_right(di->dimensions->columns, zsvsheet_cell_display_width(current_ui_buffer, di->dimensions),
-                        current_ui_buffer->dimensions.col_count + (current_ui_buffer->dimensions.rownum_col_offset ? 1 : 0) >
-                            zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
-                          ? zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
-                          : current_ui_buffer->dimensions.col_count + (current_ui_buffer->dimensions.rownum_col_offset ? 1 : 0),
-                        &current_ui_buffer->cursor_col, &current_ui_buffer->buff_offset.col) > 0)
+    while (cursor_right(
+             di->dimensions->columns, zsvsheet_cell_display_width(current_ui_buffer, di->dimensions),
+             current_ui_buffer->dimensions.col_count + (current_ui_buffer->dimensions.rownum_col_offset ? 1 : 0) >
+                 zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
+               ? zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
+               : current_ui_buffer->dimensions.col_count + (current_ui_buffer->dimensions.rownum_col_offset ? 1 : 0),
+             &current_ui_buffer->cursor_col, &current_ui_buffer->buff_offset.col) > 0)
       ;
     {}
   } else {
