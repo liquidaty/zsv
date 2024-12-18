@@ -82,8 +82,6 @@ zsvsheet_screen_buffer_t zsvsheet_screen_buffer_new(size_t cols, struct zsvsheet
   if (opts->cell_buff_len < sizeof(void *) * 2)
     *stat = zsvsheet_priv_status_error;
   else {
-    if (!opts->no_rownum_column)
-      cols++;
     void *data = calloc(opts->rows, cols * opts->cell_buff_len);
     if (!data)
       *stat = zsvsheet_priv_status_memory;
@@ -109,9 +107,6 @@ enum zsvsheet_priv_status zsvsheet_screen_buffer_grow(zsvsheet_screen_buffer_t b
   size_t rows = buff->opts.rows;
   size_t cell_buff_len = buff->opts.cell_buff_len;
   size_t old_row_len = old_cols * cell_buff_len;
-
-  if (!buff->opts.no_rownum_column)
-    cols++;
 
   size_t row_len = cols * cell_buff_len;
 

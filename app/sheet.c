@@ -49,8 +49,8 @@ struct zsvsheet_opts {
 #define ZSVSHEET_CELL_DISPLAY_MIN_WIDTH 10
 static size_t zsvsheet_cell_display_width(struct zsvsheet_ui_buffer *ui_buffer,
                                           struct zsvsheet_display_dimensions *ddims) {
-  size_t width = ddims->columns /
-                 (ui_buffer->dimensions.col_count + (ui_buffer->rownum_col_offset && !ui_buffer->has_row_num ? 1 : 0));
+  size_t width = ddims->columns / (ui_buffer->dimensions.col_count +
+                                   (ui_buffer->rownum_col_offset && !ui_buffer->no_add_row_num ? 1 : 0));
   return width < ZSVSHEET_CELL_DISPLAY_MIN_WIDTH ? ZSVSHEET_CELL_DISPLAY_MIN_WIDTH : width;
 }
 
@@ -472,16 +472,17 @@ static zsvsheet_status zsvsheet_help_handler(struct zsvsheet_proc_context *ctx) 
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_display_info *di = &state->display_info;
   struct zsvsheet_screen_buffer_opts bopts = {
-    .no_rownum_column = 1,
     .cell_buff_len = 64,
     .max_cell_len = 0,
     .rows = 256,
   };
+  struct zsvsheet_opts zsvsheet_opts = {0};
+  zsvsheet_opts.hide_row_nums = 1;
   struct zsvsheet_ui_buffer_opts uibopts = {
+    .zsvsheet_opts = &zsvsheet_opts,
     .buff_opts = &bopts,
     .filename = NULL,
     .data_filename = NULL,
-    .no_rownum_col_offset = 1,
     .write_after_open = 0,
   };
   struct zsvsheet_ui_buffer *uib = NULL;
@@ -766,8 +767,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
     if (handler_state.display_info.update_buffer && zsvsheet_buffer_data_filename(ub)) {
       struct zsvsheet_opts zsvsheet_opts = {0};
-      if (read_data(&ub, NULL, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col, header_span,
-                    &zsvsheet_opts, custom_prop_handler)) {
+      struct zsvsheet_ui_buffer_opts uibopts = {0};
+      uibopts.zsvsheet_opts = &zsvsheet_opts;
+      if (read_data(&ub, &uibopts, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col,
+                    header_span, custom_prop_handler)) {
         zsvsheet_priv_set_status(&display_dims, ZSVSHEET_STATUS_HIGH_PRIO,
                                  "Unexpected error!"); // to do: better error message
         continue;

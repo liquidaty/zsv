@@ -8,10 +8,9 @@
 typedef struct zsvsheet_screen_buffer *zsvsheet_screen_buffer_t;
 
 struct zsvsheet_screen_buffer_opts {
-  size_t cell_buff_len;  // default = 16. must be >= 2 * sizeof(void *)
-  size_t max_cell_len;   // length in bytes; defaults to 32767
-  size_t rows;           // rows to buffer. cannot be < 256
-  char no_rownum_column; // reserved. TO DO: if set, omit row num column
+  size_t cell_buff_len; // default = 16. must be >= 2 * sizeof(void *)
+  size_t max_cell_len;  // length in bytes; defaults to 32767
+  size_t rows;          // rows to buffer. cannot be < 256
 };
 
 zsvsheet_screen_buffer_t zsvsheet_screen_buffer_new(size_t cols, struct zsvsheet_screen_buffer_opts *opts,

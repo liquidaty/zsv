@@ -165,7 +165,10 @@ static zsvsheet_status zsv_sqlite3_to_csv(zsvsheet_proc_context_t pctx, struct z
       fclose(writer_opts.stream);
 
     if (tmp_fn && zsv_file_exists(tmp_fn)) {
+      struct zsvsheet_opts zsvsheet_opts = {0};
+      zsvsheet_opts.hide_row_nums = 1;
       struct zsvsheet_ui_buffer_opts uibopts = {0};
+      uibopts.zsvsheet_opts = &zsvsheet_opts;
       uibopts.data_filename = tmp_fn;
       zst = zsvsheet_open_file_opts(pctx, &uibopts);
     } else {
@@ -205,11 +208,7 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
     if (!zdb || !(sql_str = sqlite3_str_new(zdb->db)))
       zst = zsvsheet_status_memory;
     else if (zdb->rc == SQLITE_OK && zsv_sqlite3_add_csv(zdb, pd->data_filename, &pd->zopts, NULL) == SQLITE_OK) {
-      if (zsvsheet_buffer_info(buff).has_row_num)
-        sqlite3_str_appendf(sql_str, "select *");
-      else
-        sqlite3_str_appendf(sql_str, "select rowid as [Row #], *");
-      sqlite3_str_appendf(sql_str, " from data where %s = %Q", pd->value_sql, pr->value);
+      sqlite3_str_appendf(sql_str, "select rowid as [Row #], * from data where %s = %Q", pd->value_sql, pr->value);
       zst = zsv_sqlite3_to_csv(ctx, zdb, sqlite3_str_value(sql_str), NULL, NULL, NULL);
     }
 

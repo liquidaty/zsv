@@ -192,7 +192,7 @@ struct zsvsheet_buffer_data zsvsheet_buffer_info(zsvsheet_buffer_t h) {
   struct zsvsheet_buffer_data d = {0};
   struct zsvsheet_ui_buffer *b = h;
   if (b) {
-    d.has_row_num = b->has_row_num;
+    d.has_row_num = b->no_add_row_num;
   }
   return d;
 }

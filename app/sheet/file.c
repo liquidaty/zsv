@@ -6,11 +6,14 @@ int zsvsheet_ui_buffer_open_file_opts(struct zsvsheet_ui_buffer_opts *uibopts,
   struct zsvsheet_screen_buffer_opts bopts = {0};
   struct zsvsheet_ui_buffer *tmp_ui_buffer = NULL;
 
+  if (!uibopts->zsvsheet_opts)
+    uibopts->zsvsheet_opts = &zsvsheet_opts;
+
   if (!uibopts->buff_opts)
     uibopts->buff_opts = &bopts;
 
   int err = 0;
-  if ((err = read_data(&tmp_ui_buffer, uibopts, 0, 0, 0, &zsvsheet_opts, custom_prop_handler)) != 0 || !tmp_ui_buffer ||
+  if ((err = read_data(&tmp_ui_buffer, uibopts, 0, 0, 0, custom_prop_handler)) != 0 || !tmp_ui_buffer ||
       !tmp_ui_buffer->buff_used_rows) {
     zsvsheet_ui_buffer_delete(tmp_ui_buffer);
     if (err)
