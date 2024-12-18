@@ -92,6 +92,7 @@ struct zsvsheet_ui_buffer {
 void zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*start_func)(void *), void *arg);
 void zsvsheet_ui_buffer_join_worker(struct zsvsheet_ui_buffer *ub);
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub);
+struct zsvsheet_buffer_info_internal zsvsheet_get_buffer_info(struct zsvsheet_ui_buffer *ub);
 
 // Compatibility macros for struct access
 #define has_row_num(b) atomic_test_bit(&(b)->flags.flags[0], HAS_ROW_NUM_BIT)

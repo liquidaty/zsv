@@ -190,3 +190,14 @@ int zsvsheet_ui_buffer_pop(struct zsvsheet_ui_buffer **base, struct zsvsheet_ui_
   }
   return 0;
 }
+
+struct zsvsheet_buffer_info_internal zsvsheet_get_buffer_info(struct zsvsheet_ui_buffer *ub) {
+  struct zsvsheet_buffer_info_internal info = {0};
+  if (ub) {
+    info.flags = ub->flags;
+    info.index = ub->index;
+    info.dimensions.rows = ub->dimensions.row_count;
+    info.dimensions.cols = ub->dimensions.col_count;
+  }
+  return info;
+}

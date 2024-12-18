@@ -413,11 +413,11 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   struct zsvsheet_display_info *di = &state->display_info;
   struct zsvsheet_ui_buffer *current_ui_buffer = *state->display_info.ui_buffers.current;
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
-  struct zsvsheet_buffer_info_internal binfo = zsvsheet_buffer_info_internal(current_ui_buffer);
+  struct zsvsheet_buffer_info_internal binfo = zsvsheet_get_buffer_info(current_ui_buffer);
   int err;
   const char *filter;
 
-  if (binfo.write_in_progress && !binfo.write_done)
+  if (write_in_progress(current_ui_buffer) && !write_done(current_ui_buffer))
     return zsvsheet_status_busy;
 
   if (!zsvsheet_buffer_data_filename(current_ui_buffer))
