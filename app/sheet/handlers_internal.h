@@ -122,7 +122,21 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
                                                   struct zsvsheet_buffer_transformation_opts opts);
 #endif
 
-struct zsvsheet_buffer_data zsvsheet_buffer_info(zsvsheet_buffer_t buff);
+/**
+ * Get information about the buffer's flags and state
+ */
+struct zsvsheet_buffer_info {
+  char has_row_num;
+  size_t rownum_col_offset;
+};
+
+/**
+ * Get internal information about the buffer's state
+ */
+struct zsvsheet_buffer_info_internal {
+  struct zsvsheet_flags flags;
+  struct zsvsheet_dimensions dimensions;
+};
 
 /** cell formatting **/
 zsvsheet_cell_attr_t zsvsheet_cell_profile_attrs(enum zsvsheet_cell_profile_t);

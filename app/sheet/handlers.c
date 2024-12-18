@@ -177,10 +177,7 @@ struct zsvsheet_buffer_info_internal zsvsheet_buffer_info_internal(zsvsheet_buff
     struct zsvsheet_ui_buffer *b = h;
 
     pthread_mutex_lock(&b->mutex);
-    info.index_started = index_started(b);
-    info.index_ready = index_ready(b);
-    info.write_in_progress = write_in_progress(b);
-    info.write_done = write_done(b);
+    info.flags = b->flags;
     info.dimensions = b->dimensions;
     pthread_mutex_unlock(&b->mutex);
   }
