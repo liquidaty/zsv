@@ -8,6 +8,18 @@
 // Forward declarations
 struct zsv_index;
 struct zsvsheet_input_dimensions;
+struct zsvsheet_dimensions;
+struct zsvsheet_proc_context;
+struct zsv_opts;
+typedef struct zsvsheet_cell_attr *zsvsheet_cell_attr_t;
+enum zsv_ext_status;
+enum zsvsheet_status;
+
+// Common type definitions
+struct zsvsheet_dimensions {
+  size_t rows;
+  size_t cols;
+};
 
 // Bit positions for flags
 #define INDEX_READY_BIT 0
@@ -20,35 +32,38 @@ struct zsvsheet_input_dimensions;
 #define WORKER_ACTIVE_BIT 7
 #define WORKER_CANCELLED_BIT 8
 
-// Atomic bit field operations
-static inline void atomic_set_bit(volatile atomic_uchar *addr, int bit) {
-  atomic_fetch_or_explicit(addr, 1U << bit, memory_order_release);
-}
-
-static inline void atomic_clear_bit(volatile atomic_uchar *addr, int bit) {
-  atomic_fetch_and_explicit(addr, ~(1U << bit), memory_order_release);
-}
-
-static inline int atomic_test_bit(const volatile atomic_uchar *addr, int bit) {
-  return !!(atomic_load_explicit((volatile atomic_uchar *)addr, memory_order_acquire) & (1U << bit));
-}
-
 // Flag structure for atomic operations
 struct zsvsheet_ui_flags {
-  volatile atomic_uchar flags[2]; // Using 2 bytes to accommodate all bits
+  _Alignas(sizeof(atomic_uchar)) volatile atomic_uchar flags[2]; // Using 2 bytes to accommodate all bits
 };
-
-#include "sheet_internal.h"
-
-// Buffer structure forward declaration
-struct zsvsheet_ui_buffer;
-typedef struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_t;
 
 // Row/column position structure
 struct zsvsheet_rowcol {
   size_t row;
   size_t col;
 };
+
+// Buffer structure forward declaration
+struct zsvsheet_ui_buffer;
+typedef struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_t;
+
+// Atomic bit field operations
+static inline void atomic_set_bit(volatile atomic_uchar *addr, int bit) {
+  atomic_thread_fence(memory_order_acquire);
+  atomic_fetch_or_explicit(addr, 1U << bit, memory_order_release);
+  atomic_thread_fence(memory_order_release);
+}
+
+static inline void atomic_clear_bit(volatile atomic_uchar *addr, int bit) {
+  atomic_thread_fence(memory_order_acquire);
+  atomic_fetch_and_explicit(addr, ~(1U << bit), memory_order_release);
+  atomic_thread_fence(memory_order_release);
+}
+
+static inline int atomic_test_bit(const volatile atomic_uchar *addr, int bit) {
+  atomic_thread_fence(memory_order_acquire);
+  return !!(atomic_load_explicit((volatile atomic_uchar *)addr, memory_order_acquire) & (1U << bit));
+}
 
 // Buffer structure definition
 struct zsvsheet_ui_buffer {
@@ -69,7 +84,7 @@ struct zsvsheet_ui_buffer {
   struct zsvsheet_rowcol buff_offset;
   void *buffer; // screen buffer
   enum zsv_ext_status (*get_cell_attrs)(void *ext_ctx, zsvsheet_cell_attr_t *, size_t start_row, size_t row_count,
-                                        size_t col_count);
+                                       size_t col_count);
   zsvsheet_status (*on_newline)(struct zsvsheet_proc_context *);
 };
 

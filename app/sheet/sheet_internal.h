@@ -1,11 +1,10 @@
 #ifndef ZSVSHEET_INTERNAL_H
 #define ZSVSHEET_INTERNAL_H
 
+#include "ui_buffer.h"
+
 #define ZSVSHEET_ROWNUM_HEADER "Row #"
 #define ZSVSHEET_ROWNUM_HEADER_LEN strlen(ZSVSHEET_ROWNUM_HEADER)
-
-// Forward declaration
-struct zsvsheet_ui_flags;
 
 enum zsvsheet_priv_status {
   zsvsheet_priv_status_ok = 0,
@@ -28,13 +27,10 @@ struct zsvsheet_display_dimensions {
   size_t footer_span;
 };
 
-// Forward declaration of zsv_index
-struct zsv_index;
-
 struct zsvsheet_buffer_info_internal {
   struct zsvsheet_ui_flags flags;
   struct zsv_index *index;
-  struct zsvsheet_input_dimensions dimensions;
+  struct zsvsheet_dimensions dimensions;
 };
 
 #endif

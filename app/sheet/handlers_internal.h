@@ -1,6 +1,8 @@
 #ifndef ZSVSHEET_HANDLER_INTERNAL_H
 #define ZSVSHEET_HANDLER_INTERNAL_H
 
+#include "ui_buffer.h"  // Include this first for all required types
+
 struct zsvsheet_context {
   const char *subcommand_value; // e.g. "/path/to/myfile.csv"
   int ch;                       // key press value from getch()
@@ -120,23 +122,8 @@ zsvsheet_status zsvsheet_register_command(int ch, const char *long_name,
  */
 enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
                                                   struct zsvsheet_buffer_transformation_opts opts);
-#endif
-
-/**
- * Get information about the buffer's flags and state
- */
-struct zsvsheet_buffer_info {
-  char has_row_num;
-  size_t rownum_col_offset;
-};
-
-/**
- * Get internal information about the buffer's state
- */
-struct zsvsheet_buffer_info_internal {
-  struct zsvsheet_flags flags;
-  struct zsvsheet_dimensions dimensions;
-};
 
 /** cell formatting **/
 zsvsheet_cell_attr_t zsvsheet_cell_profile_attrs(enum zsvsheet_cell_profile_t);
+
+#endif /* ZSVSHEET_HANDLER_INTERNAL_H */
