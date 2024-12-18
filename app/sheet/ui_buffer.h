@@ -38,11 +38,11 @@ struct zsvsheet_ui_flags {
   volatile atomic_uchar flags[2]; // Using 2 bytes to accommodate all bits
 };
 
+#include "sheet_internal.h"
+
 // Buffer structure forward declaration
 struct zsvsheet_ui_buffer;
 typedef struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_t;
-
-#include "sheet_internal.h"
 
 // Row/column position structure
 struct zsvsheet_rowcol {
