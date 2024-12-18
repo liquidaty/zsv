@@ -93,7 +93,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     pthread_mutex_lock(&uibuff->mutex);
 
     enum zsv_index_status zst = zsv_index_status_ok;
-    if (uibuff->index_ready) {
+    if (index_ready(uibuff)) {
       opts.header_span = 0;
       opts.rows_to_ignore = 0;
 
@@ -116,7 +116,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   size_t find_len = zsvsheet_opts->find ? strlen(zsvsheet_opts->find) : 0;
   size_t rows_searched = 0;
   zsvsheet_screen_buffer_t buffer = uibuff ? uibuff->buffer : NULL;
-  if (uibuff && uibuff->has_row_num)
+  if (uibuff && has_row_num(uibuff))
     zsvsheet_opts->hide_row_nums = 1;
 
   while (zsv_next_row(parser) == zsv_status_row &&
@@ -145,7 +145,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       if (c.len == ZSVSHEET_ROWNUM_HEADER_LEN && !memcmp(c.str, ZSVSHEET_ROWNUM_HEADER, c.len)) {
         zsvsheet_opts->hide_row_nums = 1;
         if (uibuff)
-          uibuff->has_row_num = 1;
+          atomic_set_bit(&uibuff->flags.flags[0], HAS_ROW_NUM_BIT);
       }
     }
 
