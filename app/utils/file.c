@@ -14,6 +14,7 @@
 #include <fcntl.h>  // open
 
 #include <zsv/utils/dirs.h>
+#include <zsv/utils/os.h>
 #include <zsv/utils/file.h>
 
 /**
@@ -29,7 +30,9 @@ char *zsv_get_temp_filename(const char *prefix) {
   TCHAR lpTempPathBuffer[MAX_PATH];
   DWORD dwRetVal = GetTempPath(MAX_PATH,          // length of the buffer
                                lpTempPathBuffer); // buffer for path
-  if (dwRetVal > 0 && dwRetVal < MAX_PATH) {
+  if (!(dwRetVal > 0 && dwRetVal < MAX_PATH))
+    zsv_perror("GetTempPath");
+  else {
     char szTempFileName[MAX_PATH];
     UINT uRetVal = GetTempFileName(lpTempPathBuffer, // directory for tmp files
                                    TEXT(prefix),     // temp file name prefix
@@ -37,7 +40,10 @@ char *zsv_get_temp_filename(const char *prefix) {
                                    szTempFileName);  // buffer for name
     if (uRetVal > 0)
       return strdup(szTempFileName);
+    zsv_perror(lpTempPathBuffer);
+    fprintf(stderr, "  prefix: %s\n", prefix);
   }
+
   return NULL;
 }
 #else
