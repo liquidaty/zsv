@@ -133,8 +133,7 @@ int zsvsheet_ui_buffer_update_cell_attr(struct zsvsheet_ui_buffer *uib) {
           return ENOMEM;
       }
       memset(uib->buffer->cell_attrs, 0, uib->buffer->opts.rows * row_sz);
-      // Add memory barrier before accessing flags
-      __sync_synchronize();
+      atomic_thread_fence(memory_order_release);
       uib->get_cell_attrs(uib->ext_ctx, uib->buffer->cell_attrs, uib->input_offset.row, uib->buff_used_rows,
                           uib->buffer->cols);
     }

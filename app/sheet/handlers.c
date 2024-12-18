@@ -177,21 +177,25 @@ struct zsvsheet_buffer_info_internal zsvsheet_buffer_info_internal(zsvsheet_buff
     struct zsvsheet_ui_buffer *b = h;
 
     pthread_mutex_lock(&b->mutex);
-    info.index_started = b->index_started;
-    info.index_ready = b->index_ready;
-    info.write_in_progress = b->write_in_progress;
-    info.write_done = b->write_done;
+    info.index_started = index_started(b);
+    info.index_ready = index_ready(b);
+    info.write_in_progress = write_in_progress(b);
+    info.write_done = write_done(b);
+    info.dimensions = b->dimensions;
     pthread_mutex_unlock(&b->mutex);
   }
 
   return info;
 }
 
-struct zsvsheet_buffer_data zsvsheet_buffer_info(zsvsheet_buffer_t h) {
-  struct zsvsheet_buffer_data d = {0};
-  struct zsvsheet_ui_buffer *b = h;
-  if (b) {
-    d.has_row_num = b->has_row_num;
+struct zsvsheet_buffer_info zsvsheet_buffer_info(zsvsheet_buffer_t h) {
+  struct zsvsheet_buffer_info d = {0};
+  if (h) {
+    struct zsvsheet_ui_buffer *b = h;
+    pthread_mutex_lock(&b->mutex);
+    d.has_row_num = has_row_num(b);
+    d.rownum_col_offset = rownum_col_offset(b);
+    pthread_mutex_unlock(&b->mutex);
   }
   return d;
 }
@@ -211,4 +215,4 @@ zsvsheet_cell_attr_t zsvsheet_cell_profile_attrs(enum zsvsheet_cell_profile_t t)
     break;
   }
   return zsvsheet_cell_attr_profile_none;
-};
+}

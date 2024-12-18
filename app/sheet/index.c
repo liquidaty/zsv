@@ -6,6 +6,7 @@
 #include <zsv/utils/index.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/writer.h>
+#include <stdatomic.h>
 
 #include "index.h"
 static void build_memory_index_row_handler(void *ctx) {
@@ -53,21 +54,21 @@ enum zsv_index_status build_memory_index(struct zsvsheet_index_opts *optsp) {
     committed_bytes = zsv_cum_scanned_length(ixr.parser);
 
     pthread_mutex_lock(&optsp->uib->mutex);
-    if (atomic_test_bit(optsp->uib->flags.flags, WORKER_CANCELLED_BIT)) {
+    if (atomic_test_bit(&optsp->uib->flags.flags, WORKER_CANCELLED_BIT)) {
       cancelled = 1;
       zst = zsv_status_cancelled;
     }
     zsv_index_commit_rows(ixr.ix);
-    __sync_synchronize();
-    atomic_set_bit(optsp->uib->flags.flags, INDEX_READY_BIT);
+    atomic_thread_fence(memory_order_release);
+    atomic_set_bit(&optsp->uib->flags.flags, INDEX_READY_BIT);
     pthread_mutex_unlock(&optsp->uib->mutex);
   }
 
   zsv_finish(ixr.parser);
   pthread_mutex_lock(&optsp->uib->mutex);
   zsv_index_commit_rows(ixr.ix);
-  __sync_synchronize();
-  atomic_set_bit(optsp->uib->flags.flags, INDEX_READY_BIT);
+  atomic_thread_fence(memory_order_release);
+  atomic_set_bit(&optsp->uib->flags.flags, INDEX_READY_BIT);
   pthread_mutex_unlock(&optsp->uib->mutex);
 
   if (zst == zsv_status_no_more_input || zst == zsv_status_cancelled)

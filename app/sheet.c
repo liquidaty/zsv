@@ -50,7 +50,7 @@ struct zsvsheet_opts {
 static size_t zsvsheet_cell_display_width(struct zsvsheet_ui_buffer *ui_buffer,
                                           struct zsvsheet_display_dimensions *ddims) {
   size_t width = ddims->columns /
-                 (ui_buffer->dimensions.col_count + (ui_buffer->rownum_col_offset && !ui_buffer->has_row_num ? 1 : 0));
+                 (ui_buffer->dimensions.col_count + (rownum_col_offset(ui_buffer) ? 1 : 0));
   return width < ZSVSHEET_CELL_DISPLAY_MIN_WIDTH ? ZSVSHEET_CELL_DISPLAY_MIN_WIDTH : width;
 }
 
@@ -261,10 +261,10 @@ static zsvsheet_status zsvsheet_move_hor(struct zsvsheet_display_info *di, bool 
 
   if (right) {
     cursor_right(di->dimensions->columns, zsvsheet_cell_display_width(current_ui_buffer, di->dimensions),
-                 current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset >
+                 current_ui_buffer->dimensions.col_count + current_ui_buffer->dimensions.rownum_col_offset >
                      zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
                    ? zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
-                   : current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset,
+                   : current_ui_buffer->dimensions.col_count + current_ui_buffer->dimensions.rownum_col_offset,
                  &current_ui_buffer->cursor_col, &current_ui_buffer->buff_offset.col);
   } else {
     if (current_ui_buffer->cursor_col > 0) {
@@ -309,10 +309,10 @@ static zsvsheet_status zsvsheet_move_hor_end(struct zsvsheet_display_info *di, b
   if (right) {
     // to do: directly set current_ui_buffer->cursor_col and buff_offset.col
     while (cursor_right(di->dimensions->columns, zsvsheet_cell_display_width(current_ui_buffer, di->dimensions),
-                        current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset >
+                        current_ui_buffer->dimensions.col_count + current_ui_buffer->dimensions.rownum_col_offset >
                             zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
                           ? zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
-                          : current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset,
+                          : current_ui_buffer->dimensions.col_count + current_ui_buffer->dimensions.rownum_col_offset,
                         &current_ui_buffer->cursor_col, &current_ui_buffer->buff_offset.col) > 0)
       ;
     {}
@@ -643,7 +643,7 @@ static void zsvsheet_check_buffer_worker_updates(struct zsvsheet_ui_buffer *ub,
   pthread_mutex_lock(&ub->mutex);
   if (ub->status)
     zsvsheet_priv_set_status(display_dims, 1, ub->status);
-  if (ub->index_ready && ub->dimensions.row_count != ub->index->row_count + 1) {
+  if (index_ready(ub) && ub->dimensions.row_count != ub->index->row_count + 1) {
     ub->dimensions.row_count = ub->index->row_count + 1;
     handler_state->display_info.update_buffer = true;
   }
@@ -819,7 +819,7 @@ out:
 }
 
 static size_t zsvsheet_max_buffer_cols(struct zsvsheet_ui_buffer *ui_buffer) {
-  size_t col_count = ui_buffer->dimensions.col_count + (ui_buffer->rownum_col_offset ? 1 : 0);
+  size_t col_count = ui_buffer->dimensions.col_count + (ui_buffer->dimensions.rownum_col_offset ? 1 : 0);
   return col_count > zsvsheet_screen_buffer_cols(ui_buffer->buffer) ? zsvsheet_screen_buffer_cols(ui_buffer->buffer)
                                                                     : col_count;
 }
