@@ -92,7 +92,7 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
     free(ub->status);
     if (ub->data_filename)
       unlink(ub->data_filename);
-    if (ub->overwrite_ctx)
+    if (!ub->ignore_overwrites && ub->overwrite_ctx)
       zsv_overwrite_context_delete(ub->overwrite_ctx);
     free(ub->data_filename);
     free(ub->filename);
