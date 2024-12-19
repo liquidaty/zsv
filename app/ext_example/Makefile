@@ -61,7 +61,7 @@ else
   CFLAGS += -g
 endif
 
-export THIS_LIB_BASE=$(shell cd ../.. && pwd)
+THIS_LIB_BASE=$(shell cd ../.. && pwd)
 CCBN=$(shell basename ${CC})
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 TARGET=${BUILD_DIR}/bin/zsvextmy.${SO}
@@ -77,8 +77,14 @@ TEST_PASS=printf "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}\n"
 TEST_FAIL=(printf "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}\n" && exit 1)
 TEST_INIT=printf "${COLOR_PINK}$@: ${COLOR_NONE}\n"
 
+# test-expect.sh needs some of these to be exported
+export EXPECT_TIMEOUT ?= 5
 EXPECT=../../scripts/test-expect.sh
+export EXPECT_BIN=${BUILD_DIR}/bin/test-expect${EXE}
 export EXPECTED_PATH=test/expected
+
+${EXPECT_BIN}: ${THIS_LIB_BASE}/util/expect.c
+	${CC} ${CFLAGS} -Wall -o $@ $<
 
 CFLAGS_SHARED=-shared
 ifneq ($(findstring emcc,$(CC)),) # emcc
@@ -145,11 +151,17 @@ test-3: test-%: ${CLI} ${TARGET}
 	make -C ../test worldcitiespop_mil.csv
 
 export TMP_DIR=/tmp
-DATE_TIME:=$(shell date +%F-%H-%M-%S)
-export TIMINGS_CSV:=${TMP_DIR}/timings-${DATE_TIME}.csv
+export TIMINGS_CSV:=${TMP_DIR}/timings.csv
+
+${TIMINGS_CSV}:
+	@mkdir -p ${TMP_DIR}
+	@echo -n "Git, Test, Stage, Date, Time, Elapsed (s)" > ${TIMINGS_CSV}
+
+test-sheet-extension-1 test-sheet-extension-2: ${TARGET} ${TIMINGS_CSV} ${EXPECT_BIN}
+
 export CMP=cmp
 TMUX_TERM=xterm-256color
-test-sheet-extension-1: ${CLI} ${TARGET} ../test/worldcitiespop_mil.csv
+test-sheet-extension-1: ${CLI} ../test/worldcitiespop_mil.csv
 	@${TEST_INIT}
 	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
 	@tmux kill-session -t $@ || echo 'No tmux session to kill'
@@ -161,7 +173,7 @@ test-sheet-extension-1: ${CLI} ${TARGET} ../test/worldcitiespop_mil.csv
 	tmux send-keys -t $@ "t" "hello" Enter && \
   ${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
-test-sheet-extension-2: ${CLI} ${TARGET}
+test-sheet-extension-2: ${CLI}
 	@${TEST_INIT}
 	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
 	@tmux kill-session -t $@ || echo 'No tmux session to kill'

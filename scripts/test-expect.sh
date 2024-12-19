@@ -1,49 +1,46 @@
 #!/bin/sh -eu
 
-script_dir=$(dirname "$0")
+# The Makefile target which will be the test name
+TARGET="$1"
 
-export TARGET="$1"
+# The intermediate test stage if the test is split into multiple stages
+# if it is blank then it is the last stage
 if [ -z "${2:-}" ]; then
-  export STAGE=""
+   STAGE=""
 else
-  export STAGE=-"$2"
+   STAGE=-"$2"
 fi
-export CAPTURE="${TMP_DIR}/$TARGET$STAGE".out
+
+# The capture file that is written to if we fail to match. If the capture is correct
+# but expected is missing or wrong, then we can copy this to the expected location
+CAPTURE="${TMP_DIR}/$TARGET$STAGE".out
+# The expected output to match against
 EXPECTED="$EXPECTED_PATH/$TARGET$STAGE".out
-export EXPECTED
-matched=false
 
-t=${EXPECT_TIMEOUT:-5}
+# write Git hash, target, stage, date, time to the CSV timings file
+printf "\n%s, %s, %s, %s" "$(git rev-parse --short HEAD)" "$TARGET" "${2:-}" "$(date '+%F, %T')" >> "${TIMINGS_CSV}"
 
-cleanup() {
-  if $matched; then
-    if [ -z "$STAGE" ]; then
-      tmux send-keys -t "$TARGET" "q"
-    fi
-    exit 0
-  fi
-
-  tmux send-keys -t "$TARGET" "q"
-  echo 'Incorrect output:'
-  cat "$CAPTURE"
-  ${CMP} -s "$CAPTURE" "$EXPECTED"
-  exit 1
-}
-
-trap cleanup INT TERM QUIT
-
-printf "\n%s, %s" "$TARGET" "${2:-}" >> "${TIMINGS_CSV}"
-
+# temporarily disable error checking
 set +e
-match_time=$(time -p timeout -k $(( t + 1 )) $t "${script_dir}"/test-retry-capture-cmp.sh 2>&1)
+# run the expect utility which will repeatedly
+# try to match the expected output to the screen captured by tmux. If successfull
+# it will output the elapsed time to stdout and therefor match_time, on failure it
+# will print to stderr which the user will see
+match_time=$($EXPECT_BIN "$EXPECTED" "$TARGET" "$CAPTURE" "$EXPECT_TIMEOUT")
 status=$?
 set -e
 
 if [ $status -eq 0 ]; then
-  matched=true
-  match_time=$(echo "$match_time" | head -n 1 | cut -f 2 -d ' ')
+  # write the time it took to match the expected text with the capture
   echo "$TARGET$STAGE took $match_time"
   printf ", %s" "$match_time" >> "${TIMINGS_CSV}"
+else
+  echo "$TARGET$STAGE did not match"
 fi
 
-cleanup
+# Quit if this is the last stage or there was an error
+if [ -z "$STAGE" ] || [ $status -eq 1 ]; then
+  tmux send-keys -t "$TARGET" "q"
+fi
+
+exit $status
