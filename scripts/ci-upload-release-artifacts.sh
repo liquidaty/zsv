@@ -9,7 +9,10 @@ if [ "$TAG" = "" ] || [ "$ARTIFACT_DIR" = "" ]; then
   exit 1
 fi
 
-for ARTIFACT in "$ARTIFACT_DIR"/zsv-$TAG-; do
+echo "[INF] Listing release artifacts"
+ls -hl "$ARTIFACT_DIR/zsv-$TAG-"*
+
+for ARTIFACT in "$ARTIFACT_DIR/zsv-$TAG-"*; do
   if [ -f "$ARTIFACT" ]; then
     echo "[INF] Uploading artifact... [$ARTIFACT]"
     gh release upload "$GITHUB_REF_NAME" "$ARTIFACT"
