@@ -207,6 +207,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   pthread_mutex_lock(&uibuff->mutex);
   char need_index = !uibuff->index_started && !uibuff->write_in_progress;
   char *old_ui_status = uibuff->status;
+  if(need_index)
+    uibuff->index_started = 1;
   pthread_mutex_unlock(&uibuff->mutex);
 
   if (need_index) {
@@ -215,7 +217,6 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
     uibuff->buff_used_rows = rows_read;
     uibuff->dimensions.row_count = rows_read;
-    uibuff->index_started = 1;
     if (original_row_num > 1 && rows_read > 0) {
       opts.stream = NULL;
       get_data_index_async(uibuff, filename, &opts, custom_prop_handler, old_ui_status);

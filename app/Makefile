@@ -316,7 +316,6 @@ uninstall:
 	rm -rf ${ZSV}
 
 ZSV_UTIL_A=${LIBDIR}/libzsvutil.a
-
 ${ZSV_UTIL_A}:SQLITE_EXT=
 ${ZSV_UTIL_A}:SQLITE_EXT_INCLUDE=
 ${ZSV_UTIL_A}: ${BUILD_DIR}/objs/utils/util.a
