@@ -1,12 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
+#include <zsv/utils/file.h>
+#include <zsv/utils/prop.h>
 
 #include "handlers_internal.h"
 #include "transformation.h"
-#include "pthread.h"
-#include "zsv/utils/file.h"
-#include "zsv/utils/index.h"
-#include "zsv/utils/prop.h"
+#include "../utils/index.h"
 
 struct zsvsheet_transformation {
   zsv_parser parser;
@@ -33,11 +33,31 @@ static size_t transformation_write(const void *restrict ptr, size_t size, size_t
   return count > 0 ? count : 0;
 }
 
+struct transformation_writer_index_ctx {
+  void *index;
+  zsv_csv_writer writer;
+};
+
+static void transformation_writer_index_on_row(void *p) {
+  struct transformation_writer_index_ctx *ctx = p;
+  uint64_t written = zsv_writer_cum_bytes_written(ctx->writer);
+  zsv_index_add_row(ctx->index, written);
+}
+
+static void transformation_writer_index_delete(void *p) {
+  struct transformation_writer_index_ctx *ctx = p;
+  uint64_t written = zsv_writer_cum_bytes_written(ctx->writer);
+  if (written)
+    zsv_index_add_row(ctx->index, written);
+  free(ctx);
+}
+
 enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts opts, zsvsheet_transformation *out) {
   unsigned char *temp_buff = NULL;
   char *temp_filename = NULL;
   FILE *temp_f = NULL;
   zsv_csv_writer temp_file_writer = NULL;
+  struct transformation_writer_index_ctx *ctx = NULL;
   enum zsv_status zst = zsv_status_memory;
 
   struct zsvsheet_transformation *trn = calloc(1, sizeof(*trn));
@@ -59,17 +79,26 @@ enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts 
     goto free;
   trn->output_stream = temp_f;
 
+  ctx = calloc(1, sizeof(*ctx));
+  if (!ctx)
+    goto free;
+  ctx->index = opts.index;
+
   struct zsv_csv_writer_options writer_opts = {
     .with_bom = 0,
-    .index = opts.index,
     .write = transformation_write,
     .stream = trn,
     .table_init = NULL,
     .table_init_ctx = NULL,
+    .on_row = transformation_writer_index_on_row,
+    .on_row_ctx = ctx,
+    .on_delete = transformation_writer_index_delete,
+    .on_delete_ctx = ctx,
   };
   if (!(temp_file_writer = zsv_writer_new(&writer_opts)))
     goto free;
 
+  ctx->writer = temp_file_writer;
   const size_t temp_buff_size = 2 * 1024 * 1024;
   temp_buff = malloc(temp_buff_size);
   if (!temp_buff)
@@ -99,6 +128,8 @@ free:
     zsv_writer_delete(temp_file_writer);
   if (temp_buff)
     free(temp_buff);
+  if (ctx)
+    transformation_writer_index_delete(ctx);
 
   return zst;
 }

@@ -221,4 +221,4 @@ ${TARGET} ${TARGET_SHEET}: ${BUILD_DIR}/bin/zsvext%.${SO} : %_extension.c ${LIBZ
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${CFLAGS_SHARED} $< -o $@ ${LIBS} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
 
-.PHONY: all test test-% clean install
+.PHONY: all test test-% clean install ${PREFIX}/lib/libzsvutil.a

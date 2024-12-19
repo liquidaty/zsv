@@ -316,14 +316,13 @@ uninstall:
 	rm -rf ${ZSV}
 
 ZSV_UTIL_A=${LIBDIR}/libzsvutil.a
-
 ${ZSV_UTIL_A}:SQLITE_EXT=
 ${ZSV_UTIL_A}:SQLITE_EXT_INCLUDE=
 ${ZSV_UTIL_A}: ${BUILD_DIR}/objs/utils/util.a
 	@mkdir -p `dirname $@`
 	cp -p $< $@
 
-UTIL_A_OBJ:=index writer file dirs-no-jq os ${UTIL_A_OBJ_WIN}
+UTIL_A_OBJ:=writer file dirs-no-jq os ${UTIL_A_OBJ_WIN}
 UTIL_A_OBJ:=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTIL_A_OBJ}))
 
 ${BUILD_DIR}/objs/utils/util.a: ${UTIL_A_OBJ}
@@ -374,6 +373,10 @@ ${CLEANS}: clean-%:
 .POSIX:
 .SUFFIXES:
 .SUFFIXES: .o .c .a
+
+${BUILD_DIR}/objs/utils/index.o: ${BUILD_DIR}/objs/utils/%.o : utils/%.c utils/%.h
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ -c $<
 
 ${BUILD_DIR}/objs/utils/%.o : utils/%.c ${INCLUDE_DIR}/zsv/utils/%.h ${JQ_LIB}
 	@mkdir -p `dirname "$@"`

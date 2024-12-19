@@ -1,6 +1,6 @@
 #include <unistd.h> // unlink()
 #include <pthread.h>
-#include <zsv/utils/index.h>
+#include "../utils/index.h"
 #include "index.h"
 
 struct zsvsheet_ui_buffer {

@@ -3,10 +3,10 @@
 #include <unistd.h>
 #include <zsv.h>
 #include <zsv/utils/prop.h>
-#include <zsv/utils/index.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/writer.h>
 
+#include "../utils/index.h"
 #include "index.h"
 static void build_memory_index_row_handler(void *ctx) {
   struct zsvsheet_indexer *ixr = ctx;
