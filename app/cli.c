@@ -419,6 +419,7 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->ext_sheet_buffer_filename = zsvsheet_buffer_filename;
     e->ext_sheet_buffer_data_filename = zsvsheet_buffer_data_filename;
     e->ext_sheet_open_file = zsvsheet_open_file;
+    e->ext_sheet_open_file_opts = zsvsheet_ext_open_file_opts;
     e->ext_sheet_register_proc = zsvsheet_register_proc;
     e->ext_sheet_register_proc_key_binding = zsvsheet_register_proc_key_binding;
     e->ext_sheet_push_transformation = zsvsheet_push_transformation;

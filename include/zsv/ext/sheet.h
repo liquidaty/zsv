@@ -1,6 +1,8 @@
 #ifndef ZSVSHEET_H
 #define ZSVSHEET_H
 
+#include <zsv.h>
+
 /* custom sheet handler id */
 typedef int zsvsheet_proc_id_t;
 
@@ -21,6 +23,13 @@ typedef struct zsvsheet_subcommand_context *zsvsheet_subcommand_context_t;
 
 typedef void *zsvsheet_buffer_t;
 // int zsvsheet_ext_keypress(zsvsheet_proc_context_t);
+
+struct zsvsheet_open_file_opts {
+  const char *filename;
+  const char *data_filename;
+  struct zsv_opts *zsv_opts;
+  char no_auto_row_num;
+};
 
 typedef struct zsvsheet_transformation *zsvsheet_transformation;
 /**

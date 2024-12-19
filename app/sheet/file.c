@@ -1,3 +1,5 @@
+#include <zsv/ext/sheet.h>
+
 int zsvsheet_ui_buffer_open_file_opts(struct zsvsheet_ui_buffer_opts *uibopts,
                                       struct zsv_prop_handler *custom_prop_handler,
                                       struct zsvsheet_ui_buffer **ui_buffer_stack_bottom,
@@ -64,4 +66,18 @@ zsvsheet_status zsvsheet_open_file_opts(struct zsvsheet_proc_context *ctx, struc
   if (err)
     return zsvsheet_status_error;
   return zsvsheet_status_ok;
+}
+
+zsvsheet_status zsvsheet_ext_open_file_opts(struct zsvsheet_proc_context *ctx, struct zsvsheet_open_file_opts *opts) {
+  struct zsvsheet_ui_buffer_opts uibopts = {0};
+  struct zsvsheet_opts zsvsheet_opts = {0};
+
+  zsvsheet_opts.hide_row_nums = opts->no_auto_row_num;
+  uibopts.zsvsheet_opts = &zsvsheet_opts;
+  uibopts.filename = opts->filename;
+  uibopts.data_filename = opts->data_filename;
+  if (opts->zsv_opts)
+    uibopts.zsv_opts = *opts->zsv_opts;
+
+  return zsvsheet_open_file_opts(ctx, &uibopts);
 }

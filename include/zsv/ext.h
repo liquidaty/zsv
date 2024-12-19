@@ -239,6 +239,11 @@ struct zsv_ext_callbacks {
   zsvsheet_status (*ext_sheet_open_file)(zsvsheet_proc_context_t, const char *filepath, struct zsv_opts *zopts);
 
   /**
+   * Open a tabular file with more available options
+   */
+  zsvsheet_status (*ext_sheet_open_file_opts)(struct zsvsheet_proc_context *ctx, struct zsvsheet_open_file_opts *opts);
+
+  /**
    * Set custom context
    * @param on_close optional callback to invoke when the buffer is closed
    *

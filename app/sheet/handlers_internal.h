@@ -35,6 +35,11 @@ zsvsheet_status zsvsheet_open_file(struct zsvsheet_proc_context *ctx, const char
 /** extension support **/
 
 /**
+ * Open a tabular file with external facing options
+ */
+zsvsheet_status zsvsheet_ext_open_file_opts(struct zsvsheet_proc_context *ctx, struct zsvsheet_open_file_opts *opts);
+
+/**
  * Set the subcommand prompt
  */
 zsvsheet_status zsvsheet_subcommand_prompt(zsvsheet_subcommand_context_t ctx, const char *fmt, ...);

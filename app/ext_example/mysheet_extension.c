@@ -189,9 +189,12 @@ static zsvsheet_status zsv_sqlite3_to_csv(zsvsheet_proc_context_t pctx, struct z
     if (writer_opts.stream)
       fclose(writer_opts.stream);
 
-    if (tmp_fn && zsv_file_exists(tmp_fn))
-      zst = zsv_cb.ext_sheet_open_file(pctx, tmp_fn, NULL);
-    else {
+    if (tmp_fn && zsv_file_exists(tmp_fn)) {
+      struct zsvsheet_open_file_opts ofopts = {0};
+      ofopts.data_filename = tmp_fn;
+      ofopts.no_auto_row_num = 1;
+      zst = zsv_cb.ext_sheet_open_file_opts(pctx, &ofopts);
+    } else {
       if (zst == zsvsheet_status_ok) {
         zst = zsvsheet_status_error; // to do: make this more specific
         if (!err_msg && zdb && zdb->rc != SQLITE_OK)
@@ -229,12 +232,9 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
     if (!zdb || !(sql_str = sqlite3_str_new(zdb->db)))
       zst = zsvsheet_status_memory;
     else if (zdb->rc == SQLITE_OK && zsv_cb.ext_sqlite3_add_csv(zdb, pd->data_filename, NULL, NULL) == SQLITE_OK) {
-      if (zsv_cb.ext_sheet_buffer_info(buff).has_row_num)
-        sqlite3_str_appendf(sql_str, "select *");
-      else
-        sqlite3_str_appendf(sql_str, "select rowid as [Row #], *");
+      sqlite3_str_appendf(sql_str, "select rowid as [Row #], *");
       sqlite3_str_appendf(sql_str, " from data where %s = %Q", pd->value_sql, pr->value);
-      fprintf(stderr, "SQL: %s\n", sqlite3_str_value(sql_str));
+      // fprintf(stderr, "SQL: %s\n", sqlite3_str_value(sql_str));
       zst = zsv_sqlite3_to_csv(ctx, zdb, sqlite3_str_value(sql_str), NULL, NULL, NULL);
     }
     if (sql_str)
@@ -327,7 +327,7 @@ enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_con
   int proc_id = zsv_cb.ext_sheet_register_proc("my-sheet-pivot", "my sheet pivot", my_pivot_table_command_handler);
   if (proc_id < 0)
     return zsv_ext_status_error;
-  zsv_cb.ext_sheet_register_proc_key_binding('v', proc_id);
+  zsv_cb.ext_sheet_register_proc_key_binding('s', proc_id);
   return zsv_ext_status_ok;
 }
 
