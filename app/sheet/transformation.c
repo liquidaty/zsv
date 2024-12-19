@@ -128,7 +128,7 @@ void *zsvsheet_transformation_user_context(zsvsheet_transformation trn) {
   return trn->user_context;
 }
 
-static void *zsvsheet_run_buffer_transformation(void *arg) {
+static void *zsvsheet_run_buffer_transformation(void *arg) { // REMOVE THIS ENTIRE FUNCTION???
   struct zsvsheet_transformation *trn = arg;
   struct zsvsheet_ui_buffer *uib = trn->ui_buffer;
   zsv_parser parser = trn->parser;
@@ -265,8 +265,7 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
 
   asprintf(&trn->default_status, "(working) Press ESC to cancel ");
   nbuff->status = trn->default_status;
-
-  zsvsheet_ui_buffer_create_worker(nbuff, zsvsheet_run_buffer_transformation, trn);
+  // zsvsheet_ui_buffer_create_worker(nbuff, zsvsheet_run_buffer_transformation, trn);
   return stat;
 
 error:
