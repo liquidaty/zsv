@@ -6,7 +6,6 @@
  * https://opensource.org/licenses/MIT
  */
 
-// #include "zsv/utils/index.h"
 #include <zsv/utils/writer.h>
 #include <zsv/utils/compiler.h>
 #include <stdio.h>

@@ -2,9 +2,9 @@
 #include <string.h>
 #include <pthread.h>
 #include <zsv/utils/prop.h>
-#include <zsv/utils/index.h>
 #include "sheet_internal.h"
 #include "screen_buffer.h"
+#include "../utils/index.h"
 #include "index.h"
 
 #if defined(WIN32) || defined(_WIN32)

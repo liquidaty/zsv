@@ -1,12 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
+#include <zsv/utils/file.h>
+#include <zsv/utils/prop.h>
 
 #include "handlers_internal.h"
 #include "transformation.h"
-#include "pthread.h"
-#include "zsv/utils/file.h"
-#include "zsv/utils/index.h"
-#include "zsv/utils/prop.h"
+#include "../utils/index.h"
 
 struct zsvsheet_transformation {
   zsv_parser parser;
