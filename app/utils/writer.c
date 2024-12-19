@@ -208,7 +208,6 @@ zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
       w->with_bom = opts->with_bom;
       w->table_init = opts->table_init;
       w->table_init_ctx = opts->table_init_ctx;
-      // w->index = opts->index;
       w->on_row = opts->on_row;
       w->on_row_ctx = opts->on_row_ctx;
       w->on_delete = opts->on_delete;
@@ -291,8 +290,6 @@ enum zsv_writer_status zsv_writer_cell(zsv_csv_writer w, char new_row, const uns
   } else if (new_row) {
     if (VERY_UNLIKELY(w->on_row != NULL))
       w->on_row(w->on_row_ctx);
-    //    if (w->index)
-    // zsv_index_add_row(w->index, (uint64_t)(w->out.used + w->out.written));
     zsv_output_buff_write(&w->out, (const unsigned char *)"\n", 1);
   } else
     zsv_output_buff_write(&w->out, (const unsigned char *)",", 1);
@@ -300,8 +297,10 @@ enum zsv_writer_status zsv_writer_cell(zsv_csv_writer w, char new_row, const uns
   if (VERY_UNLIKELY(w->cell_prepend && *w->cell_prepend)) {
     char *tmp = NULL;
     asprintf(&tmp, "%s%.*s", w->cell_prepend, (int)len, s ? s : (const unsigned char *)"");
-    if (!tmp)
-      return zsv_writer_status_error; // zsv_writer_status_memory;
+    if (!tmp) {
+      perror(NULL);
+      return zsv_writer_status_error;
+    }
     s = (const unsigned char *)tmp;
     len = len + strlen(w->cell_prepend);
     enum zsv_writer_status stat = zsv_writer_cell_aux(w, s, len, 1);
