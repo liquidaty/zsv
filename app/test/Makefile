@@ -475,12 +475,16 @@ test-serialize : test-%: ${BUILD_DIR}/bin/zsv_%${EXE} test-serialize-quoted test
 	@(${PREFIX} $< -p < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@-2.out && \
 	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
 
-test-sql: test-sql2 test-sql3 test-sql4 test-sql5
+test-sql: test-sql2 test-sql3 test-sql4 test-sql5 test-sql-injection
 test-sql2: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@echo ${ARGS-sql} > ${TMP_DIR}/$@.sql
 	@(${PREFIX} $< '@'${TMP_DIR}/$@.sql ${TEST_DATA_DIR}/test/sql.csv ${REDIRECT1} ${TMP_DIR}/$@.out) && \
 	${CMP} ${TMP_DIR}/$@.out expected/test-sql.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-sql-injection: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@./sql-injection.sh && ${TEST_PASS} || ${TEST_FAIL}
 
 test-sql3: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}

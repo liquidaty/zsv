@@ -104,9 +104,74 @@ static void zsv_sql_cleanup(struct zsv_sql_data *data) {
   (void)data;
 }
 
+static const char *allowed_clauses[] = {
+    "select ", "from ", "where ", "group by ", "order by ", "limit ", "offset ",
+    NULL
+};
+
+static char is_dangerous_token(const char *sql) {
+    const char *dangerous[] = {
+        "union", "insert", "update", "delete", "drop", "truncate", "alter",
+        "create", "replace", "--", "/*", "*/", ";", "exec", "xp_",
+        NULL
+    };
+
+    for(const char **token = dangerous; *token; token++) {
+        char *found = strcasestr(sql, *token);
+        if(found) {
+            // Check if it's a whole word by checking boundaries
+            char prev = found > sql ? *(found-1) : ' ';
+            char next = *(found + strlen(*token));
+            if((!isalnum(prev) && prev != '_') && (!isalnum(next) && next != '_'))
+                return 1;
+        }
+    }
+    return 0;
+}
+
 static char is_select_sql(const char *s) {
-  return strlen(s) > strlen("select ") && !zsv_strincmp((const unsigned char *)"select ", strlen("select "),
-                                                        (const unsigned char *)s, strlen("select "));
+    if(!s || strlen(s) <= strlen("select "))
+        return 0;
+
+    // Must start with SELECT
+    if(zsv_strincmp((const unsigned char *)"select ", strlen("select "),
+                    (const unsigned char *)s, strlen("select ")))
+        return 0;
+
+    // Check for dangerous tokens
+    if(is_dangerous_token(s))
+        return 0;
+
+    // Validate query structure
+    const char *pos = s;
+    char found_from = 0;
+
+    while(*pos) {
+        // Skip whitespace
+        while(*pos && isspace(*pos)) pos++;
+        if(!*pos) break;
+
+        // Check each token against allowed clauses
+        char valid_token = 0;
+        for(const char **clause = allowed_clauses; *clause; clause++) {
+            size_t len = strlen(*clause);
+            if(!zsv_strincmp((const unsigned char *)*clause, len,
+                            (const unsigned char *)pos, len)) {
+                valid_token = 1;
+                if(!strcmp(*clause, "from "))
+                    found_from = 1;
+                pos += len;
+                break;
+            }
+        }
+
+        if(!valid_token) {
+            // Skip until next whitespace
+            while(*pos && !isspace(*pos)) pos++;
+        }
+    }
+
+    return found_from; // Must have FROM clause
 }
 
 #include "sql_internal.c"
@@ -400,30 +465,42 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         }
 
         if (zdb->rc == SQLITE_OK && !err && my_sql) {
-          sqlite3_stmt *stmt;
-          err = sqlite3_prepare_v2(zdb->db, my_sql, -1, &stmt, NULL);
-          if (err != SQLITE_OK)
-            fprintf(stderr, "%s:\n  %s\n (or bad CSV/utf8 input)\n\n", sqlite3_errstr(err), my_sql);
-          else {
+            // Validate SQL query structure and safety
+            if (!is_select_sql(my_sql)) {
+                fprintf(stderr, "Error: Invalid or unsafe SQL query. Only simple SELECT queries are allowed.\n");
+                err = 1;
+            } else {
+                sqlite3_stmt *stmt;
+                err = sqlite3_prepare_v2(zdb->db, my_sql, -1, &stmt, NULL);
+                if (err != SQLITE_OK) {
+                    fprintf(stderr, "%s:\n  %s\n (or bad CSV/utf8 input)\n\n", sqlite3_errstr(err), my_sql);
+                } else {
+                    // Additional validation of prepared statement
+                    if (sqlite3_bind_parameter_count(stmt) > 0) {
+                        fprintf(stderr, "Error: Parameterized queries are not supported\n");
+                        sqlite3_finalize(stmt);
+                        err = 1;
+                    } else {
+                        int col_count = sqlite3_column_count(stmt);
 
-            int col_count = sqlite3_column_count(stmt);
+                        // write header row
+                        for (int i = 0; i < col_count; i++) {
+                            const char *colname = sqlite3_column_name(stmt, i);
+                            zsv_writer_cell(cw, !i, (const unsigned char *)colname, colname ? strlen(colname) : 0, 1);
+                        }
 
-            // write header row
-            for (int i = 0; i < col_count; i++) {
-              const char *colname = sqlite3_column_name(stmt, i);
-              zsv_writer_cell(cw, !i, (const unsigned char *)colname, colname ? strlen(colname) : 0, 1);
+                        // write sql results
+                        while (sqlite3_step(stmt) == SQLITE_ROW) {
+                            for (int i = 0; i < col_count; i++) {
+                                const unsigned char *text = sqlite3_column_text(stmt, i);
+                                int len = text ? sqlite3_column_bytes(stmt, i) : 0;
+                                zsv_writer_cell(cw, !i, text, len, 1);
+                            }
+                        }
+                        sqlite3_finalize(stmt);
+                    }
+                }
             }
-
-            // write sql results
-            while (sqlite3_step(stmt) == SQLITE_ROW) {
-              for (int i = 0; i < col_count; i++) {
-                const unsigned char *text = sqlite3_column_text(stmt, i);
-                int len = text ? sqlite3_column_bytes(stmt, i) : 0;
-                zsv_writer_cell(cw, !i, text, len, 1);
-              }
-            }
-            sqlite3_finalize(stmt);
-          }
         }
         err = 1;
         if (zdb->err_msg)
