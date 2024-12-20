@@ -170,7 +170,7 @@ static char is_select_sql(const char *s) {
   return found_from; // Must have FROM clause
 }
 
-#include "../../app/sql_internal.c"
+#include "../sql_internal.c"
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
                                struct zsv_prop_handler *custom_prop_handler) {
