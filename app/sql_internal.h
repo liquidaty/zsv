@@ -27,6 +27,8 @@ struct zsv_sqlite3_db {
 
 #include "../include/zsv/utils/sql.h"
 
+char is_dangerous_token(const char *sql);
+
 struct zsv_sqlite3_db *zsv_sqlite3_db_new(struct zsv_sqlite3_dbopts *dbopts);
 void zsv_sqlite3_db_delete(struct zsv_sqlite3_db *zdb);
 
