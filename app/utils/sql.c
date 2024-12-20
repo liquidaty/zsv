@@ -14,7 +14,7 @@
 #include "sqlite3_csv_vtab-mem.h"
 
 #define ZSV_COMMAND sql
-#include "zsv_command.h"
+#include "../zsv_command.h"
 
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
