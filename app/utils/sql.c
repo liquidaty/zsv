@@ -9,9 +9,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
-// #include <sqlite3.h>
-#include "external/sqlite3/sqlite3.h"
-#include "external/sqlite3/sqlite3_csv_vtab-mem.h"
+#include <sqlite3.h>
+#include <sqlite3_csv_vtab-mem.h>
 
 #define ZSV_COMMAND sql
 #include "zsv_command.h"
