@@ -1,4 +1,4 @@
-#include "sql_internal.h"
+#include "utils/sql_internal.h"
 
 struct zsv_sqlite3_db *zsv_sqlite3_db_new(struct zsv_sqlite3_dbopts *dbopts) {
   struct zsv_sqlite3_db *zdb = calloc(1, sizeof(*zdb));
