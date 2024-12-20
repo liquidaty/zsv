@@ -116,6 +116,29 @@ enum zsv_status zsv_overwrite_next(void *h, struct zsv_overwrite_data *odata) {
   return ctx->next(ctx, odata);
 }
 
+static const char *get_safe_sql_query(const char *user_sql) {
+  static const char *default_query = "select row, column, value, timestamp, author from overwrites order by row, column";
+
+  // Handle NULL or empty input
+  if (!user_sql || !*user_sql)
+    return default_query;
+
+  // Check for dangerous tokens that could enable SQL injection
+  if (strstr(user_sql, ";") || strstr(user_sql, "--") ||
+      strstr(user_sql, "/*") || strstr(user_sql, "*/") ||
+      strstr(user_sql, "union") || strstr(user_sql, "UNION"))
+    return default_query;
+
+  // Validate that it's a SELECT query and contains required table/columns
+  if (!zsv_strincmp((const unsigned char *)"select ", strlen("select "),
+                    (const unsigned char *)user_sql, strlen("select ")) &&
+      strstr(user_sql, "from overwrites")) {
+    return user_sql; // Allow the original query if it's safe and uses the right table
+  }
+
+  return default_query;
+}
+
 static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx, const char *source, size_t len) {
   char ok = 0;
   size_t pfx_len;
@@ -129,8 +152,10 @@ static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx,
       *q = '\0';
       q++;
       const char *sql = strstr(q, zsv_overwrite_sql_prefix);
-      if (sql)
-        ctx->sqlite3.sql = sql + strlen(zsv_overwrite_sql_prefix);
+      if (sql) {
+        const char *user_sql = sql + strlen(zsv_overwrite_sql_prefix);
+        ctx->sqlite3.sql = get_safe_sql_query(user_sql);
+      }
     }
 
     if (!ctx->sqlite3.filename || !*ctx->sqlite3.filename) {
@@ -147,7 +172,7 @@ static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx,
     ok = 1;
   } else if (len > strlen(".sqlite3") && !strcmp(source + len - strlen(".sqlite3"), ".sqlite3")) {
     ctx->sqlite3.filename = strdup(source);
-    ctx->sqlite3.sql = "select * from overwrites order by row, column";
+    ctx->sqlite3.sql = get_safe_sql_query("select * from overwrites order by row, column");
     ok = 1;
   }
 
