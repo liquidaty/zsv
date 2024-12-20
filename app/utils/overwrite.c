@@ -125,12 +125,18 @@ static const char *get_safe_sql_query(const char *user_sql) {
   if (!user_sql || !*user_sql)
     return "select row, column, value, timestamp, author from overwrites order by row, column";
 
-  const char *base_sql = "select row, column, value, timestamp, author from overwrites";
-
-  if (strstr(user_sql, "order by row") || strstr(user_sql, "order by column"))
+  // Check for dangerous tokens first
+  if (is_dangerous_token(user_sql))
     return "select row, column, value, timestamp, author from overwrites order by row, column";
 
-  return base_sql;
+  // Validate that it's a SELECT query and contains required table/columns
+  if (!zsv_strincmp((const unsigned char *)"select ", strlen("select "),
+                    (const unsigned char *)user_sql, strlen("select ")) &&
+      strstr(user_sql, "from overwrites")) {
+    return user_sql; // Allow the original query if it's safe and uses the right table
+  }
+
+  return "select row, column, value, timestamp, author from overwrites order by row, column";
 }
 
 static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx, const char *source, size_t len) {
