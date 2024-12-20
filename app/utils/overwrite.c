@@ -119,7 +119,7 @@ enum zsv_status zsv_overwrite_next(void *h, struct zsv_overwrite_data *odata) {
 
 static const char *get_safe_sql_query(sqlite3 *db, const char *user_sql) {
   static const char *default_query =
-    "select row, column, value, timestamp, author from overwrites order by row, column";
+    "select row, col, value, timestamp, author from overwrites order by row, col";
 
   // Handle NULL or empty input
   if (!user_sql || !*user_sql)
@@ -164,7 +164,7 @@ static const char *get_safe_sql_query(sqlite3 *db, const char *user_sql) {
 
     if (strcmp(col_name, "row") == 0)
       has_row = 1;
-    else if (strcmp(col_name, "column") == 0)
+    else if (strcmp(col_name, "column") == 0 || strcmp(col_name, "col") == 0)
       has_column = 1;
     else if (strcmp(col_name, "value") == 0)
       has_value = 1;
