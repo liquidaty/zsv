@@ -521,3 +521,8 @@ clean-internal:
 ${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: ${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1.tar.gz
 	@cd external && tar xf utf8proc-2.6.1.tar.gz && chown -R `whoami` utf8proc-2.6.1
 	@touch $@
+
+# Special rule for sql.c since it uses sql_internal.h instead of sql.h
+/objs/utils/sql.o : utils/sql.c ${INCLUDE_DIR}/zsv/utils/sql_internal.h ${JQ_LIB}
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/sql.c ${MORE_SOURCE}
