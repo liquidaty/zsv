@@ -9,6 +9,8 @@
 #include <zsv/utils/overwrite.h>
 #include <zsv/utils/cache.h>
 #include <zsv/utils/file.h>
+#include <zsv/utils/string.h>
+#include "../../sql_internal.h"
 
 #define zsv_overwrite_sqlite3_prefix "sqlite3://"
 #define zsv_overwrite_sql_prefix "sql="
