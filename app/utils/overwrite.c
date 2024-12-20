@@ -117,74 +117,74 @@ enum zsv_status zsv_overwrite_next(void *h, struct zsv_overwrite_data *odata) {
 }
 
 struct sql_params {
-    const char *sql;
-    sqlite3_stmt *stmt;
+  const char *sql;
+  sqlite3_stmt *stmt;
 };
 
 static const char *get_safe_sql_query(const char *user_sql) {
-    if (!user_sql || !*user_sql)
-        return "select row, column, value, timestamp, author from overwrites order by row, column";
+  if (!user_sql || !*user_sql)
+    return "select row, column, value, timestamp, author from overwrites order by row, column";
 
-    const char *base_sql = "select row, column, value, timestamp, author from overwrites";
+  const char *base_sql = "select row, column, value, timestamp, author from overwrites";
 
-    if (strstr(user_sql, "order by row") || strstr(user_sql, "order by column"))
-        return "select row, column, value, timestamp, author from overwrites order by row, column";
+  if (strstr(user_sql, "order by row") || strstr(user_sql, "order by column"))
+    return "select row, column, value, timestamp, author from overwrites order by row, column";
 
-    return base_sql;
+  return base_sql;
 }
 
 static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx, const char *source, size_t len) {
-    char ok = 0;
-    size_t pfx_len;
-    if (len > (pfx_len = strlen(zsv_overwrite_sqlite3_prefix)) &&
-        !memcmp(source, zsv_overwrite_sqlite3_prefix, pfx_len)) {
-        ctx->sqlite3.filename = malloc(len - pfx_len + 1);
-        memcpy(ctx->sqlite3.filename, source + pfx_len, len - pfx_len);
-        ctx->sqlite3.filename[len - pfx_len] = '\0';
-        char *q = memchr(ctx->sqlite3.filename, '?', len - pfx_len);
-        if (q) {
-            *q = '\0';
-            q++;
-            const char *sql = strstr(q, zsv_overwrite_sql_prefix);
-            if (sql) {
-                const char *user_sql = sql + strlen(zsv_overwrite_sql_prefix);
-                ctx->sqlite3.sql = get_safe_sql_query(user_sql);
-            }
-        }
-
-        if (!ctx->sqlite3.filename || !*ctx->sqlite3.filename) {
-            fprintf(stderr, "Missing sqlite3 file name\n");
-            return zsv_status_error;
-        }
-
-        if (!ctx->sqlite3.sql || !*ctx->sqlite3.sql) {
-            ctx->sqlite3.sql = get_safe_sql_query(NULL);
-        }
-        ok = 1;
-    } else if (len > strlen(".sqlite3") && !strcmp(source + len - strlen(".sqlite3"), ".sqlite3")) {
-        ctx->sqlite3.filename = strdup(source);
-        ctx->sqlite3.sql = get_safe_sql_query(NULL);
-        ok = 1;
+  char ok = 0;
+  size_t pfx_len;
+  if (len > (pfx_len = strlen(zsv_overwrite_sqlite3_prefix)) &&
+      !memcmp(source, zsv_overwrite_sqlite3_prefix, pfx_len)) {
+    ctx->sqlite3.filename = malloc(len - pfx_len + 1);
+    memcpy(ctx->sqlite3.filename, source + pfx_len, len - pfx_len);
+    ctx->sqlite3.filename[len - pfx_len] = '\0';
+    char *q = memchr(ctx->sqlite3.filename, '?', len - pfx_len);
+    if (q) {
+      *q = '\0';
+      q++;
+      const char *sql = strstr(q, zsv_overwrite_sql_prefix);
+      if (sql) {
+        const char *user_sql = sql + strlen(zsv_overwrite_sql_prefix);
+        ctx->sqlite3.sql = get_safe_sql_query(user_sql);
+      }
     }
 
-    if (ok) {
-        int rc = sqlite3_open_v2(ctx->sqlite3.filename, &ctx->sqlite3.db, SQLITE_OPEN_READONLY, NULL);
-        if (rc != SQLITE_OK || !ctx->sqlite3.db) {
-            fprintf(stderr, "%s: %s\n", sqlite3_errstr(rc), ctx->sqlite3.filename);
-            return zsv_status_error;
-        }
-
-        rc = sqlite3_prepare_v2(ctx->sqlite3.db, ctx->sqlite3.sql, -1, &ctx->sqlite3.stmt, NULL);
-        if (rc != SQLITE_OK || !ctx->sqlite3.stmt) {
-            fprintf(stderr, "%s\n", sqlite3_errmsg(ctx->sqlite3.db));
-            return zsv_status_error;
-        }
-
-        return zsv_status_ok;
+    if (!ctx->sqlite3.filename || !*ctx->sqlite3.filename) {
+      fprintf(stderr, "Missing sqlite3 file name\n");
+      return zsv_status_error;
     }
 
-    fprintf(stderr, "Invalid overwrite source: %s\n", source);
-    return zsv_status_error;
+    if (!ctx->sqlite3.sql || !*ctx->sqlite3.sql) {
+      ctx->sqlite3.sql = get_safe_sql_query(NULL);
+    }
+    ok = 1;
+  } else if (len > strlen(".sqlite3") && !strcmp(source + len - strlen(".sqlite3"), ".sqlite3")) {
+    ctx->sqlite3.filename = strdup(source);
+    ctx->sqlite3.sql = get_safe_sql_query(NULL);
+    ok = 1;
+  }
+
+  if (ok) {
+    int rc = sqlite3_open_v2(ctx->sqlite3.filename, &ctx->sqlite3.db, SQLITE_OPEN_READONLY, NULL);
+    if (rc != SQLITE_OK || !ctx->sqlite3.db) {
+      fprintf(stderr, "%s: %s\n", sqlite3_errstr(rc), ctx->sqlite3.filename);
+      return zsv_status_error;
+    }
+
+    rc = sqlite3_prepare_v2(ctx->sqlite3.db, ctx->sqlite3.sql, -1, &ctx->sqlite3.stmt, NULL);
+    if (rc != SQLITE_OK || !ctx->sqlite3.stmt) {
+      fprintf(stderr, "%s\n", sqlite3_errmsg(ctx->sqlite3.db));
+      return zsv_status_error;
+    }
+
+    return zsv_status_ok;
+  }
+
+  fprintf(stderr, "Invalid overwrite source: %s\n", source);
+  return zsv_status_error;
 }
 
 enum zsv_status zsv_overwrite_open(void *h) {
