@@ -28,7 +28,7 @@
 #endif
 #include "sheet/procedure.h"
 #include "sheet/key-bindings.h"
-#include "sql_internal.h"
+#include "utils/sql_internal.h"
 
 struct cli_config {
   struct zsv_ext *extensions;
