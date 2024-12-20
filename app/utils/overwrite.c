@@ -117,21 +117,21 @@ enum zsv_status zsv_overwrite_next(void *h, struct zsv_overwrite_data *odata) {
 }
 
 static const char *get_safe_sql_query(const char *user_sql) {
-  static const char *default_query = "select row, column, value, timestamp, author from overwrites order by row, column";
+  static const char *default_query =
+    "select row, column, value, timestamp, author from overwrites order by row, column";
 
   // Handle NULL or empty input
   if (!user_sql || !*user_sql)
     return default_query;
 
   // Check for dangerous tokens that could enable SQL injection
-  if (strstr(user_sql, ";") || strstr(user_sql, "--") ||
-      strstr(user_sql, "/*") || strstr(user_sql, "*/") ||
+  if (strstr(user_sql, ";") || strstr(user_sql, "--") || strstr(user_sql, "/*") || strstr(user_sql, "*/") ||
       strstr(user_sql, "union") || strstr(user_sql, "UNION"))
     return default_query;
 
   // Validate that it's a SELECT query and contains required table/columns
-  if (!zsv_strincmp((const unsigned char *)"select ", strlen("select "),
-                    (const unsigned char *)user_sql, strlen("select ")) &&
+  if (!zsv_strincmp((const unsigned char *)"select ", strlen("select "), (const unsigned char *)user_sql,
+                    strlen("select ")) &&
       strstr(user_sql, "from overwrites")) {
     return user_sql; // Allow the original query if it's safe and uses the right table
   }
