@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <ctype.h>
 #include "sqlite3.h"
 #include "sqlite3_csv_vtab-mem.h"
 
@@ -169,7 +170,7 @@ static char is_select_sql(const char *s) {
   return found_from; // Must have FROM clause
 }
 
-#include "sql_internal.c"
+#include "../../app/sql_internal.c"
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
                                struct zsv_prop_handler *custom_prop_handler) {
