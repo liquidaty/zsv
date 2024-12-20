@@ -160,6 +160,8 @@ static const char *get_safe_sql_query(sqlite3 *db, const char *user_sql) {
 static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx, const char *source, size_t len) {
   char ok = 0;
   size_t pfx_len;
+  const char *user_sql = NULL;
+
   if (len > (pfx_len = strlen(zsv_overwrite_sqlite3_prefix)) &&
       !memcmp(source, zsv_overwrite_sqlite3_prefix, pfx_len)) {
     ctx->sqlite3.filename = malloc(len - pfx_len + 1);
@@ -170,14 +172,8 @@ static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx,
       *q = '\0';
       q++;
       const char *sql = strstr(q, zsv_overwrite_sql_prefix);
-      if (sql) {
-        const char *user_sql = sql + strlen(zsv_overwrite_sql_prefix);
-        ctx->sqlite3.sql = get_safe_sql_query(ctx->sqlite3.db, user_sql);
-        if (!ctx->sqlite3.sql) {
-          fprintf(stderr, "Invalid or unsafe SQL query in URL parameter\n");
-          return zsv_status_error;
-        }
-      }
+      if (sql)
+        user_sql = sql + strlen(zsv_overwrite_sql_prefix);
     }
 
     if (!ctx->sqlite3.filename || !*ctx->sqlite3.filename) {
@@ -185,7 +181,7 @@ static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx,
       return zsv_status_error;
     }
 
-    if (!ctx->sqlite3.sql || !*ctx->sqlite3.sql) {
+    if (!user_sql || !*user_sql) {
       // to do: detect it from the db
       fprintf(stderr, "Missing sql select statement for sqlite3 overwrite data e.g.:\n"
                       "  select row, column, value from overwrites order by row, column\n");
@@ -194,11 +190,7 @@ static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx,
     ok = 1;
   } else if (len > strlen(".sqlite3") && !strcmp(source + len - strlen(".sqlite3"), ".sqlite3")) {
     ctx->sqlite3.filename = strdup(source);
-    ctx->sqlite3.sql = get_safe_sql_query(ctx->sqlite3.db, "select * from overwrites order by row, column");
-    if (!ctx->sqlite3.sql) {
-      fprintf(stderr, "Invalid or unsafe default SQL query\n");
-      return zsv_status_error;
-    }
+    user_sql = "select * from overwrites order by row, column";
     ok = 1;
   }
 
@@ -206,6 +198,13 @@ static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx,
     int rc = sqlite3_open_v2(ctx->sqlite3.filename, &ctx->sqlite3.db, SQLITE_OPEN_READONLY, NULL);
     if (rc != SQLITE_OK || !ctx->sqlite3.db) {
       fprintf(stderr, "%s: %s\n", sqlite3_errstr(rc), ctx->sqlite3.filename);
+      return zsv_status_error;
+    }
+
+    // Now that we have a valid db connection, validate the SQL
+    ctx->sqlite3.sql = get_safe_sql_query(ctx->sqlite3.db, user_sql);
+    if (!ctx->sqlite3.sql) {
+      fprintf(stderr, "Invalid or unsafe SQL query\n");
       return zsv_status_error;
     }
 
