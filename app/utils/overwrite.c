@@ -131,7 +131,7 @@ static const char *get_safe_sql_query(const char *user_sql) {
     return default_query;
 
   // Validate that it's a SELECT query and contains required table/columns
-  if (!zsv_strincmp((const unsigned char *)"select ", strlen("select "), (const unsigned char *)user_sql,
+  if (!zsv_strincmp_ascii((const unsigned char *)"select ", strlen("select "), (const unsigned char *)user_sql,
                     strlen("select ")) &&
       strstr(user_sql, "from overwrites")) {
     return user_sql; // Allow the original query if it's safe and uses the right table
