@@ -380,7 +380,7 @@ ${BUILD_DIR}/objs/utils/index.o: ${BUILD_DIR}/objs/utils/%.o : utils/%.c utils/%
 
 ${BUILD_DIR}/objs/utils/%.o : utils/%.c ${INCLUDE_DIR}/zsv/utils/%.h ${JQ_LIB}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/$*.c ${MORE_SOURCE}
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -I${THIS_LIB_BASE} -DINCLUDE_SRC -o $@ -c utils/$*.c ${MORE_SOURCE}
 
 ${BUILD_DIR}/objs/utils/dirs-no-jq.o : utils/dirs.c ${INCLUDE_DIR}/zsv/utils/dirs.h
 	@mkdir -p `dirname "$@"`

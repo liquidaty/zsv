@@ -3,8 +3,8 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "external/sqlite3/sqlite3.h"
-#include "external/sqlite3/sqlite3_csv_vtab-mem.h"
+#include <app/external/sqlite3/sqlite3.h>
+#include <app/external/sqlite3/sqlite3_csv_vtab-mem.h>
 #include <zsv/utils/prop.h>
 #include <zsv/utils/string.h>
 
