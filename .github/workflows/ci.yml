@@ -283,6 +283,7 @@ jobs:
         {
           echo "PREFIX=$PREFIX"
           echo "ZIP=zsv-$TAG-$PREFIX.zip"
+          echo "TAR=zsv-$TAG-$PREFIX.tar.gz"
         } | tee -a "$GITHUB_ENV"
 
     - name: Build on macOS (${{ env.AMD64_MACOSX_GCC }})
@@ -290,7 +291,6 @@ jobs:
         CC: gcc-13
         MAKE: make
         RUN_TESTS: true
-        SKIP_TAR_ARCHIVE: true
       run: ./scripts/ci-build.sh
 
     - name: Prepare build artifacts for upload
@@ -318,6 +318,16 @@ jobs:
       uses: actions/upload-artifact@v4
       env:
         ARTIFACT_NAME: ${{ env.ZIP }}
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+    - name: Upload (${{ env.TAR }})
+      uses: actions/upload-artifact@v4
+      env:
+        ARTIFACT_NAME: ${{ env.TAR }}
       with:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}

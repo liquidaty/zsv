@@ -10,10 +10,10 @@ if [ "$HOMEBREW_TAP_DEPLOY_KEY" = "" ] || [ "$TAG" = "" ]; then
   exit 1
 fi
 
-AMD64_ZIP="zsv-$TAG-amd64-macosx-gcc.zip"
-AMD64_URL="https://github.com/liquidaty/zsv/releases/download/v$TAG/$AMD64_ZIP"
-ARM64_ZIP="zsv-$TAG-arm64-macosx-gcc.zip"
-ARM64_URL="https://github.com/liquidaty/zsv/releases/download/v$TAG/$ARM64_ZIP"
+AMD64_ARCHIVE="zsv-$TAG-amd64-macosx-gcc.tar.gz"
+AMD64_URL="https://github.com/liquidaty/zsv/releases/download/v$TAG/$AMD64_ARCHIVE"
+ARM64_ARCHIVE="zsv-$TAG-arm64-macosx-gcc.tar.gz"
+ARM64_URL="https://github.com/liquidaty/zsv/releases/download/v$TAG/$ARM64_ARCHIVE"
 
 HOMEBREW_TAP_REPO="git@github.com:liquidaty/homebrew-zsv.git"
 HOMEBREW_TAP_DIR="homebrew-zsv"
@@ -24,22 +24,22 @@ echo "[INF] Updating homebrew tap"
 
 echo "[INF] PWD:                  $PWD"
 echo "[INF] TAG:                  $TAG"
-echo "[INF] AMD64_ZIP:            $AMD64_ZIP"
+echo "[INF] AMD64_ARCHIVE:        $AMD64_ARCHIVE"
 echo "[INF] AMD64_URL:            $AMD64_URL"
-echo "[INF] ARM64_ZIP:            $ARM64_ZIP"
+echo "[INF] ARM64_ARCHIVE:        $ARM64_ARCHIVE"
 echo "[INF] ARM64_URL:            $ARM64_URL"
 echo "[INF] HOMEBREW_TAP_REPO:    $HOMEBREW_TAP_REPO"
 echo "[INF] HOMEBREW_TAP_DIR:     $HOMEBREW_TAP_DIR"
 echo "[INF] HOMEBREW_TAP_FORMULA: $HOMEBREW_TAP_FORMULA"
 
-echo "[INF] Downloading release archives [$AMD64_ZIP, $ARM64_ZIP]"
+echo "[INF] Downloading release archives [$AMD64_ARCHIVE, $ARM64_ARCHIVE]"
 wget -q "$AMD64_URL" "$ARM64_URL"
-ls -hl "$AMD64_ZIP" "$ARM64_ZIP"
+ls -hl "$AMD64_ARCHIVE" "$ARM64_ARCHIVE"
 
-echo "[INF] Calculating SHA256 hashes [$AMD64_ZIP, $ARM64_ZIP]"
-AMD64_HASH=$(openssl dgst -sha256 "$AMD64_ZIP" | cut -d ' ' -f2 | tr -d '\n')
-ARM64_HASH=$(openssl dgst -sha256 "$ARM64_ZIP" | cut -d ' ' -f2 | tr -d '\n')
-rm -f "$AMD64_ZIP" "$ARM64_ZIP"
+echo "[INF] Calculating SHA256 hashes [$AMD64_ARCHIVE, $ARM64_ARCHIVE]"
+AMD64_HASH=$(openssl dgst -sha256 "$AMD64_ARCHIVE" | cut -d ' ' -f2 | tr -d '\n')
+ARM64_HASH=$(openssl dgst -sha256 "$ARM64_ARCHIVE" | cut -d ' ' -f2 | tr -d '\n')
+rm -f "$AMD64_ARCHIVE" "$ARM64_ARCHIVE"
 
 echo "[INF] AMD64_HASH:           $AMD64_HASH"
 echo "[INF] ARM64_HASH:           $ARM64_HASH"
