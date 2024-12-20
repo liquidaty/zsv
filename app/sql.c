@@ -107,7 +107,7 @@ static void zsv_sql_cleanup(struct zsv_sql_data *data) {
 static const char *allowed_clauses[] = {"select ",   "from ",  "where ",  "group by ",
                                         "order by ", "limit ", "offset ", NULL};
 
-static char is_dangerous_token(const char *sql) {
+char is_dangerous_token(const char *sql) {
   const char *dangerous[] = {"union",   "insert", "update", "delete", "drop", "truncate", "alter", "create",
                              "replace", "--",     "/*",     "*/",     ";",    "exec",     "xp_",   NULL};
 
