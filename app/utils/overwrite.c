@@ -155,7 +155,7 @@ static const char *get_safe_sql_query(sqlite3 *db, const char *user_sql) {
 
   // Verify required columns are present
   int col_count = sqlite3_column_count(stmt);
-  int has_row = 0, has_column = 0, has_value = 0, has_timestamp = 0;
+  int has_row = 0, has_column = 0, has_value = 0;
 
   for (int i = 0; i < col_count; i++) {
     const char *col_name = sqlite3_column_name(stmt, i);
@@ -168,14 +168,12 @@ static const char *get_safe_sql_query(sqlite3 *db, const char *user_sql) {
       has_column = 1;
     else if (strcmp(col_name, "value") == 0)
       has_value = 1;
-    else if (strcmp(col_name, "timestamp") == 0)
-      has_timestamp = 1;
   }
 
   sqlite3_finalize(stmt);
 
-  // Ensure all required columns are present
-  if (!has_row || !has_column || !has_value || !has_timestamp)
+  // Ensure required columns are present (timestamp is optional)
+  if (!has_row || !has_column || !has_value)
     return default_query;
 
   return user_sql;
