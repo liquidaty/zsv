@@ -1,6 +1,8 @@
 #ifndef ZSVSHEET_HANDLER_INTERNAL_H
 #define ZSVSHEET_HANDLER_INTERNAL_H
 
+#include <zsv/ext.h>
+
 struct zsvsheet_context {
   const char *subcommand_value; // e.g. "/path/to/myfile.csv"
   int ch;                       // key press value from getch()
