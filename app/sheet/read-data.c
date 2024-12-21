@@ -2,6 +2,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <zsv/utils/prop.h>
+#include "handlers_internal.h"
 #include "sheet_internal.h"
 #include "screen_buffer.h"
 #include "../utils/index.h"
@@ -192,8 +193,12 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
     for (size_t i = start_col; i < col_count && i + rownum_column_offset < zsvsheet_screen_buffer_cols(buffer); i++) {
       struct zsv_cell c = zsv_get_cell(parser, i);
-      if (c.len)
+      if (c.len) {
         zsvsheet_screen_buffer_write_cell_w_len(buffer, rows_read, i + rownum_column_offset, c.str, c.len);
+        if (c.overwritten) {
+            buffer->overwrite_attrs[rows_read * buffer->cols + rownum_column_offset] = zsvsheet_cell_profile_attrs(zsvsheet_cell_attr_profile_overwritten);
+        }
+      }
     }
 
     rows_read++;
