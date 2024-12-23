@@ -181,9 +181,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         data.skip_until_prefix_len = data.skip_until_prefix ? strlen((char *)data.skip_until_prefix) : 0;
       }
 #ifdef ZSV_EXTRAS
-    } else if (!strcmp(arg, "--overwrite"))
+    } else if (!strcmp(arg, "--overwrite")) {
       overwrite_opts.src = zsv_next_arg(++arg_i, argc, argv, &err);
-    else if (!data.in) {
+#endif
+    } else if (!data.in) {
 #ifndef NO_STDIN
       if (!strcmp(arg, "-"))
         data.in = stdin;
@@ -195,7 +196,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         } else
           data.input_path = arg;
       }
-#endif
     } else {
       fprintf(stderr, "Unrecognized option: %s\n", arg);
       err = 1;
