@@ -22,7 +22,9 @@
 #include <zsv/utils/string.h>
 #include <zsv/utils/mem.h>
 #include <zsv/utils/arg.h>
+#ifdef ZSV_EXTRAS
 #include <zsv/utils/overwrite.h>
+#endif
 
 struct zsv_echo_data {
   FILE *in;
@@ -94,7 +96,11 @@ static void zsv_echo_row_skip_until(void *hook) {
 }
 
 const char *zsv_echo_usage_msg[] = {
+#ifdef ZSV_EXTRAS
   APPNAME ": write tabular input to stdout with optional cell overwrites",
+#else
+  APPNAME ": write tabular input to stdout",
+#endif
   "",
   "Usage: " APPNAME " [options] <filename>",
   "",
@@ -105,6 +111,7 @@ const char *zsv_echo_usage_msg[] = {
   "  --trim-columns       : trim blank columns",
   "  --contiguous         : stop output upon scanning an entire row of blank values",
   "  --skip-until <value> : skip rows until the row where first column starts with the given value",
+#ifdef ZSV_EXTRAS
   "  --overwrite <source> : overwrite cells using given source",
   "",
   "For --overwrite, the <source> may be:",
@@ -113,6 +120,7 @@ const char *zsv_echo_usage_msg[] = {
   "",
   "- /path/to/file.csv",
   "  path to CSV file with columns row,col,val (in that order) and rows pre-sorted by row and column",
+#endif
   NULL,
 };
 
@@ -143,8 +151,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   struct zsv_opts opts = *optsp;
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   struct zsv_echo_data data = {0};
+#ifdef ZSV_EXTRAS
   struct zsv_overwrite_opts overwrite_opts = {0};
-
+#endif
   int err = 0;
 
   for (int arg_i = 1; !err && arg_i < argc; arg_i++) {
@@ -171,9 +180,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         data.skip_until_prefix = (unsigned char *)strdup(argv[arg_i]);
         data.skip_until_prefix_len = data.skip_until_prefix ? strlen((char *)data.skip_until_prefix) : 0;
       }
-    } else if (!strcmp(arg, "--overwrite"))
+#ifdef ZSV_EXTRAS
+    } else if (!strcmp(arg, "--overwrite")) {
       overwrite_opts.src = zsv_next_arg(++arg_i, argc, argv, &err);
-    else if (!data.in) {
+#endif
+    } else if (!data.in) {
 #ifndef NO_STDIN
       if (!strcmp(arg, "-"))
         data.in = stdin;
@@ -261,6 +272,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   opts.ctx = &data;
 
   data.csv_writer = zsv_writer_new(&writer_opts);
+#ifdef ZSV_EXTRAS
   if (overwrite_opts.src) {
     if (!(opts.overwrite.ctx = zsv_overwrite_context_new(&overwrite_opts))) {
       fprintf(stderr, "Out of memory!\n");
@@ -271,7 +283,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       opts.overwrite.close = zsv_overwrite_context_delete;
     }
   }
-
+#endif
   if (data.csv_writer && !err) {
     if (zsv_new_with_properties(&opts, custom_prop_handler, data.input_path, &data.parser) != zsv_status_ok)
       err = 1;
