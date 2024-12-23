@@ -98,7 +98,8 @@ zsvsheet_screen_buffer_t zsvsheet_screen_buffer_new(size_t cols, struct zsvsheet
         buff->cols = cols;
         buff->data = data;
         buff->opts = *opts;
-        buff->overwrite_attrs = calloc(1, sizeof(*buff->overwrite_attrs));
+
+        buff->overwrite_attrs = calloc(buff->opts.rows, buff->cols * sizeof(*buff->overwrite_attrs));
         return buff;
       }
     }
@@ -186,8 +187,9 @@ enum zsvsheet_priv_status zsvsheet_screen_buffer_write_cell(zsvsheet_screen_buff
 int zsvsheet_screen_buffer_cell_attrs(zsvsheet_screen_buffer_t buff, size_t row, size_t col) {
   if(buff->overwrite_attrs) {
     size_t offset = row * buff->cols + col;
-    //if (buff->cell_overwrites[offset] == zsvsheet_cell_profile_attrs(zsvsheet_cell_profile_overwritten))
-    return buff->overwrite_attrs[offset];
+    if (buff->overwrite_attrs[offset] != zsvsheet_cell_attr_profile_none) {
+      return buff->overwrite_attrs[offset];
+    }
   }
   if (buff->cell_attrs) {
     size_t offset = row * buff->cols + col;
