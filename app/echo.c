@@ -153,7 +153,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   struct zsv_echo_data data = {0};
 #ifdef ZSV_EXTRAS
   struct zsv_overwrite_opts overwrite_opts = {0};
-#ndif
+#endif
   int err = 0;
 
   for (int arg_i = 1; !err && arg_i < argc; arg_i++) {
