@@ -591,9 +591,11 @@ static void set_callbacks(struct zsv_scanner *scanner) {
     scanner->opts.cell_handler = NULL;
     scanner->opts.ctx = scanner;
   } else {
+#ifdef ZSV_EXTRAS
     if (scanner->overwrite.odata.have)
       scanner->get_cell = zsv_get_cell_with_overwrite;
     else
+#endif
       scanner->get_cell = zsv_get_cell_1;
     scanner->data_row_count = 0;
     scanner->opts.row_handler = scanner->opts_orig.row_handler;
