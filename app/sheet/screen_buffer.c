@@ -8,6 +8,7 @@ struct zsvsheet_screen_buffer {
   struct zsvsheet_screen_buffer_opts opts;
   unsigned char *data;
   zsvsheet_cell_attr_t *cell_attrs; // used for per-cell attron() and attroff()
+  zsvsheet_cell_attr_t *overwrite_attrs;
   // to do: add hooks for extension
 };
 
@@ -60,6 +61,7 @@ void zsvsheet_screen_buffer_delete(zsvsheet_screen_buffer_t buff) {
       }
     }
     free(buff->cell_attrs);
+    free(buff->overwrite_attrs);
     free(buff->data);
     free(buff);
   }
@@ -96,6 +98,8 @@ zsvsheet_screen_buffer_t zsvsheet_screen_buffer_new(size_t cols, struct zsvsheet
         buff->cols = cols;
         buff->data = data;
         buff->opts = *opts;
+
+        buff->overwrite_attrs = calloc(buff->opts.rows, buff->cols * sizeof(*buff->overwrite_attrs));
         return buff;
       }
     }
@@ -181,6 +185,12 @@ enum zsvsheet_priv_status zsvsheet_screen_buffer_write_cell(zsvsheet_screen_buff
 }
 
 int zsvsheet_screen_buffer_cell_attrs(zsvsheet_screen_buffer_t buff, size_t row, size_t col) {
+  if (buff->overwrite_attrs) {
+    size_t offset = row * buff->cols + col;
+    if (buff->overwrite_attrs[offset] != zsvsheet_cell_attr_profile_none) {
+      return buff->overwrite_attrs[offset];
+    }
+  }
   if (buff->cell_attrs) {
     size_t offset = row * buff->cols + col;
     return buff->cell_attrs[offset];
