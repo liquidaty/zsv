@@ -196,7 +196,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       if (c.len) {
         zsvsheet_screen_buffer_write_cell_w_len(buffer, rows_read, i + rownum_column_offset, c.str, c.len);
         if (c.overwritten) {
-          buffer->overwrite_attrs[rows_read * buffer->cols + (i + rownum_column_offset)] = zsvsheet_cell_profile_attrs(zsvsheet_cell_attr_profile_overwritten);
+          buffer->overwrite_attrs[rows_read * buffer->cols + (i + rownum_column_offset)] =
+            zsvsheet_cell_profile_attrs(zsvsheet_cell_attr_profile_overwritten);
         }
       }
     }
@@ -204,7 +205,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     rows_read++;
   }
   fclose(fp);
-  //zsv_delete(parser); // causes double free issues
+  // zsv_delete(parser); // causes double free issues
 
   if (!uibuff)
     return 0;

@@ -185,7 +185,7 @@ enum zsvsheet_priv_status zsvsheet_screen_buffer_write_cell(zsvsheet_screen_buff
 }
 
 int zsvsheet_screen_buffer_cell_attrs(zsvsheet_screen_buffer_t buff, size_t row, size_t col) {
-  if(buff->overwrite_attrs) {
+  if (buff->overwrite_attrs) {
     size_t offset = row * buff->cols + col;
     if (buff->overwrite_attrs[offset] != zsvsheet_cell_attr_profile_none) {
       return buff->overwrite_attrs[offset];
