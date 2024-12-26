@@ -41,6 +41,8 @@ ifneq ($(ZSV_CACHE_PREFIX),)
   CFLAGS+= -DZSV_CACHE_PREFIX='${ZSV_CACHE_PREFIX}'
 endif
 
+CFLAGS+=-D_WASI_EMULATED_SIGNAL -lwasi-emulated-signal
+
 CFLAGS+=-fsigned-char
 ifneq ($(WIN),)
   CFLAGS+= -Wno-incompatible-pointer-types
@@ -87,9 +89,11 @@ endif
 
 CFLAGS+= ${CFLAGS_PIC}
 
-CONFIGURE_HOST=
-ifneq ($(HOST),)
-  CONFIGURE_HOST=$(HOST)
+CONFIGURE_HOST?=
+ifeq ($(CONFIGURE_HOST),)
+  ifneq ($(HOST),)
+    CONFIGURE_HOST=$(HOST)
+  endif
 endif
 
 ifeq ($(WIN),0)
@@ -240,6 +244,7 @@ VERSION= $(shell (git describe --always --dirty --tags 2>/dev/null || echo "v0.0
 CLI_OBJ_PFX=${BUILD_DIR}/objs/cli_
 CLI_APP_OBJECT=${CLI_OBJ_PFX}cli.o
 CLI=${BUILD_DIR}/bin/cli${EXE}
+
 ifneq ($(findstring emcc,$(CC)),) # emcc
   CLI_ADDITIONAL=${BUILD_DIR}/bin/cli.em.wasm
 endif
