@@ -35,8 +35,8 @@ enum zsv_status zsv_overwrite_context_delete(void *h) {
     fclose(ctx->csv.f);
   if (ctx->csv.parser)
     zsv_delete(ctx->csv.parser);
-  free(ctx->src);
-  free(ctx);
+  // free(ctx->src);
+  // free(ctx);
   return zsv_status_ok;
 }
 

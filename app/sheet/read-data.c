@@ -100,7 +100,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
       zst = zsv_index_seek_row(uibuff->index, &opts, start_row);
 
-      // zsv_delete(parser);
+      zsv_delete(parser);
       parser = zsv_new(&opts);
 
       remaining_header_to_skip = 0;
@@ -205,7 +205,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     rows_read++;
   }
   fclose(fp);
-  // zsv_delete(parser); // causes double free issues
+  zsv_delete(parser);
 
   if (!uibuff)
     return 0;
