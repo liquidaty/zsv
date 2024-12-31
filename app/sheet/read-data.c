@@ -195,10 +195,12 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       struct zsv_cell c = zsv_get_cell(parser, i);
       if (c.len) {
         zsvsheet_screen_buffer_write_cell_w_len(buffer, rows_read, i + rownum_column_offset, c.str, c.len);
-        if (c.overwritten) {
+        if (c.overwritten)
           buffer->overwrite_attrs[rows_read * buffer->cols + (i + rownum_column_offset)] =
             zsvsheet_cell_profile_attrs(zsvsheet_cell_attr_profile_overwritten);
-        }
+        else
+          buffer->overwrite_attrs[rows_read * buffer->cols + (i + rownum_column_offset)] =
+            zsvsheet_cell_attr_profile_none;
       }
     }
 
