@@ -626,7 +626,7 @@ test-sheet-cleanup:
 	@rm -f tmux-*.log
 	@tmux kill-server || printf ''
 
-test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-apply-overwrites test-sheet-subcommand test-sheet-prop-cmd-opt
+test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-apply-overwrites test-sheet-overwrites-underlined test-sheet-subcommand test-sheet-prop-cmd-opt
 	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null; done && ${TEST_PASS} || ${TEST_FAIL})
 
 TMUX_TERM=xterm-256color
@@ -767,6 +767,29 @@ test-sheet-apply-overwrites: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/z
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv --apply-overwrites" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-overwrites-underlined: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_overwrite${EXE}
+	@${TEST_INIT}
+	# Ensure TMP_DIR exists
+	@mkdir -p ${TMP_DIR}
+	# Clear and set up overwrites
+	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv clear
+	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv add 3-3 14
+	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv add 8-3 27
+	# Configure tmux to capture output
+	@tmux new-session -x 80 -y 25 -d -s $@ \
+	  "${PREFIX} $< worldcitiespop_mil.csv --apply-overwrites" \; \
+	  pipe-pane -o -t $@ "cat > ${TMP_DIR}/$@.capture" \; \
+	  wait-for -S done
+	# Debugging output
+	@ls -l ${TMP_DIR}/
+	@cat ${TMP_DIR}/$@.capture || echo "Capture file missing"
+	# Analyze capture for underlined cells
+	@grep -q $'\\033\\[4m' ${TMP_DIR}/$@.capture && \
+		echo "Underlined font detected as expected" || \
+		(echo "Expected underlined font not detected" && \
+		echo "Captured output:" && \
+		cat ${TMP_DIR}/$@.capture && exit 1)
 
 test-sheet-subcommand:\
 		test-sheet-subcommand-open-file-prompt test-sheet-subcommand-open-file-argument\
