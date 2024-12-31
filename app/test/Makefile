@@ -761,7 +761,7 @@ test-sheet-15: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 
 test-sheet-apply-overwrites: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
 	@${TEST_INIT}
-	#@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv clear
+	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv clear
 	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv add 3-3 14 
 	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv add 8-3 27 
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
