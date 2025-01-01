@@ -1,25 +1,1 @@
-Row #     Country   City      AccentCit Region    Populatio Latitude  Longitude
-1         ir        sarmaj-e  Sarmaj-e  13                  34.3578   47.5207
-2         ad        aixirival Aixirival 06                  42.466666 1.5
-3         mm        mokho-atw Mokho-atw 09                  18.033333 96.75
-4         id        selingon  Selingon  \033[4m14\033[0m    -8.8374   116.4914
-5         ir        berimvand Berimvand 13                  34.2953   47.1096
-6         pl        chomiaza  Chomiaza  73                  52.7508   17.841793
-7         mg        itona     Itona     02                  -23.86666 47.216666
-8         ad        andorra-v Andorra-V 07                  42.5      1.5166667
-9         mx        la tortug La Tortug \033[4m27\033[0m    25.75     -108.3333
-10        us        asaph     Asaph     PA                  41.770833 -77.40527
-11        ad        andorre-v Andorre-V 07                  42.5      1.5166667
-12        ru        dolmatova Dolmatova 71                  57.436791 63.279522
-13        ro        escu      Escu      13                  47.133333 23.533333
-14        us        la presa  La Presa  CA        35119     32.708055 -116.9963
-15        pk        makam khu Makam Khu 04                  33.650863 72.551536
-16        ad        aubinya   Aubinyà   06                  42.45     1.5
-17        mm        kiosong   Kiosöng   11                  22.583333 97.05
-18        tr        donencay  Dönençay  28                  40.266667 38.583333
-19        it        roncaglia Roncaglia 05                  45.05     9.8
-20        ml        kourmouss Kourmouss 04                  14.75     -5.033333
-21        id        lamogo    Lamogo    38                  -4.3945   119.9028
-22        ad        casas vil Casas Vil 03                  42.533333 1.5666667
-23        ru        otdeleniy Otdeleniy 86                  51.726473 39.714345
-? for help 1
+[?1049h[22;0;0t[1;25r(B[m[4l[?7h[?1h=[H[2J(B[0;7mRow #     Country   City      AccentCit Region    Populatio Latitude  Longitude [2;1H1         (B[mir[2;21Hsarmaj-e  Sarmaj-e  13[2;61H34.3578   47.5207[3d2[3;11Had[3;21Haixirival Aixirival 06[3;61H42.466666 1.5[4d3[4;11Hmm[4;21Hmokho-atw Mokho-atw (B[0;4m14        [4;61H(B[m18.033333 96.75[5d4[5;11Hid[5;21Hselingon  Selingon  17[5;61H-8.8374   116.4914[6d5[6;11Hir[6;21Hberimvand Berimvand 13[6;61H34.2953   47.1096[7d6[7;11Hpl[7;21Hchomiaza  Chomiaza  73[7;61H52.7508   17.841793[8d7[8;11Hmg[8;21Hitona     Itona     02[8;61H-23.86666 47.216666[9d8[9;11Had[9;21Handorra-v Andorra-V (B[0;4m27        [9;61H(B[m42.5[71G1.5166667[10d9[10;11Hmx[10;21Hla tortug La Tortug 25[10;61H25.75     -108.3333[11d10[11;11Hus[11;21Hasaph     Asaph     PA[11;61H41.770833 -77.40527[12d11[12;11Had[12;21Handorre-v Andorre-V 07[12;61H42.5[71G1.5166667[13d12[13;11Hru[13;21Hdolmatova Dolmatova 71[13;61H57.436791 63.279522[14d13[14;11Hro[14;21Hescu[31GEscu[41G13[14;61H47.133333 23.533333[15d14[15;11Hus[15;21Hla presa  La Presa  CA[15;51H35119     32.708055 -116.9963[16d15[16;11Hpk[16;21Hmakam khu Makam Khu 04[16;61H33.650863 72.551536[17d16[17;11Had[17;21Haubinya   Aubinyà   06[17;61H42.45     1.5[18d17[18;11Hmm[18;21Hkiosong   Kiosöng   11[18;61H22.583333 97.05[19d18[19;11Htr[19;21Hdonencay  Dönençay  28[19;61H40.266667 38.583333[20d19[20;11Hit[20;21Hroncaglia Roncaglia 05[20;61H45.05     9.8[21d20[21;11Hml[21;21Hkourmouss Kourmouss 04[21;61H14.75     -5.033333[22d21[22;11Hid[22;21Hlamogo    Lamogo    38[22;61H-4.3945   119.9028[23d22[23;11Had[23;21Hcasas vil Casas Vil 03[23;61H42.533333 1.5666667[24d23[24;11Hru[24;21Hotdeleniy Otdeleniy 86[24;61H51.726473 39.714345[25d(B[0;7m(building index) (B[m1

@@ -778,18 +778,11 @@ test-sheet-overwrites-underlined: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/
 	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv add 8-3 27
 	# Configure tmux to capture output
 	@tmux new-session -x 80 -y 25 -d -s $@ \
-	  "${PREFIX} $< worldcitiespop_mil.csv --apply-overwrites" \; \
+	  "${PREFIX} $< worldcitiespop_mil.csv --apply-overwrites && sleep 0.5" \; \
 	  pipe-pane -o -t $@ "cat > ${TMP_DIR}/$@.capture" \; \
 	  wait-for -S done
 	# Debugging output
-	@ls -l ${TMP_DIR}/
-	@cat ${TMP_DIR}/$@.capture || echo "Capture file missing"
-	# Analyze capture for underlined cells
-	@grep -q $'\\033\\[4m' ${TMP_DIR}/$@.capture && \
-		echo "Underlined font detected as expected" || \
-		(echo "Expected underlined font not detected" && \
-		echo "Captured output:" && \
-		cat ${TMP_DIR}/$@.capture && exit 1)
+	@${CMP} ${TMP_DIR}/$@.capture expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-sheet-subcommand:\
 		test-sheet-subcommand-open-file-prompt test-sheet-subcommand-open-file-argument\
