@@ -197,6 +197,16 @@ size_t zsv_get_executable_path(char *buff, size_t buffsize) {
   buff[buffsize] = '\0';
   return buffsize;
 }
+#elif defined(__wasi__)
+size_t zsv_get_executable_path(char *buff, size_t buffsize) {
+  const char* path = getenv("EXECUTABLE_PATH");
+  if(!path)
+    path = ".";
+  int n = snprintf(buff, buffsize, "%s", path);
+  if(n <= 0 || n >= buffsize)
+    return 0;
+  return (size_t)n;
+}
 #else
 // TODO: Add support for this OS!
 #endif /* end of: #if defined(_WIN32) */

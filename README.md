@@ -91,7 +91,7 @@ that implements the expected
   edge cases*). Gracefully handles (and can "clean") real-world data that may be
   "dirty".
 - Runs on macOS (tested on clang/gcc), Linux (gcc), Windows (mingw), BSD
-  (gcc-only) and in-browser (emscripten/wasm)
+  (gcc-only) and in-browser (emscripten/wasm/wasi)
 - Fastest (at least, vs all alternatives and on all platforms we've benchmarked
   where 256-bit SIMD operations are available). See
   [app/benchmark/README.md](app/benchmark/README.md)
@@ -386,6 +386,11 @@ Full application code examples can be found at
 
 An example of using the API, compiled to wasm and called via Javascript, is in
 [examples/js/README.md](examples/js/README.md).
+
+To compile to WASI, after running `./configure`, the resulting config.mk may
+need manual attention. Refer to `config-example.wasi` for a working example
+used with WASI SDK installed on MacOS ARM64. Note in particular the addition
+of -D_HAVE_SQLITE_CONFIG_H -DSQLITE_CONFIG_H_FILENAME to CFLAGS
 
 For more sophisticated (but at this time, only sporadically
 commented/documented) use cases, see the various CLI C source files in the `app`

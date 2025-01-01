@@ -48,6 +48,11 @@ char *zsv_get_temp_filename(const char *prefix) {
 }
 #else
 
+#if 1 == 1
+int mkstemp(char *tmpl);
+// #include "../../jq/mkstemp.c"
+#endif
+
 char *zsv_get_temp_filename(const char *prefix) {
   char *s = NULL;
   char *tmpdir = getenv("TMPDIR");
@@ -82,6 +87,7 @@ char *zsv_get_temp_filename(const char *prefix) {
 #include <sys/stat.h> // S_IRUSR S_IWUSR
 #endif
 
+/*
 int zsv_redirect_file_to_temp(FILE *f, const char *tempfile_prefix, char **temp_filename) {
   int new_fd;
   int old_fd = fileno(f);
@@ -96,14 +102,15 @@ int zsv_redirect_file_to_temp(FILE *f, const char *tempfile_prefix, char **temp_
   return bak;
 }
 
-/**
+/ **
  * Restore a FILE * that was redirected by zsv_redirect_file_to_temp()
- */
+ * /
 void zsv_redirect_file_from_temp(FILE *f, int bak, int old_fd) {
   fflush(f);
   dup2(bak, old_fd);
   close(bak);
 }
+*/
 
 #if defined(_WIN32) || defined(WIN32) || defined(WIN)
 int zsv_file_exists(const char *filename) {
