@@ -119,6 +119,15 @@ zsvsheet_status zsvsheet_register_command(int ch, const char *long_name,
  */
 enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
                                                   struct zsvsheet_buffer_transformation_opts opts);
-#endif
 
 struct zsvsheet_buffer_data zsvsheet_buffer_info(zsvsheet_buffer_t buff);
+
+struct context_menu;
+
+int zsvsheet_ext_context_menu_init(struct context_menu *menu);
+
+int zsvsheet_ext_context_menu_new_entry_func(struct context_menu *menu, const char *name, zsvsheet_proc_fn handler);
+
+void zsvsheet_ext_open_context_menu(void *zsvsheet_sheet_context, const struct context_menu *menu);
+
+#endif

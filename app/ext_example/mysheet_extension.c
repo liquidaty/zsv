@@ -12,6 +12,8 @@
 #include "../external/sqlite3/sqlite3.h"
 #include <zsv/ext/implementation.h>
 #include <zsv/ext/sheet.h>
+#include <zsv/ext/context-menu.h>
+#include <zsv/ext/procedure.h>
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/prop.h>
@@ -206,13 +208,13 @@ static zsvsheet_status zsv_sqlite3_to_csv(zsvsheet_proc_context_t pctx, struct z
   return zst;
 }
 
-//
-zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
+zsvsheet_status context_menu_drill_down(zsvsheet_proc_context_t ctx) {
   enum zsvsheet_status zst = zsvsheet_status_ok;
   char result_buffer[256] = {0};
   zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx);
   struct pivot_data *pd;
   struct zsvsheet_rowcol rc;
+
   if (zsv_cb.ext_sheet_buffer_get_ctx(buff, (void **)&pd) != zsv_ext_status_ok ||
       zsv_cb.ext_sheet_buffer_get_selected_cell(buff, &rc) != zsvsheet_status_ok) {
     return zsvsheet_status_error;
@@ -254,6 +256,18 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
   return zst;
 }
 
+zsvsheet_status pivot_open_menu(zsvsheet_proc_context_t ctx) {
+  char entry_name[64];
+  struct context_menu menu;
+  if (zsv_cb.ext_sheet_context_menu_init(&menu))
+    return zsvsheet_status_error;
+  snprintf(entry_name, sizeof(entry_name), "NIGGER");
+  if (zsv_cb.ext_sheet_context_menu_new_entry_func(&menu, "Drill-down", context_menu_drill_down))
+    return zsvsheet_status_error;
+  zsv_cb.ext_sheet_open_context_menu(ctx->subcommand_context, &menu);
+  return zsvsheet_status_ok;
+}
+
 /**
  * Here we define a custom command for the zsv `sheet` feature
  */
@@ -293,7 +307,7 @@ zsvsheet_status my_pivot_table_command_handler(zsvsheet_proc_context_t ctx) {
         zsvsheet_buffer_t buff = zsv_cb.ext_sheet_buffer_current(ctx);
         zsv_cb.ext_sheet_buffer_set_ctx(buff, pd, pivot_data_delete);
         zsv_cb.ext_sheet_buffer_set_cell_attrs(buff, get_cell_attrs);
-        zsv_cb.ext_sheet_buffer_on_newline(buff, pivot_drill_down);
+        zsv_cb.ext_sheet_buffer_on_newline(buff, pivot_open_menu);
         pd = NULL; // so that it isn't cleaned up below
       }
     }
@@ -318,6 +332,7 @@ out:
 
 enum zsv_ext_status zsv_ext_init(struct zsv_ext_callbacks *cb, zsv_execution_context ctx) {
   zsv_cb = *cb;
+
   zsv_cb.ext_set_help(ctx, "Sample zsv sheet extension");
   zsv_cb.ext_set_license(ctx,
                          "Unlicense. See https://github.com/spdx/license-list-data/blob/master/text/Unlicense.txt");

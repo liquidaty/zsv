@@ -1,4 +1,4 @@
-#include "procedure.h"
+#include "../include/zsv/ext/procedure.h"
 #include "key-bindings.h"
 
 #include <errno.h>

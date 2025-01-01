@@ -1,4 +1,5 @@
-#include "procedure.h"
+#include "../include/zsv/ext/context-menu.h"
+#include "../include/zsv/ext/procedure.h"
 
 #ifndef MIN
 #define MIN(A, B) ((A) < (B) ? (A) : (B))
@@ -18,12 +19,6 @@ struct context_menu_entry {
    */
   uint8_t allocated : 1;
   uint8_t proc_ephemeral : 1;
-};
-
-struct context_menu {
-  struct context_menu_entry *entries;
-  struct context_menu_entry *last_entry;
-  struct context_menu_entry *selected_entry;
 };
 
 int context_menu_init(struct context_menu *menu) {

@@ -813,3 +813,27 @@ benchmark-sheet-index: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux send-keys -t $@ "G" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
+test-sheet-example-extension:\
+		test-sheet-example-extension-context-menu test-sheet-example-extension-drill-down
+
+test-sheet-example-extension-context-menu: ${BUILD_DIR}/bin/cli${EXE}
+	${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${PREFIX} $< unregister mysheet || true
+	@${PREFIX} $< register mysheet
+	@tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< sheet worldcitiespop_mil.csv"
+	@${PREFIX} $< unregister mysheet || true # unregister regardless of whether the test succeeds or not
+	@tmux send-keys -t $@ "v" "country" "Enter"
+	@tmux send-keys -t $@ "jjjj" "Enter" # go down a few rows and open menu
+	@${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL}
+
+test-sheet-example-extension-drill-down: ${BUILD_DIR}/bin/cli${EXE}
+	${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${PREFIX} $< unregister mysheet || true
+	@${PREFIX} $< register mysheet
+	@tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< sheet worldcitiespop_mil.csv"
+	@${PREFIX} $< unregister mysheet || true # unregister regardless of whether the test succeeds or not
+	@tmux send-keys -t $@ "v" "country" "Enter"
+	@tmux send-keys -t $@ "jjjj" "Enter" "Enter" # go down a few rows and open menu and drill down
+	@${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL}

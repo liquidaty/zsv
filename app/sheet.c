@@ -453,78 +453,26 @@ out:
   return zsvsheet_status_ok;
 }
 
-static zsvsheet_status zsvsheet_context_menu_filter_handler(struct zsvsheet_proc_context *ctx) {
-  if (ctx->invocation.type != zsvsheet_proc_invocation_type_context_menu)
-    return zsvsheet_status_error;
-
-  struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
-  struct zsvsheet_ui_buffer *current_ui_buffer = *(state->display_info.ui_buffers.current);
-  const char *contents = (const char *)zsvsheet_screen_buffer_cell_display(
-    current_ui_buffer->buffer, current_ui_buffer->cursor_row, current_ui_buffer->cursor_col);
-
-  fprintf(stderr, "filtering for %s\n", contents);
-  struct zsvsheet_proc_context context = {
-    .proc_id = zsvsheet_builtin_proc_filter,
-    .invocation.type = zsvsheet_proc_invocation_type_proc,
-    .invocation.interactive = false,
-    .invocation.u.proc.id = ctx->proc_id,
-    .subcommand_context = ctx->subcommand_context,
-    .num_params = 1,
-    .params[0].u.string = contents,
-  };
-  return zsvsheet_proc_invoke(context.proc_id, &context);
-}
-
-static zsvsheet_status zsvsheet_context_menu_open_link_handler(struct zsvsheet_proc_context *ctx) {
-  if (ctx->invocation.type != zsvsheet_proc_invocation_type_context_menu)
-    return zsvsheet_status_error;
-
-  struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
-  struct zsvsheet_ui_buffer *current_ui_buffer = *(state->display_info.ui_buffers.current);
-  const char *contents = (const char *)zsvsheet_screen_buffer_cell_display(
-    current_ui_buffer->buffer, current_ui_buffer->cursor_row, current_ui_buffer->cursor_col);
-
-  char command[256];
-
-  /* Just an example, won't work on most platforms, escaping etc.... */
-  snprintf(command, sizeof(command), "xdg-open '%s'", contents);
-  fprintf(stderr, "opening link '%s'...\n", contents);
-  fprintf(stderr, "%s\n", command);
-
-  // system(command);
-
-  return zsvsheet_status_ok;
-}
-
-void zsvsheet_open_context_menu(struct zsvsheet_sheet_context *state) {
-  /* create context menu based on the cell contents/metadata */
+void zsvsheet_ext_open_context_menu(void *_state, const struct context_menu *menu) {
+  struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)_state;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(state->display_info.ui_buffers.current);
   struct zsvsheet_display_dimensions *ddims = state->display_info.dimensions;
   size_t cell_display_width = zsvsheet_cell_display_width(current_ui_buffer, ddims);
-  char entry_name[64];
-
-  context_menu_cleanup(&state->context_menu.menu);
-  if (context_menu_init(&state->context_menu.menu))
-    return;
-
-  snprintf(entry_name, sizeof(entry_name), "Filter for '%s'",
-           zsvsheet_screen_buffer_cell_display(current_ui_buffer->buffer, current_ui_buffer->cursor_row,
-                                               current_ui_buffer->cursor_col));
-  if (context_menu_new_entry_func(&state->context_menu.menu, entry_name, zsvsheet_context_menu_filter_handler))
-    return;
-  if (context_menu_new_entry_func(&state->context_menu.menu, "Open link...", zsvsheet_context_menu_open_link_handler))
-    return;
 
   state->context_menu.row = current_ui_buffer->cursor_row;
   state->context_menu.col = current_ui_buffer->cursor_col * cell_display_width;
+  state->context_menu.menu = *menu;
   state->context_menu.active = true;
+
+  zsvsheet_display_context_menu(state);
 }
 
-static zsvsheet_status zsvsheet_open_cell_context_menu_handler(struct zsvsheet_proc_context *ctx) {
-  struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
-  zsvsheet_open_context_menu(state);
-  zsvsheet_display_context_menu(state);
-  return zsvsheet_status_ok;
+int zsvsheet_ext_context_menu_init(struct context_menu *menu) {
+  return context_menu_init(menu);
+}
+
+int zsvsheet_ext_context_menu_new_entry_func(struct context_menu *menu, const char *name, zsvsheet_proc_fn handler) {
+  return context_menu_new_entry_func(menu, name, handler);
 }
 
 static zsvsheet_status zsvsheet_subcommand_handler(struct zsvsheet_proc_context *ctx) {
@@ -738,7 +686,6 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_open_file,      "open",   "Open a another CSV file",                                         zsvsheet_open_file_handler    },
   { zsvsheet_builtin_proc_filter,         "filter", "Hide rows that do not contain the specified text",                zsvsheet_filter_handler       },
   { zsvsheet_builtin_proc_subcommand,     "subcommand",  "Editor subcommand",                                          zsvsheet_subcommand_handler },
-  { zsvsheet_builtin_proc_open_cell_context_menu,  "open-cell-context-menu", "Open cell context menu",                  zsvsheet_open_cell_context_menu_handler },
   { zsvsheet_builtin_proc_help,           "help",   "Display a list of actions and key-bindings",                      zsvsheet_help_handler         },
   { zsvsheet_builtin_proc_confirm,        "confirm", "Confirm",                                                        zsvsheet_builtin_proc_handler      },
   { -1, NULL, NULL, NULL }

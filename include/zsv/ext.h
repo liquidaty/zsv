@@ -18,6 +18,8 @@
 #include "utils/sql.h"
 #include "utils/prop.h"
 #include "utils/writer.h"
+#include "ext/procedure.h"
+#include "ext/context-menu.h"
 
 /**
  * @file ext.h
@@ -298,6 +300,14 @@ struct zsv_ext_callbacks {
    * Get the user provided context from the context provided to a transformation row handler
    */
   void *(*ext_sheet_transformation_user_context)(zsvsheet_transformation trn);
+
+  int (*ext_sheet_context_menu_init)(struct context_menu *menu);
+
+  int (*ext_sheet_context_menu_new_entry_func)(struct context_menu *menu, const char *name, zsvsheet_proc_fn handler);
+  /*
+   * Open provided context menu at the current cell
+   */
+  void (*ext_sheet_open_context_menu)(void *zsvsheet_sheet_context, const struct context_menu *menu);
 
   /**
    * Get the parser from the context provided to a transformation row handler

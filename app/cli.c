@@ -26,7 +26,7 @@
 #include "sheet/handlers_internal.h"
 #include "sheet/transformation.h"
 #endif
-#include "sheet/procedure.h"
+#include "../include/zsv/ext/procedure.h"
 #include "sheet/key-bindings.h"
 #include "sql_internal.h"
 
@@ -425,6 +425,9 @@ static struct zsv_ext_callbacks *zsv_ext_callbacks_init(struct zsv_ext_callbacks
     e->ext_sheet_transformation_parser = zsvsheet_transformation_parser;
     e->ext_sheet_transformation_filename = zsvsheet_transformation_filename;
     e->ext_sheet_transformation_user_context = zsvsheet_transformation_user_context;
+    e->ext_sheet_open_context_menu = zsvsheet_ext_open_context_menu;
+    e->ext_sheet_context_menu_init = zsvsheet_ext_context_menu_init;
+    e->ext_sheet_context_menu_new_entry_func = zsvsheet_ext_context_menu_new_entry_func;
 #endif
   }
   return e;
