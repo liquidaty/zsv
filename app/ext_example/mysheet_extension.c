@@ -17,7 +17,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/prop.h>
-#include "../curses.h"
+// #include "../curses.h"
 
 /**
  * This is an example to demonstrate various extension capabilities
@@ -122,13 +122,14 @@ static struct pivot_row *get_pivot_row_data(struct pivot_data *pd, size_t row_ix
 }
 
 // TO DO: return zsvsheet_status
-static enum zsv_ext_status get_cell_attrs(void *pdh, int *attrs, size_t start_row, size_t row_count, size_t cols) {
+static enum zsv_ext_status get_cell_attrs(void *pdh, zsvsheet_cell_attr_t *attrs, size_t start_row, size_t row_count,
+                                          size_t cols) {
   struct pivot_data *pd = pdh;
   size_t end_row = start_row + row_count;
   if (end_row > pd->rows.used)
     end_row = pd->rows.used;
   for (size_t i = start_row; i < end_row; i++)
-    attrs[i * cols] = A_ITALIC | A_BOLD | A_ITALIC;
+    attrs[i * cols] = zsv_cb.ext_sheet_cell_profile_attrs(zsvsheet_cell_attr_profile_link);
   return zsv_ext_status_ok;
 }
 

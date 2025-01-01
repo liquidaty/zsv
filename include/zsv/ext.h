@@ -13,6 +13,7 @@
 #define ZSV_EXTENSION_ID_MAX_LEN 8
 
 #include <stdio.h>
+#include <stdint.h>
 #include "common.h"
 #include "ext/sheet.h"
 #include "utils/sql.h"
@@ -90,6 +91,12 @@ typedef enum zsv_ext_status (*zsv_ext_main)(zsv_execution_context ctx, int argc,
 struct zsvsheet_buffer_data {
   unsigned char has_row_num : 1;
   unsigned char _ : 7;
+};
+
+typedef uint32_t zsvsheet_cell_attr_t;
+enum zsvsheet_cell_profile_t {
+  zsvsheet_cell_attr_profile_none = 0,
+  zsvsheet_cell_attr_profile_link,
 };
 
 struct zsv_ext_callbacks {
@@ -250,11 +257,17 @@ struct zsv_ext_callbacks {
   enum zsv_ext_status (*ext_sheet_buffer_get_ctx)(zsvsheet_buffer_t h, void **ctx_out);
 
   /**
+   *
+   */
+  zsvsheet_cell_attr_t (*ext_sheet_cell_profile_attrs)(enum zsvsheet_cell_profile_t);
+
+  /**
    * Set custom cell attributes
    */
   void (*ext_sheet_buffer_set_cell_attrs)(zsvsheet_buffer_t h,
-                                          enum zsv_ext_status (*get_cell_attrs)(void *pdh, int *attrs, size_t start_row,
-                                                                                size_t row_count, size_t cols));
+                                          enum zsv_ext_status (*get_cell_attrs)(void *pdh, zsvsheet_cell_attr_t *attrs,
+                                                                                size_t start_row, size_t row_count,
+                                                                                size_t cols));
 
   /**
    * Set custom handler on Enter key press

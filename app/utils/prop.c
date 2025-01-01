@@ -257,8 +257,10 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts, struct zsv_prop_h
     if (fp.stat != zsv_status_ok)
       return fp.stat;
   }
+#ifdef ZSV_EXTRAS
   if (opts->overwrite_auto)
     zsv_overwrite_auto(opts, input_path);
+#endif
   if ((*handle_out = zsv_new(opts)))
     return zsv_status_ok;
   return zsv_status_memory;

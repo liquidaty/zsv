@@ -26,6 +26,7 @@ cleanup() {
   tmux send-keys -t "$TARGET" "q"
   echo 'Incorrect output:'
   cat "$CAPTURE"
+  echo "${CMP} -s $CAPTURE $EXPECTED"
   ${CMP} -s "$CAPTURE" "$EXPECTED"
   exit 1
 }
