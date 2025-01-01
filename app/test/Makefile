@@ -770,19 +770,16 @@ test-sheet-apply-overwrites: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/z
 
 test-sheet-overwrites-underlined: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_overwrite${EXE}
 	@${TEST_INIT}
-	# Ensure TMP_DIR exists
-	@mkdir -p ${TMP_DIR}
 	# Clear and set up overwrites
 	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv clear
 	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv add 3-3 14
 	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv add 8-3 27
 	# Configure tmux to capture output
 	@tmux new-session -x 80 -y 25 -d -s $@ \
-	  "${PREFIX} $< worldcitiespop_mil.csv --apply-overwrites && sleep 0.5" \; \
+	  "${PREFIX} $< worldcitiespop_mil.csv --apply-overwrites" \; \
 	  pipe-pane -o -t $@ "cat > ${TMP_DIR}/$@.capture" \; \
 	  wait-for -S done
-	# Debugging output
-	@${CMP} ${TMP_DIR}/$@.capture expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.capture expected/$@.out && ${TEST_PASS} || (cat expected/$@.out && cat ${TMP_DIR}$@.capture && ${TEST_FAIL})
 
 test-sheet-subcommand:\
 		test-sheet-subcommand-open-file-prompt test-sheet-subcommand-open-file-argument\
