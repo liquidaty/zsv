@@ -770,19 +770,15 @@ test-sheet-apply-overwrites: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/z
 
 test-sheet-overwrites-underlined: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_overwrite${EXE}
 	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	# Clear and set up overwrites
 	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv clear
 	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv add 3-3 14
 	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv add 8-3 27
 	# Configure tmux to capture output
-	@tmux new-session -x 80 -y 25 -d -s $@
-	@tmux send-keys -t $@ "${PREFIX} $< worldcitiespop_mil.csv --apply-overwrites" C-m
-	@sleep 2
-	@(tmux attach-session -t $@ \; \
-		pipe-pane -o -t $@.0 "cat > ${TMP_DIR}/$@.out" \; \
-		detach-client)
-	@sleep 1
-	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL})
+	@tmux kill-session | echo "no"
+	@(tmux new-session -d -s $@ -x 80 -y 25 "${PREFIX} stdbuf -o0 $< worldcitiespop_mil.csv --apply-overwrites" \
+		${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-subcommand:\
 		test-sheet-subcommand-open-file-prompt test-sheet-subcommand-open-file-argument\
