@@ -198,7 +198,7 @@ test-thirdparty: test-%: ${CLI} ${TARGET}
 	@${RUN_CLI} thirdparty >> /tmp/zsvext-$@.out
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-sheet-extension-context-menu: ${CLI} ${TARGET}
+test-sheet-extension-context-menu: ${CLI} ${TARGET_SHEET} ../test/worldcitiespop_mil.csv
 	${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@${RUN_CLI} unregister mysheet 1>/dev/null || true
@@ -209,7 +209,7 @@ test-sheet-extension-context-menu: ${CLI} ${TARGET}
 	@tmux send-keys -t $@ "jjjj" "Enter" # go down a few rows and open menu
 	@${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL}
 
-test-sheet-extension-drill-down: ${CLI} ${TARGET}
+test-sheet-extension-drill-down: ${CLI} ${TARGET_SHEET} ../test/worldcitiespop_mil.csv
 	${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@${RUN_CLI} unregister mysheet 1>/dev/null || true
