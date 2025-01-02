@@ -775,12 +775,14 @@ test-sheet-overwrites-underlined: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/
 	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv add 3-3 14
 	@${BUILD_DIR}/bin/zsv_overwrite${EXE} worldcitiespop_mil.csv add 8-3 27
 	# Configure tmux to capture output
-	@tmux kill-session | echo ""
 	@tmux new-session -x 80 -y 25 -d -s $@
 	@tmux send-keys -t $@ "${PREFIX} $< worldcitiespop_mil.csv --apply-overwrites" C-m
 	@sleep 2
-	@${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL}
-	#@${CMP} ${TMP_DIR}/$@.capture expected/$@.out && ${TEST_PASS} || (${TEST_FAIL})
+	@(tmux attach-session -t $@ \; \
+		pipe-pane -o -t $@.0 "cat > ${TMP_DIR}/$@.out" \; \
+		detach-client)
+	@sleep 1
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL})
 
 test-sheet-subcommand:\
 		test-sheet-subcommand-open-file-prompt test-sheet-subcommand-open-file-argument\
