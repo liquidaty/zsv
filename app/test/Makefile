@@ -626,7 +626,7 @@ test-sheet-cleanup:
 	@rm -f tmux-*.log
 	@tmux kill-server || printf ''
 
-test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand test-sheet-prop-cmd-opt test-sheet-example-extension
+test-sheet-all: test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand test-sheet-prop-cmd-opt
 	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null; done && ${TEST_PASS} || ${TEST_FAIL})
 
 TMUX_TERM=xterm-256color
@@ -825,28 +825,3 @@ benchmark-sheet-index: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ "G" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
-
-test-sheet-example-extension:\
-		test-sheet-example-extension-context-menu test-sheet-example-extension-drill-down
-
-test-sheet-example-extension-context-menu: ${BUILD_DIR}/bin/zsv_sheet${EXE}
-	${TEST_INIT}
-	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@${PREFIX} ${BUILD_DIR}/bin/cli unregister mysheet || true
-	@${PREFIX} ${BUILD_DIR}/bin/cli register mysheet
-	@tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} ${BUILD_DIR}/bin/cli sheet worldcitiespop_mil.csv"
-	@${PREFIX} ${BUILD_DIR}/bin/cli unregister mysheet || true # unregister regardless of whether the test succeeds or not
-	@tmux send-keys -t $@ "v" "country" "Enter"
-	@tmux send-keys -t $@ "jjjj" "Enter" # go down a few rows and open menu
-	@${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL}
-
-test-sheet-example-extension-drill-down: ${BUILD_DIR}/bin/zsv_sheet${EXE}
-	${TEST_INIT}
-	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@${PREFIX} ${BUILD_DIR}/bin/cli unregister mysheet || true
-	@${PREFIX} ${BUILD_DIR}/bin/cli register mysheet
-	@tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} ${BUILD_DIR}/bin/cli sheet worldcitiespop_mil.csv"
-	@${PREFIX} ${BUILD_DIR}/bin/cli unregister mysheet || true # unregister regardless of whether the test succeeds or not
-	@tmux send-keys -t $@ "v" "country" "Enter"
-	@tmux send-keys -t $@ "jjjj" "Enter" "Enter" # go down a few rows and open menu and drill down
-	@${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL}

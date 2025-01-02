@@ -112,7 +112,7 @@ ${BUILD_DIR}/bin/cli:
 ${BUILD_DIR}/objs/utils/%.o:
 	(cd .. && ${MAKE} CONFIGFILE=${CONFIGFILEPATH} CC=${CC} DEBUG=${DEBUG} $@ )
 
-TESTS=test-1 test-2 test-3 test-4 test-5 test-thirdparty
+TESTS=test-1 test-2 test-3 test-4 test-5 test-thirdparty test-sheet-extension-context-menu test-sheet-extension-drill-down
 ifeq ($(ZSVSHEET_BUILD),1)
   TESTS+=test-sheet-extension-1 test-sheet-extension-2
 endif
@@ -197,6 +197,28 @@ test-thirdparty: test-%: ${CLI} ${TARGET}
 	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
 	@${RUN_CLI} thirdparty >> /tmp/zsvext-$@.out
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-sheet-extension-context-menu: ${CLI} ${TARGET}
+	${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${RUN_CLI} unregister mysheet 1>/dev/null || true
+	@${RUN_CLI} register mysheet 2>/dev/null
+	@tmux new-session -x 80 -y 25 -d -s "$@" "${RUN_CLI} sheet ../test/worldcitiespop_mil.csv"
+	@${RUN_CLI} unregister mysheet 1>/dev/null || true # unregister regardless of whether the test succeeds or not
+	@tmux send-keys -t $@ "v" "country" "Enter"
+	@tmux send-keys -t $@ "jjjj" "Enter" # go down a few rows and open menu
+	@${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL}
+
+test-sheet-extension-drill-down: ${CLI} ${TARGET}
+	${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${RUN_CLI} unregister mysheet 1>/dev/null || true
+	@${RUN_CLI} register mysheet 2>/dev/null
+	@tmux new-session -x 80 -y 25 -d -s "$@" "${RUN_CLI} sheet ../test/worldcitiespop_mil.csv"
+	@${RUN_CLI} unregister mysheet 1>/dev/null || true # unregister regardless of whether the test succeeds or not
+	@tmux send-keys -t $@ "v" "country" "Enter"
+	@tmux send-keys -t $@ "jjjj" "Enter" "Enter" # go down a few rows and open menu and drill down
+	@${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
 	@rm -f ${TARGET} ${TARGET_SHEET} /tmp/zsvext-test*.out
