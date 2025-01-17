@@ -87,9 +87,11 @@ endif
 
 CFLAGS+= ${CFLAGS_PIC}
 
-CONFIGURE_HOST=
+CONFIGURE_HOST?=
+ifeq ($(CONFIGURE_HOST),)
 ifneq ($(HOST),)
   CONFIGURE_HOST=$(HOST)
+endif
 endif
 
 ifeq ($(WIN),0)
@@ -108,7 +110,8 @@ ifeq ($(WIN),0)
       LDFLAGS += -sRESERVED_FUNCTION_POINTERS=4 -sALLOW_MEMORY_GROWTH=1
     endif
     LDFLAGS += -sFORCE_FILESYSTEM=1 -lidbfs.js -sMAIN_MODULE
-    ifeq ($(NO_THREADING),0)
+    ifneq ($(NO_THREADING),1)
+      CFLAGS+=-pthread
       LDFLAGS += -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=2
     endif
   endif
@@ -168,7 +171,7 @@ ZSV_EXTRAS ?=
 ifneq ($(findstring emcc,$(CC)),) # emcc
   ZSV_EXTRAS=1
   UTILS1+=emcc/fs_api
-  ifeq ($(NO_THREADING),0)
+  ifneq ($(NO_THREADING),1)
     LDFLAGS+=-pthread
   endif
 else # not emcc
