@@ -41,7 +41,6 @@ char *zsv_get_temp_filename(const char *prefix) {
     if (uRetVal > 0)
       return strdup(szTempFileName);
     zsv_perror(lpTempPathBuffer);
-    fprintf(stderr, "  prefix: %s\n", prefix);
   }
 
   return NULL;
