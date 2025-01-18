@@ -8,7 +8,7 @@ THIS_MAKEFILE:=$(lastword $(MAKEFILE_LIST))
 .SUFFIXES:
 .SUFFIXES: .o .c .a
 
-CONFIGFILE ?= config.mk
+CONFIGFILE ?= ../../config.mk
 $(info Using config file ${CONFIGFILE})
 include ${CONFIGFILE}
 CONFIGFILEPATH=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
@@ -86,6 +86,17 @@ ifneq ($(findstring emcc,$(CC)),) # emcc
   INSTALLED_EXTENSION=${BINDIR}/zsvextmy.${SO}
 else
   INSTALLED_EXTENSION=
+endif
+
+JQ_PREFIX ?=
+ifeq ($(JQ_PREFIX),)
+  JQ_PREFIX=${BUILD_DIR}-external/jq-build
+  JQ_INCLUDE_DIR=${JQ_PREFIX}/include
+  JQ_BUNDLE_LIB=${JQ_PREFIX}/lib/libjq.a
+  JQ_LIB=${JQ_BUNDLE_LIB}
+else
+  JQ_INCLUDE_DIR=${JQ_PREFIX}/include
+  JQ_LIB=-ljq
 endif
 
 CFLAGS+= -I${THIS_LIB_BASE}/include -I${PREFIX}/include
@@ -237,7 +248,7 @@ ${LIBZSVUTIL}:
 YAJL_SRC_DIR=${THIS_MAKEFILE_DIR}/../external/yajl
 YAJL_INCLUDE=-I${YAJL_SRC_DIR}/build/yajl-2.1.1/include
 YAJL_HELPER_INCLUDE=-I${THIS_MAKEFILE_DIR}/../external/yajl_helper
-${TARGET_SHEET}: LIBS="../external/sqlite3/sqlite3.c" -lzsvutil -lzsv -L${PREFIX}/lib -ljq -lutf8proc
+${TARGET_SHEET}: LIBS="../external/sqlite3/sqlite3.c" -lzsvutil -lzsv -L${PREFIX}/lib ${JQ_LIB} -lutf8proc
 ${TARGET}: LIBS=-lzsvutil -lzsv -L${PREFIX}/lib
 ${TARGET} ${TARGET_SHEET}: ${BUILD_DIR}/bin/zsvext%.${SO} : %_extension.c ${LIBZSV} ${LIBZSVUTIL}
 	@mkdir -p `dirname "$@"`
