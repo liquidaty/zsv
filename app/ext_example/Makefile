@@ -8,7 +8,7 @@ THIS_MAKEFILE:=$(lastword $(MAKEFILE_LIST))
 .SUFFIXES:
 .SUFFIXES: .o .c .a
 
-CONFIGFILE ?= config.mk
+CONFIGFILE ?= ../../config.mk
 $(info Using config file ${CONFIGFILE})
 include ${CONFIGFILE}
 CONFIGFILEPATH=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
@@ -88,6 +88,17 @@ else
   INSTALLED_EXTENSION=
 endif
 
+JQ_PREFIX ?=
+ifeq ($(JQ_PREFIX),)
+  JQ_PREFIX=${BUILD_DIR}-external/jq-build
+  JQ_INCLUDE_DIR=${JQ_PREFIX}/include
+  JQ_BUNDLE_LIB=${JQ_PREFIX}/lib/libjq.a
+  JQ_LIB=${JQ_BUNDLE_LIB}
+else
+  JQ_INCLUDE_DIR=${JQ_PREFIX}/include
+  JQ_LIB=-ljq
+endif
+
 CFLAGS+= -I${THIS_LIB_BASE}/include -I${PREFIX}/include
 
 all: ${TARGET} ${TARGET_SHEET}
@@ -112,7 +123,7 @@ ${BUILD_DIR}/bin/cli:
 ${BUILD_DIR}/objs/utils/%.o:
 	(cd .. && ${MAKE} CONFIGFILE=${CONFIGFILEPATH} CC=${CC} DEBUG=${DEBUG} $@ )
 
-TESTS=test-1 test-2 test-3 test-4 test-5 test-thirdparty
+TESTS=test-1 test-2 test-3 test-4 test-5 test-thirdparty test-sheet-extension-context-menu test-sheet-extension-drill-down
 ifeq ($(ZSVSHEET_BUILD),1)
   TESTS+=test-sheet-extension-1 test-sheet-extension-2
 endif
@@ -198,6 +209,28 @@ test-thirdparty: test-%: ${CLI} ${TARGET}
 	@${RUN_CLI} thirdparty >> /tmp/zsvext-$@.out
 	@cmp /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
+test-sheet-extension-context-menu: ${CLI} ${TARGET_SHEET} ../test/worldcitiespop_mil.csv
+	${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${RUN_CLI} unregister mysheet 1>/dev/null || true
+	@${RUN_CLI} register mysheet 2>/dev/null
+	@tmux new-session -x 80 -y 25 -d -s "$@" "${RUN_CLI} sheet ../test/worldcitiespop_mil.csv"
+	@${RUN_CLI} unregister mysheet 1>/dev/null || true # unregister regardless of whether the test succeeds or not
+	@tmux send-keys -t $@ "v" "country" "Enter"
+	@tmux send-keys -t $@ "jjjj" "Enter" # go down a few rows and open menu
+	@${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL}
+
+test-sheet-extension-drill-down: ${CLI} ${TARGET_SHEET} ../test/worldcitiespop_mil.csv
+	${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${RUN_CLI} unregister mysheet 1>/dev/null || true
+	@${RUN_CLI} register mysheet 2>/dev/null
+	@tmux new-session -x 80 -y 25 -d -s "$@" "${RUN_CLI} sheet ../test/worldcitiespop_mil.csv"
+	@${RUN_CLI} unregister mysheet 1>/dev/null || true # unregister regardless of whether the test succeeds or not
+	@tmux send-keys -t $@ "v" "country" "Enter"
+	@tmux send-keys -t $@ "jjjj" "Enter" "Enter" # go down a few rows and open menu and drill down
+	@${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL}
+
 clean:
 	@rm -f ${TARGET} ${TARGET_SHEET} /tmp/zsvext-test*.out
 
@@ -215,7 +248,7 @@ ${LIBZSVUTIL}:
 YAJL_SRC_DIR=${THIS_MAKEFILE_DIR}/../external/yajl
 YAJL_INCLUDE=-I${YAJL_SRC_DIR}/build/yajl-2.1.1/include
 YAJL_HELPER_INCLUDE=-I${THIS_MAKEFILE_DIR}/../external/yajl_helper
-${TARGET_SHEET}: LIBS="../external/sqlite3/sqlite3.c" -lzsvutil -lzsv -L${PREFIX}/lib -ljq -lutf8proc
+${TARGET_SHEET}: LIBS="../external/sqlite3/sqlite3.c" -lzsvutil -lzsv -L${PREFIX}/lib ${JQ_LIB} # -lutf8proc
 ${TARGET}: LIBS=-lzsvutil -lzsv -L${PREFIX}/lib
 ${TARGET} ${TARGET_SHEET}: ${BUILD_DIR}/bin/zsvext%.${SO} : %_extension.c ${LIBZSV} ${LIBZSVUTIL}
 	@mkdir -p `dirname "$@"`
