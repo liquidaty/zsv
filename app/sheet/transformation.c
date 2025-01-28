@@ -269,8 +269,10 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
     goto error;
   }
 
+  struct zsvsheet_opts zsvsheet_opts = {0};
   struct zsvsheet_ui_buffer_opts uibopts = {0};
 
+  uibopts.zsvsheet_opts = &zsvsheet_opts;
   uibopts.data_filename = zsvsheet_transformation_filename(trn);
   uibopts.write_after_open = 1;
 

@@ -45,6 +45,7 @@ zsvsheet_status zsvsheet_set_status(struct zsvsheet_proc_context *ctx, const cha
   va_end(argv);
   // note: if (n < (int)sizeof(zsvsheet_status_text)), then we just ignore
   zsvsheet_display_status_text(state->display_info.dimensions);
+  zsvsheet_status_priority = ZSVSHEET_STATUS_HIGH_PRIO;
   return zsvsheet_status_ok;
 }
 
@@ -112,7 +113,7 @@ zsvsheet_status zsvsheet_buffer_get_selected_cell(zsvsheet_buffer_t h, struct zs
   if (!uib)
     return zsvsheet_status_error;
   rc->row = uib->cursor_row + uib->input_offset.row + uib->buff_offset.row;
-  rc->col = uib->cursor_col + uib->input_offset.col + uib->buff_offset.row;
+  rc->col = uib->cursor_col + uib->input_offset.col + uib->buff_offset.col;
   return zsvsheet_status_ok;
 }
 
@@ -191,7 +192,7 @@ struct zsvsheet_buffer_data zsvsheet_buffer_info(zsvsheet_buffer_t h) {
   struct zsvsheet_buffer_data d = {0};
   struct zsvsheet_ui_buffer *b = h;
   if (b) {
-    d.has_row_num = b->has_row_num;
+    d.has_row_num = b->no_add_row_num;
   }
   return d;
 }

@@ -19,6 +19,8 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/string.h>
+#include <zsv/utils/sql.h>
+#include "sql_internal.h"
 
 #include <unistd.h> // unlink
 
@@ -108,8 +110,6 @@ static char is_select_sql(const char *s) {
   return strlen(s) > strlen("select ") && !zsv_strincmp((const unsigned char *)"select ", strlen("select "),
                                                         (const unsigned char *)s, strlen("select "));
 }
-
-#include "sql_internal.c"
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
                                struct zsv_prop_handler *custom_prop_handler) {
