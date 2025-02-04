@@ -1,6 +1,6 @@
 #ifndef ZSVSHEET_KEY_BINDINGS_H
 #define ZSVSHEET_KEY_BINDINGS_H
-#include "procedure.h"
+#include "../include/zsv/ext/procedure.h"
 
 enum zsvsheet_key {
   zsvsheet_key_unknown = 0,
