@@ -171,8 +171,10 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
             S_IRWXU
 #endif
             )) {
-    perror(tmp);
-    rc = -1;
+    if (errno != EEXIST) {
+      perror(tmp);
+      rc = -1;
+    }
   }
 
   free(tmp);
