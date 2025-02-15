@@ -75,6 +75,8 @@ size_t zsv_get_config_dir(char *buff, size_t buffsize, const char *prefix) {
  * return true (non-zero) or false (zero)
  */
 int zsv_dir_exists(const char *path) {
+  // TO DO: support win long filepath prefix
+  // TO DO: work properly if dir exists but we don't have permission
   struct stat path_stat;
   if (!stat(path, &path_stat))
     return S_ISDIR(path_stat.st_mode);
@@ -86,14 +88,27 @@ int zsv_dir_exists(const char *path) {
  * return zero on success
  */
 int zsv_mkdirs(const char *path, char path_is_filename) {
-  char *p = NULL;
   int rc = 0;
-
+  if (!path || !*path)
+    return -1;
   size_t len = strlen(path);
+
+#ifdef WIN32
+  // TO DO: handle windows long-file prefix \\? \
+  // for now, explicitly do not handle
+  if (len > 2 && path[2] == '?')
+    fprintf(stderr, "Invalid path (long file prefix not supported): %s\n", path);
+#endif
+
   if (len < 1 || len > FILENAME_MAX)
     return -1;
 
   char *tmp = strdup(path);
+  if (!tmp) {
+    perror(path);
+    return -1;
+  }
+
   if (len && strchr("/\\", tmp[len - 1]))
     tmp[--len] = 0;
 
@@ -113,6 +128,7 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
         offset = path_end - tmp;
       else {
         fprintf(stderr, "Invalid path: %s\n", path);
+        free(tmp);
         return -1;
       }
     }
@@ -124,7 +140,10 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
   offset = 1;
 #endif
 
-  for (p = tmp + offset; !rc && *p; p++)
+  // TO DO: first find the longest subdir that exists, in *reverse* order so as
+  // to properly handle case where no access to intermediate dir,
+  // and then only start mkdir from there
+  for (char *p = tmp + offset; !rc && *p; p++) {
     if (strchr("/\\", *p)) {
       char tmp_c = p[1];
       p[0] = FILESLASH;
@@ -136,12 +155,14 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
                 S_IRWXU
 #endif
                 )) {
-        rc = -1;
-        fprintf(stderr, "Error creating directory: ");
-        perror(tmp);
-      } else
-        p[1] = tmp_c;
+        if (errno != EEXIST) { // errno could be EEXIST if we have no permissions to an intermediate directory
+          perror(tmp);
+          rc = -1;
+        }
+      }
+      p[1] = tmp_c;
     }
+  }
 
   if (!rc && path_is_filename == 0 && *tmp && !zsv_dir_exists(tmp) &&
       mkdir(tmp
@@ -149,8 +170,10 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
             ,
             S_IRWXU
 #endif
-            ))
+            )) {
+    perror(tmp);
     rc = -1;
+  }
 
   free(tmp);
   return rc;
