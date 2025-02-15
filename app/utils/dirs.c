@@ -13,13 +13,17 @@
 #include <dirent.h>
 #include <errno.h>
 #include <zsv/utils/os.h>
+#ifndef ZSV_NO_JQ
 #include <zsv/utils/json.h>
 #include <zsv/utils/jq.h>
+#endif
 #include <zsv/utils/dirs.h>
 #include <zsv/utils/string.h>
 #include <unistd.h> // unlink
 #include <sys/stat.h>
+#ifndef ZSV_NO_JQ
 #include <yajl_helper/yajl_helper.h>
+#endif
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -94,7 +98,7 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
   size_t len = strlen(path);
 
 #ifdef WIN32
-  // TO DO: handle windows long-file prefix \\? \
+  // TO DO: handle windows long-file prefix "\\?\"
   // for now, explicitly do not handle
   if (len > 2 && path[2] == '?')
     fprintf(stderr, "Invalid path (long file prefix not supported): %s\n", path);
