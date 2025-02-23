@@ -17,6 +17,7 @@ struct jv_to_json_ctx {
   size_t (*write1)(void *restrict ctx, const void *restrict buff, size_t len); // e.g. zsv_jq_fwrite1
   void *ctx;                                                                   // e.g. FILE *
   int flags;                                                                   // passed on to jv_dumpf / jv_dump_string
+  char raw_output;
 };
 
 void jv_to_json_w_ctx(jv value, void *jv_to_json_ctx);
