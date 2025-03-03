@@ -8,10 +8,53 @@
 
 #include <zsv/utils/os.h>
 #include <stdio.h>
+#include <errno.h>
 #ifndef _WIN32
 
 void zsv_perror(const char *s) {
   perror(s);
+}
+
+int zsv_replace_file(const char *src, const char *dst) {
+  int save_errno = 0;
+
+  if (rename(src, dst) == 0) {
+    return 0;
+  }
+
+  if (errno != EXDEV) {
+    return errno;
+  }
+
+  // Fallback: copy and remove
+  FILE *fp_in = fopen(src, "rb");
+  if (!fp_in)
+    return errno;
+
+  FILE *fp_out = fopen(dst, "wb");
+  if (!fp_out) {
+    save_errno = errno;
+    fclose(fp_in);
+    return save_errno;
+  }
+
+  char buffer[4096];
+  size_t bytes_read;
+  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp_in)) > 0) {
+    if (fwrite(buffer, 1, bytes_read, fp_out) != bytes_read) {
+      fclose(fp_out);
+      fclose(fp_in);
+      return EOF;
+    }
+  }
+
+  fclose(fp_out);
+  fclose(fp_in);
+
+  if (remove(src) != 0)
+    return errno;
+
+  return 0;
 }
 
 #else
