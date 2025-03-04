@@ -258,11 +258,9 @@ zsvsheet_status context_menu_drill_down(zsvsheet_proc_context_t ctx) {
 }
 
 zsvsheet_status pivot_open_menu(zsvsheet_proc_context_t ctx) {
-  char entry_name[64];
   struct context_menu menu;
   if (zsv_cb.ext_sheet_context_menu_init(&menu))
     return zsvsheet_status_error;
-  snprintf(entry_name, sizeof(entry_name), "NIGGER");
   if (zsv_cb.ext_sheet_context_menu_new_entry_func(&menu, "Drill-down", context_menu_drill_down))
     return zsvsheet_status_error;
   zsv_cb.ext_sheet_open_context_menu(ctx->subcommand_context, &menu);
