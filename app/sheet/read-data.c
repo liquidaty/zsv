@@ -28,11 +28,11 @@ static char *zsvsheet_found_in_row(zsv_parser parser, size_t col_count, const ch
 
 static void *get_data_index(void *d);
 
-static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char *filename, struct zsv_opts *optsp,
+static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, struct zsv_opts *optsp,
                                  struct zsv_prop_handler *custom_prop_handler, char *old_ui_status) {
   struct zsvsheet_index_opts *ixopts = calloc(1, sizeof(*ixopts));
   ixopts->mutexp = &uibuffp->mutex;
-  ixopts->filename = filename;
+  ixopts->filename = uibuffp->data_filename ? uibuffp->data_filename : uibuffp->filename;
   ixopts->zsv_opts = *optsp;
   ixopts->custom_prop_handler = custom_prop_handler;
   ixopts->uib = uibuffp;
@@ -219,7 +219,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     uibuff->dimensions.row_count = rows_read;
     if (original_row_num > 1 && rows_read > 0) {
       opts.stream = NULL;
-      get_data_index_async(uibuff, filename, &opts, custom_prop_handler, old_ui_status);
+      get_data_index_async(uibuff, &opts, custom_prop_handler, old_ui_status);
     }
   } else if (rows_read > uibuff->buff_used_rows) {
     uibuff->buff_used_rows = rows_read;
