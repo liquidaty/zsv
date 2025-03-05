@@ -18,6 +18,7 @@ struct jv_to_json_ctx {
   void *ctx;                                                                   // e.g. FILE *
   int flags;                                                                   // passed on to jv_dumpf / jv_dump_string
   char raw_output;
+  char output_started;
 };
 
 void jv_to_json_w_ctx(jv value, void *jv_to_json_ctx);

@@ -41,7 +41,7 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
 
   int err = 0;
   const unsigned char *jqfilter = (const unsigned char *)argv[1];
-  struct jv_to_json_ctx ctx;
+  struct jv_to_json_ctx ctx = {0};
 
   for (int i = 2; !err && i < argc; i++) { // jq filter filename
     const char *arg = argv[i];

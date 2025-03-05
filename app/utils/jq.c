@@ -121,6 +121,9 @@ size_t zsv_jq_fwrite1(void *restrict FILE_ptr, const void *restrict buff, size_t
 
 void jv_to_json_func(jv value, void *ctx) {
   struct jv_to_json_ctx *data = ctx;
+  if (data->output_started)
+    data->write1(data->ctx, "\n", 1);
+  data->output_started = 1;
   if (data->write1 == zsv_jq_fwrite1) {
     if (data->raw_output && jv_get_kind(value) == JV_KIND_STRING)
       fwrite(jv_string_value(value), 1, jv_string_length_bytes(jv_copy(value)), data->ctx);
