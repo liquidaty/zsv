@@ -7,5 +7,6 @@ int zsvsheet_ui_buffer_open_file(const char *filename, const struct zsv_opts *zs
                                  struct zsvsheet_ui_buffer **ui_buffer_stack_top);
 
 zsvsheet_status zsvsheet_open_file_opts(struct zsvsheet_proc_context *ctx, struct zsvsheet_ui_buffer_opts *opts);
+zsvsheet_status zsvsheet_open_file(struct zsvsheet_proc_context *ctx, const char *filepath, struct zsv_opts *zopts);
 
 #endif

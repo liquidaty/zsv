@@ -1,6 +1,8 @@
 #ifndef ZSVSHEET_HANDLER_INTERNAL_H
 #define ZSVSHEET_HANDLER_INTERNAL_H
 
+#include <zsv/ext.h>
+
 struct zsvsheet_context {
   const char *subcommand_value; // e.g. "/path/to/myfile.csv"
   int ch;                       // key press value from getch()
@@ -33,6 +35,11 @@ struct zsvsheet_key_data {
 zsvsheet_status zsvsheet_open_file(struct zsvsheet_proc_context *ctx, const char *filepath, struct zsv_opts *zopts);
 
 /** extension support **/
+
+/**
+ * Open a tabular file with external facing options
+ */
+zsvsheet_status zsvsheet_ext_open_file_opts(struct zsvsheet_proc_context *ctx, struct zsvsheet_open_file_opts *opts);
 
 /**
  * Set the subcommand prompt
