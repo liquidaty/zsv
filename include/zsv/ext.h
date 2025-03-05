@@ -95,6 +95,7 @@ typedef uint32_t zsvsheet_cell_attr_t;
 enum zsvsheet_cell_profile_t {
   zsvsheet_cell_attr_profile_none = 0,
   zsvsheet_cell_attr_profile_link,
+  zsvsheet_cell_attr_profile_overwritten,
 };
 
 struct zsv_ext_callbacks {

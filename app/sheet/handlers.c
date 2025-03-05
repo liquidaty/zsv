@@ -207,6 +207,8 @@ zsvsheet_cell_attr_t zsvsheet_cell_profile_attrs(enum zsvsheet_cell_profile_t t)
 #else
     return A_ITALIC | A_BOLD;
 #endif
+  case zsvsheet_cell_attr_profile_overwritten:
+    return A_UNDERLINE;
   default:
     break;
   }

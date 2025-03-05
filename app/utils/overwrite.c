@@ -35,8 +35,8 @@ enum zsv_status zsv_overwrite_context_delete(void *h) {
     fclose(ctx->csv.f);
   if (ctx->csv.parser)
     zsv_delete(ctx->csv.parser);
-  free(ctx->src);
-  free(ctx);
+  // free(ctx->src);
+  // free(ctx);
   return zsv_status_ok;
 }
 
@@ -174,6 +174,8 @@ static enum zsv_status zsv_overwrite_init_sqlite3(struct zsv_overwrite_ctx *ctx,
 
 enum zsv_status zsv_overwrite_open(void *h) {
   struct zsv_overwrite_ctx *ctx = h;
+  if (!ctx)
+    return zsv_status_error;
   if (!ctx->src)
     return zsv_status_ok;
   char ok = 0;
