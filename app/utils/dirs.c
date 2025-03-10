@@ -168,39 +168,43 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
       char tmp_c = p[1];
       p[0] = FILESLASH;
       p[1] = '\0';
-      if (*tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp)) &&
-          mkdir(tmp
+      if (*tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp))) {
+        if (mkdir(tmp
 #ifndef WIN32
-                ,
-                S_IRWXU
+                  ,
+                  S_IRWXU
 #endif
-                )) {
-        if (errno == EEXIST)
+                  )) {
+          if (errno == EEXIST)
+            last_dir_exists_rc = 1;
+          else { // errno could be EEXIST if we have no permissions to an intermediate directory
+            last_errno = errno;
+            perror(tmp);
+            //          rc = -1;
+          }
+        } else
           last_dir_exists_rc = 1;
-        else { // errno could be EEXIST if we have no permissions to an intermediate directory
-          last_errno = errno;
-          perror(tmp);
-          //          rc = -1;
-        }
       }
       p[1] = tmp_c;
     }
   }
 
-  if (/* !rc && */ path_is_filename == 0 && *tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp)) &&
-      mkdir(tmp
+  if (/* !rc && */ path_is_filename == 0 && *tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp))) {
+    if (mkdir(tmp
 #ifndef WIN32
-            ,
-            S_IRWXU
+              ,
+              S_IRWXU
 #endif
-            )) {
-    if (errno == EEXIST)
+              )) {
+      if (errno == EEXIST)
+        last_dir_exists_rc = 1;
+      else {
+        last_errno = errno;
+        perror(tmp);
+        // rc = -1;
+      }
+    } else
       last_dir_exists_rc = 1;
-    else {
-      last_errno = errno;
-      perror(tmp);
-      // rc = -1;
-    }
   }
 
   free(tmp);
