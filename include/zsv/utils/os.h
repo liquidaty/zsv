@@ -12,7 +12,8 @@
 void zsv_perror(const char *);
 
 #ifndef _WIN32
-#define zsv_replace_file(src, dest) (rename((const char *)src, (const char *)dest))
+
+int zsv_replace_file(const char *src, const char *dest);
 
 #else
 
