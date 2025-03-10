@@ -79,12 +79,26 @@ size_t zsv_get_config_dir(char *buff, size_t buffsize, const char *prefix) {
  * return true (non-zero) or false (zero)
  */
 int zsv_dir_exists(const char *path) {
+#ifdef WIN32
   // TO DO: support win long filepath prefix
   // TO DO: work properly if dir exists but we don't have permission
+  wchar_t wpath[MAX_PATH];
+  mbstowcs(wpath, path, MAX_PATH);
+
+  DWORD attrs = GetFileAttributesW(wpath);
+  if (attrs == INVALID_FILE_ATTRIBUTES)
+    // Could check GetLastError() to see if it's a permission issue vs. not-found
+    return 0;
+
+  // If it has the directory attribute, it's presumably a directory
+  return (attrs & FILE_ATTRIBUTE_DIRECTORY) != 0;
+
+#else
   struct stat path_stat;
   if (!stat(path, &path_stat))
     return S_ISDIR(path_stat.st_mode);
   return 0;
+#endif
 }
 
 /**
@@ -92,7 +106,7 @@ int zsv_dir_exists(const char *path) {
  * return zero on success
  */
 int zsv_mkdirs(const char *path, char path_is_filename) {
-  int rc = 0;
+  // int rc = 0;
   if (!path || !*path)
     return -1;
   size_t len = strlen(path);
@@ -147,42 +161,50 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
   // TO DO: first find the longest subdir that exists, in *reverse* order so as
   // to properly handle case where no access to intermediate dir,
   // and then only start mkdir from there
-  for (char *p = tmp + offset; !rc && *p; p++) {
+  int last_dir_exists_rc = 0;
+  int last_errno = -1;
+  for (char *p = tmp + offset; /* !rc && */ *p; p++) {
     if (strchr("/\\", *p)) {
       char tmp_c = p[1];
       p[0] = FILESLASH;
       p[1] = '\0';
-      if (*tmp && !zsv_dir_exists(tmp) &&
+      if (*tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp)) &&
           mkdir(tmp
 #ifndef WIN32
                 ,
                 S_IRWXU
 #endif
                 )) {
-        if (errno != EEXIST) { // errno could be EEXIST if we have no permissions to an intermediate directory
+        if (errno == EEXIST)
+          last_dir_exists_rc = 1;
+        else { // errno could be EEXIST if we have no permissions to an intermediate directory
+          last_errno = errno;
           perror(tmp);
-          rc = -1;
+          //          rc = -1;
         }
       }
       p[1] = tmp_c;
     }
   }
 
-  if (!rc && path_is_filename == 0 && *tmp && !zsv_dir_exists(tmp) &&
+  if (/* !rc && */ path_is_filename == 0 && *tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp)) &&
       mkdir(tmp
 #ifndef WIN32
             ,
             S_IRWXU
 #endif
             )) {
-    if (errno != EEXIST) {
+    if (errno == EEXIST)
+      last_dir_exists_rc = 1;
+    else {
+      last_errno = errno;
       perror(tmp);
-      rc = -1;
+      // rc = -1;
     }
   }
 
   free(tmp);
-  return rc;
+  return last_dir_exists_rc ? 0 : last_errno ? last_errno : -1;
 }
 
 #if defined(_WIN32)
