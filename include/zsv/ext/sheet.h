@@ -16,6 +16,9 @@ typedef enum zsvsheet_status {
   zsvsheet_status_busy,
 } zsvsheet_status;
 
+struct zsvsheet_proc_context;
+typedef zsvsheet_status (*zsvsheet_proc_fn)(struct zsvsheet_proc_context *ctx);
+
 typedef struct zsvsheet_context *zsvsheet_context_t;
 typedef struct zsvsheet_subcommand_context *zsvsheet_subcommand_context_t;
 
