@@ -288,6 +288,11 @@ JSONWRITER_SRC=${THIS_MAKEFILE_DIR}/external/json_writer-1.0
 JSONWRITER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/json_writer-1.0
 JSONWRITER_OBJECT=${BUILD_DIR}-external/json_writer-1.0/jsonwriter.o
 
+## memfile
+MEMFILE_SRC=${THIS_MAKEFILE_DIR}/external/memfile-1.0/src
+MEMFILE_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/memfile-1.0/inculde
+MEMFILE_OBJECT=${BUILD_DIR}-external/memfile-1.0/memfile.o
+
 ## utf8proc
 UTF8PROC_SRC=${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1
 UTF8PROC_INCLUDE=${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1
@@ -464,16 +469,25 @@ ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${JSONWRITER_INCLUDE} -DINCLUDE_UTILS $< -c -o $@
 
+${MEMFILE_OBJECT}: ${MEMFILE_SRC}/memfile.c
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} ${MEMFILE_INCLUDE} -DINCLUDE_UTILS $< -c -o $@
+
 # sglib
 MORE_SOURCE+=-I${THIS_MAKEFILE_DIR}/external/sglib
 
-# 2json, desc, compare use jsonwriter
-${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE}: ${JSONWRITER_OBJECT}
-${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
-${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o: MORE_SOURCE+=${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
+# 2json, desc, compare, flatten use jsonwriter
+${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: ${JSONWRITER_OBJECT}
+${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
+${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o ${STANDALONE_PFX}flatten${EXE} ${STANDALONE_PFX}flatten.o: MORE_SOURCE+=${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
 
 # utils/db uses jsonwriter
 ${BUILD_DIR}/objs/utils/db.o : MORE_SOURCE+= ${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
+
+# flatten uses memfile
+${CLI} ${STANDALONE_PFX}flatten${EXE}: ${MEMFILE_OBJECT}
+${CLI} ${STANDALONE_PFX}flatten${EXE}: MORE_OBJECTS+= ${MEMFILE_OBJECT}
+${STANDALONE_PFX}flatten${EXE}: MORE_SOURCE+=${MEMFILE_INCLUDE} ${SQLITE_EXT_INCLUDE}
 
 # 2json uses utils/db
 ${CLI} ${STANDALONE_PFX}2json${EXE}: ${BUILD_DIR}/objs/utils/db.o
@@ -526,7 +540,7 @@ clean: clean-obj clean-internal
 	${MAKE} -C test clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 clean-obj:
-	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT}
+	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT} ${MEMFILE_OBJECT}
 	rm -rf external/utf8proc-2.6.1
 
 clean-internal:
