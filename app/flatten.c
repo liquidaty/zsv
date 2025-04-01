@@ -394,7 +394,7 @@ static void output_current_row(struct flatten_data *data) {
       unsigned char *value_to_print = NULL;
       size_t length_to_print = 0;
       struct flatten_agg_col_iterator it;
-      if(c->agg_method == flatten_agg_method_json) {
+      if (c->agg_method == flatten_agg_method_json) {
         memfile_reset(data->memfile);
         jsonwriter_start_array(data->jsw);
         for (flatten_agg_col_iterator_init(c, &it); !flatten_agg_col_iterator_done(&it);
@@ -404,7 +404,7 @@ static void output_current_row(struct flatten_data *data) {
         jsonwriter_end_array(data->jsw);
         jsonwriter_flush(data->jsw);
         value_to_print = memfile_data(data->memfile);
-        length_to_print = (size_t) memfile_tell(data->memfile);
+        length_to_print = (size_t)memfile_tell(data->memfile);
       } else {
         const unsigned char *delimiter = flatten_agg_col_delimiter(c);
         if (!delimiter)
@@ -449,7 +449,7 @@ static void output_current_row(struct flatten_data *data) {
         }
       }
       zsv_writer_cell(data->csv_writer, 0, value_to_print, length_to_print, 1);
-      if(c->agg_method != flatten_agg_method_json)
+      if (c->agg_method != flatten_agg_method_json)
         free(value_to_print);
       chars_lists_delete(&c->values);
       c->last_value = NULL;
@@ -609,7 +609,8 @@ static struct flatten_agg_col *flatten_agg_col_new(const char *arg, int *err) {
       e->agg_method = flatten_agg_method_array;
       e->delimiter = agg_method_s + strlen("array_");
     } else
-      *err = zsv_printerr(1, "Unrecognized aggregation method (expected json, array or array_<delim>): %s", agg_method_s);
+      *err =
+        zsv_printerr(1, "Unrecognized aggregation method (expected json, array or array_<delim>): %s", agg_method_s);
   } else {
     *err = zsv_printerr(1, "No aggregation method specified for %s", arg);
     while (write < write_end) {
@@ -649,9 +650,9 @@ static void flatten_cleanup(struct flatten_data *data) {
   if (data->out && data->out != stdout)
     fclose(data->out);
 
-  if(data->jsw)
+  if (data->jsw)
     jsonwriter_delete(data->jsw);
-  if(data->memfile)
+  if (data->memfile)
     memfile_close(data->memfile);
 }
 
@@ -749,10 +750,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         nextp = &cs->next;
 
         if (cs->agg_method == flatten_agg_method_json) {
-          if(!data.memfile) {
+          if (!data.memfile) {
             data.memfile = memfile_open(1024);
             data.jsw = jsonwriter_new_stream(memfile_write, data.memfile);
-            if(!data.memfile || !data.jsw) {
+            if (!data.memfile || !data.jsw) {
               fprintf(stderr, "Unable to allocate memfile and/or jsonwriter\n");
               flatten_cleanup(&data);
               return 1;
