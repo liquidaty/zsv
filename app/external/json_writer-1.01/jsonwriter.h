@@ -17,7 +17,7 @@ extern "C" {
 #  define JSW_INT64_MIN _I64_MIN
 #  define JSW_INT64_MAX _I64_MAX
 #  define JSW_INT64_PRINTF_FMT "%"PRId64
-#  define jsw_uint32 __uint32
+#  define jsw_uint32 uint32_t
 # else // not WIN
 #  define jsw_int64 int64_t
 #  define JSW_INT64_MIN INT64_MIN
