@@ -399,7 +399,11 @@ static void output_current_row(struct flatten_data *data) {
         jsonwriter_start_array(data->jsw);
         for (flatten_agg_col_iterator_init(c, &it); !flatten_agg_col_iterator_done(&it);
              flatten_agg_col_iterator_next(&it)) {
-          jsonwriter_str(data->jsw, it.str);
+          // jsonwriter_str(data->jsw, it.str);
+          if (!it.str || !*it.str)
+            jsonwriter_null(data->jsw);
+          else
+            jsonwriter_unknown(data->jsw, it.str, strlen((const char *)it.str), 0);
         }
         jsonwriter_end_array(data->jsw);
         jsonwriter_flush(data->jsw);

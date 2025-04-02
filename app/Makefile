@@ -284,9 +284,9 @@ else
 endif
 
 ## json writer
-JSONWRITER_SRC=${THIS_MAKEFILE_DIR}/external/json_writer-1.0
-JSONWRITER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/json_writer-1.0
-JSONWRITER_OBJECT=${BUILD_DIR}-external/json_writer-1.0/jsonwriter.o
+JSONWRITER_SRC=${THIS_MAKEFILE_DIR}/external/json_writer-1.01
+JSONWRITER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/json_writer-1.01
+JSONWRITER_OBJECT=${BUILD_DIR}-external/json_writer-1.01/jsonwriter.o
 
 ## memfile
 MEMFILE_SRC=${THIS_MAKEFILE_DIR}/external/memfile-1.0/src

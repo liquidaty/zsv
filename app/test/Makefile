@@ -51,7 +51,7 @@ ifneq ($(ZSV_EXTRAS),)
 endif
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
-TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help test-paste
+TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help test-paste test-flatten-2
 
 ifeq ($(ZSVSHEET_BUILD),1)
   SOURCES+=sheet
@@ -424,6 +424,12 @@ test-sql test-flatten : test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+test-flatten-2 : test-%-2: ${BUILD_DIR}/bin/zsv_%${EXE}
+	@${TEST_INIT}
+	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
+	(${PREFIX} $< --row-id 'Loan Number' -- 'Current Loan Amount'=array 'Current Interest Rate=json' < "${TEST_DATA_DIR}/test/$*-2.csv" ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-pretty: test-pretty-1 test-pretty-escape-chars
