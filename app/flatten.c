@@ -25,7 +25,7 @@
 
 enum flatten_agg_method {
   flatten_agg_method_none = 1,
-  flatten_agg_method_array,
+  flatten_agg_method_delim,
   flatten_agg_method_json
 };
 
@@ -87,7 +87,7 @@ static void flatten_agg_col_iterator_init(struct flatten_agg_col *c, struct flat
   memset(i, 0, sizeof(*i));
   switch (c->agg_method) {
   case flatten_agg_method_json:
-  case flatten_agg_method_array:
+  case flatten_agg_method_delim:
     if ((i->current_cl = c->values))
       i->str = i->current_cl->value;
     break;
@@ -122,7 +122,7 @@ static const unsigned char *flatten_agg_col_delimiter(struct flatten_agg_col *c)
   case flatten_agg_method_json:
     return NULL;
   case flatten_agg_method_none:
-  case flatten_agg_method_array:
+  case flatten_agg_method_delim:
     return (const unsigned char *)"|";
   }
   return (const unsigned char *)"|";
@@ -508,22 +508,24 @@ static void flatten_row2(void *hook) {
 
 const char *flatten_usage_msg[] = {
   APPNAME ": flatten a table",
-  "          based on a single-column key assuming that rows to flatten always appear in contiguous blocks",
+  "          based on a single-column key, assuming that rows to flatten always",
+  "          appear in contiguous lines",
   "",
   "Usage: " APPNAME " [<filename>] [<options>] -- [aggregate_output_spec ...]",
   "",
-  "Each aggregate output specification is either (i) a single-column aggregation or (future: (ii) the \"*\"",
-  "placeholder (in conjunction with -a)). A single-column aggregation consists of the column name or index, followed",
-  "by the equal sign (=) and then an aggregation method. If the equal sign should be part of the column name, it can",
-  "be escaped with a preceding backslash.",
+  "Each aggregate output specification consists of the column name or index, followed",
+  // "either (i) a single-column aggregation or (future: (ii) the \"*\" placeholder (in conjunction with -a)).",
+  "by the equal sign (=) and then an aggregation method, except that",
+  "no equal sign suffix is needed if the --default-agg option is specified.",
+  "If a column name contains an equal sign, it must be escaped with a preceding backslash.",
   "",
   "Aggregation methods:",
   // "  max",
   // "  min",
-  "  json",
-  "  array (pipe-delimited)",
+  "  json (json array)",
+  "  delim (pipe-delimited)",
   // "  arrayjs (json)",
-  "  array_<delim> (user-specified delimiter)",
+  "  delim_<delim> (user-specified delimiter)",
   // "  unique (pipe-delimited)",
   // "  uniquejs (json)",
   // "  unique_<delim> (user-specified delimiter)",
@@ -536,7 +538,7 @@ const char *flatten_usage_msg[] = {
   "  --row-id <column_name>           : column name to group by",
   "  --col-name <column_name>         : column name specifying the output column name",
   "  -V <column_name>                 : column name specifying the output value",
-  "  -a <aggregation_method>          : aggregation method to use for the select-all placeholder (future)",
+  //  "  --default-agg <method>           : default aggregation method to use, if none specified",
   "  -o <filename>                    : filename to save output to",
   NULL,
 };
@@ -604,17 +606,22 @@ static struct flatten_agg_col *flatten_agg_col_new(const char *arg, int *err) {
   }
 
   if (agg_method_s) {
-    if (!strcmp((const char *)agg_method_s, "array"))
-      e->agg_method = flatten_agg_method_array;
+    // for backward-compatibility, "array" or "array_" are treated the same as "delim" or "delim_"
+    if (!strcmp((const char *)agg_method_s, "array") || !strcmp((const char *)agg_method_s, "delim"))
+      e->agg_method = flatten_agg_method_delim;
     else if (!strcmp((const char *)agg_method_s, "json"))
       e->agg_method = flatten_agg_method_json;
-    else if (!strncmp((const char *)agg_method_s, "array_", strlen("array_")) &&
-             strlen((const char *)agg_method_s) > strlen("array_")) {
-      e->agg_method = flatten_agg_method_array;
+    else if ((!strncmp((const char *)agg_method_s, "array_", strlen("array_")) &&
+              strlen((const char *)agg_method_s) > strlen("array_"))) {
+      e->agg_method = flatten_agg_method_delim;
       e->delimiter = agg_method_s + strlen("array_");
+    } else if ((!strncmp((const char *)agg_method_s, "delim_", strlen("delim_")) &&
+                strlen((const char *)agg_method_s) > strlen("delim_"))) {
+      e->agg_method = flatten_agg_method_delim;
+      e->delimiter = agg_method_s + strlen("delim_");
     } else
       *err =
-        zsv_printerr(1, "Unrecognized aggregation method (expected json, array or array_<delim>): %s", agg_method_s);
+        zsv_printerr(1, "Unrecognized aggregation method (expected json, delim or delim_<delim>): %s", agg_method_s);
   } else {
     *err = zsv_printerr(1, "No aggregation method specified for %s", arg);
     while (write < write_end) {
