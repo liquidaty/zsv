@@ -284,9 +284,14 @@ else
 endif
 
 ## json writer
-JSONWRITER_SRC=${THIS_MAKEFILE_DIR}/external/json_writer-1.0
-JSONWRITER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/json_writer-1.0
-JSONWRITER_OBJECT=${BUILD_DIR}-external/json_writer-1.0/jsonwriter.o
+JSONWRITER_SRC=${THIS_MAKEFILE_DIR}/external/json_writer-1.01
+JSONWRITER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/json_writer-1.01
+JSONWRITER_OBJECT=${BUILD_DIR}-external/json_writer-1.01/jsonwriter.o
+
+## memfile
+MEMFILE_SRC=${THIS_MAKEFILE_DIR}/external/memfile-1.0/src
+MEMFILE_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/memfile-1.0/include
+MEMFILE_OBJECT=${BUILD_DIR}-external/memfile-1.0/memfile.o
 
 ## utf8proc
 UTF8PROC_SRC=${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1
@@ -303,10 +308,6 @@ SQLITE_EXT_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/sqlite3
 OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${BUILD_DIR}/objs/utils/json.o ${SQLITE_EXT}
 MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -I${JQ_INCLUDE_DIR} ${SQLITE_EXT_INCLUDE}
 MORE_LIBS+=${JQ_LIB} ${LDFLAGS_JQ}
-
-#OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${BUILD_DIR}/objs/utils/json.o
-#MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
-#MORE_LIBS+=
 
 help:
 	@echo "To build: ${MAKE} [DEBUG=1] [STATIC_BUILD=1] [clean] [clean-all] [BINDIR=${BINDIR}] [JQ_PREFIX=/usr/local] <install|all|install-util-lib|test>"
@@ -415,7 +416,7 @@ ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 ${CLI_APP_OBJECT} : cli_ini.c builtin/*.c ${JQ_LIB}
 ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8proc.c # ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} -I${THIS_MAKEFILE_DIR}/external/sglib -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -c $< -o $@ ${MORE_SOURCE}
+	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} ${MEMFILE_INCLUDE} -I${THIS_MAKEFILE_DIR}/external/sglib -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -c $< -o $@ ${MORE_SOURCE}
 
 ${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
@@ -464,16 +465,25 @@ ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${JSONWRITER_INCLUDE} -DINCLUDE_UTILS $< -c -o $@
 
+${MEMFILE_OBJECT}: ${MEMFILE_SRC}/memfile.c
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} ${MEMFILE_INCLUDE} -DINCLUDE_UTILS $< -c -o $@
+
 # sglib
 MORE_SOURCE+=-I${THIS_MAKEFILE_DIR}/external/sglib
 
-# 2json, desc, compare use jsonwriter
-${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE}: ${JSONWRITER_OBJECT}
-${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
-${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o: MORE_SOURCE+=${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
+# 2json, desc, compare, flatten use jsonwriter
+${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: ${JSONWRITER_OBJECT}
+${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
+${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o ${STANDALONE_PFX}flatten${EXE} ${CLI_OBJ_PFX}flatten.o: MORE_SOURCE+=${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
 
 # utils/db uses jsonwriter
 ${BUILD_DIR}/objs/utils/db.o : MORE_SOURCE+= ${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
+
+# flatten uses memfile
+${CLI} ${STANDALONE_PFX}flatten${EXE}: ${MEMFILE_OBJECT}
+${CLI} ${STANDALONE_PFX}flatten${EXE}: MORE_OBJECTS+= ${MEMFILE_OBJECT} ${JSONWRITER_INCLUDE}
+${STANDALONE_PFX}flatten${EXE}: MORE_SOURCE+=${MEMFILE_INCLUDE} ${SQLITE_EXT_INCLUDE}
 
 # 2json uses utils/db
 ${CLI} ${STANDALONE_PFX}2json${EXE}: ${BUILD_DIR}/objs/utils/db.o
@@ -526,7 +536,7 @@ clean: clean-obj clean-internal
 	${MAKE} -C test clean CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 clean-obj:
-	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT}
+	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT} ${MEMFILE_OBJECT}
 	rm -rf external/utf8proc-2.6.1
 
 clean-internal:

@@ -20,10 +20,13 @@
 #include <zsv/utils/utf8.h>
 #include <zsv/utils/mem.h>
 #include <zsv/utils/string.h>
+#include <memfile.h>
+#include <jsonwriter.h>
 
 enum flatten_agg_method {
   flatten_agg_method_none = 1,
-  flatten_agg_method_array
+  flatten_agg_method_delim,
+  flatten_agg_method_json
 };
 
 struct flatten_column_name_and_ix {
@@ -83,7 +86,8 @@ struct flatten_agg_col_iterator {
 static void flatten_agg_col_iterator_init(struct flatten_agg_col *c, struct flatten_agg_col_iterator *i) {
   memset(i, 0, sizeof(*i));
   switch (c->agg_method) {
-  case flatten_agg_method_array:
+  case flatten_agg_method_json:
+  case flatten_agg_method_delim:
     if ((i->current_cl = c->values))
       i->str = i->current_cl->value;
     break;
@@ -115,8 +119,10 @@ static const unsigned char *flatten_agg_col_delimiter(struct flatten_agg_col *c)
   if (c->delimiter)
     return c->delimiter;
   switch (c->agg_method) {
+  case flatten_agg_method_json:
+    return NULL;
   case flatten_agg_method_none:
-  case flatten_agg_method_array:
+  case flatten_agg_method_delim:
     return (const unsigned char *)"|";
   }
   return (const unsigned char *)"|";
@@ -199,6 +205,10 @@ struct flatten_data {
   unsigned int agg_output_cols_vector_size;
 
   int max_rows_per_aggregation;
+
+  // for json output: jsw and memfile
+  jsonwriter_handle jsw;
+  memfile_t memfile;
 
   enum flatten_agg_method all_aggregation_method;
 
@@ -381,55 +391,70 @@ static void output_current_row(struct flatten_data *data) {
     }
 
     for (struct flatten_agg_col *c = data->agg_output_cols; c; c = c->next) {
-      const unsigned char *delimiter = flatten_agg_col_delimiter(c);
-      if (!delimiter)
-        delimiter = (const unsigned char *)"";
-      size_t delimiter_len = strlen((const char *)delimiter);
-      const char replacement = (*delimiter == '_' ? '.' : '_');
-
-      // first, calc the length of joined string that we will need to create
-      size_t joined_len = 0;
-
+      unsigned char *value_to_print = NULL;
+      size_t length_to_print = 0;
       struct flatten_agg_col_iterator it;
-      int i = 0;
-      for (flatten_agg_col_iterator_init(c, &it); !flatten_agg_col_iterator_done(&it);
-           flatten_agg_col_iterator_next(&it), i++) {
-        if (i)
-          joined_len += delimiter_len;
-        it.str = flatten_replace_delim(it.str, delimiter, replacement);
-        flatten_agg_col_iterator_replace_str(&it, &it.str);
-        if (it.str && *it.str)
-          joined_len += strlen((char *)it.str);
-      }
-
-      unsigned char *value_to_print;
-      size_t length_to_print;
-      if (!joined_len || !(value_to_print = malloc(joined_len))) {
-        value_to_print = NULL;
-        length_to_print = 0;
+      if (c->agg_method == flatten_agg_method_json) {
+        memfile_reset(data->memfile);
+        jsonwriter_start_array(data->jsw);
+        for (flatten_agg_col_iterator_init(c, &it); !flatten_agg_col_iterator_done(&it);
+             flatten_agg_col_iterator_next(&it)) {
+          // jsonwriter_str(data->jsw, it.str);
+          if (!it.str || !*it.str)
+            jsonwriter_null(data->jsw);
+          else
+            jsonwriter_unknown(data->jsw, it.str, strlen((const char *)it.str), 0);
+        }
+        jsonwriter_end_array(data->jsw);
+        jsonwriter_flush(data->jsw);
+        value_to_print = memfile_data(data->memfile);
+        length_to_print = (size_t)memfile_tell(data->memfile);
       } else {
-        unsigned char *cursor = value_to_print;
-        length_to_print = joined_len;
+        const unsigned char *delimiter = flatten_agg_col_delimiter(c);
+        if (!delimiter)
+          delimiter = (const unsigned char *)"";
+        size_t delimiter_len = strlen((const char *)delimiter);
+        const char replacement = (*delimiter == '_' ? '.' : '_');
 
-        i = 0;
+        // first, calc the length of joined string that we will need to create
+        size_t joined_len = 0;
+
+        int i = 0;
         for (flatten_agg_col_iterator_init(c, &it); !flatten_agg_col_iterator_done(&it);
              flatten_agg_col_iterator_next(&it), i++) {
-          // append delimiter
-          if (i) {
-            memcpy(cursor, delimiter, delimiter_len);
-            cursor += delimiter_len;
-          }
+          if (i)
+            joined_len += delimiter_len;
+          it.str = flatten_replace_delim(it.str, delimiter, replacement);
+          flatten_agg_col_iterator_replace_str(&it, &it.str);
+          if (it.str && *it.str)
+            joined_len += strlen((char *)it.str);
+        }
 
-          // append value
-          if (it.str && *it.str) {
-            size_t len = strlen((char *)it.str);
-            memcpy(cursor, it.str, len);
-            cursor += len;
+        if (joined_len && (value_to_print = malloc(joined_len))) {
+          unsigned char *cursor = value_to_print;
+          length_to_print = joined_len;
+
+          i = 0;
+          for (flatten_agg_col_iterator_init(c, &it); !flatten_agg_col_iterator_done(&it);
+               flatten_agg_col_iterator_next(&it), i++) {
+            // append delimiter
+            if (i) {
+              memcpy(cursor, delimiter, delimiter_len);
+              cursor += delimiter_len;
+            }
+
+            // append value
+            if (it.str && *it.str) {
+              size_t len = strlen((char *)it.str);
+              memcpy(cursor, it.str, len);
+              cursor += len;
+            }
           }
         }
       }
       zsv_writer_cell(data->csv_writer, 0, value_to_print, length_to_print, 1);
-      FREEIF(value_to_print);
+      if (c->agg_method != flatten_agg_method_json)
+        free(value_to_print);
       chars_lists_delete(&c->values);
       c->last_value = NULL;
     }
@@ -444,7 +469,7 @@ static void flatten_row2(void *hook) {
   struct flatten_data *data = hook;
   if (data->row_count2 == 0) {
     if (!data->row_id_column.ix_plus_1)
-      fprintf(stderr, "No ID column found");
+      fprintf(stderr, "No ID column found\n");
     if (data->current_column_index) {
       // set up the agg column vector
       data->agg_output_cols_vector_size = data->current_column_index;
@@ -456,7 +481,7 @@ static void flatten_row2(void *hook) {
     }
   } else {
     if (!data->current_asset_id && !data->last_asset_id)
-      fprintf(stderr, "Warning: disregarding row %i: no asset id", data->row_count2);
+      fprintf(stderr, "Warning: disregarding row %i: no asset id\n", data->row_count2);
     else {
       if (data->last_asset_id && data->last_asset_id != data->current_asset_id) {
         output_current_row(data);
@@ -465,7 +490,7 @@ static void flatten_row2(void *hook) {
       }
       if (data->current_column_name_column && data->current_column_name_value) {
         if (data->current_column_name_column->current_value) {
-          fprintf(stderr, "Warning: multiple values for column %s, id %s: %s and %s",
+          fprintf(stderr, "Warning: multiple values for column %s, id %s: %s and %s\n",
                   data->current_column_name_column->name, data->last_asset_id,
                   data->current_column_name_column->current_value, data->current_column_name_value);
           FREEIF(data->current_column_name_column->current_value);
@@ -483,21 +508,24 @@ static void flatten_row2(void *hook) {
 
 const char *flatten_usage_msg[] = {
   APPNAME ": flatten a table",
-  "          based on a single-column key assuming that rows to flatten always appear in contiguous blocks",
+  "          based on a single-column key, assuming that rows to flatten always",
+  "          appear in contiguous lines",
   "",
   "Usage: " APPNAME " [<filename>] [<options>] -- [aggregate_output_spec ...]",
   "",
-  "Each aggregate output specification is either (i) a single-column aggregation or (future: (ii) the \"*\"",
-  "placeholder (in conjunction with -a)). A single-column aggregation consists of the column name or index, followed",
-  "by the equal sign (=) and then an aggregation method. If the equal sign should be part of the column name, it can",
-  "be escaped with a preceding backslash.",
+  "Each aggregate output specification consists of the column name or index, followed",
+  // "either (i) a single-column aggregation or (future: (ii) the \"*\" placeholder (in conjunction with -a)).",
+  "by the equal sign (=) and then an aggregation method, except that",
+  "no equal sign suffix is needed if the --default-agg option is specified.",
+  "If a column name contains an equal sign, it must be escaped with a preceding backslash.",
   "",
   "Aggregation methods:",
   // "  max",
   // "  min",
-  "  array (pipe-delimited)",
+  "  json (json array)",
+  "  delim (pipe-delimited)",
   // "  arrayjs (json)",
-  "  array_<delim> (user-specified delimiter)",
+  "  delim_<delim> (user-specified delimiter)",
   // "  unique (pipe-delimited)",
   // "  uniquejs (json)",
   // "  unique_<delim> (user-specified delimiter)",
@@ -510,7 +538,7 @@ const char *flatten_usage_msg[] = {
   "  --row-id <column_name>           : column name to group by",
   "  --col-name <column_name>         : column name specifying the output column name",
   "  -V <column_name>                 : column name specifying the output value",
-  "  -a <aggregation_method>          : aggregation method to use for the select-all placeholder (future)",
+  //  "  --default-agg <method>           : default aggregation method to use, if none specified",
   "  -o <filename>                    : filename to save output to",
   NULL,
 };
@@ -578,14 +606,22 @@ static struct flatten_agg_col *flatten_agg_col_new(const char *arg, int *err) {
   }
 
   if (agg_method_s) {
-    if (!strcmp((const char *)agg_method_s, "array"))
-      e->agg_method = flatten_agg_method_array;
-    else if (!strncmp((const char *)agg_method_s, "array_", strlen("array_")) &&
-             strlen((const char *)agg_method_s) > strlen("array_")) {
-      e->agg_method = flatten_agg_method_array;
+    // for backward-compatibility, "array" or "array_" are treated the same as "delim" or "delim_"
+    if (!strcmp((const char *)agg_method_s, "array") || !strcmp((const char *)agg_method_s, "delim"))
+      e->agg_method = flatten_agg_method_delim;
+    else if (!strcmp((const char *)agg_method_s, "json"))
+      e->agg_method = flatten_agg_method_json;
+    else if ((!strncmp((const char *)agg_method_s, "array_", strlen("array_")) &&
+              strlen((const char *)agg_method_s) > strlen("array_"))) {
+      e->agg_method = flatten_agg_method_delim;
       e->delimiter = agg_method_s + strlen("array_");
+    } else if ((!strncmp((const char *)agg_method_s, "delim_", strlen("delim_")) &&
+                strlen((const char *)agg_method_s) > strlen("delim_"))) {
+      e->agg_method = flatten_agg_method_delim;
+      e->delimiter = agg_method_s + strlen("delim_");
     } else
-      *err = zsv_printerr(1, "Unrecognized aggregation method (expected array or array_<delim>): %s", agg_method_s);
+      *err =
+        zsv_printerr(1, "Unrecognized aggregation method (expected json, delim or delim_<delim>): %s", agg_method_s);
   } else {
     *err = zsv_printerr(1, "No aggregation method specified for %s", arg);
     while (write < write_end) {
@@ -624,6 +660,11 @@ static void flatten_cleanup(struct flatten_data *data) {
   zsv_writer_delete(data->csv_writer);
   if (data->out && data->out != stdout)
     fclose(data->out);
+
+  if (data->jsw)
+    jsonwriter_delete(data->jsw);
+  if (data->memfile)
+    memfile_close(data->memfile);
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
@@ -718,6 +759,19 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         data.have_agg = 1;
         *nextp = cs;
         nextp = &cs->next;
+
+        if (cs->agg_method == flatten_agg_method_json) {
+          if (!data.memfile) {
+            data.memfile = memfile_open(1024);
+            data.jsw = jsonwriter_new_stream(memfile_write, data.memfile);
+            if (!data.memfile || !data.jsw) {
+              fprintf(stderr, "Unable to allocate memfile and/or jsonwriter\n");
+              flatten_cleanup(&data);
+              return 1;
+            }
+            jsonwriter_set_option(data.jsw, jsonwriter_option_compact);
+          }
+        }
       }
     }
   }
