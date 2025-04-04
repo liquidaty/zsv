@@ -8,7 +8,7 @@
 #include <string.h>         // For strlen, strcpy, strncpy
 #include <wchar.h>          // For wide character types and functions like wcslen, wcscpy
 
-DWORD pathToPrefixedWidePath(const char* path_utf8, wchar_t **result);
+DWORD pathToPrefixedWidePath(const char *path_utf8, wchar_t **result);
 // char *slashes_to_backslashes_if_needed(const char *path);
 
 #endif

@@ -80,11 +80,11 @@ size_t zsv_get_config_dir(char *buff, size_t buffsize, const char *prefix) {
  * return true (non-zero) or false (zero)
  */
 #ifdef WIN32
-# include "win/dir_exists_longpath.c"
+#include "win/dir_exists_longpath.c"
 #endif
 int zsv_dir_exists(const char *path) {
 #ifdef WIN32
-  if(strlen(path) >= MAX_PATH)
+  if (strlen(path) >= MAX_PATH)
     return zsv_dir_exists_winlp(path);
 
   // TO DO: support win long filepath prefix
@@ -113,10 +113,10 @@ int zsv_dir_exists(const char *path) {
  * return zero on success
  */
 #ifdef WIN32
-# include "win/mkdir_longpath.c"
-# define zsv_mkdir zsv_mkdir_winlp
+#include "win/mkdir_longpath.c"
+#define zsv_mkdir zsv_mkdir_winlp
 #else
-# define zsv_mkdir mkdir
+#define zsv_mkdir mkdir
 #endif
 
 int zsv_mkdirs(const char *path, char path_is_filename) {
@@ -177,10 +177,10 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
       if (*tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp))) {
         if (zsv_mkdir(tmp
 #ifndef WIN32
-                  ,
-                  S_IRWXU
+                      ,
+                      S_IRWXU
 #endif
-                  )) {
+                      )) {
           if (errno == EEXIST)
             last_dir_exists_rc = 1;
           else { // errno could be EEXIST if we have no permissions to an intermediate directory
@@ -198,10 +198,10 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
   if (/* !rc && */ path_is_filename == 0 && *tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp))) {
     if (zsv_mkdir(tmp
 #ifndef WIN32
-              ,
-              S_IRWXU
+                  ,
+                  S_IRWXU
 #endif
-              )) {
+                  )) {
       if (errno == EEXIST)
         last_dir_exists_rc = 1;
       else {

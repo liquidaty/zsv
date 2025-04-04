@@ -15,8 +15,8 @@
 #endif
 
 #if defined(_WIN32) || defined(WIN32) || defined(WIN)
-FILE *zsv_fopen(const char *fname, const char* mode) {
-  if(strlen(fname) >= 255)
+FILE *zsv_fopen(const char *fname, const char *mode) {
+  if (strlen(fname) >= 255)
     return zsv_fopen_longpath(fname, mode);
   return fopen(fname, mode);
 }

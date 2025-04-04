@@ -21,38 +21,38 @@
  * Returns a non-zero Win32 error code on failure (see GetLastError()).
  */
 
-DWORD zsv_mkdir_winlp(const char* path_utf8) {
-    if (path_utf8 == NULL || path_utf8[0] == '\0') {
-        fprintf(stderr, "Error: Input path is NULL or empty.\n");
-        return ERROR_INVALID_PARAMETER; // Or another suitable error code
-    }
+DWORD zsv_mkdir_winlp(const char *path_utf8) {
+  if (path_utf8 == NULL || path_utf8[0] == '\0') {
+    fprintf(stderr, "Error: Input path is NULL or empty.\n");
+    return ERROR_INVALID_PARAMETER; // Or another suitable error code
+  }
 
-    wchar_t *finalPath;
-    DWORD rc = pathToPrefixedWidePath(path_utf8, &finalPath);
-    if(rc)
-      return rc;
+  wchar_t *finalPath;
+  DWORD rc = pathToPrefixedWidePath(path_utf8, &finalPath);
+  if (rc)
+    return rc;
 
-    // 4. Call CreateDirectoryW
-    BOOL success = CreateDirectoryW(finalPath, NULL); // NULL for default security attributes
+  // 4. Call CreateDirectoryW
+  BOOL success = CreateDirectoryW(finalPath, NULL); // NULL for default security attributes
 
-    DWORD lastError = 0;
-    if (!success) {
-        lastError = GetLastError();
-        // It's okay if the directory already exists
-        if (lastError == ERROR_ALREADY_EXISTS) {
-            //printf("Debug: Directory already exists (considered success).\n");
-            lastError = 0; // Treat as success
-        } else {
-            fprintf(stderr, "Error: CreateDirectoryW failed for path: %ls\n", finalPath);
-        }
+  DWORD lastError = 0;
+  if (!success) {
+    lastError = GetLastError();
+    // It's okay if the directory already exists
+    if (lastError == ERROR_ALREADY_EXISTS) {
+      // printf("Debug: Directory already exists (considered success).\n");
+      lastError = 0; // Treat as success
     } else {
-        //printf("Debug: CreateDirectoryW succeeded for path: %ls\n", finalPath);
-        lastError = 0; // Success
+      fprintf(stderr, "Error: CreateDirectoryW failed for path: %ls\n", finalPath);
     }
+  } else {
+    // printf("Debug: CreateDirectoryW succeeded for path: %ls\n", finalPath);
+    lastError = 0; // Success
+  }
 
-    free(finalPath);
+  free(finalPath);
 
-    return lastError; // Return 0 on success (or already exists), else the error code
+  return lastError; // Return 0 on success (or already exists), else the error code
 }
 
 #ifdef DIRS_MKDIR_TEST
@@ -66,7 +66,7 @@ DWORD zsv_mkdir_winlp(const char* path_utf8) {
  */
 int zsv_dir_exists(const char *path) {
 #ifdef WIN32
-  if(strlen(path) >= MAX_PATH)
+  if (strlen(path) >= MAX_PATH)
     return zsv_dir_exists_winlp(path);
 
   // TO DO: support win long filepath prefix
@@ -95,9 +95,9 @@ int zsv_dir_exists(const char *path) {
  * return zero on success
  */
 #ifdef WIN32
-# define zsv_mkdir zsv_mkdir_winlp
+#define zsv_mkdir zsv_mkdir_winlp
 #else
-# define zsv_mkdir mkdir
+#define zsv_mkdir mkdir
 #endif
 int zsv_mkdirs(const char *path, char path_is_filename) {
   // int rc = 0;
@@ -166,10 +166,10 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
       if (*tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp))) {
         if (zsv_mkdir(tmp
 #ifndef WIN32
-                  ,
-                  S_IRWXU
+                      ,
+                      S_IRWXU
 #endif
-                  )) {
+                      )) {
           if (errno == EEXIST)
             last_dir_exists_rc = 1;
           else { // errno could be EEXIST if we have no permissions to an intermediate directory
@@ -187,10 +187,10 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
   if (/* !rc && */ path_is_filename == 0 && *tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp))) {
     if (zsv_mkdir(tmp
 #ifndef WIN32
-              ,
-              S_IRWXU
+                  ,
+                  S_IRWXU
 #endif
-              )) {
+                  )) {
       if (errno == EEXIST)
         last_dir_exists_rc = 1;
       else {
@@ -206,42 +206,44 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
   return last_dir_exists_rc ? 0 : last_errno ? last_errno : -1;
 }
 
-int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <absolute_directory_path>\n", argv[0]);
-        fprintf(stderr, "Example: %s \"C:\\Temp\\My Very Long Directory Name That Exceeds 260 Characters\\Subfolder\"\n", argv[0]);
-        fprintf(stderr, "       %s \"\\\\?\\C:\\Temp\\Another Long Path\\Subfolder\"\n", argv[0]);
-        fprintf(stderr, "Note: Provide an ABSOLUTE path.\n");
-        return 1;
-    }
+int main(int argc, char *argv[]) {
+  if (argc != 2) {
+    fprintf(stderr, "Usage: %s <absolute_directory_path>\n", argv[0]);
+    fprintf(stderr, "Example: %s \"C:\\Temp\\My Very Long Directory Name That Exceeds 260 Characters\\Subfolder\"\n",
+            argv[0]);
+    fprintf(stderr, "       %s \"\\\\?\\C:\\Temp\\Another Long Path\\Subfolder\"\n", argv[0]);
+    fprintf(stderr, "Note: Provide an ABSOLUTE path.\n");
+    return 1;
+  }
 
-    const char* targetPath = argv[1];
+  const char *targetPath = argv[1];
 
-    printf("Attempting to create directory: %s\n", targetPath);
+  printf("Attempting to create directory: %s\n", targetPath);
 
-    DWORD result = zsv_mkdirs(targetPath, 0);
+  DWORD result = zsv_mkdirs(targetPath, 0);
 
-    if (result == 0) {
-        printf("Success: Directory created or already exists.\n");
-        return 0;
+  if (result == 0) {
+    printf("Success: Directory created or already exists.\n");
+    return 0;
+  } else {
+    // You can provide more detailed error messages by checking specific Win32 error codes
+    // For example: if (result == ERROR_PATH_NOT_FOUND) { ... }
+    fprintf(stderr, "Error: Failed to create directory %s. Win32 Error Code: %lu\n", targetPath, result);
+
+    // Optionally print the system error message for the code
+    LPSTR messageBuffer = NULL;
+    size_t size =
+      FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL,
+                     result, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+    if (messageBuffer) {
+      fprintf(stderr, "System Message: %s\n", messageBuffer);
+      LocalFree(messageBuffer); // Free buffer allocated by FormatMessage
     } else {
-        // You can provide more detailed error messages by checking specific Win32 error codes
-        // For example: if (result == ERROR_PATH_NOT_FOUND) { ... }
-      fprintf(stderr, "Error: Failed to create directory %s. Win32 Error Code: %lu\n", targetPath, result);
-
-        // Optionally print the system error message for the code
-        LPSTR messageBuffer = NULL;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                                     NULL, result, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-        if(messageBuffer) {
-            fprintf(stderr, "System Message: %s\n", messageBuffer);
-            LocalFree(messageBuffer); // Free buffer allocated by FormatMessage
-        } else {
-             fprintf(stderr, "Could not format error message for code %lu.\n", result);
-        }
-
-        return 1; // Indicate failure
+      fprintf(stderr, "Could not format error message for code %lu.\n", result);
     }
+
+    return 1; // Indicate failure
+  }
 }
 
 #endif // DIRS_MKDIR_TEST
