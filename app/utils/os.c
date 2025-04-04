@@ -14,6 +14,9 @@
 #include "win/fopen_longpath.c"
 #endif
 
+/**
+ * zsv_fopen(): same as normal fopen(), except on Win it also works with long filenames
+ */
 #if defined(_WIN32) || defined(WIN32) || defined(WIN)
 FILE *zsv_fopen(const char *fname, const char *mode) {
   if (strlen(fname) >= 255)

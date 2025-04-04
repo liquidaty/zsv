@@ -11,6 +11,9 @@
 
 void zsv_perror(const char *);
 
+/**
+ * zsv_fopen(): same as normal fopen(), except on Win it also works with long filenames
+ */
 #ifndef _WIN32
 #define zsv_fopen fopen
 #else

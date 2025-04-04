@@ -124,20 +124,6 @@ int zsv_file_exists(const char *filename) {
 #endif
 
 /**
- * zsv_fopen(): same as normal fopen(), except it also works on Windows with long filenames
- */
-#if defined(_WIN32) || defined(WIN32) || defined(WIN)
-#include "fopen_longpath.c"
-#endif
-FILE *zsv_fopen(const char *fname, const char *mode) {
-#if defined(_WIN32) || defined(WIN32) || defined(WIN)
-  if (strlen(fname) >= 255)
-    return fopen_longpath(fname, mode);
-#endif
-  return fopen(fname, mode);
-}
-
-/**
  * Copy a file, given source and destination paths
  * On error, output error message and return non-zero
  */

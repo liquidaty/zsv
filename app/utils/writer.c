@@ -8,6 +8,7 @@
 
 #include <zsv/utils/writer.h>
 #include <zsv/utils/compiler.h>
+#include <zsv/utils/os.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
