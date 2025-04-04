@@ -17,6 +17,7 @@ void zsv_perror(const char *);
 #ifndef _WIN32
 #define zsv_fopen fopen
 #else
+#include <stdio.h>
 FILE *zsv_fopen(const char *fname, const char *mode);
 #endif
 

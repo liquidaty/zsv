@@ -7,7 +7,7 @@
 #include <stdio.h>   // For printf, fprintf in main
 // Link against -lShlwapi.for PathIsRelativeA
 
-#include "win/io.h"
+#include "io.h"
 
 /**
  * Check if a directory exists on Windows, supporting long paths (> MAX_PATH).

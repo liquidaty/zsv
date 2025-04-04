@@ -5,7 +5,7 @@
 #include <string.h>         // For strlen, strcpy, strncpy
 #include <wchar.h>          // For wide character types and functions like wcslen, wcscpy
 
-#include "win/io.h"
+#include "io.h"
 
 /**
  * @brief Creates a directory, supporting paths longer than MAX_PATH.
