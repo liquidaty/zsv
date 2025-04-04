@@ -27,11 +27,12 @@
 
 #if defined(_WIN32)
 #include <windows.h>
+#include "win/io.c"
 #endif
 
 /**
  * Most of these functions require the caller to provide a buffer, in which case
- * the buffer size should be FILENAME_MAX
+ * the buffer size should be at least FILENAME_MAX
  */
 
 static size_t chop_slash(char *buff, size_t len) {
@@ -78,8 +79,14 @@ size_t zsv_get_config_dir(char *buff, size_t buffsize, const char *prefix) {
  * Check if a directory exists
  * return true (non-zero) or false (zero)
  */
+#ifdef WIN32
+# include "win/dir_exists_longpath.c"
+#endif
 int zsv_dir_exists(const char *path) {
 #ifdef WIN32
+  if(strlen(path) >= MAX_PATH)
+    return zsv_dir_exists_winlp(path);
+
   // TO DO: support win long filepath prefix
   // TO DO: work properly if dir exists but we don't have permission
   wchar_t wpath[MAX_PATH];
@@ -105,20 +112,19 @@ int zsv_dir_exists(const char *path) {
  * Make a directory, as well as any intermediate dirs
  * return zero on success
  */
+#ifdef WIN32
+# include "win/mkdir_longpath.c"
+# define zsv_mkdir zsv_mkdir_winlp
+#else
+# define zsv_mkdir mkdir
+#endif
+
 int zsv_mkdirs(const char *path, char path_is_filename) {
   // int rc = 0;
   if (!path || !*path)
     return -1;
   size_t len = strlen(path);
-
-#ifdef WIN32
-  // TO DO: handle windows long-file prefix "\\?\"
-  // for now, explicitly do not handle
-  if (len > 2 && path[2] == '?')
-    fprintf(stderr, "Invalid path (long file prefix not supported): %s\n", path);
-#endif
-
-  if (len < 1 || len > FILENAME_MAX)
+  if (len < 1)
     return -1;
 
   char *tmp = strdup(path);
@@ -169,7 +175,7 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
       p[0] = FILESLASH;
       p[1] = '\0';
       if (*tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp))) {
-        if (mkdir(tmp
+        if (zsv_mkdir(tmp
 #ifndef WIN32
                   ,
                   S_IRWXU
@@ -190,7 +196,7 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
   }
 
   if (/* !rc && */ path_is_filename == 0 && *tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp))) {
-    if (mkdir(tmp
+    if (zsv_mkdir(tmp
 #ifndef WIN32
               ,
               S_IRWXU

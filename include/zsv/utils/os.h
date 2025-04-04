@@ -12,6 +12,12 @@
 void zsv_perror(const char *);
 
 #ifndef _WIN32
+#define zsv_fopen fopen
+#else
+FILE *zsv_fopen(const char *fname, const char* mode);
+#endif
+
+#ifndef _WIN32
 
 int zsv_replace_file(const char *src, const char *dest);
 

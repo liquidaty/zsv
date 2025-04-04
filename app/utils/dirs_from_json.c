@@ -1,5 +1,6 @@
 #include <yajl_helper/yajl_helper.h>
 #include <zsv/utils/file.h>
+#include <zsv/utils/os.h>
 
 struct zsv_dir_from_json_ctx {
   const char *filepath_prefix;
@@ -59,7 +60,7 @@ static int zsv_dir_from_json_map_key(yajl_helper_t yh, const unsigned char *s, s
       printf("%s\n", fn);
     } else if (zsv_mkdirs(fn, 1)) {
       fprintf(stderr, "Unable to create directories for %s\n", fn);
-    } else if (!((ctx->out = fopen(fn, "wb")))) {
+    } else if (!((ctx->out = zsv_fopen(fn, "wb")))) {
       perror(fn);
     } else {
       ctx->out_filepath = fn;
@@ -163,13 +164,13 @@ int zsv_dir_from_json(const unsigned char *target_dir, FILE *src,
       if (!tmp_fn) {
         err = errno = ENOMEM;
         perror(NULL);
-      } else if (!(tmp_f = fopen(tmp_fn, "wb"))) {
+      } else if (!(tmp_f = zsv_fopen(tmp_fn, "wb"))) {
         err = errno;
         perror(tmp_fn);
       } else {
         err = zsv_copy_file_ptr(stdin, tmp_f);
         fclose(tmp_f);
-        if (!(src = fopen(tmp_fn, "rb"))) {
+        if (!(src = zsv_fopen(tmp_fn, "rb"))) {
           err = errno;
           perror(tmp_fn);
         }

@@ -187,7 +187,7 @@ enum zsv_status zsv_overwrite_open(void *h) {
     }
   } else { // csv
     struct zsv_opts opts = {0};
-    ctx->csv.f = opts.stream = fopen(ctx->src, "rb");
+    ctx->csv.f = opts.stream = zsv_fopen(ctx->src, "rb");
     if (!ctx->csv.f) {
       perror(ctx->src);
       return zsv_status_error;

@@ -126,7 +126,7 @@ int zsv_modify_cache_file(const unsigned char *filepath, enum zsv_cache_type cty
   if (!(cache_fn && cache_tmp_fn))
     return zsv_printerr(ENOMEM, "Out of memory!");
 
-  cache_data = fopen((void *)cache_fn, "rb");
+  cache_data = zsv_fopen((void *)cache_fn, "rb");
   int err = 0;
   if (!cache_data) {
     err = errno;
@@ -149,7 +149,7 @@ int zsv_modify_cache_file(const unsigned char *filepath, enum zsv_cache_type cty
   }
 
   // jq filter to apply to [current_properties, id, value]
-  FILE *tmp = fopen((const char *)cache_tmp_fn, "wb");
+  FILE *tmp = zsv_fopen((const char *)cache_tmp_fn, "wb");
   if (!tmp) {
     if (!(err = errno))
       err = 1;
