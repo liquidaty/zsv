@@ -8,6 +8,7 @@
 
 #include <zsv/utils/writer.h>
 #include <zsv/utils/compiler.h>
+#include <zsv/utils/os.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
@@ -191,7 +192,7 @@ zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
       w->out.stream = stdout;
     } else {
       if (opts->output_path) {
-        if (!(w->out.stream = fopen(opts->output_path, "wb"))) {
+        if (!(w->out.stream = zsv_fopen(opts->output_path, "wb"))) {
           perror(opts->output_path);
           goto zsv_writer_new_err;
         }

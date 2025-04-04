@@ -136,11 +136,11 @@ int zsv_copy_file(const char *src, const char *dest) {
 
   // copy the file
   int err = 0;
-  FILE *fsrc = fopen(src, "rb");
+  FILE *fsrc = zsv_fopen(src, "rb");
   if (!fsrc)
     err = errno ? errno : -1, perror(src);
   else {
-    FILE *fdest = fopen(dest, "wb");
+    FILE *fdest = zsv_fopen(dest, "wb");
     if (!fdest)
       err = errno ? errno : -1, perror(dest);
     else {
@@ -189,7 +189,7 @@ int zsv_file_readable(const char *filename, int *err, FILE **f_out) {
   if (err)
     *err = 0;
   // to do: use fstat()
-  if ((f = fopen(filename, "rb")) == NULL) {
+  if ((f = zsv_fopen(filename, "rb")) == NULL) {
     rc = 0;
     if (err)
       *err = errno;

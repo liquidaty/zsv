@@ -9,6 +9,22 @@
 #include <zsv/utils/os.h>
 #include <stdio.h>
 #include <errno.h>
+
+#ifdef WIN32
+#include "win/fopen_longpath.c"
+#endif
+
+/**
+ * zsv_fopen(): same as normal fopen(), except on Win it also works with long filenames
+ */
+#if defined(_WIN32) || defined(WIN32) || defined(WIN)
+FILE *zsv_fopen(const char *fname, const char *mode) {
+  if (strlen(fname) >= 255)
+    return zsv_fopen_longpath(fname, mode);
+  return fopen(fname, mode);
+}
+#endif
+
 #ifndef _WIN32
 
 void zsv_perror(const char *s) {
@@ -27,11 +43,11 @@ int zsv_replace_file(const char *src, const char *dst) {
   }
 
   // Fallback: copy and remove
-  FILE *fp_in = fopen(src, "rb");
+  FILE *fp_in = zsv_fopen(src, "rb");
   if (!fp_in)
     return errno;
 
-  FILE *fp_out = fopen(dst, "wb");
+  FILE *fp_out = zsv_fopen(dst, "wb");
   if (!fp_out) {
     save_errno = errno;
     fclose(fp_in);

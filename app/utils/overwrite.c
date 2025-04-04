@@ -9,6 +9,7 @@
 #include <zsv/utils/overwrite.h>
 #include <zsv/utils/cache.h>
 #include <zsv/utils/file.h>
+#include <zsv/utils/os.h>
 
 #define zsv_overwrite_sqlite3_prefix "sqlite3://"
 #define zsv_overwrite_sql_prefix "sql="
@@ -187,7 +188,7 @@ enum zsv_status zsv_overwrite_open(void *h) {
     }
   } else { // csv
     struct zsv_opts opts = {0};
-    ctx->csv.f = opts.stream = fopen(ctx->src, "rb");
+    ctx->csv.f = opts.stream = zsv_fopen(ctx->src, "rb");
     if (!ctx->csv.f) {
       perror(ctx->src);
       return zsv_status_error;
