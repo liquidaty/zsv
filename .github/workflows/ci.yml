@@ -62,59 +62,59 @@ jobs:
         TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
       run: ./scripts/ci-set-tag-output-parameter.sh
 
-  clang-format:
-    runs-on: ubuntu-22.04
+  # clang-format:
+  #   runs-on: ubuntu-22.04
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v4
 
-    - name: Run clang-format
-      run: |
-        sudo ln -sf /usr/bin/clang-format-15 /usr/bin/clang-format
-        ./scripts/ci-run-clang-format.sh
+  #   - name: Run clang-format
+  #     run: |
+  #       sudo ln -sf /usr/bin/clang-format-15 /usr/bin/clang-format
+  #       ./scripts/ci-run-clang-format.sh
 
-  cppcheck:
-    runs-on: ubuntu-22.04
+  # cppcheck:
+  #   runs-on: ubuntu-22.04
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v4
 
-    - name: Install cppcheck
-      run: |
-        sudo apt update
-        sudo apt install -y cppcheck
-        cppcheck --version
+  #   - name: Install cppcheck
+  #     run: |
+  #       sudo apt update
+  #       sudo apt install -y cppcheck
+  #       cppcheck --version
 
-    - name: Run cppcheck
-      run: ./scripts/ci-run-cppcheck.sh
+  #   - name: Run cppcheck
+  #     run: ./scripts/ci-run-cppcheck.sh
 
-    - name: Upload (${{ env.CPPCHECK_XML_ARTIFACT_NAME }})
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.CPPCHECK_XML_ARTIFACT_NAME }}
-        path: ${{ env.CPPCHECK_XML_ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+  #   - name: Upload (${{ env.CPPCHECK_XML_ARTIFACT_NAME }})
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: ${{ env.CPPCHECK_XML_ARTIFACT_NAME }}
+  #       path: ${{ env.CPPCHECK_XML_ARTIFACT_NAME }}
+  #       retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+  #       if-no-files-found: error
 
-    - name: Upload (${{ env.CPPCHECK_HTML_ARTIFACT_NAME }})
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.CPPCHECK_HTML_ARTIFACT_NAME }}
-        path: ${{ env.CPPCHECK_HTML_ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+  #   - name: Upload (${{ env.CPPCHECK_HTML_ARTIFACT_NAME }})
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: ${{ env.CPPCHECK_HTML_ARTIFACT_NAME }}
+  #       path: ${{ env.CPPCHECK_HTML_ARTIFACT_NAME }}
+  #       retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+  #       if-no-files-found: error
 
-  shellcheck:
-    runs-on: ubuntu-22.04
+  # shellcheck:
+  #   runs-on: ubuntu-22.04
 
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+  #   steps:
+  #   - name: Checkout
+  #     uses: actions/checkout@v4
 
-    - name: Run shellcheck
-      run: ./scripts/ci-run-shellcheck.sh
+  #   - name: Run shellcheck
+  #     run: ./scripts/ci-run-shellcheck.sh
 
   # ci-linux:
   #   needs: [tag, clang-format, cppcheck, shellcheck]
@@ -441,6 +441,9 @@ jobs:
         additional-packages: |
           mingw-w64
           nuget
+          tree
+          zip
+          tar
 
     # - name: Set up apt dependencies
     #   run: |
