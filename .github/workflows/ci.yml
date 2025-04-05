@@ -434,7 +434,7 @@ jobs:
 
     defaults:
       run:
-        shell: wsl-bash {0}
+        shell: bash
 
     steps:
     - name: Set up WSL 2
