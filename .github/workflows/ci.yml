@@ -434,13 +434,14 @@ jobs:
 
     defaults:
       run:
-        shell: bash
+        shell: wsl-bash {0}
 
     steps:
     - name: Set up WSL 2
       uses: Vampire/setup-wsl@v5
       with:
         wsl-version: 2
+        wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
         distribution: Ubuntu-22.04
         additional-packages: |
           mingw-w64
