@@ -431,6 +431,7 @@ jobs:
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
+      WSLENV: TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES:CFLAGS:LDFLAGS
 
     defaults:
       run:
@@ -451,12 +452,6 @@ jobs:
           tree
           zip
           tar
-
-    # - name: Set up apt dependencies
-    #   run: |
-    #     sudo apt update
-    #     sudo apt install -y mingw-w64 nuget
-    #     sudo apt remove -y jq
 
     - name: Set VCPKG_MINGW_INSTALL_ROOT env var
       run: echo "VCPKG_MINGW_INSTALL_ROOT=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static" >>"$GITHUB_ENV"
@@ -496,7 +491,6 @@ jobs:
         WINDRES: x86_64-w64-mingw32-windres
         CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
         LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
-        WSLENV: PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES:CFLAGS:LDFLAGS
       shell: wsl-bash {0}
       run: |
         ./scripts/ci-build.sh
