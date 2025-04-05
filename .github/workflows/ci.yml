@@ -442,6 +442,8 @@ jobs:
       with:
         wsl-version: 2
         wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
+        use-cache: true
+        set-as-default: true
         distribution: Ubuntu-22.04
         additional-packages: |
           mingw-w64
@@ -494,6 +496,7 @@ jobs:
         WINDRES: x86_64-w64-mingw32-windres
         CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
         LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
+        WSLENV: PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES:CFLAGS:LDFLAGS
       shell: wsl-bash {0}
       run: |
         ./scripts/ci-build.sh
