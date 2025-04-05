@@ -432,6 +432,10 @@ jobs:
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
 
+    defaults:
+      run:
+        shell: wsl-bash {0}
+
     steps:
     - name: Set up WSL 2
       uses: Vampire/setup-wsl@v5
@@ -489,7 +493,6 @@ jobs:
         WINDRES: x86_64-w64-mingw32-windres
         CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
         LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
-      shell: wsl-bash {0}
       run: |
         ./scripts/ci-build.sh
         ./scripts/ci-create-nuget-package.sh
