@@ -49,7 +49,7 @@ cat << EOF > "$NUGET_SPEC_PATH"
     <description>zsv+lib: world's fastest CSV parser, with an extensible CLI</description>
     <authors>liquidaty</authors>
     <projectUrl>https://github.com/liquidaty/zsv</projectUrl>
-    <license type="expression">MIT</license>
+    <licenseUrl>https://opensource.org/licenses/MIT</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <tags>native</tags>
   </metadata>
