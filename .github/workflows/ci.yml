@@ -442,6 +442,9 @@ jobs:
       with:
         wsl-version: 2
         wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
+        wsl-conf: |
+          [automount]
+          root = ~
         use-cache: true
         set-as-default: true
         distribution: Ubuntu-22.04
