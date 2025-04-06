@@ -451,6 +451,7 @@ jobs:
           tree
           zip
           tar
+          jq
 
     - name: Set VCPKG_MINGW_INSTALL_ROOT env var
       run: echo "VCPKG_MINGW_INSTALL_ROOT=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static" >>"$GITHUB_ENV"
@@ -490,24 +491,9 @@ jobs:
         WINDRES: x86_64-w64-mingw32-windres
         CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
         LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
-        WSLENV: >-
-          ARTIFACT_DIR:
-          VCPKG_MINGW_INSTALL_ROOT:
-          TAG:
-          PREFIX:
-          CC:
-          MAKE:
-          RUN_TESTS:
-          CXX:
-          CPP:
-          RANLIB:
-          AR:
-          NM:
-          WINDRES:
-          CFLAGS:
-          LDFLAGS
       shell: wsl-bash {0}
       run: |
+        export WSLENV=$(echo '${{ toJson(env) }}' | jq -r 'keys | join(":")')
         ./scripts/ci-build.sh
         ./scripts/ci-create-nuget-package.sh
 
