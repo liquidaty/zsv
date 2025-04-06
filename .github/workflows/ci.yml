@@ -493,6 +493,12 @@ jobs:
         WSLENV: TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES:CFLAGS:LDFLAGS:VCPKG_MINGW_INSTALL_ROOT
       shell: wsl-bash {0}
       run: |
+        echo "WSLENV: $WSLENV"
+        echo "PREFIX: $PREFIX"
+        echo "CC: $CC"
+        echo "MAKE: $MAKE"
+        echo "RUN_TESTS: $RUN_TESTS"
+        export WSLENV=$WSLENV
         ./scripts/ci-build.sh
         ./scripts/ci-create-nuget-package.sh
 
