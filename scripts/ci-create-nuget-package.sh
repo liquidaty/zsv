@@ -42,7 +42,7 @@ echo "[INF] VERSION:          $VERSION"
 echo "[INF] Creating spec file [$NUGET_SPEC_PATH]"
 cat << EOF > "$NUGET_SPEC_PATH"
 <?xml version="1.0"?>
-<package>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>zsv</id>
     <version>$VERSION</version>
