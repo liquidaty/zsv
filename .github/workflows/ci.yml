@@ -493,9 +493,12 @@ jobs:
         LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
         WSLENV: ARTIFACT_DIR:VCPKG_MINGW_INSTALL_ROOT/p:TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES:CFLAGS:LDFLAGS
       shell: wsl-bash {0}
-      run: |
-        ./scripts/ci-build.sh
-        ./scripts/ci-create-nuget-package.sh
+      run: ./scripts/ci-build.sh
+
+    - name: Create nuget package
+      env:
+        PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
+      run: ./scripts/ci-create-nuget-package.sh
 
     - name: Prepare build artifacts for upload
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
