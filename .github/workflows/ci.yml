@@ -431,27 +431,26 @@ jobs:
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
-      WSLENV: TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES:CFLAGS:LDFLAGS
 
     defaults:
       run:
         shell: bash
 
     steps:
-    # - name: Set up WSL 2
-    #   uses: Vampire/setup-wsl@v5
-    #   with:
-    #     wsl-version: 2
-    #     wsl-shell-command: bash -eo pipefail {0}
-    #     use-cache: true
-    #     set-as-default: true
-    #     distribution: Ubuntu-22.04
-    #     additional-packages: |
-    #       mingw-w64
-    #       nuget
-    #       tree
-    #       zip
-    #       tar
+    - name: Set up WSL 2
+      uses: Vampire/setup-wsl@v5
+      with:
+        wsl-version: 2
+        wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
+        use-cache: true
+        set-as-default: true
+        distribution: Ubuntu-22.04
+        additional-packages: |
+          mingw-w64
+          nuget
+          tree
+          zip
+          tar
 
     - name: Set VCPKG_MINGW_INSTALL_ROOT env var
       run: echo "VCPKG_MINGW_INSTALL_ROOT=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static" >>"$GITHUB_ENV"
@@ -474,30 +473,31 @@ jobs:
         ./vcpkg install ncurses:x64-mingw-static
         ls -hl ./installed/x64-mingw-static
 
-    # - name: Checkout
-    #   uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-    # - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
-    #   env:
-    #     PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
-    #     CC: x86_64-w64-mingw32-gcc
-    #     MAKE: make
-    #     RUN_TESTS: false
-    #     CXX: x86_64-w64-mingw32-g++
-    #     CPP: x86_64-w64-mingw32-cpp
-    #     RANLIB: x86_64-w64-mingw32-gcc-ranlib
-    #     AR: x86_64-w64-mingw32-gcc-ar
-    #     NM: x86_64-w64-mingw32-gcc-nm
-    #     WINDRES: x86_64-w64-mingw32-windres
-    #     CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
-    #     LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
-    #   shell: wsl-bash {0}
-    #   run: |
-    #     ./scripts/ci-build.sh
-    #     ./scripts/ci-create-nuget-package.sh
+    - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
+      env:
+        PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
+        CC: x86_64-w64-mingw32-gcc
+        MAKE: make
+        RUN_TESTS: false
+        CXX: x86_64-w64-mingw32-g++
+        CPP: x86_64-w64-mingw32-cpp
+        RANLIB: x86_64-w64-mingw32-gcc-ranlib
+        AR: x86_64-w64-mingw32-gcc-ar
+        NM: x86_64-w64-mingw32-gcc-nm
+        WINDRES: x86_64-w64-mingw32-windres
+        CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
+        LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
+        WSLENV: TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES:CFLAGS:LDFLAGS:VCPKG_MINGW_INSTALL_ROOT
+      shell: wsl-bash {0}
+      run: |
+        ./scripts/ci-build.sh
+        ./scripts/ci-create-nuget-package.sh
 
-    # - name: Prepare build artifacts for upload
-    #   run: ./scripts/ci-prepare-artifacts-for-upload.sh
+    - name: Prepare build artifacts for upload
+      run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
     # - name: Attest build artifacts for release
     #   if: startsWith(github.ref, 'refs/tags/v')
@@ -509,15 +509,15 @@ jobs:
     #   if: startsWith(github.ref, 'refs/tags/v')
     #   run: ./scripts/ci-verify-attestations.sh
 
-    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
-    #   uses: actions/upload-artifact@v4
-    #   env:
-    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip
-    #   with:
-    #     name: ${{ env.ARTIFACT_NAME }}
-    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-    #     if-no-files-found: error
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
+      uses: actions/upload-artifact@v4
+      env:
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
 
     # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz)
     #   uses: actions/upload-artifact@v4
