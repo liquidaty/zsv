@@ -490,15 +490,24 @@ jobs:
         WINDRES: x86_64-w64-mingw32-windres
         CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
         LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
-        WSLENV: TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES:CFLAGS:LDFLAGS:VCPKG_MINGW_INSTALL_ROOT
+        WSLENV: >-
+          ARTIFACT_DIR:
+          VCPKG_MINGW_INSTALL_ROOT:
+          TAG:
+          PREFIX:
+          CC:
+          MAKE:
+          RUN_TESTS:
+          CXX:
+          CPP:
+          RANLIB:
+          AR:
+          NM:
+          WINDRES:
+          CFLAGS:
+          LDFLAGS
       shell: wsl-bash {0}
       run: |
-        echo "WSLENV: $WSLENV"
-        echo "PREFIX: $PREFIX"
-        echo "CC: $CC"
-        echo "MAKE: $MAKE"
-        echo "RUN_TESTS: $RUN_TESTS"
-        export WSLENV=$WSLENV
         ./scripts/ci-build.sh
         ./scripts/ci-create-nuget-package.sh
 
