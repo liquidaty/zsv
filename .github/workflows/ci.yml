@@ -454,7 +454,7 @@ jobs:
           tar
 
     - name: Set VCPKG_MINGW_INSTALL_ROOT env var
-      run: echo "VCPKG_MINGW_INSTALL_ROOT=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static" >>"$GITHUB_ENV"
+      run: echo "VCPKG_MINGW_INSTALL_ROOT=$(echo "$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static" | tr '\\' '/')" >>"$GITHUB_ENV"
 
     - name: Cache ncurses
       uses: actions/cache@v4
