@@ -446,6 +446,7 @@ jobs:
         set-as-default: true
         distribution: Ubuntu-22.04
         additional-packages: |
+          build-essential
           mingw-w64
           nuget
           tree
