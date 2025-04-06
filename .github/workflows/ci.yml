@@ -482,7 +482,7 @@ jobs:
         PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
-        RUN_TESTS: false
+        RUN_TESTS: true
         CXX: x86_64-w64-mingw32-g++
         CPP: x86_64-w64-mingw32-cpp
         RANLIB: x86_64-w64-mingw32-gcc-ranlib
