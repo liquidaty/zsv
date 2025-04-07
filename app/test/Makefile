@@ -378,9 +378,9 @@ test-blank-leading-rows: test-blank-leading-rows-1 test-blank-leading-rows-2 tes
 
 test-blank-leading-rows-1: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
-	@stdbuf -o0 ${PREFIX} $< ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2>&1 || cat ${TMP_DIR}/$@.out
-	cat ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
+	@dos2unix -q ${TMP_DIR}/$@.out ${TMP_DIR}/$@.err
+	@(${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${CMP} ${TMP_DIR}/$@.err expected/$@.err) && ${TEST_PASS} || ${TEST_FAIL}
 
 test-blank-leading-rows-2: ${BUILD_DIR}/bin/zsv_serialize${EXE}
 	@${TEST_INIT}
