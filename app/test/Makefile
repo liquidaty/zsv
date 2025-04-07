@@ -45,6 +45,11 @@ BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 export TMP_DIR=${THIS_LIB_BASE}/tmp
 TEST_DATA_DIR=${THIS_LIB_BASE}/data
 
+IS_WSL=$(shell grep -qi microsoft /proc/version && echo 1 || echo 0)
+ifeq ($(IS_WSL),1)
+  TEST_DATA_DIR=../../data
+endif
+
 SOURCES=echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare
 ifneq ($(ZSV_EXTRAS),)
   SOURCES+=overwrite
