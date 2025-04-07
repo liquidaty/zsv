@@ -142,8 +142,8 @@ test-echo-overwrite-all: test-echo-overwrite test-echo-overwrite-csv test-echo-o
 
 test-echo-buffsize: ${BUILD_DIR}/bin/zsv_echo${EXE} ${TEST_DATA_DIR}/bigger-than-buff.csv
 	@${TEST_INIT}
-	@${PREFIX} $< ${TEST_DATA_DIR}/bigger-than-buff.csv --buff-size 131072 ${REDIRECT} ${TMP_DIR}/$@.out 2>&1
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/bigger-than-buff.csv --buff-size 131072 ${REDIRECT} ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
+	@(${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${CMP} ${TMP_DIR}/$@.err expected/$@.err) && ${TEST_PASS} || ${TEST_FAIL}
 
 test-echo1: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
