@@ -388,8 +388,8 @@ test-blank-leading-rows-2: ${BUILD_DIR}/bin/zsv_serialize${EXE}
 
 test-blank-leading-rows-3: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
-	@${PREFIX} $< -R 1 ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2>&1
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< -R 1 ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
+	@(${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${CMP} ${TMP_DIR}/$@.err expected/$@.err) && ${TEST_PASS} || ${TEST_FAIL}
 
 test-blank-leading-rows-4: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
