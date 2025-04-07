@@ -448,7 +448,7 @@ jobs:
         additional-packages: |
           build-essential
           mingw-w64
-          dos2unix
+          sqlite3
           nuget
           tree
           zip
