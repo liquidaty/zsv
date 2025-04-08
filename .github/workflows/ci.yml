@@ -427,7 +427,7 @@ jobs:
     # needs: [tag, clang-format, cppcheck, shellcheck]
     needs: [tag]
     runs-on: windows-2022
-    # timeout-minutes: 15
+    timeout-minutes: 30
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
