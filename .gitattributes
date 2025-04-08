@@ -4,3 +4,4 @@ configure text eol=lf
 *.txt text eol=lf
 
 app/test/expected/test-2db.out2 text eol=lf
+app/test/expected/test-2db.out3 text eol=lf
