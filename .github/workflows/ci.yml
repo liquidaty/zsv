@@ -490,11 +490,13 @@ jobs:
         AR: x86_64-w64-mingw32-gcc-ar
         NM: x86_64-w64-mingw32-gcc-nm
         WINDRES: x86_64-w64-mingw32-windres
-        CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
-        LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
-        WSLENV: ARTIFACT_DIR:VCPKG_MINGW_INSTALL_ROOT/p:TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES:CFLAGS:LDFLAGS
+        WSLENV: ARTIFACT_DIR:VCPKG_MINGW_INSTALL_ROOT/p:TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES
       shell: wsl-bash {0}
-      run: ./scripts/ci-build.sh
+      run: |
+        VCPKG_ROOT=$(wslpath -w "$VCPKG_MINGW_INSTALL_ROOT")
+        export CFLAGS="-I$VCPKG_ROOT/include"
+        export LDFLAGS="-L$VCPKG_ROOT/lib"
+        ./scripts/ci-build.sh
 
     - name: Create nuget package
       env:
