@@ -135,10 +135,10 @@ test-prop:
 	@EXE=${BUILD_DIR}/bin/zsv_prop${EXE} ${MAKE} -C prop test
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
-	@if [ "${IS_WSL}" = "0" ]; then \
-		@EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} ECHO_EXE=${BUILD_DIR}/bin/zsv_echo${EXE} CMP="${CMP}" ${MAKE} -C overwrite test; \
+	@if [ "${IS_WSL}" = "1" ]; then \
+		echo "Running in WSL, skipping..."; \
 	else \
-		@echo "Running in WSL, skipping..."; \
+		@EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} ECHO_EXE=${BUILD_DIR}/bin/zsv_echo${EXE} CMP="${CMP}" ${MAKE} -C overwrite test; \
 	fi
 
 test-echo : test-echo1 test-echo-overwrite-all test-echo-eol test-echo-chars test-echo-trim test-echo-skip-until test-echo-contiguous test-echo-trim-columns test-echo-trim-columns-2 test-echo-buffsize
@@ -233,9 +233,9 @@ test-cli: ${CLI}
 	@${TEST_INIT}
 	@[ "${CLI}" = "" ] && echo 1>&2 'test-cli: missing CLI env var' && exit 1 || exit 0
 	@$< help select 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out`" = "select: extracts and outputs specified columns" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "38" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "select: extracts and outputs specified columns" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "38" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@$< help count 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "6" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "6" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-1-count test-1-count-pull: test-1-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
@@ -364,18 +364,20 @@ test-fixed-4-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 
 test-rm: ${BUILD_DIR}/bin/zsv_prop${EXE} ${BUILD_DIR}/bin/zsv_rm${EXE}
 	@if [ "$(IS_WSL)" = "0" ]; then \
+		echo "Running in WSL, skipping..."; \
+	else \
 		@${TEST_INIT}; \
 		@echo 'hi' > ${TMP_DIR}/$@.csv; \
 		@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@.csv -R 1 -d 2 ${REDIRECT} /dev/null; \
 		@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f >/dev/null; \
 		@${PREFIX} ${BUILD_DIR}/bin/zsv_rm${EXE} ${TMP_DIR}/$@.csv -f ${REDIRECT} /dev/null; \
 		@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f 2>/dev/null && ${TEST_FAIL} || ${TEST_PASS}; \
-	else \
-		@echo "Running in WSL, skipping..."; \
 	fi
 
 test-mv: ${BUILD_DIR}/bin/zsv_prop${EXE} ${BUILD_DIR}/bin/zsv_mv${EXE}
-	@if [ "$(IS_WSL)" = "0" ]; then \
+	@if [ "$(IS_WSL)" = "1" ]; then \
+		echo "Running in WSL, skipping..."; \
+	else \
 		@${TEST_INIT}; \
 		@echo 'hi' > ${TMP_DIR}/$@.csv; \
 		@rm -rf ${TMP_DIR}/.zsv/data/$@.csv ${TMP_DIR}/.zsv/data/$@-moved.csv ${TMP_DIR}/$@-moved.csv; \
@@ -383,8 +385,6 @@ test-mv: ${BUILD_DIR}/bin/zsv_prop${EXE} ${BUILD_DIR}/bin/zsv_mv${EXE}
 		@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f >/dev/null; \
 		@${PREFIX} ${BUILD_DIR}/bin/zsv_mv${EXE} ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-moved.csv ${REDIRECT} /dev/null; \
 		@find ${TMP_DIR}/.zsv/data/$@-moved.csv/props.json -type f >/dev/null && ${TEST_PASS} || ${TEST_FAIL}; \
-	else \
-		@echo "Running in WSL, skipping..."; \
 	fi
 
 test-blank-leading-rows: test-blank-leading-rows-1 test-blank-leading-rows-2 test-blank-leading-rows-3 test-blank-leading-rows-4
@@ -536,14 +536,14 @@ ${BUILD_DIR}/bin/zsv_%${EXE}:
 
 test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
-	${BUILD_DIR}/bin/zsv_select${EXE} -H 24999 -N worldcitiespop_mil.csv > ${TMP_DIR}/$@.csv
-	${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@.json
-	(${PREFIX} $< ${ARGS-$*} -o ${TMP_DIR}/$@.db --table data --overwrite < ${TMP_DIR}/test-2db.json ${REDIRECT1} ${TMP_DIR}/$@.out)
-	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
-	sqlite3 ${TMP_DIR}/$@.db .schema | sed 's/ IF NOT EXISTS//' | sed 's/"data"/data/g' > ${TMP_DIR}/$@.out2
-	${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
-	sqlite3 ${TMP_DIR}/$@.db "select count(*) from data" > ${TMP_DIR}/$@.out3
-	${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
+	@${BUILD_DIR}/bin/zsv_select${EXE} -H 24999 -N worldcitiespop_mil.csv > ${TMP_DIR}/$@.csv
+	@${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@.json
+	@(${PREFIX} $< ${ARGS-$*} -o ${TMP_DIR}/$@.db --table data --overwrite < ${TMP_DIR}/test-2db.json ${REDIRECT1} ${TMP_DIR}/$@.out)
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@sqlite3 ${TMP_DIR}/$@.db .schema | sed 's/ IF NOT EXISTS//' | sed 's/"data"/data/g' > ${TMP_DIR}/$@.out2
+	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+	@sqlite3 ${TMP_DIR}/$@.db "select count(*) from data" > ${TMP_DIR}/$@.out3
+	@${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
 
 test-jq: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
