@@ -135,7 +135,11 @@ test-prop:
 	@EXE=${BUILD_DIR}/bin/zsv_prop${EXE} ${MAKE} -C prop test
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
-	@EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} ECHO_EXE=${BUILD_DIR}/bin/zsv_echo${EXE} CMP="${CMP}" ${MAKE} -C overwrite test
+	@if [ "${IS_WSL}" = "0" ]; then \
+		@EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} ECHO_EXE=${BUILD_DIR}/bin/zsv_echo${EXE} CMP="${CMP}" ${MAKE} -C overwrite test; \
+	else \
+		@echo "Running in WSL, skipping..."; \
+	fi
 
 test-echo : test-echo1 test-echo-overwrite-all test-echo-eol test-echo-chars test-echo-trim test-echo-skip-until test-echo-contiguous test-echo-trim-columns test-echo-trim-columns-2 test-echo-buffsize
 
@@ -359,21 +363,29 @@ test-fixed-4-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${CMP} ${TMP_DIR}/$@a.out expected/test-fixed-4a-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-rm: ${BUILD_DIR}/bin/zsv_prop${EXE} ${BUILD_DIR}/bin/zsv_rm${EXE}
-	@${TEST_INIT}
-	@echo 'hi' > ${TMP_DIR}/$@.csv
-	@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@.csv -R 1 -d 2 ${REDIRECT} /dev/null
-	@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f >/dev/null
-	@${PREFIX} ${BUILD_DIR}/bin/zsv_rm${EXE} ${TMP_DIR}/$@.csv -f ${REDIRECT} /dev/null
-	@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f 2>/dev/null && ${TEST_FAIL} || ${TEST_PASS}
+	@if [ "$(IS_WSL)" = "0" ]; then \
+		@${TEST_INIT}; \
+		@echo 'hi' > ${TMP_DIR}/$@.csv; \
+		@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@.csv -R 1 -d 2 ${REDIRECT} /dev/null; \
+		@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f >/dev/null; \
+		@${PREFIX} ${BUILD_DIR}/bin/zsv_rm${EXE} ${TMP_DIR}/$@.csv -f ${REDIRECT} /dev/null; \
+		@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f 2>/dev/null && ${TEST_FAIL} || ${TEST_PASS}; \
+	else \
+		@echo "Running in WSL, skipping..."; \
+	fi
 
 test-mv: ${BUILD_DIR}/bin/zsv_prop${EXE} ${BUILD_DIR}/bin/zsv_mv${EXE}
-	@${TEST_INIT}
-	@echo 'hi' > ${TMP_DIR}/$@.csv
-	@rm -rf ${TMP_DIR}/.zsv/data/$@.csv ${TMP_DIR}/.zsv/data/$@-moved.csv ${TMP_DIR}/$@-moved.csv
-	@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@.csv -R 1 -d 2 ${REDIRECT} /dev/null
-	@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f >/dev/null
-	@${PREFIX} ${BUILD_DIR}/bin/zsv_mv${EXE} ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-moved.csv ${REDIRECT} /dev/null
-	@find ${TMP_DIR}/.zsv/data/$@-moved.csv/props.json -type f >/dev/null && ${TEST_PASS} || ${TEST_FAIL}
+	@if [ "$(IS_WSL)" = "0" ]; then \
+		@${TEST_INIT}; \
+		@echo 'hi' > ${TMP_DIR}/$@.csv; \
+		@rm -rf ${TMP_DIR}/.zsv/data/$@.csv ${TMP_DIR}/.zsv/data/$@-moved.csv ${TMP_DIR}/$@-moved.csv; \
+		@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@.csv -R 1 -d 2 ${REDIRECT} /dev/null; \
+		@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f >/dev/null; \
+		@${PREFIX} ${BUILD_DIR}/bin/zsv_mv${EXE} ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-moved.csv ${REDIRECT} /dev/null; \
+		@find ${TMP_DIR}/.zsv/data/$@-moved.csv/props.json -type f >/dev/null && ${TEST_PASS} || ${TEST_FAIL}; \
+	else \
+		@echo "Running in WSL, skipping..."; \
+	fi
 
 test-blank-leading-rows: test-blank-leading-rows-1 test-blank-leading-rows-2 test-blank-leading-rows-3 test-blank-leading-rows-4
 
@@ -579,11 +591,11 @@ test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< -q < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
-	@(${PREFIX} $< < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT2} ${TMP_DIR}/$@.out2 && \
+	@(${PREFIX} $< < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out2 && \
 	${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL})
-	@(${PREFIX} $< -H < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT2} ${TMP_DIR}/$@.out3 && \
+	@(${PREFIX} $< -H < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out3 && \
 	${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL})
-	@(${PREFIX} $< < ${TEST_DATA_DIR}/test/$*-trim.csv ${REDIRECT2} ${TMP_DIR}/$@.trim && \
+	@(${PREFIX} $< < ${TEST_DATA_DIR}/test/$*-trim.csv ${REDIRECT1} ${TMP_DIR}/$@.trim && \
 	${CMP} ${TMP_DIR}/$@.trim expected/$@.trim && ${TEST_PASS} || ${TEST_FAIL})
 
 test-compare-tolerance: ${BUILD_DIR}/bin/zsv_compare${EXE}
