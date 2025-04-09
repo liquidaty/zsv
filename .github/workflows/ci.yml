@@ -447,30 +447,36 @@ jobs:
         distribution: Ubuntu-22.04
         additional-packages: |
           build-essential
-          pkg-config
           mingw-w64
           sqlite3
           nuget
           tree
           zip
           tar
-          git
 
-    - name: Checkout
-      uses: actions/checkout@v4
+    - name: Set VCPKG_MINGW_INSTALL_ROOT env var
+      run: echo "VCPKG_MINGW_INSTALL_ROOT=$(echo "$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static" | tr '\\' '/')" >>"$GITHUB_ENV"
+
+    - name: Cache ncurses
+      uses: actions/cache@v4
+      id: cache-ncurses
+      with:
+        key: ncurses:x64-mingw-static
+        path: ${{ env.VCPKG_MINGW_INSTALL_ROOT }}
 
     - name: Install ncurses with wide character support using vcpkg
-      shell: wsl-bash {0}
+      if: ${{ steps.cache-ncurses.outputs.cache-hit != 'true' }}
       run: |
-        git clone https://github.com/microsoft/vcpkg.git
-        cd vcpkg
-        ./bootstrap-vcpkg.sh
-        NCURSES_PORTFILE="./ports/ncurses/portfile.cmake"
+        NCURSES_PORTFILE="$VCPKG_INSTALLATION_ROOT/ports/ncurses/portfile.cmake"
+        cd "$VCPKG_INSTALLATION_ROOT"
         if ! grep -- "--enable-widec" "$NCURSES_PORTFILE" >/dev/null; then
           sed 's|--enable-pc-files|--enable-pc-files --enable-widec|' -i "$NCURSES_PORTFILE"
         fi
         ./vcpkg install ncurses:x64-mingw-static
         ls -hl ./installed/x64-mingw-static
+
+    - name: Checkout
+      uses: actions/checkout@v4
 
     - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
       env:
@@ -484,12 +490,11 @@ jobs:
         AR: x86_64-w64-mingw32-gcc-ar
         NM: x86_64-w64-mingw32-gcc-nm
         WINDRES: x86_64-w64-mingw32-windres
-        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES
+        CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
+        LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
+        WSLENV: ARTIFACT_DIR:VCPKG_MINGW_INSTALL_ROOT/p:TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES:CFLAGS:LDFLAGS
       shell: wsl-bash {0}
-      run: |
-        export CFLAGS="-I$PWD/vcpkg/installed/x64-mingw-static/include"
-        export LDFLAGS="-I$PWD/vcpkg/installed/x64-mingw-static/lib"
-        ./scripts/ci-build.sh
+      run: ./scripts/ci-build.sh
 
     - name: Create nuget package
       env:
