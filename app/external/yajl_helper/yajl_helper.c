@@ -455,7 +455,7 @@ static int yajl_helper_null(void *ctx) {
 }
 
 static int yajl_helper_error(void * ctx, const unsigned char *buf,
-                             unsigned bufLen, int err_no) {
+                             size_t bufLen, int err_no) {
   (void)(err_no);
   struct yajl_helper_parse_state *st = ctx;
 

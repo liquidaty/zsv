@@ -93,7 +93,7 @@ extern "C" {
 
         int (* yajl_start_array)(void * ctx);
         int (* yajl_end_array)(void * ctx);
-        int (* yajl_error)(void * ctx, const unsigned char *buf, unsigned len, int err_no);
+        int (* yajl_error)(void * ctx, const unsigned char *buf, size_t len, int err_no);
     } yajl_callbacks;
 
     /** allocate a parser handle
