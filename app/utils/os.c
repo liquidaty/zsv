@@ -12,6 +12,7 @@
 
 #ifdef WIN32
 #include "win/fopen_longpath.c"
+#include "win/remove_longpath.c"
 #endif
 
 /**
