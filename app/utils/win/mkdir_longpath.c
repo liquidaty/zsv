@@ -28,7 +28,7 @@ DWORD zsv_mkdir_winlp(const char *path_utf8) {
   }
 
   wchar_t *finalPath;
-  DWORD rc = pathToPrefixedWidePath(path_utf8, &finalPath);
+  DWORD rc = zsv_pathToPrefixedWidePath(path_utf8, &finalPath);
   if (rc)
     return rc;
 
@@ -43,7 +43,7 @@ DWORD zsv_mkdir_winlp(const char *path_utf8) {
       // printf("Debug: Directory already exists (considered success).\n");
       lastError = 0; // Treat as success
     } else {
-      fprintf(stderr, "Error: CreateDirectoryW failed for path: %ls\n", finalPath);
+      fprintf(stderr, "Error: CreateDirectoryW failed (%i) for path: %ls\n", lastError, finalPath);
     }
   } else {
     // printf("Debug: CreateDirectoryW succeeded for path: %ls\n", finalPath);

@@ -13,7 +13,7 @@ FILE *zsv_fopen_longpath(const char *utf8_path, const char *mode) {
   DWORD dwShareMode = FILE_SHARE_READ; // Example default
   DWORD dwCreationDisposition = 0;
   int c_runtime_flags = 0;
-  if (pathToPrefixedWidePath(utf8_path, &wide_path_prefixed))
+  if (zsv_pathToPrefixedWidePath(utf8_path, &wide_path_prefixed))
     return NULL;
 
   // --- 2. Determine CreateFileW params and _open_osfhandle flags from mode string ---
