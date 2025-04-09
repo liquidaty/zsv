@@ -19,7 +19,7 @@ void zsv_perror(const char *);
 #else
 #include <stdio.h>
 FILE *zsv_fopen(const char *fname, const char *mode);
-char *zsv_ensureLongPathPrefix(const char *original_path);
+char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_prefix);
 
 #endif
 

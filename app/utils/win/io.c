@@ -22,7 +22,7 @@ static char *slashes_to_backslashes_if_needed(const char *path, DWORD *rc) {
   return tmp;
 }
 
-char *zsv_ensureLongPathPrefix(const char *original_path) {
+char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_prefix) {
   // --- Basic input validation ---
   if (original_path == NULL) {
     return NULL;
@@ -37,7 +37,7 @@ char *zsv_ensureLongPathPrefix(const char *original_path) {
   // --- Check length ---
   size_t original_len = strlen(original_path);
 
-  if (original_len < MAX_PATH) {
+  if (original_len < MAX_PATH && always_prefix == 0) {
     // Path is short, no prefix needed based on length.
     return NULL;
   }
@@ -120,8 +120,8 @@ DWORD zsv_pathToPrefixedWidePath(const char *path_utf8, wchar_t **result) {
   }
   const char *path_after_slashes = tmp_utf8_slashes ? tmp_utf8_slashes : path_utf8;
 
-  // --- 2. Add Correct Prefix Only If Necessary (UTF-8) ---
-  prefixed_utf8 = zsv_ensureLongPathPrefix(path_after_slashes);
+  // --- 2. Add prefix
+  prefixed_utf8 = zsv_ensureLongPathPrefix(path_after_slashes, 1);
   // If prefixed_utf8 is not NULL, it's newly allocated (with correct prefix).
   // If NULL, the path was short or already correctly prefixed.
 
@@ -138,7 +138,7 @@ DWORD zsv_pathToPrefixedWidePath(const char *path_utf8, wchar_t **result) {
   }
 
   // Allocate buffer
-  final_wide_path = (wchar_t *)malloc(wideCharLen * sizeof(wchar_t));
+  final_wide_path = (wchar_t *)calloc(wideCharLen + 1, sizeof(wchar_t));
   if (!final_wide_path) {
     perror("Error allocating memory for final wide path");
     error_code = ERROR_OUTOFMEMORY;
