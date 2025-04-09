@@ -9,6 +9,8 @@
 
 typedef struct yajl_helper_parse_state *yajl_helper_t;
 
+// #include "yajl_helper/yajl_helper_switch.h"
+
 enum yajl_helper_option {
   yajl_helper_option_use_number_strings = 1
 } ;
@@ -81,6 +83,8 @@ yajl_helper_t yajl_helper_new(
 void yajl_helper_delete(yajl_helper_t yh);
 
 void yajl_helper_set_ctx(yajl_helper_t yh, void *ctx);
+void yajl_helper_set_ctx_destructor(yajl_helper_t yh, 
+                                    void (*destructor)(void *));
 void *yajl_helper_ctx(yajl_helper_t yh);
 
 // get the yajl handle
@@ -94,7 +98,7 @@ char yajl_helper_stack_at(yajl_helper_t st, unsigned level);
 // return map key at given level
 const char *yajl_helper_map_key_at(yajl_helper_t st, unsigned int level);
 
-// 
+unsigned int yajl_helper_item_ind_at(struct yajl_helper_parse_state *st, unsigned int level);
 unsigned int yajl_helper_item_ind_plus_1_at(yajl_helper_t yh, unsigned int level);
 
 // get the raw level, without any offset
@@ -182,5 +186,23 @@ int yajl_helper_print_err(yajl_handle yajl,
                           unsigned char *last_parsed_buff,
                           size_t last_parsed_buff_len
                           );
+
+
+/********** new **********/
+struct yajl_helper_params {
+  yajl_helper_t parent;
+  unsigned max_level;
+  int (*start_map)(struct yajl_helper_parse_state *);
+  int (*end_map)(struct yajl_helper_parse_state *);
+  int (*map_key)(struct yajl_helper_parse_state *, const unsigned char *, size_t);
+  int (*start_array)(struct yajl_helper_parse_state *);
+  int (*end_array)(struct yajl_helper_parse_state *);
+  int (*value)(struct yajl_helper_parse_state *, struct json_value *);
+  void *ctx;
+  void (*ctx_destructor)(void *);
+};
+
+yajl_helper_t yajl_helper_new_w_params(struct yajl_helper_params *p);
+
 
 #endif // ifdef YAJL_HELPER_H

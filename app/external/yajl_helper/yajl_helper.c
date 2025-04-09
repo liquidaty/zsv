@@ -18,6 +18,16 @@ static inline void *yh_memdup(const void *src, size_t n) {
 
 #define YAJL_HELPER_LEVEL(st) (st->level - st->level_offset)
 
+static void yajl_helper_clear(yajl_helper_t yh);
+static void yajl_helper_pop(struct yajl_helper_parse_state *st) {
+  if(st->parent) {
+    struct yajl_helper_parse_state *parent = st->parent;
+    yajl_helper_clear(st);
+    *st = *parent;
+    free(parent);
+  }
+}
+
 unsigned int yajl_helper_level_raw(struct yajl_helper_parse_state *st) {
   return st->level;
 }
@@ -31,11 +41,11 @@ unsigned int yajl_helper_level(struct yajl_helper_parse_state *st) {
 }
 
 void yajl_helper_set_ctx(struct yajl_helper_parse_state *st, void *ctx) {
-  st->data = ctx;
+  st->ctx = ctx;
 }
 
 void *yajl_helper_ctx(struct yajl_helper_parse_state *st) {
-  return st->data;
+  return st->ctx;
 }
 
 /**
@@ -109,7 +119,6 @@ unsigned int yajl_helper_element_index_plus_1(struct yajl_helper_parse_state *st
     return st->item_ind[level-1] + 1;
   return 0;
 }
-
 
 long long json_value_long(struct json_value *value, int *err) {
   *err = 0;
@@ -320,11 +329,14 @@ static int yajl_helper_end_array(void *ctx) {
 
   if(st->level_offset > st->level) {
     fprintf(stderr, "yajl_helper_end_array: level_offset exceeds level\n");
-    rc = 0;
+    return 0;
   }
+
+  if(st->level == 0 && st->parent)
+    yajl_helper_pop(st);
+
   return rc;
 }
-
 
 static int yajl_helper_start_map(void *ctx) {
   struct yajl_helper_parse_state *st = ctx;
@@ -357,14 +369,17 @@ static int yajl_helper_end_map(void *ctx) {
 
   if(st->level_offset > st->level) {
     fprintf(stderr, "yajl_helper_end_map: level_offset exceeds level\n");
-    rc = 0;
+    return 0;
   }
+
+  if(st->level == 0 && st->parent)
+    yajl_helper_pop(st);
+  
   return rc;
 }
 
 static int yajl_helper_map_key(void *ctx, const unsigned char *stringVal, size_t len) {
   struct yajl_helper_parse_state *st = ctx;
-
   if(st->level <= st->max_level) {
     if(st->map_keys[st->level - 1])
       free(st->map_keys[st->level - 1]);
@@ -382,68 +397,64 @@ static int yajl_helper_map_key(void *ctx, const unsigned char *stringVal, size_t
 }
 
 static inline int process_value(struct yajl_helper_parse_state *st,
-                            void *ctx, struct json_value *v) {
+                                struct json_value *v) {
+  int rc = 1;
   if(st->value) {
-    int rc = st->value(ctx, v);
+    rc = st->value(st, v);
     if(st->level && strchr("{[", st->stack[st->level-1]) && st->level <= st->max_level)
       st->item_ind[st->level-1]++;
-    return rc;
   }
-  return 1;
+  if(st->level == 0 && st->parent)
+    yajl_helper_pop(st);
+  return rc;
 }
 
 static int yajl_helper_number_str(void * ctx, const char * numberVal,
                                   size_t numberLen) {
-  struct yajl_helper_parse_state *st = ctx;
   struct json_value value;
   value.type = json_value_number_string;
   value.val.s = (unsigned char *)numberVal;
   value.strlen = numberLen;
-  return process_value(st, ctx, &value);
+  return process_value((struct yajl_helper_parse_state *)ctx, &value);
 }
 
 /* unified calls to a single yajl_helper_value */
 static int yajl_helper_string(void *ctx, const unsigned char *stringVal, size_t len) {
-  struct yajl_helper_parse_state *st = ctx;
   struct json_value value;
   value.type = json_value_string;
   value.val.s = (unsigned char *)stringVal;
   value.strlen = len;
-  return process_value(st, ctx, &value);
+  return process_value((struct yajl_helper_parse_state *)ctx, &value);
 }
 
 static int yajl_helper_double(void *ctx, double d) {
-  struct yajl_helper_parse_state *st = ctx;
   struct json_value value;
   value.type = json_value_double;
   value.val.dbl = d;
-  return process_value(st, ctx, &value);
+  return process_value((struct yajl_helper_parse_state *)ctx, &value);
 }
 
 static int yajl_helper_int(void *ctx, long long integerVal) {
-  struct yajl_helper_parse_state *st = ctx;
   struct json_value value;
   value.type = json_value_int;
   value.val.i = integerVal;
-  return process_value(st, ctx, &value);
+  return process_value((struct yajl_helper_parse_state *)ctx, &value);
 }
 
 static int yajl_helper_bool(void *ctx, int boolean) {
-  struct yajl_helper_parse_state *st = ctx;
   struct json_value value;
   value.type = json_value_bool;
   value.val.i = boolean ? 1 : 0;
-  return process_value(st, ctx, &value);
+  return process_value((struct yajl_helper_parse_state *)ctx, &value);
 }
 
 static int yajl_helper_null(void *ctx) {
-  struct yajl_helper_parse_state *st = ctx;
   struct json_value value;
   value.type = json_value_null;
-  return process_value(st, ctx, &value);
+  return process_value((struct yajl_helper_parse_state *)ctx, &value);
 }
 
-static int yajl_helper_error(void * ctx, const char *buf,
+static int yajl_helper_error(void * ctx, const unsigned char *buf,
                              size_t bufLen, int err_no) {
   (void)(err_no);
   struct yajl_helper_parse_state *st = ctx;
@@ -455,7 +466,7 @@ static int yajl_helper_error(void * ctx, const char *buf,
   value.type = json_value_error;
   value.val.s = (unsigned char *)buf;
   value.strlen = bufLen;
-  return process_value(st, ctx, &value);
+  return process_value((struct yajl_helper_parse_state *)ctx, &value);
 }
 
 static void yajl_helper_callbacks_init(yajl_callbacks *callbacks, char nums_as_strings) {
@@ -476,6 +487,70 @@ static void yajl_helper_callbacks_init(yajl_callbacks *callbacks, char nums_as_s
   memcpy(callbacks, &x, sizeof(x));
 }
 
+// return error
+static int yajl_helper_allocate_stack(yajl_helper_t yh, unsigned sz) {
+  char *stack = calloc(yh->max_level, sizeof(char));
+  char **map_keys = calloc(yh->max_level, sizeof(char *));
+  unsigned int *item_ind = calloc(yh->max_level, sizeof(*yh->item_ind));
+  if(stack && map_keys && item_ind) {
+    yh->stack = stack;
+    yh->map_keys = map_keys;
+    yh->item_ind = item_ind;
+    return 0;
+  }
+  // out of memory!
+  free(stack);
+  free(map_keys);
+  free(item_ind);
+  return 1;
+}
+
+static void yajl_helper_free_stack(yajl_helper_t yh) {
+  if(yh->map_keys) {
+    for(unsigned int i = 0; i < yh->max_level; i++)
+      free(yh->map_keys[i]);
+  }
+  free(yh->stack);
+  free(yh->map_keys);
+  free(yh->item_ind);
+}
+
+yajl_helper_t yajl_helper_new_w_params(struct yajl_helper_params *p) {
+  yajl_helper_t yh = calloc(1, sizeof(*yh));
+  if(yh) {
+    yh->max_level = p->max_level ? p->max_level : 32;
+    if(!yajl_helper_allocate_stack(yh, yh->max_level)) {
+      if(!p->parent) {
+        yh->yajl = yajl_alloc(&yh->callbacks, NULL, yh);
+        yajl_helper_callbacks_init(&yh->callbacks, 0);
+      }
+      yh->start_map = p->start_map;
+      yh->end_map = p->end_map;
+      yh->map_key = p->map_key;
+      yh->start_array = p->start_array;
+      yh->end_array = p->end_array;
+      yh->value = p->value;
+      yh->ctx = p->ctx;
+      yh->ctx_destructor = p->ctx_destructor;
+      if(p->parent) {
+        yh->yajl = p->parent->yajl;
+        yh->callbacks = p->parent->callbacks;
+        // swap parent and yh data, then set parent->parent = yh
+        // and yh->parent = parent->parent
+        yajl_helper_t yh_parent = p->parent->parent;
+        struct yajl_helper_parse_state tmp = *yh;
+        *yh = *p->parent;
+        *p->parent = tmp;
+        p->parent->parent = yh;
+        yh->parent = yh_parent;
+      }
+      return yh;
+    }
+  }
+  // Error (e.g. out of mem)
+  yajl_helper_delete(yh);
+  return NULL;
+}
 
 yajl_helper_t yajl_helper_new(
                               unsigned int max_level,
@@ -487,30 +562,23 @@ yajl_helper_t yajl_helper_new(
                               int (*end_array)(struct yajl_helper_parse_state *),
                               int (*value)(struct yajl_helper_parse_state *,
                                            struct json_value *),
-                              void *data
+                              void *ctx
                               ) {
-  yajl_helper_t yh = calloc(1, sizeof(*yh));
-  if(yh) {
-    yh->max_level = max_level ? max_level : 32;
-    yh->stack = calloc(yh->max_level, sizeof(char));
-    yh->map_keys = calloc(yh->max_level, sizeof(char *));
-    yh->item_ind = calloc(yh->max_level, sizeof(*yh->item_ind));
-    yh->yajl = yajl_alloc(&yh->callbacks, NULL, yh);
-    if(yh->stack && yh->map_keys && yh->item_ind && yh->yajl) {
-      yajl_helper_callbacks_init(&yh->callbacks, 0);
-      yh->start_map = start_map;
-      yh->end_map = end_map;
-      yh->map_key = map_key;
-      yh->start_array = start_array;
-      yh->end_array = end_array;
-      yh->value = value;
-      yh->data = data;
-      return yh;
-    }
-  }
-  // Error (e.g. out of mem)
-  yajl_helper_delete(yh);
-  return NULL;
+  struct yajl_helper_params p = { 0 };
+  p.max_level = max_level;
+  p.start_map = start_map;
+  p.end_map = end_map;
+  p.map_key = map_key;
+  p.start_array = start_array;
+  p.end_array = end_array;
+  p.value = value;
+  p.ctx = ctx;
+  return yajl_helper_new_w_params(&p);
+}
+
+void yajl_helper_set_ctx_destructor(yajl_helper_t yh, 
+                                    void (*destructor)(void *)) {
+  yh->ctx_destructor = destructor;
 }
 
 yajl_handle yajl_helper_yajl(yajl_helper_t yh) {
@@ -519,13 +587,21 @@ yajl_handle yajl_helper_yajl(yajl_helper_t yh) {
   return NULL;
 }
 
+static void yajl_helper_clear(yajl_helper_t yh) {
+  if(yh) {
+    if(yh->ctx_destructor)
+      yh->ctx_destructor(yh->ctx);
+    yajl_helper_free_stack(yh);
+  }
+}
+
 void yajl_helper_delete(yajl_helper_t yh) {
   if(yh) {
-    for(unsigned int i = 0; i < yh->max_level; i++)
-      free(yh->map_keys[i]);
-    free(yh->stack);
-    free(yh->map_keys);
-    free(yh->item_ind);
+    while(yh->parent) // delete all nested contexts
+      yajl_helper_pop(yh);
+
+    // delete self
+    yajl_helper_clear(yh);
     if(yh->yajl)
       yajl_free(yh->yajl);
     free(yh);
@@ -642,6 +718,19 @@ unsigned char *json_str_dup_if_len_buff(struct json_value *value, unsigned char 
   return NULL;
 }
 
+void json_value_delete(struct json_value **valuep) {
+  if(*valuep)
+    json_value_free(*valuep);
+  *valuep = NULL;
+}
+
+struct json_value *json_value_copy(struct json_value *value) {
+  struct json_value *new_value = calloc(1, sizeof(*new_value));
+  if(new_value)
+    json_value_dup(new_value, value);
+  return new_value;
+}
+
 #ifdef YAJL_HELPER_UTILS
 void *linkedlist_reverse(void *p) {
   struct struct_list *sl = (struct struct_list *)p;
@@ -702,3 +791,5 @@ void int_list_free(struct int_list *e) {
     free(e);
   }
 }
+
+// #include "yajl_helper_switch.c"

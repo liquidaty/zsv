@@ -1,4 +1,5 @@
 struct yajl_helper_parse_state { // TO DO: make this opaque
+  struct yajl_helper_parse_state *parent; // non-null if this is a nested parser
   unsigned int level;
   unsigned int max_level;
 
@@ -11,7 +12,11 @@ struct yajl_helper_parse_state { // TO DO: make this opaque
   yajl_callbacks callbacks;
   yajl_handle yajl;
 
-  void *data; // user-defined
+  void *ctx; // user-defined
+  void (*ctx_destructor)(void *); // optional destructor for user-defined
+
+  // internal use only
+  void (*error)(struct yajl_helper_parse_state *);
 
   // yajl callbacks: return 1 on success (continue), 0 to abort
   int (*start_map)(struct yajl_helper_parse_state *);
