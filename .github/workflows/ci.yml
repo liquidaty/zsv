@@ -467,7 +467,7 @@ jobs:
     - name: Install ncurses with wide character support using vcpkg
       if: ${{ steps.cache-ncurses.outputs.cache-hit != 'true' }}
       env:
-        WSLENV: VCPKG_INSTALLATION_ROOT
+        WSLENV: VCPKG_INSTALLATION_ROOT/p
       shell: wsl-bash {0}
       run: |
         NCURSES_PORTFILE="$VCPKG_INSTALLATION_ROOT/ports/ncurses/portfile.cmake"
