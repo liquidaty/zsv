@@ -28,7 +28,7 @@ DWORD zsv_mkdir_winlp(const char *path_utf8) {
   }
 
   wchar_t *finalPath;
-  DWORD rc = pathToPrefixedWidePath(path_utf8, &finalPath);
+  DWORD rc = zsv_pathToPrefixedWidePath(path_utf8, &finalPath);
   if (rc)
     return rc;
 

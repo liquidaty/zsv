@@ -19,6 +19,8 @@ void zsv_perror(const char *);
 #else
 #include <stdio.h>
 FILE *zsv_fopen(const char *fname, const char *mode);
+char *zsv_ensureLongPathPrefix(const char *original_path);
+
 #endif
 
 #ifndef _WIN32
