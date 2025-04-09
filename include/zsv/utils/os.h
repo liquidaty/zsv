@@ -34,7 +34,6 @@ int zsv_remove_winlp(const char *path_utf8);
 #define zsv_remove zsv_remove_winlp
 #endif
 
-
 int zsv_replace_file(const char *src, const char *dest);
 
 #ifdef _WIN32
