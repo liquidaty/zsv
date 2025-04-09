@@ -30,7 +30,8 @@ char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_p
 #define zsv_remove remove
 #else
 #include <stdio.h>
-FILE *zsv_remove(const char *path_utf8);
+int zsv_remove_winlp(const char *path_utf8);
+#define zsv_remove zsv_remove_winlp
 #endif
 
 

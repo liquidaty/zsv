@@ -117,7 +117,7 @@ void zsv_win_to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len) {
 
 #include <wchar.h>
 
-int zsv_replace_file(const void *src, const void *dest) {
+int zsv_replace_file(const char *src, const char *dest) {
   wchar_t wdest[PATH_MAX], wsrc[PATH_MAX];
 
   zsv_win_to_unicode(dest, wdest, ARRAY_SIZE(wdest));
