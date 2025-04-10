@@ -448,6 +448,7 @@ jobs:
         additional-packages: |
           build-essential
           mingw-w64
+          libpthread-stubs0-dev
           sqlite3
           nuget
           tree
