@@ -75,7 +75,7 @@ else
     --disable-termcap
   # --enable-jq
 fi
-exit
+exit 1
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
   rm -rf build "$PREFIX"
