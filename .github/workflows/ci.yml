@@ -437,6 +437,9 @@ jobs:
         key: ncurses:x64-mingw-static
         path: ${{ github.workflow }}/vcpkg.zip
 
+    - name: Install MinGW
+      run: sudo apt install mingw-w64
+
     - name: Install ncurses with wide character support using vcpkg
       if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       run: |
