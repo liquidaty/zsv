@@ -423,45 +423,9 @@ jobs:
   #     if: startsWith(github.ref, 'refs/tags/v')
   #     run: ./scripts/ci-upload-release-artifacts.sh
 
-  ci-mingw-vcpkg-deps:
-    # needs: [tag, clang-format, cppcheck, shellcheck]
-    needs: [tag]
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-
-    steps:
-    - name: Cache (save)
-      uses: actions/cache@v4
-      id: cache
-      with:
-        key: ncurses:x64-mingw-static
-        path: ${{ github.workspace }}/vcpkg.zip
-        lookup-only: true
-        enableCrossOsArchive: true
-
-    - name: Install MinGW
-      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-      run: sudo apt install mingw-w64
-
-    - name: Install ncurses with wide character support using vcpkg
-      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-      run: |
-        cd "$VCPKG_INSTALLATION_ROOT"
-        MINGW_TRIPLET_FILE="triplets/community/x64-mingw-static.cmake"
-        echo 'set(VCPKG_BUILD_TYPE release)' >>"$MINGW_TRIPLET_FILE"
-
-        NCURSES_PORTFILE="ports/ncurses/portfile.cmake"
-        if ! grep -- "--enable-widec" "$NCURSES_PORTFILE" >/dev/null; then
-          sed 's|--enable-pc-files|--enable-pc-files --enable-widec|' -i "$NCURSES_PORTFILE"
-        fi
-        ./vcpkg install ncurses:x64-mingw-static
-        tree ./installed/x64-mingw-static
-
-        ./vcpkg export ncurses:x64-mingw-static --zip --output vcpkg --output-dir "$GITHUB_WORKSPACE"
-
   ci-mingw:
     # needs: [tag, clang-format, cppcheck, shellcheck]
-    needs: [tag, ci-mingw-vcpkg-deps]
+    needs: [tag]
     runs-on: windows-2022
     timeout-minutes: 30
 
@@ -491,19 +455,13 @@ jobs:
           tar
           tmux
 
-    - name: Cache (restore)
-      uses: actions/cache@v4
-      with:
-        key: ncurses:x64-mingw-static
-        path: ${{ github.workspace }}/vcpkg.zip
-        fail-on-cache-miss: true
-        enableCrossOsArchive: true
-
-    - name: Set up vcpkg deps
-      run: unzip "$GITHUB_WORKSPACE/vcpkg.zip"
-
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Expand vcpkg dependencies in app/external
+      run: |
+        cd app/external
+        unzip vcpkg.zip
 
     - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
       env:
@@ -517,11 +475,12 @@ jobs:
         AR: x86_64-w64-mingw32-gcc-ar
         NM: x86_64-w64-mingw32-gcc-nm
         WINDRES: x86_64-w64-mingw32-windres
-        WSLENV: GITHUB_WORKSPACE/up:ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES
+        VCPKG_DIR: ${{ github.workspace }}/vcpkg/installed/x64-mingw-static
+        WSLENV: VCPKG_MINGW_DIR/up:ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES
       shell: wsl-bash {0}
       run: |
-        export CFLAGS="-I$GITHUB_WORKSPACE/vcpkg/installed/x64-mingw-static/include"
-        export LDFLAGS="-L$GITHUB_WORKSPACE/vcpkg/installed/x64-mingw-static/lib"
+        export CFLAGS="-I$PWD/app/external/vcpkg/installed/x64-mingw-static/include"
+        export LDFLAGS="-L$PWD/app/external/vcpkg/installed/x64-mingw-static/lib"
         ./scripts/ci-build.sh
 
     - name: Create nuget package
