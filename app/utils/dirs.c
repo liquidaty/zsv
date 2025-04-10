@@ -321,7 +321,7 @@ static int zsv_foreach_dirent_remove(struct zsv_foreach_dirent_handle *h, size_t
   (void)(depth);
   if (!h->is_dir) { // file
     if (h->parent_and_entry) {
-      if (unlink(h->parent_and_entry)) {
+      if (zsv_remove(h->parent_and_entry)) {
         perror(h->parent_and_entry); // "Unable to remove file");
         return 1;
       }
@@ -341,6 +341,9 @@ static int zsv_foreach_dirent_remove(struct zsv_foreach_dirent_handle *h, size_t
   return 0;
 }
 
+#ifdef _WIN32
+#include "win/foreach_dirent_longpath.c"
+#else
 // return error
 static int zsv_foreach_dirent_aux(const char *dir_path, size_t depth, size_t max_depth,
                                   zsv_foreach_dirent_handler handler, void *ctx, char verbose) {
@@ -384,6 +387,7 @@ static int zsv_foreach_dirent_aux(const char *dir_path, size_t depth, size_t max
   }
   return err;
 }
+#endif
 
 int zsv_foreach_dirent(const char *dir_path, size_t max_depth, zsv_foreach_dirent_handler handler, void *ctx,
                        char verbose) {
