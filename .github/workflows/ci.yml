@@ -440,6 +440,7 @@ jobs:
         enableCrossOsArchive: true
 
     - name: Install MinGW
+      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       run: sudo apt install mingw-w64
 
     - name: Install ncurses with wide character support using vcpkg
@@ -496,6 +497,7 @@ jobs:
         key: ncurses:x64-mingw-static
         path: ${{ github.workspace }}/vcpkg.zip
         fail-on-cache-miss: true
+        enableCrossOsArchive: true
 
     - name: Set up vcpkg deps
       run: unzip "$GITHUB_WORKSPACE/vcpkg.zip"
