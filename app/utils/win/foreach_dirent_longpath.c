@@ -32,6 +32,7 @@ static int zsv_foreach_dirent_aux(const char *dir_path_utf8, size_t depth, size_
   // 1. Handle potential long path prefix (result must be freed)
   prefixed_dir_path_utf8 = zsv_ensureLongPathPrefix(dir_path_utf8, 1);
   const char *prefixed_dir_to_use = prefixed_dir_path_utf8 ? prefixed_dir_path_utf8 : dir_path_utf8;
+
   // 2. Convert the (potentially prefixed) UTF-8 path to WCHAR (UTF-16) for Windows API
   dir_path_wide = utf8_to_wide(prefixed_dir_to_use);
   if (!dir_path_wide) {
