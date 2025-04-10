@@ -430,12 +430,14 @@ jobs:
     timeout-minutes: 15
 
     steps:
-    - name: Cache
+    - name: Cache (save)
       uses: actions/cache@v4
       id: cache
       with:
         key: ncurses:x64-mingw-static
         path: ${{ github.workspace }}/vcpkg.zip
+        lookup-only: true
+        enableCrossOsArchive: true
 
     - name: Install MinGW
       run: sudo apt install mingw-w64
@@ -488,12 +490,12 @@ jobs:
           tar
           tmux
 
-    - name: Cache ncurses
+    - name: Cache (restore)
       uses: actions/cache@v4
-      id: cache-ncurses
       with:
         key: ncurses:x64-mingw-static
         path: ${{ github.workspace }}/vcpkg.zip
+        fail-on-cache-miss: true
 
     - name: Set up vcpkg deps
       run: unzip "$GITHUB_WORKSPACE/vcpkg.zip"
