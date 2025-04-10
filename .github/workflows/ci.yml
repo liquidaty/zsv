@@ -435,7 +435,7 @@ jobs:
       id: cache
       with:
         key: ncurses:x64-mingw-static
-        path: ${{ github.workflow }}/vcpkg.zip
+        path: ${{ github.workspace }}/vcpkg.zip
 
     - name: Install MinGW
       run: sudo apt install mingw-w64
