@@ -453,6 +453,7 @@ jobs:
           tree
           zip
           tar
+          tmux
 
     - name: Set VCPKG_MINGW_INSTALL_ROOT env var
       run: echo "VCPKG_MINGW_INSTALL_ROOT=$(echo "$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static" | tr '\\' '/')" >>"$GITHUB_ENV"
@@ -493,12 +494,8 @@ jobs:
         WSLENV: VCPKG_MINGW_INSTALL_ROOT/up:ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES
       shell: wsl-bash {0}
       run: |
-        tree "$VCPKG_MINGW_INSTALL_ROOT"
         export CFLAGS="-I$VCPKG_MINGW_INSTALL_ROOT/include"
         export LDFLAGS="-L$VCPKG_MINGW_INSTALL_ROOT/lib"
-        echo "CFLAGS: $CFLAGS"
-        echo "LDFLAGS: $LDFLAGS"
-        echo "VCPKG_MINGW_INSTALL_ROOT: $VCPKG_MINGW_INSTALL_ROOT"
         ./scripts/ci-build.sh
 
     - name: Create nuget package
