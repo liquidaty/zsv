@@ -45,6 +45,12 @@ BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 export TMP_DIR=${THIS_LIB_BASE}/tmp
 TEST_DATA_DIR=${THIS_LIB_BASE}/data
 
+IS_WSL=$(shell grep -qi microsoft /proc/version && echo 1 || echo 0)
+ifeq ($(IS_WSL),1)
+  TEST_DATA_DIR=./../../data
+  TMP_DIR=./../../tmp
+endif
+
 SOURCES=echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare
 ifneq ($(ZSV_EXTRAS),)
   SOURCES+=overwrite
@@ -86,7 +92,7 @@ else
   REDIRECT=>
   REDIRECT1=>
   REDIRECT2=-o
-  export CMP=cmp
+  export CMP=cmp -c
 endif
 
 BIG_FILE ?= none
@@ -129,7 +135,9 @@ test-prop:
 	@EXE=${BUILD_DIR}/bin/zsv_prop${EXE} ${MAKE} -C prop test
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
-	@EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} ECHO_EXE=${BUILD_DIR}/bin/zsv_echo${EXE} CMP=$(CMP) ${MAKE} -C overwrite test
+ifneq ($(IS_WSL),1)
+	@EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} ECHO_EXE=${BUILD_DIR}/bin/zsv_echo${EXE} CMP="${CMP}" ${MAKE} -C overwrite test
+endif
 
 test-echo : test-echo1 test-echo-overwrite-all test-echo-eol test-echo-chars test-echo-trim test-echo-skip-until test-echo-contiguous test-echo-trim-columns test-echo-trim-columns-2 test-echo-buffsize
 
@@ -137,8 +145,8 @@ test-echo-overwrite-all: test-echo-overwrite test-echo-overwrite-csv test-echo-o
 
 test-echo-buffsize: ${BUILD_DIR}/bin/zsv_echo${EXE} ${TEST_DATA_DIR}/bigger-than-buff.csv
 	@${TEST_INIT}
-	@${PREFIX} $< ${TEST_DATA_DIR}/bigger-than-buff.csv --buff-size 131072 ${REDIRECT} ${TMP_DIR}/$@.out 2>&1
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/bigger-than-buff.csv --buff-size 131072 ${REDIRECT} ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
+	@(${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${CMP} ${TMP_DIR}/$@.err expected/$@.err) && ${TEST_PASS} || ${TEST_FAIL}
 
 test-echo1: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
@@ -223,9 +231,9 @@ test-cli: ${CLI}
 	@${TEST_INIT}
 	@[ "${CLI}" = "" ] && echo 1>&2 'test-cli: missing CLI env var' && exit 1 || exit 0
 	@$< help select 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out`" = "select: extracts and outputs specified columns" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "38" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "select: extracts and outputs specified columns" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "38" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@$< help count 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "6" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "6" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-1-count test-1-count-pull: test-1-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
@@ -246,9 +254,9 @@ test-merge-select test-merge-select-pull: test-merge-% : ${BUILD_DIR}/bin/zsv_%$
 
 test-quotebuff-select test-quotebuff-select-pull: test-quotebuff-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@${THIS_MAKEFILE_DIR}/select-quotebuff-gen.sh | ${PREFIX} $< -B 4096 ${REDIRECT} /tmp/$@.out
+	@${THIS_MAKEFILE_DIR}/select-quotebuff-gen.sh | ${PREFIX} $< -B 4096 ${REDIRECT} ${TMP_DIR}/$@.out
 # use a dummy ${CMP} call so that it works with LEAKS=1
-	@${CMP} /dev/null /dev/null && sed 's/"/Q/g' < /tmp/$@.out | grep QQ >/dev/null && ${TEST_FAIL} || ${TEST_PASS}
+	@${CMP} /dev/null /dev/null && sed 's/"/Q/g' < ${TMP_DIR}/$@.out | grep QQ >/dev/null && ${TEST_FAIL} || ${TEST_PASS}
 
 test-n-select test-n-select-pull: test-n-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -315,13 +323,13 @@ test-10-select-pull:
 
 test-11-select test-11-select-pull: test-11-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@${PREFIX} (echo "A1,B1" | $< --header-row "column1,column2") > /tmp/$@.out
-	@cmp /tmp/$@.out expected/test-11-select.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} (echo "A1,B1" | $< --header-row "column1,column2") > ${TMP_DIR}/$@.out
+	@cmp ${TMP_DIR}/$@.out expected/test-11-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-12-select test-12-select-pull: test-12-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@${PREFIX} $< -n -x 1-2 -x 6 -x 8-10 -x 13- ${TEST_DATA_DIR}/test/desc.csv > /tmp/$@.out
-	@${CMP} /tmp/$@.out expected/test-12-select.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< -n -x 1-2 -x 6 -x 8-10 -x 13- ${TEST_DATA_DIR}/test/desc.csv > ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/test-12-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-13-select test-13-select-pull: test-13-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -353,14 +361,17 @@ test-fixed-4-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${CMP} ${TMP_DIR}/$@a.out expected/test-fixed-4a-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-rm: ${BUILD_DIR}/bin/zsv_prop${EXE} ${BUILD_DIR}/bin/zsv_rm${EXE}
+ifneq ($(IS_WSL),1)
 	@${TEST_INIT}
 	@echo 'hi' > ${TMP_DIR}/$@.csv
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@.csv -R 1 -d 2 ${REDIRECT} /dev/null
 	@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f >/dev/null
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_rm${EXE} ${TMP_DIR}/$@.csv -f ${REDIRECT} /dev/null
 	@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f 2>/dev/null && ${TEST_FAIL} || ${TEST_PASS}
+endif
 
 test-mv: ${BUILD_DIR}/bin/zsv_prop${EXE} ${BUILD_DIR}/bin/zsv_mv${EXE}
+ifneq ($(IS_WSL),1)
 	@${TEST_INIT}
 	@echo 'hi' > ${TMP_DIR}/$@.csv
 	@rm -rf ${TMP_DIR}/.zsv/data/$@.csv ${TMP_DIR}/.zsv/data/$@-moved.csv ${TMP_DIR}/$@-moved.csv
@@ -368,13 +379,14 @@ test-mv: ${BUILD_DIR}/bin/zsv_prop${EXE} ${BUILD_DIR}/bin/zsv_mv${EXE}
 	@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f >/dev/null
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_mv${EXE} ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-moved.csv ${REDIRECT} /dev/null
 	@find ${TMP_DIR}/.zsv/data/$@-moved.csv/props.json -type f >/dev/null && ${TEST_PASS} || ${TEST_FAIL}
+endif
 
 test-blank-leading-rows: test-blank-leading-rows-1 test-blank-leading-rows-2 test-blank-leading-rows-3 test-blank-leading-rows-4
 
 test-blank-leading-rows-1: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
-	@${PREFIX} $< ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2>&1
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
+	@(${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${CMP} ${TMP_DIR}/$@.err expected/$@.err) && ${TEST_PASS} || ${TEST_FAIL}
 
 test-blank-leading-rows-2: ${BUILD_DIR}/bin/zsv_serialize${EXE}
 	@${TEST_INIT}
@@ -383,8 +395,8 @@ test-blank-leading-rows-2: ${BUILD_DIR}/bin/zsv_serialize${EXE}
 
 test-blank-leading-rows-3: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
-	@${PREFIX} $< -R 1 ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2>&1
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< -R 1 ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
+	@(${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${CMP} ${TMP_DIR}/$@.err expected/$@.err) && ${TEST_PASS} || ${TEST_FAIL}
 
 test-blank-leading-rows-4: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
@@ -405,8 +417,8 @@ test-stack2: ${BUILD_DIR}/bin/zsv_stack${EXE}
 
 test-stack3: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${TEST_INIT}
-	@echo 'a,b,c' > /tmp/1.csv
-	@${PREFIX} $< /tmp/1.csv ${REDIRECT} ${TMP_DIR}/$@.out
+	@echo 'a,b,c' > ${TMP_DIR}/1.csv
+	@${PREFIX} $< ${TMP_DIR}/1.csv ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-stack4: ${BUILD_DIR}/bin/zsv_stack${EXE}
@@ -459,12 +471,12 @@ test-2tsv-3: ${BUILD_DIR}/bin/zsv_2tsv${EXE}
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 ${THIS_MAKEFILE_DIR}/../../data/quoted5.csv: ${THIS_MAKEFILE_DIR}/../../data/quoted5.csv.bz2
-	bzip2 -d -c $< > $@
+	@bzip2 -d -c $< > $@
 
 test-serialize-quoted: ${BUILD_DIR}/bin/zsv_serialize${EXE} ${THIS_MAKEFILE_DIR}/../../data/quoted5.csv
 	@${TEST_INIT}
 	@rm -f ${TMP_DIR}/$@.out
-	@(${PREFIX} $< ${THIS_MAKEFILE_DIR}/../../data/quoted5.csv ${REDIRECT1} ${TMP_DIR}/$@.out1 && \
+	@(${PREFIX} $< ./../../data/quoted5.csv ${REDIRECT1} ${TMP_DIR}/$@.out1 && \
 	grep xxxxxx < ${TMP_DIR}/$@.out1 | grep Produktinfo > ${TMP_DIR}/$@.out && rm ${TMP_DIR}/$@.out1 && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
@@ -509,8 +521,8 @@ test-sql4: ${BUILD_DIR}/bin/zsv_sql${EXE}
 
 test-sql5: ${BUILD_DIR}/bin/zsv_sql${EXE} # test blank rows
 	@${TEST_INIT}
-	@echo 'a,b,c' > /tmp/1.csv
-	@(${PREFIX} $< /tmp/1.csv 'select * from data' ${REDIRECT1} ${TMP_DIR}/$@.out)
+	@echo 'a,b,c' > ${TMP_DIR}/1.csv
+	@(${PREFIX} $< ${TMP_DIR}/1.csv 'select * from data' ${REDIRECT1} ${TMP_DIR}/$@.out)
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 ${BUILD_DIR}/bin/zsv_%${EXE}:
@@ -518,7 +530,8 @@ ${BUILD_DIR}/bin/zsv_%${EXE}:
 
 test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
-	@${BUILD_DIR}/bin/zsv_select${EXE} -H 24999 -N worldcitiespop_mil.csv | ${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" > ${TMP_DIR}/$@.json
+	@${BUILD_DIR}/bin/zsv_select${EXE} -H 24999 -N worldcitiespop_mil.csv > ${TMP_DIR}/$@.csv
+	@${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@.json
 	@(${PREFIX} $< ${ARGS-$*} -o ${TMP_DIR}/$@.db --table data --overwrite < ${TMP_DIR}/test-2db.json ${REDIRECT1} ${TMP_DIR}/$@.out)
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 	@sqlite3 ${TMP_DIR}/$@.db .schema | sed 's/ IF NOT EXISTS//' | sed 's/"data"/data/g' > ${TMP_DIR}/$@.out2
@@ -528,10 +541,10 @@ test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DI
 
 test-jq: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@(${PREFIX} $< keys ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json ${REDIRECT1} ${TMP_DIR}/$@.out)
+	@(${PREFIX} $< keys ./../../docs/db.schema.json ${REDIRECT1} ${TMP_DIR}/$@.out)
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
-	(${PREFIX} $< 'keys|.[]' ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json --raw-output ${REDIRECT1} ${TMP_DIR}/$@.raw.out)
-	${CMP} ${TMP_DIR}/$@.raw.out expected/$@.raw.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${PREFIX} $< 'keys|.[]' ./../../docs/db.schema.json --raw-output ${REDIRECT1} ${TMP_DIR}/$@.raw.out)
+	@${CMP} ${TMP_DIR}/$@.raw.out expected/$@.raw.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} ${BUILD_DIR}/bin/zsv_select${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
@@ -571,13 +584,13 @@ test-2json-help: test-%-help: ${BUILD_DIR}/bin/zsv_%${EXE}
 test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
-	(${PREFIX} $< -q < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	(${PREFIX} $< -q ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
-	@(${PREFIX} $< < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT2} ${TMP_DIR}/$@.out2 && \
+	@(${PREFIX} $< ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out2 && \
 	${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL})
-	@(${PREFIX} $< -H < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT2} ${TMP_DIR}/$@.out3 && \
+	@(${PREFIX} $< -H ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@.out3 && \
 	${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL})
-	@(${PREFIX} $< < ${TEST_DATA_DIR}/test/$*-trim.csv ${REDIRECT2} ${TMP_DIR}/$@.trim && \
+	@(${PREFIX} $< ${TEST_DATA_DIR}/test/$*-trim.csv ${REDIRECT1} ${TMP_DIR}/$@.trim && \
 	${CMP} ${TMP_DIR}/$@.trim expected/$@.trim && ${TEST_PASS} || ${TEST_FAIL})
 
 test-compare-tolerance: ${BUILD_DIR}/bin/zsv_compare${EXE}
@@ -643,12 +656,13 @@ test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@tmux kill-session 2>/dev/null >/dev/null || printf ''
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -v new-session -x 80 -y 5 -d -s $@ && \
+	(tmux -v new-session -x 80 -y 5 -d -s $@ && \
 	sleep 0.5 && \
 	tmux send-keys -t $@ "${PREFIX} $< worldcitiespop_mil.csv" ENTER && \
 	sleep 0.5 && \
 	tmux -v capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux -v send-keys -t $@ "q" "exit" && \
+	cat ${TMP_DIR}/$@.out expected/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (for x in `ls tmux-*.log` ; do echo "Log $$x:" && cat $$x ; done && ${TEST_FAIL}))
 
 test-sheet-2: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}

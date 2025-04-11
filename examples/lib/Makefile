@@ -29,7 +29,7 @@ ifeq ($(WIN),)
   endif
 endif
 
-TEST_DATA_DIR=${THIS_MAKEFILE_DIR}/../../data
+TEST_DATA_DIR=./../../data
 TMP_DIR=/tmp
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
