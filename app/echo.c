@@ -22,6 +22,7 @@
 #include <zsv/utils/string.h>
 #include <zsv/utils/mem.h>
 #include <zsv/utils/arg.h>
+#include <zsv/utils/os.h>
 #ifdef ZSV_EXTRAS
 #include <zsv/utils/overwrite.h>
 #endif
@@ -137,7 +138,7 @@ static void zsv_echo_cleanup(struct zsv_echo_data *data) {
     fclose(data->in);
 
   if (data->tmp_fn) {
-    remove(data->tmp_fn);
+    zsv_remove(data->tmp_fn);
     free(data->tmp_fn);
   }
 }
