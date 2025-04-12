@@ -1,6 +1,6 @@
 #!/bin/sh -eu
 
-script_dir=$(dirname "$0")
+SCRIPT_DIR=$(dirname "$0")
 
 export TARGET="$1"
 if [ -z "${2:-}" ]; then
@@ -8,15 +8,16 @@ if [ -z "${2:-}" ]; then
 else
   export STAGE=-"$2"
 fi
+
 export CAPTURE="${TMP_DIR}/$TARGET$STAGE".out
 EXPECTED="$EXPECTED_PATH/$TARGET$STAGE".out
 export EXPECTED
-matched=false
+MATCHED=false
 
-t=${EXPECT_TIMEOUT:-5}
+EXPECT_TIMEOUT=${EXPECT_TIMEOUT:-5}
 
 cleanup() {
-  if $matched; then
+  if $MATCHED; then
     if [ -z "$STAGE" ]; then
       tmux send-keys -t "$TARGET" "q"
     fi
@@ -26,8 +27,8 @@ cleanup() {
   tmux send-keys -t "$TARGET" "q"
   echo 'Incorrect output:'
   cat "$CAPTURE"
-  echo "${CMP} -s $CAPTURE $EXPECTED"
-  ${CMP} -s "$CAPTURE" "$EXPECTED"
+  echo "${CMP} $CAPTURE $EXPECTED"
+  ${CMP} "$CAPTURE" "$EXPECTED"
   exit 1
 }
 
@@ -36,15 +37,15 @@ trap cleanup INT TERM QUIT
 printf "\n%s, %s" "$TARGET" "${2:-}" >> "${TIMINGS_CSV}"
 
 set +e
-match_time=$(time -p timeout -k $(( t + 1 )) $t "${script_dir}"/test-retry-capture-cmp.sh 2>&1)
-status=$?
+MATCH_TIME=$(time -p timeout -k $(( t + 1 )) "$EXPECT_TIMEOUT" "${SCRIPT_DIR}"/test-retry-capture-cmp.sh 2>&1)
+STATUS=$?
 set -e
 
-if [ $status -eq 0 ]; then
-  matched=true
-  match_time=$(echo "$match_time" | head -n 1 | cut -f 2 -d ' ')
-  echo "$TARGET$STAGE took $match_time"
-  printf ", %s" "$match_time" >> "${TIMINGS_CSV}"
+if [ $STATUS -eq 0 ]; then
+  MATCHED=true
+  MATCH_TIME=$(echo "$MATCH_TIME" | head -n 1 | cut -f 2 -d ' ')
+  echo "$TARGET$STAGE took $MATCH_TIME"
+  printf ", %s" "$MATCH_TIME" >> "${TIMINGS_CSV}"
 fi
 
 cleanup

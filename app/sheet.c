@@ -731,7 +731,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #if defined(WIN32) || defined(_WIN32)
   // induce delay for index to complete before checking updates (observed under WSL)
   // maybe, need a thread coordination strategy using condition variable to proceed?
-  napms(100);
+  napms(2);
 #endif
 
   zsvsheet_check_buffer_worker_updates(current_ui_buffer, &display_dims, &handler_state);
