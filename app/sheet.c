@@ -728,15 +728,18 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   zsvsheet_status status;
 
+#if defined(WIN32) || defined(_WIN32)
   // induce delay for index to complete before checking updates (observed under WSL)
   // maybe, need a thread coordination strategy using condition variable to proceed?
   napms(100);
+#endif
 
   zsvsheet_check_buffer_worker_updates(current_ui_buffer, &display_dims, &handler_state);
   display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
 
-  halfdelay(2); // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
-                //
+  // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
+  halfdelay(2);
+
   while (true) {
     ch = getch();
 
