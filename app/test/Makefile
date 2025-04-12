@@ -222,8 +222,8 @@ endif
 worldcitiespop_mil.csv:
 	curl -LOk 'https://burntsushi.net/stuff/worldcitiespop_mil.csv'
 
-worldcitiespop_mil.tsv: worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2tsv
-	@${BUILD_DIR}/bin/zsv_2tsv $< > $@
+worldcitiespop_mil.tsv: worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2tsv${EXE}
+	@${BUILD_DIR}/bin/zsv_2tsv${EXE} $< > $@
 
 test-count test-count-pull: test-% : test-1-% test-2-%
 
@@ -711,7 +711,8 @@ test-sheet-7: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 test-sheet-8: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	(tmux new-session -x 160 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux new-session -x 160 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	export EXPECT_TIMEOUT=10 && \
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ "f" "e" "Enter" && \
 	${EXPECT} $@ filtered && \
