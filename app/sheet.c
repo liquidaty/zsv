@@ -728,6 +728,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   zsvsheet_status status;
 
+  // induce delay for index to complete before checking updates (observed under WSL)
+  // maybe, need a thread coordination strategy using condition variable to proceed?
+  napms(100);
+
   zsvsheet_check_buffer_worker_updates(current_ui_buffer, &display_dims, &handler_state);
   display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
 
