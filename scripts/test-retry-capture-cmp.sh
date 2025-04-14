@@ -3,7 +3,7 @@
 while true; do
   tmux capture-pane -t "$TARGET" -p >"$CAPTURE"
 
-  if ${CMP} "$CAPTURE" "$EXPECTED"; then
+  if ${CMP} -s "$CAPTURE" "$EXPECTED"; then
     exit 0
   fi
 
