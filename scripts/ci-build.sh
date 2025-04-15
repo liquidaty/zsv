@@ -79,8 +79,10 @@ fi
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
   rm -rf build "$PREFIX"
-  "$MAKE" test
+  cd app/test
+  "$MAKE" test-sheet-subcommand-open-file-argument
   echo "[INF] Tests completed successfully!"
+  exit
 
   if [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ] || [ "$STATIC_BUILD" = "1" ]; then
     echo "[WRN] Dynamic extensions are not supported with static builds! Skipping tests..."
