@@ -811,14 +811,14 @@ ifneq ($(IS_WSL),1)
 endif
 
 test-sheet-subcommand-open-file-argument: ${BUILD_DIR}/bin/zsv_sheet${EXE}
-ifneq ($(IS_WSL),1)
+# ifneq ($(IS_WSL),1)
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $<" && \
 	${EXPECT} $@ blank && \
 	tmux send-keys -t $@ ":open worldcitiespop_mil.csv" ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
-endif
+# endif
 
 test-sheet-subcommand-filter-file-prompt: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 ifneq ($(IS_WSL),1)
