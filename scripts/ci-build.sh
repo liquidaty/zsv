@@ -43,6 +43,7 @@ echo "[INF] CFLAGS:           $CFLAGS"
 echo "[INF] LDFLAGS:          $LDFLAGS"
 echo "[INF] MAKE:             $MAKE"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
+echo "[INF] STATIC_BUILD:     $STATIC_BUILD"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 echo "[INF] WITHOUT_SIMD:     $WITHOUT_SIMD"
 echo "[INF] SKIP_ZIP_ARCHIVE: $SKIP_ZIP_ARCHIVE"
@@ -82,7 +83,7 @@ if [ "$RUN_TESTS" = true ]; then
   "$MAKE" test
   echo "[INF] Tests completed successfully!"
 
-  if [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ] || [ "$STATIC_BUILD" = "1" ]; then
+  if [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ]; then
     echo "[WRN] Dynamic extensions are not supported with static builds! Skipping tests..."
   else
     echo "[INF] Configuring example extension and running example extension tests"

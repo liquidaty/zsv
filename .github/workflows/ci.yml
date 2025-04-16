@@ -593,7 +593,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Download MinGW ncurses
+    - name: Download mingw-ncurses.zip
       uses: actions/download-artifact@v4
       with:
         name: mingw-ncurses.zip
@@ -625,6 +625,19 @@ jobs:
         export CFLAGS="-I$PWD/app/external/mingw-ncurses/include"
         export LDFLAGS="-L$PWD/app/external/mingw-ncurses/lib"
         ./scripts/ci-build.sh
+
+    - name: Prepare build artifacts for upload
+      run: ./scripts/ci-prepare-artifacts-for-upload.sh
+
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WSL_MINGW }}.zip)
+      uses: actions/upload-artifact@v4
+      env:
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WSL_MINGW }}.zip
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
 
   # ci-musl:
   #   needs: [tag, clang-format, cppcheck, shellcheck]
