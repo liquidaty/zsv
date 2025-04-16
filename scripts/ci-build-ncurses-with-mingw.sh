@@ -7,11 +7,9 @@ tar -xvzf ncurses-6.5.tar.gz
 
 cd ncurses-6.5
 
-PREFIX="${PREFIX:-"$PWD/mingw-ncurses"}"
-
 ./configure \
-  --host="x86_64-w64-mingw32" \
-  --prefix="$PREFIX" \
+  --host=x86_64-w64-mingw32 \
+  --prefix="$PWD/mingw-ncurses" \
   --enable-widec \
   --enable-term-driver \
   --with-static \
@@ -33,6 +31,8 @@ PREFIX="${PREFIX:-"$PWD/mingw-ncurses"}"
 make
 make install
 
-cd "$PREFIX"
+zip -r mingw-ncurses.zip mingw-ncurses/include mingw-ncurses/lib
 
-zip -r mingw-ncurses.zip include lib
+if [ -n "$CI" ]; then
+  mv mingw-ncurses.zip "$GITHUB_WORKSPACE"
+fi

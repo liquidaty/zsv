@@ -549,15 +549,13 @@ jobs:
           scripts/ci-build-ncurses-with-mingw.sh
 
     - name: Build ncurses with MinGW
-      env:
-        PREFIX: ${{ github.workspace }}/mingw-ncurses
       run: ./scripts/ci-build-ncurses-with-mingw.sh
 
     - name: Upload mingw-ncurses.zip
       uses: actions/upload-artifact@v4
       with:
         name: mingw-ncurses.zip
-        path: ${{ github.workspace }}/mingw-ncurses/mingw-ncurses.zip
+        path: ${{ github.workspace }}/mingw-ncurses.zip
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
         if-no-files-found: error
 
