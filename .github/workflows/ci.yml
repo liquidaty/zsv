@@ -528,14 +528,39 @@ jobs:
   #     if: startsWith(github.ref, 'refs/tags/v')
   #     run: ./scripts/ci-upload-release-artifacts.sh
 
-  ci-wsl-mingw:
+  build-ncurses-with-mingw:
     # needs: [tag, clang-format, cppcheck, shellcheck]
     needs: [tag]
+    runs-on: ubuntu-22.04
+
+    outputs:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          scripts/ci-setup-ncurses-with-mingw.sh
+
+    - name: Build ncurses with MinGW
+      run: ./scripts/ci-build-ncurses-with-mingw.sh
+
+    - name: Upload mingw-ncurses.zip
+      uses: actions/upload-artifact@v4
+      with:
+        name: mingw-ncurses.zip
+        path: mingw-ncurses.zip
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+  ci-wsl-mingw:
+    needs: [build-ncurses-with-mingw]
     runs-on: windows-2025
     timeout-minutes: 30
 
     env:
-      TAG: ${{ needs.tag.outputs.TAG }}
+      TAG: ${{ needs.build-ncurses-with-mingw.outputs.TAG }}
 
     defaults:
       run:
@@ -563,82 +588,38 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Expand vcpkg dependencies in app/external
+    - name: Download MinGW ncurses
+      uses: actions/download-artifact@v4
+      with:
+        name: mingw-ncurses.zip
+        path: ${{ github.workspace }}/app/external
+
+    - name: Unzip mingw-ncurses.zip in app/external
       run: |
         cd app/external
-        unzip vcpkg.zip
+        unzip mingw-ncurses.zip
 
-    - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
+    - name: Build (${{ env.AMD64_WSL_MINGW }})
       env:
-        PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
+        PREFIX: ${{ env.AMD64_WSL_MINGW }}
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
         RUN_TESTS: true
+        SKIP_ZIP_ARCHIVE: false
+        SKIP_TAR_ARCHIVE: true
+        STATIC_BUILD: 1
         CXX: x86_64-w64-mingw32-g++
         CPP: x86_64-w64-mingw32-cpp
         RANLIB: x86_64-w64-mingw32-gcc-ranlib
         AR: x86_64-w64-mingw32-gcc-ar
         NM: x86_64-w64-mingw32-gcc-nm
         WINDRES: x86_64-w64-mingw32-windres
-        VCPKG_DIR: ${{ github.workspace }}/vcpkg/installed/x64-mingw-static
-        WSLENV: VCPKG_MINGW_DIR/up:ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES
+        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES
       shell: wsl-bash {0}
       run: |
-        export CFLAGS="-I$PWD/app/external/vcpkg/installed/x64-mingw-static/include"
-        export LDFLAGS="-L$PWD/app/external/vcpkg/installed/x64-mingw-static/lib"
+        export CFLAGS="-I$PWD/app/external/mingw-ncurses/include"
+        export LDFLAGS="-L$PWD/app/external/mingw-ncurses/lib"
         ./scripts/ci-build.sh
-
-    - name: Create nuget package
-      env:
-        PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
-      run: ./scripts/ci-create-nuget-package.sh
-
-    - name: Prepare build artifacts for upload
-      run: ./scripts/ci-prepare-artifacts-for-upload.sh
-
-    - name: Attest build artifacts for release
-      if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v2
-      with:
-        subject-path: ${{ env.ARTIFACT_DIR }}/*
-
-    - name: Verify attestations of release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
-      run: ./scripts/ci-verify-attestations.sh
-
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz)
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg)
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
-    - name: Upload release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
-      run: ./scripts/ci-upload-release-artifacts.sh
 
   # ci-musl:
   #   needs: [tag, clang-format, cppcheck, shellcheck]
