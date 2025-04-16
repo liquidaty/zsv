@@ -541,7 +541,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         sparse-checkout: |
-          scripts/ci-setup-ncurses-with-mingw.sh
+          scripts/ci-build-ncurses-with-mingw.sh
 
     - name: Build ncurses with MinGW
       run: ./scripts/ci-build-ncurses-with-mingw.sh
