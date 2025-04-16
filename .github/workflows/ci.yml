@@ -537,6 +537,11 @@ jobs:
       TAG: ${{ needs.tag.outputs.TAG }}
 
     steps:
+    - name: Set up apt dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y mingw-w64
+
     - name: Checkout
       uses: actions/checkout@v4
       with:
