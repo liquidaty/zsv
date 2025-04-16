@@ -7,9 +7,11 @@ tar -xvzf ncurses-6.5.tar.gz
 
 cd ncurses-6.5
 
+PREFIX="${PREFIX:-"$PWD/mingw-ncurses"}"
+
 ./configure \
-  --host=x86_64-w64-mingw32 \
-  --prefix="$PWD/mingw-ncurses" \
+  --host="x86_64-w64-mingw32" \
+  --prefix="$PREFIX" \
   --enable-widec \
   --enable-term-driver \
   --with-static \
@@ -31,6 +33,6 @@ cd ncurses-6.5
 make
 make install
 
-cd mingw-ncurses
+cd "$PREFIX"
 
 zip -r mingw-ncurses.zip include lib
