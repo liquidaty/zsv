@@ -612,7 +612,6 @@ jobs:
         RUN_TESTS: true
         SKIP_ZIP_ARCHIVE: false
         SKIP_TAR_ARCHIVE: true
-        STATIC_BUILD: 1
         CXX: x86_64-w64-mingw32-g++
         CPP: x86_64-w64-mingw32-cpp
         RANLIB: x86_64-w64-mingw32-gcc-ranlib

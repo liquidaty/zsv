@@ -34,7 +34,7 @@ else
   EXE=.exe
 endif
 
-CMP=cmp -c
+export CMP=cmp -c
 
 ifeq ($(DEBUG),1)
   DBG_SUBDIR+=dbg
