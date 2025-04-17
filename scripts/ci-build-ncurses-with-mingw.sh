@@ -31,8 +31,7 @@ cd ncurses-6.5
 make
 make install
 
-zip -r mingw-ncurses.zip mingw-ncurses/include mingw-ncurses/lib
-
 if [ -n "$CI" ]; then
+  zip -r mingw-ncurses.zip mingw-ncurses/include mingw-ncurses/lib
   mv mingw-ncurses.zip "$GITHUB_WORKSPACE"
 fi
