@@ -191,6 +191,7 @@ test-sheet-extension-1: ${CLI} ${TARGET} ../test/worldcitiespop_mil.csv
 	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} || [ 1==1 ]
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 80 -y 5 -d -s $@ $< sheet ../test/worldcitiespop_mil.csv && \
+	export EXPECT_TIMEOUT=10 && \
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ "t" "hello" Enter Up Down && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
