@@ -30,11 +30,14 @@ IS_WSL=$(shell grep -qi microsoft /proc/version && echo 1 || echo 0)
 
 ifeq ($(WIN),0)
   EXE=
+  EXT=.out
 else
   EXE=.exe
+  EXT=.win
 endif
 
 export CMP=cmp -c
+export TMP_DIR=./../../tmp
 
 ifeq ($(DEBUG),1)
   DBG_SUBDIR+=dbg
@@ -114,7 +117,7 @@ endif
 
 CLI=${BUILD_DIR}/bin/cli${EXE}
 
-RUN_CLI=ZSV_CONFIG_DIR=/tmp ${CLI}
+RUN_CLI=ZSV_CONFIG_DIR=${TMP_DIR} ${CLI}
 
 ${BUILD_DIR}/bin/cli:
 	${MAKE} -C .. build-cli CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
@@ -131,55 +134,52 @@ test: ${TESTS}
 
 test-1: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
-	@${RUN_CLI} my-echo < ${THIS_LIB_BASE}/data/quoted.csv > /tmp/zsvext-$@.out
-	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${RUN_CLI} my-echo < ${THIS_LIB_BASE}/data/quoted.csv > ${TMP_DIR}/zsvext-$@.out
+	@${CMP} ${TMP_DIR}/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-2: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
-	@${RUN_CLI} my-echo -t < ${THIS_LIB_BASE}/data/hi.txt > /tmp/zsvext-$@.out
-	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${RUN_CLI} my-echo -t < ${THIS_LIB_BASE}/data/hi.txt > ${TMP_DIR}/zsvext-$@.out
+	@${CMP} ${TMP_DIR}/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-3: test-%: ${CLI} ${TARGET}
-ifneq ($(IS_WSL),1)
 	@${TEST_INIT}
-	@rm -f /tmp/zsvext-$@.out
+	@rm -f ${TMP_DIR}/zsvext-$@.out
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${RUN_CLI} register my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
-	@${RUN_CLI} unregister my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
-	@${RUN_CLI} unregister my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
-	@${RUN_CLI} help 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
-	@${RUN_CLI} register my 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
-	@${RUN_CLI} help 2>&1 | grep -v [.]so >> /tmp/zsvext-$@.out || [ 1==1 ]
-	@${CMP} /tmp/zsvext-$@.out 2>&1 test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
-endif
+	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/zsvext-$@.out || [ 1==1 ]
+	@${RUN_CLI} unregister my 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/zsvext-$@.out || [ 1==1 ]
+	@${RUN_CLI} unregister my 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/zsvext-$@.out || [ 1==1 ]
+	@${RUN_CLI} help 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/zsvext-$@.out || [ 1==1 ]
+	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/zsvext-$@.out || [ 1==1 ]
+	@${RUN_CLI} help 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/zsvext-$@.out || [ 1==1 ]
+	@${CMP} ${TMP_DIR}/zsvext-$@.out 2>&1 test/expected/zsvext-$@.out${EXT} && ${TEST_PASS} || ${TEST_FAIL}
 
 test-4: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${RUN_CLI} license > /tmp/zsvext-$@.out 2>> /tmp/zsvext-$@.err
+	@${RUN_CLI} license > ${TMP_DIR}/zsvext-$@.out 2>> ${TMP_DIR}/zsvext-$@.err
 	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
-	@${RUN_CLI} license >> /tmp/zsvext-$@.out 2> /tmp/zsvext-$@.err
-	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${CMP} /tmp/zsvext-$@.err test/expected/zsvext-$@.err && ${TEST_PASS} || ${TEST_FAIL}
+	@${RUN_CLI} license >> ${TMP_DIR}/zsvext-$@.out 2> ${TMP_DIR}/zsvext-$@.err
+	@${CMP} ${TMP_DIR}/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/zsvext-$@.err test/expected/zsvext-$@.err && ${TEST_PASS} || ${TEST_FAIL}
 
 test-5: test-%:${TARGET}
 	@${TEST_INIT}
-	@${RUN_CLI} my-count newline.csv 2>/dev/null > /tmp/zsvext-$@.out
-	@${RUN_CLI} my-count -q newline.csv 2>/dev/null >> /tmp/zsvext-$@.out
-	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${RUN_CLI} my-count newline.csv 2>/dev/null > ${TMP_DIR}/zsvext-$@.out
+	@${RUN_CLI} my-count -q newline.csv 2>/dev/null >> ${TMP_DIR}/zsvext-$@.out
+	@${CMP} ${TMP_DIR}/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-thirdparty: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${RUN_CLI} thirdparty > /tmp/zsvext-$@.out
+	@${RUN_CLI} thirdparty > ${TMP_DIR}/zsvext-$@.out
 	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
-	@${RUN_CLI} thirdparty >> /tmp/zsvext-$@.out
-	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${RUN_CLI} thirdparty >> ${TMP_DIR}/zsvext-$@.out
+	@${CMP} ${TMP_DIR}/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 ../test/worldcitiespop_mil.csv:
 	make -C ../test worldcitiespop_mil.csv
 
-export TMP_DIR=/tmp
 DATE_TIME:=$(shell date +%F-%H-%M-%S)
 export TIMINGS_CSV:=${TMP_DIR}/timings-${DATE_TIME}.csv
 TMUX_TERM=xterm-256color
@@ -189,9 +189,9 @@ ifneq ($(IS_WSL),1)
 	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
 	@tmux kill-session -t $@ || echo 'No tmux session to kill'
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${RUN_CLI} register my 2>&1 | grep -v [.]so || [ 1==1 ]
+	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} || [ 1==1 ]
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(ZSV_CONFIG_DIR=/tmp tmux -v new-session -x 80 -y 5 -d -s $@ $< sheet ../test/worldcitiespop_mil.csv && \
+	@(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 80 -y 5 -d -s $@ $< sheet ../test/worldcitiespop_mil.csv && \
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ "t" "hello" Enter && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
@@ -203,9 +203,9 @@ ifneq ($(IS_WSL),1)
 	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
 	@tmux kill-session -t $@ || echo 'No tmux session to kill'
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${RUN_CLI} register my 2>&1 | grep -v [.]so || [ 1==1 ]
+	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} || [ 1==1 ]
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(ZSV_CONFIG_DIR=/tmp tmux -v new-session -x 120 -y 5 -d -s $@ $< sheet -d 3 ../../data/test/mixed-line-endings.csv && \
+	@(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 120 -y 5 -d -s $@ $< sheet -d 3 ../../data/test/mixed-line-endings.csv && \
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ T Enter && \
 	${EXPECT} $@ transformed && \
@@ -214,7 +214,7 @@ ifneq ($(IS_WSL),1)
 endif
 
 clean:
-	@rm -f ${TARGET} ${TARGET_SHEET} /tmp/zsvext-test*.out
+	@rm -f ${TARGET} ${TARGET_SHEET} ${TMP_DIR}/zsvext-test*.out
 
 ${BUILD_DIR}/objs/%.o : ${THIS_LIB_BASE}/src/%.c ${PARSER_DEPS}
 	${MAKE} -C ${THIS_LIB_BASE}/src CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} WIN=${WIN} $@
