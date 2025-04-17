@@ -30,7 +30,7 @@ IS_WSL=$(shell grep -qi microsoft /proc/version && echo 1 || echo 0)
 
 ifeq ($(WIN),0)
   EXE=
-  EXT=.out
+  EXT=
 else
   EXE=.exe
   EXT=.win
@@ -182,16 +182,16 @@ test-thirdparty: test-%: ${CLI} ${TARGET}
 
 DATE_TIME:=$(shell date +%F-%H-%M-%S)
 export TIMINGS_CSV:=${TMP_DIR}/timings-${DATE_TIME}.csv
+export TMPDIR=${TMP_DIR}
 TMUX_TERM=xterm-256color
 test-sheet-extension-1: ${CLI} ${TARGET} ../test/worldcitiespop_mil.csv
 	@${TEST_INIT}
 	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
 	@tmux kill-session -t $@ || echo 'No tmux session to kill'
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
 	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} || [ 1==1 ]
-	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 80 -y 5 -d -s $@ $< sheet ../test/worldcitiespop_mil.csv && \
-	export EXPECT_TIMEOUT=10 && \
+	@(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 80 -y 5 -d -s $@ "$< sheet ../test/worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ "t" "hello" Enter Up Down && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
@@ -201,14 +201,14 @@ ifneq ($(IS_WSL),1)
 	@${TEST_INIT}
 	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
 	@tmux kill-session -t $@ || echo 'No tmux session to kill'
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
 	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} || [ 1==1 ]
-	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 120 -y 5 -d -s $@ $< sheet -d 3 ../../data/test/mixed-line-endings.csv && \
+	@(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 120 -y 5 -d -s $@ "$< sheet -d 3 ../../data/test/mixed-line-endings.csv" && \
 	${EXPECT} $@ indexed && \
-	tmux send-keys -t $@ T Enter && \
+	tmux send-keys -t $@ "T" && \
 	${EXPECT} $@ transformed && \
-	tmux send-keys -t $@ G && \
+	tmux send-keys -t $@ "G" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 endif
 

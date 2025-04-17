@@ -11,6 +11,7 @@
 #include <zsv/ext/implementation.h>
 #include <zsv/ext/sheet.h>
 #include <zsv/utils/writer.h>
+#include <zsv/utils/file.h>
 
 /**
  * `zsv` can easily be extended by simply creating a shared library
