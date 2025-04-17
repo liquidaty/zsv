@@ -184,7 +184,6 @@ DATE_TIME:=$(shell date +%F-%H-%M-%S)
 export TIMINGS_CSV:=${TMP_DIR}/timings-${DATE_TIME}.csv
 TMUX_TERM=xterm-256color
 test-sheet-extension-1: ${CLI} ${TARGET} ../test/worldcitiespop_mil.csv
-ifneq ($(IS_WSL),1)
 	@${TEST_INIT}
 	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
 	@tmux kill-session -t $@ || echo 'No tmux session to kill'
@@ -193,9 +192,8 @@ ifneq ($(IS_WSL),1)
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 80 -y 5 -d -s $@ $< sheet ../test/worldcitiespop_mil.csv && \
 	${EXPECT} $@ indexed && \
-	tmux send-keys -t $@ "t" "hello" Enter && \
+	tmux send-keys -t $@ "t" "hello" Enter Up Down && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
-endif
 
 test-sheet-extension-2: ${CLI} ${TARGET}
 ifneq ($(IS_WSL),1)

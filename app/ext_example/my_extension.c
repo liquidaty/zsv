@@ -81,7 +81,12 @@ zsvsheet_status my_test_command_handler(zsvsheet_proc_context_t ctx) {
   if (*result_buffer == '\0')
     return zsvsheet_status_ok;
 
-  const char *temp_filename = "/tmp/zsvsheet_extension_example.csv";
+  char *temp_filename = zsv_get_temp_filename("zsvsheet_extension_example.csv");
+  if (!temp_filename) {
+    fprintf(stderr, "Out of memory!\n");
+    return zsvsheet_status_error;
+  }
+
   FILE *f = fopen(temp_filename, "wb");
   if (!f)
     zsv_cb.ext_sheet_set_status(ctx, "Unable to open for write: %s", temp_filename);
@@ -103,6 +108,7 @@ zsvsheet_status my_test_command_handler(zsvsheet_proc_context_t ctx) {
     fclose(f);
     return zsv_cb.ext_sheet_open_file(ctx, temp_filename, NULL);
   }
+  free(temp_filename);
   return zsvsheet_status_ok;
 }
 
