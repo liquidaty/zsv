@@ -112,9 +112,9 @@ ${INSTALLED_EXTENSION}: ${TARGET} ${TARGET_SHEET}
 	cp -p $< $@
 endif
 
-CLI=${BUILD_DIR}/bin/cli
+CLI=${BUILD_DIR}/bin/cli${EXE}
 
-RUN_CLI=ZSV_CONFIG_DIR=/tmp ${CLI}${EXE}
+RUN_CLI=ZSV_CONFIG_DIR=/tmp ${CLI}
 
 ${BUILD_DIR}/bin/cli:
 	${MAKE} -C .. build-cli CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
@@ -129,17 +129,17 @@ endif
 
 test: ${TESTS}
 
-test-1: test-%: ${CLI}${EXE} ${TARGET}
+test-1: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
 	@${RUN_CLI} my-echo < ${THIS_LIB_BASE}/data/quoted.csv > /tmp/zsvext-$@.out
 	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-2: test-%: ${CLI}${EXE} ${TARGET}
+test-2: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
 	@${RUN_CLI} my-echo -t < ${THIS_LIB_BASE}/data/hi.txt > /tmp/zsvext-$@.out
 	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-3: test-%: ${CLI}${EXE} ${TARGET}
+test-3: test-%: ${CLI} ${TARGET}
 ifneq ($(IS_WSL),1)
 	@${TEST_INIT}
 	@rm -f /tmp/zsvext-$@.out
@@ -161,7 +161,7 @@ DATE_TIME:=$(shell date +%F-%H-%M-%S)
 export TIMINGS_CSV:=${TMP_DIR}/timings-${DATE_TIME}.csv
 export CMP=cmp
 TMUX_TERM=xterm-256color
-test-sheet-extension-1: ${CLI}${EXE} ${TARGET} ../test/worldcitiespop_mil.csv
+test-sheet-extension-1: ${CLI} ${TARGET} ../test/worldcitiespop_mil.csv
 ifneq ($(IS_WSL),1)
 	@${TEST_INIT}
 	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
@@ -175,7 +175,7 @@ ifneq ($(IS_WSL),1)
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 endif
 
-test-sheet-extension-2: ${CLI}${EXE} ${TARGET}
+test-sheet-extension-2: ${CLI} ${TARGET}
 ifneq ($(IS_WSL),1)
 	@${TEST_INIT}
 	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
@@ -191,7 +191,7 @@ ifneq ($(IS_WSL),1)
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 endif
 
-test-4: test-%: ${CLI}${EXE} ${TARGET}
+test-4: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
 	@${RUN_CLI} license > /tmp/zsvext-$@.out 2>> /tmp/zsvext-$@.err
@@ -206,7 +206,7 @@ test-5: test-%:${TARGET}
 	@${RUN_CLI} my-count -q newline.csv 2>/dev/null >> /tmp/zsvext-$@.out
 	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-thirdparty: test-%: ${CLI}${EXE} ${TARGET}
+test-thirdparty: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
 	@${RUN_CLI} thirdparty > /tmp/zsvext-$@.out
