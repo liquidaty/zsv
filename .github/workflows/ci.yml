@@ -537,18 +537,28 @@ jobs:
       TAG: ${{ needs.tag.outputs.TAG }}
 
     steps:
-    - name: Set up apt dependencies
+    - name: Cache
+      uses: actions/cache@v4
+      id: cache
+      with:
+        key: mingw-ncurses.zip
+        path: ${{ github.workspace }}/mingw-ncurses.zip
+
+    - name: Install MinGW
+      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       run: |
         sudo apt update
         sudo apt install -y mingw-w64
 
     - name: Checkout
       uses: actions/checkout@v4
+      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       with:
         sparse-checkout: |
           scripts/ci-build-ncurses-with-mingw.sh
 
     - name: Build ncurses with MinGW
+      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       run: ./scripts/ci-build-ncurses-with-mingw.sh
 
     - name: Upload mingw-ncurses.zip
@@ -612,13 +622,7 @@ jobs:
         RUN_TESTS: true
         SKIP_ZIP_ARCHIVE: false
         SKIP_TAR_ARCHIVE: true
-        CXX: x86_64-w64-mingw32-g++
-        CPP: x86_64-w64-mingw32-cpp
-        RANLIB: x86_64-w64-mingw32-gcc-ranlib
-        AR: x86_64-w64-mingw32-gcc-ar
-        NM: x86_64-w64-mingw32-gcc-nm
-        WINDRES: x86_64-w64-mingw32-windres
-        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:CXX:CPP:RANLIB:AR:NM:WINDRES
+        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
       shell: wsl-bash {0}
       run: |
         export CFLAGS="-I$PWD/app/external/mingw-ncurses/include"
