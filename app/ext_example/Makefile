@@ -153,13 +153,35 @@ ifneq ($(IS_WSL),1)
 	@${CMP} /tmp/zsvext-$@.out 2>&1 test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 endif
 
+test-4: test-%: ${CLI} ${TARGET}
+	@${TEST_INIT}
+	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
+	@${RUN_CLI} license > /tmp/zsvext-$@.out 2>> /tmp/zsvext-$@.err
+	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
+	@${RUN_CLI} license >> /tmp/zsvext-$@.out 2> /tmp/zsvext-$@.err
+	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} /tmp/zsvext-$@.err test/expected/zsvext-$@.err && ${TEST_PASS} || ${TEST_FAIL}
+
+test-5: test-%:${TARGET}
+	@${TEST_INIT}
+	@${RUN_CLI} my-count newline.csv 2>/dev/null > /tmp/zsvext-$@.out
+	@${RUN_CLI} my-count -q newline.csv 2>/dev/null >> /tmp/zsvext-$@.out
+	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+test-thirdparty: test-%: ${CLI} ${TARGET}
+	@${TEST_INIT}
+	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
+	@${RUN_CLI} thirdparty > /tmp/zsvext-$@.out
+	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
+	@${RUN_CLI} thirdparty >> /tmp/zsvext-$@.out
+	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
 ../test/worldcitiespop_mil.csv:
 	make -C ../test worldcitiespop_mil.csv
 
 export TMP_DIR=/tmp
 DATE_TIME:=$(shell date +%F-%H-%M-%S)
 export TIMINGS_CSV:=${TMP_DIR}/timings-${DATE_TIME}.csv
-export CMP=cmp
 TMUX_TERM=xterm-256color
 test-sheet-extension-1: ${CLI} ${TARGET} ../test/worldcitiespop_mil.csv
 ifneq ($(IS_WSL),1)
@@ -190,29 +212,6 @@ ifneq ($(IS_WSL),1)
 	tmux send-keys -t $@ G && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 endif
-
-test-4: test-%: ${CLI} ${TARGET}
-	@${TEST_INIT}
-	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${RUN_CLI} license > /tmp/zsvext-$@.out 2>> /tmp/zsvext-$@.err
-	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
-	@${RUN_CLI} license >> /tmp/zsvext-$@.out 2> /tmp/zsvext-$@.err
-	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${CMP} /tmp/zsvext-$@.err test/expected/zsvext-$@.err && ${TEST_PASS} || ${TEST_FAIL}
-
-test-5: test-%:${TARGET}
-	@${TEST_INIT}
-	@${RUN_CLI} my-count newline.csv 2>/dev/null > /tmp/zsvext-$@.out
-	@${RUN_CLI} my-count -q newline.csv 2>/dev/null >> /tmp/zsvext-$@.out
-	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
-
-test-thirdparty: test-%: ${CLI} ${TARGET}
-	@${TEST_INIT}
-	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${RUN_CLI} thirdparty > /tmp/zsvext-$@.out
-	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
-	@${RUN_CLI} thirdparty >> /tmp/zsvext-$@.out
-	@${CMP} /tmp/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
 	@rm -f ${TARGET} ${TARGET_SHEET} /tmp/zsvext-test*.out
