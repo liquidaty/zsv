@@ -92,7 +92,7 @@ else
   REDIRECT=>
   REDIRECT1=>
   REDIRECT2=-o
-  export CMP=cmp -c
+  export CMP=cmp
 endif
 
 BIG_FILE ?= none
