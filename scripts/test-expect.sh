@@ -14,8 +14,8 @@ fi
 export TARGET
 export STAGE
 
-export CAPTURE="$TMP_DIR/$TARGET$STAGE.out"
-export EXPECTED="$EXPECTED_PATH/$TARGET$STAGE.out"
+export CAPTURED_OUTPUT="$TMP_DIR/$TARGET$STAGE.out"
+export EXPECTED_OUTPUT="$EXPECTED_PATH/$TARGET$STAGE.out"
 
 MATCHED=false
 
@@ -29,11 +29,11 @@ cleanup() {
 
   tmux send-keys -t "$TARGET" "q"
   echo 'Incorrect output:'
-  cat "$CAPTURE"
+  cat "$CAPTURED_OUTPUT"
   echo 'Expected output:'
-  cat "$EXPECTED"
-  echo "${CMP} $CAPTURE $EXPECTED"
-  ${CMP} "$CAPTURE" "$EXPECTED"
+  cat "$EXPECTED_OUTPUT"
+  echo "${CMP} $CAPTURED_OUTPUT $EXPECTED_OUTPUT"
+  ${CMP} "$CAPTURED_OUTPUT" "$EXPECTED_OUTPUT"
   exit 1
 }
 
