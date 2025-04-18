@@ -26,7 +26,7 @@ ifeq ($(WIN),)
   endif
 endif
 
-IS_WSL=$(shell grep -qi microsoft /proc/version && echo 1 || echo 0)
+IS_WSL=$(shell grep -qi microsoft /proc/version 2>/dev/null && echo 1 || echo 0)
 
 ifeq ($(WIN),0)
   EXE=
@@ -182,7 +182,6 @@ test-thirdparty: test-%: ${CLI} ${TARGET}
 
 DATE_TIME:=$(shell date +%F-%H-%M-%S)
 export TIMINGS_CSV:=${TMP_DIR}/timings-${DATE_TIME}.csv
-export TMPDIR=${TMP_DIR}
 TMUX_TERM=xterm-256color
 test-sheet-extension-1: ${CLI} ${TARGET} ../test/worldcitiespop_mil.csv
 ifneq ($(IS_WSL),1)
