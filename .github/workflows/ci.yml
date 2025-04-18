@@ -528,7 +528,7 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       run: ./scripts/ci-upload-release-artifacts.sh
 
-  ncurses-mingw:
+  mingw-ncurses:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-22.04
 
@@ -569,12 +569,12 @@ jobs:
         if-no-files-found: error
 
   ci-wsl-mingw:
-    needs: [ncurses-mingw]
+    needs: [mingw-ncurses]
     runs-on: windows-2025
     timeout-minutes: 30
 
     env:
-      TAG: ${{ needs.ncurses-mingw.outputs.TAG }}
+      TAG: ${{ needs.mingw-ncurses.outputs.TAG }}
 
     defaults:
       run:
