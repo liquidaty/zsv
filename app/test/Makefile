@@ -72,11 +72,12 @@ COLOR_GREEN=\033[1;32m
 COLOR_RED=\033[1;31m
 COLOR_BLUE=\033[1;34m
 COLOR_PINK=\033[1;35m
+COLOR_YELLOW=\033[1;33m
 
-
+TEST_INIT=mkdir -p ${TMP_DIR} && printf "${COLOR_PINK}$@: ${COLOR_NONE}\n"
+TEST_SKIP=printf "${COLOR_BLUE}$@: ${COLOR_YELLOW}Skipped${COLOR_NONE}\n"
 TEST_PASS=printf "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}\n"
 TEST_FAIL=(printf "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}\n" && exit 1)
-TEST_INIT=mkdir -p ${TMP_DIR} && printf "${COLOR_PINK}$@: ${COLOR_NONE}\n"
 
 ARGS-sql='select [Loan Number] from data'
 
@@ -132,14 +133,20 @@ ${TIMINGS_CSV}:
 .PHONY: help test test-% test-stack clean
 
 test-prop:
+	@${TEST_INIT}
 	@EXE=${BUILD_DIR}/bin/zsv_prop${EXE} ${MAKE} -C prop test
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
 ifneq ($(IS_WSL),1)
+	@${TEST_INIT}
 	@EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} ECHO_EXE=${BUILD_DIR}/bin/zsv_echo${EXE} CMP="${CMP}" ${MAKE} -C overwrite test
+else
+	@${TEST_SKIP}
 endif
 
-test-echo : test-echo1 test-echo-overwrite-all test-echo-eol test-echo-chars test-echo-trim test-echo-skip-until test-echo-contiguous test-echo-trim-columns test-echo-trim-columns-2 test-echo-buffsize
+test-echo: \
+	test-echo1 test-echo-overwrite-all test-echo-eol test-echo-chars test-echo-trim \
+	test-echo-skip-until test-echo-contiguous test-echo-trim-columns test-echo-trim-columns-2 test-echo-buffsize
 
 test-echo-overwrite-all: test-echo-overwrite test-echo-overwrite-csv test-echo-overwrite-auto
 
@@ -368,6 +375,8 @@ ifneq ($(IS_WSL),1)
 	@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f >/dev/null
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_rm${EXE} ${TMP_DIR}/$@.csv -f ${REDIRECT} /dev/null
 	@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f 2>/dev/null && ${TEST_FAIL} || ${TEST_PASS}
+else
+	@${TEST_SKIP}
 endif
 
 test-mv: ${BUILD_DIR}/bin/zsv_prop${EXE} ${BUILD_DIR}/bin/zsv_mv${EXE}
@@ -379,6 +388,8 @@ ifneq ($(IS_WSL),1)
 	@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f >/dev/null
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_mv${EXE} ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-moved.csv ${REDIRECT} /dev/null
 	@find ${TMP_DIR}/.zsv/data/$@-moved.csv/props.json -type f >/dev/null && ${TEST_PASS} || ${TEST_FAIL}
+else
+	@${TEST_SKIP}
 endif
 
 test-blank-leading-rows: test-blank-leading-rows-1 test-blank-leading-rows-2 test-blank-leading-rows-3 test-blank-leading-rows-4
@@ -742,6 +753,8 @@ ifneq ($(IS_WSL),1)
 	${EXPECT} $@ filtered && \
 	tmux send-keys -t $@ "G" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+else
+	@${TEST_SKIP}
 endif
 
 test-sheet-11: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
@@ -752,6 +765,8 @@ ifneq ($(IS_WSL),1)
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ -N 11 "C-d" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+else
+	@${TEST_SKIP}
 endif
 
 test-sheet-12: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
@@ -764,6 +779,8 @@ ifneq ($(IS_WSL),1)
 	${EXPECT} $@ filtered-el && \
 	tmux send-keys -t $@ "f" "al" ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+else
+	@${TEST_SKIP}
 endif
 
 test-sheet-13: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
@@ -782,6 +799,8 @@ ifneq ($(IS_WSL),1)
 	${EXPECT} $@ help && \
 	tmux send-keys -t $@ ESCAPE && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+else
+	@${TEST_SKIP}
 endif
 
 test-sheet-15: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
@@ -808,6 +827,8 @@ ifneq ($(IS_WSL),1)
 	${EXPECT} $@ open && \
 	tmux send-keys -t $@ "worldcitiespop_mil.csv" ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+else
+	@${TEST_SKIP}
 endif
 
 test-sheet-subcommand-open-file-argument: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv
@@ -819,6 +840,8 @@ ifneq ($(IS_WSL),1)
 	${EXPECT} $@ blank && \
 	tmux send-keys -t $@ ":open worldcitiespop_mil.csv" ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+else
+	@${TEST_SKIP}
 endif
 
 test-sheet-subcommand-filter-file-prompt: ${BUILD_DIR}/bin/zsv_sheet${EXE}
@@ -831,6 +854,8 @@ ifneq ($(IS_WSL),1)
 	${EXPECT} $@ filter && \
 	tmux send-keys -t $@ "ireland" ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+else
+	@${TEST_SKIP}
 endif
 
 test-sheet-subcommand-filter-file-argument: ${BUILD_DIR}/bin/zsv_sheet${EXE}
@@ -841,6 +866,8 @@ ifneq ($(IS_WSL),1)
 	${EXPECT} $@ blank && \
 	tmux send-keys -t $@ ":filter \"ireland\"" ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+else
+	@${TEST_SKIP}
 endif
 
 test-sheet-prop-cmd-opt: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_prop${EXE}

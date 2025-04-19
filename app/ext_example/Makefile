@@ -85,10 +85,12 @@ COLOR_GREEN=\033[1;32m
 COLOR_RED=\033[1;31m
 COLOR_BLUE=\033[1;34m
 COLOR_PINK=\033[1;34m
+COLOR_YELLOW=\033[1;33m
 
+TEST_INIT=printf "${COLOR_PINK}$@: ${COLOR_NONE}\n"
+TEST_SKIP=printf "${COLOR_BLUE}$@: ${COLOR_YELLOW}Skipped${COLOR_NONE}\n"
 TEST_PASS=printf "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}\n"
 TEST_FAIL=(printf "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}\n" && exit 1)
-TEST_INIT=printf "${COLOR_PINK}$@: ${COLOR_NONE}\n"
 
 EXPECT=../../scripts/test-expect.sh
 export EXPECTED_PATH=test/expected
@@ -195,6 +197,8 @@ ifneq ($(IS_WSL),1)
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ "t" "hello" Enter Up Down && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+else
+	@${TEST_SKIP}
 endif
 
 test-sheet-extension-2: ${CLI} ${TARGET}
@@ -211,6 +215,8 @@ ifneq ($(IS_WSL),1)
 	${EXPECT} $@ transformed && \
 	tmux send-keys -t $@ "G" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+else
+	@${TEST_SKIP}
 endif
 
 clean:
