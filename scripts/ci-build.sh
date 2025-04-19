@@ -83,7 +83,7 @@ if [ "$RUN_TESTS" = true ]; then
   "$MAKE" test
   echo "[INF] Tests completed successfully!"
 
-  if [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ]; then
+  if [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ] || [ "$STATIC_BUILD" = "1" ]; then
     echo "[WRN] Dynamic extensions are not supported with static builds! Skipping tests..."
   else
     echo "[INF] Configuring example extension and running example extension tests"
