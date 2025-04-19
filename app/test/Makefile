@@ -862,7 +862,7 @@ endif
 
 test-sheet-subcommand-filter-file-argument: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
-ifneq ($(IS_WSL),1)
+ifeq ($(IS_WSL),1)
 	@${TEST_SKIP}
 else
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
