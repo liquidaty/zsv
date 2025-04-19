@@ -42,15 +42,20 @@ trap cleanup INT TERM QUIT
 printf "\n%s, %s" "$TARGET" "$STAGE" >>"${TIMINGS_CSV}"
 
 set +e
-MATCH_TIME=$(time -p timeout -k $((EXPECT_TIMEOUT + 1)) "$EXPECT_TIMEOUT" "${SCRIPT_DIR}"/test-retry-capture-cmp.sh 2>&1)
+MATCHED_TIME=$(time -p timeout -k $((EXPECT_TIMEOUT + 1)) "$EXPECT_TIMEOUT" "${SCRIPT_DIR}"/test-retry-capture-cmp.sh 2>&1)
 STATUS=$?
 set -e
 
 if [ $STATUS -eq 0 ]; then
   MATCHED=true
-  MATCH_TIME=$(echo "$MATCH_TIME" | head -n 1 | cut -f 2 -d ' ')
-  echo "$TARGET$STAGE took $MATCH_TIME"
-  printf ", %s" "$MATCH_TIME" >>"${TIMINGS_CSV}"
+  MATCHED_TIME=$(echo "$MATCHED_TIME" | head -n 1 | cut -f 2 -d ' ')
+  if echo "$MATCHED_TIME" | grep -qE '^[0-9]*\.?[0-9]+$' >/dev/null 2>&1; then
+    echo "$TARGET$STAGE took $MATCHED_TIME"
+    printf ", %s" "$MATCHED_TIME" >>"${TIMINGS_CSV}"
+  else
+    echo "Invalid timing value! [$MATCHED_TIME]"
+    printf ", error" >>"${TIMINGS_CSV}"
+  fi
 fi
 
 cleanup
