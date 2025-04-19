@@ -669,10 +669,10 @@ test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 
 test-sheet-2: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
-	# (tmux new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
-	# ${EXPECT} $@ indexed && \
-	# tmux send-keys -t $@ "C-d" && \
-	# ${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+	@(tmux new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ "C-d" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-3: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}

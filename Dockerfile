@@ -6,8 +6,12 @@ LABEL org.opencontainers.image.description="zsv: tabular data swiss-army knife C
 
 RUN apk add bash gcc make musl-dev perl ncurses-dev ncurses-static tmux file sqlite curl zip
 
+USER liquidaty
+
 WORKDIR /zsv
 COPY . .
+
+RUN mkdir /usr/local/etc
 
 RUN \
     PREFIX=amd64-linux-musl \
