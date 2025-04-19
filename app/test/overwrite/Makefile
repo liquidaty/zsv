@@ -40,7 +40,9 @@ ifeq ($(EXE),)
   $(error EXE is not defined)
 endif
 
-test: test-1 test-2 test-excel-cells test-add test-remove test-old-value test-force test-bulk-add test-bulk-remove test-echo-overwrite-auto test-timestamp
+test: \
+	test-1 test-2 test-excel-cells test-add test-remove test-old-value test-force \
+	test-bulk-add test-bulk-remove test-echo-overwrite-auto test-timestamp
 
 test-1:
 	@${TEST_INIT}
