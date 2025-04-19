@@ -42,14 +42,14 @@ echo "[INF] VERSION:          $VERSION"
 echo "[INF] Creating spec file [$NUGET_SPEC_PATH]"
 cat << EOF > "$NUGET_SPEC_PATH"
 <?xml version="1.0"?>
-<package>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>zsv</id>
     <version>$VERSION</version>
     <description>zsv+lib: world's fastest CSV parser, with an extensible CLI</description>
     <authors>liquidaty</authors>
     <projectUrl>https://github.com/liquidaty/zsv</projectUrl>
-    <license type="expression">MIT</license>
+    <licenseUrl>https://opensource.org/licenses/MIT</licenseUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <tags>native</tags>
   </metadata>
@@ -65,7 +65,7 @@ echo "[INF] --- [$NUGET_SPEC_PATH] ---"
 cat -n "$NUGET_SPEC_PATH"
 echo "[INF] --- [$NUGET_SPEC_PATH] ---"
 
-tree "$PREFIX"
+ls -hl "$PREFIX"
 
 echo "[INF] Building [$NUGET_PKG]"
 nuget pack "$NUGET_SPEC_PATH"
@@ -83,7 +83,7 @@ nuget install zsv -version "$VERSION" -source "$NUGET_PKG_FEED"
 
 echo "[INF] Verifying installed package"
 NUGET_PKG_INSTALLED_DIR="zsv.$VERSION"
-tree "$NUGET_PKG_INSTALLED_DIR"
+ls -hl "$NUGET_PKG_INSTALLED_DIR"
 
 echo "[INF] Uninstalling"
 nuget delete zsv "$VERSION" -source "$NUGET_PKG_FEED" -NonInteractive

@@ -12,12 +12,14 @@ COLOR_GREEN=\033[1;32m
 COLOR_RED=\033[1;31m
 COLOR_BLUE=\033[1;34m
 COLOR_PINK=\033[1;35m
+COLOR_YELLOW=\033[1;33m
 
 TMP_DIR=${THIS_MAKEFILE_DIR}/tmp
 
+TEST_INIT=mkdir -p ${TMP_DIR} && rm -rf ${TMP_DIR}/test* && printf "${COLOR_PINK}test-overwrite-$@: ${COLOR_NONE}\n"
+TEST_SKIP=printf "${COLOR_BLUE}$@: ${COLOR_YELLOW}Skipped${COLOR_NONE}\n"
 TEST_PASS=printf "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}\n"
 TEST_FAIL=(printf "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}\n" && exit 1)
-TEST_INIT=mkdir -p ${TMP_DIR} && rm -rf ${TMP_DIR}/test* && printf "${COLOR_PINK}test-overwrite-$@: ${COLOR_NONE}\n"
 
 LEAKS=
 ifneq ($(LEAKS),)
@@ -38,7 +40,9 @@ ifeq ($(EXE),)
   $(error EXE is not defined)
 endif
 
-test: test-1 test-2 test-excel-cells test-add test-remove test-old-value test-force test-bulk-add test-bulk-remove test-echo-overwrite-auto test-timestamp
+test: \
+	test-1 test-2 test-excel-cells test-add test-remove test-old-value test-force \
+	test-bulk-add test-bulk-remove test-echo-overwrite-auto test-timestamp
 
 test-1:
 	@${TEST_INIT}

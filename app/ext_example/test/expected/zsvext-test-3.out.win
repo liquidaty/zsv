@@ -1,0 +1,127 @@
+Extension my registered
+Exiting extension example!
+Exiting extension example!
+Extension my unregistered
+Extension my was not already registered
+zsv: streaming csv processor
+
+Usage:
+  zsv version: display version info (and if applicable, extension info)
+  zsv (un)register [<extension_id>]    : (un)register an extension
+      Registration info is saved in zsv.ini located in a directory determined as:
+        ZSV_CONFIG_DIR environment variable value, if set
+        LOCALAPPDATA environment variable value, if set
+        otherwise, C:\temp
+  zsv help [<command>]
+  zsv <command> <options> <arguments>  : run a command on data (see below for details)
+  zsv <id>-<cmd> <options> <arguments> : invoke command 'cmd' of extension 'id'
+  zsv license [<extension_id>]
+  zsv thirdparty                       : view third-party licenses & acknowledgements
+
+Options common to all commands except `prop`, `rm` and `jq`:
+  -L,--limit-rows <n>      : limit processing to the given number of rows (including any header row(s))
+  -c,--max-column-count <n>: set the maximum number of columns parsed per row. defaults to 1024
+  -r,--max-row-size <n>    : set the minimum supported maximum row size. defaults to 64k
+  -B,--buff-size <n>       : set internal buffer size. defaults to 256k
+  -t,--tab-delim           : set column delimiter to tab
+  -O,--other-delim <char>  : set column delimiter to specified character
+  -q,--no-quote            : turn off quote handling
+  -R,--skip-head <n>       : skip specified number of initial rows
+  -d,--header-row-span <n> : apply header depth (rowspan) of n
+  -u,--malformed-utf8-replacement <string>: replacement string (can be empty) in case of malformed UTF8 input
+       (default for "desc" command is '?')
+  -S,--keep-blank-headers  : disable default behavior of ignoring leading blank rows
+  -0,--header-row <header> : insert the provided CSV as the first row (in position 0)
+                             e.g. --header-row 'col1,col2,"my col 3"'
+  -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command
+  -v,--verbose             : verbose output
+
+Commands that parse CSV or other tabular data:
+  select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations
+  echo     : write tabular input to stdout with optional cell overwrites
+  overwrite: save, modify or apply overwrites
+  sql      : run ad-hoc SQL
+  count    : print the number of rows
+  desc     : describe each column
+  pretty   : pretty print for console display
+  flatten  : flatten a table consisting of N groups of data, each with 1 or
+             more rows in the table, into a table of N rows
+  2json    : convert CSV or sqlite3 db table to json
+  2tsv     : convert to tab-delimited text
+  serialize: convert into 3-column format (id, column name, cell value)
+  stack    : stack tables vertically, aligning columns with common names
+  compare  : compare two or more tables and output differences
+
+Other commands:
+  2db      : convert json to sqlite3 db
+  prop     : save parsing options associated with a file that are subsequently
+             applied by default when processing that file
+  rm       : remove a file and its related cache
+  mv       : rename (move) a file and/or its related cache
+  jq       : run a jq filter on json input
+
+(No extended commands)
+Extension my registered
+Exiting extension example!
+zsv: streaming csv processor
+
+Usage:
+  zsv version: display version info (and if applicable, extension info)
+  zsv (un)register [<extension_id>]    : (un)register an extension
+      Registration info is saved in zsv.ini located in a directory determined as:
+        ZSV_CONFIG_DIR environment variable value, if set
+        LOCALAPPDATA environment variable value, if set
+        otherwise, C:\temp
+  zsv help [<command>]
+  zsv <command> <options> <arguments>  : run a command on data (see below for details)
+  zsv <id>-<cmd> <options> <arguments> : invoke command 'cmd' of extension 'id'
+  zsv license [<extension_id>]
+  zsv thirdparty                       : view third-party licenses & acknowledgements
+
+Options common to all commands except `prop`, `rm` and `jq`:
+  -L,--limit-rows <n>      : limit processing to the given number of rows (including any header row(s))
+  -c,--max-column-count <n>: set the maximum number of columns parsed per row. defaults to 1024
+  -r,--max-row-size <n>    : set the minimum supported maximum row size. defaults to 64k
+  -B,--buff-size <n>       : set internal buffer size. defaults to 256k
+  -t,--tab-delim           : set column delimiter to tab
+  -O,--other-delim <char>  : set column delimiter to specified character
+  -q,--no-quote            : turn off quote handling
+  -R,--skip-head <n>       : skip specified number of initial rows
+  -d,--header-row-span <n> : apply header depth (rowspan) of n
+  -u,--malformed-utf8-replacement <string>: replacement string (can be empty) in case of malformed UTF8 input
+       (default for "desc" command is '?')
+  -S,--keep-blank-headers  : disable default behavior of ignoring leading blank rows
+  -0,--header-row <header> : insert the provided CSV as the first row (in position 0)
+                             e.g. --header-row 'col1,col2,"my col 3"'
+  -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command
+  -v,--verbose             : verbose output
+
+Commands that parse CSV or other tabular data:
+  select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations
+  echo     : write tabular input to stdout with optional cell overwrites
+  overwrite: save, modify or apply overwrites
+  sql      : run ad-hoc SQL
+  count    : print the number of rows
+  desc     : describe each column
+  pretty   : pretty print for console display
+  flatten  : flatten a table consisting of N groups of data, each with 1 or
+             more rows in the table, into a table of N rows
+  2json    : convert CSV or sqlite3 db table to json
+  2tsv     : convert to tab-delimited text
+  serialize: convert into 3-column format (id, column name, cell value)
+  stack    : stack tables vertically, aligning columns with common names
+  compare  : compare two or more tables and output differences
+
+Other commands:
+  2db      : convert json to sqlite3 db
+  prop     : save parsing options associated with a file that are subsequently
+             applied by default when processing that file
+  rm       : remove a file and its related cache
+  mv       : rename (move) a file and/or its related cache
+  jq       : run a jq filter on json input
+
+Extended commands:
+  Extension 'my': Sample zsv extension
+    my-count: print the number of rows
+    my-echo: print the input data back to stdout
+Exiting extension example!

@@ -414,7 +414,6 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   struct zsvsheet_ui_buffer *current_ui_buffer = *state->display_info.ui_buffers.current;
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
   struct zsvsheet_buffer_info_internal binfo = zsvsheet_buffer_info_internal(current_ui_buffer);
-  int err;
   const char *filter;
 
   if (binfo.write_in_progress && !binfo.write_done)
@@ -605,26 +604,26 @@ struct builtin_proc_desc {
   const char *description;
   zsvsheet_proc_fn handler;
 } builtin_procedures[] = {
-  { zsvsheet_builtin_proc_quit,           "quit",   "Exit the application",                                            zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_escape,         "escape", "Leave the current view or cancel a subcommand",                   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_bottom,    "bottom", "Jump to the last row",                                            zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_top,       "top",    "Jump to the first row",                                           zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_first_col, "first",  "Jump to the first column",                                        zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_pg_down,        "pagedown", "Move down one page",                                              zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_pg_up,          "pageup", "Move up one page",                                                zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_last_col,  "last",   "Jump to the last column",                                         zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_up,        "up",     "Move up one row",                                                 zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_down,      "down",   "Move down one row",                                               zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_left,      "left",   "Move left one column",                                            zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_right,     "right",  "Move right one column",                                           zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_find,           "find",   "Set a search term and jump to the first result after the cursor", zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_find_next,      "next",   "Jump to the next search result",                                  zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_resize,         "resize", "Resize the layout to fit new terminal dimensions",                zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_open_file,      "open",   "Open a another CSV file",                                         zsvsheet_open_file_handler    },
-  { zsvsheet_builtin_proc_filter,         "filter", "Hide rows that do not contain the specified text",                zsvsheet_filter_handler       },
-  { zsvsheet_builtin_proc_subcommand,     "subcommand",  "Editor subcommand",                                          zsvsheet_subcommand_handler },
-  { zsvsheet_builtin_proc_help,           "help",   "Display a list of actions and key-bindings",                      zsvsheet_help_handler         },
-  { zsvsheet_builtin_proc_newline,        "<Enter>","Follow hyperlink (if any)",                                       zsvsheet_newline_handler      },
+  { zsvsheet_builtin_proc_quit,           "quit",        "Exit the application",                                            zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_escape,         "escape",      "Leave the current view or cancel a subcommand",                   zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_bottom,    "bottom",      "Jump to the last row",                                            zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_top,       "top",         "Jump to the first row",                                           zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_first_col, "first",       "Jump to the first column",                                        zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_pg_down,        "pagedown",    "Move down one page",                                              zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_pg_up,          "pageup",      "Move up one page",                                                zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_last_col,  "last",        "Jump to the last column",                                         zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_up,        "up",          "Move up one row",                                                 zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_down,      "down",        "Move down one row",                                               zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_left,      "left",        "Move left one column",                                            zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_right,     "right",       "Move right one column",                                           zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_find,           "find",        "Set a search term and jump to the first result after the cursor", zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_find_next,      "next",        "Jump to the next search result",                                  zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_resize,         "resize",      "Resize the layout to fit new terminal dimensions",                zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_open_file,      "open",        "Open another CSV file",                                           zsvsheet_open_file_handler    },
+  { zsvsheet_builtin_proc_filter,         "filter",      "Hide rows that do not contain the specified text",                zsvsheet_filter_handler       },
+  { zsvsheet_builtin_proc_subcommand,     "subcommand",  "Editor subcommand",                                               zsvsheet_subcommand_handler   },
+  { zsvsheet_builtin_proc_help,           "help",        "Display a list of actions and key-bindings",                      zsvsheet_help_handler         },
+  { zsvsheet_builtin_proc_newline,        "<Enter>",     "Follow hyperlink (if any)",                                       zsvsheet_newline_handler      },
   { -1, NULL, NULL, NULL }
 };
 /* clang-format on */
@@ -729,11 +728,18 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   zsvsheet_status status;
 
+#if defined(WIN32) || defined(_WIN32)
+  // induce delay for index to complete before checking updates (observed under WSL)
+  // maybe, need a thread coordination strategy using condition variable to proceed?
+  napms(100);
+#endif
+
   zsvsheet_check_buffer_worker_updates(current_ui_buffer, &display_dims, &handler_state);
   display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
 
-  halfdelay(2); // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
-                //
+  // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
+  halfdelay(2);
+
   while (true) {
     ch = getch();
 
