@@ -608,18 +608,18 @@ jobs:
         export LDFLAGS="-L$PWD/app/external/mingw-ncurses/lib"
         ./scripts/ci-build.sh
 
-    - name: Prepare build artifacts for upload
-      run: ./scripts/ci-prepare-artifacts-for-upload.sh
+    # - name: Prepare build artifacts for upload
+    #   run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WSL_MINGW }}.zip)
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WSL_MINGW }}.zip
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: warn
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WSL_MINGW }}.zip)
+    #   uses: actions/upload-artifact@v4
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WSL_MINGW }}.zip
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
   ci-musl:
     needs: [tag, clang-format, cppcheck, shellcheck]
