@@ -425,11 +425,7 @@ jobs:
       run: ./scripts/ci-upload-release-artifacts.sh
 
   mingw-ncurses:
-    needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-22.04
-
-    outputs:
-      TAG: ${{ needs.tag.outputs.TAG }}
 
     steps:
     - name: Cache
@@ -465,12 +461,12 @@ jobs:
         if-no-files-found: error
 
   ci-linux-mingw:
-    needs: [mingw-ncurses]
+    needs: [tag, clang-format, cppcheck, shellcheck, mingw-ncurses]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
 
     env:
-      TAG: ${{ needs.mingw-ncurses.outputs.TAG }}
+      TAG: ${{ needs.tag.outputs.TAG }}
 
     steps:
     - name: Set up apt dependencies
@@ -553,12 +549,12 @@ jobs:
       run: ./scripts/ci-upload-release-artifacts.sh
 
   ci-wsl-mingw:
-    needs: [mingw-ncurses]
+    needs: [tag, clang-format, cppcheck, shellcheck, mingw-ncurses]
     runs-on: windows-2025
     timeout-minutes: 30
 
     env:
-      TAG: ${{ needs.mingw-ncurses.outputs.TAG }}
+      TAG: ${{ needs.tag.outputs.TAG }}
 
     defaults:
       run:
