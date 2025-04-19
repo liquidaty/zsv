@@ -598,9 +598,10 @@ jobs:
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
         RUN_TESTS: true
+        SKIP_BUILD: true
         SKIP_ZIP_ARCHIVE: false
         SKIP_TAR_ARCHIVE: true
-        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
+        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
       shell: wsl-bash {0}
       run: |
         export CFLAGS="-I$PWD/app/external/mingw-ncurses/include"
