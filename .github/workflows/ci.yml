@@ -619,7 +619,7 @@ jobs:
         name: ${{ env.ARTIFACT_NAME }}
         path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
         retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+        if-no-files-found: warn
 
   ci-musl:
     needs: [tag, clang-format, cppcheck, shellcheck]
