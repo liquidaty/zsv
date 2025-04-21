@@ -70,13 +70,24 @@ int zsv_remove_winlp(const char *path_utf8) {
   if (!rc) {
     if (!DeleteFileW(path_to_use)) {
       DWORD lastError = GetLastError();
-      if (windows_error_to_errno(lastError))
-        rc = windows_error_to_errno(lastError);
-      else
-        rc = -1;
 #ifndef NDEBUG
-      fprintf(stderr, "Error deleting file '%ls': %lu\n", path_to_use, GetLastError());
+      fprintf(stderr, "Error deleting file '%ls': %lu\n", path_to_use, lastError);
 #endif
+      if (windows_error_to_errno(lastError)) {
+        rc = windows_error_to_errno(lastError);
+        errno = rc;
+      } else {
+        fprintf(stderr, "Unable to delete file '%ls': %lu\n", path_to_use, GetLastError());
+        LPSTR messageBuffer = NULL;
+        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                       NULL, lastError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        if (messageBuffer) {
+          fprintf(stderr, "Error message: %s\n", messageBuffer);
+          LocalFree(messageBuffer);
+        } else
+          fprintf(stderr, "Could not format error message for code %lu.\n", lastError);
+        errno = rc = -1;
+      }
     }
   }
 
