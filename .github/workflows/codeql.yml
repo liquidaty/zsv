@@ -4,7 +4,13 @@ on: workflow_dispatch
 
 jobs:
   codeql:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [actions, c]
+
     permissions:
       security-events: write
 
@@ -15,17 +21,19 @@ jobs:
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
-        languages: c
-        build-mode: manual
+        languages: ${{ matrix.language }}
+        build-mode: ${{  matrix.language == 'c' && 'manual' || 'none' }}
 
     - name: Build
+      if: ${{ matrix.language == 'c' }}
       env:
         PREFIX: amd64-linux-gcc
         CC: gcc
         MAKE: make
         ARTIFACT_DIR: .artifacts
         RUN_TESTS: true
-      shell: bash
+        SKIP_ZIP_ARCHIVE: true
+        SKIP_TAR_ARCHIVE: true
       run: ./scripts/ci-build.sh
 
     - name: Perform CodeQL Analysis
