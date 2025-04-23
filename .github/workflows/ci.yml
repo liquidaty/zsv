@@ -6,6 +6,7 @@ on:
     paths-ignore:
     - '**.md'
     - 'setup-action/**'
+    - '.github/workflows/setup-action.yml'
     - '.github/workflows/codeql.yml'
     - '.github/workflows/benchmarks.yml'
     - 'scripts/ci-run-benchmarks.sh'
@@ -14,6 +15,7 @@ on:
     paths-ignore:
     - '**.md'
     - 'setup-action/**'
+    - '.github/workflows/setup-action.yml'
     - '.github/workflows/codeql.yml'
     - '.github/workflows/benchmarks.yml'
     - 'scripts/ci-run-benchmarks.sh'
