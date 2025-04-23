@@ -468,6 +468,9 @@ jobs:
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
 
+    outputs:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
     steps:
     - name: Set up apt dependencies
       run: |
@@ -832,3 +835,44 @@ jobs:
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
+
+  publish-winget-package:
+    if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
+    needs: [ci-linux-mingw]
+    runs-on: windows-latest
+
+    env:
+      TAG: ${{ needs.ci-linux-mingw.outputs.TAG }}
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Install wingetcreate
+      run: |
+        curl -L https://aka.ms/wingetcreate/latest -o wingetcreate
+        chmod +x wingetcreate
+        ./wingetcreate info
+
+    - name: Update
+      env:
+        PAT: ${{ secrets.WINGET_PAT }}
+        PKG_ID: "liquidaty.zsv"
+      run: |
+        URL="https://github.com/liquidaty/zsv/releases/download/v$TAG/zsv-$TAG-amd64-windows-mingw.zip"
+        ./wingetcreate update "$PKG_ID" \
+          --version "$TAG" \
+          --urls "$URL" \
+          --out "$GITHUB_WORKSPACE/manifests" \
+          --token "$PAT" \
+          --prtitle "New version: $PKG_ID v$TAG" \
+          --submit
+
+    - name: Upload manifest
+      uses: actions/upload-artifact@v4
+      with:
+        name: zsv-${{ env.TAG }}-winget-manifest
+        path: ${{ github.workspace }}/manifests
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
