@@ -12,6 +12,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
   <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/ascii_table.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/less.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css" />
 
   <script type="text/javascript">
@@ -129,7 +131,7 @@
         return (...args) => {
           const output = args.join(' ');
           if (zsvAutocompletionsPopulated) {
-            $('body').terminal().echo(output);
+            $('body').terminal().echo(output, { flush: false });
           } else {
             parseFlagsAndCommands(output);
           }
@@ -206,23 +208,23 @@
     }
 
     const playgroundCommands = {
-      info: '    : show playground info',
-      help: '    : show help',
-      clear: '   : clear screen',
-      load: '    : load CSV file(s) from disk (overwrite mode)',
-      save: '    : save file(s) to disk',
-      download: ': download file(s) from URL(s) (overwrite mode)',
-      ls: '      : list current directory (/home/zsv/)',
-      rm: '      : remove file(s) (force mode)',
-      zsv: '     : run zsv CLI app',
+      info: 'show playground info',
+      help: 'show help',
+      clear: 'clear screen',
+      load: 'load CSV file(s) from disk (overwrite mode)',
+      save: 'save file(s) to disk',
+      download: 'download file(s) from URL(s) (overwrite mode)',
+      ls: 'list current directory (/home/zsv/)',
+      rm: 'remove file(s) (force mode)',
+      less: 'view file content',
+      zsv: 'run zsv CLI app',
     };
 
     function help() {
-      var help = "[[;red;]zsv playground help]";
-      for (const key in playgroundCommands) {
-        help += `\n  [[;blue;]${key}] ${playgroundCommands[key]}`;
-      }
-      $('body').terminal().echo(help);
+      const header = ['[[;red;]command]', '[[;red;]description]'];
+      const help = Object.entries(playgroundCommands);
+      help.unshift(header);
+      $('body').terminal().echo(ascii_table(help, true));
     }
 
     function load() {
@@ -294,9 +296,33 @@
       }
     }
 
+    function less(args) {
+      if (args.length === 0) {
+        $('body').terminal().error('less: missing file operand');
+        return;
+      }
+      const file = args[0];
+      if (FS.analyzePath(file).exists) {
+        const data = FS.readFile(file);
+        const text = new TextDecoder('utf-8').decode(data);
+        $('body').terminal().less(text);
+      } else {
+        $('body').terminal().error(`less: file not found [${file}]`);
+      }
+    }
+
     function zsv(args) {
+      const start = performance.now();
       const exitCode = Module.callMain(args);
-      // TODO: Handle/log exit code if needed
+      if (exitCode === 0) {
+        $('body').terminal().flush();
+      }
+      const end = performance.now();
+      const elapsed = (end - start).toFixed(2);
+      const command = "zsv " + args.slice(1).join(' ');
+      const status = `>> ${command} [exit code: ${exitCode}, elapsed time: ${elapsed} ms]`;
+      $('body').terminal().error(status);
+      console.log(status);
     }
 
     $('body').terminal(function (command) {
@@ -332,6 +358,10 @@
           rm(args);
           break;
 
+        case 'less':
+          less(args);
+          break;
+
         case 'zsv':
           zsv(args);
           break;
@@ -351,7 +381,7 @@
         const command = this.get_command().trimLeft();
         if (command.match(/^(info|help|load|ls|download) /)) {
           callback([]);
-        } else if (command.match(/^save /) || command.match(/^rm /)) {
+        } else if (command.match(/^save /) || command.match(/^rm /) || command.match(/^less /)) {
           callback(getFiles());
         } else if (command.startsWith('zsv')) {
           callback(autocomplete(string, command));
