@@ -311,11 +311,40 @@
       }
     }
 
+    function dumpOutputWithTruncatedBytes() {
+      const maxBytes = 4 * 1024;
+      const buffer = $('body').terminal().get_output_buffer();
+      const bufferLen = buffer.length;
+      if (bufferLen > 0) {
+        $('body').terminal().clear_buffer();
+        var truncated = buffer.slice(0, maxBytes);
+        truncated = truncated.slice(0, truncated.lastIndexOf('\n'));
+        $('body').terminal().echo(truncated);
+        if (bufferLen > maxBytes) {
+          $('body').terminal().echo(`[[;yellow;]... truncated ${bufferLen - truncated.length} bytes]`);
+        }
+      }
+    }
+
+    function dumpOutputWithTruncatedLines() {
+      const maxLines = 100;
+      const lines = $('body').terminal().get_output_buffer().split('\n');
+      if (lines.length > 0) {
+        $('body').terminal().clear_buffer();
+        const truncated = lines.slice(0, maxLines);
+        $('body').terminal().echo(truncated);
+        if (lines.length > maxLines) {
+          $('body').terminal().echo(`[[;yellow;]... truncated ${lines.length - truncated.length} lines]`);
+        }
+      }
+    }
+
     function zsv(args) {
       const start = performance.now();
       const exitCode = Module.callMain(args);
       if (exitCode === 0) {
-        $('body').terminal().flush();
+        // dumpOutputWithTruncatedLines();
+        dumpOutputWithTruncatedBytes();
       }
       const end = performance.now();
       const elapsed = (end - start).toFixed(2);
