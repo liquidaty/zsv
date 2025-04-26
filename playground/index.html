@@ -218,13 +218,16 @@
       download: 'download file(s) from URL(s) (overwrite mode)',
       ls: 'list current directory (/home/zsv/)',
       rm: 'remove file(s) (force mode)',
-      less: 'view file content',
+      less: 'view and search a file efficiently',
+      config: 'configure playground',
       zsv: 'run zsv CLI app',
     };
 
     function help() {
       const header = ['[[;red;]command]', '[[;red;]description]'];
-      const help = Object.entries(playgroundCommands);
+      const help = Object.entries(playgroundCommands).map(([key, value]) => {
+        return [`[[;blue;]${key}]`, `${value}`];
+      });
       help.unshift(header);
       $('body').terminal().echo(ascii_table(help, true));
     }
@@ -354,18 +357,104 @@
       }
     }
 
+    class Configuration {
+      constructor() {
+        this.actions = {
+          enable: (name) => { this.configs[name] = true; },
+          disable: (name) => { this.configs[name] = false; },
+        };
+        this.configs = {
+          zsv_print_elapsed_time: false,
+          zsv_truncate_output: false,
+        };
+      }
+
+      isZsvPrintElapsedTimeEnabled() {
+        return this.configs.zsv_print_elapsed_time;
+      }
+
+      isZsvTruncateOutputEnabled() {
+        return this.configs.zsv_truncate_output;
+      }
+
+      validate(action, name) {
+        if (action === undefined) {
+          $('body').terminal().error(`config: missing action`);
+          return false;
+        } else if (!this.actions.hasOwnProperty(action)) {
+          $('body').terminal().error(`config: invalid action [${action}]`);
+          return false;
+        } else if (name === undefined) {
+          $('body').terminal().error(`config: missing config name`);
+          return false;
+        } else if (!this.configs.hasOwnProperty(name)) {
+          $('body').terminal().error(`config: invalid config name [${name}]`);
+          return false;
+        }
+        return true;
+      }
+
+      apply(action, name) {
+        if (this.validate(action, name)) {
+          this.actions[action](name);
+          $('body').terminal().echo(`config: [[;yellow;]${name}] [updated]`);
+        }
+      }
+
+      show() {
+        const header = ['[[;red;]config]', '[[;red;]status]'];
+        const entries = Object.entries(this.configs).map(([key, value]) => {
+          return [`${key}`, `${value ? '[[;green;]enabled]' : 'disabled'}`];
+        });
+        entries.unshift(header);
+        $('body').terminal().echo(ascii_table(entries, true));
+      }
+
+      autocomplete(string, command) {
+        if (command.match(/^config\s+$/) || command.match(/^config\s+\w+$/)) {
+          return Object.keys(this.actions);
+        }
+
+        if (command.match(/^config\s+(enable|disable)\s+$/) || command.match(/^config\s+(enable|disable)\s+\w+$/)) {
+          return Object.keys(this.configs);
+        }
+
+        return [];
+      }
+    }
+
+    const configuration = new Configuration();
+
+    function config(args) {
+      if (args.length === 0) {
+        configuration.show();
+      } else if (args.length > 2) {
+        $('body').terminal().error('config: too many arguments');
+      } else {
+        const action = args[0];
+        const name = args[1];
+        configuration.apply(action, name);
+      }
+    }
+
     function zsv(args) {
       const start = performance.now();
       const exitCode = Module.callMain(args);
       if (exitCode === 0) {
-        // dumpOutputWithTruncatedLines();
-        dumpOutputWithTruncatedBytes();
+        if (configuration.isZsvTruncateOutputEnabled()) {
+          // dumpOutputWithTruncatedLines();
+          dumpOutputWithTruncatedBytes();
+        } else {
+          $('body').terminal().flush();
+        }
       }
       const end = performance.now();
       const elapsed = (end - start).toFixed(2);
       const command = "zsv " + args.slice(1).join(' ');
       const status = `>> ${command} [exit code: ${exitCode}, elapsed time: ${elapsed} ms]`;
-      $('body').terminal().error(status);
+      if (configuration.isZsvPrintElapsedTimeEnabled()) {
+        $('body').terminal().error(status);
+      }
       console.log(status);
     }
 
@@ -406,6 +495,10 @@
           less(args);
           break;
 
+        case 'config':
+          config(args);
+          break;
+
         case 'zsv':
           zsv(args);
           break;
@@ -427,6 +520,8 @@
           callback([]);
         } else if (command.match(/^save /) || command.match(/^rm /) || command.match(/^less /)) {
           callback(getFiles());
+        } else if (command.startsWith('config')) {
+          callback(configuration.autocomplete(string, command));
         } else if (command.startsWith('zsv')) {
           callback(autocomplete(string, command));
         } else {
