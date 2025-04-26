@@ -11,10 +11,12 @@
   <title>zsv playground v__VERSION__</title>
 
   <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/ascii_table.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/less.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/pipe.min.js"></script>
 
   <script type="text/javascript">
     // https://stackoverflow.com/questions/9038625/detect-if-device-is-ios
@@ -142,7 +144,7 @@
           const output = args.join(' ');
           $('body').terminal().error(output);
         };
-      })()
+      })(),
     };
 
     Module['onRuntimeInitialized'] = () => {
@@ -296,18 +298,31 @@
       }
     }
 
+    async function lessWithStdin() {
+      var header = `[[;red;]Type your content here.]\n`;
+      header += `[[;red;]Press SHIFT+ENTER for a newline.]\n`;
+      header += `[[;red;]Press ENTER to finish.]\n`;
+      await $('body').terminal().read(header).then((stdin) => {
+        if (stdin.length > 0) {
+          $('body').terminal().less(stdin);
+        }
+      });
+    }
+
     function less(args) {
       if (args.length === 0) {
-        $('body').terminal().error('less: missing file operand');
-        return;
-      }
-      const file = args[0];
-      if (FS.analyzePath(file).exists) {
-        const data = FS.readFile(file);
-        const text = new TextDecoder('utf-8').decode(data);
-        $('body').terminal().less(text);
+        lessWithStdin();
+      } else if (args.length === 1) {
+        const file = args[0];
+        if (FS.analyzePath(file).exists) {
+          const data = FS.readFile(file);
+          const text = new TextDecoder('utf-8').decode(data);
+          $('body').terminal().less(text);
+        } else {
+          $('body').terminal().error(`less: file not found [${file}]`);
+        }
       } else {
-        $('body').terminal().error(`less: file not found [${file}]`);
+        $('body').terminal().error('less: too many arguments');
       }
     }
 
@@ -405,7 +420,7 @@
     }, {
       checkArity: false,
       greetings: greetings,
-      prompt: "[[;lightgreen;]zsv@playground$ ]",
+      prompt: "[[;lightgreen;]zsv@playground$] ",
       completion: function (string, callback) {
         const command = this.get_command().trimLeft();
         if (command.match(/^(info|help|load|ls|download) /)) {
@@ -417,7 +432,8 @@
         } else {
           callback(Object.keys(playgroundCommands));
         }
-      }
+      },
+      pipe: true,
     });
   </script>
 </body>
