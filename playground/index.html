@@ -210,26 +210,84 @@
     }
 
     const playgroundCommands = {
-      info: 'show playground info',
-      help: 'show help',
-      clear: 'clear screen',
-      load: 'load CSV file(s) from disk (overwrite mode)',
-      save: 'save file(s) to disk',
-      download: 'download file(s) from URL(s) (overwrite mode)',
-      ls: 'list current directory (/home/zsv/)',
-      rm: 'remove file(s) (force mode)',
-      less: 'view and search a file efficiently',
-      config: 'configure playground',
-      zsv: 'run zsv CLI app',
+      info: {
+        description: 'show playground info',
+        usage: 'info'
+      },
+      help: {
+        description: 'show help',
+        usage: 'help'
+      },
+      clear: {
+        description: 'clear screen',
+        usage: 'clear'
+      },
+      load: {
+        description: 'load CSV file(s) from disk (overwrite mode)',
+        usage: 'load'
+      },
+      save: {
+        description: 'save file(s) to disk',
+        usage: 'save <filename> ...'
+      },
+      download: {
+        description: 'download file(s) from URL(s) (overwrite mode)',
+        usage: 'download <url> ...'
+      },
+      ls: {
+        description: 'list current directory (/home/zsv/)',
+        usage: 'ls'
+      },
+      rm: {
+        description: 'remove file(s) (force mode)',
+        usage: 'rm <filename> ...'
+      },
+      less: {
+        description: 'view/search content of a file or stdin efficiently',
+        usage: 'less [<filename>]'
+      },
+      config: {
+        description: 'show/enable/disable playground configurations',
+        usage: 'config [enable|disable <config-name>]'
+      },
+      zsv: {
+        description: 'run zsv CLI app',
+        usage: 'zsv <command> [arguments]'
+      }
     };
 
     function help() {
-      const header = ['[[;red;]command]', '[[;red;]description]'];
+      const header = ['[[;red;]command]', '[[;red;]usage]', '[[;red;]description]'];
       const help = Object.entries(playgroundCommands).map(([key, value]) => {
-        return [`[[;blue;]${key}]`, `${value}`];
+        return [
+          `[[;yellow;]${key}]`,
+          `${value.usage}`,
+          `${value.description}`
+        ];
       });
       help.unshift(header);
       $('body').terminal().echo(ascii_table(help, true));
+
+      const notes = [
+        "[[;red;]NOTES:]",
+        "- For iOS, SIMD support is not available for `zsv`.",
+        "- The `zsv sheet` command is not available in the playground.",
+        "- Each browser tab is a new session i.e. nothing is retained.",
+        "- Storing large `zsv` output to a file is much faster than STDOUT.",
+        "  - e.g.:",
+        "    - `zsv echo -L 100000 worldcitiespop_mil.csv -o w100k.csv`",
+        "- For large files, use `less` command.",
+        "  For large outputs, pipe it through `less` command.",
+        "  - e.g.:",
+        "    - `less worldcitiespop_mil.csv`",
+        "    - `zsv 2json w100k.csv | less`",
+        "- Configure large outputs to be truncated using `config` command.",
+        "  - e.g.:",
+        "    - `config enable zsv_truncate_output`",
+        "- Run `clear` command often if the terminal feels sluggish.",
+        "  - It may happen over time while working with large outputs to STDOUT.",
+      ];
+      $('body').terminal().echo(notes.join('\n').replace(/`(.*)`/g, '`[[;yellow;]$1]`'));
     }
 
     function load() {
