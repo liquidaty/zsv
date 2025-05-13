@@ -9,6 +9,9 @@ on:
     paths: ['setup-action/**']
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     strategy:

@@ -19,6 +19,10 @@ if [ "$RUN_TESTS" != true ]; then
   RUN_TESTS=false
 fi
 
+if [ "$SKIP_BUILD" != true ]; then
+  SKIP_BUILD=false
+fi
+
 if [ "$SKIP_ZIP_ARCHIVE" != true ]; then
   SKIP_ZIP_ARCHIVE=false
 fi
@@ -43,8 +47,10 @@ echo "[INF] CFLAGS:           $CFLAGS"
 echo "[INF] LDFLAGS:          $LDFLAGS"
 echo "[INF] MAKE:             $MAKE"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
+echo "[INF] STATIC_BUILD:     $STATIC_BUILD"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 echo "[INF] WITHOUT_SIMD:     $WITHOUT_SIMD"
+echo "[INF] SKIP_BUILD:       $SKIP_BUILD"
 echo "[INF] SKIP_ZIP_ARCHIVE: $SKIP_ZIP_ARCHIVE"
 echo "[INF] SKIP_TAR_ARCHIVE: $SKIP_TAR_ARCHIVE"
 #echo "[INF] JQ_DIR:           $JQ_DIR"
@@ -92,32 +98,34 @@ if [ "$RUN_TESTS" = true ]; then
   fi
 fi
 
-echo "[INF] Building"
-rm -rf build "$PREFIX" /usr/local/etc/zsv.ini
-"$MAKE" install
-tree "$PREFIX"
-echo "[INF] Built successfully!"
+if [ "$SKIP_BUILD" = false ]; then
+  echo "[INF] Building"
+  rm -rf build "$PREFIX" /usr/local/etc/zsv.ini
+  "$MAKE" install
+  tree "$PREFIX"
+  echo "[INF] Built successfully!"
 
-mkdir -p "$ARTIFACT_DIR"
+  mkdir -p "$ARTIFACT_DIR"
 
-if [ "$SKIP_ZIP_ARCHIVE" = false ]; then
-  ZIP="$PREFIX.zip"
-  echo "[INF] Compressing [$ZIP]"
-  cd "$PREFIX"
-  zip -r "$ZIP" .
-  ls -hl "$ZIP"
-  cd ..
-  mv "$PREFIX/$ZIP" "$ARTIFACT_DIR"
-  echo "[INF] Compressed! [$ZIP]"
-fi
+  if [ "$SKIP_ZIP_ARCHIVE" = false ]; then
+    ZIP="$PREFIX.zip"
+    echo "[INF] Compressing [$ZIP]"
+    cd "$PREFIX"
+    zip -r "$ZIP" .
+    ls -hl "$ZIP"
+    cd ..
+    mv "$PREFIX/$ZIP" "$ARTIFACT_DIR"
+    echo "[INF] Compressed! [$ZIP]"
+  fi
 
-if [ "$SKIP_TAR_ARCHIVE" = false ]; then
-  TAR="$PREFIX.tar.gz"
-  echo "[INF] Compressing [$TAR]"
-  tar -czvf "$TAR" "$PREFIX"
-  ls -hl "$TAR"
-  mv "$TAR" "$ARTIFACT_DIR"
-  echo "[INF] Compressed! [$TAR]"
+  if [ "$SKIP_TAR_ARCHIVE" = false ]; then
+    TAR="$PREFIX.tar.gz"
+    echo "[INF] Compressing [$TAR]"
+    tar -czvf "$TAR" "$PREFIX"
+    ls -hl "$TAR"
+    mv "$TAR" "$ARTIFACT_DIR"
+    echo "[INF] Compressed! [$TAR]"
+  fi
 fi
 
 echo "[INF] --- [DONE] ---"

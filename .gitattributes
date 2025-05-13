@@ -1,0 +1,11 @@
+configure text eol=lf
+*.sh text eol=lf
+*.csv text eol=lf
+*.txt text eol=lf
+
+app/test/expected/test-2db.out2 text eol=lf
+app/test/expected/test-2db.out3 text eol=lf
+
+app/test/expected/test-sheet-*.out* text eol=lf
+app/ext_example/test/expected/test-sheet-extension-1-indexed.out text eol=lf
+app/ext_example/test/expected/test-sheet-extension-1.out text eol=lf

@@ -9,6 +9,8 @@ RUN apk add bash gcc make musl-dev perl ncurses-dev ncurses-static tmux file sql
 WORKDIR /zsv
 COPY . .
 
+RUN mkdir /usr/local/etc
+
 RUN \
     PREFIX=amd64-linux-musl \
     CC=gcc \

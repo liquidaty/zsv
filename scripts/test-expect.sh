@@ -1,22 +1,26 @@
 #!/bin/sh -eu
 
-script_dir=$(dirname "$0")
+SCRIPT_DIR=$(dirname "$0")
 
-export TARGET="$1"
-if [ -z "${2:-}" ]; then
-  export STAGE=""
-else
-  export STAGE=-"$2"
+EXPECT_TIMEOUT=${EXPECT_TIMEOUT:-5}
+
+TARGET="${1:-}"
+STAGE="${2:-}"
+
+if [ -n "$STAGE" ]; then
+  STAGE="-$STAGE"
 fi
-export CAPTURE="${TMP_DIR}/$TARGET$STAGE".out
-EXPECTED="$EXPECTED_PATH/$TARGET$STAGE".out
-export EXPECTED
-matched=false
 
-t=${EXPECT_TIMEOUT:-5}
+export TARGET
+export STAGE
+
+export CAPTURED_OUTPUT="$TMP_DIR/$TARGET$STAGE.out"
+export EXPECTED_OUTPUT="$EXPECTED_PATH/$TARGET$STAGE.out"
+
+MATCHED=false
 
 cleanup() {
-  if $matched; then
+  if $MATCHED; then
     if [ -z "$STAGE" ]; then
       tmux send-keys -t "$TARGET" "q"
     fi
@@ -25,26 +29,33 @@ cleanup() {
 
   tmux send-keys -t "$TARGET" "q"
   echo 'Incorrect output:'
-  cat "$CAPTURE"
-  echo "${CMP} -s $CAPTURE $EXPECTED"
-  ${CMP} -s "$CAPTURE" "$EXPECTED"
+  cat "$CAPTURED_OUTPUT"
+  echo 'Expected output:'
+  cat "$EXPECTED_OUTPUT"
+  echo "${CMP} $CAPTURED_OUTPUT $EXPECTED_OUTPUT"
+  ${CMP} "$CAPTURED_OUTPUT" "$EXPECTED_OUTPUT"
   exit 1
 }
 
 trap cleanup INT TERM QUIT
 
-printf "\n%s, %s" "$TARGET" "${2:-}" >> "${TIMINGS_CSV}"
+printf "\n%s, %s" "$TARGET" "$STAGE" >>"${TIMINGS_CSV}"
 
 set +e
-match_time=$(time -p timeout -k $(( t + 1 )) $t "${script_dir}"/test-retry-capture-cmp.sh 2>&1)
-status=$?
+MATCHED_TIME=$(time -p timeout -k $((EXPECT_TIMEOUT + 1)) "$EXPECT_TIMEOUT" "${SCRIPT_DIR}"/test-retry-capture-cmp.sh 2>&1)
+STATUS=$?
 set -e
 
-if [ $status -eq 0 ]; then
-  matched=true
-  match_time=$(echo "$match_time" | head -n 1 | cut -f 2 -d ' ')
-  echo "$TARGET$STAGE took $match_time"
-  printf ", %s" "$match_time" >> "${TIMINGS_CSV}"
+if [ $STATUS -eq 0 ]; then
+  MATCHED=true
+  MATCHED_TIME=$(echo "$MATCHED_TIME" | head -n 1 | cut -f 2 -d ' ')
+  if echo "$MATCHED_TIME" | grep -qE '^[0-9]*\.?[0-9]+$' >/dev/null 2>&1; then
+    echo "$TARGET$STAGE took $MATCHED_TIME"
+    printf ", %s" "$MATCHED_TIME" >>"${TIMINGS_CSV}"
+  else
+    echo "Invalid timing value! [$MATCHED_TIME]"
+    printf ", error" >>"${TIMINGS_CSV}"
+  fi
 fi
 
 cleanup

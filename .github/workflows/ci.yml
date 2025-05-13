@@ -6,6 +6,7 @@ on:
     paths-ignore:
     - '**.md'
     - 'setup-action/**'
+    - '.github/workflows/setup-action.yml'
     - '.github/workflows/codeql.yml'
     - '.github/workflows/benchmarks.yml'
     - 'scripts/ci-run-benchmarks.sh'
@@ -14,6 +15,7 @@ on:
     paths-ignore:
     - '**.md'
     - 'setup-action/**'
+    - '.github/workflows/setup-action.yml'
     - '.github/workflows/codeql.yml'
     - '.github/workflows/benchmarks.yml'
     - 'scripts/ci-run-benchmarks.sh'
@@ -34,6 +36,7 @@ env:
   AMD64_LINUX_CLANG: amd64-linux-clang
   AMD64_LINUX_MUSL: amd64-linux-musl
   AMD64_WINDOWS_MINGW: amd64-windows-mingw
+  AMD64_WSL_MINGW: amd64-wsl-mingw
   AMD64_LINUX_WASM: amd64-linux-wasm
   AMD64_MACOSX_GCC: amd64-macosx-gcc
   ARM64_MACOSX_GCC: arm64-macosx-gcc
@@ -423,8 +426,44 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       run: ./scripts/ci-upload-release-artifacts.sh
 
-  ci-mingw:
-    needs: [tag, clang-format, cppcheck, shellcheck]
+  mingw-ncurses:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Cache
+      uses: actions/cache@v4
+      id: cache
+      with:
+        key: mingw-ncurses.zip
+        path: ${{ github.workspace }}/mingw-ncurses.zip
+
+    - name: Install MinGW
+      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+      run: |
+        sudo apt update
+        sudo apt install -y mingw-w64
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+      with:
+        sparse-checkout: |
+          scripts/ci-build-ncurses-with-mingw.sh
+
+    - name: Build ncurses with MinGW
+      if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+      run: ./scripts/ci-build-ncurses-with-mingw.sh
+
+    - name: Upload mingw-ncurses.zip
+      uses: actions/upload-artifact@v4
+      with:
+        name: mingw-ncurses.zip
+        path: ${{ github.workspace }}/mingw-ncurses.zip
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
+
+  ci-linux-mingw:
+    needs: [tag, clang-format, cppcheck, shellcheck, mingw-ncurses]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
 
@@ -438,29 +477,19 @@ jobs:
         sudo apt install -y mingw-w64 nuget
         sudo apt remove -y jq
 
-    - name: Set VCPKG_MINGW_INSTALL_ROOT env var
-      run: echo "VCPKG_MINGW_INSTALL_ROOT=$VCPKG_INSTALLATION_ROOT/installed/x64-mingw-static" >>"$GITHUB_ENV"
-
-    - name: Cache ncurses
-      uses: actions/cache@v4
-      id: cache-ncurses
-      with:
-        key: ncurses:x64-mingw-static
-        path: ${{ env.VCPKG_MINGW_INSTALL_ROOT }}
-
-    - name: Install ncurses with wide character support using vcpkg
-      if: ${{ steps.cache-ncurses.outputs.cache-hit != 'true' }}
-      run: |
-        NCURSES_PORTFILE="$VCPKG_INSTALLATION_ROOT/ports/ncurses/portfile.cmake"
-        cd "$VCPKG_INSTALLATION_ROOT"
-        if ! grep -- "--enable-widec" "$NCURSES_PORTFILE" >/dev/null; then
-          sed 's|--enable-pc-files|--enable-pc-files --enable-widec|' -i "$NCURSES_PORTFILE"
-        fi
-        ./vcpkg install ncurses:x64-mingw-static
-        tree ./installed/x64-mingw-static
-
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Download mingw-ncurses.zip
+      uses: actions/download-artifact@v4
+      with:
+        name: mingw-ncurses.zip
+        path: ${{ github.workspace }}/app/external
+
+    - name: Unzip mingw-ncurses.zip in app/external
+      run: |
+        cd app/external
+        unzip mingw-ncurses.zip
 
     - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
       env:
@@ -468,15 +497,9 @@ jobs:
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
         RUN_TESTS: false
-        CXX: x86_64-w64-mingw32-g++
-        CPP: x86_64-w64-mingw32-cpp
-        RANLIB: x86_64-w64-mingw32-gcc-ranlib
-        AR: x86_64-w64-mingw32-gcc-ar
-        NM: x86_64-w64-mingw32-gcc-nm
-        WINDRES: x86_64-w64-mingw32-windres
-        CFLAGS: -I${{ env.VCPKG_MINGW_INSTALL_ROOT }}/include
-        LDFLAGS: -L${{ env.VCPKG_MINGW_INSTALL_ROOT }}/lib
       run: |
+        export CFLAGS="-I$PWD/app/external/mingw-ncurses/include"
+        export LDFLAGS="-L$PWD/app/external/mingw-ncurses/lib"
         ./scripts/ci-build.sh
         ./scripts/ci-create-nuget-package.sh
 
@@ -526,6 +549,79 @@ jobs:
     - name: Upload release artifacts
       if: startsWith(github.ref, 'refs/tags/v')
       run: ./scripts/ci-upload-release-artifacts.sh
+
+  ci-wsl-mingw:
+    needs: [tag, clang-format, cppcheck, shellcheck, mingw-ncurses]
+    runs-on: windows-2025
+    timeout-minutes: 30
+
+    env:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Set up WSL 2
+      uses: Vampire/setup-wsl@v5
+      with:
+        wsl-version: 2
+        wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
+        set-as-default: true
+        distribution: Ubuntu-22.04
+        additional-packages: |
+          build-essential
+          mingw-w64
+          sqlite3
+          nuget
+          tree
+          zip
+          tar
+          tmux
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Download mingw-ncurses.zip
+      uses: actions/download-artifact@v4
+      with:
+        name: mingw-ncurses.zip
+        path: ${{ github.workspace }}/app/external
+
+    - name: Unzip mingw-ncurses.zip in app/external
+      run: |
+        cd app/external
+        unzip mingw-ncurses.zip
+
+    - name: Build (${{ env.AMD64_WSL_MINGW }})
+      env:
+        PREFIX: ${{ env.AMD64_WSL_MINGW }}
+        CC: x86_64-w64-mingw32-gcc
+        MAKE: make
+        RUN_TESTS: true
+        SKIP_BUILD: true
+        SKIP_ZIP_ARCHIVE: false
+        SKIP_TAR_ARCHIVE: true
+        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
+      shell: wsl-bash {0}
+      run: |
+        export CFLAGS="-I$PWD/app/external/mingw-ncurses/include"
+        export LDFLAGS="-L$PWD/app/external/mingw-ncurses/lib"
+        ./scripts/ci-build.sh
+
+    # - name: Prepare build artifacts for upload
+    #   run: ./scripts/ci-prepare-artifacts-for-upload.sh
+
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WSL_MINGW }}.zip)
+    #   uses: actions/upload-artifact@v4
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WSL_MINGW }}.zip
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
   ci-musl:
     needs: [tag, clang-format, cppcheck, shellcheck]
