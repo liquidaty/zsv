@@ -27,9 +27,9 @@ DWORD zsv_mkdir_winlp(const char *path_utf8) {
     return ERROR_INVALID_PARAMETER; // Or another suitable error code
   }
 
-  if(strlen(path_utf8) < 260) { // try the easy way first
+  if (strlen(path_utf8) < 260) { // try the easy way first
     int rc = mkdir(path_utf8);
-    if(!rc || rc == EEXIST)
+    if (!rc || rc == EEXIST)
       return 0;
   }
 
