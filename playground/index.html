@@ -274,20 +274,17 @@
         "- The `zsv sheet` command is not available in the playground.",
         "- Each browser tab is a new session i.e. nothing is retained.",
         "- Storing large `zsv` output to a file is much faster than STDOUT.",
-        "  - e.g.:",
-        "    - `zsv echo -L 100000 worldcitiespop_mil.csv -o w100k.csv`",
-        "- For large files, use `less` command.",
-        "  For large outputs, pipe it through `less` command.",
-        "  - e.g.:",
-        "    - `less worldcitiespop_mil.csv`",
-        "    - `zsv 2json w100k.csv | less`",
+        "  Example: `zsv echo -L 100000 worldcitiespop_mil.csv -o w100k.csv`",
+        "- For navigating the large files, use `less` command.",
+        "  Example: `less worldcitiespop_mil.csv`",
+        "  For the large `zsv` output, pipe it to `less` command.",
+        "  Example: `zsv 2json w100k.csv | less`",
         "- Configure large outputs to be truncated using `config` command.",
-        "  - e.g.:",
-        "    - `config enable zsv_truncate_output`",
-        "- Run `clear` command often if the terminal feels sluggish.",
-        "  - It may happen over time while working with large outputs to STDOUT.",
+        "  Example: `config enable zsv_truncate_output`",
+        "- Run `clear` command often if the terminal feels a bit sluggish.",
+        "  It may happen over time while working with large outputs to STDOUT.",
       ];
-      $('body').terminal().echo(notes.join('\n').replace(/`(.*)`/g, '`[[;yellow;]$1]`'));
+      $('body').terminal().echo(notes.join('\n').replace(/`([^`]+)`/g, '`[[;yellow;]$1]`'));
     }
 
     function load() {
