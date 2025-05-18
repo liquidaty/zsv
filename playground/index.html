@@ -11,8 +11,12 @@
   <title>zsv playground v__VERSION__</title>
 
   <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
+
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/ascii_table.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/less.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/pipe.min.js"></script>
 
   <script type="text/javascript">
     // https://stackoverflow.com/questions/9038625/detect-if-device-is-ios
@@ -129,7 +133,7 @@
         return (...args) => {
           const output = args.join(' ');
           if (zsvAutocompletionsPopulated) {
-            $('body').terminal().echo(output);
+            $('body').terminal().echo(output, { flush: false });
           } else {
             parseFlagsAndCommands(output);
           }
@@ -140,7 +144,7 @@
           const output = args.join(' ');
           $('body').terminal().error(output);
         };
-      })()
+      })(),
     };
 
     Module['onRuntimeInitialized'] = () => {
@@ -206,23 +210,81 @@
     }
 
     const playgroundCommands = {
-      info: '    : show playground info',
-      help: '    : show help',
-      clear: '   : clear screen',
-      load: '    : load CSV file(s) from disk (overwrite mode)',
-      save: '    : save file(s) to disk',
-      download: ': download file(s) from URL(s) (overwrite mode)',
-      ls: '      : list current directory (/home/zsv/)',
-      rm: '      : remove file(s) (force mode)',
-      zsv: '     : run zsv CLI app',
+      info: {
+        description: 'show playground info',
+        usage: 'info'
+      },
+      help: {
+        description: 'show help',
+        usage: 'help'
+      },
+      clear: {
+        description: 'clear screen',
+        usage: 'clear'
+      },
+      load: {
+        description: 'load CSV file(s) from disk (overwrite mode)',
+        usage: 'load'
+      },
+      save: {
+        description: 'save file(s) to disk',
+        usage: 'save <filename> ...'
+      },
+      download: {
+        description: 'download file(s) from URL(s) (overwrite mode)',
+        usage: 'download <url> ...'
+      },
+      ls: {
+        description: 'list current directory (/home/zsv/)',
+        usage: 'ls'
+      },
+      rm: {
+        description: 'remove file(s) (force mode)',
+        usage: 'rm <filename> ...'
+      },
+      less: {
+        description: 'view/search content of a file or stdin efficiently',
+        usage: 'less [<filename>]'
+      },
+      config: {
+        description: 'show/enable/disable playground configurations',
+        usage: 'config [enable|disable <config-name>]'
+      },
+      zsv: {
+        description: 'run zsv CLI app',
+        usage: 'zsv <command> [arguments]'
+      }
     };
 
     function help() {
-      var help = "[[;red;]zsv playground help]";
-      for (const key in playgroundCommands) {
-        help += `\n  [[;blue;]${key}] ${playgroundCommands[key]}`;
-      }
-      $('body').terminal().echo(help);
+      const header = ['[[;red;]command]', '[[;red;]usage]', '[[;red;]description]'];
+      const help = Object.entries(playgroundCommands).map(([key, value]) => {
+        return [
+          `[[;yellow;]${key}]`,
+          `${value.usage}`,
+          `${value.description}`
+        ];
+      });
+      help.unshift(header);
+      $('body').terminal().echo(ascii_table(help, true));
+
+      const notes = [
+        "[[;red;]NOTES:]",
+        "- For iOS, SIMD support is not available for `zsv`.",
+        "- The `zsv sheet` command is not available in the playground.",
+        "- Each browser tab is a new session i.e. nothing is retained.",
+        "- Storing large `zsv` output to a file is much faster than STDOUT.",
+        "  Example: `zsv echo -L 100000 worldcitiespop_mil.csv -o w100k.csv`",
+        "- For navigating the large files, use `less` command.",
+        "  Example: `less worldcitiespop_mil.csv`",
+        "  For the large `zsv` output, pipe it to `less` command.",
+        "  Example: `zsv 2json w100k.csv | less`",
+        "- Configure large outputs to be truncated using `config` command.",
+        "  Example: `config enable zsv_truncate_output`",
+        "- Run `clear` command often if the terminal feels a bit sluggish.",
+        "  It may happen over time while working with large outputs to STDOUT.",
+      ];
+      $('body').terminal().echo(notes.join('\n').replace(/`([^`]+)`/g, '`[[;yellow;]$1]`'));
     }
 
     function load() {
@@ -294,9 +356,161 @@
       }
     }
 
+    async function lessWithStdin() {
+      var header = `[[;red;]Type your content here.]\n`;
+      header += `[[;red;]Press SHIFT+ENTER for a newline.]\n`;
+      header += `[[;red;]Press ENTER to finish.]\n`;
+      await $('body').terminal().read(header).then((stdin) => {
+        if (stdin.length > 0) {
+          $('body').terminal().less(stdin);
+        }
+      });
+    }
+
+    function less(args) {
+      if (args.length === 0) {
+        lessWithStdin();
+      } else if (args.length === 1) {
+        const file = args[0];
+        if (FS.analyzePath(file).exists) {
+          const data = FS.readFile(file);
+          const text = new TextDecoder('utf-8').decode(data);
+          $('body').terminal().less(text);
+        } else {
+          $('body').terminal().error(`less: file not found [${file}]`);
+        }
+      } else {
+        $('body').terminal().error('less: too many arguments');
+      }
+    }
+
+    function dumpOutputWithTruncatedBytes() {
+      const maxBytes = 4 * 1024;
+      const buffer = $('body').terminal().get_output_buffer();
+      const bufferLen = buffer.length;
+      if (bufferLen > 0) {
+        $('body').terminal().clear_buffer();
+        var truncated = buffer.slice(0, maxBytes);
+        truncated = truncated.slice(0, truncated.lastIndexOf('\n'));
+        $('body').terminal().echo(truncated);
+        if (bufferLen > maxBytes) {
+          $('body').terminal().echo(`[[;yellow;]... truncated ${bufferLen - truncated.length} bytes]`);
+        }
+      }
+    }
+
+    function dumpOutputWithTruncatedLines() {
+      const maxLines = 100;
+      const lines = $('body').terminal().get_output_buffer().split('\n');
+      if (lines.length > 0) {
+        $('body').terminal().clear_buffer();
+        const truncated = lines.slice(0, maxLines);
+        $('body').terminal().echo(truncated);
+        if (lines.length > maxLines) {
+          $('body').terminal().echo(`[[;yellow;]... truncated ${lines.length - truncated.length} lines]`);
+        }
+      }
+    }
+
+    class Configuration {
+      constructor() {
+        this.actions = {
+          enable: (name) => { this.configs[name] = true; },
+          disable: (name) => { this.configs[name] = false; },
+        };
+        this.configs = {
+          zsv_print_elapsed_time: false,
+          zsv_truncate_output: false,
+        };
+      }
+
+      isZsvPrintElapsedTimeEnabled() {
+        return this.configs.zsv_print_elapsed_time;
+      }
+
+      isZsvTruncateOutputEnabled() {
+        return this.configs.zsv_truncate_output;
+      }
+
+      validate(action, name) {
+        if (action === undefined) {
+          $('body').terminal().error(`config: missing action`);
+          return false;
+        } else if (!this.actions.hasOwnProperty(action)) {
+          $('body').terminal().error(`config: invalid action [${action}]`);
+          return false;
+        } else if (name === undefined) {
+          $('body').terminal().error(`config: missing config name`);
+          return false;
+        } else if (!this.configs.hasOwnProperty(name)) {
+          $('body').terminal().error(`config: invalid config name [${name}]`);
+          return false;
+        }
+        return true;
+      }
+
+      apply(action, name) {
+        if (this.validate(action, name)) {
+          this.actions[action](name);
+          $('body').terminal().echo(`config: [[;yellow;]${name}] [updated]`);
+        }
+      }
+
+      show() {
+        const header = ['[[;red;]config]', '[[;red;]status]'];
+        const entries = Object.entries(this.configs).map(([key, value]) => {
+          return [`${key}`, `${value ? '[[;green;]enabled]' : 'disabled'}`];
+        });
+        entries.unshift(header);
+        $('body').terminal().echo(ascii_table(entries, true));
+      }
+
+      autocomplete(string, command) {
+        if (command.match(/^config\s+$/) || command.match(/^config\s+\w+$/)) {
+          return Object.keys(this.actions);
+        }
+
+        if (command.match(/^config\s+(enable|disable)\s+$/) || command.match(/^config\s+(enable|disable)\s+\w+$/)) {
+          return Object.keys(this.configs);
+        }
+
+        return [];
+      }
+    }
+
+    const configuration = new Configuration();
+
+    function config(args) {
+      if (args.length === 0) {
+        configuration.show();
+      } else if (args.length > 2) {
+        $('body').terminal().error('config: too many arguments');
+      } else {
+        const action = args[0];
+        const name = args[1];
+        configuration.apply(action, name);
+      }
+    }
+
     function zsv(args) {
+      const start = performance.now();
       const exitCode = Module.callMain(args);
-      // TODO: Handle/log exit code if needed
+      if (exitCode === 0) {
+        if (configuration.isZsvTruncateOutputEnabled()) {
+          // dumpOutputWithTruncatedLines();
+          dumpOutputWithTruncatedBytes();
+        } else {
+          $('body').terminal().flush();
+        }
+      }
+      const end = performance.now();
+      const elapsed = (end - start).toFixed(2);
+      const command = "zsv " + args.slice(1).join(' ');
+      const status = `>> ${command} [exit code: ${exitCode}, elapsed time: ${elapsed} ms]`;
+      if (configuration.isZsvPrintElapsedTimeEnabled()) {
+        $('body').terminal().error(status);
+      }
+      console.log(status);
     }
 
     $('body').terminal(function (command) {
@@ -332,6 +546,14 @@
           rm(args);
           break;
 
+        case 'less':
+          less(args);
+          break;
+
+        case 'config':
+          config(args);
+          break;
+
         case 'zsv':
           zsv(args);
           break;
@@ -346,19 +568,22 @@
     }, {
       checkArity: false,
       greetings: greetings,
-      prompt: "[[;lightgreen;]zsv@playground$ ]",
+      prompt: "[[;lightgreen;]zsv@playground$] ",
       completion: function (string, callback) {
         const command = this.get_command().trimLeft();
         if (command.match(/^(info|help|load|ls|download) /)) {
           callback([]);
-        } else if (command.match(/^save /) || command.match(/^rm /)) {
+        } else if (command.match(/^save /) || command.match(/^rm /) || command.match(/^less /)) {
           callback(getFiles());
+        } else if (command.startsWith('config')) {
+          callback(configuration.autocomplete(string, command));
         } else if (command.startsWith('zsv')) {
           callback(autocomplete(string, command));
         } else {
           callback(Object.keys(playgroundCommands));
         }
-      }
+      },
+      pipe: true,
     });
   </script>
 </body>
