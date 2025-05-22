@@ -133,7 +133,7 @@
         return (...args) => {
           const output = args.join(' ');
           if (zsvAutocompletionsPopulated) {
-            $('body').terminal().echo($.terminal.escape_brackets(output), { flush: false });
+            $('body').terminal().echo(output, { flush: false, exec: false });
           } else {
             parseFlagsAndCommands(output);
           }
