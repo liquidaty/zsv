@@ -148,6 +148,8 @@
     };
 
     Module['onRuntimeInitialized'] = () => {
+      console.log('Initializing zsv playground, please wait...');
+
       const root = '/home/zsv';
       FS.mkdir(root);
       FS.chdir(root);
