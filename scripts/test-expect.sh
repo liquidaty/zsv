@@ -39,17 +39,17 @@ cleanup() {
 
 trap cleanup INT TERM QUIT
 
-printf "\n%s, %s" "$TARGET" "$STAGE" >>"${TIMINGS_CSV}"
+printf "\n%s, %s" "$TARGET" "$STAGE" >>"$TIMINGS_CSV"
 
 set +e
-MATCHED_TIME=$(time -p timeout -k $((EXPECT_TIMEOUT + 1)) "$EXPECT_TIMEOUT" "${SCRIPT_DIR}"/test-retry-capture-cmp.sh 2>&1)
+MATCHED_TIME=$(time -p timeout -k $((EXPECT_TIMEOUT + 1)) "$EXPECT_TIMEOUT" "$SCRIPT_DIR"/test-retry-capture-cmp.sh 2>&1)
 STATUS=$?
 set -e
 
 if [ $STATUS -eq 0 ]; then
-  MATCHED=true
-  MATCHED_TIME=$(echo "$MATCHED_TIME" | head -n 1 | cut -f 2 -d ' ')
+  MATCHED_TIME=$(echo "$MATCHED_TIME" | head -n1 | cut -d' ' -f2)
   if echo "$MATCHED_TIME" | grep -qE '^[0-9]*\.?[0-9]+$' >/dev/null 2>&1; then
+    MATCHED=true
     echo "$TARGET$STAGE took $MATCHED_TIME"
     printf ", %s" "$MATCHED_TIME" >>"${TIMINGS_CSV}"
   else
