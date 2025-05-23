@@ -42,7 +42,7 @@ trap cleanup INT TERM QUIT
 printf "\n%s, %s" "$TARGET" "$STAGE" >>"$TIMINGS_CSV"
 
 set +e
-MATCHED_TIME=$($(which time) -p timeout -k $((EXPECT_TIMEOUT + 1)) "$EXPECT_TIMEOUT" "$SCRIPT_DIR"/test-retry-capture-cmp.sh 2>&1)
+MATCHED_TIME=$(/usr/bin/time -p timeout -k $((EXPECT_TIMEOUT + 1)) "$EXPECT_TIMEOUT" "$SCRIPT_DIR"/test-retry-capture-cmp.sh 2>&1)
 STATUS=$?
 set -e
 
