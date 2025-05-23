@@ -1,6 +1,6 @@
 #!/bin/sh -eux
 
-while true; do
+while :; do
   tmux capture-pane -t "$TARGET" -p >"$CAPTURED_OUTPUT"
 
   if ${CMP} -s "$CAPTURED_OUTPUT" "$EXPECTED_OUTPUT"; then
