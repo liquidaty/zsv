@@ -1,4 +1,4 @@
-#!/bin/sh -eu
+#!/bin/sh -eux
 
 SCRIPT_DIR=$(dirname "$0")
 
@@ -51,10 +51,10 @@ if [ $STATUS -eq 0 ]; then
   if echo "$MATCHED_TIME" | grep -qE '^[0-9]*\.?[0-9]+$' >/dev/null 2>&1; then
     MATCHED=true
     echo "$TARGET$STAGE took $MATCHED_TIME"
-    printf ", %s" "$MATCHED_TIME" >>"${TIMINGS_CSV}"
+    printf ", %s" "$MATCHED_TIME" >>"$TIMINGS_CSV"
   else
     echo "Invalid timing value! [$MATCHED_TIME]"
-    printf ", error" >>"${TIMINGS_CSV}"
+    printf ", error" >>"$TIMINGS_CSV"
   fi
 fi
 

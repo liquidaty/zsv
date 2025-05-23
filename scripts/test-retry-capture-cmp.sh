@@ -1,4 +1,4 @@
-#!/bin/sh -eu
+#!/bin/sh -eux
 
 while true; do
   tmux capture-pane -t "$TARGET" -p >"$CAPTURED_OUTPUT"
