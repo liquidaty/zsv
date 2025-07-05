@@ -144,14 +144,14 @@ PRs but these are retained only for limited days.
 
 #### macOS
 
-...via Homebrew:
+##### macOS: Install via Homebrew
 
 ```shell
 brew tap liquidaty/zsv
 brew install zsv
 ```
 
-...via MacPorts:
+##### macOS: Install via MacPorts
 
 ```shell
 sudo port install zsv
@@ -181,9 +181,21 @@ sudo yum remove zsv
 
 #### Windows
 
+##### Windows: Install `winget` package
+
+```powershell
+# Install with alias
+winget.exe install zsv
+
+# Install with id
+winget.exe install --id liquidaty.zsv
+```
+
+##### Windows: Install `nuget` package
+
 For Windows (`*.nupkg`), install with `nuget.exe`:
 
-```shell
+```powershell
 # Install via nuget custom feed (requires absolutes paths)
 md nuget-feed
 nuget.exe add zsv .\<path>\zsv-amd64-windows-mingw.nupkg -source <path>/nuget-feed
@@ -195,7 +207,7 @@ nuget.exe delete zsv <version> -source <path>/nuget-feed
 
 For Windows (`*.nupkg`), install with `choco.exe`:
 
-```shell
+```powershell
 # Install
 choco.exe install zsv --pre -source <directory containing .nupkg file>
 
