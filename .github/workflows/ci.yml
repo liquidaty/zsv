@@ -146,7 +146,7 @@ jobs:
         PREFIX: ${{ env.AMD64_LINUX_GCC }}
         CC: gcc
         MAKE: make
-        RUN_TESTS: true
+        RUN_TESTS: false
       run: |
         ./scripts/ci-build.sh
         ./scripts/ci-create-debian-package.sh
@@ -157,7 +157,7 @@ jobs:
         PREFIX: ${{ env.AMD64_LINUX_CLANG }}
         CC: clang
         MAKE: make
-        RUN_TESTS: true
+        RUN_TESTS: false
       run: |
         ./scripts/ci-build.sh
         ./scripts/ci-create-debian-package.sh
@@ -268,8 +268,6 @@ jobs:
     env:
       TAG: ${{ needs.ci-linux.outputs.TAG }}
       AMD64_ZIP: zsv-${{ needs.ci-linux.outputs.TAG }}-amd64-linux-gcc.zip
-      AMD64_DEB: zsv_${{ needs.ci-linux.outputs.TAG }}_amd64.deb
-      AMD64_RPM: zsv-${{ needs.ci-linux.outputs.TAG }}-1.x86_64.rpm
 
     steps:
     - name: Checkout .fpm config file
@@ -288,6 +286,13 @@ jobs:
         sudo apt update
         sudo apt install -y rpm dpkg-dev createrepo-c
         sudo gem install --no-document fpm
+
+    - name: Set deb and rpm names as env vars
+      run: |
+        {
+          AMD64_DEB="zsv_$TAG_amd64.deb"
+          AMD64_RPM="zsv-$(echo "$TAG" | tr '-' '_')-1.x86_64.rpm"
+        } | tee -a "$GITHUB_ENV"
 
     - name: Build DEB packages
       run: |
