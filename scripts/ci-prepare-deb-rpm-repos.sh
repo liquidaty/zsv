@@ -10,8 +10,13 @@ if [ "$TAG" = "" ] || [ "$ARTIFACT_DIR" = "" ] || [ "$AMD64_ZIP" = "" ]; then
   exit 1
 fi
 
+if [ ! -d "$ARTIFACT_DIR" ]; then
+  echo "[ERR] $ARTIFACT_DIR directory not found!"
+  exit 1
+fi
+
 if [ ! -f "$ARTIFACT_DIR/$AMD64_ZIP" ]; then
-  echo "[ERR] $AMD64_ZIP file not found!"
+  echo "[ERR] $ARTIFACT_DIR/$AMD64_ZIP file not found!"
   echo "[ERR] Make sure the artifact is downloaded before running $0 script."
   exit 1
 fi
