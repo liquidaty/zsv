@@ -4,13 +4,13 @@ set -e
 
 echo "[INF] Running $0"
 
-if [ "$TAG" = "" ] || [ "$AMD64_ZIP" = "" ] || [ "$ARTIFACT_DIR" = "" ]; then
+if [ "$TAG" = "" ] || [ "$ARTIFACT_DIR" = "" ] || [ "$AMD64_ZIP" = "" ]; then
   echo "[ERR] One or more environment variable(s) are not set!"
-  echo "[ERR] Set TAG, AMD64_ZIP and ARTIFACT_DIR before running $0 script."
+  echo "[ERR] Set TAG, ARTIFACT_DIR and AMD64_ZIP before running $0 script."
   exit 1
 fi
 
-if [ ! -f "$AMD64_ZIP" ]; then
+if [ ! -f "$ARTIFACT_DIR/$AMD64_ZIP" ]; then
   echo "[ERR] $AMD64_ZIP file not found!"
   echo "[ERR] Make sure the artifact is downloaded before running $0 script."
   exit 1
