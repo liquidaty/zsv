@@ -268,7 +268,7 @@ jobs:
     env:
       TAG: ${{ needs.ci-linux.outputs.TAG }}
       AMD64_ZIP: zsv-${{ needs.ci-linux.outputs.TAG }}-amd64-linux-gcc.zip
-      AMD64_DEB: zsv-${{ needs.ci-linux.outputs.TAG }}_amd64.deb
+      AMD64_DEB: zsv_${{ needs.ci-linux.outputs.TAG }}_amd64.deb
       AMD64_RPM: zsv-${{ needs.ci-linux.outputs.TAG }}-1.x86_64.rpm
 
     steps:
