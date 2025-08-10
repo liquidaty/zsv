@@ -127,6 +127,9 @@ jobs:
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
 
+    outputs:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -256,6 +259,44 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       run: ./scripts/ci-upload-release-artifacts.sh
 
+  prepare-linux-packages:
+    if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
+    needs: [ci-linux]
+    runs-on: ubuntu-latest
+
+    env:
+      TAG: ${{ needs.ci-linux.outputs.TAG }}
+      AMD64_ZIP: zsv-${{ needs.ci-linux.outputs.TAG }}-amd64-linux-gcc.zip
+
+    steps:
+    - name: Download ${{ env.AMD64_ZIP }}
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ env.AMD64_ZIP }}
+        path: ${{ env.ARTIFACT_DIR }}
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          .fpm
+          scripts/ci-prepare-deb-rpm-repos.sh
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y rpm dpkg-dev createrepo-c
+        sudo gem install --no-document fpm
+
+    - name: Set deb and rpm names as env vars
+      run: ./scripts/ci-prepare-deb-rpm-repos.sh
+
+    - name: Upload packages artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: packages
+        path: ${{ env.ARTIFACT_DIR }}/packages
+
   ci-macos:
     needs: [tag, clang-format, cppcheck, shellcheck]
 
@@ -374,7 +415,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Build (${{ env.AMD64_FREEBSD_GCC }})
-      uses: cross-platform-actions/action@v0.28.0
+      uses: cross-platform-actions/action@v0.29.0
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc
@@ -610,19 +651,6 @@ jobs:
         export LDFLAGS="-L$PWD/app/external/mingw-ncurses/lib"
         ./scripts/ci-build.sh
 
-    # - name: Prepare build artifacts for upload
-    #   run: ./scripts/ci-prepare-artifacts-for-upload.sh
-
-    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WSL_MINGW }}.zip)
-    #   uses: actions/upload-artifact@v4
-    #   env:
-    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WSL_MINGW }}.zip
-    #   with:
-    #     name: ${{ env.ARTIFACT_NAME }}
-    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-    #     if-no-files-found: error
-
   ci-musl:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-22.04
@@ -762,7 +790,7 @@ jobs:
           ghcr.io/liquidaty/zsv:${{ env.TAG }}
           ghcr.io/liquidaty/zsv:latest
 
-  ci-wasm:
+  ci-wasm-playground:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -812,15 +840,39 @@ jobs:
         mkdir -p playground/non-simd
         cp "$PREFIX"/bin/cli.em.{js,wasm} playground/non-simd
 
+    - name: Upload playground artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: playground
+        path: playground
+
+  upload-github-pages-artifact:
+    if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
+    needs: [prepare-linux-packages, ci-wasm-playground]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download packages artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: packages
+        path: ${{ env.ARTIFACT_DIR }}/packages
+
+    - name: Download playground artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: playground
+        path: ${{ env.ARTIFACT_DIR }}
+
     - name: Upload GitHub Pages artifacts
       uses: actions/upload-pages-artifact@v3
       with:
-        path: playground
+        path: ${{ env.ARTIFACT_DIR }}
 
-  deploy-wasm-playground:
+  deploy-to-github-pages:
     if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
-    needs: ci-wasm
-    runs-on: ubuntu-22.04
+    needs: [upload-github-pages-artifact]
+    runs-on: ubuntu-latest
 
     permissions:
       pages: write

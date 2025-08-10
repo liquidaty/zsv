@@ -159,6 +159,36 @@ sudo port install zsv
 
 #### Linux
 
+##### Linux: `apt`
+
+```shell
+# Add repository
+echo "deb [trusted=yes] https://liquidaty.github.io/zsv/packages/apt/amd64/ ./" | \
+  sudo tee /etc/apt/sources.list.d/zsv.list
+
+# Install package
+sudo apt update
+sudo apt install zsv
+```
+
+##### Linux: `rpm`
+
+```shell
+# Add repository
+sudo tee /etc/yum.repos.d/zsv.repo << EOF
+[zsv]
+name=zsv
+baseurl=https://liquidaty.github.io/zsv/packages/rpm/amd64
+enabled=1
+gpgcheck=0
+EOF
+
+# Install package
+sudo yum install zsv
+```
+
+To install the manually downloaded `deb`/`rpm`, follow these instructions:
+
 For Linux (Debian/Ubuntu - `*.deb`):
 
 ```shell
