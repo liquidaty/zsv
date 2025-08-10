@@ -269,11 +269,11 @@ jobs:
       AMD64_ZIP: zsv-${{ needs.ci-linux.outputs.TAG }}-amd64-linux-gcc.zip
 
     steps:
-    - name: Download ${{ env.AMD64_ZIP }}
-      uses: actions/download-artifact@v4
-      with:
-        name: ${{ env.AMD64_ZIP }}
-        path: ${{ env.ARTIFACT_DIR }}
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y rpm dpkg-dev createrepo-c
+        sudo gem install --no-document fpm
 
     - name: Checkout
       uses: actions/checkout@v4
@@ -282,11 +282,11 @@ jobs:
           .fpm
           scripts/ci-prepare-deb-rpm-repos.sh
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y rpm dpkg-dev createrepo-c
-        sudo gem install --no-document fpm
+    - name: Download ${{ env.AMD64_ZIP }}
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ env.AMD64_ZIP }}
+        path: ${{ env.ARTIFACT_DIR }}
 
     - name: Set deb and rpm names as env vars
       run: ./scripts/ci-prepare-deb-rpm-repos.sh
