@@ -269,16 +269,18 @@ jobs:
       AMD64_ZIP: zsv-${{ needs.ci-linux.outputs.TAG }}-amd64-linux-gcc.zip
 
     steps:
-    - name: Checkout .fpm config file
-      uses: actions/checkout@v4
-      with:
-        sparse-checkout: .fpm
-
     - name: Download ${{ env.AMD64_ZIP }}
       uses: actions/download-artifact@v4
       with:
         name: ${{ env.AMD64_ZIP }}
         path: ${{ env.ARTIFACT_DIR }}
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          .fpm
+          scripts/ci-prepare-deb-rpm-repos.sh
 
     - name: Install dependencies
       run: |
@@ -287,59 +289,13 @@ jobs:
         sudo gem install --no-document fpm
 
     - name: Set deb and rpm names as env vars
-      run: |
-        {
-          echo "AMD64_DEB=zsv_${TAG}_amd64.deb"
-          echo "AMD64_RPM=zsv-$(echo "$TAG" | tr '-' '_')-1.x86_64.rpm"
-        } | tee -a "$GITHUB_ENV"
-
-    - name: Build DEB packages
-      run: |
-        cd "$ARTIFACT_DIR"
-        fpm \
-          --fpm-options-file ../.fpm \
-          --architecture "amd64" \
-          --version "$TAG" \
-          "$AMD64_ZIP"
-        dpkg --info "$AMD64_DEB"
-        dpkg --contents "$AMD64_DEB"
-        ls -hl "$AMD64_DEB"
-
-    - name: Build RPM packages
-      run: |
-        cd "$ARTIFACT_DIR"
-        fpm \
-          --fpm-options-file ../.fpm \
-          --output-type rpm \
-          --architecture "amd64" \
-          --version "$TAG" \
-          "$AMD64_ZIP"
-        rpm -qip "$AMD64_RPM"
-        rpm -qlp "$AMD64_RPM"
-        ls -hl "$AMD64_RPM"
-
-    - name: Move deb and rpm files to packages directory
-      run: |
-        mkdir -p packages/{apt,rpm}/amd64
-        mv "$ARTIFACT_DIR/$AMD64_DEB" packages/apt/amd64/
-        mv "$ARTIFACT_DIR/$AMD64_RPM" packages/rpm/amd64/
-        ls -hl packages/{apt,rpm}/amd64
-
-    - name: Update APT repository
-      run: |
-        cd packages/apt/amd64
-        dpkg-scanpackages . /dev/null > Packages
-        gzip -k -f Packages
-        apt-ftparchive release . > Release
-
-    - name: Update RPM repository
-      run: createrepo_c packages/rpm/amd64
+      run: ./scripts/ci-prepare-deb-rpm-repos.sh
 
     - name: Upload packages artifact
       uses: actions/upload-artifact@v4
       with:
         name: packages
-        path: packages
+        path: ${{ env.ARTIFACT_DIR }}/packages
 
   ci-macos:
     needs: [tag, clang-format, cppcheck, shellcheck]
