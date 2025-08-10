@@ -1,0 +1,10 @@
+--input-type zip
+--output-type deb
+--name "zsv"
+--version "0.0.0"
+--architecture "amd64"
+--description "tabular data swiss-army knife"
+--maintainer "Liquidaty"
+--url "https://github.com/liquidaty/zsv"
+--license "MIT"
+--prefix "/usr/local/bin"
