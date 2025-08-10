@@ -290,7 +290,7 @@ jobs:
     - name: Set deb and rpm names as env vars
       run: |
         {
-          echo "AMD64_DEB=zsv_$TAG_amd64.deb"
+          echo "AMD64_DEB=zsv_${TAG}_amd64.deb"
           echo "AMD64_RPM=zsv-$(echo "$TAG" | tr '-' '_')-1.x86_64.rpm"
         } | tee -a "$GITHUB_ENV"
 
