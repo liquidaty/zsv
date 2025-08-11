@@ -1,10 +1,5 @@
---input-type zip
---output-type deb
---name "zsv"
---version "0.0.0"
+--force
 --architecture "amd64"
---description "zsv+lib: tabular data swiss-army knife CLI + world's fastest (simd) CSV parser"
 --maintainer "Liquidaty"
 --url "https://github.com/liquidaty/zsv"
 --license "MIT"
---prefix "/usr/local/"
