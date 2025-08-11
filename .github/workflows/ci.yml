@@ -283,12 +283,12 @@ jobs:
           scripts/ci-prepare-deb-rpm-repos.sh
 
     - name: Download ${{ env.AMD64_ZIP }}
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: ${{ env.AMD64_ZIP }}
         path: ${{ env.ARTIFACT_DIR }}
 
-    - name: Set deb and rpm names as env vars
+    - name: Prepare DEB and RPM package repos
       run: ./scripts/ci-prepare-deb-rpm-repos.sh
 
     - name: Upload packages artifact
@@ -522,7 +522,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Download mingw-ncurses.zip
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: mingw-ncurses.zip
         path: ${{ github.workspace }}/app/external
@@ -625,7 +625,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Download mingw-ncurses.zip
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: mingw-ncurses.zip
         path: ${{ github.workspace }}/app/external
@@ -745,7 +745,7 @@ jobs:
           Dockerfile.ci
 
     - name: Download (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
         path: ${{ env.AMD64_LINUX_MUSL }}
@@ -853,13 +853,13 @@ jobs:
 
     steps:
     - name: Download packages artifact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: packages
         path: ${{ env.ARTIFACT_DIR }}/packages
 
     - name: Download playground artifact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: playground
         path: ${{ env.ARTIFACT_DIR }}
