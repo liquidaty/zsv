@@ -865,7 +865,7 @@ jobs:
         path: ${{ env.ARTIFACT_DIR }}
 
     - name: Upload GitHub Pages artifacts
-      uses: actions/upload-pages-artifact@v3
+      uses: actions/upload-pages-artifact@v4
       with:
         path: ${{ env.ARTIFACT_DIR }}
 
