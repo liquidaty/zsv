@@ -167,7 +167,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v2
+      uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
@@ -350,7 +350,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v2
+      uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
@@ -435,7 +435,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v2
+      uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
@@ -549,7 +549,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v2
+      uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
@@ -685,7 +685,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v2
+      uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
