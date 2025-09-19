@@ -21,6 +21,13 @@ on:
     - 'scripts/ci-run-benchmarks.sh'
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      wsl:
+        description: 'Enable WSL job'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -592,6 +599,7 @@ jobs:
       run: ./scripts/ci-upload-release-artifacts.sh
 
   ci-wsl-mingw:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.wsl == true }}
     needs: [tag, clang-format, cppcheck, shellcheck, mingw-ncurses]
     runs-on: windows-2025
     timeout-minutes: 30
