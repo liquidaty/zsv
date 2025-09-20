@@ -1,0 +1,5 @@
+--force
+--architecture "amd64"
+--maintainer "Liquidaty"
+--url "https://github.com/liquidaty/zsv"
+--license "MIT"

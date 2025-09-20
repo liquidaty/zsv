@@ -6,6 +6,7 @@ on:
     paths-ignore:
     - '**.md'
     - 'setup-action/**'
+    - '.github/workflows/setup-action.yml'
     - '.github/workflows/codeql.yml'
     - '.github/workflows/benchmarks.yml'
     - 'scripts/ci-run-benchmarks.sh'
@@ -14,11 +15,19 @@ on:
     paths-ignore:
     - '**.md'
     - 'setup-action/**'
+    - '.github/workflows/setup-action.yml'
     - '.github/workflows/codeql.yml'
     - '.github/workflows/benchmarks.yml'
     - 'scripts/ci-run-benchmarks.sh'
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      wsl:
+        description: 'Enable WSL job'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -52,7 +61,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         sparse-checkout: |
           scripts/ci-set-tag-output-parameter.sh
@@ -68,7 +77,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Run clang-format
       run: |
@@ -80,7 +89,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install cppcheck
       run: |
@@ -112,7 +121,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Run shellcheck
       run: ./scripts/ci-run-shellcheck.sh
@@ -125,9 +134,12 @@ jobs:
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
 
+    outputs:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up apt dependencies
       run: |
@@ -162,7 +174,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v2
+      uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
@@ -254,12 +266,50 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/v')
       run: ./scripts/ci-upload-release-artifacts.sh
 
+  prepare-linux-packages:
+    if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
+    needs: [ci-linux]
+    runs-on: ubuntu-latest
+
+    env:
+      TAG: ${{ needs.ci-linux.outputs.TAG }}
+      AMD64_ZIP: zsv-${{ needs.ci-linux.outputs.TAG }}-amd64-linux-gcc.zip
+
+    steps:
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y rpm dpkg-dev createrepo-c
+        sudo gem install --no-document fpm
+
+    - name: Checkout
+      uses: actions/checkout@v5
+      with:
+        sparse-checkout: |
+          .fpm
+          scripts/ci-prepare-deb-rpm-repos.sh
+
+    - name: Download ${{ env.AMD64_ZIP }}
+      uses: actions/download-artifact@v5
+      with:
+        name: ${{ env.AMD64_ZIP }}
+        path: ${{ env.ARTIFACT_DIR }}
+
+    - name: Prepare DEB and RPM package repos
+      run: ./scripts/ci-prepare-deb-rpm-repos.sh
+
+    - name: Upload packages artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: packages
+        path: ${{ env.ARTIFACT_DIR }}/packages
+
   ci-macos:
     needs: [tag, clang-format, cppcheck, shellcheck]
 
     strategy:
       matrix:
-        os: [macos-13, macos-14]
+        os: [macos-15-intel, macos-latest]
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -272,7 +322,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up homebrew dependencies
       run: brew install --quiet coreutils tree autoconf automake libtool tmux sqlite3
@@ -307,7 +357,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v2
+      uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
@@ -349,7 +399,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         sparse-checkout: |
           scripts/ci-update-homebrew-tap.sh
@@ -369,10 +419,10 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Build (${{ env.AMD64_FREEBSD_GCC }})
-      uses: cross-platform-actions/action@v0.27.0
+      uses: cross-platform-actions/action@v0.29.0
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc
@@ -392,7 +442,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v2
+      uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
@@ -442,7 +492,7 @@ jobs:
         sudo apt install -y mingw-w64
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       with:
         sparse-checkout: |
@@ -479,10 +529,10 @@ jobs:
         sudo apt remove -y jq
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Download mingw-ncurses.zip
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: mingw-ncurses.zip
         path: ${{ github.workspace }}/app/external
@@ -509,7 +559,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v2
+      uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
@@ -552,6 +602,7 @@ jobs:
       run: ./scripts/ci-upload-release-artifacts.sh
 
   ci-wsl-mingw:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.wsl == true }}
     needs: [tag, clang-format, cppcheck, shellcheck, mingw-ncurses]
     runs-on: windows-2025
     timeout-minutes: 30
@@ -565,7 +616,7 @@ jobs:
 
     steps:
     - name: Set up WSL 2
-      uses: Vampire/setup-wsl@v5
+      uses: Vampire/setup-wsl@v6
       with:
         wsl-version: 2
         wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
@@ -582,10 +633,10 @@ jobs:
           tmux
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Download mingw-ncurses.zip
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: mingw-ncurses.zip
         path: ${{ github.workspace }}/app/external
@@ -611,19 +662,6 @@ jobs:
         export LDFLAGS="-L$PWD/app/external/mingw-ncurses/lib"
         ./scripts/ci-build.sh
 
-    # - name: Prepare build artifacts for upload
-    #   run: ./scripts/ci-prepare-artifacts-for-upload.sh
-
-    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WSL_MINGW }}.zip)
-    #   uses: actions/upload-artifact@v4
-    #   env:
-    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WSL_MINGW }}.zip
-    #   with:
-    #     name: ${{ env.ARTIFACT_NAME }}
-    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-    #     if-no-files-found: error
-
   ci-musl:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-22.04
@@ -642,7 +680,7 @@ jobs:
       run: apk add bash gcc make musl-dev perl ncurses-dev ncurses-static tmux file sqlite curl zip wget tar git
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Build (${{ env.AMD64_LINUX_MUSL }})
       env:
@@ -658,7 +696,7 @@ jobs:
 
     - name: Attest build artifacts for release
       if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v2
+      uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
@@ -712,13 +750,13 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         sparse-checkout: |
           Dockerfile.ci
 
     - name: Download (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
         path: ${{ env.AMD64_LINUX_MUSL }}
@@ -763,7 +801,7 @@ jobs:
           ghcr.io/liquidaty/zsv:${{ env.TAG }}
           ghcr.io/liquidaty/zsv:latest
 
-  ci-wasm:
+  ci-wasm-playground:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -776,7 +814,7 @@ jobs:
       uses: mymindstorm/setup-emsdk@v14
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Update version in index.html
       run: sed "s|__VERSION__|$TAG|g" -i playground/index.html
@@ -813,15 +851,39 @@ jobs:
         mkdir -p playground/non-simd
         cp "$PREFIX"/bin/cli.em.{js,wasm} playground/non-simd
 
-    - name: Upload GitHub Pages artifacts
-      uses: actions/upload-pages-artifact@v3
+    - name: Upload playground artifact
+      uses: actions/upload-artifact@v4
       with:
+        name: playground
         path: playground
 
-  deploy-wasm-playground:
+  upload-github-pages-artifact:
     if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
-    needs: ci-wasm
-    runs-on: ubuntu-22.04
+    needs: [prepare-linux-packages, ci-wasm-playground]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download packages artifact
+      uses: actions/download-artifact@v5
+      with:
+        name: packages
+        path: ${{ env.ARTIFACT_DIR }}/packages
+
+    - name: Download playground artifact
+      uses: actions/download-artifact@v5
+      with:
+        name: playground
+        path: ${{ env.ARTIFACT_DIR }}
+
+    - name: Upload GitHub Pages artifacts
+      uses: actions/upload-pages-artifact@v4
+      with:
+        path: ${{ env.ARTIFACT_DIR }}
+
+  deploy-to-github-pages:
+    if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
+    needs: [upload-github-pages-artifact]
+    runs-on: ubuntu-latest
 
     permissions:
       pages: write

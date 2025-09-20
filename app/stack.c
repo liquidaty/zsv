@@ -23,11 +23,12 @@ const char *zsv_stack_usage_msg[] = {
   "Usage: " APPNAME " [options] filename [filename...]",
   "",
   "Options:",
-  "  -o <filename> : output file",
-  "  -b            : output with BOM",
-  "  -q            : always add double-quotes",
-  "  --unique      : only output unique column names; in the case of duplicates,",
-  "                  only the last (right-most) column will be kept",
+  "  -o <filename>      : output file",
+  "  -b                 : output with BOM",
+  "  -q                 : always add double-quotes",
+  //  "  --prepend-filename : output source filename as the first column of each output row",
+  "  --unique           : only output unique column names;",
+  "                       in case of duplicates, only the last (right-most) column will be kept",
   NULL,
 };
 
@@ -253,6 +254,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     const char *arg = argv[arg_i];
     if (!strcmp(arg, "-b"))
       writer_opts.with_bom = 1;
+    //    else if (!strcmp(arg, "--prepend-filename")_)
+    //      data.prepend_filename
     else if (!strcmp(arg, "--unique"))
       data.unique_column_names = 1;
     else if (!strcmp(arg, "-o")) {

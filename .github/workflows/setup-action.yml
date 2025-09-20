@@ -9,11 +9,14 @@ on:
     paths: ['setup-action/**']
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-13, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-15-intel, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
 
     defaults:
@@ -22,7 +25,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         sparse-checkout: |
           setup-action
