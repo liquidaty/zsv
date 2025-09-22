@@ -656,6 +656,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return zsv_status_ok;
   }
 
+#if defined(WIN32) || defined(_WIN32)
+  if (setenv("TERM", "", 1) != 0)
+    fprintf(stderr, "Warning: unable to unset TERM env var\n");
+#endif
+
   const char *locale = setlocale(LC_ALL, "C.UTF-8");
   if (!locale || strstr(locale, "UTF-8") == NULL)
     locale = setlocale(LC_ALL, "");
