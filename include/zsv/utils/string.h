@@ -15,6 +15,7 @@
 
 /*
  * zsv_strtolowercase(): convert to lower case. if built with utf8proc, converts unicode points
+ *   on malformed UTF8, prints to stderr
  *
  * @param s     string to convert
  * @param lenp  pointer to length of input string; will be set to length of output string
@@ -22,6 +23,13 @@
  * @returns     newly-allocated string; caller must free()
  */
 unsigned char *zsv_strtolowercase(const unsigned char *s, size_t *lenp);
+
+/*
+ * zsv_strtolowercase_w_err(): convert to lower case. if built with utf8proc, converts unicode points
+ *   on malformed UTF8, sets *err to non-zero
+ *
+ */
+unsigned char *zsv_strtolowercase_w_err(const unsigned char *s, size_t *lenp, int *err);
 
 const unsigned char *zsv_strstr(const unsigned char *hay, const unsigned char *needle);
 

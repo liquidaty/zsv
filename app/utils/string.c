@@ -45,14 +45,15 @@ static unsigned char *utf8proc_tolower_str(const unsigned char *str, size_t *len
 #endif // ndef NO_UTF8PROC
 
 // zsv_strtolowercase(): to do: utf8 support
-unsigned char *zsv_strtolowercase(const unsigned char *s, size_t *lenp) {
+unsigned char *zsv_strtolowercase_w_err(const unsigned char *s, size_t *lenp, int *err) {
+  *err = 0;
 #ifndef NO_UTF8PROC
   size_t len_orig = *lenp;
   unsigned char *new_s = utf8proc_tolower_str(s, lenp);
-  if (!new_s && len_orig) { //
+  if (!new_s && len_orig) {
+    *err = 1;
     unsigned char *tmp_s = malloc(len_orig + 1);
     if (tmp_s) {
-      fprintf(stderr, "Warning: malformed UTF8 '%.*s'\n", (int)len_orig, s);
       memcpy(tmp_s, s, len_orig);
       tmp_s[len_orig] = '\0';
       *lenp = zsv_strencode(tmp_s, len_orig, '?', NULL, NULL);
@@ -69,6 +70,15 @@ unsigned char *zsv_strtolowercase(const unsigned char *s, size_t *lenp) {
   }
 #endif // ndef NO_UTF8PROC
   return new_s;
+}
+
+unsigned char *zsv_strtolowercase(const unsigned char *s, size_t *lenp) {
+  int err;
+  size_t len_orig = *lenp;
+  unsigned char *result = zsv_strtolowercase_w_err(s, lenp, &err);
+  if (err)
+    fprintf(stderr, "Warning: malformed UTF8 '%.*s'\n", (int)len_orig, s);
+  return result;
 }
 
 // zsv_strstr(): strstr
