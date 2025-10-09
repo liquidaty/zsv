@@ -303,21 +303,20 @@ static zsvsheet_status zsvsheet_move_ver_end(struct zsvsheet_display_info *di, b
   return zsvsheet_status_ok;
 }
 
-
 static zsvsheet_status zsvsheet_move_hor_to(struct zsvsheet_display_info *di, size_t move_to) {
   // to do: directly set current_ui_buffer->cursor_col and buff_offset.col
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
   enum zsvsheet_status stat = zsvsheet_status_ok;
   size_t start_col = current_ui_buffer->buff_offset.col;
   size_t current_absolute_col = start_col + current_ui_buffer->cursor_col;
-  if(current_absolute_col < move_to) {
-    for(size_t i = 0, j = move_to - current_absolute_col; i < j; i++) {
-      if((stat = zsvsheet_move_hor(di, true)) != zsvsheet_status_ok)
+  if (current_absolute_col < move_to) {
+    for (size_t i = 0, j = move_to - current_absolute_col; i < j; i++) {
+      if ((stat = zsvsheet_move_hor(di, true)) != zsvsheet_status_ok)
         break;
     }
-  } else if(current_absolute_col > move_to) {
-    for(size_t i = 0, j = current_absolute_col - move_to; i < j; i++) {
-      if((stat = zsvsheet_move_hor(di, false)) != zsvsheet_status_ok)
+  } else if (current_absolute_col > move_to) {
+    for (size_t i = 0, j = current_absolute_col - move_to; i < j; i++) {
+      if ((stat = zsvsheet_move_hor(di, false)) != zsvsheet_status_ok)
         break;
     }
   }
@@ -335,10 +334,10 @@ static zsvsheet_status zsvsheet_move_hor_end(struct zsvsheet_display_info *di, b
 }
 
 // zsvsheet_handle_find_next: return non-zero if a result was found
-static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di,
-                                      struct zsvsheet_ui_buffer *uib, const char *needle, struct zsvsheet_opts *zsvsheet_opts,
-                               size_t header_span, struct zsvsheet_display_dimensions *ddims, int *update_buffer,
-                               struct zsv_prop_handler *custom_prop_handler) {
+static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di, struct zsvsheet_ui_buffer *uib,
+                                      const char *needle, struct zsvsheet_opts *zsvsheet_opts, size_t header_span,
+                                      struct zsvsheet_display_dimensions *ddims, int *update_buffer,
+                                      struct zsv_prop_handler *custom_prop_handler) {
   if (zsvsheet_find_next(uib, needle, zsvsheet_opts, header_span, custom_prop_handler) > 0) {
     *update_buffer = zsvsheet_goto_input_raw_row(uib, zsvsheet_opts->found_rownum, header_span, ddims, (size_t)-1);
 
