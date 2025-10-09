@@ -38,6 +38,7 @@ struct zsvsheet_opts {
   char hide_row_nums; // if 1, will load row nums
   const char *find;
   size_t found_rownum;
+  size_t found_colnum;
 };
 
 #include "sheet/utf8-width.c"
@@ -302,33 +303,46 @@ static zsvsheet_status zsvsheet_move_ver_end(struct zsvsheet_display_info *di, b
   return zsvsheet_status_ok;
 }
 
+static zsvsheet_status zsvsheet_move_hor_to(struct zsvsheet_display_info *di, size_t move_to) {
+  // to do: directly set current_ui_buffer->cursor_col and buff_offset.col
+  struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
+  enum zsvsheet_status stat = zsvsheet_status_ok;
+  size_t start_col = current_ui_buffer->buff_offset.col;
+  size_t current_absolute_col = start_col + current_ui_buffer->cursor_col;
+  if (current_absolute_col < move_to) {
+    for (size_t i = 0, j = move_to - current_absolute_col; i < j; i++) {
+      if ((stat = zsvsheet_move_hor(di, true)) != zsvsheet_status_ok)
+        break;
+    }
+  } else if (current_absolute_col > move_to) {
+    for (size_t i = 0, j = current_absolute_col - move_to; i < j; i++) {
+      if ((stat = zsvsheet_move_hor(di, false)) != zsvsheet_status_ok)
+        break;
+    }
+  }
+  return stat;
+}
+
 /* Common horizontal movement between extremes */
 static zsvsheet_status zsvsheet_move_hor_end(struct zsvsheet_display_info *di, bool right) {
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
-
-  if (right) {
-    // to do: directly set current_ui_buffer->cursor_col and buff_offset.col
-    while (cursor_right(di->dimensions->columns, zsvsheet_cell_display_width(current_ui_buffer, di->dimensions),
-                        current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset >
-                            zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
-                          ? zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
-                          : current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset,
-                        &current_ui_buffer->cursor_col, &current_ui_buffer->buff_offset.col) > 0)
-      ;
-    {}
-  } else {
-    current_ui_buffer->cursor_col = 0;
-    current_ui_buffer->buff_offset.col = 0;
-  }
+  if (right)
+    zsvsheet_move_hor_to(di, current_ui_buffer->dimensions.col_count);
+  else
+    zsvsheet_move_hor_to(di, 0);
   return zsvsheet_status_ok;
 }
 
 // zsvsheet_handle_find_next: return non-zero if a result was found
-char zsvsheet_handle_find_next(struct zsvsheet_ui_buffer *uib, const char *needle, struct zsvsheet_opts *zsvsheet_opts,
-                               size_t header_span, struct zsvsheet_display_dimensions *ddims, int *update_buffer,
-                               struct zsv_prop_handler *custom_prop_handler) {
+static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di, struct zsvsheet_ui_buffer *uib,
+                                      const char *needle, struct zsvsheet_opts *zsvsheet_opts, size_t header_span,
+                                      struct zsvsheet_display_dimensions *ddims, int *update_buffer,
+                                      struct zsv_prop_handler *custom_prop_handler) {
   if (zsvsheet_find_next(uib, needle, zsvsheet_opts, header_span, custom_prop_handler) > 0) {
     *update_buffer = zsvsheet_goto_input_raw_row(uib, zsvsheet_opts->found_rownum, header_span, ddims, (size_t)-1);
+
+    // move to zsvsheet_opts->found_colnum; + 1 to skip the "Row #" column
+    zsvsheet_move_hor_to(di, zsvsheet_opts->found_colnum + 1);
     return 1;
   }
   zsvsheet_priv_set_status(ddims, 1, "Not found");
@@ -357,7 +371,7 @@ static zsvsheet_status zsvsheet_find(struct zsvsheet_sheet_context *state, bool 
   }
 
   if (state->find) {
-    zsvsheet_handle_find_next(current_ui_buffer, state->find, &zsvsheet_opts, di->header_span, di->dimensions,
+    zsvsheet_handle_find_next(di, current_ui_buffer, state->find, &zsvsheet_opts, di->header_span, di->dimensions,
                               &di->update_buffer, state->custom_prop_handler);
   }
 

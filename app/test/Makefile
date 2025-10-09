@@ -674,6 +674,7 @@ test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	tmux send-keys -t $@ "clear" ENTER && \
 	tmux send-keys -t $@ "${PREFIX} $< worldcitiespop_mil.csv" ENTER && \
 	sleep 0.5 && \
+	tmux send-keys Down Up && \
 	tmux -v capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux -v send-keys -t $@ "q" && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (for x in `ls tmux-*.log` ; do echo "Log $$x:" && cat $$x ; done && ${TEST_FAIL}))
