@@ -753,8 +753,10 @@ static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struc
   if (verbose)
     fprintf(stderr, "\n");
 
-  if(fixed->count)
-    fixed->offsets[fixed->count-1] += 50; // add a buffer to the last column in case subsequent lines are longer than what we scanned
+  // add a buffer to the last column in case subsequent lines are longer than what we scanned
+  if (fixed->count)
+    fixed->offsets[fixed->count - 1] += 50;
+
 auto_detect_fixed_column_sizes_exit:
   free(line);
   return stat;
@@ -785,10 +787,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     if (!strcmp(argv[arg_i], "-b") || !strcmp(argv[arg_i], "--with-bom"))
       writer_opts.with_bom = 1;
     else if (!strcmp(argv[arg_i], "--fixed-auto-max-lines")) {
-      if(++arg_i < argc && atoi(argv[arg_i]) > 0)
+      if (++arg_i < argc && atoi(argv[arg_i]) > 0)
         data.fixed.max_lines = (size_t)atoi(argv[arg_i]);
       else
-        stat = zsv_printerr(1, "%s option requires value > 0", argv[arg_i - 1]);;
+        stat = zsv_printerr(1, "%s option requires value > 0", argv[arg_i - 1]);
+      ;
     } else if (!strcmp(argv[arg_i], "--fixed-auto"))
       fixed_auto = 1;
     else if (!strcmp(argv[arg_i], "--fixed")) {
