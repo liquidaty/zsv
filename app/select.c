@@ -48,6 +48,7 @@ struct zsv_select_uint_list {
 struct fixed {
   size_t *offsets;
   size_t count;
+  size_t max_lines; // max lines to use to calculate offsets
 };
 
 struct zsv_select_data {
@@ -556,8 +557,9 @@ const char *zsv_select_usage_msg[] = {
   "  -b,--with-bom                : output with BOM",
   "  --fixed <offset1,offset2,..> : parse as fixed-width text; use given CSV list of positive integers for",
   "                                 cell and indexes",
-  "  --fixed-auto                 : parse as fixed-width text; derive widths from first row in input data (max 1MB)",
+  "  --fixed-auto                 : parse as fixed-width text; derive widths from first row in input data (max 256k)",
   "                                 assumes ASCII whitespace; multi-byte whitespace is not counted as whitespace",
+  "  --fixed-auto-max-lines       : maximum number of lines to use in calculating fixed widths",
 #ifndef ZSV_CLI
   "  -v,--verbose                 : verbose output",
 #endif
@@ -643,7 +645,7 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
  */
 static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struct zsv_opts *opts, unsigned char *buff,
                                                       size_t buffsize, size_t *buff_used, char verbose) {
-  char only_first_line = 0; // TO DO: make this an option
+  size_t max_lines = fixed->max_lines ? fixed->max_lines : 9999999999;
   enum zsv_status stat = zsv_status_ok;
 
   fixed->count = 0;
@@ -660,12 +662,13 @@ static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struc
     goto auto_detect_fixed_column_sizes_exit;
   }
 
+  size_t lines_read = 0;
   size_t line_end = 0;
   size_t line_cursor = 0;
   char first = 1;
   char was_space = 1;
   char was_line_end = 0;
-  for (size_t i = 0; i < *buff_used && (!only_first_line || !line_end);
+  for (size_t i = 0; i < *buff_used && (!line_end || max_lines == 0 || lines_read < max_lines);
        i++, line_cursor = was_line_end ? 0 : line_cursor + 1) {
     was_line_end = 0;
     // TO DO: support multi-byte unicode chars?
@@ -676,6 +679,7 @@ static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struc
         line_end = line_cursor;
       was_line_end = 1;
       was_space = 1;
+      lines_read++;
       break;
     case '\t':
     case '\v':
@@ -749,6 +753,8 @@ static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struc
   if (verbose)
     fprintf(stderr, "\n");
 
+  if(fixed->count)
+    fixed->offsets[fixed->count-1] += 50; // add a buffer to the last column in case subsequent lines are longer than what we scanned
 auto_detect_fixed_column_sizes_exit:
   free(line);
   return stat;
@@ -778,7 +784,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
     if (!strcmp(argv[arg_i], "-b") || !strcmp(argv[arg_i], "--with-bom"))
       writer_opts.with_bom = 1;
-    else if (!strcmp(argv[arg_i], "--fixed-auto"))
+    else if (!strcmp(argv[arg_i], "--fixed-auto-max-lines")) {
+      if(++arg_i < argc && atoi(argv[arg_i]) > 0)
+        data.fixed.max_lines = (size_t)atoi(argv[arg_i]);
+      else
+        stat = zsv_printerr(1, "%s option requires value > 0", argv[arg_i - 1]);;
+    } else if (!strcmp(argv[arg_i], "--fixed-auto"))
       fixed_auto = 1;
     else if (!strcmp(argv[arg_i], "--fixed")) {
       if (++arg_i >= argc)
