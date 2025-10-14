@@ -91,7 +91,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
     scanner->quoted -= ZSV_PARSER_QUOTE_PENDING;
     if (buff[i] != quote) {
       scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
-      scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
+      scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED; // scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
       scanner->quote_close_position = i - scanner->cell_start - 1;
     } else {
       scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
@@ -231,7 +231,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         // we have a quote in middle of an unquoted cell
         // process as a normal char
         scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
-        scanner->quote_close_position = 0;
+        scanner->quote_close_position = scanner->quoted & ZSV_PARSER_QUOTE_CLOSED ? scanner->quote_close_position : 0;
       }
     }
   }
