@@ -2,12 +2,11 @@
 
 lib + CLI:
 [![ci](https://github.com/liquidaty/zsv/actions/workflows/ci.yml/badge.svg)](https://github.com/liquidaty/zsv/actions/workflows/ci.yml)
-![GitHub pre-release)](https://img.shields.io/github/v/release/liquidaty/zsv?include_prereleases&label=pre-release&logo=github&style=flat-square)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/liquidaty/zsv?logo=github&style=flat-square)
 ![GitHub all releases (downloads)](https://img.shields.io/github/downloads/liquidaty/zsv/total?logo=github&style=flat-square)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/liquidaty/zsv/blob/master/LICENSE)
 
-lib only:
+npm:
 [![NPM Version][npm-version-image]][npm-url]
 [![NPM Install Size][npm-install-size-image]][npm-install-size-url]
 
@@ -37,8 +36,7 @@ and that supports custom extensions:
 Pre-built CLI packages are available via `brew` and `nuget`.
 
 A pre-built library package is available for Node (`npm install zsv-lib`).
-Please note, this package is still in alpha and currently only exposes a small
-subset of the zsv library capabilities. More to come.
+Please note, the node package currently only exposes a small subset of the zsv library capabilities.
 
 An [online playground](https://liquidaty.github.io/zsv) is available as well
 (without the `sheet` feature due to browser limitations)
@@ -207,7 +205,7 @@ needs.
   [database schema](docs/db.schema.json)
 - `2tsv`: convert to TSV (tab-delimited) format
 - `compare`: compare two or more tables of data and output the differences
-- `paste` (alpha): horizontally paste two tables together (given inputs X and Y,
+- `paste`: horizontally paste two tables together (given inputs X and Y,
    output 1...N rows where each row contains the entire corresponding
    row in X followed by the entire corresponding row in Y)
 - `serialize` (inverse of flatten): convert an NxM table to a single 3x (Nx(M-1))
@@ -303,12 +301,6 @@ You can build and run a sample extension by running `make test` from
 
 The easiest way to implement your own extension is to copy and customize the
 template files in [app/ext_template](app/ext_template/README.md)
-
-## Current release limitations
-
-This release does not yet implement the full range of core features that are
-planned for implementation prior to beta release. If you are interested in
-helping, please post an issue.
 
 ### Possible enhancements and related developments
 
