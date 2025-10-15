@@ -74,17 +74,17 @@ Excel compatibility) are dropped.
 The following is a comprehensive list of all input patterns that are non-compliant with
 RFC 4180, and how zsv parses each:
 
-|Input Description|Parser treatment|Input example|Output example|
+|Input Description|Parser treatment|Example input|How example input is parsed|
 |--|--|--|--|
 |Non-ASCII input, UTF8 BOM| BOM at start of the stream is ignored|(0xEF BB BF)|Ignored|
 |Non-ASCII input, valid UTF8|Parsed as UTF8|你,好|cell1 = 你, cell2 = 好|
 |Non-ASCII input, invalid UTF8|Parsed as UTF8; any non-compliant bytes are retained, or replaced with specified char|aaa,bXb,ccc where Y is malformed UTF8|cell1 = aaa, cell2 = bXb, cell3 = ccc|
-|`\n`, `\r`, or `\r\n` newlines|Any non-quote-captured occurrence of `\n`, `\r`, `\r\n` or `\n\r` is parsed as a row end|`1a,1b,1c\n`<br>`2a,2b,2c\r`<br>`3a,3b,3c\n\r`<br>`4a,4b,4c\r\n`<br>`5a,"5\nb",5c\n`<br>`6a,"6b\r","6c"\n`<br>`7a,7b,7c`|Parsed as 7 rows each with 3 columns|
+|`\n`, `\r`, or `\r\n` newlines|Any non-quote-captured occurrence of `\n`, `\r`, `\r\n` or `\n\r` is parsed as a row end|`1a,1b,1c\n`<br>`2a,2b,2c\r`<br>`3a,3b,3c\n\r`<br>`4a,4b,4c\r\n`<br>`5a,"5\nb",5c\n`<br>`6a,"6b\r","6c"\n`<br>`7a,7b,7c`|Parsed as 7 rows each with 3 cells|
 |Unquoted quote|Treated like any other non-delmiter|`aaa,b"bb,ccc`|Cell 2 value is `b"bb`, output as CSV `"b""bb"`|
 |Closing quote followed by character other than delimiter (comma) or row end|Treated like any other non-delmiter|`"aa"a,"bb"bb"b,ccc`|Cell 1 value is `aaa`, cell2 value is `bbbb"b`, output as CSV `aaa` and `"bbbb""b"`|
 |Missing final CRLF|Ignored; end-of-stream is considered end-of-row if not preceded by explicit row terminator|`aaa,bbb,ccc<EOF>`|Row with 3 cells, same as if input ended with row terminator preceding `EOF`|
 |Row and header contain different number of columns (cells)|Number of cells in each row is independent of other rows|`aaa,bbb\n`<br>`aaa,bbb,ccc`|Row 1 = 2 cells; Row 2 = 3 cells|
-|Header row contains duplicate cells or embedded newlines|Header rows are parsed the same was as other rows (see NOTE below)|`<BOF>"a\na","a\n"`|Two cells of `a\na`|
+|Header row contains duplicate cells or embedded newlines|Header rows are parsed the same was as other rows (see NOTE below)|`<BOF>"a\na","a\na"`|Two cells of `a\na`|
 
 NOTE: Header rows can be treated differently if options are used to skip rows and/or use multi-row header span-- see documentationf for further detail.
 
