@@ -9,3 +9,9 @@ app/test/expected/test-2db.out3 text eol=lf
 app/test/expected/test-sheet-*.out* text eol=lf
 app/ext_example/test/expected/test-sheet-extension-1-indexed.out text eol=lf
 app/ext_example/test/expected/test-sheet-extension-1.out text eol=lf
+
+data/stack2-2.csv -text
+data/test/crlf-line-ending.csv -text
+data/test/embedded_dos.csv -text
+data/test/mixed-line-endings.csv -text
+data/test/select-merge.csv -text
