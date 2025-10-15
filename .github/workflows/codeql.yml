@@ -15,7 +15,7 @@ jobs:
       security-events: write
 
     steps:
-    - name: Checkout [${{ github.repository }}]
+    - name: Checkout
       uses: actions/checkout@v5
 
     - name: Initialize CodeQL
