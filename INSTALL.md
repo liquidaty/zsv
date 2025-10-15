@@ -99,23 +99,35 @@ sudo yum remove zsv
 
 ## Windows
 
-For Windows (`*.nupkg`), install with `nuget.exe`:
+### Windows: `winget`
 
-```shell
-# Install via nuget custom feed (requires absolutes paths)
-md nuget-feed
-nuget.exe add zsv .\<path>\zsv-amd64-windows-mingw.nupkg -source <path>/nuget-feed
-nuget.exe install zsv -version <version> -source <path>/nuget-feed
+```powershell
+# Install with alias
+winget.exe install zsv
 
-# Uninstall
-nuget.exe delete zsv <version> -source <path>/nuget-feed
+# Install with id
+winget.exe install --id liquidaty.zsv
 ```
 
-For Windows (`*.nupkg`), install with `choco.exe`:
+### Windows: `nuget`
 
-```shell
+Install the downloaded `.nupkg` with `nuget.exe`:
+
+```powershell
+# Install via nuget custom feed (requires absolute paths)
+md nuget-feed
+nuget.exe add zsv path\to\nupkg -source path\to\nuget-feed
+nuget.exe install zsv -version <version> -source path\to\nuget-feed
+
+# Uninstall
+nuget.exe delete zsv <version> -source path\to\nuget-feed
+```
+
+Alternatively, install the downloaded `.nupkg` with `choco.exe`:
+
+```powershell
 # Install
-choco.exe install zsv --pre -source <directory containing .nupkg file>
+choco.exe install zsv --pre -source path\to\nupkg
 
 # Uninstall
 choco.exe uninstall zsv
