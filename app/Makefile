@@ -239,6 +239,7 @@ BUILDS=$(addprefix build-,${SOURCES})
 CLEANS=$(addprefix clean-,${SOURCES})
 
 ## cli
+$(info git diff files: $(shell git diff --name-only | xargs))
 VERSION= $(shell (git describe --always --dirty --tags 2>/dev/null || echo "v0.0.0-zsv") | sed 's/^v//')
 CLI_OBJ_PFX=${BUILD_DIR}/objs/cli_
 CLI_APP_OBJECT=${CLI_OBJ_PFX}cli.o
