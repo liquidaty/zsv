@@ -693,119 +693,117 @@ jobs:
         MAKE: make
         RUN_TESTS: true
         STATIC_BUILD: "1"
+      run: ./scripts/ci-build.sh
+
+    - name: Prepare build artifacts for upload
+      run: ./scripts/ci-prepare-artifacts-for-upload.sh
+
+    - name: Attest build artifacts for release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: actions/attest-build-provenance@v3
+      with:
+        subject-path: ${{ env.ARTIFACT_DIR }}/*
+
+    - name: Set up GitHub CLI
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: |
-        git describe --always --dirty --tags
-        # ./scripts/ci-build.sh
+        wget https://github.com/cli/cli/releases/download/v2.63.2/gh_2.63.2_linux_amd64.tar.gz
+        tar xvf gh_2.63.2_linux_amd64.tar.gz
+        cp gh_2.63.2_linux_amd64/bin/gh /usr/bin
+        rm -rf gh_2.63.2_linux_amd64
 
-    # - name: Prepare build artifacts for upload
-    #   run: ./scripts/ci-prepare-artifacts-for-upload.sh
+    - name: Verify attestations of release artifacts
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      run: ./scripts/ci-verify-attestations.sh
 
-    # - name: Attest build artifacts for release
-    #   if: startsWith(github.ref, 'refs/tags/v')
-    #   uses: actions/attest-build-provenance@v3
-    #   with:
-    #     subject-path: ${{ env.ARTIFACT_DIR }}/*
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
+      uses: actions/upload-artifact@v4
+      env:
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
 
-    # - name: Set up GitHub CLI
-    #   if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-    #   run: |
-    #     wget https://github.com/cli/cli/releases/download/v2.63.2/gh_2.63.2_linux_amd64.tar.gz
-    #     tar xvf gh_2.63.2_linux_amd64.tar.gz
-    #     cp gh_2.63.2_linux_amd64/bin/gh /usr/bin
-    #     rm -rf gh_2.63.2_linux_amd64
+    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz)
+      uses: actions/upload-artifact@v4
+      env:
+        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz
+      with:
+        name: ${{ env.ARTIFACT_NAME }}
+        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+        if-no-files-found: error
 
-    # - name: Verify attestations of release artifacts
-    #   if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-    #   run: ./scripts/ci-verify-attestations.sh
+    - name: Upload release artifacts
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      run: |
+        git config --global --add safe.directory "$PWD"
+        ./scripts/ci-upload-release-artifacts.sh
 
-    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
-    #   uses: actions/upload-artifact@v4
-    #   env:
-    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
-    #   with:
-    #     name: ${{ env.ARTIFACT_NAME }}
-    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-    #     if-no-files-found: error
+  ghcr:
+    needs: [ci-musl]
+    runs-on: ubuntu-latest
 
-    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz)
-    #   uses: actions/upload-artifact@v4
-    #   env:
-    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz
-    #   with:
-    #     name: ${{ env.ARTIFACT_NAME }}
-    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-    #     if-no-files-found: error
+    permissions:
+      packages: write
 
-    # - name: Upload release artifacts
-    #   if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-    #   run: |
-    #     git config --global --add safe.directory "$PWD"
-    #     ./scripts/ci-upload-release-artifacts.sh
+    env:
+      TAG: ${{ needs.ci-musl.outputs.TAG }}
 
-  # ghcr:
-  #   needs: [ci-musl]
-  #   runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+      with:
+        sparse-checkout: |
+          Dockerfile.ci
 
-  #   permissions:
-  #     packages: write
+    - name: Download (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
+      uses: actions/download-artifact@v5
+      with:
+        name: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
+        path: ${{ env.AMD64_LINUX_MUSL }}
 
-  #   env:
-  #     TAG: ${{ needs.ci-musl.outputs.TAG }}
+    - name: Unzip
+      env:
+        ZIP: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
+        DIR: ${{ env.AMD64_LINUX_MUSL }}
+      run: |
+        cd "$DIR"
+        unzip -o "$ZIP"
+        cd ..
+        mkdir -p ./ci
+        mv ./"$DIR"/bin/zsv ./ci/
+        rm -rf ./"$DIR"
 
-  #   steps:
-  #   - name: Checkout
-  #     uses: actions/checkout@v5
-  #     with:
-  #       sparse-checkout: |
-  #         Dockerfile.ci
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
 
-  #   - name: Download (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
-  #     uses: actions/download-artifact@v5
-  #     with:
-  #       name: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
-  #       path: ${{ env.AMD64_LINUX_MUSL }}
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
 
-  #   - name: Unzip
-  #     env:
-  #       ZIP: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
-  #       DIR: ${{ env.AMD64_LINUX_MUSL }}
-  #     run: |
-  #       cd "$DIR"
-  #       unzip -o "$ZIP"
-  #       cd ..
-  #       mkdir -p ./ci
-  #       mv ./"$DIR"/bin/zsv ./ci/
-  #       rm -rf ./"$DIR"
+    - name: Login to GitHub Container Registry
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-  #   - name: Set up QEMU
-  #     uses: docker/setup-qemu-action@v3
-
-  #   - name: Set up Docker Buildx
-  #     uses: docker/setup-buildx-action@v3
-
-  #   - name: Login to GitHub Container Registry
-  #     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-  #     uses: docker/login-action@v3
-  #     with:
-  #       registry: ghcr.io
-  #       username: ${{ github.repository_owner }}
-  #       password: ${{ secrets.GITHUB_TOKEN }}
-
-  #   - name: Build and push (on release)
-  #     uses: docker/build-push-action@v6
-  #     env:
-  #       DOCKER_BUILD_RECORD_UPLOAD: false
-  #     with:
-  #       no-cache: true
-  #       context: .
-  #       file: Dockerfile.ci
-  #       platforms: linux/amd64
-  #       push: ${{ startsWith(github.ref, 'refs/tags/v') }}
-  #       tags: |
-  #         ghcr.io/liquidaty/zsv:${{ env.TAG }}
-  #         ghcr.io/liquidaty/zsv:latest
+    - name: Build and push (on release)
+      uses: docker/build-push-action@v6
+      env:
+        DOCKER_BUILD_RECORD_UPLOAD: false
+      with:
+        no-cache: true
+        context: .
+        file: Dockerfile.ci
+        platforms: linux/amd64
+        push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        tags: |
+          ghcr.io/liquidaty/zsv:${{ env.TAG }}
+          ghcr.io/liquidaty/zsv:latest
 
   # ci-wasm-playground:
   #   needs: [tag, clang-format, cppcheck, shellcheck]
