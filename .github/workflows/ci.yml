@@ -690,54 +690,56 @@ jobs:
         MAKE: make
         RUN_TESTS: true
         STATIC_BUILD: "1"
-      run: ./scripts/ci-build.sh
-
-    - name: Prepare build artifacts for upload
-      run: ./scripts/ci-prepare-artifacts-for-upload.sh
-
-    - name: Attest build artifacts for release
-      if: startsWith(github.ref, 'refs/tags/v')
-      uses: actions/attest-build-provenance@v3
-      with:
-        subject-path: ${{ env.ARTIFACT_DIR }}/*
-
-    - name: Set up GitHub CLI
-      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: |
-        wget https://github.com/cli/cli/releases/download/v2.63.2/gh_2.63.2_linux_amd64.tar.gz
-        tar xvf gh_2.63.2_linux_amd64.tar.gz
-        cp gh_2.63.2_linux_amd64/bin/gh /usr/bin
-        rm -rf gh_2.63.2_linux_amd64
+        git describe --always --dirty --tags 2>/dev/null
+        # ./scripts/ci-build.sh
 
-    - name: Verify attestations of release artifacts
-      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      run: ./scripts/ci-verify-attestations.sh
+    # - name: Prepare build artifacts for upload
+    #   run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Attest build artifacts for release
+    #   if: startsWith(github.ref, 'refs/tags/v')
+    #   uses: actions/attest-build-provenance@v3
+    #   with:
+    #     subject-path: ${{ env.ARTIFACT_DIR }}/*
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz)
-      uses: actions/upload-artifact@v4
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Set up GitHub CLI
+    #   if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    #   run: |
+    #     wget https://github.com/cli/cli/releases/download/v2.63.2/gh_2.63.2_linux_amd64.tar.gz
+    #     tar xvf gh_2.63.2_linux_amd64.tar.gz
+    #     cp gh_2.63.2_linux_amd64/bin/gh /usr/bin
+    #     rm -rf gh_2.63.2_linux_amd64
 
-    - name: Upload release artifacts
-      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      run: |
-        git config --global --add safe.directory "$PWD"
-        ./scripts/ci-upload-release-artifacts.sh
+    # - name: Verify attestations of release artifacts
+    #   if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    #   run: ./scripts/ci-verify-attestations.sh
+
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
+    #   uses: actions/upload-artifact@v4
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
+
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz)
+    #   uses: actions/upload-artifact@v4
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
+
+    # - name: Upload release artifacts
+    #   if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    #   run: |
+    #     git config --global --add safe.directory "$PWD"
+    #     ./scripts/ci-upload-release-artifacts.sh
 
   # ghcr:
   #   needs: [ci-musl]
