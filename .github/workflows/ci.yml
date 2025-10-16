@@ -691,7 +691,7 @@ jobs:
         RUN_TESTS: true
         STATIC_BUILD: "1"
       run: |
-        git describe --always --dirty --tags 2>/dev/null
+        git describe --always --dirty --tags
         # ./scripts/ci-build.sh
 
     # - name: Prepare build artifacts for upload
