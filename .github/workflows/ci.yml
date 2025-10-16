@@ -682,6 +682,8 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v5
+      with:
+        set-safe-directory: ${{ github.workspace }}
 
     - name: Build (${{ env.AMD64_LINUX_MUSL }})
       env:
