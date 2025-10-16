@@ -682,8 +682,9 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v5
-      with:
-        set-safe-directory: ${{ github.workspace }}
+
+    - name: Configure git in container
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
     - name: Build (${{ env.AMD64_LINUX_MUSL }})
       env:
