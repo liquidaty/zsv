@@ -54,7 +54,7 @@ env:
 
 jobs:
   tag:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     outputs:
       TAG: ${{ steps.tag.outputs.TAG }}
@@ -173,13 +173,13 @@ jobs:
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
     - name: Attest build artifacts for release
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
     - name: Verify attestations of release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: ./scripts/ci-verify-attestations.sh
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.zip)
@@ -263,7 +263,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: ./scripts/ci-upload-release-artifacts.sh
 
   prepare-linux-packages:
@@ -348,7 +348,7 @@ jobs:
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
     - name: Codesign and notarize (${{ env.ZIP }})
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       env:
         MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
         MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
@@ -356,13 +356,13 @@ jobs:
       run: ./scripts/ci-macos-codesign-and-notarize.sh "$PWD/$ARTIFACT_DIR/$ZIP"
 
     - name: Attest build artifacts for release
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
     - name: Verify attestations of release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: ./scripts/ci-verify-attestations.sh
 
     - name: Upload (${{ env.ZIP }})
@@ -386,7 +386,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: ./scripts/ci-upload-release-artifacts.sh
 
   update-homebrew-tap:
@@ -441,13 +441,13 @@ jobs:
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
     - name: Attest build artifacts for release
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
     - name: Verify attestations of release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: ./scripts/ci-verify-attestations.sh
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip)
@@ -471,7 +471,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: ./scripts/ci-upload-release-artifacts.sh
 
   mingw-ncurses:
@@ -558,13 +558,13 @@ jobs:
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
     - name: Attest build artifacts for release
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
     - name: Verify attestations of release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: ./scripts/ci-verify-attestations.sh
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
@@ -598,7 +598,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: ./scripts/ci-upload-release-artifacts.sh
 
   ci-wsl-mingw:
@@ -664,7 +664,7 @@ jobs:
 
   ci-musl:
     needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     container: alpine:latest
     timeout-minutes: 15
 
@@ -682,6 +682,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v5
 
+    - name: Configure git in container
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
     - name: Build (${{ env.AMD64_LINUX_MUSL }})
       env:
         PREFIX: ${{ env.AMD64_LINUX_MUSL }}
@@ -695,13 +698,13 @@ jobs:
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
     - name: Attest build artifacts for release
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       uses: actions/attest-build-provenance@v3
       with:
         subject-path: ${{ env.ARTIFACT_DIR }}/*
 
     - name: Set up GitHub CLI
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: |
         wget https://github.com/cli/cli/releases/download/v2.63.2/gh_2.63.2_linux_amd64.tar.gz
         tar xvf gh_2.63.2_linux_amd64.tar.gz
@@ -709,7 +712,7 @@ jobs:
         rm -rf gh_2.63.2_linux_amd64
 
     - name: Verify attestations of release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: ./scripts/ci-verify-attestations.sh
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
@@ -733,14 +736,14 @@ jobs:
         if-no-files-found: error
 
     - name: Upload release artifacts
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: |
         git config --global --add safe.directory "$PWD"
         ./scripts/ci-upload-release-artifacts.sh
 
   ghcr:
-    needs: ci-musl
-    runs-on: ubuntu-22.04
+    needs: [ci-musl]
+    runs-on: ubuntu-latest
 
     permissions:
       packages: write
