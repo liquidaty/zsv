@@ -409,6 +409,25 @@ jobs:
         HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
       run: ./scripts/ci-update-homebrew-tap.sh
 
+  update-homebrew-core:
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    needs: ci-macos
+    runs-on: ubuntu-latest
+
+    env:
+      TAG: ${{ needs.ci-macos.outputs.TAG }}
+
+    steps:
+    - name: Update
+      uses: mislav/bump-homebrew-formula-action@v3
+      env:
+        COMMITTER_TOKEN: ${{ secrets.HOMEBREW_CORE_PR_PAT }}
+      with:
+        formula-name: zsv
+        formula-path: Formula/z/zsv.rb
+        push-to: liquidaty/homebrew-core
+        tag-name: ${{ env.TAG }}
+
   ci-bsd:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-22.04
