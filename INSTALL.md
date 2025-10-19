@@ -27,14 +27,30 @@ PRs but these are retained only for limited days.
 ### macOS: Homebrew
 
 ```shell
+# Update
+brew update
+
+# Install
 brew install zsv
+
+# Uninstall
+brew uninstall zsv
 ```
 
 ### macOS: Homebrew Custom Tap
 
 ```shell
+# Tap
 brew tap liquidaty/zsv
+
+# Update
+brew update
+
+# Install
 brew install zsv
+
+# Uninstall
+brew uninstall zsv
 ```
 
 ### macOS: MacPorts
@@ -44,6 +60,19 @@ sudo port install zsv
 ```
 
 ## Linux
+
+### Linux: Homebrew
+
+```shell
+# Update
+brew update
+
+# Install
+brew install zsv
+
+# Uninstall
+brew uninstall zsv
+```
 
 ### Linux: `apt`
 
