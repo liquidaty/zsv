@@ -24,14 +24,20 @@ PRs but these are retained only for limited days.
 
 ## macOS
 
-...via Homebrew:
+### macOS: Homebrew
+
+```shell
+brew install zsv
+```
+
+### macOS: Homebrew Custom Tap
 
 ```shell
 brew tap liquidaty/zsv
 brew install zsv
 ```
 
-...via MacPorts:
+### macOS: MacPorts
 
 ```shell
 sudo port install zsv
