@@ -15,7 +15,7 @@ ifeq (${CONFIGFILEPATH},)
 endif
 
 help:
-	@echo "**** Welcome to ZSV/lib (alpha) ****"
+	@echo "**** Welcome to zsv+lib ****"
 	@echo
 	@echo "This package has two primary components:"
 	@echo "* zsvlib  : a fast CSV parser library"

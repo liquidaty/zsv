@@ -1,11 +1,7 @@
-# Install CLI and/or library
+# Install
 
 Download pre-built binaries and packages for macOS, Windows, Linux and BSD from
 the [Releases](https://github.com/liquidaty/zsv/releases) page.
-
-You can also download the pre-built binaries and packages from
-[Actions](https://github.com/liquidaty/zsv/actions) for the latest commits and
-PRs but these are retained only for limited days.
 
 > [!IMPORTANT]
 >
@@ -14,9 +10,9 @@ PRs but these are retained only for limited days.
 
 > [!NOTE]
 >
-> After `v0.3.9-alpha`, all package artifacts will be properly
-> [attested](https://github.blog/news-insights/product-news/introducing-artifact-attestations-now-in-public-beta/).
-> To verify, you can use [GitHub CLI](https://cli.github.com/) like this:
+> All package artifacts are properly
+> [attested](https://github.blog/news-insights/product-news/introducing-artifact-attestations-now-in-public-beta/)
+> and can be verified using [GitHub CLI](https://cli.github.com/) like this:
 >
 > ```shell
 > gh attestation verify <downloaded-artifact> --repo liquidaty/zsv
@@ -178,8 +174,8 @@ npm install zsv-lib
 
 Please note:
 
-- This package is still in alpha and currently only exposes a small subset of
-  the zsv library capabilities. More to come!
+- This package currently only exposes a small subset of the zsv library
+  capabilities. More to come!
 - The CLI is not yet available as a Node package
 - If you'd like to use additional parser features, or use the CLI as a Node
   package, please feel free to post a request in an issue here.
