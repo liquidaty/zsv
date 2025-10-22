@@ -41,5 +41,5 @@ Set up a specific version:
 - name: Set up zsv+zsvlib
   uses: liquidaty/zsv/setup-action@main
   with:
-    version: '0.3.9-alpha'
+    version: '1.0.0'
 ```
