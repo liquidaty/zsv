@@ -22,6 +22,8 @@ achieves high performance using SIMD operations, [efficient memory
 use](docs/memory.md) and other optimization techniques, and can also parse
 generic-delimited and fixed-width formats, as well as multi-row-span headers
 
+## CLI
+
 The ZSV CLI can be compiled to virtually any target, including
 [WebAssembly](examples/js), and offers features including `select`, `count`,
 direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3
@@ -33,10 +35,21 @@ and that supports custom extensions:
 
 <img src="https://github.com/user-attachments/assets/c2ae32a3-48c4-499d-8ef7-7748687bd24f" width="50%">
 
-Pre-built CLI packages are available via `brew` and `nuget`.
+### Installation
 
-A pre-built library package is available for Node (`npm install zsv-lib`).
-Please note, the node package currently only exposes a small subset of the zsv library capabilities.
+* `brew` (MacOS, Linux):
+  - `brew install zsv`
+* `winget`
+  - `winget.exe install zsv`
+* `npm` (parser only), `nuget`, `yum`, `apt`, `choco` and more
+  - See [INSTALL.md](INSTALL.md)
+* Download
+  - Pre-built binaries and packages for macOS, Windows, Linux and BSD can be downloaded from
+the [Releases](https://github.com/liquidaty/zsv/releases) page.
+* Build
+  - See [BUILD.md](BUILD.md) to build from source.
+
+### Playground
 
 An [online playground](https://liquidaty.github.io/zsv) is available as well
 (without the `sheet` feature due to browser limitations)
@@ -45,17 +58,19 @@ If you like zsv+lib, do not forget to give it a star! 🌟
 
 ## Performance
 
-Preliminary performance results compare favorably vs other CSV utilities (`xsv`,
+Performance results compare favorably vs other CSV utilities (`xsv`,
 `tsv-utils`, `csvkit`, `mlr` (miller) etc). Below were results on a pre-M1 macOS
 MBA; on most platforms zsvlib was 2x faster, though in some cases the advantage
-was smaller e.g. 15-25%) (below, mlr not shown as it was about 25x slower):
+was smaller e.g. 15-25%) (below, mlr not shown as it was about 25x slower).
 
 <img src="https://user-images.githubusercontent.com/26302468/146497899-48174114-3b18-49b0-97da-35754ab56e48.png" alt="count speed" height="150px"><img src="https://user-images.githubusercontent.com/26302468/146498211-afc77ce6-4229-4599-bf33-81bf00c725a8.png" alt="select speed" height="150px">
 
 ** See 12/19 update re M1 processor at
 <https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md>
 
-### Which "CSV"
+Performance tests on newer chips across Windows, Linux and MacOS as of 2025 yielded similar results.
+
+## Which "CSV"
 
 "CSV" is an ambiguous term. This library uses, *by default*, the same definition as Excel
 (the library and app have various options to change this default behavior; a more accurate
@@ -87,7 +102,6 @@ RFC 4180, and how zsv parses each:
 |Header row contains duplicate cells or embedded newlines|Header rows are parsed the same was as other rows (see NOTE below)|`<BOF>"a\na","a\na"`|Two cells of `a\na`|
 
 NOTE: Header rows can be treated differently if options are used to skip rows and/or use multi-row header span-- see documentationf for further detail.
-
 
 ## Built-in and extensible features
 
@@ -136,16 +150,6 @@ that implements the expected
 - CLI is easy to extend/customize with a few lines of code via modular plug-in
   framework. Just write a few custom functions and compile into a distributable
   DLL that any existing zsv installation can use.
-
-## Installing
-
-### Packages
-
-See [INSTALL.md](INSTALL.md) for more details.
-
-### From source
-
-See [BUILD.md](BUILD.md) for more details.
 
 ## Why another CSV parser/utility?
 
