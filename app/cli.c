@@ -604,8 +604,15 @@ int ZSV_CLI_MAIN(int argc, const char *argv[]) {
   if (extension_cmd_from_arg(argv[1]) != NULL) { // this is an extension command
     struct cli_config config;
     memset(&config, 0, sizeof(config));
-    if (!(err = add_extension(argv[1], &config.extensions, 0, 0)))
-      err = run_extension(argc, argv, config.extensions);
+    if (!(err = add_extension(argv[1], &config.extensions, 0, 0))) {
+      if (config.extensions)
+        err = run_extension(argc, argv, config.extensions);
+      else {
+        fprintf(stderr, "Unrecognized command or extension %s\n", argv[1]);
+        ;
+        err = 1;
+      }
+    }
     if (config_free(&config) && !err)
       err = 1;
   } else
