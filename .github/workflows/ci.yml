@@ -426,7 +426,7 @@ jobs:
         formula-name: zsv
         formula-path: Formula/z/zsv.rb
         push-to: liquidaty/homebrew-core
-        tag-name: ${{ env.TAG }}
+        tag-name: v${{ env.TAG }}
 
   ci-bsd:
     needs: [tag, clang-format, cppcheck, shellcheck]
