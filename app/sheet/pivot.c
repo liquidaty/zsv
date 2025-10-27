@@ -14,7 +14,7 @@
 #include <zsv/utils/prop.h>
 #include "file.h"
 #include "handlers_internal.h"
-#include "../curses.h"
+#include "./curses.h"
 #include "../sql_internal.h"
 
 struct pivot_row {
@@ -85,7 +85,7 @@ static struct pivot_row *get_pivot_row_data(struct pivot_data *pd, size_t row_ix
 }
 
 // TO DO: return zsvsheet_status
-static enum zsv_ext_status get_cell_attrs(void *pdh, int *attrs, size_t start_row, size_t row_count, size_t cols) {
+static enum zsv_ext_status get_cell_attrs(void *pdh, zsvsheet_cell_attr_t *attrs, size_t start_row, size_t row_count, size_t cols) {
   struct pivot_data *pd = pdh;
   size_t end_row = start_row + row_count;
   int attr = 0;
