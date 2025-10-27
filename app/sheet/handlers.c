@@ -112,7 +112,7 @@ zsvsheet_status zsvsheet_buffer_get_selected_cell(zsvsheet_buffer_t h, struct zs
   if (!uib)
     return zsvsheet_status_error;
   rc->row = uib->cursor_row + uib->input_offset.row + uib->buff_offset.row;
-  rc->col = uib->cursor_col + uib->input_offset.col + uib->buff_offset.row;
+  rc->col = uib->cursor_col + uib->input_offset.col + uib->buff_offset.col;
   return zsvsheet_status_ok;
 }
 
