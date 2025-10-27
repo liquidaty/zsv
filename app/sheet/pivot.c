@@ -238,7 +238,7 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
 static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx) {
   char result_buffer[256] = {0};
   const char *expr;
-  char literal_expr;
+  char column_name_expr;
   struct zsvsheet_rowcol rc;
   int ch = zsvsheet_ext_keypress(ctx);
   if (ch < 0)
@@ -260,13 +260,13 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
     if (*result_buffer == '\0')
       return zsvsheet_status_ok;
     expr = result_buffer;
-    literal_expr = 0;
+    column_name_expr = 0;
     break;
   case zsvsheet_builtin_proc_pivot_cur_col:
     if (zsvsheet_buffer_get_selected_cell(buff, &rc) != zsvsheet_status_ok)
       return zsvsheet_status_error;
     expr = zsvsheet_ui_buffer_get_header(buff, rc.col);
-    literal_expr = 1;
+    column_name_expr = 1;
     assert(expr);
     break;
   default:
@@ -284,8 +284,8 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
     zst = zsvsheet_status_memory;
   else if (zdb->rc == SQLITE_OK && zsv_sqlite3_add_csv_no_dq(zdb, data_filename, &zopts, NULL) == SQLITE_OK) {
     int ok = 0;
-    if(literal_expr) {
-      sqlite3_str_appendf(sql_str, "select \"%w\" as value, count(1) as Count from data group by \"%w\"", expr, expr);
+    if(column_name_expr) {
+      sqlite3_str_appendf(sql_str, "select \"%w\" as %#Q, count(1) as Count from data group by \"%w\"", expr, expr, expr);
       ok = 1;
     } else {
       const char *err_msg = NULL;
@@ -307,7 +307,7 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
         else
           zsvsheet_set_status(ctx, "Unknown error");
       } else
-        sqlite3_str_appendf(sql_str, "select %s as value, count(1) as Count from data group by %s", expr, expr);
+        sqlite3_str_appendf(sql_str, "select %s as %#Q, count(1) as Count from data group by %s", expr, expr, expr);
     }
     if(ok) {
       if (!(pd = pivot_data_new(data_filename, expr)))
