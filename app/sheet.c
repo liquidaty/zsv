@@ -525,7 +525,9 @@ static zsvsheet_status zsvsheet_subcommand_handler(struct zsvsheet_proc_context 
     .invocation.u.proc.id = ctx->proc_id,
     .subcommand_context = ctx->subcommand_context,
   };
-  return zsvsheet_proc_invoke_from_command(prompt_buffer, &context);
+  zsvsheet_status rc = zsvsheet_proc_invoke_from_command(prompt_buffer, &context);
+  // TO DO: handle status message update here or in caller
+  return rc;
 }
 
 static zsvsheet_status zsvsheet_help_handler(struct zsvsheet_proc_context *ctx) {
@@ -620,8 +622,6 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
 
   switch (ctx->proc_id) {
   case zsvsheet_builtin_proc_quit:
-    //    while(*state->display_info.ui_buffers.current)
-    //      zsvsheet_ui_buffer_pop(state->display_info.ui_buffers.base, state->display_info.ui_buffers.current, NULL);
     return zsvsheet_status_exit;
   case zsvsheet_builtin_proc_resize:
     *(state->display_info.dimensions) = get_display_dimensions(1, 1);

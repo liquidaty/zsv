@@ -167,6 +167,8 @@ static zsvsheet_status zsv_sqlite3_to_csv(zsvsheet_proc_context_t pctx, struct z
 
     if (tmp_fn && zsv_file_exists(tmp_fn)) {
       struct zsvsheet_ui_buffer_opts uibopts = {0};
+      if(uibopts.data_filename)
+        free(uibopts.data_filename);
       uibopts.data_filename = tmp_fn;
       zst = zsvsheet_open_file_opts(pctx, &uibopts);
     } else {
@@ -176,8 +178,7 @@ static zsvsheet_status zsv_sqlite3_to_csv(zsvsheet_proc_context_t pctx, struct z
           err_msg = sqlite3_errmsg(zdb->db);
       }
     }
-    if (zst != zsvsheet_status_ok)
-      free(tmp_fn);
+    free(tmp_fn);
   }
   if (stmt)
     sqlite3_finalize(stmt);
@@ -241,6 +242,7 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
   char column_name_expr;
   struct zsvsheet_rowcol rc;
   int ch = zsvsheet_ext_keypress(ctx);
+
   if (ch < 0)
     return zsvsheet_status_error;
 
@@ -254,6 +256,7 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
     return zsvsheet_status_ok;
   }
 
+  char *selected_cell_str_dup = NULL;
   switch (ctx->proc_id) {
   case zsvsheet_builtin_proc_pivot_expr:
     zsvsheet_ext_prompt(ctx, result_buffer, sizeof(result_buffer), "Pivot table: Enter group-by SQL expr");
@@ -265,6 +268,14 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
   case zsvsheet_builtin_proc_pivot_cur_col:
     if (zsvsheet_buffer_get_selected_cell(buff, &rc) != zsvsheet_status_ok)
       return zsvsheet_status_error;
+    const char *selected_cell_str = zsvsheet_screen_buffer_cell_display(((struct zsvsheet_ui_buffer *)buff)->buffer, rc.row, rc.col);
+    while(selected_cell_str && *selected_cell_str == ' ')
+      selected_cell_str++;
+    size_t len = selected_cell_str ? strlen(selected_cell_str) : 0;
+    while(len > 0 && selected_cell_str[len-1] == ' ')
+      len--;
+    if(len)
+      selected_cell_str_dup = zsv_memdup(selected_cell_str, len);
     expr = zsvsheet_ui_buffer_get_header(buff, rc.col);
     column_name_expr = 1;
     assert(expr);
@@ -320,6 +331,17 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
           zsvsheet_buffer_set_cell_attrs(buff, get_cell_attrs);
           zsvsheet_buffer_on_newline(buff, pivot_drill_down);
           pd = NULL; // so that it isn't cleaned up below
+
+          if(selected_cell_str_dup) {
+            struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
+            struct zsvsheet_display_info *di = &state->display_info;
+            struct zsvsheet_opts zsvsheet_opts = {0};
+            zsvsheet_handle_find_next(di, buff, selected_cell_str_dup, &zsvsheet_opts, 1, di->dimensions,
+                                      &di->update_buffer, state->custom_prop_handler);
+            // hackish way to force a screen refresh: move up then down
+            zsvsheet_move_ver(di, true);
+            zsvsheet_move_ver(di, false);
+          }
         }
       }
     }
@@ -332,5 +354,6 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
   if (sql_str)
     sqlite3_free(sqlite3_str_finish(sql_str));
   pivot_data_delete(pd);
+  free(selected_cell_str_dup);
   return zst;
 }
