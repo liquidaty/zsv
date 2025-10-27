@@ -8,10 +8,70 @@
 
 #include <zsv/utils/os.h>
 #include <stdio.h>
+#include <errno.h>
+
+#ifdef WIN32
+#include "win/fopen_longpath.c"
+#include "win/remove_longpath.c"
+#endif
+
+/**
+ * zsv_fopen(): same as normal fopen(), except on Win it also works with long filenames
+ */
+#if defined(_WIN32) || defined(WIN32) || defined(WIN)
+FILE *zsv_fopen(const char *fname, const char *mode) {
+  if (strlen(fname) >= MAX_PATH)
+    return zsv_fopen_longpath(fname, mode);
+  return fopen(fname, mode);
+}
+#endif
+
 #ifndef _WIN32
 
 void zsv_perror(const char *s) {
   perror(s);
+}
+
+int zsv_replace_file(const char *src, const char *dst) {
+  int save_errno = 0;
+
+  if (rename(src, dst) == 0) {
+    return 0;
+  }
+
+  if (errno != EXDEV) {
+    return errno;
+  }
+
+  // Fallback: copy and remove
+  FILE *fp_in = zsv_fopen(src, "rb");
+  if (!fp_in)
+    return errno;
+
+  FILE *fp_out = zsv_fopen(dst, "wb");
+  if (!fp_out) {
+    save_errno = errno;
+    fclose(fp_in);
+    return save_errno;
+  }
+
+  char buffer[4096];
+  size_t bytes_read;
+  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp_in)) > 0) {
+    if (fwrite(buffer, 1, bytes_read, fp_out) != bytes_read) {
+      fclose(fp_out);
+      fclose(fp_in);
+      return EOF;
+    }
+  }
+
+  fclose(fp_out);
+  fclose(fp_in);
+
+  if (remove(src) != 0)
+    return errno;
+
+  return 0;
 }
 
 #else
@@ -57,7 +117,7 @@ void zsv_win_to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len) {
 
 #include <wchar.h>
 
-int zsv_replace_file(const void *src, const void *dest) {
+int zsv_replace_file(const char *src, const char *dest) {
   wchar_t wdest[PATH_MAX], wsrc[PATH_MAX];
 
   zsv_win_to_unicode(dest, wdest, ARRAY_SIZE(wdest));

@@ -8,6 +8,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/dirs.h>
 #include <zsv/utils/file.h>
+#include <zsv/utils/os.h>
 #include <zsv/utils/overwrite.h>
 #include <zsv/utils/overwrite_writer.h>
 
@@ -111,7 +112,7 @@ void zsv_overwrite_writer_delete(struct zsv_overwrite *data) {
     free(data->overwrite->val.str);
 
   if (data->all)
-    remove(data->ctx->src);
+    zsv_remove(data->ctx->src);
   free(data);
 }
 

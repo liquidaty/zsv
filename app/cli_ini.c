@@ -135,7 +135,7 @@ static int add_extension(const char *id, struct zsv_ext **exts, char ignore_err,
   else
     len = strlen(id);
   extension_id = zsv_strtolowercase((const unsigned char *)id, &len);
-  if (extension_id) {
+  if (extension_id && len) {
     struct zsv_ext *ext = NULL;
     if (!extension_id_ok(extension_id))
       fprintf(stderr, "Invalid extension id: %s\n", extension_id), err = 1;
@@ -150,8 +150,8 @@ static int add_extension(const char *id, struct zsv_ext **exts, char ignore_err,
         *exts = ext;
       }
     }
-    free(extension_id);
   }
+  free(extension_id);
   return err;
 }
 

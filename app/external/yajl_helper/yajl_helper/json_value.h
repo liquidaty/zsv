@@ -28,8 +28,13 @@ struct json_value {
 
 #define json_value_dup(dest, src) do {                          \
     memcpy(dest, src, sizeof(*dest));                           \
-    if((src)->type == json_value_string && (src)->val.s)        \
-      (dest)->val.cs = memdup((src)->val.cs, (src)->strlen);    \
+    if((src)->type == json_value_string && (src)->val.cs) {     \
+      size_t sz = strlen((src)->val.cs);                        \
+      if(((dest)->val.cs = malloc(sz + 2))) {                   \
+        memcpy((dest)->val.cs, (src)->val.cs, sz);              \
+        (dest)->val.cs[sz] = (dest)->val.cs[sz+1] = '\0';       \
+      }                                                         \
+    }                                                           \
   } while(0)
 
 #define json_value_to_str(value) do {                 \
@@ -47,5 +52,8 @@ struct json_value {
       (value)->type = json_value_string;                \
     }                                                   \
   } while(0)
+
+void json_value_delete(struct json_value **valuep);
+struct json_value *json_value_copy(struct json_value *value);
 
 #endif

@@ -21,5 +21,5 @@ g g                       top                       Jump to the first row
 G                         bottom                    Jump to the last row
 /                         find                      Set a search term and jum
 n                         next                      Jump to the next search r
-e                         open                      Open a another CSV file
+|                         gotocolumn                Go to column
 <esc> to exit help Key(s)

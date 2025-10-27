@@ -41,6 +41,7 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
 
   int err = 0;
   const unsigned char *jqfilter = (const unsigned char *)argv[1];
+  struct jv_to_json_ctx ctx = {0};
 
   for (int i = 2; !err && i < argc; i++) { // jq filter filename
     const char *arg = argv[i];
@@ -51,6 +52,8 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
       }
     } else if (!strcmp(arg, "--csv")) {
       to_csv = 1;
+    } else if (!strcmp(arg, "--raw-output")) {
+      ctx.raw_output = 1;
     } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
       i++;
       if (!(i < argc)) {
@@ -73,7 +76,6 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
 
   if (!err) {
     void (*jqfunc)(jv, void *) = to_csv ? jv_to_csv : jv_to_json_func;
-    struct jv_to_json_ctx ctx;
     ctx.write1 = zsv_jq_fwrite1;
     ctx.ctx = f_out;
     ctx.flags = JV_PRINT_PRETTY | JV_PRINT_SPACE1;

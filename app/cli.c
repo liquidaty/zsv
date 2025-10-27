@@ -15,7 +15,9 @@
 #include <zsv/utils/string.h>
 #include <zsv/utils/dirs.h>
 #include <zsv/utils/signal.h>
+#ifdef ZSV_EXTRAS
 #include <zsv/utils/overwrite.h>
+#endif
 #include <zsv.h>
 #include <zsv/ext.h>
 #include "cli_internal.h"
@@ -92,7 +94,9 @@ ZSV_MAIN_DECL(compare);
 ZSV_MAIN_DECL(sheet);
 #endif
 ZSV_MAIN_DECL(echo);
+#ifdef ZSV_EXTRAS
 ZSV_MAIN_DECL(overwrite);
+#endif
 ZSV_MAIN_NO_OPTIONS_DECL(prop);
 ZSV_MAIN_NO_OPTIONS_DECL(rm);
 ZSV_MAIN_NO_OPTIONS_DECL(mv);
@@ -138,7 +142,9 @@ struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_COMMANDEXT(sheet),
 #endif
   CLI_BUILTIN_COMMAND(echo),
+#ifdef ZSV_EXTRAS
   CLI_BUILTIN_COMMAND(overwrite),
+#endif
   CLI_BUILTIN_NO_OPTIONS_COMMAND(prop),
   CLI_BUILTIN_NO_OPTIONS_COMMAND(rm),
   CLI_BUILTIN_NO_OPTIONS_COMMAND(mv),
@@ -599,8 +605,15 @@ int ZSV_CLI_MAIN(int argc, const char *argv[]) {
   if (extension_cmd_from_arg(argv[1]) != NULL) { // this is an extension command
     struct cli_config config;
     memset(&config, 0, sizeof(config));
-    if (!(err = add_extension(argv[1], &config.extensions, 0, 0)))
-      err = run_extension(argc, argv, config.extensions);
+    if (!(err = add_extension(argv[1], &config.extensions, 0, 0))) {
+      if (config.extensions)
+        err = run_extension(argc, argv, config.extensions);
+      else {
+        fprintf(stderr, "Unrecognized command or extension %s\n", argv[1]);
+        ;
+        err = 1;
+      }
+    }
     if (config_free(&config) && !err)
       err = 1;
   } else

@@ -1,0 +1,1540 @@
+Loan Number,Column,Value,Current Loan Amount,Current Interest Rate
+978000019,useful data --> useful data -->,useful data -->,1000001,0.043
+978000019,Primary Servicer,1002338,1000002,0.044
+978000019,ServicingFee %,0.0025,1000003,0.045hello
+978000019,ServicingFee? Flatdollar,,1000004,0.046
+978000019,ServicingAdvance Methodology,,1000005,0.047
+978000019,Originator,1002338,1000006,0.048
+978000019,Loan Group,Group 1,1000007,0.049
+978000019,Amortization Type,2,1000008,0.05
+978000019,Lien Position,1,1000009,0.051
+978000019,HELOC Indicator,0,1000010,0.042
+978000019,Loan Purpose,9,1000011,0.043
+978000019,Cash Out Amount,,1000012,0.044
+978000019,Total Origination and Discount Points,,1000013,0.045
+978000019,Covered/High Cost Loan Indicator,,1000014,0.046
+978000019,Relocation Loan Indicator,,1000015,0.047
+978000019,Broker Indicator,,1000016,0.048
+978000019,Channel,1,1000017,0.049
+978000019,Escrow Indicator,0,1000018,0.05
+978000019,Senior Loan Amount(s),0,1000019,0.051
+978000019,Loan Type of Most Senior Lien,,1000020,0.042
+978000019,Hybrid PeriodofMost Senior Lien (inmonths),,1000021,0.043
+978000019,Neg Am Limit ofMost Senior Lien,,1000022,0.044
+978000019,Junior MortgageBalance,0,1000023,0.045
+978000019,Origination Date ofMost Senior Lien,,1000024,0.046
+978000019,Origination Date,20111025,1000025,0.047
+978000019,Original LoanAmount,1000000,1000026,0.048
+978000019,Original InterestRate,0.042,1000027,0.049
+978000019,OriginalAmortization Term,360,1000028,0.05
+978000019,Original Term toMaturity,360,1000029,0.051
+978000019,First Payment Dateof Loan,20111201,1000030,0.042
+978000019,Interest Type Indicator,1,1000031,0.043
+978000019,Original Interest Only Term,120,1000032,0.044
+978000019,Buy Down Period,0,1000033,0.045
+978000019,HELOC Draw Period,,1000034,0.046
+978000019,Current Loan Amount,"1,000,000.00",1000035,0.047
+978000019,Current Payment Amount Due,3500,1000037,0.049
+978000019,Interest Paid Through Date,20130101,1000038,0.05
+978000019,Current Payment Status,0,1000039,0.051
+978000019,Index Type,35,1000040,0.042
+978000019,ARM Look-backDays,45,1000041,0.043
+978000019,Gross Margin,0.01625,1000042,0.044
+978000019,ARM Round Flag,3,1000043,0.045
+978000019,ARM Round Factor,0.00125,1000044,0.046
+978000019,Initial Fixed RatePeriod,120,1000045,0.047
+978000019,Initial Interest RateCap (Change Up),0.05,1000046,0.048
+978000019,Initial Interest RateCap (Change Down),0.05,1000047,0.049
+978000019,Subsequent InterestRate Reset Period,1,1000048,0.05
+978000019,Subsequent InterestRate Cap (Change Down),0,1000049,0.051
+978000019,Subsequent InterestRate Cap (ChangeUp),0,1000050,0.042
+978000019,Lifetime MaximumRate (Ceiling),0.092,1000051,0.043
+978000019,Lifetime MinimumRate (Floor),0.029,1000052,0.044
+978000019,NegativeAmortization Limit,,1000053,0.045
+978000019,Initial NegativeAmortization RecastPeriod,,1000054,0.046
+978000019,SubsequentNegativeAmortization RecastPeriod,,1000055,0.047
+978000019,Initial FixedPayment Period,,1000056,0.048
+978000019,SubsequentPayment ResetPeriod,,1000057,0.049
+978000019,Initial PeriodicPayment Cap,,1000058,0.05
+978000019,SubsequentPeriodic PaymentCap,,1000059,0.051
+978000019,Initial MinimumPayment ResetPeriod,,1000060,0.042
+978000019,SubsequentMinimum PaymentReset Period,,1000061,0.043
+978000019,Option ARMIndicator,,1000062,0.044
+978000019,Options at Recast,,1000063,0.045
+978000019,Initial MinimumPayment,,1000064,0.046
+978000019,Current MinimumPayment,,1000065,0.047
+978000019,Prepayment PenaltyCalculation,99,1000066,0.048
+978000019,Prepayment PenaltyType,99,1000067,0.049
+978000019,Prepayment PenaltyTotal Term,60,1000068,0.05
+978000019,Prepayment PenaltyHard Term,,1000069,0.051
+978000019,Primary Borrower ID,58,1000070,0.042
+978000019,Number ofMortgagedProperties,1,1000071,0.043
+978000019,Total Number ofBorrowers,,1000072,0.044
+978000019,Self-employmentFlag,1,1000073,0.045
+978000019,Current ?Other?Monthly Payment,,1000074,0.046
+978000019,Length ofEmployment:Borrower,14,1000075,0.047
+978000019,Length ofEmployment: Co-Borrower,0,1000076,0.048
+978000019,Years in Home,7,1000077,0.049
+978000019,FICO Model Used,1,1000078,0.05
+978000019,Most Recent FICODate,20121212,1000079,0.051
+978000019,Primary WageEarner OriginalFICO: Equifax,,1000080,0.042
+978000019,Primary WageEarner OriginalFICO: Experian,,1000081,0.043
+978000019,Primary WageEarner OriginalFICO: TransUnion,,1000082,0.044
+978000019,Secondary WageEarner OriginalFICO: Equifax,,1000083,0.045
+978000019,Secondary WageEarner OriginalFICO: Experian,,1000084,0.046
+978000019,Secondary WageEarner OriginalFICO: TransUnion,,1000085,0.047
+978000019,OriginalPrimary BorrowerFICO,801,1000086,0.048
+978000019,Most RecentPrimary BorrowerFICO,789,1000087,0.049
+978000019,Most Recent Co-Borrower FICO,,1000088,0.05
+978000019,Most Recent FICOMethod,3,1000089,0.051
+978000019,VantageScore:Primary Borrower,,1000090,0.042
+978000019,VantageScore: Co-Borrower,,1000091,0.043
+978000019,Most RecentVantageScoreMethod,,1000092,0.044
+978000019,VantageScore Date,,1000093,0.045
+978000019,Credit Report:Longest Trade Line,,1000094,0.046
+978000019,Credit Report:Maximum TradeLine,,1000095,0.047
+978000019,Credit Report:Number of TradeLines,,1000096,0.048
+978000019,Credit Line UsageRatio,,1000097,0.049
+978000019,Most Recent 12-month Pay History,0,1000098,0.05
+978000019,Months Bankruptcy,,1000099,0.051
+978000019,Months Foreclosure,,1000100,0.042
+978000019,Primary BorrowerWage Income,6193,1000101,0.043
+978000019,Co-Borrower WageIncome,0,1000102,0.044
+978000019,Primary BorrowerOther Income,5155,1000103,0.045
+978000019,Co-Borrower OtherIncome,0,1000104,0.046
+978000019,All Borrower WageIncome,6193,1000105,0.047
+978000019,All Borrower TotalIncome,11348,1000106,0.048
+978000019,4506-T Indicator,0,1000107,0.049
+978000019,Borrower IncomeVerification Level,5,1000108,0.05
+978000019,Co-BorrowerIncome Verification,,1000109,0.051
+978000019,BorrowerEmploymentVerification,2,1000110,0.042
+978000019,Co-BorrowerEmploymentVerification,,1000111,0.043
+978000019,Borrower AssetVerification,3,1000112,0.044
+978000019,Co-Borrower AssetVerification,,1000113,0.045
+978000019,Liquid / CashReserves,966841.81,1000114,0.046
+978000019,Monthly Debt AllBorrowers,4530.12,1000115,0.047
+978000019,Originator DTI,0.3992,1000116,0.048
+978000019,Fully Indexed Rate,,1000117,0.049
+978000019,QualificationMethod,,1000118,0.05
+978000019,Percentage of DownPayment fromBorrower OwnFunds,,1000119,0.051
+978000019,City,Vancouver,1000120,0.042
+978000019,State,WA,1000121,0.043
+978000019,Postal Code,98661,1000122,0.044
+978000019,Property Type,2,1000123,0.045
+978000019,Occupancy,1,1000124,0.046
+978000019,Sales Price,,1000125,0.047
+978000019,Original AppraisedProperty Value,1740000,1000126,0.048
+978000019,Original PropertyValuation Type,3,1000127,0.049
+978000019,Original PropertyValuation Date,20110914,1000128,0.05
+978000019,OriginalAutomated Valuation Model (AVM) Model Name,,1000129,0.051
+978000019,OriginalAVM Confidence Score,,1000130,0.042
+978000019,MostRecent Property Value2,,1000131,0.043
+978000019,MostRecent Property Valuation Type,,1000132,0.044
+978000019,MostRecent Property Valuation Date,,1000133,0.045
+978000019,MostRecent AVM ModelName,,1000134,0.046
+978000019,MostRecent AVM Confidence Score,,1000135,0.047
+978000019,OriginalCLTV,0.5747,1000136,0.048
+978000019,OriginalLTV,0.5747,1000137,0.049
+978000019,OriginalPledged Assets,0,1000138,0.05
+978000019,MortgageInsurance CompanyName,0,1000139,0.051
+978000019,Mortgage Insurance Percent,0,1000140,0.042
+978000019,MI: Lender orBorrower Paid?,,1000141,0.043
+978000019,Pool Insurance Co.Name,,1000142,0.044
+978000019,Pool Insurance StopLoss %,,1000143,0.045
+978000019,MI CertificateNumber,,1000144,0.046
+978000019,Updated DTI(Front-end),,1000145,0.047
+978000019,Updated DTI(Back-end),,1000146,0.048
+978000019,ModificationEffective PaymentDate,,1000147,0.049
+978000019,Total CapitalizedAmount,,1000148,0.05
+978000019,Total DeferredAmount,,1000149,0.051
+978000019,Pre- ModificationInterest (Note) Rate,,1000150,0.042
+978000019,Pre- Modification P&IPayment,,1000151,0.043
+978000019,Pre- ModificationInitial Interest RateChange DownwardCap,,1000152,0.044
+978000019,Pre- ModificationSubsequent InterestRate Cap,,1000153,0.045
+978000019,Pre- ModificationNext Interest RateChange Date,,1000154,0.046
+978000019,Pre- Modification I/OTerm,,1000155,0.047
+978000019,Forgiven PrincipalAmount,,1000156,0.048
+978000019,Forgiven InterestAmount,,1000157,0.049
+978000019,Number ofModifications,,1000158,0.05
+978000019,Cash To/From Brrw at Closing,,1000159,0.051
+978000019,Brrw - Yrs at in Industry,14,1000160,0.042
+978000019,CoBrrw - Yrs at in Industry,0,1000161,0.043
+978000019,Junior Mortgage Drawn Amount,0,1000162,0.044
+978000019,Maturity Date,20411101,1000163,0.045
+978000019,PrimaryBorrower Wage Income (Salary),6193,1000164,0.046
+978000019,PrimaryBorrower Wage Income (Bonus),0,1000165,0.047
+978000019,PrimaryBorrower Wage Income (Commission),0,1000166,0.048
+978000019,Co-Borrower Wage Income (Salary),0,1000167,0.049
+978000019,Co-Borrower Wage Income (Bonus),0,1000168,0.05
+978000019,Co-Borrower Wage Income (Commission),,1000169,0.051
+978000019,Originator Doc Code,Full,1000170,0.042
+978000019,Income Verification,Two Years,1000171,0.043
+978000019,Asset Verification,One Month,1000172,0.044
+978000078,useful data --> useful data -->,useful data -->,1000173,0.0445
+978000078,Primary Servicer,1002338,1000174,0.0455
+978000078,ServicingFee %,0.0025,1000175,0.0465
+978000078,ServicingFee? Flatdollar,,1000176,0.0475
+978000078,ServicingAdvance Methodology,,1000177,0.0485
+978000078,Originator,1002338,1000178,0.0495
+978000078,Loan Group,Group 1,1000179,0.0505
+978000078,Amortization Type,2,1000180,0.0415
+978000078,Lien Position,1,1000181,0.0425
+978000078,HELOC Indicator,0,1000182,0.0435
+978000078,Loan Purpose,7,1000183,0.0445
+978000078,Cash Out Amount,,1000184,0.0455
+978000078,Total Origination and Discount Points,,1000185,0.0465
+978000078,Covered/High Cost Loan Indicator,,1000186,0.0475
+978000078,Relocation Loan Indicator,,1000187,0.0485
+978000078,Broker Indicator,,1000188,0.0495
+978000078,Channel,1,1000189,0.0505
+978000078,Escrow Indicator,0,1000190,0.0415
+978000078,Senior Loan Amount(s),0,1000191,0.0425
+978000078,Loan Type of Most Senior Lien,,1000192,0.0435
+978000078,Hybrid PeriodofMost Senior Lien (inmonths),,1000193,0.0445
+978000078,Neg Am Limit ofMost Senior Lien,,1000194,0.0455
+978000078,Junior MortgageBalance,280000,1000195,0.0465
+978000078,Origination Date ofMost Senior Lien,,1000196,0.0475
+978000078,Origination Date,20110707,1000197,0.0485
+978000078,Original LoanAmount,1000000,1000198,0.0495
+978000078,Original InterestRate,0.0415,1000199,0.0505
+978000078,OriginalAmortization Term,360,1000200,0.0415
+978000078,Original Term toMaturity,360,1000201,0.0425
+978000078,First Payment Dateof Loan,20110901,1000202,0.0435
+978000078,Interest Type Indicator,1,1000203,0.0445
+978000078,Original Interest Only Term,120,1000204,0.0455
+978000078,Buy Down Period,0,1000205,0.0465
+978000078,HELOC Draw Period,,1000206,0.0475
+978000078,Current Loan Amount,"1,000,000.00",1000207,0.0485
+978000078,Current Payment Amount Due,3458.33,1000209,0.0505
+978000078,Interest Paid Through Date,20130101,1000210,0.0415
+978000078,Current Payment Status,0,1000211,0.0425
+978000078,Index Type,35,1000212,0.0435
+978000078,ARM Look-backDays,45,1000213,0.0445
+978000078,Gross Margin,0.01625,1000214,0.0455
+978000078,ARM Round Flag,3,1000215,0.0465
+978000078,ARM Round Factor,0.00125,1000216,0.0475
+978000078,Initial Fixed RatePeriod,120,1000217,0.0485
+978000078,Initial Interest RateCap (Change Up),0.05,1000218,0.0495
+978000078,Initial Interest RateCap (Change Down),0.05,1000219,0.0505
+978000078,Subsequent InterestRate Reset Period,1,1000220,0.0415
+978000078,Subsequent InterestRate Cap (Change Down),0,1000221,0.0425
+978000078,Subsequent InterestRate Cap (ChangeUp),0,1000222,0.0435
+978000078,Lifetime MaximumRate (Ceiling),0.0915,1000223,0.0445
+978000078,Lifetime MinimumRate (Floor),0.029,1000224,0.0455
+978000078,NegativeAmortization Limit,,1000225,0.0465
+978000078,Initial NegativeAmortization RecastPeriod,,1000226,0.0475
+978000078,SubsequentNegativeAmortization RecastPeriod,,1000227,0.0485
+978000078,Initial FixedPayment Period,,1000228,0.0495
+978000078,SubsequentPayment ResetPeriod,,1000229,0.0505
+978000078,Initial PeriodicPayment Cap,,1000230,0.0415
+978000078,SubsequentPeriodic PaymentCap,,1000231,0.0425
+978000078,Initial MinimumPayment ResetPeriod,,1000232,0.0435
+978000078,SubsequentMinimum PaymentReset Period,,1000233,0.0445
+978000078,Option ARMIndicator,,1000234,0.0455
+978000078,Options at Recast,,1000235,0.0465
+978000078,Initial MinimumPayment,,1000236,0.0475
+978000078,Current MinimumPayment,,1000237,0.0485
+978000078,Prepayment PenaltyCalculation,99,1000238,0.0495
+978000078,Prepayment PenaltyType,99,1000239,0.0505
+978000078,Prepayment PenaltyTotal Term,60,1000240,0.0415
+978000078,Prepayment PenaltyHard Term,,1000241,0.0425
+978000078,Primary Borrower ID,455,1000242,0.0435
+978000078,Number ofMortgagedProperties,3,1000243,0.0445
+978000078,Total Number ofBorrowers,,1000244,0.0455
+978000078,Self-employmentFlag,0,1000245,0.0465
+978000078,Current ?Other?Monthly Payment,,1000246,0.0475
+978000078,Length ofEmployment:Borrower,15,1000247,0.0485
+978000078,Length ofEmployment: Co-Borrower,3,1000248,0.0495
+978000078,Years in Home,0,1000249,0.0505
+978000078,FICO Model Used,1,1000250,0.0415
+978000078,Most Recent FICODate,20121212,1000251,0.0425
+978000078,Primary WageEarner OriginalFICO: Equifax,,1000252,0.0435
+978000078,Primary WageEarner OriginalFICO: Experian,,1000253,0.0445
+978000078,Primary WageEarner OriginalFICO: TransUnion,,1000254,0.0455
+978000078,Secondary WageEarner OriginalFICO: Equifax,,1000255,0.0465
+978000078,Secondary WageEarner OriginalFICO: Experian,,1000256,0.0475
+978000078,Secondary WageEarner OriginalFICO: TransUnion,,1000257,0.0485
+978000078,OriginalPrimary BorrowerFICO,788,1000258,0.0495
+978000078,Most RecentPrimary BorrowerFICO,788,1000259,0.0505
+978000078,Most Recent Co-Borrower FICO,,1000260,0.0415
+978000078,Most Recent FICOMethod,3,1000261,0.0425
+978000078,VantageScore:Primary Borrower,,1000262,0.0435
+978000078,VantageScore: Co-Borrower,,1000263,0.0445
+978000078,Most RecentVantageScoreMethod,,1000264,0.0455
+978000078,VantageScore Date,,1000265,0.0465
+978000078,Credit Report:Longest Trade Line,,1000266,0.0475
+978000078,Credit Report:Maximum TradeLine,,1000267,0.0485
+978000078,Credit Report:Number of TradeLines,,1000268,0.0495
+978000078,Credit Line UsageRatio,,1000269,0.0505
+978000078,Most Recent 12-month Pay History,0,1000270,0.0415
+978000078,Months Bankruptcy,,1000271,0.0425
+978000078,Months Foreclosure,,1000272,0.0435
+978000078,Primary BorrowerWage Income,8333.33,1000273,0.0445
+978000078,Co-Borrower WageIncome,7002,1000274,0.0455
+978000078,Primary BorrowerOther Income,10870.56,1000275,0.0465
+978000078,Co-Borrower OtherIncome,0,1000276,0.0475
+978000078,All Borrower WageIncome,15335.33,1000277,0.0485
+978000078,All Borrower TotalIncome,26205.97,1000278,0.0495
+978000078,4506-T Indicator,0,1000279,0.0505
+978000078,Borrower IncomeVerification Level,5,1000280,0.0415
+978000078,Co-BorrowerIncome Verification,,1000281,0.0425
+978000078,BorrowerEmploymentVerification,2,1000282,0.0435
+978000078,Co-BorrowerEmploymentVerification,,1000283,0.0445
+978000078,Borrower AssetVerification,4,1000284,0.0455
+978000078,Co-Borrower AssetVerification,,1000285,0.0465
+978000078,Liquid / CashReserves,4942401.6,1000286,0.0475
+978000078,Monthly Debt AllBorrowers,7337.67,1000287,0.0485
+978000078,Originator DTI,0.28,1000288,0.0495
+978000078,Fully Indexed Rate,,1000289,0.0505
+978000078,QualificationMethod,,1000290,0.0415
+978000078,Percentage of DownPayment fromBorrower OwnFunds,100,1000291,0.0425
+978000078,City,KELSO,1000292,0.0435
+978000078,State,WA,1000293,0.0445
+978000078,Postal Code,98626,1000294,0.0455
+978000078,Property Type,1,1000295,0.0465
+978000078,Occupancy,1,1000296,0.0475
+978000078,Sales Price,1600000,1000297,0.0485
+978000078,Original AppraisedProperty Value,1700000,1000298,0.0495
+978000078,Original PropertyValuation Type,3,1000299,0.0505
+978000078,Original PropertyValuation Date,20110602,1000300,0.0415
+978000078,OriginalAutomated Valuation Model (AVM) Model Name,,1000301,0.0425
+978000078,OriginalAVM Confidence Score,,1000302,0.0435
+978000078,MostRecent Property Value2,,1000303,0.0445
+978000078,MostRecent Property Valuation Type,,1000304,0.0455
+978000078,MostRecent Property Valuation Date,,1000305,0.0465
+978000078,MostRecent AVM ModelName,,1000306,0.0475
+978000078,MostRecent AVM Confidence Score,,1000307,0.0485
+978000078,OriginalCLTV,0.8,1000308,0.0495
+978000078,OriginalLTV,0.625,1000309,0.0505
+978000078,OriginalPledged Assets,0,1000310,0.0415
+978000078,MortgageInsurance CompanyName,0,1000311,0.0425
+978000078,Mortgage Insurance Percent,0,1000312,0.0435
+978000078,MI: Lender orBorrower Paid?,,1000313,0.0445
+978000078,Pool Insurance Co.Name,,1000314,0.0455
+978000078,Pool Insurance StopLoss %,,1000315,0.0465
+978000078,MI CertificateNumber,,1000316,0.0475
+978000078,Updated DTI(Front-end),,1000317,0.0485
+978000078,Updated DTI(Back-end),,1000318,0.0495
+978000078,ModificationEffective PaymentDate,,1000319,0.0505
+978000078,Total CapitalizedAmount,,1000320,0.0415
+978000078,Total DeferredAmount,,1000321,0.0425
+978000078,Pre- ModificationInterest (Note) Rate,,1000322,0.0435
+978000078,Pre- Modification P&IPayment,,1000323,0.0445
+978000078,Pre- ModificationInitial Interest RateChange DownwardCap,,1000324,0.0455
+978000078,Pre- ModificationSubsequent InterestRate Cap,,1000325,0.0465
+978000078,Pre- ModificationNext Interest RateChange Date,,1000326,0.0475
+978000078,Pre- Modification I/OTerm,,1000327,0.0485
+978000078,Forgiven PrincipalAmount,,1000328,0.0495
+978000078,Forgiven InterestAmount,,1000329,0.0505
+978000078,Number ofModifications,,1000330,0.0415
+978000078,Cash To/From Brrw at Closing,,1000331,0.0425
+978000078,Brrw - Yrs at in Industry,15,1000332,0.0435
+978000078,CoBrrw - Yrs at in Industry,4,1000333,0.0445
+978000078,Junior Mortgage Drawn Amount,280000,1000334,0.0455
+978000078,Maturity Date,20410801,1000335,0.0465
+978000078,PrimaryBorrower Wage Income (Salary),8333,1000336,0.0475
+978000078,PrimaryBorrower Wage Income (Bonus),0,1000337,0.0485
+978000078,PrimaryBorrower Wage Income (Commission),0,1000338,0.0495
+978000078,Co-Borrower Wage Income (Salary),7002,1000339,0.0505
+978000078,Co-Borrower Wage Income (Bonus),0,1000340,0.0415
+978000078,Co-Borrower Wage Income (Commission),0,1000341,0.0425
+978000078,Originator Doc Code,Full,1000342,0.0435
+978000078,Income Verification,Two Years,1000343,0.0445
+978000078,Asset Verification,Two Months,1000344,0.0455
+1000001102,useful data --> useful data -->,,493558.96,0.05125
+1000001102,Primary Servicer,1000383,493559.96,0.05225
+1000001102,ServicingFee %,0.0025,493560.96,0.05325
+1000001102,ServicingFee? Flatdollar,,493561.96,0.05425
+1000001102,ServicingAdvance Methodology,,493562.96,0.05525
+1000001102,Originator,9999999,493563.96,0.04625
+1000001102,Loan Group,Group 1,493564.96,0.04725
+1000001102,Amortization Type,2,493565.96,0.04825
+1000001102,Lien Position,1,493566.96,0.04925
+1000001102,HELOC Indicator,0,493567.96,0.05025
+1000001102,Loan Purpose,9,493568.96,0.05125
+1000001102,Cash Out Amount,,493569.96,0.05225
+1000001102,Total Origination and Discount Points,,493570.96,0.05325
+1000001102,Covered/High Cost Loan Indicator,,493571.96,0.05425
+1000001102,Relocation Loan Indicator,,493572.96,0.05525
+1000001102,Broker Indicator,,493573.96,0.04625
+1000001102,Channel,1,493574.96,0.04725
+1000001102,Escrow Indicator,0,493575.96,0.04825
+1000001102,Senior Loan Amount(s),0,493576.96,0.04925
+1000001102,Loan Type of Most Senior Lien,,493577.96,0.05025
+1000001102,Hybrid PeriodofMost Senior Lien (inmonths),,493578.96,0.05125
+1000001102,Neg Am Limit ofMost Senior Lien,,493579.96,0.05225
+1000001102,Junior MortgageBalance,57500,493580.96,0.05325
+1000001102,Origination Date ofMost Senior Lien,,493581.96,0.05425
+1000001102,Origination Date,20111024,493582.96,0.05525
+1000001102,Original LoanAmount,502500,493583.96,0.04625
+1000001102,Original InterestRate,0.04625,493584.96,0.04725
+1000001102,OriginalAmortization Term,360,493585.96,0.04825
+1000001102,Original Term toMaturity,360,493586.96,0.04925
+1000001102,First Payment Dateof Loan,20111201,493587.96,0.05025
+1000001102,Interest Type Indicator,1,493588.96,0.05125
+1000001102,Original Interest Only Term,0,493589.96,0.05225
+1000001102,Buy Down Period,0,493590.96,0.05325
+1000001102,HELOC Draw Period,,493591.96,0.05425
+1000001102,Current Loan Amount,"493,213.96",493592.96,0.05525
+1000001102,Current Payment Amount Due,2583.55,493594.96,0.04725
+1000001102,Interest Paid Through Date,20130101,493595.96,0.04825
+1000001102,Current Payment Status,0,493596.96,0.04925
+1000001102,Index Type,39,493597.96,0.05025
+1000001102,ARM Look-backDays,45,493598.96,0.05125
+1000001102,Gross Margin,0.0275,493599.96,0.05225
+1000001102,ARM Round Flag,3,493600.96,0.05325
+1000001102,ARM Round Factor,0.00125,493601.96,0.05425
+1000001102,Initial Fixed RatePeriod,120,493602.96,0.05525
+1000001102,Initial Interest RateCap (Change Up),0.05,493603.96,0.04625
+1000001102,Initial Interest RateCap (Change Down),0.05,493604.96,0.04725
+1000001102,Subsequent InterestRate Reset Period,12,493605.96,0.04825
+1000001102,Subsequent InterestRate Cap (Change Down),0.02,493606.96,0.04925
+1000001102,Subsequent InterestRate Cap (ChangeUp),0.02,493607.96,0.05025
+1000001102,Lifetime MaximumRate (Ceiling),0.09625,493608.96,0.05125
+1000001102,Lifetime MinimumRate (Floor),0.0275,493609.96,0.05225
+1000001102,NegativeAmortization Limit,,493610.96,0.05325
+1000001102,Initial NegativeAmortization RecastPeriod,,493611.96,0.05425
+1000001102,SubsequentNegativeAmortization RecastPeriod,,493612.96,0.05525
+1000001102,Initial FixedPayment Period,,493613.96,0.04625
+1000001102,SubsequentPayment ResetPeriod,,493614.96,0.04725
+1000001102,Initial PeriodicPayment Cap,,493615.96,0.04825
+1000001102,SubsequentPeriodic PaymentCap,,493616.96,0.04925
+1000001102,Initial MinimumPayment ResetPeriod,,493617.96,0.05025
+1000001102,SubsequentMinimum PaymentReset Period,,493618.96,0.05125
+1000001102,Option ARMIndicator,,493619.96,0.05225
+1000001102,Options at Recast,,493620.96,0.05325
+1000001102,Initial MinimumPayment,,493621.96,0.05425
+1000001102,Current MinimumPayment,,493622.96,0.05525
+1000001102,Prepayment PenaltyCalculation,,493623.96,0.04625
+1000001102,Prepayment PenaltyType,,493624.96,0.04725
+1000001102,Prepayment PenaltyTotal Term,0,493625.96,0.04825
+1000001102,Prepayment PenaltyHard Term,,493626.96,0.04925
+1000001102,Primary Borrower ID,364,493627.96,0.05025
+1000001102,Number ofMortgagedProperties,1,493628.96,0.05125
+1000001102,Total Number ofBorrowers,,493629.96,0.05225
+1000001102,Self-employmentFlag,1,493630.96,0.05325
+1000001102,Current ?Other?Monthly Payment,,493631.96,0.05425
+1000001102,Length ofEmployment:Borrower,0.5,493632.96,0.05525
+1000001102,Length ofEmployment: Co-Borrower,3.8,493633.96,0.04625
+1000001102,Years in Home,4,493634.96,0.04725
+1000001102,FICO Model Used,1,493635.96,0.04825
+1000001102,Most Recent FICODate,20121212,493636.96,0.04925
+1000001102,Primary WageEarner OriginalFICO: Equifax,,493637.96,0.05025
+1000001102,Primary WageEarner OriginalFICO: Experian,,493638.96,0.05125
+1000001102,Primary WageEarner OriginalFICO: TransUnion,,493639.96,0.05225
+1000001102,Secondary WageEarner OriginalFICO: Equifax,,493640.96,0.05325
+1000001102,Secondary WageEarner OriginalFICO: Experian,,493641.96,0.05425
+1000001102,Secondary WageEarner OriginalFICO: TransUnion,,493642.96,0.05525
+1000001102,OriginalPrimary BorrowerFICO,762,493643.96,0.04625
+1000001102,Most RecentPrimary BorrowerFICO,743,493644.96,0.04725
+1000001102,Most Recent Co-Borrower FICO,,493645.96,0.04825
+1000001102,Most Recent FICOMethod,3,493646.96,0.04925
+1000001102,VantageScore:Primary Borrower,,493647.96,0.05025
+1000001102,VantageScore: Co-Borrower,,493648.96,0.05125
+1000001102,Most RecentVantageScoreMethod,,493649.96,0.05225
+1000001102,VantageScore Date,,493650.96,0.05325
+1000001102,Credit Report:Longest Trade Line,,493651.96,0.05425
+1000001102,Credit Report:Maximum TradeLine,,493652.96,0.05525
+1000001102,Credit Report:Number of TradeLines,,493653.96,0.04625
+1000001102,Credit Line UsageRatio,,493654.96,0.04725
+1000001102,Most Recent 12-month Pay History,0,493655.96,0.04825
+1000001102,Months Bankruptcy,,493656.96,0.04925
+1000001102,Months Foreclosure,,493657.96,0.05025
+1000001102,Primary BorrowerWage Income,6229.17,493658.96,0.05125
+1000001102,Co-Borrower WageIncome,7355.79,493659.96,0.05225
+1000001102,Primary BorrowerOther Income,0,493660.96,0.05325
+1000001102,Co-Borrower OtherIncome,0,493661.96,0.05425
+1000001102,All Borrower WageIncome,13584.96,493662.96,0.05525
+1000001102,All Borrower TotalIncome,13584.96,493663.96,0.04625
+1000001102,4506-T Indicator,1,493664.96,0.04725
+1000001102,Borrower IncomeVerification Level,5,493665.96,0.04825
+1000001102,Co-BorrowerIncome Verification,,493666.96,0.04925
+1000001102,BorrowerEmploymentVerification,3,493667.96,0.05025
+1000001102,Co-BorrowerEmploymentVerification,,493668.96,0.05125
+1000001102,Borrower AssetVerification,4,493669.96,0.05225
+1000001102,Co-Borrower AssetVerification,,493670.96,0.05325
+1000001102,Liquid / CashReserves,67201.4,493671.96,0.05425
+1000001102,Monthly Debt AllBorrowers,5879.57,493672.96,0.05525
+1000001102,Originator DTI,0.4328,493673.96,0.04625
+1000001102,Fully Indexed Rate,,493674.96,0.04725
+1000001102,QualificationMethod,,493675.96,0.04825
+1000001102,Percentage of DownPayment fromBorrower OwnFunds,,493676.96,0.04925
+1000001102,City,Olympia,493677.96,0.05025
+1000001102,State,WA,493678.96,0.05125
+1000001102,Postal Code,98502,493679.96,0.05225
+1000001102,Property Type,7,493680.96,0.05325
+1000001102,Occupancy,1,493681.96,0.05425
+1000001102,Sales Price,,493682.96,0.05525
+1000001102,Original AppraisedProperty Value,670000,493683.96,0.04625
+1000001102,Original PropertyValuation Type,3,493684.96,0.04725
+1000001102,Original PropertyValuation Date,20110906,493685.96,0.04825
+1000001102,OriginalAutomated Valuation Model (AVM) Model Name,,493686.96,0.04925
+1000001102,OriginalAVM Confidence Score,,493687.96,0.05025
+1000001102,MostRecent Property Value2,,493688.96,0.05125
+1000001102,MostRecent Property Valuation Type,,493689.96,0.05225
+1000001102,MostRecent Property Valuation Date,,493690.96,0.05325
+1000001102,MostRecent AVM ModelName,,493691.96,0.05425
+1000001102,MostRecent AVM Confidence Score,,493692.96,0.05525
+1000001102,OriginalCLTV,0.8358,493693.96,0.04625
+1000001102,OriginalLTV,0.75,493694.96,0.04725
+1000001102,OriginalPledged Assets,0,493695.96,0.04825
+1000001102,MortgageInsurance CompanyName,0,493696.96,0.04925
+1000001102,Mortgage Insurance Percent,0,493697.96,0.05025
+1000001102,MI: Lender orBorrower Paid?,,493698.96,0.05125
+1000001102,Pool Insurance Co.Name,,493699.96,0.05225
+1000001102,Pool Insurance StopLoss %,,493700.96,0.05325
+1000001102,MI CertificateNumber,,493701.96,0.05425
+1000001102,Updated DTI(Front-end),,493702.96,0.05525
+1000001102,Updated DTI(Back-end),,493703.96,0.04625
+1000001102,ModificationEffective PaymentDate,,493704.96,0.04725
+1000001102,Total CapitalizedAmount,,493705.96,0.04825
+1000001102,Total DeferredAmount,,493706.96,0.04925
+1000001102,Pre- ModificationInterest (Note) Rate,,493707.96,0.05025
+1000001102,Pre- Modification P&IPayment,,493708.96,0.05125
+1000001102,Pre- ModificationInitial Interest RateChange DownwardCap,,493709.96,0.05225
+1000001102,Pre- ModificationSubsequent InterestRate Cap,,493710.96,0.05325
+1000001102,Pre- ModificationNext Interest RateChange Date,,493711.96,0.05425
+1000001102,Pre- Modification I/OTerm,,493712.96,0.05525
+1000001102,Forgiven PrincipalAmount,,493713.96,0.04625
+1000001102,Forgiven InterestAmount,,493714.96,0.04725
+1000001102,Number ofModifications,,493715.96,0.04825
+1000001102,Cash To/From Brrw at Closing,,493716.96,0.04925
+1000001102,Brrw - Yrs at in Industry,12,493717.96,0.05025
+1000001102,CoBrrw - Yrs at in Industry,3.8,493718.96,0.05125
+1000001102,Junior Mortgage Drawn Amount,57500,493719.96,0.05225
+1000001102,Maturity Date,20411101,493720.96,0.05325
+1000001102,PrimaryBorrower Wage Income (Salary),6229.17,493721.96,0.05425
+1000001102,PrimaryBorrower Wage Income (Bonus),0,493722.96,0.05525
+1000001102,PrimaryBorrower Wage Income (Commission),0,493723.96,0.04625
+1000001102,Co-Borrower Wage Income (Salary),7355.79,493724.96,0.04725
+1000001102,Co-Borrower Wage Income (Bonus),0,493725.96,0.04825
+1000001102,Co-Borrower Wage Income (Commission),0,493726.96,0.04925
+1000001102,Originator Doc Code,Full,493727.96,0.05025
+1000001102,Income Verification,Two Years,493728.96,0.05125
+1000001102,Asset Verification,Two Months,493729.96,0.05225
+1010007709,useful data --> useful data -->,,709456.19,0.042
+1010007709,Primary Servicer,1000383,709457.19,0.043
+1010007709,ServicingFee %,0.0025,709458.19,0.044
+1010007709,ServicingFee? Flatdollar,,709459.19,0.035
+1010007709,ServicingAdvance Methodology,,709460.19,0.036
+1010007709,Originator,9999999,709461.19,0.037
+1010007709,Loan Group,Group 1,709462.19,0.038
+1010007709,Amortization Type,1,709463.19,0.039
+1010007709,Lien Position,1,709464.19,0.04
+1010007709,HELOC Indicator,0,709465.19,0.041
+1010007709,Loan Purpose,9,709466.19,0.042
+1010007709,Cash Out Amount,,709467.19,0.043
+1010007709,Total Origination and Discount Points,,709468.19,0.044
+1010007709,Covered/High Cost Loan Indicator,,709469.19,0.035
+1010007709,Relocation Loan Indicator,,709470.19,0.036
+1010007709,Broker Indicator,,709471.19,0.037
+1010007709,Channel,1,709472.19,0.038
+1010007709,Escrow Indicator,0,709473.19,0.039
+1010007709,Senior Loan Amount(s),0,709474.19,0.04
+1010007709,Loan Type of Most Senior Lien,,709475.19,0.041
+1010007709,Hybrid PeriodofMost Senior Lien (inmonths),,709476.19,0.042
+1010007709,Neg Am Limit ofMost Senior Lien,,709477.19,0.043
+1010007709,Junior MortgageBalance,250000,709478.19,0.044
+1010007709,Origination Date ofMost Senior Lien,,709479.19,0.035
+1010007709,Origination Date,20121023,709480.19,0.036
+1010007709,Original LoanAmount,715000,709481.19,0.037
+1010007709,Original InterestRate,0.035,709482.19,0.038
+1010007709,OriginalAmortization Term,180,709483.19,0.039
+1010007709,Original Term toMaturity,180,709484.19,0.04
+1010007709,First Payment Dateof Loan,20121201,709485.19,0.041
+1010007709,Interest Type Indicator,1,709486.19,0.042
+1010007709,Original Interest Only Term,0,709487.19,0.043
+1010007709,Buy Down Period,0,709488.19,0.044
+1010007709,HELOC Draw Period,,709489.19,0.035
+1010007709,Current Loan Amount,"708,939.19",709490.19,0.036
+1010007709,Current Payment Amount Due,5111.41,709492.19,0.038
+1010007709,Interest Paid Through Date,20130101,709493.19,0.039
+1010007709,Current Payment Status,0,709494.19,0.04
+1010007709,Index Type,,709495.19,0.041
+1010007709,ARM Look-backDays,,709496.19,0.042
+1010007709,Gross Margin,,709497.19,0.043
+1010007709,ARM Round Flag,,709498.19,0.044
+1010007709,ARM Round Factor,,709499.19,0.035
+1010007709,Initial Fixed RatePeriod,,709500.19,0.036
+1010007709,Initial Interest RateCap (Change Up),,709501.19,0.037
+1010007709,Initial Interest RateCap (Change Down),,709502.19,0.038
+1010007709,Subsequent InterestRate Reset Period,,709503.19,0.039
+1010007709,Subsequent InterestRate Cap (Change Down),,709504.19,0.04
+1010007709,Subsequent InterestRate Cap (ChangeUp),,709505.19,0.041
+1010007709,Lifetime MaximumRate (Ceiling),,709506.19,0.042
+1010007709,Lifetime MinimumRate (Floor),,709507.19,0.043
+1010007709,NegativeAmortization Limit,,709508.19,0.044
+1010007709,Initial NegativeAmortization RecastPeriod,,709509.19,0.035
+1010007709,SubsequentNegativeAmortization RecastPeriod,,709510.19,0.036
+1010007709,Initial FixedPayment Period,,709511.19,0.037
+1010007709,SubsequentPayment ResetPeriod,,709512.19,0.038
+1010007709,Initial PeriodicPayment Cap,,709513.19,0.039
+1010007709,SubsequentPeriodic PaymentCap,,709514.19,0.04
+1010007709,Initial MinimumPayment ResetPeriod,,709515.19,0.041
+1010007709,SubsequentMinimum PaymentReset Period,,709516.19,0.042
+1010007709,Option ARMIndicator,,709517.19,0.043
+1010007709,Options at Recast,,709518.19,0.044
+1010007709,Initial MinimumPayment,,709519.19,0.035
+1010007709,Current MinimumPayment,,709520.19,0.036
+1010007709,Prepayment PenaltyCalculation,,709521.19,0.037
+1010007709,Prepayment PenaltyType,,709522.19,0.038
+1010007709,Prepayment PenaltyTotal Term,0,709523.19,0.039
+1010007709,Prepayment PenaltyHard Term,,709524.19,0.04
+1010007709,Primary Borrower ID,420,709525.19,0.041
+1010007709,Number ofMortgagedProperties,2,709526.19,0.042
+1010007709,Total Number ofBorrowers,,709527.19,0.043
+1010007709,Self-employmentFlag,0,709528.19,0.044
+1010007709,Current ?Other?Monthly Payment,,709529.19,0.035
+1010007709,Length ofEmployment:Borrower,11,709530.19,0.036
+1010007709,Length ofEmployment: Co-Borrower,,709531.19,0.037
+1010007709,Years in Home,2,709532.19,0.038
+1010007709,FICO Model Used,1,709533.19,0.039
+1010007709,Most Recent FICODate,,709534.19,0.04
+1010007709,Primary WageEarner OriginalFICO: Equifax,,709535.19,0.041
+1010007709,Primary WageEarner OriginalFICO: Experian,,709536.19,0.042
+1010007709,Primary WageEarner OriginalFICO: TransUnion,,709537.19,0.043
+1010007709,Secondary WageEarner OriginalFICO: Equifax,,709538.19,0.044
+1010007709,Secondary WageEarner OriginalFICO: Experian,,709539.19,0.035
+1010007709,Secondary WageEarner OriginalFICO: TransUnion,,709540.19,0.036
+1010007709,OriginalPrimary BorrowerFICO,772,709541.19,0.037
+1010007709,Most RecentPrimary BorrowerFICO,,709542.19,0.038
+1010007709,Most Recent Co-Borrower FICO,,709543.19,0.039
+1010007709,Most Recent FICOMethod,,709544.19,0.04
+1010007709,VantageScore:Primary Borrower,,709545.19,0.041
+1010007709,VantageScore: Co-Borrower,,709546.19,0.042
+1010007709,Most RecentVantageScoreMethod,,709547.19,0.043
+1010007709,VantageScore Date,,709548.19,0.044
+1010007709,Credit Report:Longest Trade Line,,709549.19,0.035
+1010007709,Credit Report:Maximum TradeLine,,709550.19,0.036
+1010007709,Credit Report:Number of TradeLines,,709551.19,0.037
+1010007709,Credit Line UsageRatio,,709552.19,0.038
+1010007709,Most Recent 12-month Pay History,0,709553.19,0.039
+1010007709,Months Bankruptcy,,709554.19,0.04
+1010007709,Months Foreclosure,,709555.19,0.041
+1010007709,Primary BorrowerWage Income,25781.25,709556.19,0.042
+1010007709,Co-Borrower WageIncome,0,709557.19,0.043
+1010007709,Primary BorrowerOther Income,0,709558.19,0.044
+1010007709,Co-Borrower OtherIncome,0,709559.19,0.035
+1010007709,All Borrower WageIncome,25781.25,709560.19,0.036
+1010007709,All Borrower TotalIncome,25781.25,709561.19,0.037
+1010007709,4506-T Indicator,1,709562.19,0.038
+1010007709,Borrower IncomeVerification Level,5,709563.19,0.039
+1010007709,Co-BorrowerIncome Verification,,709564.19,0.04
+1010007709,BorrowerEmploymentVerification,3,709565.19,0.041
+1010007709,Co-BorrowerEmploymentVerification,,709566.19,0.042
+1010007709,Borrower AssetVerification,4,709567.19,0.043
+1010007709,Co-Borrower AssetVerification,,709568.19,0.044
+1010007709,Liquid / CashReserves,196542.45,709569.19,0.035
+1010007709,Monthly Debt AllBorrowers,8405.41,709570.19,0.036
+1010007709,Originator DTI,0.326028,709571.19,0.037
+1010007709,Fully Indexed Rate,,709572.19,0.038
+1010007709,QualificationMethod,,709573.19,0.039
+1010007709,Percentage of DownPayment fromBorrower OwnFunds,,709574.19,0.04
+1010007709,City,GIG HARBOR,709575.19,0.041
+1010007709,State,WA,709576.19,0.042
+1010007709,Postal Code,98332,709577.19,0.043
+1010007709,Property Type,1,709578.19,0.044
+1010007709,Occupancy,1,709579.19,0.035
+1010007709,Sales Price,,709580.19,0.036
+1010007709,Original AppraisedProperty Value,2100000,709581.19,0.037
+1010007709,Original PropertyValuation Type,3,709582.19,0.038
+1010007709,Original PropertyValuation Date,20121003,709583.19,0.039
+1010007709,OriginalAutomated Valuation Model (AVM) Model Name,,709584.19,0.04
+1010007709,OriginalAVM Confidence Score,,709585.19,0.041
+1010007709,MostRecent Property Value2,,709586.19,0.042
+1010007709,MostRecent Property Valuation Type,,709587.19,0.043
+1010007709,MostRecent Property Valuation Date,,709588.19,0.044
+1010007709,MostRecent AVM ModelName,,709589.19,0.035
+1010007709,MostRecent AVM Confidence Score,,709590.19,0.036
+1010007709,OriginalCLTV,0.4595,709591.19,0.037
+1010007709,OriginalLTV,0.3404,709592.19,0.038
+1010007709,OriginalPledged Assets,0,709593.19,0.039
+1010007709,MortgageInsurance CompanyName,0,709594.19,0.04
+1010007709,Mortgage Insurance Percent,0,709595.19,0.041
+1010007709,MI: Lender orBorrower Paid?,,709596.19,0.042
+1010007709,Pool Insurance Co.Name,,709597.19,0.043
+1010007709,Pool Insurance StopLoss %,,709598.19,0.044
+1010007709,MI CertificateNumber,,709599.19,0.035
+1010007709,Updated DTI(Front-end),,709600.19,0.036
+1010007709,Updated DTI(Back-end),,709601.19,0.037
+1010007709,ModificationEffective PaymentDate,,709602.19,0.038
+1010007709,Total CapitalizedAmount,,709603.19,0.039
+1010007709,Total DeferredAmount,,709604.19,0.04
+1010007709,Pre- ModificationInterest (Note) Rate,,709605.19,0.041
+1010007709,Pre- Modification P&IPayment,,709606.19,0.042
+1010007709,Pre- ModificationInitial Interest RateChange DownwardCap,,709607.19,0.043
+1010007709,Pre- ModificationSubsequent InterestRate Cap,,709608.19,0.044
+1010007709,Pre- ModificationNext Interest RateChange Date,,709609.19,0.035
+1010007709,Pre- Modification I/OTerm,,709610.19,0.036
+1010007709,Forgiven PrincipalAmount,,709611.19,0.037
+1010007709,Forgiven InterestAmount,,709612.19,0.038
+1010007709,Number ofModifications,,709613.19,0.039
+1010007709,Cash To/From Brrw at Closing,,709614.19,0.04
+1010007709,Brrw - Yrs at in Industry,12,709615.19,0.041
+1010007709,CoBrrw - Yrs at in Industry,,709616.19,0.042
+1010007709,Junior Mortgage Drawn Amount,130389,709617.19,0.043
+1010007709,Maturity Date,20271101,709618.19,0.044
+1010007709,PrimaryBorrower Wage Income (Salary),25781.25,709619.19,0.035
+1010007709,PrimaryBorrower Wage Income (Bonus),0,709620.19,0.036
+1010007709,PrimaryBorrower Wage Income (Commission),0,709621.19,0.037
+1010007709,Co-Borrower Wage Income (Salary),0,709622.19,0.038
+1010007709,Co-Borrower Wage Income (Bonus),0,709623.19,0.039
+1010007709,Co-Borrower Wage Income (Commission),0,709624.19,0.04
+1010007709,Originator Doc Code,Full,709625.19,0.041
+1010007709,Income Verification,Two Years,709626.19,0.042
+1010007709,Asset Verification,Two Months,709627.19,0.043
+1030004301,useful data --> useful data -->,,685851.93,0.044
+1030004301,Primary Servicer,1000383,685852.93,0.035
+1030004301,ServicingFee %,0.0025,685853.93,0.036
+1030004301,ServicingFee? Flatdollar,,685854.93,0.037
+1030004301,ServicingAdvance Methodology,,685855.93,0.038
+1030004301,Originator,9999999,685856.93,0.039
+1030004301,Loan Group,Group 1,685857.93,0.04
+1030004301,Amortization Type,1,685858.93,0.041
+1030004301,Lien Position,1,685859.93,0.042
+1030004301,HELOC Indicator,0,685860.93,0.043
+1030004301,Loan Purpose,9,685861.93,0.044
+1030004301,Cash Out Amount,,685862.93,0.035
+1030004301,Total Origination and Discount Points,,685863.93,0.036
+1030004301,Covered/High Cost Loan Indicator,,685864.93,0.037
+1030004301,Relocation Loan Indicator,,685865.93,0.038
+1030004301,Broker Indicator,,685866.93,0.039
+1030004301,Channel,2,685867.93,0.04
+1030004301,Escrow Indicator,0,685868.93,0.041
+1030004301,Senior Loan Amount(s),0,685869.93,0.042
+1030004301,Loan Type of Most Senior Lien,,685870.93,0.043
+1030004301,Hybrid PeriodofMost Senior Lien (inmonths),,685871.93,0.044
+1030004301,Neg Am Limit ofMost Senior Lien,,685872.93,0.035
+1030004301,Junior MortgageBalance,0,685873.93,0.036
+1030004301,Origination Date ofMost Senior Lien,,685874.93,0.037
+1030004301,Origination Date,20120911,685875.93,0.038
+1030004301,Original LoanAmount,694000,685876.93,0.039
+1030004301,Original InterestRate,0.035,685877.93,0.04
+1030004301,OriginalAmortization Term,180,685878.93,0.041
+1030004301,Original Term toMaturity,180,685879.93,0.042
+1030004301,First Payment Dateof Loan,20121101,685880.93,0.043
+1030004301,Interest Type Indicator,1,685881.93,0.044
+1030004301,Original Interest Only Term,0,685882.93,0.035
+1030004301,Buy Down Period,0,685883.93,0.036
+1030004301,HELOC Draw Period,,685884.93,0.037
+1030004301,Current Loan Amount,"685,162.93",685885.93,0.038
+1030004301,Current Payment Amount Due,4961.28,685887.93,0.04
+1030004301,Interest Paid Through Date,20130101,685888.93,0.041
+1030004301,Current Payment Status,0,685889.93,0.042
+1030004301,Index Type,,685890.93,0.043
+1030004301,ARM Look-backDays,,685891.93,0.044
+1030004301,Gross Margin,,685892.93,0.035
+1030004301,ARM Round Flag,,685893.93,0.036
+1030004301,ARM Round Factor,,685894.93,0.037
+1030004301,Initial Fixed RatePeriod,,685895.93,0.038
+1030004301,Initial Interest RateCap (Change Up),,685896.93,0.039
+1030004301,Initial Interest RateCap (Change Down),,685897.93,0.04
+1030004301,Subsequent InterestRate Reset Period,,685898.93,0.041
+1030004301,Subsequent InterestRate Cap (Change Down),,685899.93,0.042
+1030004301,Subsequent InterestRate Cap (ChangeUp),,685900.93,0.043
+1030004301,Lifetime MaximumRate (Ceiling),,685901.93,0.044
+1030004301,Lifetime MinimumRate (Floor),,685902.93,0.035
+1030004301,NegativeAmortization Limit,,685903.93,0.036
+1030004301,Initial NegativeAmortization RecastPeriod,,685904.93,0.037
+1030004301,SubsequentNegativeAmortization RecastPeriod,,685905.93,0.038
+1030004301,Initial FixedPayment Period,,685906.93,0.039
+1030004301,SubsequentPayment ResetPeriod,,685907.93,0.04
+1030004301,Initial PeriodicPayment Cap,,685908.93,0.041
+1030004301,SubsequentPeriodic PaymentCap,,685909.93,0.042
+1030004301,Initial MinimumPayment ResetPeriod,,685910.93,0.043
+1030004301,SubsequentMinimum PaymentReset Period,,685911.93,0.044
+1030004301,Option ARMIndicator,,685912.93,0.035
+1030004301,Options at Recast,,685913.93,0.036
+1030004301,Initial MinimumPayment,,685914.93,0.037
+1030004301,Current MinimumPayment,,685915.93,0.038
+1030004301,Prepayment PenaltyCalculation,,685916.93,0.039
+1030004301,Prepayment PenaltyType,,685917.93,0.04
+1030004301,Prepayment PenaltyTotal Term,0,685918.93,0.041
+1030004301,Prepayment PenaltyHard Term,,685919.93,0.042
+1030004301,Primary Borrower ID,202,685920.93,0.043
+1030004301,Number ofMortgagedProperties,1,685921.93,0.044
+1030004301,Total Number ofBorrowers,,685922.93,0.035
+1030004301,Self-employmentFlag,1,685923.93,0.036
+1030004301,Current ?Other?Monthly Payment,,685924.93,0.037
+1030004301,Length ofEmployment:Borrower,8.5,685925.93,0.038
+1030004301,Length ofEmployment: Co-Borrower,,685926.93,0.039
+1030004301,Years in Home,9,685927.93,0.04
+1030004301,FICO Model Used,1,685928.93,0.041
+1030004301,Most Recent FICODate,,685929.93,0.042
+1030004301,Primary WageEarner OriginalFICO: Equifax,,685930.93,0.043
+1030004301,Primary WageEarner OriginalFICO: Experian,,685931.93,0.044
+1030004301,Primary WageEarner OriginalFICO: TransUnion,,685932.93,0.035
+1030004301,Secondary WageEarner OriginalFICO: Equifax,,685933.93,0.036
+1030004301,Secondary WageEarner OriginalFICO: Experian,,685934.93,0.037
+1030004301,Secondary WageEarner OriginalFICO: TransUnion,,685935.93,0.038
+1030004301,OriginalPrimary BorrowerFICO,767,685936.93,0.039
+1030004301,Most RecentPrimary BorrowerFICO,,685937.93,0.04
+1030004301,Most Recent Co-Borrower FICO,,685938.93,0.041
+1030004301,Most Recent FICOMethod,,685939.93,0.042
+1030004301,VantageScore:Primary Borrower,,685940.93,0.043
+1030004301,VantageScore: Co-Borrower,,685941.93,0.044
+1030004301,Most RecentVantageScoreMethod,,685942.93,0.035
+1030004301,VantageScore Date,,685943.93,0.036
+1030004301,Credit Report:Longest Trade Line,,685944.93,0.037
+1030004301,Credit Report:Maximum TradeLine,,685945.93,0.038
+1030004301,Credit Report:Number of TradeLines,,685946.93,0.039
+1030004301,Credit Line UsageRatio,,685947.93,0.04
+1030004301,Most Recent 12-month Pay History,0,685948.93,0.041
+1030004301,Months Bankruptcy,,685949.93,0.042
+1030004301,Months Foreclosure,,685950.93,0.043
+1030004301,Primary BorrowerWage Income,24723,685951.93,0.044
+1030004301,Co-Borrower WageIncome,0,685952.93,0.035
+1030004301,Primary BorrowerOther Income,0,685953.93,0.036
+1030004301,Co-Borrower OtherIncome,0,685954.93,0.037
+1030004301,All Borrower WageIncome,24723,685955.93,0.038
+1030004301,All Borrower TotalIncome,24723,685956.93,0.039
+1030004301,4506-T Indicator,1,685957.93,0.04
+1030004301,Borrower IncomeVerification Level,5,685958.93,0.041
+1030004301,Co-BorrowerIncome Verification,,685959.93,0.042
+1030004301,BorrowerEmploymentVerification,3,685960.93,0.043
+1030004301,Co-BorrowerEmploymentVerification,,685961.93,0.044
+1030004301,Borrower AssetVerification,4,685962.93,0.035
+1030004301,Co-Borrower AssetVerification,,685963.93,0.036
+1030004301,Liquid / CashReserves,652220.12,685964.93,0.037
+1030004301,Monthly Debt AllBorrowers,8687.54,685965.93,0.038
+1030004301,Originator DTI,0.351395,685966.93,0.039
+1030004301,Fully Indexed Rate,,685967.93,0.04
+1030004301,QualificationMethod,,685968.93,0.041
+1030004301,Percentage of DownPayment fromBorrower OwnFunds,,685969.93,0.042
+1030004301,City,MARYSVILLE,685970.93,0.043
+1030004301,State,WA,685971.93,0.044
+1030004301,Postal Code,98271,685972.93,0.035
+1030004301,Property Type,1,685973.93,0.036
+1030004301,Occupancy,1,685974.93,0.037
+1030004301,Sales Price,,685975.93,0.038
+1030004301,Original AppraisedProperty Value,900000,685976.93,0.039
+1030004301,Original PropertyValuation Type,3,685977.93,0.04
+1030004301,Original PropertyValuation Date,20120419,685978.93,0.041
+1030004301,OriginalAutomated Valuation Model (AVM) Model Name,,685979.93,0.042
+1030004301,OriginalAVM Confidence Score,,685980.93,0.043
+1030004301,MostRecent Property Value2,,685981.93,0.044
+1030004301,MostRecent Property Valuation Type,,685982.93,0.035
+1030004301,MostRecent Property Valuation Date,,685983.93,0.036
+1030004301,MostRecent AVM ModelName,,685984.93,0.037
+1030004301,MostRecent AVM Confidence Score,,685985.93,0.038
+1030004301,OriginalCLTV,0.7711,685986.93,0.039
+1030004301,OriginalLTV,0.7711,685987.93,0.04
+1030004301,OriginalPledged Assets,0,685988.93,0.041
+1030004301,MortgageInsurance CompanyName,0,685989.93,0.042
+1030004301,Mortgage Insurance Percent,0,685990.93,0.043
+1030004301,MI: Lender orBorrower Paid?,,685991.93,0.044
+1030004301,Pool Insurance Co.Name,,685992.93,0.035
+1030004301,Pool Insurance StopLoss %,,685993.93,0.036
+1030004301,MI CertificateNumber,,685994.93,0.037
+1030004301,Updated DTI(Front-end),,685995.93,0.038
+1030004301,Updated DTI(Back-end),,685996.93,0.039
+1030004301,ModificationEffective PaymentDate,,685997.93,0.04
+1030004301,Total CapitalizedAmount,,685998.93,0.041
+1030004301,Total DeferredAmount,,685999.93,0.042
+1030004301,Pre- ModificationInterest (Note) Rate,,686000.93,0.043
+1030004301,Pre- Modification P&IPayment,,686001.93,0.044
+1030004301,Pre- ModificationInitial Interest RateChange DownwardCap,,686002.93,0.035
+1030004301,Pre- ModificationSubsequent InterestRate Cap,,686003.93,0.036
+1030004301,Pre- ModificationNext Interest RateChange Date,,686004.93,0.037
+1030004301,Pre- Modification I/OTerm,,686005.93,0.038
+1030004301,Forgiven PrincipalAmount,,686006.93,0.039
+1030004301,Forgiven InterestAmount,,686007.93,0.04
+1030004301,Number ofModifications,,686008.93,0.041
+1030004301,Cash To/From Brrw at Closing,,686009.93,0.042
+1030004301,Brrw - Yrs at in Industry,25,686010.93,0.043
+1030004301,CoBrrw - Yrs at in Industry,,686011.93,0.044
+1030004301,Junior Mortgage Drawn Amount,0,686012.93,0.035
+1030004301,Maturity Date,20271001,686013.93,0.036
+1030004301,PrimaryBorrower Wage Income (Salary),24723,686014.93,0.037
+1030004301,PrimaryBorrower Wage Income (Bonus),0,686015.93,0.038
+1030004301,PrimaryBorrower Wage Income (Commission),0,686016.93,0.039
+1030004301,Co-Borrower Wage Income (Salary),0,686017.93,0.04
+1030004301,Co-Borrower Wage Income (Bonus),0,686018.93,0.041
+1030004301,Co-Borrower Wage Income (Commission),0,686019.93,0.042
+1030004301,Originator Doc Code,Full,686020.93,0.043
+1030004301,Income Verification,Two Years,686021.93,0.044
+1030004301,Asset Verification,Two Months,686022.93,0.035
+1030006057,useful data --> useful data -->,,761056.16,0.036
+1030006057,Primary Servicer,1000383,761057.16,0.037
+1030006057,ServicingFee %,0.0025,761058.16,0.038
+1030006057,ServicingFee? Flatdollar,,761059.16,0.039
+1030006057,ServicingAdvance Methodology,,761060.16,0.04
+1030006057,Originator,9999999,761061.16,0.041
+1030006057,Loan Group,Group 1,761062.16,0.042
+1030006057,Amortization Type,1,761063.16,0.043
+1030006057,Lien Position,1,761064.16,0.044
+1030006057,HELOC Indicator,0,761065.16,0.035
+1030006057,Loan Purpose,9,761066.16,0.036
+1030006057,Cash Out Amount,,761067.16,0.037
+1030006057,Total Origination and Discount Points,,761068.16,0.038
+1030006057,Covered/High Cost Loan Indicator,,761069.16,0.039
+1030006057,Relocation Loan Indicator,,761070.16,0.04
+1030006057,Broker Indicator,,761071.16,0.041
+1030006057,Channel,1,761072.16,0.042
+1030006057,Escrow Indicator,0,761073.16,0.043
+1030006057,Senior Loan Amount(s),0,761074.16,0.044
+1030006057,Loan Type of Most Senior Lien,,761075.16,0.035
+1030006057,Hybrid PeriodofMost Senior Lien (inmonths),,761076.16,0.036
+1030006057,Neg Am Limit ofMost Senior Lien,,761077.16,0.037
+1030006057,Junior MortgageBalance,0,761078.16,0.038
+1030006057,Origination Date ofMost Senior Lien,,761079.16,0.039
+1030006057,Origination Date,20120830,761080.16,0.04
+1030006057,Original LoanAmount,770000,761081.16,0.041
+1030006057,Original InterestRate,0.035,761082.16,0.042
+1030006057,OriginalAmortization Term,180,761083.16,0.043
+1030006057,Original Term toMaturity,180,761084.16,0.044
+1030006057,First Payment Dateof Loan,20121101,761085.16,0.035
+1030006057,Interest Type Indicator,1,761086.16,0.036
+1030006057,Original Interest Only Term,0,761087.16,0.037
+1030006057,Buy Down Period,0,761088.16,0.038
+1030006057,HELOC Draw Period,,761089.16,0.039
+1030006057,Current Loan Amount,"760,195.16",761090.16,0.04
+1030006057,Current Payment Amount Due,5504.6,761092.16,0.042
+1030006057,Interest Paid Through Date,20130101,761093.16,0.043
+1030006057,Current Payment Status,0,761094.16,0.044
+1030006057,Index Type,,761095.16,0.035
+1030006057,ARM Look-backDays,,761096.16,0.036
+1030006057,Gross Margin,,761097.16,0.037
+1030006057,ARM Round Flag,,761098.16,0.038
+1030006057,ARM Round Factor,,761099.16,0.039
+1030006057,Initial Fixed RatePeriod,,761100.16,0.04
+1030006057,Initial Interest RateCap (Change Up),,761101.16,0.041
+1030006057,Initial Interest RateCap (Change Down),,761102.16,0.042
+1030006057,Subsequent InterestRate Reset Period,,761103.16,0.043
+1030006057,Subsequent InterestRate Cap (Change Down),,761104.16,0.044
+1030006057,Subsequent InterestRate Cap (ChangeUp),,761105.16,0.035
+1030006057,Lifetime MaximumRate (Ceiling),,761106.16,0.036
+1030006057,Lifetime MinimumRate (Floor),,761107.16,0.037
+1030006057,NegativeAmortization Limit,,761108.16,0.038
+1030006057,Initial NegativeAmortization RecastPeriod,,761109.16,0.039
+1030006057,SubsequentNegativeAmortization RecastPeriod,,761110.16,0.04
+1030006057,Initial FixedPayment Period,,761111.16,0.041
+1030006057,SubsequentPayment ResetPeriod,,761112.16,0.042
+1030006057,Initial PeriodicPayment Cap,,761113.16,0.043
+1030006057,SubsequentPeriodic PaymentCap,,761114.16,0.044
+1030006057,Initial MinimumPayment ResetPeriod,,761115.16,0.035
+1030006057,SubsequentMinimum PaymentReset Period,,761116.16,0.036
+1030006057,Option ARMIndicator,,761117.16,0.037
+1030006057,Options at Recast,,761118.16,0.038
+1030006057,Initial MinimumPayment,,761119.16,0.039
+1030006057,Current MinimumPayment,,761120.16,0.04
+1030006057,Prepayment PenaltyCalculation,,761121.16,0.041
+1030006057,Prepayment PenaltyType,,761122.16,0.042
+1030006057,Prepayment PenaltyTotal Term,0,761123.16,0.043
+1030006057,Prepayment PenaltyHard Term,,761124.16,0.044
+1030006057,Primary Borrower ID,404,761125.16,0.035
+1030006057,Number ofMortgagedProperties,3,761126.16,0.036
+1030006057,Total Number ofBorrowers,,761127.16,0.037
+1030006057,Self-employmentFlag,1,761128.16,0.038
+1030006057,Current ?Other?Monthly Payment,,761129.16,0.039
+1030006057,Length ofEmployment:Borrower,33,761130.16,0.04
+1030006057,Length ofEmployment: Co-Borrower,33,761131.16,0.041
+1030006057,Years in Home,4,761132.16,0.042
+1030006057,FICO Model Used,1,761133.16,0.043
+1030006057,Most Recent FICODate,,761134.16,0.044
+1030006057,Primary WageEarner OriginalFICO: Equifax,,761135.16,0.035
+1030006057,Primary WageEarner OriginalFICO: Experian,,761136.16,0.036
+1030006057,Primary WageEarner OriginalFICO: TransUnion,,761137.16,0.037
+1030006057,Secondary WageEarner OriginalFICO: Equifax,,761138.16,0.038
+1030006057,Secondary WageEarner OriginalFICO: Experian,,761139.16,0.039
+1030006057,Secondary WageEarner OriginalFICO: TransUnion,,761140.16,0.04
+1030006057,OriginalPrimary BorrowerFICO,797,761141.16,0.041
+1030006057,Most RecentPrimary BorrowerFICO,,761142.16,0.042
+1030006057,Most Recent Co-Borrower FICO,,761143.16,0.043
+1030006057,Most Recent FICOMethod,,761144.16,0.044
+1030006057,VantageScore:Primary Borrower,,761145.16,0.035
+1030006057,VantageScore: Co-Borrower,,761146.16,0.036
+1030006057,Most RecentVantageScoreMethod,,761147.16,0.037
+1030006057,VantageScore Date,,761148.16,0.038
+1030006057,Credit Report:Longest Trade Line,,761149.16,0.039
+1030006057,Credit Report:Maximum TradeLine,,761150.16,0.04
+1030006057,Credit Report:Number of TradeLines,,761151.16,0.041
+1030006057,Credit Line UsageRatio,,761152.16,0.042
+1030006057,Most Recent 12-month Pay History,0,761153.16,0.043
+1030006057,Months Bankruptcy,,761154.16,0.044
+1030006057,Months Foreclosure,,761155.16,0.035
+1030006057,Primary BorrowerWage Income,269436.19,761156.16,0.036
+1030006057,Co-Borrower WageIncome,269436.19,761157.16,0.037
+1030006057,Primary BorrowerOther Income,0,761158.16,0.038
+1030006057,Co-Borrower OtherIncome,0,761159.16,0.039
+1030006057,All Borrower WageIncome,538872.38,761160.16,0.04
+1030006057,All Borrower TotalIncome,538872.38,761161.16,0.041
+1030006057,4506-T Indicator,1,761162.16,0.042
+1030006057,Borrower IncomeVerification Level,5,761163.16,0.043
+1030006057,Co-BorrowerIncome Verification,,761164.16,0.044
+1030006057,BorrowerEmploymentVerification,3,761165.16,0.035
+1030006057,Co-BorrowerEmploymentVerification,,761166.16,0.036
+1030006057,Borrower AssetVerification,4,761167.16,0.037
+1030006057,Co-Borrower AssetVerification,,761168.16,0.038
+1030006057,Liquid / CashReserves,861493.44,761169.16,0.039
+1030006057,Monthly Debt AllBorrowers,50769.32,761170.16,0.04
+1030006057,Originator DTI,0.094214,761171.16,0.041
+1030006057,Fully Indexed Rate,,761172.16,0.042
+1030006057,QualificationMethod,,761173.16,0.043
+1030006057,Percentage of DownPayment fromBorrower OwnFunds,,761174.16,0.044
+1030006057,City,Seattle,761175.16,0.035
+1030006057,State,WA,761176.16,0.036
+1030006057,Postal Code,98144,761177.16,0.037
+1030006057,Property Type,7,761178.16,0.038
+1030006057,Occupancy,1,761179.16,0.039
+1030006057,Sales Price,,761180.16,0.04
+1030006057,Original AppraisedProperty Value,1100000,761181.16,0.041
+1030006057,Original PropertyValuation Type,3,761182.16,0.042
+1030006057,Original PropertyValuation Date,20120710,761183.16,0.043
+1030006057,OriginalAutomated Valuation Model (AVM) Model Name,,761184.16,0.044
+1030006057,OriginalAVM Confidence Score,,761185.16,0.035
+1030006057,MostRecent Property Value2,,761186.16,0.036
+1030006057,MostRecent Property Valuation Type,,761187.16,0.037
+1030006057,MostRecent Property Valuation Date,,761188.16,0.038
+1030006057,MostRecent AVM ModelName,,761189.16,0.039
+1030006057,MostRecent AVM Confidence Score,,761190.16,0.04
+1030006057,OriginalCLTV,0.7,761191.16,0.041
+1030006057,OriginalLTV,0.7,761192.16,0.042
+1030006057,OriginalPledged Assets,0,761193.16,0.043
+1030006057,MortgageInsurance CompanyName,0,761194.16,0.044
+1030006057,Mortgage Insurance Percent,0,761195.16,0.035
+1030006057,MI: Lender orBorrower Paid?,,761196.16,0.036
+1030006057,Pool Insurance Co.Name,,761197.16,0.037
+1030006057,Pool Insurance StopLoss %,,761198.16,0.038
+1030006057,MI CertificateNumber,,761199.16,0.039
+1030006057,Updated DTI(Front-end),,761200.16,0.04
+1030006057,Updated DTI(Back-end),,761201.16,0.041
+1030006057,ModificationEffective PaymentDate,,761202.16,0.042
+1030006057,Total CapitalizedAmount,,761203.16,0.043
+1030006057,Total DeferredAmount,,761204.16,0.044
+1030006057,Pre- ModificationInterest (Note) Rate,,761205.16,0.035
+1030006057,Pre- Modification P&IPayment,,761206.16,0.036
+1030006057,Pre- ModificationInitial Interest RateChange DownwardCap,,761207.16,0.037
+1030006057,Pre- ModificationSubsequent InterestRate Cap,,761208.16,0.038
+1030006057,Pre- ModificationNext Interest RateChange Date,,761209.16,0.039
+1030006057,Pre- Modification I/OTerm,,761210.16,0.04
+1030006057,Forgiven PrincipalAmount,,761211.16,0.041
+1030006057,Forgiven InterestAmount,,761212.16,0.042
+1030006057,Number ofModifications,,761213.16,0.043
+1030006057,Cash To/From Brrw at Closing,,761214.16,0.044
+1030006057,Brrw - Yrs at in Industry,33,761215.16,0.035
+1030006057,CoBrrw - Yrs at in Industry,33,761216.16,0.036
+1030006057,Junior Mortgage Drawn Amount,0,761217.16,0.037
+1030006057,Maturity Date,20271001,761218.16,0.038
+1030006057,PrimaryBorrower Wage Income (Salary),269436.19,761219.16,0.039
+1030006057,PrimaryBorrower Wage Income (Bonus),0,761220.16,0.04
+1030006057,PrimaryBorrower Wage Income (Commission),0,761221.16,0.041
+1030006057,Co-Borrower Wage Income (Salary),269436.19,761222.16,0.042
+1030006057,Co-Borrower Wage Income (Bonus),0,761223.16,0.043
+1030006057,Co-Borrower Wage Income (Commission),0,761224.16,0.044
+1030006057,Originator Doc Code,Full,761225.16,0.035
+1030006057,Income Verification,Two Years,761226.16,0.036
+1030006057,Asset Verification,Two Months,761227.16,0.037
+1030006720,useful data --> useful data -->,,493805.21,0.0405
+1030006720,Primary Servicer,1000383,493806.21,0.0415
+1030006720,ServicingFee %,0.0025,493807.21,0.0425
+1030006720,ServicingFee? Flatdollar,,493808.21,0.0435
+1030006720,ServicingAdvance Methodology,,493809.21,0.0445
+1030006720,Originator,9999999,493810.21,0.0455
+1030006720,Loan Group,Group 1,493811.21,0.0465
+1030006720,Amortization Type,1,493812.21,0.0375
+1030006720,Lien Position,1,493813.21,0.0385
+1030006720,HELOC Indicator,0,493814.21,0.0395
+1030006720,Loan Purpose,9,493815.21,0.0405
+1030006720,Cash Out Amount,,493816.21,0.0415
+1030006720,Total Origination and Discount Points,,493817.21,0.0425
+1030006720,Covered/High Cost Loan Indicator,,493818.21,0.0435
+1030006720,Relocation Loan Indicator,,493819.21,0.0445
+1030006720,Broker Indicator,,493820.21,0.0455
+1030006720,Channel,2,493821.21,0.0465
+1030006720,Escrow Indicator,0,493822.21,0.0375
+1030006720,Senior Loan Amount(s),0,493823.21,0.0385
+1030006720,Loan Type of Most Senior Lien,,493824.21,0.0395
+1030006720,Hybrid PeriodofMost Senior Lien (inmonths),,493825.21,0.0405
+1030006720,Neg Am Limit ofMost Senior Lien,,493826.21,0.0415
+1030006720,Junior MortgageBalance,0,493827.21,0.0425
+1030006720,Origination Date ofMost Senior Lien,,493828.21,0.0435
+1030006720,Origination Date,20120920,493829.21,0.0445
+1030006720,Original LoanAmount,499000,493830.21,0.0455
+1030006720,Original InterestRate,0.0375,493831.21,0.0465
+1030006720,OriginalAmortization Term,180,493832.21,0.0375
+1030006720,Original Term toMaturity,180,493833.21,0.0385
+1030006720,First Payment Dateof Loan,20121101,493834.21,0.0395
+1030006720,Interest Type Indicator,1,493835.21,0.0405
+1030006720,Original Interest Only Term,0,493836.21,0.0415
+1030006720,Buy Down Period,0,493837.21,0.0425
+1030006720,HELOC Draw Period,,493838.21,0.0435
+1030006720,Current Loan Amount,"492,772.21",493839.21,0.0445
+1030006720,Current Payment Amount Due,3628.84,493841.21,0.0465
+1030006720,Interest Paid Through Date,20130101,493842.21,0.0375
+1030006720,Current Payment Status,0,493843.21,0.0385
+1030006720,Index Type,,493844.21,0.0395
+1030006720,ARM Look-backDays,,493845.21,0.0405
+1030006720,Gross Margin,,493846.21,0.0415
+1030006720,ARM Round Flag,,493847.21,0.0425
+1030006720,ARM Round Factor,,493848.21,0.0435
+1030006720,Initial Fixed RatePeriod,,493849.21,0.0445
+1030006720,Initial Interest RateCap (Change Up),,493850.21,0.0455
+1030006720,Initial Interest RateCap (Change Down),,493851.21,0.0465
+1030006720,Subsequent InterestRate Reset Period,,493852.21,0.0375
+1030006720,Subsequent InterestRate Cap (Change Down),,493853.21,0.0385
+1030006720,Subsequent InterestRate Cap (ChangeUp),,493854.21,0.0395
+1030006720,Lifetime MaximumRate (Ceiling),,493855.21,0.0405
+1030006720,Lifetime MinimumRate (Floor),,493856.21,0.0415
+1030006720,NegativeAmortization Limit,,493857.21,0.0425
+1030006720,Initial NegativeAmortization RecastPeriod,,493858.21,0.0435
+1030006720,SubsequentNegativeAmortization RecastPeriod,,493859.21,0.0445
+1030006720,Initial FixedPayment Period,,493860.21,0.0455
+1030006720,SubsequentPayment ResetPeriod,,493861.21,0.0465
+1030006720,Initial PeriodicPayment Cap,,493862.21,0.0375
+1030006720,SubsequentPeriodic PaymentCap,,493863.21,0.0385
+1030006720,Initial MinimumPayment ResetPeriod,,493864.21,0.0395
+1030006720,SubsequentMinimum PaymentReset Period,,493865.21,0.0405
+1030006720,Option ARMIndicator,,493866.21,0.0415
+1030006720,Options at Recast,,493867.21,0.0425
+1030006720,Initial MinimumPayment,,493868.21,0.0435
+1030006720,Current MinimumPayment,,493869.21,0.0445
+1030006720,Prepayment PenaltyCalculation,,493870.21,0.0455
+1030006720,Prepayment PenaltyType,,493871.21,0.0465
+1030006720,Prepayment PenaltyTotal Term,0,493872.21,0.0375
+1030006720,Prepayment PenaltyHard Term,,493873.21,0.0385
+1030006720,Primary Borrower ID,261,493874.21,0.0395
+1030006720,Number ofMortgagedProperties,1,493875.21,0.0405
+1030006720,Total Number ofBorrowers,,493876.21,0.0415
+1030006720,Self-employmentFlag,0,493877.21,0.0425
+1030006720,Current ?Other?Monthly Payment,,493878.21,0.0435
+1030006720,Length ofEmployment:Borrower,1,493879.21,0.0445
+1030006720,Length ofEmployment: Co-Borrower,6,493880.21,0.0455
+1030006720,Years in Home,6,493881.21,0.0465
+1030006720,FICO Model Used,1,493882.21,0.0375
+1030006720,Most Recent FICODate,,493883.21,0.0385
+1030006720,Primary WageEarner OriginalFICO: Equifax,,493884.21,0.0395
+1030006720,Primary WageEarner OriginalFICO: Experian,,493885.21,0.0405
+1030006720,Primary WageEarner OriginalFICO: TransUnion,,493886.21,0.0415
+1030006720,Secondary WageEarner OriginalFICO: Equifax,,493887.21,0.0425
+1030006720,Secondary WageEarner OriginalFICO: Experian,,493888.21,0.0435
+1030006720,Secondary WageEarner OriginalFICO: TransUnion,,493889.21,0.0445
+1030006720,OriginalPrimary BorrowerFICO,755,493890.21,0.0455
+1030006720,Most RecentPrimary BorrowerFICO,,493891.21,0.0465
+1030006720,Most Recent Co-Borrower FICO,,493892.21,0.0375
+1030006720,Most Recent FICOMethod,,493893.21,0.0385
+1030006720,VantageScore:Primary Borrower,,493894.21,0.0395
+1030006720,VantageScore: Co-Borrower,,493895.21,0.0405
+1030006720,Most RecentVantageScoreMethod,,493896.21,0.0415
+1030006720,VantageScore Date,,493897.21,0.0425
+1030006720,Credit Report:Longest Trade Line,,493898.21,0.0435
+1030006720,Credit Report:Maximum TradeLine,,493899.21,0.0445
+1030006720,Credit Report:Number of TradeLines,,493900.21,0.0455
+1030006720,Credit Line UsageRatio,,493901.21,0.0465
+1030006720,Most Recent 12-month Pay History,0,493902.21,0.0375
+1030006720,Months Bankruptcy,,493903.21,0.0385
+1030006720,Months Foreclosure,,493904.21,0.0395
+1030006720,Primary BorrowerWage Income,11030.79,493905.21,0.0405
+1030006720,Co-Borrower WageIncome,2228.3,493906.21,0.0415
+1030006720,Primary BorrowerOther Income,0,493907.21,0.0425
+1030006720,Co-Borrower OtherIncome,0,493908.21,0.0435
+1030006720,All Borrower WageIncome,13259.09,493909.21,0.0445
+1030006720,All Borrower TotalIncome,13259.09,493910.21,0.0455
+1030006720,4506-T Indicator,1,493911.21,0.0465
+1030006720,Borrower IncomeVerification Level,5,493912.21,0.0375
+1030006720,Co-BorrowerIncome Verification,,493913.21,0.0385
+1030006720,BorrowerEmploymentVerification,3,493914.21,0.0395
+1030006720,Co-BorrowerEmploymentVerification,,493915.21,0.0405
+1030006720,Borrower AssetVerification,4,493916.21,0.0415
+1030006720,Co-Borrower AssetVerification,,493917.21,0.0425
+1030006720,Liquid / CashReserves,92527.8,493918.21,0.0435
+1030006720,Monthly Debt AllBorrowers,5554.35,493919.21,0.0445
+1030006720,Originator DTI,0.418909,493920.21,0.0455
+1030006720,Fully Indexed Rate,,493921.21,0.0465
+1030006720,QualificationMethod,,493922.21,0.0375
+1030006720,Percentage of DownPayment fromBorrower OwnFunds,,493923.21,0.0385
+1030006720,City,Seattle,493924.21,0.0395
+1030006720,State,WA,493925.21,0.0405
+1030006720,Postal Code,98117,493926.21,0.0415
+1030006720,Property Type,7,493927.21,0.0425
+1030006720,Occupancy,1,493928.21,0.0435
+1030006720,Sales Price,,493929.21,0.0445
+1030006720,Original AppraisedProperty Value,885000,493930.21,0.0455
+1030006720,Original PropertyValuation Type,3,493931.21,0.0465
+1030006720,Original PropertyValuation Date,20120811,493932.21,0.0375
+1030006720,OriginalAutomated Valuation Model (AVM) Model Name,,493933.21,0.0385
+1030006720,OriginalAVM Confidence Score,,493934.21,0.0395
+1030006720,MostRecent Property Value2,,493935.21,0.0405
+1030006720,MostRecent Property Valuation Type,,493936.21,0.0415
+1030006720,MostRecent Property Valuation Date,,493937.21,0.0425
+1030006720,MostRecent AVM ModelName,,493938.21,0.0435
+1030006720,MostRecent AVM Confidence Score,,493939.21,0.0445
+1030006720,OriginalCLTV,0.5638,493940.21,0.0455
+1030006720,OriginalLTV,0.5638,493941.21,0.0465
+1030006720,OriginalPledged Assets,0,493942.21,0.0375
+1030006720,MortgageInsurance CompanyName,0,493943.21,0.0385
+1030006720,Mortgage Insurance Percent,0,493944.21,0.0395
+1030006720,MI: Lender orBorrower Paid?,,493945.21,0.0405
+1030006720,Pool Insurance Co.Name,,493946.21,0.0415
+1030006720,Pool Insurance StopLoss %,,493947.21,0.0425
+1030006720,MI CertificateNumber,,493948.21,0.0435
+1030006720,Updated DTI(Front-end),,493949.21,0.0445
+1030006720,Updated DTI(Back-end),,493950.21,0.0455
+1030006720,ModificationEffective PaymentDate,,493951.21,0.0465
+1030006720,Total CapitalizedAmount,,493952.21,0.0375
+1030006720,Total DeferredAmount,,493953.21,0.0385
+1030006720,Pre- ModificationInterest (Note) Rate,,493954.21,0.0395
+1030006720,Pre- Modification P&IPayment,,493955.21,0.0405
+1030006720,Pre- ModificationInitial Interest RateChange DownwardCap,,493956.21,0.0415
+1030006720,Pre- ModificationSubsequent InterestRate Cap,,493957.21,0.0425
+1030006720,Pre- ModificationNext Interest RateChange Date,,493958.21,0.0435
+1030006720,Pre- Modification I/OTerm,,493959.21,0.0445
+1030006720,Forgiven PrincipalAmount,,493960.21,0.0455
+1030006720,Forgiven InterestAmount,,493961.21,0.0465
+1030006720,Number ofModifications,,493962.21,0.0375
+1030006720,Cash To/From Brrw at Closing,,493963.21,0.0385
+1030006720,Brrw - Yrs at in Industry,16,493964.21,0.0395
+1030006720,CoBrrw - Yrs at in Industry,6,493965.21,0.0405
+1030006720,Junior Mortgage Drawn Amount,0,493966.21,0.0415
+1030006720,Maturity Date,20271001,493967.21,0.0425
+1030006720,PrimaryBorrower Wage Income (Salary),11030.79,493968.21,0.0435
+1030006720,PrimaryBorrower Wage Income (Bonus),0,493969.21,0.0445
+1030006720,PrimaryBorrower Wage Income (Commission),0,493970.21,0.0455
+1030006720,Co-Borrower Wage Income (Salary),2228.3,493971.21,0.0465
+1030006720,Co-Borrower Wage Income (Bonus),0,493972.21,0.0375
+1030006720,Co-Borrower Wage Income (Commission),0,493973.21,0.0385
+1030006720,Originator Doc Code,Full,493974.21,0.0395
+1030006720,Income Verification,Two Years,493975.21,0.0405
+1030006720,Asset Verification,Two Months,493976.21,0.0415
+1030006758,useful data --> useful data -->,,790733.78,0.0375
+1030006758,Primary Servicer,1000383,790734.78,0.0385
+1030006758,ServicingFee %,0.0025,790735.78,0.0395
+1030006758,ServicingFee? Flatdollar,,790736.78,0.0405
+1030006758,ServicingAdvance Methodology,,790737.78,0.0415
+1030006758,Originator,9999999,790738.78,0.0325
+1030006758,Loan Group,Group 1,790739.78,0.0335
+1030006758,Amortization Type,1,790740.78,0.0345
+1030006758,Lien Position,1,790741.78,0.0355
+1030006758,HELOC Indicator,0,790742.78,0.0365
+1030006758,Loan Purpose,9,790743.78,0.0375
+1030006758,Cash Out Amount,,790744.78,0.0385
+1030006758,Total Origination and Discount Points,,790745.78,0.0395
+1030006758,Covered/High Cost Loan Indicator,,790746.78,0.0405
+1030006758,Relocation Loan Indicator,,790747.78,0.0415
+1030006758,Broker Indicator,,790748.78,0.0325
+1030006758,Channel,2,790749.78,0.0335
+1030006758,Escrow Indicator,0,790750.78,0.0345
+1030006758,Senior Loan Amount(s),0,790751.78,0.0355
+1030006758,Loan Type of Most Senior Lien,,790752.78,0.0365
+1030006758,Hybrid PeriodofMost Senior Lien (inmonths),,790753.78,0.0375
+1030006758,Neg Am Limit ofMost Senior Lien,,790754.78,0.0385
+1030006758,Junior MortgageBalance,0,790755.78,0.0395
+1030006758,Origination Date ofMost Senior Lien,,790756.78,0.0405
+1030006758,Origination Date,20120925,790757.78,0.0415
+1030006758,Original LoanAmount,800000,790758.78,0.0325
+1030006758,Original InterestRate,0.0325,790759.78,0.0335
+1030006758,OriginalAmortization Term,180,790760.78,0.0345
+1030006758,Original Term toMaturity,180,790761.78,0.0355
+1030006758,First Payment Dateof Loan,20121101,790762.78,0.0365
+1030006758,Interest Type Indicator,1,790763.78,0.0375
+1030006758,Original Interest Only Term,0,790764.78,0.0385
+1030006758,Buy Down Period,0,790765.78,0.0395
+1030006758,HELOC Draw Period,,790766.78,0.0405
+1030006758,Current Loan Amount,"789,528.78",790767.78,0.0415
+1030006758,Current Payment Amount Due,5621.35,790769.78,0.0335
+1030006758,Interest Paid Through Date,20130101,790770.78,0.0345
+1030006758,Current Payment Status,0,790771.78,0.0355
+1030006758,Index Type,,790772.78,0.0365
+1030006758,ARM Look-backDays,,790773.78,0.0375
+1030006758,Gross Margin,,790774.78,0.0385
+1030006758,ARM Round Flag,,790775.78,0.0395
+1030006758,ARM Round Factor,,790776.78,0.0405
+1030006758,Initial Fixed RatePeriod,,790777.78,0.0415
+1030006758,Initial Interest RateCap (Change Up),,790778.78,0.0325
+1030006758,Initial Interest RateCap (Change Down),,790779.78,0.0335
+1030006758,Subsequent InterestRate Reset Period,,790780.78,0.0345
+1030006758,Subsequent InterestRate Cap (Change Down),,790781.78,0.0355
+1030006758,Subsequent InterestRate Cap (ChangeUp),,790782.78,0.0365
+1030006758,Lifetime MaximumRate (Ceiling),,790783.78,0.0375
+1030006758,Lifetime MinimumRate (Floor),,790784.78,0.0385
+1030006758,NegativeAmortization Limit,,790785.78,0.0395
+1030006758,Initial NegativeAmortization RecastPeriod,,790786.78,0.0405
+1030006758,SubsequentNegativeAmortization RecastPeriod,,790787.78,0.0415
+1030006758,Initial FixedPayment Period,,790788.78,0.0325
+1030006758,SubsequentPayment ResetPeriod,,790789.78,0.0335
+1030006758,Initial PeriodicPayment Cap,,790790.78,0.0345
+1030006758,SubsequentPeriodic PaymentCap,,790791.78,0.0355
+1030006758,Initial MinimumPayment ResetPeriod,,790792.78,0.0365
+1030006758,SubsequentMinimum PaymentReset Period,,790793.78,0.0375
+1030006758,Option ARMIndicator,,790794.78,0.0385
+1030006758,Options at Recast,,790795.78,0.0395
+1030006758,Initial MinimumPayment,,790796.78,0.0405
+1030006758,Current MinimumPayment,,790797.78,0.0415
+1030006758,Prepayment PenaltyCalculation,,790798.78,0.0325
+1030006758,Prepayment PenaltyType,,790799.78,0.0335
+1030006758,Prepayment PenaltyTotal Term,0,790800.78,0.0345
+1030006758,Prepayment PenaltyHard Term,,790801.78,0.0355
+1030006758,Primary Borrower ID,373,790802.78,0.0365
+1030006758,Number ofMortgagedProperties,3,790803.78,0.0375
+1030006758,Total Number ofBorrowers,,790804.78,0.0385
+1030006758,Self-employmentFlag,1,790805.78,0.0395
+1030006758,Current ?Other?Monthly Payment,,790806.78,0.0405
+1030006758,Length ofEmployment:Borrower,15,790807.78,0.0415
+1030006758,Length ofEmployment: Co-Borrower,,790808.78,0.0325
+1030006758,Years in Home,3,790809.78,0.0335
+1030006758,FICO Model Used,1,790810.78,0.0345
+1030006758,Most Recent FICODate,,790811.78,0.0355
+1030006758,Primary WageEarner OriginalFICO: Equifax,,790812.78,0.0365
+1030006758,Primary WageEarner OriginalFICO: Experian,,790813.78,0.0375
+1030006758,Primary WageEarner OriginalFICO: TransUnion,,790814.78,0.0385
+1030006758,Secondary WageEarner OriginalFICO: Equifax,,790815.78,0.0395
+1030006758,Secondary WageEarner OriginalFICO: Experian,,790816.78,0.0405
+1030006758,Secondary WageEarner OriginalFICO: TransUnion,,790817.78,0.0415
+1030006758,OriginalPrimary BorrowerFICO,786,790818.78,0.0325
+1030006758,Most RecentPrimary BorrowerFICO,,790819.78,0.0335
+1030006758,Most Recent Co-Borrower FICO,,790820.78,0.0345
+1030006758,Most Recent FICOMethod,,790821.78,0.0355
+1030006758,VantageScore:Primary Borrower,,790822.78,0.0365
+1030006758,VantageScore: Co-Borrower,,790823.78,0.0375
+1030006758,Most RecentVantageScoreMethod,,790824.78,0.0385
+1030006758,VantageScore Date,,790825.78,0.0395
+1030006758,Credit Report:Longest Trade Line,,790826.78,0.0405
+1030006758,Credit Report:Maximum TradeLine,,790827.78,0.0415
+1030006758,Credit Report:Number of TradeLines,,790828.78,0.0325
+1030006758,Credit Line UsageRatio,,790829.78,0.0335
+1030006758,Most Recent 12-month Pay History,0,790830.78,0.0345
+1030006758,Months Bankruptcy,,790831.78,0.0355
+1030006758,Months Foreclosure,,790832.78,0.0365
+1030006758,Primary BorrowerWage Income,22253.77,790833.78,0.0375
+1030006758,Co-Borrower WageIncome,0,790834.78,0.0385
+1030006758,Primary BorrowerOther Income,0,790835.78,0.0395
+1030006758,Co-Borrower OtherIncome,0,790836.78,0.0405
+1030006758,All Borrower WageIncome,22253.77,790837.78,0.0415
+1030006758,All Borrower TotalIncome,22253.77,790838.78,0.0325
+1030006758,4506-T Indicator,1,790839.78,0.0335
+1030006758,Borrower IncomeVerification Level,5,790840.78,0.0345
+1030006758,Co-BorrowerIncome Verification,,790841.78,0.0355
+1030006758,BorrowerEmploymentVerification,3,790842.78,0.0365
+1030006758,Co-BorrowerEmploymentVerification,,790843.78,0.0375
+1030006758,Borrower AssetVerification,4,790844.78,0.0385
+1030006758,Co-Borrower AssetVerification,,790845.78,0.0395
+1030006758,Liquid / CashReserves,323064.33,790846.78,0.0405
+1030006758,Monthly Debt AllBorrowers,7755.17,790847.78,0.0415
+1030006758,Originator DTI,0.348488,790848.78,0.0325
+1030006758,Fully Indexed Rate,,790849.78,0.0335
+1030006758,QualificationMethod,,790850.78,0.0345
+1030006758,Percentage of DownPayment fromBorrower OwnFunds,,790851.78,0.0355
+1030006758,City,Seattle,790852.78,0.0365
+1030006758,State,WA,790853.78,0.0375
+1030006758,Postal Code,98112,790854.78,0.0385
+1030006758,Property Type,7,790855.78,0.0395
+1030006758,Occupancy,1,790856.78,0.0405
+1030006758,Sales Price,,790857.78,0.0415
+1030006758,Original AppraisedProperty Value,1400000,790858.78,0.0325
+1030006758,Original PropertyValuation Type,3,790859.78,0.0335
+1030006758,Original PropertyValuation Date,20120912,790860.78,0.0345
+1030006758,OriginalAutomated Valuation Model (AVM) Model Name,,790861.78,0.0355
+1030006758,OriginalAVM Confidence Score,,790862.78,0.0365
+1030006758,MostRecent Property Value2,,790863.78,0.0375
+1030006758,MostRecent Property Valuation Type,,790864.78,0.0385
+1030006758,MostRecent Property Valuation Date,,790865.78,0.0395
+1030006758,MostRecent AVM ModelName,,790866.78,0.0405
+1030006758,MostRecent AVM Confidence Score,,790867.78,0.0415
+1030006758,OriginalCLTV,0.5714,790868.78,0.0325
+1030006758,OriginalLTV,0.5714,790869.78,0.0335
+1030006758,OriginalPledged Assets,0,790870.78,0.0345
+1030006758,MortgageInsurance CompanyName,0,790871.78,0.0355
+1030006758,Mortgage Insurance Percent,0,790872.78,0.0365
+1030006758,MI: Lender orBorrower Paid?,,790873.78,0.0375
+1030006758,Pool Insurance Co.Name,,790874.78,0.0385
+1030006758,Pool Insurance StopLoss %,,790875.78,0.0395
+1030006758,MI CertificateNumber,,790876.78,0.0405
+1030006758,Updated DTI(Front-end),,790877.78,0.0415
+1030006758,Updated DTI(Back-end),,790878.78,0.0325
+1030006758,ModificationEffective PaymentDate,,790879.78,0.0335
+1030006758,Total CapitalizedAmount,,790880.78,0.0345
+1030006758,Total DeferredAmount,,790881.78,0.0355
+1030006758,Pre- ModificationInterest (Note) Rate,,790882.78,0.0365
+1030006758,Pre- Modification P&IPayment,,790883.78,0.0375
+1030006758,Pre- ModificationInitial Interest RateChange DownwardCap,,790884.78,0.0385
+1030006758,Pre- ModificationSubsequent InterestRate Cap,,790885.78,0.0395
+1030006758,Pre- ModificationNext Interest RateChange Date,,790886.78,0.0405
+1030006758,Pre- Modification I/OTerm,,790887.78,0.0415
+1030006758,Forgiven PrincipalAmount,,790888.78,0.0325
+1030006758,Forgiven InterestAmount,,790889.78,0.0335
+1030006758,Number ofModifications,,790890.78,0.0345
+1030006758,Cash To/From Brrw at Closing,,790891.78,0.0355
+1030006758,Brrw - Yrs at in Industry,15,790892.78,0.0365
+1030006758,CoBrrw - Yrs at in Industry,,790893.78,0.0375
+1030006758,Junior Mortgage Drawn Amount,0,790894.78,0.0385
+1030006758,Maturity Date,20271001,790895.78,0.0395
+1030006758,PrimaryBorrower Wage Income (Salary),22253.77,790896.78,0.0405
+1030006758,PrimaryBorrower Wage Income (Bonus),0,790897.78,0.0415
+1030006758,PrimaryBorrower Wage Income (Commission),0,790898.78,0.0325
+1030006758,Co-Borrower Wage Income (Salary),0,790899.78,0.0335
+1030006758,Co-Borrower Wage Income (Bonus),0,790900.78,0.0345
+1030006758,Co-Borrower Wage Income (Commission),0,790901.78,0.0355
+1030006758,Originator Doc Code,Full,790902.78,0.0365
+1030006758,Income Verification,Two Years,790903.78,0.0375
+1030006758,Asset Verification,Two Months,790904.78,0.0385
+1050004792,useful data --> useful data -->,,529138.78,0.04325
+1050004792,Primary Servicer,1000383,529139.78,0.04425
+1050004792,ServicingFee %,0.0025,529140.78,0.04525
+1050004792,ServicingFee? Flatdollar,,529141.78,0.03625
+1050004792,ServicingAdvance Methodology,,529142.78,0.03725
+1050004792,Originator,1000536,529143.78,0.03825
+1050004792,Loan Group,Group 1,529144.78,0.03925
+1050004792,Amortization Type,1,529145.78,0.04025
+1050004792,Lien Position,1,529146.78,0.04125
+1050004792,HELOC Indicator,0,529147.78,0.04225
+1050004792,Loan Purpose,9,529148.78,0.04325
+1050004792,Cash Out Amount,,529149.78,0.04425
+1050004792,Total Origination and Discount Points,,529150.78,0.04525
+1050004792,Covered/High Cost Loan Indicator,,529151.78,0.03625
+1050004792,Relocation Loan Indicator,,529152.78,0.03725
+1050004792,Broker Indicator,,529153.78,0.03825
+1050004792,Channel,1,529154.78,0.03925
+1050004792,Escrow Indicator,4,529155.78,0.04025
+1050004792,Senior Loan Amount(s),0,529156.78,0.04125
+1050004792,Loan Type of Most Senior Lien,,529157.78,0.04225
+1050004792,Hybrid PeriodofMost Senior Lien (inmonths),,529158.78,0.04325
+1050004792,Neg Am Limit ofMost Senior Lien,,529159.78,0.04425
+1050004792,Junior MortgageBalance,0,529160.78,0.04525
+1050004792,Origination Date ofMost Senior Lien,,529161.78,0.03625
+1050004792,Origination Date,20120906,529162.78,0.03725
+1050004792,Original LoanAmount,534500,529163.78,0.03825
+1050004792,Original InterestRate,0.03625,529164.78,0.03925
+1050004792,OriginalAmortization Term,180,529165.78,0.04025
+1050004792,Original Term toMaturity,180,529166.78,0.04125
+1050004792,First Payment Dateof Loan,20121101,529167.78,0.04225
+1050004792,Interest Type Indicator,1,529168.78,0.04325
+1050004792,Original Interest Only Term,0,529169.78,0.04425
+1050004792,Buy Down Period,0,529170.78,0.04525
+1050004792,HELOC Draw Period,,529171.78,0.03625
+1050004792,Current Loan Amount,"527,761.78",529172.78,0.03725
+1050004792,Current Payment Amount Due,3853.94,529174.78,0.03925
+1050004792,Interest Paid Through Date,20130101,529175.78,0.04025
+1050004792,Current Payment Status,0,529176.78,0.04125
+1050004792,Index Type,,529177.78,0.04225
+1050004792,ARM Look-backDays,,529178.78,0.04325
+1050004792,Gross Margin,,529179.78,0.04425
+1050004792,ARM Round Flag,,529180.78,0.04525
+1050004792,ARM Round Factor,,529181.78,0.03625
+1050004792,Initial Fixed RatePeriod,,529182.78,0.03725
+1050004792,Initial Interest RateCap (Change Up),,529183.78,0.03825
+1050004792,Initial Interest RateCap (Change Down),,529184.78,0.03925
+1050004792,Subsequent InterestRate Reset Period,,529185.78,0.04025
+1050004792,Subsequent InterestRate Cap (Change Down),,529186.78,0.04125
+1050004792,Subsequent InterestRate Cap (ChangeUp),,529187.78,0.04225
+1050004792,Lifetime MaximumRate (Ceiling),,529188.78,0.04325
+1050004792,Lifetime MinimumRate (Floor),,529189.78,0.04425
+1050004792,NegativeAmortization Limit,,529190.78,0.04525
+1050004792,Initial NegativeAmortization RecastPeriod,,529191.78,0.03625
+1050004792,SubsequentNegativeAmortization RecastPeriod,,529192.78,0.03725
+1050004792,Initial FixedPayment Period,,529193.78,0.03825
+1050004792,SubsequentPayment ResetPeriod,,529194.78,0.03925
+1050004792,Initial PeriodicPayment Cap,,529195.78,0.04025
+1050004792,SubsequentPeriodic PaymentCap,,529196.78,0.04125
+1050004792,Initial MinimumPayment ResetPeriod,,529197.78,0.04225
+1050004792,SubsequentMinimum PaymentReset Period,,529198.78,0.04325
+1050004792,Option ARMIndicator,,529199.78,0.04425
+1050004792,Options at Recast,,529200.78,0.04525
+1050004792,Initial MinimumPayment,,529201.78,0.03625
+1050004792,Current MinimumPayment,,529202.78,0.03725
+1050004792,Prepayment PenaltyCalculation,,529203.78,0.03825
+1050004792,Prepayment PenaltyType,,529204.78,0.03925
+1050004792,Prepayment PenaltyTotal Term,0,529205.78,0.04025
+1050004792,Prepayment PenaltyHard Term,,529206.78,0.04125
+1050004792,Primary Borrower ID,340,529207.78,0.04225
+1050004792,Number ofMortgagedProperties,4,529208.78,0.04325
+1050004792,Total Number ofBorrowers,,529209.78,0.04425
+1050004792,Self-employmentFlag,1,529210.78,0.04525
+1050004792,Current ?Other?Monthly Payment,,529211.78,0.03625
+1050004792,Length ofEmployment:Borrower,28,529212.78,0.03725
+1050004792,Length ofEmployment: Co-Borrower,13,529213.78,0.03825
+1050004792,Years in Home,5,529214.78,0.03925
+1050004792,FICO Model Used,1,529215.78,0.04025
+1050004792,Most Recent FICODate,,529216.78,0.04125
+1050004792,Primary WageEarner OriginalFICO: Equifax,,529217.78,0.04225
+1050004792,Primary WageEarner OriginalFICO: Experian,,529218.78,0.04325
+1050004792,Primary WageEarner OriginalFICO: TransUnion,,529219.78,0.04425
+1050004792,Secondary WageEarner OriginalFICO: Equifax,,529220.78,0.04525
+1050004792,Secondary WageEarner OriginalFICO: Experian,,529221.78,0.03625
+1050004792,Secondary WageEarner OriginalFICO: TransUnion,,529222.78,0.03725
+1050004792,OriginalPrimary BorrowerFICO,713,529223.78,0.03825
+1050004792,Most RecentPrimary BorrowerFICO,,529224.78,0.03925
+1050004792,Most Recent Co-Borrower FICO,,529225.78,0.04025
+1050004792,Most Recent FICOMethod,,529226.78,0.04125
+1050004792,VantageScore:Primary Borrower,,529227.78,0.04225
+1050004792,VantageScore: Co-Borrower,,529228.78,0.04325
+1050004792,Most RecentVantageScoreMethod,,529229.78,0.04425
+1050004792,VantageScore Date,,529230.78,0.04525
+1050004792,Credit Report:Longest Trade Line,,529231.78,0.03625
+1050004792,Credit Report:Maximum TradeLine,,529232.78,0.03725
+1050004792,Credit Report:Number of TradeLines,,529233.78,0.03825
+1050004792,Credit Line UsageRatio,,529234.78,0.03925
+1050004792,Most Recent 12-month Pay History,0,529235.78,0.04025
+1050004792,Months Bankruptcy,,529236.78,0.04125
+1050004792,Months Foreclosure,,529237.78,0.04225
+1050004792,Primary BorrowerWage Income,14443.67,529238.78,0.04325
+1050004792,Co-Borrower WageIncome,3375,529239.78,0.04425
+1050004792,Primary BorrowerOther Income,0,529240.78,0.04525
+1050004792,Co-Borrower OtherIncome,0,529241.78,0.03625
+1050004792,All Borrower WageIncome,17818.67,529242.78,0.03725
+1050004792,All Borrower TotalIncome,17818.67,529243.78,0.03825
+1050004792,4506-T Indicator,1,529244.78,0.03925
+1050004792,Borrower IncomeVerification Level,5,529245.78,0.04025
+1050004792,Co-BorrowerIncome Verification,,529246.78,0.04125
+1050004792,BorrowerEmploymentVerification,3,529247.78,0.04225
+1050004792,Co-BorrowerEmploymentVerification,,529248.78,0.04325
+1050004792,Borrower AssetVerification,4,529249.78,0.04425
+1050004792,Co-Borrower AssetVerification,,529250.78,0.04525
+1050004792,Liquid / CashReserves,139301.33,529251.78,0.03625
+1050004792,Monthly Debt AllBorrowers,7264.05,529252.78,0.03725
+1050004792,Originator DTI,0.407665,529253.78,0.03825
+1050004792,Fully Indexed Rate,,529254.78,0.03925
+1050004792,QualificationMethod,,529255.78,0.04025
+1050004792,Percentage of DownPayment fromBorrower OwnFunds,,529256.78,0.04125
+1050004792,City,WOODINVILLE,529257.78,0.04225
+1050004792,State,WA,529258.78,0.04325
+1050004792,Postal Code,98077,529259.78,0.04425
+1050004792,Property Type,7,529260.78,0.04525
+1050004792,Occupancy,1,529261.78,0.03625
+1050004792,Sales Price,,529262.78,0.03725
+1050004792,Original AppraisedProperty Value,820000,529263.78,0.03825
+1050004792,Original PropertyValuation Type,3,529264.78,0.03925
+1050004792,Original PropertyValuation Date,20120703,529265.78,0.04025
+1050004792,OriginalAutomated Valuation Model (AVM) Model Name,,529266.78,0.04125
+1050004792,OriginalAVM Confidence Score,,529267.78,0.04225
+1050004792,MostRecent Property Value2,,529268.78,0.04325
+1050004792,MostRecent Property Valuation Type,,529269.78,0.04425
+1050004792,MostRecent Property Valuation Date,,529270.78,0.04525
+1050004792,MostRecent AVM ModelName,,529271.78,0.03625
+1050004792,MostRecent AVM Confidence Score,,529272.78,0.03725
+1050004792,OriginalCLTV,0.6518,529273.78,0.03825
+1050004792,OriginalLTV,0.6518,529274.78,0.03925
+1050004792,OriginalPledged Assets,0,529275.78,0.04025
+1050004792,MortgageInsurance CompanyName,0,529276.78,0.04125
+1050004792,Mortgage Insurance Percent,0,529277.78,0.04225
+1050004792,MI: Lender orBorrower Paid?,,529278.78,0.04325
+1050004792,Pool Insurance Co.Name,,529279.78,0.04425
+1050004792,Pool Insurance StopLoss %,,529280.78,0.04525
+1050004792,MI CertificateNumber,,529281.78,0.03625
+1050004792,Updated DTI(Front-end),,529282.78,0.03725
+1050004792,Updated DTI(Back-end),,529283.78,0.03825
+1050004792,ModificationEffective PaymentDate,,529284.78,0.03925
+1050004792,Total CapitalizedAmount,,529285.78,0.04025
+1050004792,Total DeferredAmount,,529286.78,0.04125
+1050004792,Pre- ModificationInterest (Note) Rate,,529287.78,0.04225
+1050004792,Pre- Modification P&IPayment,,529288.78,0.04325
+1050004792,Pre- ModificationInitial Interest RateChange DownwardCap,,529289.78,0.04425
+1050004792,Pre- ModificationSubsequent InterestRate Cap,,529290.78,0.04525
+1050004792,Pre- ModificationNext Interest RateChange Date,,529291.78,0.03625
+1050004792,Pre- Modification I/OTerm,,529292.78,0.03725
+1050004792,Forgiven PrincipalAmount,,529293.78,0.03825
+1050004792,Forgiven InterestAmount,,529294.78,0.03925
+1050004792,Number ofModifications,,529295.78,0.04025
+1050004792,Cash To/From Brrw at Closing,,529296.78,0.04125
+1050004792,Brrw - Yrs at in Industry,28,529297.78,0.04225
+1050004792,CoBrrw - Yrs at in Industry,13,529298.78,0.04325
+1050004792,Junior Mortgage Drawn Amount,0,529299.78,0.04425
+1050004792,Maturity Date,20271001,529300.78,0.04525
+1050004792,PrimaryBorrower Wage Income (Salary),14443.67,529301.78,0.03625
+1050004792,PrimaryBorrower Wage Income (Bonus),0,529302.78,0.03725
+1050004792,PrimaryBorrower Wage Income (Commission),0,529303.78,0.03825
+1050004792,Co-Borrower Wage Income (Salary),3375,529304.78,0.03925
+1050004792,Co-Borrower Wage Income (Bonus),0,529305.78,0.04025
+1050004792,Co-Borrower Wage Income (Commission),0,529306.78,0.hi04125
+1050004792,Originator Doc Code,Full,529307.78,0.04225
+1050004792,Income Verification,Two Years,529308.78hi,0.04325
+1050004792,Asset Verification,Two Months,529309.78,0.04425there

@@ -39,9 +39,6 @@ libzsv works generally as follows:
 See the source for a [simple example that counts rows](test/count.js) or
 [another simple example that outputs row data as json](test/select_all.js)
 
-THIS PACKAGE IS STILL IN ALPHA. THE API USED IN THE EXAMPLES IS EXPECTED TO
-CHANGE.
-
 ### API
 
 Note: libzsv supports a wide range of options; not all are yet exposed in this

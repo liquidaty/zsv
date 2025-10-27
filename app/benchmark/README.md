@@ -1,8 +1,7 @@
-# zsv benchmarks
+# Benchmarks
 
 ## Summary
 
-- zsv/lib is still in alpha development. Everything here is preliminary.
 - These benchmarks are enough to be suggestive but not enough to be conclusive.
   They were run on a limited variety of hardware, OS platforms and build
   options. YMMV depending on OS, processor and compilation flags/options
@@ -75,8 +74,8 @@ The following utilities were compared:
 
 - `xsv` (0.13.0): installed via brew
 - `tsv-utils` (v2.2.1): installed via download of pre-built PGO-optimized binaries
-- `mlr` (5.10.2): installed via brew (not shown in graph - very slow compared to others)
-- `zsv` (alpha): built from source using the default `configure` settings
+- `mlr` (5.10.2): installed via brew (not shown in graph due to very slow performance)
+- `zsv`: built from source using the default `configure` settings
 - `csvcut` (1.0.6): (not shown in graph - very slow compared to others)
 
 ## Further notes

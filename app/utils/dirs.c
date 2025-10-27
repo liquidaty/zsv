@@ -13,21 +13,26 @@
 #include <dirent.h>
 #include <errno.h>
 #include <zsv/utils/os.h>
+#ifndef ZSV_NO_JQ
 #include <zsv/utils/json.h>
 #include <zsv/utils/jq.h>
+#endif
 #include <zsv/utils/dirs.h>
 #include <zsv/utils/string.h>
 #include <unistd.h> // unlink
 #include <sys/stat.h>
+#ifndef ZSV_NO_JQ
 #include <yajl_helper/yajl_helper.h>
+#endif
 
 #if defined(_WIN32)
 #include <windows.h>
+#include "win/io.c"
 #endif
 
 /**
  * Most of these functions require the caller to provide a buffer, in which case
- * the buffer size should be FILENAME_MAX
+ * the buffer size should be at least FILENAME_MAX
  */
 
 static size_t chop_slash(char *buff, size_t len) {
@@ -74,26 +79,60 @@ size_t zsv_get_config_dir(char *buff, size_t buffsize, const char *prefix) {
  * Check if a directory exists
  * return true (non-zero) or false (zero)
  */
+#ifdef WIN32
+#include "win/dir_exists_longpath.c"
+#endif
 int zsv_dir_exists(const char *path) {
+#ifdef WIN32
+  if (strlen(path) >= MAX_PATH)
+    return zsv_dir_exists_winlp(path);
+
+  // TO DO: support win long filepath prefix
+  // TO DO: work properly if dir exists but we don't have permission
+  wchar_t wpath[MAX_PATH];
+  mbstowcs(wpath, path, MAX_PATH);
+
+  DWORD attrs = GetFileAttributesW(wpath);
+  if (attrs == INVALID_FILE_ATTRIBUTES)
+    // Could check GetLastError() to see if it's a permission issue vs. not-found
+    return 0;
+
+  // If it has the directory attribute, it's presumably a directory
+  return (attrs & FILE_ATTRIBUTE_DIRECTORY) != 0;
+
+#else
   struct stat path_stat;
   if (!stat(path, &path_stat))
     return S_ISDIR(path_stat.st_mode);
   return 0;
+#endif
 }
 
 /**
  * Make a directory, as well as any intermediate dirs
  * return zero on success
  */
-int zsv_mkdirs(const char *path, char path_is_filename) {
-  char *p = NULL;
-  int rc = 0;
+#ifdef WIN32
+#include "win/mkdir_longpath.c"
+#define zsv_mkdir zsv_mkdir_winlp
+#else
+#define zsv_mkdir mkdir
+#endif
 
+int zsv_mkdirs(const char *path, char path_is_filename) {
+  // int rc = 0;
+  if (!path || !*path)
+    return -1;
   size_t len = strlen(path);
-  if (len < 1 || len > FILENAME_MAX)
+  if (len < 1)
     return -1;
 
   char *tmp = strdup(path);
+  if (!tmp) {
+    perror(path);
+    return -1;
+  }
+
   if (len && strchr("/\\", tmp[len - 1]))
     tmp[--len] = 0;
 
@@ -113,6 +152,7 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
         offset = path_end - tmp;
       else {
         fprintf(stderr, "Invalid path: %s\n", path);
+        free(tmp);
         return -1;
       }
     }
@@ -124,36 +164,57 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
   offset = 1;
 #endif
 
-  for (p = tmp + offset; !rc && *p; p++)
+  // TO DO: first find the longest subdir that exists, in *reverse* order so as
+  // to properly handle case where no access to intermediate dir,
+  // and then only start mkdir from there
+  int last_dir_exists_rc = 0;
+  int last_errno = -1;
+  for (char *p = tmp + offset; /* !rc && */ *p; p++) {
     if (strchr("/\\", *p)) {
       char tmp_c = p[1];
       p[0] = FILESLASH;
       p[1] = '\0';
-      if (*tmp && !zsv_dir_exists(tmp) &&
-          mkdir(tmp
+      if (*tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp))) {
+        if (zsv_mkdir(tmp
 #ifndef WIN32
-                ,
-                S_IRWXU
+                      ,
+                      S_IRWXU
 #endif
-                )) {
-        rc = -1;
-        fprintf(stderr, "Error creating directory: ");
-        perror(tmp);
-      } else
-        p[1] = tmp_c;
+                      )) {
+          if (errno == EEXIST)
+            last_dir_exists_rc = 1;
+          else { // errno could be EEXIST if we have no permissions to an intermediate directory
+            last_errno = errno;
+            perror(tmp);
+            //          rc = -1;
+          }
+        } else
+          last_dir_exists_rc = 1;
+      }
+      p[1] = tmp_c;
     }
+  }
 
-  if (!rc && path_is_filename == 0 && *tmp && !zsv_dir_exists(tmp) &&
-      mkdir(tmp
+  if (/* !rc && */ path_is_filename == 0 && *tmp && !(last_dir_exists_rc = zsv_dir_exists(tmp))) {
+    if (zsv_mkdir(tmp
 #ifndef WIN32
-            ,
-            S_IRWXU
+                  ,
+                  S_IRWXU
 #endif
-            ))
-    rc = -1;
+                  )) {
+      if (errno == EEXIST)
+        last_dir_exists_rc = 1;
+      else {
+        last_errno = errno;
+        perror(tmp);
+        // rc = -1;
+      }
+    } else
+      last_dir_exists_rc = 1;
+  }
 
   free(tmp);
-  return rc;
+  return last_dir_exists_rc ? 0 : last_errno ? last_errno : -1;
 }
 
 #if defined(_WIN32)
@@ -260,7 +321,7 @@ static int zsv_foreach_dirent_remove(struct zsv_foreach_dirent_handle *h, size_t
   (void)(depth);
   if (!h->is_dir) { // file
     if (h->parent_and_entry) {
-      if (unlink(h->parent_and_entry)) {
+      if (zsv_remove(h->parent_and_entry)) {
         perror(h->parent_and_entry); // "Unable to remove file");
         return 1;
       }
@@ -280,6 +341,9 @@ static int zsv_foreach_dirent_remove(struct zsv_foreach_dirent_handle *h, size_t
   return 0;
 }
 
+#ifdef _WIN32
+#include "win/foreach_dirent_longpath.c"
+#else
 // return error
 static int zsv_foreach_dirent_aux(const char *dir_path, size_t depth, size_t max_depth,
                                   zsv_foreach_dirent_handler handler, void *ctx, char verbose) {
@@ -323,6 +387,7 @@ static int zsv_foreach_dirent_aux(const char *dir_path, size_t depth, size_t max
   }
   return err;
 }
+#endif
 
 int zsv_foreach_dirent(const char *dir_path, size_t max_depth, zsv_foreach_dirent_handler handler, void *ctx,
                        char verbose) {

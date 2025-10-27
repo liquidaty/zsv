@@ -11,11 +11,32 @@
 
 void zsv_perror(const char *);
 
+/**
+ * zsv_fopen(): same as normal fopen(), except on Win it also works with long filenames
+ */
 #ifndef _WIN32
-#define zsv_replace_file(src, dest) (rename((const char *)src, (const char *)dest))
-
+#define zsv_fopen fopen
 #else
+#include <stdio.h>
+FILE *zsv_fopen(const char *fname, const char *mode);
+char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_prefix);
+#endif
 
+/**
+ * zsv_remove(): same as normal remove()
+ but for files only, and on Win it also works with long filenames
+ */
+#ifndef _WIN32
+#define zsv_remove remove
+#else
+#include <stdio.h>
+int zsv_remove_winlp(const char *path_utf8);
+#define zsv_remove zsv_remove_winlp
+#endif
+
+int zsv_replace_file(const char *src, const char *dest);
+
+#ifdef _WIN32
 #include <windows.h>
 
 #ifndef ARRAY_SIZE
@@ -24,13 +45,6 @@ void zsv_perror(const char *);
 
 void zsv_win_to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len);
 
-int zsv_replace_file(const void *src, const void *dest);
+#endif // #ifdef _WIN32
 
-/**
- * Windows does not have perror(), so we define our own printLastError()
-void zsv_win_printLastError(const char *prefix);
- */
-
-#endif
-
-#endif
+#endif // ZSV_OS_H

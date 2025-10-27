@@ -27,6 +27,7 @@ enum {
   zsvsheet_builtin_proc_filter,
   zsvsheet_builtin_proc_find,
   zsvsheet_builtin_proc_find_next,
+  zsvsheet_builtin_proc_goto_column,
   zsvsheet_builtin_proc_open_file,
   zsvsheet_builtin_proc_resize,
   zsvsheet_builtin_proc_prompt,
