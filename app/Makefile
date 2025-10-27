@@ -304,7 +304,7 @@ SQLITE_SRC=${THIS_MAKEFILE_DIR}/external/sqlite3/sqlite3*.c
 SQLITE_EXT=${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o
 SQLITE_EXT_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/sqlite3
 
-SQL_INTERNAL_OBJECT=${CLI_OBJ_PFX}sql_internal.o
+SQL_INTERNAL_OBJECT=${BUILD_DIR}/objs/sql_internal.o
 
 # everything uses prop, which in turn uses yajl and jq and json and sqlite3
 OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${BUILD_DIR}/objs/utils/json.o ${SQLITE_EXT}
@@ -391,7 +391,7 @@ ${CLEANS}: clean-%:
 .SUFFIXES:
 .SUFFIXES: .o .c .a
 
-${BUILD_DIR}/objs/utils/index.o: ${BUILD_DIR}/objs/utils/%.o : utils/%.c utils/%.h
+${BUILD_DIR}/objs/sql_internal.o ${BUILD_DIR}/objs/utils/index.o: ${BUILD_DIR}/objs/%.o: %.c %.h # ${BUILD_DIR}/objs/%.o: %.c %.h
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ -c $<
 
@@ -414,10 +414,6 @@ ${UTF8PROC_OBJECT}: ${UTF8PROC_SRC}/utf8proc.c
 ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INIH_INCLUDE} -DINI_HANDLER_LINENO=1 -DINI_CALL_HANDLER_ON_NEW_SECTION=1 -c $< -o $@
-
-${SQL_INTERNAL_OBJECT}: ${CLI_OBJ_PFX}%.o: %.c %.h
-	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -c -o $@ $<
 
 ${CLI_APP_OBJECT} : cli_ini.c builtin/*.c ${JQ_LIB}
 ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8proc.c # ${MORE_OBJECTS}
