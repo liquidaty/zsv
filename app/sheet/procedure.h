@@ -35,6 +35,8 @@ enum {
   zsvsheet_builtin_proc_help,
   zsvsheet_builtin_proc_vim_g_key_binding_dmux,
   zsvsheet_builtin_proc_newline,
+  zsvsheet_builtin_proc_pivot_expr,
+  zsvsheet_builtin_proc_pivot_cur_col,
 };
 
 #define ZSVSHEET_PROC_INVALID 0
