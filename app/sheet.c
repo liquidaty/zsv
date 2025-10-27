@@ -608,6 +608,7 @@ out:
   return stat;
 }
 
+#include "sheet/pivot.c"
 #include "sheet/newline_handler.c"
 
 /* We do most procedures in one handler. More complex procedures can be
@@ -698,6 +699,8 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_subcommand,     "subcommand",  "Editor subcommand",                                               zsvsheet_subcommand_handler   },
   { zsvsheet_builtin_proc_help,           "help",        "Display a list of actions and key-bindings",                      zsvsheet_help_handler         },
   { zsvsheet_builtin_proc_newline,        "<Enter>",     "Follow hyperlink (if any)",                                       zsvsheet_newline_handler      },
+  { zsvsheet_builtin_proc_pivot_cur_col,  "pivotcur",    "Group rows by the column under the cursor",                       zsvsheet_pivot_handler        },
+  { zsvsheet_builtin_proc_pivot_expr,     "pivotexpr",   "Group rows with group-by SQL expression",                         zsvsheet_pivot_handler        },
   { -1, NULL, NULL, NULL }
 };
 /* clang-format on */
