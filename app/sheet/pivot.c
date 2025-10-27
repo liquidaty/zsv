@@ -167,8 +167,6 @@ static zsvsheet_status zsv_sqlite3_to_csv(zsvsheet_proc_context_t pctx, struct z
 
     if (tmp_fn && zsv_file_exists(tmp_fn)) {
       struct zsvsheet_ui_buffer_opts uibopts = {0};
-      if(uibopts.data_filename)
-        free(uibopts.data_filename);
       uibopts.data_filename = tmp_fn;
       zst = zsvsheet_open_file_opts(pctx, &uibopts);
     } else {
@@ -231,6 +229,10 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
   return zst;
 }
 
+static void zsvsheet_check_buffer_worker_updates(struct zsvsheet_ui_buffer *ub,
+                                                 struct zsvsheet_display_dimensions *display_dims,
+                                                 struct zsvsheet_sheet_context *handler_state);
+
 #include "pivot-sql.c"
 
 /**
@@ -268,10 +270,10 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
   case zsvsheet_builtin_proc_pivot_cur_col:
     if (zsvsheet_buffer_get_selected_cell(buff, &rc) != zsvsheet_status_ok)
       return zsvsheet_status_error;
-    const char *selected_cell_str = zsvsheet_screen_buffer_cell_display(((struct zsvsheet_ui_buffer *)buff)->buffer, rc.row, rc.col);
+    const unsigned char *selected_cell_str = zsvsheet_screen_buffer_cell_display(((struct zsvsheet_ui_buffer *)buff)->buffer, rc.row, rc.col);
     while(selected_cell_str && *selected_cell_str == ' ')
       selected_cell_str++;
-    size_t len = selected_cell_str ? strlen(selected_cell_str) : 0;
+    size_t len = selected_cell_str ? strlen((const char *)selected_cell_str) : 0;
     while(len > 0 && selected_cell_str[len-1] == ' ')
       len--;
     if(len)
@@ -335,12 +337,18 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
           if(selected_cell_str_dup) {
             struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
             struct zsvsheet_display_info *di = &state->display_info;
-            struct zsvsheet_opts zsvsheet_opts = {0};
-            zsvsheet_handle_find_next(di, buff, selected_cell_str_dup, &zsvsheet_opts, 1, di->dimensions,
+            zsvsheet_check_buffer_worker_updates(buff, di->dimensions, state);
+            zsvsheet_handle_find_next(di, buff, selected_cell_str_dup,
+                                      1, // find value in first column
+                                      1, // exact
+                                      1, // header_span
+                                      di->dimensions,
                                       &di->update_buffer, state->custom_prop_handler);
             // hackish way to force a screen refresh: move up then down
+            zsvsheet_check_buffer_worker_updates(buff, di->dimensions, state);
             zsvsheet_move_ver(di, true);
             zsvsheet_move_ver(di, false);
+            //            display_buffer_subtable(buff, 1, di->dimensions);
           }
         }
       }
