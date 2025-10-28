@@ -38,6 +38,8 @@
 struct zsvsheet_opts {
   char hide_row_nums; // if 1, will load row nums
   const char *find;
+  size_t find_specified_column_plus_1; // if 0, find in any column; else only search specified column (1-based)
+  char find_exact; // later: make this a bitfield with different options e.g. case-insensitive, regex etc
   size_t found_rownum;
   size_t found_colnum;
 };
@@ -353,17 +355,28 @@ static zsvsheet_status zsvsheet_move_hor_end(struct zsvsheet_display_info *di, b
 
 // zsvsheet_handle_find_next: return non-zero if a result was found
 static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di, struct zsvsheet_ui_buffer *uib,
-                                      const char *needle, struct zsvsheet_opts *zsvsheet_opts, size_t header_span,
-                                      struct zsvsheet_display_dimensions *ddims, int *update_buffer,
+                                      const char *needle, size_t specified_column_plus_1, char find_exact,
+                                      size_t header_span, struct zsvsheet_display_dimensions *ddims, int *update_buffer,
                                       struct zsv_prop_handler *custom_prop_handler) {
-  if (zsvsheet_find_next(uib, needle, zsvsheet_opts, header_span, custom_prop_handler) > 0) {
-    *update_buffer = zsvsheet_goto_input_raw_row(uib, zsvsheet_opts->found_rownum, header_span, ddims, (size_t)-1);
+  struct zsvsheet_opts zsvsheet_opts = {0};
+  zsvsheet_opts.find = needle;
+  zsvsheet_opts.find_specified_column_plus_1 = specified_column_plus_1;
+  zsvsheet_opts.find_exact = find_exact;
+  zsvsheet_opts.found_rownum = 0;
+  zsvsheet_opts.found_colnum = uib->cursor_col + uib->buff_offset.col;
+  FILE *x = fopen("/tmp/x.out", "wb");
+  if (zsvsheet_find_next(uib, &zsvsheet_opts, header_span, custom_prop_handler) > 0) {
+    *update_buffer = zsvsheet_goto_input_raw_row(uib, zsvsheet_opts.found_rownum, header_span, ddims, (size_t)-1);
 
     // move to zsvsheet_opts->found_colnum; + 1 to skip the "Row #" column
-    zsvsheet_move_hor_to(di, zsvsheet_opts->found_colnum + 1);
+    zsvsheet_move_hor_to(di, zsvsheet_opts.found_colnum + 1);
+
+    fprintf(x, "Found %s on row %zu, column %zu\n", needle, zsvsheet_opts.found_rownum, zsvsheet_opts.found_colnum);
+    fclose(x);
     return 1;
   }
   zsvsheet_priv_set_status(ddims, 1, "Not found");
+  fclose(x);
   return 0;
 }
 
@@ -427,9 +440,8 @@ static zsvsheet_status zsvsheet_find(struct zsvsheet_sheet_context *state, bool 
   }
 
   if (state->find) {
-    struct zsvsheet_opts zsvsheet_opts = {0};
-    zsvsheet_handle_find_next(di, current_ui_buffer, state->find, &zsvsheet_opts, di->header_span, di->dimensions,
-                              &di->update_buffer, state->custom_prop_handler);
+    zsvsheet_handle_find_next(di, current_ui_buffer, state->find, 0, 0, // any column, non-exact
+                              di->header_span, di->dimensions, &di->update_buffer, state->custom_prop_handler);
   }
 
 out:
@@ -525,7 +537,9 @@ static zsvsheet_status zsvsheet_subcommand_handler(struct zsvsheet_proc_context 
     .invocation.u.proc.id = ctx->proc_id,
     .subcommand_context = ctx->subcommand_context,
   };
-  return zsvsheet_proc_invoke_from_command(prompt_buffer, &context);
+  zsvsheet_status rc = zsvsheet_proc_invoke_from_command(prompt_buffer, &context);
+  // TO DO: handle status message update here or in caller
+  return rc;
 }
 
 static zsvsheet_status zsvsheet_help_handler(struct zsvsheet_proc_context *ctx) {
@@ -620,8 +634,6 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
 
   switch (ctx->proc_id) {
   case zsvsheet_builtin_proc_quit:
-    //    while(*state->display_info.ui_buffers.current)
-    //      zsvsheet_ui_buffer_pop(state->display_info.ui_buffers.base, state->display_info.ui_buffers.current, NULL);
     return zsvsheet_status_exit;
   case zsvsheet_builtin_proc_resize:
     *(state->display_info.dimensions) = get_display_dimensions(1, 1);
@@ -717,11 +729,14 @@ static void zsvsheet_check_buffer_worker_updates(struct zsvsheet_ui_buffer *ub,
                                                  struct zsvsheet_display_dimensions *display_dims,
                                                  struct zsvsheet_sheet_context *handler_state) {
   pthread_mutex_lock(&ub->mutex);
-  if (ub->status)
-    zsvsheet_priv_set_status(display_dims, 1, ub->status);
+  if (ub->status) {
+    if (display_dims)
+      zsvsheet_priv_set_status(display_dims, 1, ub->status);
+  }
   if (ub->index_ready && ub->dimensions.row_count != ub->index->row_count + 1) {
     ub->dimensions.row_count = ub->index->row_count + 1;
-    handler_state->display_info.update_buffer = true;
+    if (handler_state)
+      handler_state->display_info.update_buffer = true;
   }
   pthread_mutex_unlock(&ub->mutex);
 }

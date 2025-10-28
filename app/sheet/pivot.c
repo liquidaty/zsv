@@ -176,8 +176,7 @@ static zsvsheet_status zsv_sqlite3_to_csv(zsvsheet_proc_context_t pctx, struct z
           err_msg = sqlite3_errmsg(zdb->db);
       }
     }
-    if (zst != zsvsheet_status_ok)
-      free(tmp_fn);
+    free(tmp_fn);
   }
   if (stmt)
     sqlite3_finalize(stmt);
@@ -203,7 +202,7 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
 
     if (!zdb || !(sql_str = sqlite3_str_new(zdb->db)))
       zst = zsvsheet_status_memory;
-    else if (zdb->rc == SQLITE_OK && zsv_sqlite3_add_csv(zdb, pd->data_filename, NULL, NULL) == SQLITE_OK) {
+    else if (zdb->rc == SQLITE_OK && zsv_sqlite3_add_csv_no_dq(zdb, pd->data_filename, NULL, NULL) == SQLITE_OK) {
       if (zsvsheet_buffer_info(buff).has_row_num)
         sqlite3_str_appendf(sql_str, "select *");
       else
@@ -230,14 +229,22 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
   return zst;
 }
 
+static void zsvsheet_check_buffer_worker_updates(struct zsvsheet_ui_buffer *ub,
+                                                 struct zsvsheet_display_dimensions *display_dims,
+                                                 struct zsvsheet_sheet_context *handler_state);
+
+#include "pivot-sql.c"
+
 /**
  * Here we define a custom command for the zsv `sheet` feature
  */
 static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx) {
   char result_buffer[256] = {0};
   const char *expr;
+  char column_name_expr;
   struct zsvsheet_rowcol rc;
   int ch = zsvsheet_ext_keypress(ctx);
+
   if (ch < 0)
     return zsvsheet_status_error;
 
@@ -251,17 +258,29 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
     return zsvsheet_status_ok;
   }
 
+  char *selected_cell_str_dup = NULL;
   switch (ctx->proc_id) {
   case zsvsheet_builtin_proc_pivot_expr:
     zsvsheet_ext_prompt(ctx, result_buffer, sizeof(result_buffer), "Pivot table: Enter group-by SQL expr");
     if (*result_buffer == '\0')
       return zsvsheet_status_ok;
     expr = result_buffer;
+    column_name_expr = 0;
     break;
   case zsvsheet_builtin_proc_pivot_cur_col:
     if (zsvsheet_buffer_get_selected_cell(buff, &rc) != zsvsheet_status_ok)
       return zsvsheet_status_error;
+    const unsigned char *selected_cell_str =
+      zsvsheet_screen_buffer_cell_display(((struct zsvsheet_ui_buffer *)buff)->buffer, rc.row, rc.col);
+    while (selected_cell_str && *selected_cell_str == ' ')
+      selected_cell_str++;
+    size_t len = selected_cell_str ? strlen((const char *)selected_cell_str) : 0;
+    while (len > 0 && selected_cell_str[len - 1] == ' ')
+      len--;
+    if (len)
+      selected_cell_str_dup = zsv_memdup(selected_cell_str, len);
     expr = zsvsheet_ui_buffer_get_header(buff, rc.col);
+    column_name_expr = 1;
     assert(expr);
     break;
   default:
@@ -277,18 +296,59 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
   struct pivot_data *pd = NULL;
   if (!zdb || !(sql_str = sqlite3_str_new(zdb->db)))
     zst = zsvsheet_status_memory;
-  else if (zdb->rc == SQLITE_OK && zsv_sqlite3_add_csv(zdb, data_filename, &zopts, NULL) == SQLITE_OK) {
-    sqlite3_str_appendf(sql_str, "select \"%w\" as value, count(1) as Count from data group by \"%w\"", expr, expr);
-    if (!(pd = pivot_data_new(data_filename, expr)))
-      zst = zsvsheet_status_memory;
-    else {
-      zst = zsv_sqlite3_to_csv(ctx, zdb, sqlite3_str_value(sql_str), pd, pivot_on_header_cell, pivot_on_data_cell);
-      if (zst == zsvsheet_status_ok) {
-        buff = zsvsheet_buffer_current(ctx);
-        zsvsheet_buffer_set_ctx(buff, pd, pivot_data_delete);
-        zsvsheet_buffer_set_cell_attrs(buff, get_cell_attrs);
-        zsvsheet_buffer_on_newline(buff, pivot_drill_down);
-        pd = NULL; // so that it isn't cleaned up below
+  else if (zdb->rc == SQLITE_OK && zsv_sqlite3_add_csv_no_dq(zdb, data_filename, &zopts, NULL) == SQLITE_OK) {
+    int ok = 0;
+    if (column_name_expr) {
+      sqlite3_str_appendf(sql_str, "select \"%w\" as %#Q, count(1) as Count from data group by \"%w\"", expr, expr,
+                          expr);
+      ok = 1;
+    } else {
+      const char *err_msg = NULL;
+      int err = 0;
+      if (is_constant_expression(zdb->db, expr, &err))
+        err_msg = "Please enter an expression that is not a constant";
+      else {
+        enum check_expression_result expr_rc = check_expression(zdb->db, expr, &err);
+        if (expr_rc != zsv_pivot_sql_expression_valid)
+          err_msg = check_expression_result_str(expr_rc);
+        else if (!err)
+          ok = 1;
+      }
+      if (!ok) {
+        if (err)
+          zsvsheet_set_status(ctx, strerror(err));
+        else if (err_msg)
+          zsvsheet_set_status(ctx, err_msg);
+        else
+          zsvsheet_set_status(ctx, "Unknown error");
+      } else
+        sqlite3_str_appendf(sql_str, "select %s as %#Q, count(1) as Count from data group by %s", expr, expr, expr);
+    }
+    if (ok) {
+      if (!(pd = pivot_data_new(data_filename, expr)))
+        zst = zsvsheet_status_memory;
+      else {
+        zst = zsv_sqlite3_to_csv(ctx, zdb, sqlite3_str_value(sql_str), pd, pivot_on_header_cell, pivot_on_data_cell);
+        if (zst == zsvsheet_status_ok) {
+          buff = zsvsheet_buffer_current(ctx);
+          zsvsheet_buffer_set_ctx(buff, pd, pivot_data_delete);
+          zsvsheet_buffer_set_cell_attrs(buff, get_cell_attrs);
+          zsvsheet_buffer_on_newline(buff, pivot_drill_down);
+          pd = NULL; // so that it isn't cleaned up below
+
+          while (!zsvsheet_ui_buffer_index_ready(buff, 0))
+            napms(200); // sleep for 200ms, then check index again
+          if (selected_cell_str_dup) {
+            struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
+            struct zsvsheet_display_info *di = &state->display_info;
+            zsvsheet_check_buffer_worker_updates(buff, di->dimensions, NULL);
+            zsvsheet_handle_find_next(di, buff, selected_cell_str_dup,
+                                      1, // find value in first column
+                                      1, // exact
+                                      1, // header_span
+                                      di->dimensions, &di->update_buffer, NULL);
+          }
+        }
       }
     }
     // TO DO: add param to ext_sheet_open_file to set filename vs data_filename, and set buffer type or proc owner
@@ -300,5 +360,6 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
   if (sql_str)
     sqlite3_free(sqlite3_str_finish(sql_str));
   pivot_data_delete(pd);
+  free(selected_cell_str_dup);
   return zst;
 }
