@@ -334,21 +334,42 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
           zsvsheet_buffer_on_newline(buff, pivot_drill_down);
           pd = NULL; // so that it isn't cleaned up below
 
+          /*
+           * can't seem to get the below to work
+           *
+           * even if doing the find as the next action in the getch() loop
+           * in sheet.c, the screen remains blank / not-updated
+           * if the target row is not on the first page
+           */
+          while(!zsvsheet_ui_buffer_index_ready(buff, 0))
+            getch();
           if(selected_cell_str_dup) {
             struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
             struct zsvsheet_display_info *di = &state->display_info;
-            zsvsheet_check_buffer_worker_updates(buff, di->dimensions, state);
+            zsvsheet_check_buffer_worker_updates(buff, di->dimensions, NULL);
+            int update_buffer = 0;
             zsvsheet_handle_find_next(di, buff, selected_cell_str_dup,
                                       1, // find value in first column
                                       1, // exact
                                       1, // header_span
                                       di->dimensions,
-                                      &di->update_buffer, state->custom_prop_handler);
+                                      &update_buffer, NULL);
+            if(update_buffer && zsvsheet_buffer_data_filename(buff)) {
+              struct zsvsheet_opts zsvsheet_opts = {0};
+              struct zsvsheet_ui_buffer *ub = buff;
+              if (read_data(&ub, NULL, ub->input_offset.row, ub->input_offset.col,
+                            1, // header_span
+                            &zsvsheet_opts, NULL)) {
+                zsvsheet_set_status(ctx, "Unexpected error!");
+              }
+            }
+
             // hackish way to force a screen refresh: move up then down
-            zsvsheet_check_buffer_worker_updates(buff, di->dimensions, state);
+            //            display_buffer_subtable(buff, 1, di->dimensions);
+            zsvsheet_check_buffer_worker_updates(buff, di->dimensions, NULL);
             zsvsheet_move_ver(di, true);
             zsvsheet_move_ver(di, false);
-            //            display_buffer_subtable(buff, 1, di->dimensions);
+            display_buffer_subtable(buff, 1, di->dimensions);
           }
         }
       }

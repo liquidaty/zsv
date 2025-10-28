@@ -19,7 +19,8 @@
 // zsvsheet_found_in_row: return 0 if not found, else 1-based index of column
 static size_t zsvsheet_found_in_row(zsv_parser parser, size_t col_start, size_t col_count, const char *target,
                                     size_t target_len, size_t specified_column_plus_1,
-                                    char find_exact) {
+                                    char find_exact // not yet implemented
+                                    ) {
   if (col_start >= col_count)
     return 0;
 
@@ -109,7 +110,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     pthread_mutex_lock(&uibuff->mutex);
 
     enum zsv_index_status zst = zsv_index_status_ok;
-    if (uibuff->index_ready) {
+    if(zsvsheet_ui_buffer_index_ready(uibuff, 1)) {
       opts.header_span = 0;
       opts.rows_to_ignore = 0;
 
