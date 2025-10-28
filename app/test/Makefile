@@ -668,7 +668,7 @@ test-sheet-all: \
 	test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 \
 	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand test-sheet-prop-cmd-opt \
 	test-sheet-pivot
-	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null; done && ${TEST_PASS} || ${TEST_FAIL})
+	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null || echo ''; done && ${TEST_PASS} || ${TEST_FAIL})
 
 TMUX_TERM=xterm-256color
 test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
