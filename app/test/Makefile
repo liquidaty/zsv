@@ -896,10 +896,11 @@ test-sheet-prop-cmd-opt: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_p
 #	@tmux send-keys -t $@ "q"
 #	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL})
 
-test-sheet-pivot: test-sheet-pivot-1
+test-sheet-pivot: test-sheet-pivot-1 test-sheet-pivot-V
 
 test-sheet-pivot-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
+	@tmux kill-session 2>/dev/null >/dev/null || printf ''
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
@@ -908,7 +909,18 @@ test-sheet-pivot-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	tmux send-keys -t $@ j j Enter && \
 	${EXPECT} $@ drilldown && \
 	tmux send-keys -t $@ G && \
-	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+	${EXPECT} $@ \
+	&& ${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-pivot-V: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@tmux kill-session 2>/dev/null >/dev/null || printf ''
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ "V" "Country||'hi'" ENTER && \
+	${EXPECT} $@ groups && \
+	${TEST_PASS} || ${TEST_FAIL})
 
 benchmark-sheet-index: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
