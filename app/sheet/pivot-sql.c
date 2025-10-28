@@ -1,20 +1,20 @@
-static int is_constant_expression(sqlite3* db, const char* expr, int *err) {
-  sqlite3_stmt* stmt = NULL;
+static int is_constant_expression(sqlite3 *db, const char *expr, int *err) {
+  sqlite3_stmt *stmt = NULL;
   // We try to prepare "SELECT [expr]". If this succeeds, the expression
   // does not depend on any columns and is therefore constant.
-  char* sql_const_test = sqlite3_mprintf("SELECT %s", expr);
+  char *sql_const_test = sqlite3_mprintf("SELECT %s", expr);
   if (!sql_const_test) {
     *err = errno;
     return 0;
   }
-    
+
   int rc = sqlite3_prepare_v2(db, sql_const_test, -1, &stmt, NULL);
   if (stmt) {
     sqlite3_finalize(stmt);
     stmt = NULL;
   }
   sqlite3_free(sql_const_test);
-  
+
   int is_constant = (rc == SQLITE_OK);
   return is_constant;
 }
@@ -28,18 +28,24 @@ enum check_expression_result {
 };
 
 const char *check_expression_result_str(enum check_expression_result rc) {
-  switch(rc) {
-  case zsv_pivot_sql_expression_valid: return NULL;
-  case zsv_pivot_sql_expression_invalid: return "Invalid SQL";
-  case zsv_pivot_sql_expression_multiple_statements: return "Please enter only a single expression";
-  case zsv_pivot_sql_expression_multiple_expressions: return "Please enter only a single expression";
-  case zsv_pivot_sql_expression_other: return "Unknown error";
+  switch (rc) {
+  case zsv_pivot_sql_expression_valid:
+    return NULL;
+  case zsv_pivot_sql_expression_invalid:
+    return "Invalid SQL";
+  case zsv_pivot_sql_expression_multiple_statements:
+    return "Please enter only a single expression";
+  case zsv_pivot_sql_expression_multiple_expressions:
+    return "Please enter only a single expression";
+  case zsv_pivot_sql_expression_other:
+    return "Unknown error";
   }
   return NULL;
 }
 
-static int is_str_empty(const char* s) {
-  if (!s) return 1;
+static int is_str_empty(const char *s) {
+  if (!s)
+    return 1;
   while (*s) {
     if (!isspace((unsigned char)*s)) {
       return 0;
@@ -49,22 +55,23 @@ static int is_str_empty(const char* s) {
   return 1;
 }
 
-static enum check_expression_result check_expression(sqlite3* db, const char* expr, int *err) {
-  sqlite3_stmt* stmt = NULL;
-    
+static enum check_expression_result check_expression(sqlite3 *db, const char *expr, int *err) {
+  sqlite3_stmt *stmt = NULL;
+
   // Prepare "SELECT [expr] FROM data" to see if it's valid in the
   // context of the 'data' table.
-  char* sql_valid_test = sqlite3_mprintf("SELECT %s FROM data LIMIT 0", expr);
+  char *sql_valid_test = sqlite3_mprintf("SELECT %s FROM data LIMIT 0", expr);
   if (!sql_valid_test) {
     *err = errno;
     return zsv_pivot_sql_expression_other;
   }
 
-  const char* pzTail = NULL;
+  const char *pzTail = NULL;
   int rc = sqlite3_prepare_v2(db, sql_valid_test, -1, &stmt, &pzTail);
   sqlite3_free(sql_valid_test); // Free the string immediately
   if (rc != SQLITE_OK) {
-    if (stmt) sqlite3_finalize(stmt);
+    if (stmt)
+      sqlite3_finalize(stmt);
     return zsv_pivot_sql_expression_invalid;
   }
 

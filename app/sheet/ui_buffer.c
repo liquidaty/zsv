@@ -58,10 +58,10 @@ void zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*sta
 }
 
 int zsvsheet_ui_buffer_index_ready(struct zsvsheet_ui_buffer *ub, char skip_lock) {
-  if(!skip_lock)
+  if (!skip_lock)
     pthread_mutex_lock(&ub->mutex);
   int rc = !!ub->index_ready;
-  if(!skip_lock)
+  if (!skip_lock)
     pthread_mutex_unlock(&ub->mutex);
   return rc;
 }

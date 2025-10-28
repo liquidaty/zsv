@@ -20,7 +20,7 @@
 static size_t zsvsheet_found_in_row(zsv_parser parser, size_t col_start, size_t col_count, const char *target,
                                     size_t target_len, size_t specified_column_plus_1,
                                     char find_exact // not yet implemented
-                                    ) {
+) {
   if (col_start >= col_count)
     return 0;
 
@@ -29,10 +29,10 @@ static size_t zsvsheet_found_in_row(zsv_parser parser, size_t col_start, size_t 
 
   if (memmem(first_cell.str, last_cell.str - first_cell.str + last_cell.len, target, target_len)) {
     for (size_t i = col_start; i < col_count; i++) {
-      if(specified_column_plus_1 == 0 || i + 1 == specified_column_plus_1) {
+      if (specified_column_plus_1 == 0 || i + 1 == specified_column_plus_1) {
         struct zsv_cell c = zsv_get_cell(parser, i);
-        if(find_exact) {
-          if(c.len == target_len && !memcmp(c.str, target, c.len))
+        if (find_exact) {
+          if (c.len == target_len && !memcmp(c.str, target, c.len))
             return i + 1;
         } else if (memmem(c.str, c.len, target, target_len))
           return i + 1;
@@ -109,7 +109,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     pthread_mutex_lock(&uibuff->mutex);
 
     enum zsv_index_status zst = zsv_index_status_ok;
-    if(zsvsheet_ui_buffer_index_ready(uibuff, 1)) {
+    if (zsvsheet_ui_buffer_index_ready(uibuff, 1)) {
       opts.header_span = 0;
       opts.rows_to_ignore = 0;
 
@@ -187,8 +187,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     if (zsvsheet_opts->find) { // find the next occurrence
       rows_searched++;
       size_t colIndexPlus1 =
-        zsvsheet_found_in_row(parser, zsvsheet_opts->found_colnum, col_count, zsvsheet_opts->find,
-                              find_len, zsvsheet_opts->find_specified_column_plus_1, zsvsheet_opts->find_exact);
+        zsvsheet_found_in_row(parser, zsvsheet_opts->found_colnum, col_count, zsvsheet_opts->find, find_len,
+                              zsvsheet_opts->find_specified_column_plus_1, zsvsheet_opts->find_exact);
       if (colIndexPlus1) {
         zsvsheet_opts->found_rownum = rows_searched + start_row;
         zsvsheet_opts->found_colnum = colIndexPlus1 - 1;
@@ -280,10 +280,8 @@ static void *get_data_index(void *gdi) {
   return NULL;
 }
 
-static size_t zsvsheet_find_next(struct zsvsheet_ui_buffer *uib,
-                                 struct zsvsheet_opts *zsvsheet_opts,
-                                 size_t header_span,
-                                 struct zsv_prop_handler *custom_prop_handler) {
+static size_t zsvsheet_find_next(struct zsvsheet_ui_buffer *uib, struct zsvsheet_opts *zsvsheet_opts,
+                                 size_t header_span, struct zsv_prop_handler *custom_prop_handler) {
   struct zsvsheet_rowcol *input_offset = &uib->input_offset;
   struct zsvsheet_rowcol *buff_offset = &uib->buff_offset;
   size_t cursor_row = uib->cursor_row;

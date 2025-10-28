@@ -270,13 +270,14 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
   case zsvsheet_builtin_proc_pivot_cur_col:
     if (zsvsheet_buffer_get_selected_cell(buff, &rc) != zsvsheet_status_ok)
       return zsvsheet_status_error;
-    const unsigned char *selected_cell_str = zsvsheet_screen_buffer_cell_display(((struct zsvsheet_ui_buffer *)buff)->buffer, rc.row, rc.col);
-    while(selected_cell_str && *selected_cell_str == ' ')
+    const unsigned char *selected_cell_str =
+      zsvsheet_screen_buffer_cell_display(((struct zsvsheet_ui_buffer *)buff)->buffer, rc.row, rc.col);
+    while (selected_cell_str && *selected_cell_str == ' ')
       selected_cell_str++;
     size_t len = selected_cell_str ? strlen((const char *)selected_cell_str) : 0;
-    while(len > 0 && selected_cell_str[len-1] == ' ')
+    while (len > 0 && selected_cell_str[len - 1] == ' ')
       len--;
-    if(len)
+    if (len)
       selected_cell_str_dup = zsv_memdup(selected_cell_str, len);
     expr = zsvsheet_ui_buffer_get_header(buff, rc.col);
     column_name_expr = 1;
@@ -297,32 +298,33 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
     zst = zsvsheet_status_memory;
   else if (zdb->rc == SQLITE_OK && zsv_sqlite3_add_csv_no_dq(zdb, data_filename, &zopts, NULL) == SQLITE_OK) {
     int ok = 0;
-    if(column_name_expr) {
-      sqlite3_str_appendf(sql_str, "select \"%w\" as %#Q, count(1) as Count from data group by \"%w\"", expr, expr, expr);
+    if (column_name_expr) {
+      sqlite3_str_appendf(sql_str, "select \"%w\" as %#Q, count(1) as Count from data group by \"%w\"", expr, expr,
+                          expr);
       ok = 1;
     } else {
       const char *err_msg = NULL;
       int err = 0;
-      if(is_constant_expression(zdb->db, expr, &err))
+      if (is_constant_expression(zdb->db, expr, &err))
         err_msg = "Please enter an expression that is not a constant";
       else {
         enum check_expression_result expr_rc = check_expression(zdb->db, expr, &err);
-        if(expr_rc != zsv_pivot_sql_expression_valid)
+        if (expr_rc != zsv_pivot_sql_expression_valid)
           err_msg = check_expression_result_str(expr_rc);
-        else if(!err)
+        else if (!err)
           ok = 1;
       }
-      if(!ok) {
-        if(err)
+      if (!ok) {
+        if (err)
           zsvsheet_set_status(ctx, strerror(err));
-        else if(err_msg)
+        else if (err_msg)
           zsvsheet_set_status(ctx, err_msg);
         else
           zsvsheet_set_status(ctx, "Unknown error");
       } else
         sqlite3_str_appendf(sql_str, "select %s as %#Q, count(1) as Count from data group by %s", expr, expr, expr);
     }
-    if(ok) {
+    if (ok) {
       if (!(pd = pivot_data_new(data_filename, expr)))
         zst = zsvsheet_status_memory;
       else {
@@ -334,9 +336,9 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
           zsvsheet_buffer_on_newline(buff, pivot_drill_down);
           pd = NULL; // so that it isn't cleaned up below
 
-          while(!zsvsheet_ui_buffer_index_ready(buff, 0))
+          while (!zsvsheet_ui_buffer_index_ready(buff, 0))
             napms(200); // sleep for 200ms, then check index again
-          if(selected_cell_str_dup) {
+          if (selected_cell_str_dup) {
             struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
             struct zsvsheet_display_info *di = &state->display_info;
             zsvsheet_check_buffer_worker_updates(buff, di->dimensions, NULL);
@@ -344,8 +346,7 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
                                       1, // find value in first column
                                       1, // exact
                                       1, // header_span
-                                      di->dimensions,
-                                      &di->update_buffer, NULL);
+                                      di->dimensions, &di->update_buffer, NULL);
           }
         }
       }

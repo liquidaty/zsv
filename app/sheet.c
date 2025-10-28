@@ -356,8 +356,7 @@ static zsvsheet_status zsvsheet_move_hor_end(struct zsvsheet_display_info *di, b
 // zsvsheet_handle_find_next: return non-zero if a result was found
 static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di, struct zsvsheet_ui_buffer *uib,
                                       const char *needle, size_t specified_column_plus_1, char find_exact,
-                                      size_t header_span,
-                                      struct zsvsheet_display_dimensions *ddims, int *update_buffer,
+                                      size_t header_span, struct zsvsheet_display_dimensions *ddims, int *update_buffer,
                                       struct zsv_prop_handler *custom_prop_handler) {
   struct zsvsheet_opts zsvsheet_opts = {0};
   zsvsheet_opts.find = needle;
@@ -441,10 +440,8 @@ static zsvsheet_status zsvsheet_find(struct zsvsheet_sheet_context *state, bool 
   }
 
   if (state->find) {
-    zsvsheet_handle_find_next(di, current_ui_buffer, state->find,
-                              0, 0, // any column, non-exact
-                              di->header_span, di->dimensions,
-                              &di->update_buffer, state->custom_prop_handler);
+    zsvsheet_handle_find_next(di, current_ui_buffer, state->find, 0, 0, // any column, non-exact
+                              di->header_span, di->dimensions, &di->update_buffer, state->custom_prop_handler);
   }
 
 out:
@@ -733,12 +730,12 @@ static void zsvsheet_check_buffer_worker_updates(struct zsvsheet_ui_buffer *ub,
                                                  struct zsvsheet_sheet_context *handler_state) {
   pthread_mutex_lock(&ub->mutex);
   if (ub->status) {
-    if(display_dims)
+    if (display_dims)
       zsvsheet_priv_set_status(display_dims, 1, ub->status);
   }
   if (ub->index_ready && ub->dimensions.row_count != ub->index->row_count + 1) {
     ub->dimensions.row_count = ub->index->row_count + 1;
-    if(handler_state)
+    if (handler_state)
       handler_state->display_info.update_buffer = true;
   }
   pthread_mutex_unlock(&ub->mutex);
