@@ -29,15 +29,14 @@ static size_t zsvsheet_found_in_row(zsv_parser parser, size_t col_start, size_t 
 
   if (memmem(first_cell.str, last_cell.str - first_cell.str + last_cell.len, target, target_len)) {
     for (size_t i = col_start; i < col_count; i++) {
-      //      if(specified_column_plus_1 == 0 || i + 1 == specified_column_plus_1) {
+      if(specified_column_plus_1 == 0 || i + 1 == specified_column_plus_1) {
         struct zsv_cell c = zsv_get_cell(parser, i);
-        //        if(find_exact) {
-        //          if(c.len == target_len && memcmp(c.str, target, c.len))
-        //            return i + 1;
-        //        } else if (memmem(c.str, c.len, target, target_len))
-        if(memmem(c.str, c.len, target, target_len))
+        if(find_exact) {
+          if(c.len == target_len && !memcmp(c.str, target, c.len))
+            return i + 1;
+        } else if (memmem(c.str, c.len, target, target_len))
           return i + 1;
-        //      }
+      }
     }
   }
   return 0;
