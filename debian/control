@@ -1,12 +1,12 @@
 Source: zsv
 Section: utils
 Priority: optional
-Maintainer: Liquidaty <info@liquidaty.com>
+Maintainer: Azeem Sajid <azeem.sajid@gmail.com>
 Build-Depends: debhelper-compat (= 13), libncurses-dev
-Standards-Version: 4.6.0
+Standards-Version: 4.7.2
 Homepage: https://github.com/liquidaty/zsv
-Vcs-Browser: https://github.com/liquidaty/zsv.git
-Vcs-Git: git@github.com:liquidaty/zsv.git
+Vcs-Browser: https://github.com/liquidaty/zsv
+Vcs-Git: https://github.com/liquidaty/zsv.git
 Rules-Requires-Root: no
 
 Package: zsv

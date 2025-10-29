@@ -4,14 +4,14 @@ Upstream-Contact: Liquidaty <info@liquidaty.com>
 Source: https://github.com/liquidaty/zsv
 
 Files: *
-Copyright: 2021 Liquidaty <info@liquidaty.com>
+Copyright: 2025 Liquidaty <info@liquidaty.com>
 License: Expat
 
 Files: debian/*
-Copyright: 2021 Liquidaty <info@liquidaty.com>
+Copyright: 2025 Liquidaty <info@liquidaty.com>
 License: Expat
 
-License: MIT
+License: Expat
  Permission is hereby granted, free of charge, to any person obtaining a
  copy of this software and associated documentation files (the "Software"),
  to deal in the Software without restriction, including without limitation
