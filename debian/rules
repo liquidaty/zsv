@@ -4,9 +4,10 @@
 	dh $@
 
 override_dh_auto_configure:
-	./configure --prefix=$(CURDIR)/debian/zsv/usr/
+	./configure --prefix=$(CURDIR)/debian/tmp
 
 override_dh_auto_build:
+# 	make build
 
 override_dh_auto_install:
 	make install
@@ -17,4 +18,5 @@ override_dh_strip:
 	dh_strip --no-automatic-dbgsym
 
 override_dh_auto_clean:
-	make clean
+# 	make clean
+# 	dh_clean

@@ -18,3 +18,11 @@ Description: tabular data swiss-army knife CLI
  efficient memory use and other optimization techniques,
  and can also parse generic-delimited and fixed-width
  formats, as well as multi-row-span headers.
+
+Package: zsv-dev
+Architecture: any
+Depends: ${misc:Depends}
+Description: world's fastest (SIMD) CSV parser library
+ zsv-dev contains the development files for the zsv
+ library, which can be used to parse CSV and other
+ tabular data formats in your own C programs.

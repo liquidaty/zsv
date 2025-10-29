@@ -1,7 +1,0 @@
-include/zsv.h
-include/zsv/*
-include/zsv/ext/*
-include/zsv/utils/*
-include/zsv/utils/emcc/*
-include/zsv/utils/win/*
-lib/libzsv.a
