@@ -1,0 +1,14 @@
+# On Ubuntu, the default compression used is Zstandard.
+# The `override_dh_builddeb` in rules files overrides this for `xz`.
+zsv source: custom-compression-in-debian-rules
+
+# The examples are not supposed to be installed for the binary.
+# They serve as a sample to work with the zsvlib APIs.
+zsv source: package-does-not-install-examples
+
+# For now, the manpage `zsv.1` needs intermediate manual handling.
+# So, it is not meant to be pushed to the upstream.
+zsv source: maintainer-manual-page
+
+# There are CSV data and output files with very long line lengths.
+zsv source: very-long-line-length-in-source-file
