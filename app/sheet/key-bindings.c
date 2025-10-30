@@ -175,7 +175,8 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
   { .ch = 'v',                 .proc_id = zsvsheet_builtin_proc_pivot_cur_col, },
   { .ch = 'V',                 .proc_id = zsvsheet_builtin_proc_pivot_expr,    },
 
-  { .ch = -1                                                          }
+  { .ch = 'F',                 .proc_id = zsvsheet_builtin_proc_sqlfilter,     },
+  { .ch = -1                                                                   }
 };
 /* clang-format on */
 

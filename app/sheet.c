@@ -623,6 +623,7 @@ out:
 }
 
 #include "sheet/pivot.c"
+#include "sheet/sqlfilter.c"
 #include "sheet/newline_handler.c"
 
 /* We do most procedures in one handler. More complex procedures can be
@@ -708,10 +709,11 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_resize,         "resize",      "Resize the layout to fit new terminal dimensions",                zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_open_file,      "open",        "Open another CSV file",                                           zsvsheet_open_file_handler    },
   { zsvsheet_builtin_proc_filter,         "filter",      "Hide rows that do not contain the specified text",                zsvsheet_filter_handler       },
+  { zsvsheet_builtin_proc_sqlfilter,      "sqlfilter",   "Filter by sql expression",                                        zsvsheet_sqlfilter_handler    },
   { zsvsheet_builtin_proc_subcommand,     "subcommand",  "Editor subcommand",                                               zsvsheet_subcommand_handler   },
   { zsvsheet_builtin_proc_help,           "help",        "Display a list of actions and key-bindings",                      zsvsheet_help_handler         },
   { zsvsheet_builtin_proc_newline,        "<Enter>",     "Follow hyperlink (if any)",                                       zsvsheet_newline_handler      },
-  { zsvsheet_builtin_proc_pivot_cur_col,  "pivotcur",    "Group rows by the column under the cursor",                       zsvsheet_pivot_handler        },
+  { zsvsheet_builtin_proc_pivot_cur_col,  "pivot",       "Group rows by the column under the cursor",                       zsvsheet_pivot_handler        },
   { zsvsheet_builtin_proc_pivot_expr,     "pivotexpr",   "Group rows with group-by SQL expression",                         zsvsheet_pivot_handler        },
   { -1, NULL, NULL, NULL }
 };
