@@ -931,7 +931,7 @@ test-sheet-sqlfilter-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
-	tmux send-keys -t $@ "F" "AccentCity like 'Dön%'" ENTER && \
+	tmux send-keys -t $@ "F" "city like 'ber%'" ENTER && \
 	${EXPECT} $@ filter && \
 	tmux send-keys -t $@ "F" "this is invalid" ENTER && \
 	${EXPECT} $@ invalid && \
