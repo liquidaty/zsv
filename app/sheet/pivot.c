@@ -143,9 +143,9 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
       sqlite3_str_appendf(sql_str, " from data where \"%w\" = %Q", pd->value_sql, pr->value);
       const char *err_msg = NULL;
       zst = zsv_sqlite3_to_csv(ctx, zdb, sqlite3_str_value(sql_str), &err_msg, NULL, NULL, NULL);
-      if(err_msg)
+      if (err_msg)
         zsvsheet_ui_buffer_set_status(buff, err_msg);
-      else if(zst == zsvsheet_status_no_data)
+      else if (zst == zsvsheet_status_no_data)
         zsvsheet_ui_buffer_set_status(buff, "No results returned");
     }
 
@@ -264,9 +264,10 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
       if (!(pd = pivot_data_new(data_filename, expr)))
         zst = zsvsheet_status_memory;
       else {
-        zst = zsv_sqlite3_to_csv(ctx, zdb, sqlite3_str_value(sql_str), &err_msg, pd, pivot_on_header_cell, pivot_on_data_cell);
+        zst = zsv_sqlite3_to_csv(ctx, zdb, sqlite3_str_value(sql_str), &err_msg, pd, pivot_on_header_cell,
+                                 pivot_on_data_cell);
         if (zst != zsvsheet_status_ok) {
-          if(zst == zsvsheet_status_no_data)
+          if (zst == zsvsheet_status_no_data)
             zsvsheet_ui_buffer_set_status(buff, "No results returned");
           else
             zsvsheet_ui_buffer_set_status(buff, err_msg ? err_msg : "Unexpected error preparing SQL");

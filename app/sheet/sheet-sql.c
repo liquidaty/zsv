@@ -1,6 +1,6 @@
 static zsvsheet_status zsv_sqlite3_to_csv(zsvsheet_proc_context_t pctx, struct zsv_sqlite3_db *zdb, const char *sql,
-                                          const char **err_msg,
-                                          void *ctx, void (*on_header_cell)(void *, size_t, const char *),
+                                          const char **err_msg, void *ctx,
+                                          void (*on_header_cell)(void *, size_t, const char *),
                                           void (*on_data_cell)(void *, size_t, const char *, size_t len)) {
   zsvsheet_status zst = zsvsheet_status_error;
   sqlite3_stmt *stmt = NULL;
@@ -53,14 +53,14 @@ static zsvsheet_status zsv_sqlite3_to_csv(zsvsheet_proc_context_t pctx, struct z
       zst = zsvsheet_open_file_opts(pctx, &uibopts);
     } else {
       if (zst == zsvsheet_status_ok) {
-        if(!have_data)
+        if (!have_data)
           zst = zsvsheet_status_no_data;
         if (!*err_msg && zdb && zdb->rc != SQLITE_OK) {
           zst = zsvsheet_status_error; // to do: make this more specific
           *err_msg = sqlite3_errmsg(zdb->db);
         }
       }
-      if(tmp_fn && zsv_file_exists(tmp_fn))
+      if (tmp_fn && zsv_file_exists(tmp_fn))
         unlink(tmp_fn);
     }
     free(tmp_fn);
@@ -128,8 +128,7 @@ static int is_str_empty(const char *s) {
   return 1;
 }
 
-static enum check_select_expression_result check_select_expression(sqlite3 *db, const char *expr,
-                                                                   int *err) {
+static enum check_select_expression_result check_select_expression(sqlite3 *db, const char *expr, int *err) {
   sqlite3_stmt *stmt = NULL;
 
   // Prepare "SELECT [expr] FROM data" to see if it's valid in the
@@ -159,7 +158,7 @@ static enum check_select_expression_result check_select_expression(sqlite3 *db, 
 
   // Check that we have a single expression (e.g., not "myvalue, 123")
   int col_count = sqlite3_column_count(stmt);
-  
+
   sqlite3_finalize(stmt);
   if (col_count != 1)
     return zsv_select_sql_expression_multiple_expressions;

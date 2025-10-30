@@ -108,18 +108,17 @@ static zsvsheet_status zsvsheet_sqlfilter_handler(struct zsvsheet_proc_context *
       else
         zsvsheet_ui_buffer_set_status(buff, "Unknown error");
     } else {
-      if(add_row_num)
-        sqlite3_str_appendf(sql_str, "select ROWID as %Q, * from data where %s",
-                            ZSVSHEET_ROWNUM_HEADER, expr);
+      if (add_row_num)
+        sqlite3_str_appendf(sql_str, "select ROWID as %Q, * from data where %s", ZSVSHEET_ROWNUM_HEADER, expr);
       else
         sqlite3_str_appendf(sql_str, "select * from data where %s", expr);
-      
+
       if (!(sqlfd = sqlfilter_data_new(data_filename, expr)))
         zst = zsvsheet_status_memory;
       else {
         zst = zsv_sqlite3_to_csv(ctx, zdb, sqlite3_str_value(sql_str), &err_msg, sqlfd, NULL, NULL);
         if (zst != zsvsheet_status_ok) {
-          if(zst == zsvsheet_status_no_data)
+          if (zst == zsvsheet_status_no_data)
             zsvsheet_ui_buffer_set_status(buff, "No results returned");
           else
             zsvsheet_ui_buffer_set_status(buff, err_msg ? err_msg : "Unexpected error preparing SQL");
