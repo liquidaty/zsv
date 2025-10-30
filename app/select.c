@@ -33,6 +33,12 @@ struct zsv_select_search_str {
   size_t len;
 };
 
+struct zsv_select_regex {
+  struct zsv_select_regex *next;
+  const char *pattern;
+  
+}
+
 static void zsv_select_search_str_delete(struct zsv_select_search_str *ss) {
   for (struct zsv_select_search_str *next; ss; ss = next) {
     next = ss->next;
@@ -97,6 +103,7 @@ struct zsv_select_data {
   size_t skip_data_rows;
 
   struct zsv_select_search_str *search_strings;
+  
 
   zsv_csv_writer csv_writer;
 
@@ -567,6 +574,7 @@ const char *zsv_select_usage_msg[] = {
   "  --no-header                  : do not output header row",
   "  --prepend-header <value>     : prepend each column header with the given text <value>",
   "  -s,--search <value>          : only output rows with at least one cell containing <value>",
+  "  --regex-search <pattern>     : only output rows with at least one cell matching the given regex pattern",
   // TO DO: " -s,--search /<pattern>/modifiers: search on regex pattern; modifiers include 'g' (global) and 'i'
   // (case-insensitive)",
   "  --sample-every <num_of_rows> : output a sample consisting of the first row, then every nth row",
@@ -846,6 +854,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       arg_i++;
       if (arg_i < argc && strlen(argv[arg_i]))
         zsv_select_add_search(&data, argv[arg_i]);
+      else
+        stat = zsv_printerr(1, "%s option requires a value", argv[arg_i - 1]);
+    } else if (!strcmp(argv[arg_i], "--regex-search")) {
+      arg_i++;
+      if (arg_i < argc && strlen(argv[arg_i]))
+        zsv_select_add_regex(&data, argv[arg_i]);
       else
         stat = zsv_printerr(1, "%s option requires a value", argv[arg_i - 1]);
     } else if (!strcmp(argv[arg_i], "-v") || !strcmp(argv[arg_i], "--verbose")) {
