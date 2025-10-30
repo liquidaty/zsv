@@ -157,6 +157,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     size_t rownum_column_offset = 0;
     if (rows_read == 0 && zsvsheet_opts->hide_row_nums == 0) {
       // Check if we already have Row #
+      // TO DO: instead of checking the header, use (*uibufferp)->has_row_num
       struct zsv_cell c = zsv_get_cell(parser, 0);
       if (c.len == ZSVSHEET_ROWNUM_HEADER_LEN && !memcmp(c.str, ZSVSHEET_ROWNUM_HEADER, c.len)) {
         zsvsheet_opts->hide_row_nums = 1;

@@ -57,6 +57,11 @@ void zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*sta
   ub->worker_active = 1;
 }
 
+void zsvsheet_ui_buffer_set_status(struct zsvsheet_ui_buffer *ub, const char *status) {
+  free(ub->status);
+  ub->status = status ? strdup(status) : NULL;
+}
+
 int zsvsheet_ui_buffer_index_ready(struct zsvsheet_ui_buffer *ub, char skip_lock) {
   if (!skip_lock)
     pthread_mutex_lock(&ub->mutex);
