@@ -42,6 +42,10 @@ else
 endif
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 
+ifneq ($(HAVE_PCRE2_8),1)
+  $(error pcre2-8 library not found ($(CONFIGFILEPATH))-- if you think this is in error, re-run ./configure)
+endif
+
 help:
 	@echo 'make build|test|clean'
 
