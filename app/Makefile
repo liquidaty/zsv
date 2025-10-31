@@ -534,7 +534,7 @@ ${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o : ${BUILD_DIR}/objs/utils/%.o : utils/
 	${CC} ${CFLAGS} -I${INCLUDE_PCRE2_8} -o $@ -c utils/$*.c
 
 ${BUILD_DIR}/external/pcre2/lib/libpcre2-8.a ${BUILD_DIR}/external/pcre2/include/pcre2.h:
-	${MAKE} -e -C external -f build.mk ${BUILD_DIR}/external/pcre2/lib/libpcre2-8.a BUILD_DIR=${BUILD_DIR}
+	${MAKE} -e -C external -f build.mk ${BUILD_DIR}/external/pcre2/lib/libpcre2-8.a BUILD_DIR=${BUILD_DIR} CONFIGURE_HOST=${CONFIGURE_HOST}
 
 # utils/db uses jsonwriter
 ${BUILD_DIR}/objs/utils/db.o : MORE_SOURCE+= ${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
