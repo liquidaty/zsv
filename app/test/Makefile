@@ -356,8 +356,12 @@ test-search-select: test-search-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_
 
 test-regex-select: test-regex-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
+ifeq ($(HAVE_PCRE2_8),1)
 	@${PREFIX} $< worldcitiespop_mil.csv --regex-search '^esc[uo]' > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+else
+	@echo "  regex not available in this build"
+endif
 
 test-fixed-1-select-pull test-fixed-2-select-pull test-fixed-3-select-pull test-fixed-4-select-pull:
 	@echo "$@: n/a"
