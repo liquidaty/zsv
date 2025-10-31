@@ -17,4 +17,4 @@ ${BUILD_DIR}/external/pcre2/lib/libpcre2-8.a:
 	tar xf ${THIS_MAKEFILE_DIR_TMP}/pcre2-pcre2-10.47.tar.gz && \
 	cd pcre2-pcre2-10.47 && \
 	CFLAGS="${PCRE2_CFLAGS}" ./configure --prefix=${BUILD_DIR}/external/pcre2 --enable-static=yes --enable-shared=no && \
-	make install
+	${MAKE} install
