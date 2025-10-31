@@ -731,7 +731,7 @@ if [ "$JQ_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/jq.h" ]
 fi
 
 if [ "$JQ_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
-    printf "checking --prefix-jq ${JQ_PREFIX} ... "
+    printf "checking --jq-prefix ${JQ_PREFIX} ... "
     if ! tryldflag LDFLAGS_JQ -ljq -L"$JQ_PREFIX"/lib ; then
         echo "Error: Failed to compile with -ljq and -L$JQ_PREFIX/lib"
         exit 1
@@ -756,7 +756,7 @@ if [ "$PCRE2_8_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/pc
 fi
 
 if [ "$PCRE2_8_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
-    printf "checking --prefix-pcre2-8 ${PCRE2_8_PREFIX} ... "
+    printf "checking --pcre2-8-prefix ${PCRE2_8_PREFIX} ... "
     if ! tryldflag LDFLAGS_PCRE2_8 -lpcre-8 -L"$PCRE2_8_PREFIX"/lib ; then
         echo "Error: Failed to compile with -lpcre2-8 and -L$PCRE2_8_PREFIX/lib"
     else
