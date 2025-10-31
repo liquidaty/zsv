@@ -16,7 +16,6 @@ struct zsv_pcre2_handle {
  * @brief Implementation of zsv_pcre2_8_new.
  */
 regex_handle_t* zsv_pcre2_8_new(const char* pattern, uint32_t options) {
-    // Allocate memory for the handle struct
     regex_handle_t *handle = malloc(sizeof(regex_handle_t));
     if (handle == NULL) {
         printf("Error: Failed to allocate memory for handle.\n");
@@ -27,36 +26,17 @@ regex_handle_t* zsv_pcre2_8_new(const char* pattern, uint32_t options) {
     int error_number;
     PCRE2_SIZE error_offset;
 
-    // Force UTF-8 and Multiline support
-    uint32_t compile_options = options | PCRE2_UTF | PCRE2_MULTILINE;
+    // Force UTF-8, Multiline support, and NUL as newline
+    uint32_t compile_options = options | PCRE2_UTF | PCRE2_MULTILINE | PCRE2_NEWLINE_NUL;
 
-    // --- Start Fix ---
-
-    // 1. Create a COMPILE context
-    pcre2_compile_context *compile_context = pcre2_compile_context_create_8(NULL);
-    if (compile_context == NULL) {
-        printf("Error: Failed to create compile context.\n");
-        free(handle);
-        return NULL;
-    }
-
-    // 2. Set the newline convention to '\r' (CR) on the COMPILE context
-    pcre2_set_newline_8(compile_context, PCRE2_NEWLINE_CR);
-
-    // 3. Compile the pattern, passing the compile context
     handle->re = pcre2_compile_8(
         (PCRE2_SPTR)pattern,   // the pattern
         PCRE2_ZERO_TERMINATED, // pattern is zero-terminated
-        compile_options,       // user options + UTF + MULTILINE
+        compile_options,       // user options + UTF + MULTILINE + NUL
         &error_number,         // for error number
         &error_offset,         // for error offset
-        compile_context        // use our configured compile context
+        NULL                   // use default compile context
     );
-
-    // 4. Free the compile context (it's no longer needed)
-    pcre2_compile_context_free_8(compile_context);
-
-    // --- End Fix ---
 
     if (handle->re == NULL) {
         PCRE2_UCHAR buffer[256];
@@ -67,14 +47,13 @@ regex_handle_t* zsv_pcre2_8_new(const char* pattern, uint32_t options) {
         return NULL;
     }
 
-    // We no longer need to create or store a match context.
     return handle;
 }
 
 /**
  * @brief Implementation of zsv_pcre2_8_match.
  */
-int zsv_pcre2_8_match(regex_handle_t* handle, const char* subject, size_t subject_length) {
+int zsv_pcre2_8_match(regex_handle_t* handle, const unsigned char* subject, size_t subject_length) {
     // Removed check for handle->match_context
     if (handle == NULL || handle->re == NULL || subject == NULL) {
         return 0; // Invalid input
@@ -194,4 +173,3 @@ void zsv_pcre2_8_delete(regex_handle_t* handle) {
         free(handle);
     }
 }
-

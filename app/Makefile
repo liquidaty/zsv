@@ -183,6 +183,10 @@ ifeq ($(ZSV_EXTRAS),1)
   UTILS1+= overwrite overwrite_writer
 endif
 
+#ifeq ($(HAVE_PCRE2_8),1)
+#  UTILS1+=pcre2-8/pcre2-8
+#endif
+
 UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
 
 ifeq ($(NO_THREADING),1)
@@ -282,6 +286,8 @@ else
   JQ_INCLUDE_DIR=${JQ_PREFIX}/include
   JQ_LIB=
 endif
+
+## HAVE_PCRE2_8
 
 ## json writer
 JSONWRITER_SRC=${THIS_MAKEFILE_DIR}/external/json_writer-1.01
@@ -395,6 +401,10 @@ ${BUILD_DIR}/objs/sql_internal.o ${BUILD_DIR}/objs/utils/index.o: ${BUILD_DIR}/o
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ -c $<
 
+${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o : ${BUILD_DIR}/objs/utils/%.o : utils/%.c utils/%.h
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/$*.c ${MORE_SOURCE}
+
 ${BUILD_DIR}/objs/utils/%.o : utils/%.c ${INCLUDE_DIR}/zsv/utils/%.h ${JQ_LIB}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/$*.c ${MORE_SOURCE}
@@ -478,6 +488,12 @@ MORE_SOURCE+=-I${THIS_MAKEFILE_DIR}/external/sglib
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: ${JSONWRITER_OBJECT}
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o ${STANDALONE_PFX}flatten${EXE} ${CLI_OBJ_PFX}flatten.o: MORE_SOURCE+=${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
+
+# CLI, select and sheet use PCRE2-8
+ifeq ($(HAVE_PCRE2_8),1)
+  ${CLI} ${STANDALONE_PFX}select${EXE}: ${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o
+  ${CLI} ${STANDALONE_PFX}select${EXE}: MORE_LIBS+=${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o ${LDFLAGS_PCRE2_8} -lpcre2-8
+endif
 
 # utils/db uses jsonwriter
 ${BUILD_DIR}/objs/utils/db.o : MORE_SOURCE+= ${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}

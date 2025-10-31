@@ -27,6 +27,8 @@
 #include <zsv/utils/memmem.h>
 #include <zsv/utils/arg.h>
 
+#include "utils/pcre2-8/pcre2-8.h"
+
 struct zsv_select_search_str {
   struct zsv_select_search_str *next;
   const char *value;
@@ -36,7 +38,17 @@ struct zsv_select_search_str {
 struct zsv_select_regex {
   struct zsv_select_regex *next;
   const char *pattern;
-  
+  regex_handle_t *regex;
+  // unsigned char has_anchors:1;
+  unsigned char _:7;
+};
+
+static void zsv_select_regexs_delete(struct zsv_select_regex *rs) {
+  for (struct zsv_select_regex *next; rs; rs = next) {
+    next = rs->next;
+    zsv_pcre2_8_delete(rs->regex);
+    free(rs);
+  }
 }
 
 static void zsv_select_search_str_delete(struct zsv_select_search_str *ss) {
@@ -103,6 +115,7 @@ struct zsv_select_data {
   size_t skip_data_rows;
 
   struct zsv_select_search_str *search_strings;
+  struct zsv_select_regex *search_regexs;
   
 
   zsv_csv_writer csv_writer;
@@ -295,6 +308,20 @@ static void zsv_select_add_search(struct zsv_select_data *data, const char *valu
   data->search_strings = ss;
 }
 
+static void zsv_select_add_regex(struct zsv_select_data *data, const char *pattern) {
+  if(pattern && *pattern) {
+    struct zsv_select_regex *sr = calloc(1, sizeof(*sr));
+    sr->pattern = pattern;
+    sr->regex = zsv_pcre2_8_new(pattern, 0);
+    if(sr->regex) {
+      // sr->has_anchors = zsv_pcre2_8_has_anchors(value);
+      sr->next = data->search_regexs;
+      data->search_regexs = sr;
+    } else
+      free(sr->regex);
+  }
+}
+
 #ifndef NDEBUG
 __attribute__((always_inline)) static inline
 #endif
@@ -342,19 +369,36 @@ __attribute__((always_inline)) static inline
 }
 
 static inline char zsv_select_row_search_hit(struct zsv_select_data *data) {
-  if (!data->search_strings)
+  if (!data->search_strings && !data->search_regexs)
     return 1;
 
   unsigned int j = zsv_cell_count(data->parser);
+  // Convert all bytes between cells to NUL so we can accurately search the entire row in one goe
+  unsigned char *start = NULL;
+  unsigned char *end = NULL;
   for (unsigned int i = 0; i < j; i++) {
     struct zsv_cell cell = zsv_get_cell(data->parser, i);
+    if(i == 0)
+      start = cell.str;
     if (UNLIKELY(data->any_clean != 0))
       cell.str = zsv_select_cell_clean(data, cell.str, &cell.quoted, &cell.len);
-    if (cell.len) {
-      for (struct zsv_select_search_str *ss = data->search_strings; ss; ss = ss->next)
-        if (ss->value && *ss->value && memmem(cell.str, cell.len, ss->value, ss->len))
-          return 1;
+    if(end) {
+      while(end < cell.str) {
+        *end = '\0';
+        end++;
+      }
     }
+    end = cell.str + cell.len;
+  }
+
+  if(end > start) {
+    for (struct zsv_select_search_str *ss = data->search_strings; ss; ss = ss->next)
+      if (ss->value && *ss->value && end > start && memmem(start, end - start, ss->value, ss->len))
+        return 1;
+
+    for (struct zsv_select_regex *rs = data->search_regexs; rs; rs = rs->next)
+      if (rs->regex && zsv_pcre2_8_match(rs->regex, start, end - start))
+        return 1;
   }
   return 0;
 }
@@ -621,6 +665,7 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
 
   zsv_writer_delete(data->csv_writer);
   zsv_select_search_str_delete(data->search_strings);
+  zsv_select_regexs_delete(data->search_regexs);
 
   if (data->distinct == ZSV_SELECT_DISTINCT_MERGE) {
     for (unsigned int i = 0; i < data->output_cols_count; i++) {
