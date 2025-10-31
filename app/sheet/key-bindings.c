@@ -27,7 +27,7 @@ zsvsheet_status zsvsheet_proc_key_binding_handler(struct zsvsheet_key_binding_co
 }
 
 int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding) {
-  if (zsvsheet_find_key_binding(binding->ch))
+  if (binding->ch && zsvsheet_find_key_binding(binding->ch))
     return EEXIST; /* Key bound already */
 
   if (binding->proc_id != ZSVSHEET_PROC_INVALID && binding->handler == NULL)
@@ -36,8 +36,9 @@ int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding) {
   assert(binding->handler);
 
   for (int i = 0; i < MAX_KEY_BINDINGS; ++i) {
-    if (key_bindings[i].ch == 0) {
+    if (key_bindings[i].taken == 0) {
       key_bindings[i] = *binding;
+      key_bindings[i].taken = 1;
       return 0;
     }
   }
@@ -112,9 +113,12 @@ void zsvsheet_register_builtin_key_bindings(struct zsvsheet_key_binding *arr) {
 zsvsheet_status zsvsheet_vim_g_key_binding_dmux_handler(struct zsvsheet_key_binding_context *ctx) {
   /* Double g takes you to the top of the file in vim. We need to wait for the
    * second g in a row to execute the procedure */
-  assert(ctx->ch == 'g');
-  if (ctx->ch == ctx->prev_ch)
-    return zsvsheet_proc_invoke_from_keypress(zsvsheet_builtin_proc_move_top, ctx->ch, ctx->subcommand_context);
+  if (ctx->prev_ch == 'g') {
+    if (ctx->ch == ctx->prev_ch)
+      return zsvsheet_proc_invoke_from_keypress(zsvsheet_builtin_proc_move_top, ctx->ch, ctx->subcommand_context);
+    else if (ctx->ch == '/')
+      return zsvsheet_proc_invoke_from_keypress(zsvsheet_builtin_proc_sqlfilter, ctx->ch, ctx->subcommand_context);
+  }
   return zsvsheet_status_ok;
 }
 
@@ -153,6 +157,18 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
     .proc_id = zsvsheet_builtin_proc_move_top,
     .handler = zsvsheet_vim_g_key_binding_dmux_handler
   },
+  {
+    .ch = '\0',
+    .ch_name = "",
+    .proc_id = zsvsheet_builtin_proc_sqlfilter,
+    // .handler = zsvsheet_vim_g_key_binding_dmux_handler
+  },
+  {
+    .ch = '\0',
+    .ch_name = "hi",
+    .proc_id = zsvsheet_builtin_proc_pg_up,
+    // .handler = zsvsheet_vim_g_key_binding_dmux_handler
+  },
   { .ch = 'G',                 .proc_id = zsvsheet_builtin_proc_move_bottom,   },
   /* Shift up/down also move you to the top/bottom of the page
    * TODO: Figure out how to map KEY_SUP and KEY_SDOWN (curses doesn't implement)
@@ -174,8 +190,7 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
   { .ch = '\r',                .proc_id = zsvsheet_builtin_proc_newline,       },
   { .ch = 'v',                 .proc_id = zsvsheet_builtin_proc_pivot_cur_col, },
   { .ch = 'V',                 .proc_id = zsvsheet_builtin_proc_pivot_expr,    },
-
-  { .ch = 'F',                 .proc_id = zsvsheet_builtin_proc_sqlfilter,     },
+  //  { .ch = 'F',                 .proc_id = zsvsheet_builtin_proc_filter_this    },
   { .ch = -1                                                                   }
 };
 /* clang-format on */

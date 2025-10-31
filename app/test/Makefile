@@ -352,6 +352,7 @@ test-search-select: test-search-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_
 	@${TEST_INIT}
 	@${PREFIX} $< worldcitiespop_mil.csv --search escu > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@echo "TO DO: select --search with overwritten values"
 
 test-regex-select: test-regex-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}

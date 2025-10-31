@@ -6,15 +6,42 @@
 #include "transformation.h"
 #include "handlers_internal.h"
 
+#ifdef HAVE_PCRE2_8
+#include "../utils/pcre2-8/pcre2-8.h"
+#endif
+
 struct filtered_file_ctx {
   char *filter;
   size_t filter_len;
+#ifdef HAVE_PCRE2_8
+  regex_handle_t *regex;
+#endif
   size_t row_num; // 1-based row number (1 = header row, 2 = first data row)
   size_t passed;
   unsigned char seen_header : 1;
   unsigned char has_row_num : 1;
   unsigned char _ : 7;
 };
+
+// zsvsheet_nullify_row_buff: return 1 if row has overwrite
+static int zsvsheet_nullify_row_buff(zsv_parser z) {
+  unsigned int j = zsv_cell_count(z);
+  unsigned char *end = NULL;
+  int have_overwrite = 0;
+  for (unsigned int i = 0; i < j; i++) {
+    struct zsv_cell cell = zsv_get_cell(z, i);
+    if (cell.overwritten)
+      have_overwrite = 1;
+    if (end) {
+      while (end < cell.str) {
+        *end = '\0';
+        end++;
+      }
+    }
+    end = cell.str + cell.len;
+  }
+  return have_overwrite;
+}
 
 static void zsvsheet_save_filtered_file_row_handler(zsvsheet_transformation trn) {
   struct filtered_file_ctx *ctx = zsvsheet_transformation_user_context(trn);
@@ -25,14 +52,45 @@ static void zsvsheet_save_filtered_file_row_handler(zsvsheet_transformation trn)
   if (col_count == 0)
     return;
 
-  struct zsv_cell first_cell = zsv_get_cell(parser, 0);
   if (ctx->seen_header) {
-    struct zsv_cell last_cell = zsv_get_cell(parser, col_count - 1);
-    if (!memmem(first_cell.str, last_cell.str - first_cell.str + last_cell.len, ctx->filter, ctx->filter_len))
-      return;
-    // future enhancement: optionally, handle if row may have unusual quotes e.g. cell1,"ce"ll2,cell3
+    int have_overwrite = zsvsheet_nullify_row_buff(parser);
+    if (have_overwrite) {
+      // we need to do this cell by cell
+      for (unsigned int i = 0; i < col_count; i++) {
+        struct zsv_cell cell = zsv_get_cell(parser, i);
+        const unsigned char *start = cell.str;
+        const unsigned char *end = cell.str + cell.len;
+        if (cell.len) {
+#ifdef HAVE_PCRE2_8
+          if (ctx->regex) {
+            if (!zsv_pcre2_8_match(ctx->regex, start, end - start))
+              return; // no match: don't save this row
+          } else
+#endif
+            if (!memmem(start, end - start, ctx->filter, ctx->filter_len))
+            return; // no match: don't save this row
+        }
+      }
+    } else {
+      struct zsv_cell first_cell = zsv_get_cell(parser, 0);
+      struct zsv_cell last_cell = zsv_get_cell(parser, col_count - 1);
+      const unsigned char *start = first_cell.str;
+      const unsigned char *end = last_cell.str + last_cell.len;
+      if (end > start) {
+#ifdef HAVE_PCRE2_8
+        if (ctx->regex) {
+          if (!zsv_pcre2_8_match(ctx->regex, start, end - start))
+            return; // no match: don't save this row
+        } else
+#endif
+          if (!memmem(start, end - start, ctx->filter, ctx->filter_len))
+          return; // no match: don't save this row
+      }
+    }
   } else {
+    struct zsv_cell first_cell = zsv_get_cell(parser, 0);
     ctx->seen_header = 1;
+    /// just use uibuff->has_row_num?
     if (first_cell.len == ZSVSHEET_ROWNUM_HEADER_LEN && !memcmp(first_cell.str, ZSVSHEET_ROWNUM_HEADER, first_cell.len))
       ctx->has_row_num = 1;
   }
@@ -78,6 +136,9 @@ static enum zsvsheet_status zsvsheet_filter_file(zsvsheet_proc_context_t proc_ct
     .has_row_num = 0,
     .filter = strdup(row_filter),
     .filter_len = strlen(row_filter),
+#ifdef HAVE_PCRE2_8
+    .regex = row_filter && *row_filter == '/' && row_filter[1] ? zsv_pcre2_8_new(row_filter + 1, 0) : NULL,
+#endif
   };
   struct zsvsheet_buffer_transformation_opts opts = {
     .user_context = zsv_memdup(&ctx, sizeof(ctx)),

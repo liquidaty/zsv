@@ -430,7 +430,11 @@ static zsvsheet_status zsvsheet_find(struct zsvsheet_sheet_context *state, bool 
   if (!next) {
     char prompt_buffer[256] = {0};
     int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
+#ifdef HAVE_PCRE2_8
+    get_subcommand("Find (/ for regex)", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, NULL);
+#else
     get_subcommand("Find", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, NULL);
+#endif
     if (*prompt_buffer == '\0') {
       goto out;
     } else {
@@ -538,7 +542,6 @@ static zsvsheet_status zsvsheet_subcommand_handler(struct zsvsheet_proc_context 
     .subcommand_context = ctx->subcommand_context,
   };
   zsvsheet_status rc = zsvsheet_proc_invoke_from_command(prompt_buffer, &context);
-  // TO DO: handle status message update here or in caller
   return rc;
 }
 

@@ -49,11 +49,6 @@ static void zsvsheet_check_buffer_worker_updates(struct zsvsheet_ui_buffer *ub,
 static zsvsheet_status zsvsheet_sqlfilter_handler(struct zsvsheet_proc_context *ctx) {
   char result_buffer[256] = {0};
   const char *expr;
-  int ch = zsvsheet_ext_keypress(ctx);
-
-  if (ch < 0)
-    return zsvsheet_status_error;
-
   zsvsheet_buffer_t buff = zsvsheet_buffer_current(ctx);
   struct zsvsheet_buffer_data bd = zsvsheet_buffer_info(buff);
   const char add_row_num = !bd.has_row_num;
