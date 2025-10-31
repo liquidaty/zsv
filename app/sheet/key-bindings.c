@@ -184,13 +184,13 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
   /* Open is a subcommand only in vim. Keeping the binding for now */
   { .ch = 'e',                 .proc_id = zsvsheet_builtin_proc_open_file,     },
   { .ch = 'f',                 .proc_id = zsvsheet_builtin_proc_filter,        },
+  { .ch = 'F',                 .proc_id = zsvsheet_builtin_proc_filter_this,    },
   { .ch = ':',                 .proc_id = zsvsheet_builtin_proc_subcommand,    },
   { .ch = '?',                 .proc_id = zsvsheet_builtin_proc_help,          },
   { .ch = '\n',                .proc_id = zsvsheet_builtin_proc_newline,       },
   { .ch = '\r',                .proc_id = zsvsheet_builtin_proc_newline,       },
   { .ch = 'v',                 .proc_id = zsvsheet_builtin_proc_pivot_cur_col, },
   { .ch = 'V',                 .proc_id = zsvsheet_builtin_proc_pivot_expr,    },
-  //  { .ch = 'F',                 .proc_id = zsvsheet_builtin_proc_filter_this    },
   { .ch = -1                                                                   }
 };
 /* clang-format on */
@@ -249,6 +249,7 @@ struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
   { .ch = ZSVSHEET_CTRL('f'),     .handler = zsvsheet_emacs_Cf_key_binding_dmux_handler,  },
   /* No such thing in emacs, find a more suitable binding */
   { .ch = 'f',                    .proc_id = zsvsheet_builtin_proc_filter,        },
+  { .ch = 'F',                    .proc_id = zsvsheet_builtin_proc_filter_this,   },
   { .ch = '|',                    .proc_id = zsvsheet_builtin_proc_goto_column,   },
   { .ch = ZSVSHEET_CTRL('h'),     .proc_id = zsvsheet_builtin_proc_help,          },
   { .ch = '\n',                   .proc_id = zsvsheet_builtin_proc_newline,       },

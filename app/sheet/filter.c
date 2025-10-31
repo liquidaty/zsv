@@ -18,6 +18,7 @@ struct filtered_file_ctx {
 #endif
   size_t row_num; // 1-based row number (1 = header row, 2 = first data row)
   size_t passed;
+  size_t single_row_ix_plus_1;
   unsigned char seen_header : 1;
   unsigned char has_row_num : 1;
   unsigned char _ : 7;
@@ -48,15 +49,23 @@ static void zsvsheet_save_filtered_file_row_handler(zsvsheet_transformation trn)
   zsv_parser parser = zsvsheet_transformation_parser(trn);
   zsv_csv_writer writer = zsvsheet_transformation_writer(trn);
   size_t col_count = zsv_cell_count(parser);
+  const size_t single_row_ix_plus_1 = ctx->single_row_ix_plus_1;
+
   ctx->row_num++;
   if (col_count == 0)
     return;
-
   if (ctx->seen_header) {
-    int have_overwrite = zsvsheet_nullify_row_buff(parser);
-    if (have_overwrite) {
+    size_t start_ix = 0;
+    if (single_row_ix_plus_1) {
+      col_count = single_row_ix_plus_1;
+      start_ix = single_row_ix_plus_1 - 1;
+      if (ctx->has_row_num)
+        col_count++, start_ix++;
+    }
+    int have_overwrite = single_row_ix_plus_1 ? 0 : zsvsheet_nullify_row_buff(parser);
+    if (have_overwrite || single_row_ix_plus_1) {
       // we need to do this cell by cell
-      for (unsigned int i = 0; i < col_count; i++) {
+      for (unsigned int i = start_ix; i < col_count; i++) {
         struct zsv_cell cell = zsv_get_cell(parser, i);
         const unsigned char *start = cell.str;
         const unsigned char *end = cell.str + cell.len;
@@ -104,6 +113,8 @@ static void zsvsheet_save_filtered_file_row_handler(zsvsheet_transformation trn)
     else
       zsv_writer_cell_zu(writer, 1, ctx->row_num - 1);
   }
+
+  col_count = zsv_cell_count(parser);
   for (size_t i = 0; i < col_count; i++) {
     struct zsv_cell cell = zsv_get_cell(parser, i);
     zsv_writer_cell(writer, i == 0 && row_started == 0, cell.str, cell.len, cell.quoted);
@@ -125,10 +136,12 @@ static void zsvsheet_filter_file_on_done(zsvsheet_transformation trn) {
   pthread_mutex_unlock(&uib->mutex);
 
   free(old_status);
+  zsv_pcre2_8_delete(ctx->regex);
   free(ctx->filter);
 }
 
-static enum zsvsheet_status zsvsheet_filter_file(zsvsheet_proc_context_t proc_ctx, const char *row_filter) {
+static enum zsvsheet_status zsvsheet_filter_file(zsvsheet_proc_context_t proc_ctx, const char *row_filter,
+                                                 size_t single_row_ix_plus_1) {
   struct filtered_file_ctx ctx = {
     .seen_header = 0,
     .row_num = 0,
@@ -138,6 +151,7 @@ static enum zsvsheet_status zsvsheet_filter_file(zsvsheet_proc_context_t proc_ct
     .filter_len = strlen(row_filter),
 #ifdef HAVE_PCRE2_8
     .regex = row_filter && *row_filter == '/' && row_filter[1] ? zsv_pcre2_8_new(row_filter + 1, 0) : NULL,
+    .single_row_ix_plus_1 = single_row_ix_plus_1,
 #endif
   };
   struct zsvsheet_buffer_transformation_opts opts = {
