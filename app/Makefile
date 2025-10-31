@@ -183,10 +183,6 @@ ifeq ($(ZSV_EXTRAS),1)
   UTILS1+= overwrite overwrite_writer
 endif
 
-#ifeq ($(HAVE_PCRE2_8),1)
-#  UTILS1+=pcre2-8/pcre2-8
-#endif
-
 UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
 
 ifeq ($(NO_THREADING),1)
@@ -286,8 +282,6 @@ else
   JQ_INCLUDE_DIR=${JQ_PREFIX}/include
   JQ_LIB=
 endif
-
-## HAVE_PCRE2_8
 
 ## json writer
 JSONWRITER_SRC=${THIS_MAKEFILE_DIR}/external/json_writer-1.01
@@ -491,6 +485,7 @@ ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} $
 
 # CLI, select and sheet use PCRE2-8
 ifeq ($(HAVE_PCRE2_8),1)
+  CFLAGS+=-DHAVE_PCRE2_8
   ${CLI} ${STANDALONE_PFX}select${EXE}: ${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o
   ${CLI} ${STANDALONE_PFX}select${EXE}: MORE_LIBS+=${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o ${LDFLAGS_PCRE2_8} -lpcre2-8
 endif

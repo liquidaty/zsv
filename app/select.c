@@ -27,13 +27,8 @@
 #include <zsv/utils/memmem.h>
 #include <zsv/utils/arg.h>
 
+#ifdef HAVE_PCRE2_8
 #include "utils/pcre2-8/pcre2-8.h"
-
-struct zsv_select_search_str {
-  struct zsv_select_search_str *next;
-  const char *value;
-  size_t len;
-};
 
 struct zsv_select_regex {
   struct zsv_select_regex *next;
@@ -50,6 +45,14 @@ static void zsv_select_regexs_delete(struct zsv_select_regex *rs) {
     free(rs);
   }
 }
+
+#endif // HAVE_PCRE2_8
+
+struct zsv_select_search_str {
+  struct zsv_select_search_str *next;
+  const char *value;
+  size_t len;
+};
 
 static void zsv_select_search_str_delete(struct zsv_select_search_str *ss) {
   for (struct zsv_select_search_str *next; ss; ss = next) {
@@ -115,8 +118,9 @@ struct zsv_select_data {
   size_t skip_data_rows;
 
   struct zsv_select_search_str *search_strings;
+#ifdef HAVE_PCRE2_8
   struct zsv_select_regex *search_regexs;
-  
+#endif
 
   zsv_csv_writer csv_writer;
 
@@ -308,6 +312,7 @@ static void zsv_select_add_search(struct zsv_select_data *data, const char *valu
   data->search_strings = ss;
 }
 
+#ifdef HAVE_PCRE2_8
 static void zsv_select_add_regex(struct zsv_select_data *data, const char *pattern) {
   if(pattern && *pattern) {
     struct zsv_select_regex *sr = calloc(1, sizeof(*sr));
@@ -321,6 +326,7 @@ static void zsv_select_add_regex(struct zsv_select_data *data, const char *patte
       free(sr->regex);
   }
 }
+#endif // HAVE_PCRE2_8
 
 #ifndef NDEBUG
 __attribute__((always_inline)) static inline
@@ -369,7 +375,11 @@ __attribute__((always_inline)) static inline
 }
 
 static inline char zsv_select_row_search_hit(struct zsv_select_data *data) {
-  if (!data->search_strings && !data->search_regexs)
+  if (!data->search_strings
+#ifdef HAVE_PCRE2_8
+      && !data->search_regexs
+#endif
+      )
     return 1;
 
   unsigned int j = zsv_cell_count(data->parser);
@@ -396,9 +406,11 @@ static inline char zsv_select_row_search_hit(struct zsv_select_data *data) {
       if (ss->value && *ss->value && end > start && memmem(start, end - start, ss->value, ss->len))
         return 1;
 
+#ifdef HAVE_PCRE2_8
     for (struct zsv_select_regex *rs = data->search_regexs; rs; rs = rs->next)
       if (rs->regex && zsv_pcre2_8_match(rs->regex, start, end - start))
         return 1;
+#endif
   }
   return 0;
 }
@@ -618,7 +630,9 @@ const char *zsv_select_usage_msg[] = {
   "  --no-header                  : do not output header row",
   "  --prepend-header <value>     : prepend each column header with the given text <value>",
   "  -s,--search <value>          : only output rows with at least one cell containing <value>",
+#ifdef HAVE_PCRE2_8
   "  --regex-search <pattern>     : only output rows with at least one cell matching the given regex pattern",
+#endif
   // TO DO: " -s,--search /<pattern>/modifiers: search on regex pattern; modifiers include 'g' (global) and 'i'
   // (case-insensitive)",
   "  --sample-every <num_of_rows> : output a sample consisting of the first row, then every nth row",
@@ -665,7 +679,9 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
 
   zsv_writer_delete(data->csv_writer);
   zsv_select_search_str_delete(data->search_strings);
+#ifdef HAVE_PCRE2_8
   zsv_select_regexs_delete(data->search_regexs);
+#endif
 
   if (data->distinct == ZSV_SELECT_DISTINCT_MERGE) {
     for (unsigned int i = 0; i < data->output_cols_count; i++) {
@@ -901,12 +917,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         zsv_select_add_search(&data, argv[arg_i]);
       else
         stat = zsv_printerr(1, "%s option requires a value", argv[arg_i - 1]);
+#ifdef HAVE_PCRE2_8
     } else if (!strcmp(argv[arg_i], "--regex-search")) {
       arg_i++;
       if (arg_i < argc && strlen(argv[arg_i]))
         zsv_select_add_regex(&data, argv[arg_i]);
       else
         stat = zsv_printerr(1, "%s option requires a value", argv[arg_i - 1]);
+#endif
     } else if (!strcmp(argv[arg_i], "-v") || !strcmp(argv[arg_i], "--verbose")) {
       data.verbose = 1;
     } else if (!strcmp(argv[arg_i], "--unescape")) {
