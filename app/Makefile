@@ -501,7 +501,7 @@ ifeq ($(HAVE_PCRE2_8),1)
     ifneq ($(WIN),0)
       PCRE2_LIB=-l:libpcre2-8.a
     else
-      ifeq ($(PCRE2_8_PREFIX),auto)
+      ifeq ($(PCRE2_8_PREFIX),builtin)
         PCRE2_8_PREFIX=${BUILD_DIR}/external/pcre2
         # add dependency
         ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: ${PCRE2_8_PREFIX}/lib/libpcre2-8.a
