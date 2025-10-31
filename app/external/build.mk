@@ -7,6 +7,8 @@ else
   PCRE2_CFLAGS=-O3
 endif
 
+PCRE2_CFLAGS+=-fPIC
+
 help:
 	@echo 'make targets:'
 	@echo '  ${BUILD_DIR}/external/pcre2/lib/libpcre2-8.a'
