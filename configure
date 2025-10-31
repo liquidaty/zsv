@@ -767,7 +767,7 @@ else
         if [ "$PCRE2_8_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
             # TO DO: check for pcre2 static lib
             printf "checking --pcre2-8-prefix ${PCRE2_8_PREFIX} ... "
-            if ! tryldflag LDFLAGS_PCRE2_8 -lpcre-8 -L"$PCRE2_8_PREFIX"/lib ; then
+            if ! tryldflag LDFLAGS_PCRE2_8 -lpcre2-8 -L"$PCRE2_8_PREFIX"/lib ; then
                 echo "Error: Failed to compile with -lpcre2-8 and -L$PCRE2_8_PREFIX/lib"
             else
                 HAVE_PCRE2_8=1

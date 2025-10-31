@@ -395,13 +395,6 @@ ${BUILD_DIR}/objs/sql_internal.o ${BUILD_DIR}/objs/utils/index.o: ${BUILD_DIR}/o
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ -c $<
 
-${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o : ${BUILD_DIR}/objs/utils/%.o : utils/%.c utils/%.h
-	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/$*.c ${MORE_SOURCE}
-
-${BUILD_DIR}/external/pcre2/lib/libpcre2-8.a:
-	make -e -C external -f build.mk $@ BUILD_DIR=${BUILD_DIR}
-
 ${BUILD_DIR}/objs/utils/%.o : utils/%.c ${INCLUDE_DIR}/zsv/utils/%.h ${JQ_LIB}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/$*.c ${MORE_SOURCE}
@@ -529,20 +522,23 @@ ifeq ($(HAVE_PCRE2_8),1)
   endif
 
   LDFLAGS_PCRE2_8=
-  INCLUDE_PCRE2_8=
+  INCLUDE_PCRE2_8=${PREFIX}/include
   ifneq ($(PCRE2_8_PREFIX),$(PREFIX))
     ifneq ($(PCRE2_STATIC),1)
-      LDFLAGS_PCRE2_8="-L${PCRE2_8_PREFIX}/lib"
+      LDFLAGS_PCRE2_8=-L${BUILD_DIR}/external/pcre2/lib
     endif
-    INCLUDE_PCRE2_8="-L${PCRE2_8_PREFIX}/include"
+    INCLUDE_PCRE2_8=${BUILD_DIR}/external/pcre2/include
   endif
 
   ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: MORE_LIBS+=${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o ${LDFLAGS_PCRE2_8} ${PCRE2_LIB}
-  ifneq ($(INCLUDE_PCRE2_8),)
-    ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: MORE_SOURCE+=-I${INCLUDE_PCRE2_8}
-  endif
 endif
 
+${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o : ${BUILD_DIR}/objs/utils/%.o : utils/%.c utils/%.h ${INCLUDE_PCRE2_8}/pcre2.h
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -I${INCLUDE_PCRE2_8} -o $@ -c utils/$*.c
+
+${BUILD_DIR}/external/pcre2/lib/libpcre2-8.a ${BUILD_DIR}/external/pcre2/include/pcre2.h:
+	make -e -C external -f build.mk ${BUILD_DIR}/external/pcre2/lib/libpcre2-8.a BUILD_DIR=${BUILD_DIR}
 
 # utils/db uses jsonwriter
 ${BUILD_DIR}/objs/utils/db.o : MORE_SOURCE+= ${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
