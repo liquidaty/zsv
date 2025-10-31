@@ -19,8 +19,10 @@ Optional configuration:
   --jq-prefix=JQ_PREFIX   specify directory containing lib/libjq and include/jq.h
                           defaults to PREFIX if not specified and PREFIX/include/jq.h exists
   --pcre2-8-prefix=PCRE2_8_PREFIX
-                          specify directory containing lib/libpcre2-8 and include/pcre2-8.h
-                          defaults to PREFIX if not specified and PREFIX/include/pcre2.h exists
+                          no=do not use pcre2
+                          auto=build from included source (pcre2-10.47)
+                          otherwise, specify dir with lib/libpcre2-8 and include/pcre2-8.h
+                          defaults to 'auto' if not specified
 
 Installation directories:
   --prefix=PREFIX         main installation prefix [\$PREFIX or /usr/local]
@@ -751,18 +753,25 @@ else
 fi
 
 HAVE_PCRE2_8=
-if [ "$PCRE2_8_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/pcre2.h" ] ; then
-    PCRE2_8_PREFIX="$PREFIX"
+if [ "$PCRE2_8_PREFIX" = "" ] ; then
+    PCRE2_8_PREFIX=auto
 fi
+if [ "$PCRE2_8_PREFIX" = "auto" ] ; then
+    HAVE_PCRE2_8=1
+else
+    if [ "$PCRE2_8_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/pcre2.h" ] ; then
+        PCRE2_8_PREFIX="$PREFIX"
+    fi
 
-if [ "$PCRE2_8_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
-    printf "checking --pcre2-8-prefix ${PCRE2_8_PREFIX} ... "
-    if ! tryldflag LDFLAGS_PCRE2_8 -lpcre-8 -L"$PCRE2_8_PREFIX"/lib ; then
-        echo "Error: Failed to compile with -lpcre2-8 and -L$PCRE2_8_PREFIX/lib"
-    else
-        HAVE_PCRE2_8=1
-        if [ "$PCRE2_8_PREFIX" != "$PREFIX" ]; then
-            LDFLAGS_PCRE2_8="$LDFLAGS_PCRE2_8 -L$PCRE2_8_PREFIX/lib"
+    if [ "$PCRE2_8_PREFIX" != "no " ] ; then
+        if [ "$PCRE2_8_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
+            # TO DO: check for pcre2 static lib
+            printf "checking --pcre2-8-prefix ${PCRE2_8_PREFIX} ... "
+            if ! tryldflag LDFLAGS_PCRE2_8 -lpcre-8 -L"$PCRE2_8_PREFIX"/lib ; then
+                echo "Error: Failed to compile with -lpcre2-8 and -L$PCRE2_8_PREFIX/lib"
+            else
+                HAVE_PCRE2_8=1
+            fi
         fi
     fi
 fi
@@ -821,7 +830,6 @@ LDFLAGS_JQ = $LDFLAGS_JQ
 
 HAVE_PCRE2_8 = $HAVE_PCRE2_8
 PCRE2_8_PREFIX = $PCRE2_8_PREFIX
-LDFLAGS_PCRE2_8 = $LDFLAGS_PCRE2_8
 
 STATIC_LIBS = $STATIC_LIBS
 CFLAGS_AUTO = $CFLAGS_AUTO
