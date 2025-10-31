@@ -20,7 +20,7 @@ typedef struct zsv_pcre2_handle regex_handle_t;
  * @param options Additional PCRE2_COMPILE_... options to be OR'd in.
  * @return A pointer to a handle, or NULL on compilation error.
  */
-regex_handle_t* zsv_pcre2_8_new(const char* pattern, uint32_t options);
+regex_handle_t *zsv_pcre2_8_new(const char *pattern, uint32_t options);
 
 /**
  * @brief Matches a compiled regex handle against a subject string.
@@ -42,14 +42,13 @@ int zsv_pcre2_8_match(regex_handle_t *handle, const unsigned char *subject, size
  * @param pattern The null-terminated, UTF-8 encoded regex pattern.
  * @return 1 if a line anchor is found, 0 otherwise.
  */
-int zsv_pcre2_8_has_anchors(const char* pattern);
+int zsv_pcre2_8_has_anchors(const char *pattern);
 
 /**
  * @brief Frees the resources associated with a regex handle.
  *
  * @param handle The handle to free.
  */
-void zsv_pcre2_8_delete(regex_handle_t* handle);
+void zsv_pcre2_8_delete(regex_handle_t *handle);
 
 #endif // PCRE2_8_LIB_H
-
