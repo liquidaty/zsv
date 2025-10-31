@@ -136,7 +136,9 @@ static void zsvsheet_filter_file_on_done(zsvsheet_transformation trn) {
   pthread_mutex_unlock(&uib->mutex);
 
   free(old_status);
+#ifdef HAVE_PCRE2_8
   zsv_pcre2_8_delete(ctx->regex);
+#endif
   free(ctx->filter);
 }
 
