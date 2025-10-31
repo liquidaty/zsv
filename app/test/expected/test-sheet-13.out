@@ -18,8 +18,23 @@ l                         right                     Move right one column
 <page up>                 pagedown                  Move down one page
 <page down>               pageup                    Move up one page
 g g                       top                       Jump to the first row
-                          sqlfilter                 Filter by sql expression
-hi                        pageup                    Move up one page
 G                         bottom                    Jump to the last row
 /                         find                      Set a search term and jum
+n                         next                      Jump to the next search r
+|                         gotocolumn                Go to column
+e                         open                      Open another CSV file
+f                         filter                    Filter by specified text
+F                         filtercol                 Filter by specified text
+:                         subcommand                Editor subcommand
+?                         help                      Display a list of actions
+^J                        <Enter>                   Follow hyperlink (if any)
+^M                        <Enter>                   Follow hyperlink (if any)
+v                         pivot                     Group rows by the column
+V                         pivotexpr                 Group rows with group-by
+                          where                     Filter by sql expression
+
+
+
+
+
 <esc> to exit help Key(s)

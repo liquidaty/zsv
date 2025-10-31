@@ -812,8 +812,8 @@ endif
 test-sheet-13: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
-	tmux send-keys -t $@ "?" "/" "f" && \
+	@(tmux new-session -x 80 -y 40 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux send-keys -t $@ "?" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-14: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
@@ -822,7 +822,7 @@ ifeq ($(IS_WSL),1)
 	@${TEST_SKIP}
 else
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux new-session -x 80 -y 40 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux send-keys -t $@ "?" && \
 	${EXPECT} $@ help && \
 	tmux send-keys -t $@ ESCAPE && \

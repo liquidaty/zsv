@@ -605,7 +605,8 @@ static zsvsheet_status zsvsheet_help_handler(struct zsvsheet_proc_context *ctx) 
     };
 
     for (size_t j = 0; j < cols; j++) {
-      pstat = zsvsheet_screen_buffer_write_cell(buffer, row, j, (const unsigned char *)desc[j]);
+      if (*desc[j])
+        pstat = zsvsheet_screen_buffer_write_cell(buffer, row, j, (const unsigned char *)desc[j]);
       if (pstat != zsvsheet_priv_status_ok)
         goto free_buffer;
     }
@@ -721,7 +722,7 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_open_file,      "open",        "Open another CSV file",                                           zsvsheet_open_file_handler    },
   { zsvsheet_builtin_proc_filter,         "filter",      "Filter by specified text",                                        zsvsheet_filter_handler       },
   { zsvsheet_builtin_proc_filter_this,    "filtercol",   "Filter by specified text only in current column",                 zsvsheet_filter_handler       },
-  { zsvsheet_builtin_proc_sqlfilter,      "sqlfilter",   "Filter by sql expression",                                        zsvsheet_sqlfilter_handler    },
+  { zsvsheet_builtin_proc_sqlfilter,      "where",       "Filter by sql expression",                                        zsvsheet_sqlfilter_handler    },
   { zsvsheet_builtin_proc_subcommand,     "subcommand",  "Editor subcommand",                                               zsvsheet_subcommand_handler   },
   { zsvsheet_builtin_proc_help,           "help",        "Display a list of actions and key-bindings",                      zsvsheet_help_handler         },
   { zsvsheet_builtin_proc_newline,        "<Enter>",     "Follow hyperlink (if any)",                                       zsvsheet_newline_handler      },
