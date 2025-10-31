@@ -22,4 +22,19 @@ G                         bottom                    Jump to the last row
 /                         find                      Set a search term and jum
 n                         next                      Jump to the next search r
 |                         gotocolumn                Go to column
+e                         open                      Open another CSV file
+f                         filter                    Filter by specified text
+F                         filtercol                 Filter by specified text
+:                         subcommand                Editor subcommand
+?                         help                      Display a list of actions
+^J                        <Enter>                   Follow hyperlink (if any)
+^M                        <Enter>                   Follow hyperlink (if any)
+v                         pivot                     Group rows by the column
+V                         pivotexpr                 Group rows with group-by
+                          where                     Filter by sql expression
+
+
+
+
+
 <esc> to exit help Key(s)

@@ -27,7 +27,7 @@ zsvsheet_status zsvsheet_proc_key_binding_handler(struct zsvsheet_key_binding_co
 }
 
 int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding) {
-  if (zsvsheet_find_key_binding(binding->ch))
+  if (binding->ch && zsvsheet_find_key_binding(binding->ch))
     return EEXIST; /* Key bound already */
 
   if (binding->proc_id != ZSVSHEET_PROC_INVALID && binding->handler == NULL)
@@ -36,8 +36,9 @@ int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding) {
   assert(binding->handler);
 
   for (int i = 0; i < MAX_KEY_BINDINGS; ++i) {
-    if (key_bindings[i].ch == 0) {
+    if (key_bindings[i].taken == 0) {
       key_bindings[i] = *binding;
+      key_bindings[i].taken = 1;
       return 0;
     }
   }
@@ -112,9 +113,12 @@ void zsvsheet_register_builtin_key_bindings(struct zsvsheet_key_binding *arr) {
 zsvsheet_status zsvsheet_vim_g_key_binding_dmux_handler(struct zsvsheet_key_binding_context *ctx) {
   /* Double g takes you to the top of the file in vim. We need to wait for the
    * second g in a row to execute the procedure */
-  assert(ctx->ch == 'g');
-  if (ctx->ch == ctx->prev_ch)
-    return zsvsheet_proc_invoke_from_keypress(zsvsheet_builtin_proc_move_top, ctx->ch, ctx->subcommand_context);
+  if (ctx->prev_ch == 'g') {
+    if (ctx->ch == ctx->prev_ch)
+      return zsvsheet_proc_invoke_from_keypress(zsvsheet_builtin_proc_move_top, ctx->ch, ctx->subcommand_context);
+    else if (ctx->ch == '/')
+      return zsvsheet_proc_invoke_from_keypress(zsvsheet_builtin_proc_sqlfilter, ctx->ch, ctx->subcommand_context);
+  }
   return zsvsheet_status_ok;
 }
 
@@ -168,14 +172,19 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
   /* Open is a subcommand only in vim. Keeping the binding for now */
   { .ch = 'e',                 .proc_id = zsvsheet_builtin_proc_open_file,     },
   { .ch = 'f',                 .proc_id = zsvsheet_builtin_proc_filter,        },
+  { .ch = 'F',                 .proc_id = zsvsheet_builtin_proc_filter_this,    },
   { .ch = ':',                 .proc_id = zsvsheet_builtin_proc_subcommand,    },
   { .ch = '?',                 .proc_id = zsvsheet_builtin_proc_help,          },
   { .ch = '\n',                .proc_id = zsvsheet_builtin_proc_newline,       },
   { .ch = '\r',                .proc_id = zsvsheet_builtin_proc_newline,       },
   { .ch = 'v',                 .proc_id = zsvsheet_builtin_proc_pivot_cur_col, },
   { .ch = 'V',                 .proc_id = zsvsheet_builtin_proc_pivot_expr,    },
-
-  { .ch = 'F',                 .proc_id = zsvsheet_builtin_proc_sqlfilter,     },
+  {
+    .ch = '\0',
+    .ch_name = "",
+    .proc_id = zsvsheet_builtin_proc_sqlfilter,
+    // .handler = zsvsheet_vim_g_key_binding_dmux_handler
+  },
   { .ch = -1                                                                   }
 };
 /* clang-format on */
@@ -234,10 +243,12 @@ struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
   { .ch = ZSVSHEET_CTRL('f'),     .handler = zsvsheet_emacs_Cf_key_binding_dmux_handler,  },
   /* No such thing in emacs, find a more suitable binding */
   { .ch = 'f',                    .proc_id = zsvsheet_builtin_proc_filter,        },
+  { .ch = 'F',                    .proc_id = zsvsheet_builtin_proc_filter_this,   },
   { .ch = '|',                    .proc_id = zsvsheet_builtin_proc_goto_column,   },
   { .ch = ZSVSHEET_CTRL('h'),     .proc_id = zsvsheet_builtin_proc_help,          },
   { .ch = '\n',                   .proc_id = zsvsheet_builtin_proc_newline,       },
   { .ch = '\r',                   .proc_id = zsvsheet_builtin_proc_newline,       },
+
 
   { .ch = -1                                                          }
 };

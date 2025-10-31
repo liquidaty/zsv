@@ -18,6 +18,9 @@ Optional configuration:
   --arch=ARCH             use -march=ARCH. Set to 'none' for none, else defaults to 'native'
   --jq-prefix=JQ_PREFIX   specify directory containing lib/libjq and include/jq.h
                           defaults to PREFIX if not specified and PREFIX/include/jq.h exists
+  --pcre2-8-prefix=PCRE2_8_PREFIX
+                          specify directory containing lib/libpcre2-8 and include/pcre2-8.h
+                          defaults to PREFIX if not specified and PREFIX/include/pcre2.h exists
 
 Installation directories:
   --prefix=PREFIX         main installation prefix [\$PREFIX or /usr/local]
@@ -339,6 +342,9 @@ for arg ; do
         --jq-prefix=*) JQ_PREFIX=${arg#*=} ;;
         JQ_PREFIX=*) JQ_PREFIX=${arg#*=} ;;
 
+        --pcre2-8-prefix=*) PCRE2_8_PREFIX=${arg#*=} ;;
+        PCRE2_8_PREFIX=*) PCRE2_8_PREFIX=${arg#*=} ;;
+        
         --prefix=*) ;; # already handled
         --exec-prefix=*) ;; # already handled EXEC_PREFIX=${arg#*=} ;;
         --docdir=*) DOCDIR=${arg#*=} ;;
@@ -725,7 +731,7 @@ if [ "$JQ_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/jq.h" ]
 fi
 
 if [ "$JQ_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
-    echo "checking --prefix-jq ${JQ_PREFIX}"
+    printf "checking --jq-prefix ${JQ_PREFIX} ... "
     if ! tryldflag LDFLAGS_JQ -ljq -L"$JQ_PREFIX"/lib ; then
         echo "Error: Failed to compile with -ljq and -L$JQ_PREFIX/lib"
         exit 1
@@ -741,6 +747,23 @@ if [ "$MINGW" = "1" ]; then
 else
     if [ "$NO_THREADING" != "1" ]; then
         tryldflag LDFLAGS_JQ -pthread
+    fi
+fi
+
+HAVE_PCRE2_8=
+if [ "$PCRE2_8_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/pcre2.h" ] ; then
+    PCRE2_8_PREFIX="$PREFIX"
+fi
+
+if [ "$PCRE2_8_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
+    printf "checking --pcre2-8-prefix ${PCRE2_8_PREFIX} ... "
+    if ! tryldflag LDFLAGS_PCRE2_8 -lpcre-8 -L"$PCRE2_8_PREFIX"/lib ; then
+        echo "Error: Failed to compile with -lpcre2-8 and -L$PCRE2_8_PREFIX/lib"
+    else
+        HAVE_PCRE2_8=1
+        if [ "$PCRE2_8_PREFIX" != "$PREFIX" ]; then
+            LDFLAGS_PCRE2_8="$LDFLAGS_PCRE2_8 -L$PCRE2_8_PREFIX/lib"
+        fi
     fi
 fi
 
@@ -795,16 +818,21 @@ LDFLAGS_OPT = $LDFLAGS_OPT
 LDFLAGS_TERMCAP = $LDFLAGS_TERMCAP
 JQ_PREFIX = $JQ_PREFIX
 LDFLAGS_JQ = $LDFLAGS_JQ
+
+HAVE_PCRE2_8 = $HAVE_PCRE2_8
+PCRE2_8_PREFIX = $PCRE2_8_PREFIX
+LDFLAGS_PCRE2_8 = $LDFLAGS_PCRE2_8
+
 STATIC_LIBS = $STATIC_LIBS
 CFLAGS_AUTO = $CFLAGS_AUTO
 CFLAGS_LTO = $CFLAGS_LTO
 LDFLAGS_AUTO = $LDFLAGS_AUTO
 
-HAVE_AVX512=$HAVE_AVX512
+HAVE_AVX512 = $HAVE_AVX512
 
-CFLAGS_AVX_512=$CFLAGS_AVX_512
-CFLAGS_AVX=$CFLAGS_AVX
-CFLAGS_SSE=$CFLAGS_SSE
+CFLAGS_AVX_512 = $CFLAGS_AVX_512
+CFLAGS_AVX = $CFLAGS_AVX
+CFLAGS_SSE = $CFLAGS_SSE
 
 CFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g -Wall -Wextra -Wno-missing-field-initializers -Wunused # -g3 -ggdb
 LDFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g # -g3 -ggdb
@@ -844,6 +872,13 @@ echo "****************************************************************"
 
 if [ "$JQ_PREFIX" != "" ]; then
     echo "*  - jq-prefix: $JQ_PREFIX                                     *"
+fi
+
+if [ "$PCRE2_8_PREFIX" != "" ] && [ "$HAVE_PCRE2_8" == "1" ]; then
+    echo "*  - pcre2-8-prefix: $PCRE2_8_PREFIX                                *"
+else
+    echo "*  - pcre2-8 -> NOT FOUND                                      *"
+    echo "       select and sheet regex features will not be built       *"
 fi
 
 if [ "$LDFLAGS_TERMCAP" = "" ]; then

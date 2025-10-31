@@ -430,6 +430,7 @@ static zsvsheet_status zsvsheet_find(struct zsvsheet_sheet_context *state, bool 
   if (!next) {
     char prompt_buffer[256] = {0};
     int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
+    // to do: support regex
     get_subcommand("Find", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, NULL);
     if (*prompt_buffer == '\0') {
       goto out;
@@ -495,6 +496,14 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_display_info *di = &state->display_info;
   struct zsvsheet_ui_buffer *current_ui_buffer = *state->display_info.ui_buffers.current;
+  size_t single_column = 0;
+  if (ctx->proc_id == zsvsheet_builtin_proc_filter_this) {
+    struct zsvsheet_rowcol rc;
+    zsvsheet_buffer_t buff = zsvsheet_buffer_current(ctx);
+    if (zsvsheet_buffer_get_selected_cell(buff, &rc) != zsvsheet_status_ok)
+      return zsvsheet_status_error;
+    single_column = rc.col;
+  }
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
   struct zsvsheet_buffer_info_internal binfo = zsvsheet_buffer_info_internal(current_ui_buffer);
   const char *filter;
@@ -510,13 +519,16 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   } else {
     if (!ctx->invocation.interactive)
       return zsvsheet_status_error;
-    get_subcommand("Filter", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, NULL);
+    if (single_column)
+      get_subcommand("Filter (this column)", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, NULL);
+    else
+      get_subcommand("Filter", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, NULL);
     if (*prompt_buffer == '\0')
       goto out;
     filter = prompt_buffer;
   }
 
-  return zsvsheet_filter_file(ctx, filter);
+  return zsvsheet_filter_file(ctx, filter, single_column);
 out:
   return zsvsheet_status_ok;
 }
@@ -538,7 +550,6 @@ static zsvsheet_status zsvsheet_subcommand_handler(struct zsvsheet_proc_context 
     .subcommand_context = ctx->subcommand_context,
   };
   zsvsheet_status rc = zsvsheet_proc_invoke_from_command(prompt_buffer, &context);
-  // TO DO: handle status message update here or in caller
   return rc;
 }
 
@@ -594,7 +605,8 @@ static zsvsheet_status zsvsheet_help_handler(struct zsvsheet_proc_context *ctx) 
     };
 
     for (size_t j = 0; j < cols; j++) {
-      pstat = zsvsheet_screen_buffer_write_cell(buffer, row, j, (const unsigned char *)desc[j]);
+      if (*desc[j])
+        pstat = zsvsheet_screen_buffer_write_cell(buffer, row, j, (const unsigned char *)desc[j]);
       if (pstat != zsvsheet_priv_status_ok)
         goto free_buffer;
     }
@@ -708,8 +720,9 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_goto_column,    "gotocolumn",  "Go to column",                                                    zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_resize,         "resize",      "Resize the layout to fit new terminal dimensions",                zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_open_file,      "open",        "Open another CSV file",                                           zsvsheet_open_file_handler    },
-  { zsvsheet_builtin_proc_filter,         "filter",      "Hide rows that do not contain the specified text",                zsvsheet_filter_handler       },
-  { zsvsheet_builtin_proc_sqlfilter,      "sqlfilter",   "Filter by sql expression",                                        zsvsheet_sqlfilter_handler    },
+  { zsvsheet_builtin_proc_filter,         "filter",      "Filter by specified text",                                        zsvsheet_filter_handler       },
+  { zsvsheet_builtin_proc_filter_this,    "filtercol",   "Filter by specified text only in current column",                 zsvsheet_filter_handler       },
+  { zsvsheet_builtin_proc_sqlfilter,      "where",       "Filter by sql expression",                                        zsvsheet_sqlfilter_handler    },
   { zsvsheet_builtin_proc_subcommand,     "subcommand",  "Editor subcommand",                                               zsvsheet_subcommand_handler   },
   { zsvsheet_builtin_proc_help,           "help",        "Display a list of actions and key-bindings",                      zsvsheet_help_handler         },
   { zsvsheet_builtin_proc_newline,        "<Enter>",     "Follow hyperlink (if any)",                                       zsvsheet_newline_handler      },

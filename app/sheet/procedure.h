@@ -25,6 +25,7 @@ enum {
   zsvsheet_builtin_proc_move_left,
   zsvsheet_builtin_proc_move_right,
   zsvsheet_builtin_proc_filter,
+  zsvsheet_builtin_proc_filter_this,
   zsvsheet_builtin_proc_sqlfilter,
   zsvsheet_builtin_proc_find,
   zsvsheet_builtin_proc_find_next,

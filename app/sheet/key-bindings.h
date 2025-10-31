@@ -38,6 +38,8 @@ struct zsvsheet_key_binding {
   char hidden;
   zsvsheet_key_binding_fn handler;
   zsvsheet_proc_id_t proc_id;
+  unsigned char taken : 1;
+  unsigned char _ : 7;
 };
 
 struct zsvsheet_key_binding_context {
