@@ -498,27 +498,23 @@ ifeq ($(HAVE_PCRE2_8),1)
   PCRE2_LIB=-lpcre2-8
   ifeq ($(PCRE2_STATIC),1)
     CFLAGS+= -DPCRE2_STATIC
-    ifneq ($(WIN),0)
-      PCRE2_LIB=-l:libpcre2-8.a
-    else
-      ifeq ($(PCRE2_8_PREFIX),builtin)
-        PCRE2_8_PREFIX=${BUILD_DIR}/external/pcre2
-        # add dependency
-        ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: ${PCRE2_8_PREFIX}/lib/libpcre2-8.a
-      endif
-      PCRE2_LIB=${PCRE2_8_PREFIX}/lib/libpcre2-8.a
+    ifeq ($(PCRE2_8_PREFIX),builtin)
+      PCRE2_8_PREFIX=${BUILD_DIR}/external/pcre2
+      # add dependency
+      ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: ${PCRE2_8_PREFIX}/lib/libpcre2-8.a
     endif
+    PCRE2_LIB=${PCRE2_8_PREFIX}/lib/libpcre2-8.a
   endif
 
   ifeq ($(NO_PCRE2_JIT),)
-	ifeq ($(ARM64),1)
+    ifeq ($(ARM64),1)
       # see https://github.com/zherczeg/sljit/issues/99
-	  NO_PCRE2_JIT=1
-	endif
+      NO_PCRE2_JIT=1
+    endif
   endif
 
   ifeq ($(NO_PCRE2_JIT),1)
-	CFLAGS+=-DNO_PCRE2_JIT
+    CFLAGS+=-DNO_PCRE2_JIT
   endif
 
   LDFLAGS_PCRE2_8=
