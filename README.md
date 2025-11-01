@@ -29,8 +29,8 @@ The ZSV CLI can be compiled to virtually any target, including
 direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3
 conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste`, `overwrite` and more.
 
-The ZSV CLI also includes `sheet`, an in-console interactive grid viewer that includes
-basic navigation, filtering [[, data editing and pivot table with drill down]],
+The ZSV CLI also includes [`sheet`](docs/sheet.md), an in-console interactive
+grid viewer that includes basic navigation, filtering, and pivot table with drill down,
 and that supports custom extensions:
 
 <img src="https://github.com/user-attachments/assets/c2ae32a3-48c4-499d-8ef7-7748687bd24f" width="50%">
@@ -145,7 +145,7 @@ that implements the expected
 - Easy to use as a library in a few lines of code, via either pull or push
   parsing
 - Includes the `zsv` CLI with the following built-in commands:
-  - `sheet`, an in-console interactive and extendable grid viewer
+  - [`sheet`](docs/sheet.md), an in-console interactive and extendable grid viewer
   - `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
     `2db`, `stack`, `pretty`, `2tsv`, `paste`, `compare`, `overwrite`,
     `jq`, `prop`, `rm`
@@ -196,7 +196,7 @@ needs.
 
 `zsv` comes with several built-in commands:
 
-- `sheet`: an in-console, interactive grid viewer
+- [`sheet`](docs/sheet.md): an in-console, interactive grid viewer
 - `echo`: read CSV from stdin and write it back out to stdout. This is mostly
   useful for demonstrating how to use the API and also how to create a plug-in,
   and has several uses beyond that including adding/removing BOM, cleaning up

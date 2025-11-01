@@ -46,12 +46,17 @@ Challenges that `zsv compare` addresses include:
 - Desired output format may be any of myriad tabular, JSON or other formats
 - Case-insensitive matching across a full Unicode character set
 - Desired output may include additional columns for context
+- User-defined numeric tolerance e.g. treat 1.1999999 and 1.2 as equal
 
 Challenges that `zsv compare` aims to solve for limited cases include:
 
 - Input data might be unsorted, but small enough to sort with reasonable
   performance using [vanilla sqlite3
   sort](https://www.sqlite.org/eqp.html#temporary_sorting_b_trees)
+- Numerical formats can differ in text but represent the same values.
+  zsv handles basic numeric format normalization to the extent supported by native C functions
+  (such as "1.2e-2" vs "0.012"); this does not handle other formats
+  (such as "1,000" or "$1000" as 1000)
 
 Challenges that `zsv compare` does not try to solve include:
 
