@@ -140,7 +140,11 @@ column in worldcitiespop_mil.csv and typing `v`:
 In the above image, the cursor was moved to the value `ir` because that was the value under the cursor when the pivot table
 was generated.
 
+Within the pivot table buffer, you can "drill-down" on any row by navigating to the row and typing Enter:
+
+
 ### Pivot table with custom bucket
+
 Type `V` to generate a pivot table based on a custom SQL expression. For example, after loading worldcitiespop_mil.csv and
 typing `V`, then entering `case when latitude > 35 then '>35' else '<=35' end`:
 <img width="643" height="91" alt="image" src="https://github.com/user-attachments/assets/6379d227-a796-43f9-93bf-8f98d3d0cf48" />
