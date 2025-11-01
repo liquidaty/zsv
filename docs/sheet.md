@@ -133,14 +133,20 @@ For example, running a filter of `/^Dö[nm]` on worldcitiespop_mil.csv:
 ## Pivot
 
 Type `v` to generate a pivot table on the unique values of your current column. For example, after navigating to the Country
-column in worldcitiespop_mil.csv and typing `v`:
+column in worldcitiespop_mil.csv and pressing `v`:
 
 <img width="631" height="346" alt="image" src="https://github.com/user-attachments/assets/a4da2cf7-235c-4a2f-9484-e8b3e4243135" />
 
 In the above image, the cursor was moved to the value `ir` because that was the value under the cursor when the pivot table
 was generated.
 
-Within the pivot table buffer, you can "drill-down" on any row by navigating to the row and typing Enter:
+Within the pivot table buffer, you can "drill-down" on any row by navigating to the row and pressing Enter. For example,
+from the above image, moving down three rows to the `je` row with a Count of `18`, then typing Enter opens
+a new buffer displaying the underlying 18 rows:
+
+<img width="355" height="425" alt="image" src="https://github.com/user-attachments/assets/f28118cc-9e31-4c5a-b0f5-75ef8fb2a3d2" />
+
+<img width="383" height="422" alt="image" src="https://github.com/user-attachments/assets/43f1b97f-01d1-4222-a08d-1499f96725df" />
 
 
 ### Pivot table with custom bucket
