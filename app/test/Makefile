@@ -941,6 +941,8 @@ test-sheet-pivot-V: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ "V" "Country||'hi'" ENTER && \
 	${EXPECT} $@ groups && \
+	tmux send-keys -t $@ j j j j j j j j j j j j j j j j j j j j j j j ENTER && \
+	${EXPECT} $@ drilldown && \
 	${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-sqlfilter: test-sheet-sqlfilter-1
