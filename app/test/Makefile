@@ -959,6 +959,41 @@ test-sheet-sqlfilter-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	${EXPECT} $@ noresults && \
 	${TEST_PASS} || ${TEST_FAIL})
 
+
+ifeq ($(HAVE_PCRE2_8),1)
+test-sheet-filter-this: test-sheet-filter-this-1 test-sheet-filter-this-regex
+else
+test-sheet-filter-this: test-sheet-filter-this-1
+endif
+
+test-sheet-filter-this-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@tmux kill-session 2>/dev/null >/dev/null || printf ''
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ "l" "F" "casas" ENTER && \
+	${EXPECT} $@ nodata && \
+	tmux send-keys -t $@ ESCAPE "l" "F" "mx" ENTER && \
+	${EXPECT} $@ filter && \
+	tmux send-keys -t $@ ESCAPE ":filtercol" ENTER "mx" ENTER && \
+	${EXPECT} $@ filter && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-filter-this-regex: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@tmux kill-session 2>/dev/null >/dev/null || printf ''
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ "l" "F" "/casas" ENTER && \
+	${EXPECT} $@ nodata && \
+	tmux send-keys -t $@ ESCAPE "l" "F" "/^mx" ENTER && \
+	${EXPECT} $@ filterregex && \
+	tmux send-keys -t $@ ESCAPE ":filtercol" ENTER "/^mx" ENTER && \
+	${EXPECT} $@ filterregex && \
+	${TEST_PASS} || ${TEST_FAIL})
+
 benchmark-sheet-index: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@if [ "${BIG_FILE}" = "none" ]; then \

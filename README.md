@@ -331,3 +331,6 @@ template files in [app/ext_template](app/ext_template/README.md)
 ## License
 
 [MIT](https://github.com/liquidaty/zsv/blob/master/LICENSE)
+
+The zsv CLI uses some permissively-licensed third-party libraries.
+See [misc/THIRDPARTY.md](misc/THIRDPARTY.md) for details.

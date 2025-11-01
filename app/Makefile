@@ -161,9 +161,9 @@ endif
 
 CCBN=$(shell basename ${CC})
 CFLAGS+= -I${PREFIX}/include
-THIS_LIB_BASE=$(shell cd .. && pwd)
-INCLUDE_DIR=${THIS_LIB_BASE}/include
-BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
+THIS_LIB_BASE:=$(shell cd .. && pwd)
+INCLUDE_DIR:=${THIS_LIB_BASE}/include
+BUILD_DIR:=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index
 
 ZSV_EXTRAS ?=
@@ -395,10 +395,6 @@ ${BUILD_DIR}/objs/sql_internal.o ${BUILD_DIR}/objs/utils/index.o: ${BUILD_DIR}/o
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ -c $<
 
-${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o : ${BUILD_DIR}/objs/utils/%.o : utils/%.c utils/%.h
-	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/$*.c ${MORE_SOURCE}
-
 ${BUILD_DIR}/objs/utils/%.o : utils/%.c ${INCLUDE_DIR}/zsv/utils/%.h ${JQ_LIB}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -DINCLUDE_SRC -o $@ -c utils/$*.c ${MORE_SOURCE}
@@ -483,12 +479,62 @@ ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o ${STANDALONE_PFX}flatten${EXE} ${CLI_OBJ_PFX}flatten.o: MORE_SOURCE+=${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
 
+# check if we are on arm64
+ifeq ($(ARM64),)
+  ifneq ($(shell uname -a | grep Darwin | grep arm64),)
+    ARM64=1
+  endif
+endif
+
 # CLI, select and sheet use PCRE2-8
 ifeq ($(HAVE_PCRE2_8),1)
+  NO_PCRE2_JIT=
+  # TO DO: make PCRE2_STATIC a configure option / detection
+  PCRE2_STATIC=1
   CFLAGS+=-DHAVE_PCRE2_8
+  # add dependency
   ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: ${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o
-  ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: MORE_LIBS+=${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o ${LDFLAGS_PCRE2_8} -lpcre2-8
+
+  PCRE2_LIB=-lpcre2-8
+  ifeq ($(PCRE2_STATIC),1)
+    CFLAGS+= -DPCRE2_STATIC
+    ifeq ($(PCRE2_8_PREFIX),builtin)
+      PCRE2_8_PREFIX=${BUILD_DIR}/external/pcre2
+      # add dependency
+      ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: ${PCRE2_8_PREFIX}/lib/libpcre2-8.a
+    endif
+    PCRE2_LIB=${PCRE2_8_PREFIX}/lib/libpcre2-8.a
+  endif
+
+  ifeq ($(NO_PCRE2_JIT),)
+    ifeq ($(ARM64),1)
+      # see https://github.com/zherczeg/sljit/issues/99
+      NO_PCRE2_JIT=1
+    endif
+  endif
+
+  ifeq ($(NO_PCRE2_JIT),1)
+    CFLAGS+=-DNO_PCRE2_JIT
+  endif
+
+  LDFLAGS_PCRE2_8=
+  INCLUDE_PCRE2_8=${PREFIX}/include
+  ifneq ($(PCRE2_8_PREFIX),$(PREFIX))
+    ifneq ($(PCRE2_STATIC),1)
+      LDFLAGS_PCRE2_8=-L${BUILD_DIR}/external/pcre2/lib
+    endif
+    INCLUDE_PCRE2_8=${BUILD_DIR}/external/pcre2/include
+  endif
+
+  ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: MORE_LIBS+=${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o ${LDFLAGS_PCRE2_8} ${PCRE2_LIB}
 endif
+
+${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o : ${BUILD_DIR}/objs/utils/%.o : utils/%.c utils/%.h ${INCLUDE_PCRE2_8}/pcre2.h
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -I${INCLUDE_PCRE2_8} -o $@ -c utils/$*.c
+
+${BUILD_DIR}/external/pcre2/lib/libpcre2-8.a ${BUILD_DIR}/external/pcre2/include/pcre2.h:
+	${MAKE} -e -C external -f build.mk ${BUILD_DIR}/external/pcre2/lib/libpcre2-8.a BUILD_DIR=${BUILD_DIR} CONFIGURE_HOST=${CONFIGURE_HOST}
 
 # utils/db uses jsonwriter
 ${BUILD_DIR}/objs/utils/db.o : MORE_SOURCE+= ${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
@@ -560,3 +606,4 @@ clean-internal:
 ${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: ${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1.tar.gz
 	@cd external && tar xf utf8proc-2.6.1.tar.gz && chown -R `whoami` utf8proc-2.6.1
 	@touch $@
+
