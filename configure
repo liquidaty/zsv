@@ -882,7 +882,7 @@ if [ "$JQ_PREFIX" != "" ]; then
     printf '%-64s*\n' "*  - jq-prefix: $JQ_PREFIX"
 fi
 
-if [ "$PCRE2_8_PREFIX" != "" ] && [ "$HAVE_PCRE2_8" == "1" ]; then
+if [ "$PCRE2_8_PREFIX" != "" ] && [ "$HAVE_PCRE2_8" = "1" ]; then
     printf '%-64s*\n' "*  - pcre2-8-prefix: $PCRE2_8_PREFIX"
 else
     printf '%-64s*\n' "*  - pcre2-8 -> NOT FOUND"
