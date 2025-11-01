@@ -9,23 +9,58 @@ for tabular data, specifically intended to be useful in situations including:
 - working with large files
 - working in a memory-constrained environment
 
-## Capabilities inherited from zsv parser
-zsv `sheet` uses the zsv parser, and therefore supports:
+# Features
+
+## General
+
+`sheet` is designed for:
+- Minimal memory use (regardless of file size)
+- Fast response time (regardless of file size)
+- Use in any terminal environment on local or remote machine
+
+## Data input / parsing
+
+`sheet` uses the zsv parser and supports its various options:
 - Non-comma delimiter
 - Multi-row headers
 - UTF8 characters
 - "Real-world" CSV including edge cases
+- Operating system compatibility: Windows, MacOS, Linux, BSD
+  - Web assembly is not yet supported (requires better support for terminal emulation and threading)
 
-See [README.md](../README.md) for more about the zsv parser
+For more about the parser in general, visit the [README.md](../README.md)
 
-## Features
+## Application features
 
-|Feature|Supported|Comment|
-|--|--|--|
-|Operating system compatibility|Yes|Windows, MacOS, Linux, BSD|
-|Basic cell navigation|Yes|vim-like or email-like key bindings|
-|Pivot tables|Basic 'frequency' table only|Equivalent to SQL "select x, count(1) group by x". Open to considering broader capabilities|
-|Large files|Background indexing|Files are indexed in the background so that they can be immediately loaded<br>Vertical navigation is limited to index progress; for large files, navigating to the end of the file may require waiting for indexing to complete|
-|Find/filter|Basic (exact-string match)|Regex and sql support are planned|
-|Replace (or edit)|Planned|This will be implemented by extending zsv's existing overwrite features|
-|Web assembly|Not supported|Need support for both browser+wasm terminal emulator, and threading|
+`sheet` features are in an early stage and still have significant room
+for improvement (of existing features) and expansion (of new features).
+
+Current features:
+- View & navigate: view a tabular data file as a grid and navigate around
+- vim-like key bindings
+  - emacs-like key bindings are still experimental
+  - both vim- and emacs- key bindings can be improved
+- Search: find or filter, by literal text or regex (PCRE2 syntax)
+- SQL: filter by sql expression
+- Large files: quickly opens large files with background indexing after which full file can be navigated
+- Pivot: generate pivot tables based on unique values or a user-provided SQL
+  expression. Current limitations:
+  - only generates a frequency count
+  - does not offer custom aggregation columns
+  - blocks the UI until the entire file has been processed
+
+Other features under current consideration or plan:
+- Reorder/remove column(s) or row(s)
+- Further performance optimizations
+  - parallelized find/filter
+  - parallelized indexing
+  - transformation internal API: return control after fixed # rows processed
+    instead of # rows returned
+- Tighter integration with [overwrite](overwrite.md) capabilities
+- Comparison
+- Write-related features (edit, find/replace etc)
+
+## Can't find what you're looking for?
+
+Feel free to suggest new features by creating a new issue.
+
