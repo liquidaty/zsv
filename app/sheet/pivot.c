@@ -31,6 +31,7 @@ struct pivot_data {
     size_t capacity;
     size_t used;
   } rows;
+  char column_name_expr;
 };
 
 static void pivot_data_delete(void *h) {
@@ -45,10 +46,12 @@ static void pivot_data_delete(void *h) {
   }
 }
 
-static struct pivot_data *pivot_data_new(const char *data_filename, const char *value_sql) {
+static struct pivot_data *pivot_data_new(const char *data_filename, const char *value_sql, char column_name_expr) {
   struct pivot_data *pd = calloc(1, sizeof(*pd));
-  if (pd && (pd->value_sql = strdup(value_sql)) && (pd->data_filename = strdup(data_filename)))
+  if (pd && (pd->value_sql = strdup(value_sql)) && (pd->data_filename = strdup(data_filename))) {
+    pd->column_name_expr = column_name_expr;
     return pd;
+  }
   pivot_data_delete(pd);
   return NULL;
 }
@@ -140,7 +143,13 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
         sqlite3_str_appendf(sql_str, "select *");
       else
         sqlite3_str_appendf(sql_str, "select rowid as [Row #], *");
-      sqlite3_str_appendf(sql_str, " from data where \"%w\" = %Q", pd->value_sql, pr->value);
+      if (pd->column_name_expr)
+        sqlite3_str_appendf(sql_str, " from data where \"%w\" = %Q", pd->value_sql, pr->value);
+      else
+        // we haven't tracked whether the underlying value is a string, number or other
+        // we only know that its string representation is pr->value
+        // so we add `|| ''` to the sql expression to force text conversion
+        sqlite3_str_appendf(sql_str, " from data where (%s) || '' = %Q", pd->value_sql, pr->value);
       const char *err_msg = NULL;
       zst = zsv_sqlite3_to_csv(ctx, zdb, sqlite3_str_value(sql_str), &err_msg, NULL, NULL, NULL);
       if (err_msg)
@@ -261,7 +270,7 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
         sqlite3_str_appendf(sql_str, "select %s as %#Q, count(1) as Count from data group by %s", expr, expr, expr);
     }
     if (ok) {
-      if (!(pd = pivot_data_new(data_filename, expr)))
+      if (!(pd = pivot_data_new(data_filename, expr, column_name_expr)))
         zst = zsvsheet_status_memory;
       else {
         zst = zsv_sqlite3_to_csv(ctx, zdb, sqlite3_str_value(sql_str), &err_msg, pd, pivot_on_header_cell,
