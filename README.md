@@ -20,7 +20,7 @@ Playground (without `sheet` viewer command): https://liquidaty.github.io/zsv
 zsv+lib is a fast CSV parser library and extensible command-line utility. It
 achieves high performance using SIMD operations, [efficient memory
 use](docs/memory.md) and other optimization techniques, and can also parse
-generic-delimited and fixed-width formats, as well as multi-row-span headers
+generic-delimited and fixed-width formats, as well as multi-row-span headers.
 
 ## CLI
 
@@ -35,21 +35,22 @@ and that supports custom extensions:
 
 <img src="https://github.com/user-attachments/assets/c2ae32a3-48c4-499d-8ef7-7748687bd24f" width="50%">
 
-### Installation
+## Installation
 
-* `brew` (MacOS, Linux):
+- `brew` (MacOS, Linux):
   - `brew install zsv`
-* `winget`
+- `winget` (Windows):
   - `winget.exe install zsv`
-* `npm` (parser only), `nuget`, `yum`, `apt`, `choco` and more
+- `npm` (parser only), `nuget`, `yum`, `apt`, `choco` and more
   - See [INSTALL.md](INSTALL.md)
-* Download
-  - Pre-built binaries and packages for macOS, Windows, Linux and BSD can be downloaded from
-the [Releases](https://github.com/liquidaty/zsv/releases) page.
-* Build
+- Download
+  - Pre-built binaries and packages for macOS, Windows, Linux and BSD can be
+    downloaded from the [Releases](https://github.com/liquidaty/zsv/releases)
+    page.
+- Build
   - See [BUILD.md](BUILD.md) to build from source.
 
-### Playground
+## Playground
 
 An [online playground](https://liquidaty.github.io/zsv) is available as well
 (without the `sheet` feature due to browser limitations)
@@ -61,21 +62,23 @@ If you like zsv+lib, do not forget to give it a star! 🌟
 Performance results compare favorably vs other CSV utilities (`xsv`,
 `tsv-utils`, `csvkit`, `mlr` (miller) etc). Below were results on a pre-M1 macOS
 MBA; on most platforms zsvlib was 2x faster, though in some cases the advantage
-was smaller e.g. 15-25%) (below, mlr not shown as it was about 25x slower).
+was smaller e.g. 15-25% (below, `mlr` not shown as it was about 25x slower).
 
 <img src="https://user-images.githubusercontent.com/26302468/146497899-48174114-3b18-49b0-97da-35754ab56e48.png" alt="count speed" height="150px"><img src="https://user-images.githubusercontent.com/26302468/146498211-afc77ce6-4229-4599-bf33-81bf00c725a8.png" alt="select speed" height="150px">
 
 ** See 12/19 update re M1 processor at
 <https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md>
 
-Performance tests on newer chips across Windows, Linux and MacOS as of 2025 yielded similar results.
+Performance tests on newer chips across Windows, Linux and MacOS as of 2025
+yielded similar results.
 
 ## Which "CSV"
 
-"CSV" is an ambiguous term. This library uses, *by default*, the same definition as Excel
-(the library and app have various options to change this default behavior; a more accurate
-description of it would be "UTF8 delimited data parser" insofar as it requires UTF8 input
-and its options support customization of the delimiter and whether to allow quoting.
+"CSV" is an ambiguous term. This library uses, *by default*, the same definition
+as Excel (the library and app have various options to change this default
+behavior); a more accurate description of it would be "UTF8 delimited data
+parser" insofar as it requires UTF8 input and its options support customization
+of the delimiter and whether to allow quoting.
 
 In addition, zsv provides a *row-level* (as well as cell-level) API and provides
 "normalized" CSV output (e.g. input of `this"iscell1,"thisis,"cell2` becomes
@@ -85,9 +88,10 @@ impact; conversely, it is possible to achieve-- which a number of other CSV
 parsers do-- much faster parsing speeds if any of these requirements (especially
 Excel compatibility) are dropped.
 
-#### Examples of input that does not comply with RFC 4180
-The following is a comprehensive list of all input patterns that are non-compliant with
-RFC 4180, and how zsv parses each:
+### Examples of input that does not comply with RFC 4180
+
+The following is a comprehensive list of all input patterns that are
+non-compliant with RFC 4180, and how zsv parses each:
 
 |Input Description|Parser treatment|Example input|How example input is parsed|
 |--|--|--|--|
@@ -101,7 +105,8 @@ RFC 4180, and how zsv parses each:
 |Row and header contain different number of columns (cells)|Number of cells in each row is independent of other rows|`aaa,bbb\n`<br>`aaa,bbb,ccc`|Row 1 = 2 cells; Row 2 = 3 cells|
 |Header row contains duplicate cells or embedded newlines|Header rows are parsed the same was as other rows (see NOTE below)|`<BOF>"a\na","a\na"`|Two cells of `a\na`|
 
-NOTE: Header rows can be treated differently if options are used to skip rows and/or use multi-row header span-- see documentationf for further detail.
+NOTE: Header rows can be treated differently if options are used to skip rows
+and/or use multi-row header span -- see documentation for further detail.
 
 ## Built-in and extensible features
 
@@ -231,47 +236,47 @@ where `xxx` is the command name.
 ## Running the CLI
 
 After installing, run `zsv help` to see usage details. The typical syntax is
-`zsv <command> <parameters>` e.g.
+`zsv <command> <parameters>` e.g.:
 
 ```shell
 zsv sql my_population_data.csv "select * from data where population > 100000"
 ```
 
-### Using the API
+## Using the API
 
 Simple API usage examples include:
 
-Pull parsing:
+### Pull parsing
 
 ```c
-zsv_parser parser = zsv_new(...);
+zsv_parser parser = zsv_new(NULL);
 while (zsv_next_row(parser) == zsv_status_row) { // for each row
   // ...
-  size_t cell_count = zsv_cell_count(parser);
+  const size_t cell_count = zsv_cell_count(parser);
   for (size_t i = 0; i < cell_count; i++) { // for each cell
-    struct zsv_cell c = zsv_get_cell(parser, i);
-    fprintf(stderr, "Cell: %.*s\n", c.len, c.str);
+    struct zsv_cell cell = zsv_get_cell(parser, i);
+    printf("cell: %.*s\n", cell.len, cell.str);
     // ...
   }
 }
 ```
 
-Push parsing:
+### Push parsing
 
 ```c
 static void my_row_handler(void *ctx) {
-  zsv_parser p = ctx;
-  size_t cell_count = zsv_cell_count(p);
-  for (size_t i = 0, j = zsv_cell_count(p); i < j; i++) {
+  zsv_parser parser = ctx;
+  const size_t cell_count = zsv_cell_count(parser);
+  for (size_t i = 0; i < cell_count; i++) {
     // ...
   }
 }
 
 int main() {
-  zsv_parser p = zsv_new(NULL);
-  zsv_set_row_handler(p, my_row_handler);
-  zsv_set_context(p, p);
-  while (zsv_parse_more(data.parser) == zsv_status_ok);
+  zsv_parser parser = zsv_new(NULL);
+  zsv_set_row_handler(parser, my_row_handler);
+  zsv_set_context(parser, parser);
+  while (zsv_parse_more(parser) == zsv_status_ok);
   return 0;
 }
 ```
@@ -286,7 +291,7 @@ For more sophisticated (but at this time, only sporadically
 commented/documented) use cases, see the various CLI C source files in the `app`
 directory such as `app/serialize.c`.
 
-### Creating your own extension
+## Creating your own extension
 
 You can extend `zsv` by providing a pre-compiled shared or static library that
 defines the functions specified in `extension_template.h` and which `zsv` loads
@@ -298,7 +303,7 @@ in one of three ways:
 - as a dynamic library that is located in the same folder as the `zsv`
   executable and loaded at runtime if/as/when the custom mode is invoked
 
-#### Example and template
+### Example and template
 
 You can build and run a sample extension by running `make test` from
 `app/ext_example`.
@@ -306,7 +311,7 @@ You can build and run a sample extension by running `make test` from
 The easiest way to implement your own extension is to copy and customize the
 template files in [app/ext_template](app/ext_template/README.md)
 
-### Possible enhancements and related developments
+## Possible enhancements and related developments
 
 - optimize search; add search with hyperscan or re2 regex matching, possibly
   parallelize?
