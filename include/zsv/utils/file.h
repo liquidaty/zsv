@@ -73,4 +73,10 @@ int zsv_copy_file(const char *src, const char *dest);
  */
 int zsv_copy_file_ptr(FILE *src, FILE *dest);
 
+/**
+ * printf that does nothing. useful in certain circumstances for ignoring
+ * errors e.g. opening the same file twice and not dupicating error logs
+ */
+int zsv_no_printf(void *, const char *format, ...);
+
 #endif

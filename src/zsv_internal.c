@@ -159,13 +159,6 @@ struct zsv_scanner {
   size_t data_row_count; /* 0 = in header row; 1 = first data row */
   struct zsv_cell (*get_cell)(zsv_parser parser, size_t ix);
 
-#ifdef ZSV_EXTRAS
-  struct {
-    size_t cum_row_count; /* total number of rows read */
-    time_t last_time;     /* last time from which to check seconds_interval */
-    size_t max_rows;      /* max rows to read, including header row(s) */
-  } progress;
-#endif
   struct {
     union {
       struct zsv_scan_delim_regs delim;
@@ -178,7 +171,16 @@ struct zsv_scanner {
     unsigned char now;
   } pull;
 
+  int (*errprintf)(void *ctx, const char * format, ...);
+  void *errf;
+  int (*errclose)(void *ctx);
+
 #ifdef ZSV_EXTRAS
+  struct {
+    size_t cum_row_count; /* total number of rows read */
+    time_t last_time;     /* last time from which to check seconds_interval */
+    size_t max_rows;      /* max rows to read, including header row(s) */
+  } progress;
   struct zsv_overwrite overwrite;
 #endif
 };
@@ -200,7 +202,7 @@ static int collate_header_append(struct zsv_scanner *scanner, struct collate_hea
       (*chp)->lengths = calloc(scanner->row.allocated, sizeof(*(*chp)->lengths));
     if (!(*chp) || !(*chp)->lengths) {
       free(*chp);
-      fprintf(stderr, "Out of memory!\n");
+      scanner->errprintf(scanner->errf, "Out of memory!\n");
       return -1;
     }
   }
@@ -215,7 +217,7 @@ static int collate_header_append(struct zsv_scanner *scanner, struct collate_hea
   size_t new_row_size = ch->buff.used + this_row_size;
   unsigned char *new_row = realloc(ch->buff.buff, new_row_size);
   if (!new_row) {
-    fprintf(stderr, "Out of memory!\n");
+    scanner->errprintf(scanner->errf, "Out of memory!\n");
     return -1;
   }
 
@@ -336,7 +338,7 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *sc
 
 __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_scanner *scanner) {
   if (VERY_UNLIKELY(scanner->row.overflow)) {
-    fprintf(stderr, "Warning: number of columns (%zu) exceeds row max (%zu)\n",
+    scanner->errprintf(scanner->errf, "Warning: number of columns (%zu) exceeds row max (%zu)\n",
             scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
     scanner->row.overflow = 0;
   }
@@ -367,7 +369,7 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
       scanner->abort = scanner->opts.progress.callback(scanner->opts.progress.ctx, scanner->progress.cum_row_count);
 #ifndef NDEBUG
     if (scanner->abort)
-      fprintf(stderr, "ZSV parsing aborted at %zu\n", scanner->progress.cum_row_count);
+      scanner->errprintf(scanner->errf, "ZSV parsing aborted at %zu\n", scanner->progress.cum_row_count);
 #endif
   }
   if (VERY_UNLIKELY(scanner->progress.max_rows > 0)) {
@@ -518,8 +520,9 @@ static void skip_to_first_row_w_data(void *ctx) {
   if (LIKELY(zsv_internal_row_is_blank(scanner) == 0)) {
     scanner->opts.keep_empty_header_rows = 1;
     if (scanner->empty_header_rows) {
-      fprintf(stderr, "Warning: skipped %zu empty header rows; suggest using:\n  --skip-head %zu\n",
-              scanner->empty_header_rows, scanner->empty_header_rows + scanner->opts_orig.rows_to_ignore);
+      scanner->errprintf(scanner->errf,
+                         "Warning: skipped %zu empty header rows; suggest using:\n  --skip-head %zu\n",
+                         scanner->empty_header_rows, scanner->empty_header_rows + scanner->opts_orig.rows_to_ignore);
     }
     set_callbacks(scanner);
     apply_callbacks(scanner);
@@ -644,13 +647,16 @@ static struct zsv_cell zsv_get_cell_with_overwrite(zsv_parser parser, size_t col
 
 static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) {
   size_t need_buff_size = 0;
+  scanner->errprintf = opts->errprintf ? opts->errprintf : zsv_generic_fprintf;
+  scanner->errf = opts->errf ? opts->errf : stderr;
+  scanner->errclose = opts->errclose;
   if (opts->malformed_utf8_replace == ZSV_MALFORMED_UTF8_DO_NOT_REPLACE)
     opts->malformed_utf8_replace = 0;
   if (opts->buffsize < opts->max_row_size * 2)
     need_buff_size = opts->max_row_size * 2;
   opts->delimiter = opts->delimiter ? opts->delimiter : ',';
   if (opts->delimiter == '\n' || opts->delimiter == '\r' || opts->delimiter == '"') {
-    fprintf(stderr, "warning: ignoring illegal delimiter\n");
+    scanner->errprintf(scanner->errf, "warning: ignoring illegal delimiter\n");
     opts->delimiter = ',';
   }
 
@@ -662,9 +668,9 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
   if (opts->buffsize < need_buff_size) {
     if (opts->buffsize > 0) {
       if (need_buff_size == ZSV_MIN_SCANNER_BUFFSIZE)
-        fprintf(stderr, "Increasing --buff-size to minimum %zu\n", need_buff_size);
+        scanner->errprintf(scanner->errf, "Increasing --buff-size to minimum %zu\n", need_buff_size);
       else
-        fprintf(stderr, "Increasing --buff-size to %zu to accommmodate max-row-size of %u\n", need_buff_size,
+        scanner->errprintf(scanner->errf, "Increasing --buff-size to %zu to accommmodate max-row-size of %u\n", need_buff_size,
                 opts->max_row_size);
     }
     opts->buffsize = need_buff_size;

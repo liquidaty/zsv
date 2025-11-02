@@ -64,6 +64,9 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
                      struct zsvsheet_ui_buffer_opts *uibopts, // if *uibufferp == NULL and uibopts != NULL
                      size_t start_row, size_t start_col, size_t header_span, struct zsvsheet_opts *zsvsheet_opts,
                      struct zsv_prop_handler *custom_prop_handler) {
+  int rc = 0;
+  struct uib_parse_errs parse_errs = { 0 };
+  FILE *fp = NULL;
   const char *filename = (uibufferp && *uibufferp) ? (*uibufferp)->filename : uibopts ? uibopts->filename : NULL;
   struct zsv_opts opts = {0};
   if (uibufferp && *uibufferp)
@@ -75,7 +78,6 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   size_t remaining_rows_to_skip = start_row;
   size_t remaining_header_to_skip = header_span;
   size_t original_row_num = 0;
-  FILE *fp;
 
   if (uibuff) {
     if (uibuff->data_filename)
@@ -93,18 +95,27 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
   assert(filename != NULL);
   fp = fopen(filename, "rb");
-  if (!fp)
-    return errno;
+  if (!fp) {
+    rc = errno;
+    goto done;
+  }
 
   opts.stream = fp; // Input file stream
 
+  opts.errprintf = uib_parse_errs_printf;
+  if(uibuff)
+    opts.errf = &uibuff->parse_errs;
+  else
+    opts.errf = &parse_errs;
+
   zsv_parser parser = {0};
   if (zsv_new_with_properties(&opts, custom_prop_handler, filename, &parser) != zsv_status_ok) {
-    fclose(fp);
-    zsv_delete(parser);
-    return errno ? errno : -1;
+    rc = errno ? errno : -1;
+    goto done;
   }
 
+  // clear error logging before reusing opts
+  opts.errprintf = zsv_no_printf;
   if (uibuff) {
     pthread_mutex_lock(&uibuff->mutex);
 
@@ -123,8 +134,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       original_row_num = header_span + start_row;
     }
     pthread_mutex_unlock(&uibuff->mutex);
-    if (zst != zsv_index_status_ok)
-      return errno ? errno : -1;
+    if (zst != zsv_index_status_ok) {
+      rc = errno ? errno : -1;
+      goto done;
+    }
   }
 
   size_t rows_read = header_span;
@@ -148,9 +161,14 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
           zsvsheet_ui_buffer_delete(tmp_uibuff);
         else
           zsvsheet_screen_buffer_delete(buffer);
-        return -1;
+        rc = -1;
+        goto done;
       }
       *uibufferp = uibuff = tmp_uibuff;
+      if(uibuff) {
+        uibuff->parse_errs = parse_errs;
+        memset(&parse_errs, 0, sizeof(parse_errs));
+      }
     }
 
     // row number
@@ -173,8 +191,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     }
     if (uibuff) {
       if (col_count + !buffer->opts.no_rownum_column > buffer->cols) {
-        if (zsvsheet_screen_buffer_grow(buffer, col_count) != zsvsheet_priv_status_ok)
-          return -1;
+        if (zsvsheet_screen_buffer_grow(buffer, col_count) != zsvsheet_priv_status_ok) {
+          rc = -1;
+          goto done;
+        }
       }
       if (col_count > uibuff->dimensions.col_count)
         uibuff->dimensions.col_count = col_count;
@@ -220,11 +240,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
     rows_read++;
   }
-  fclose(fp);
-  zsv_delete(parser);
-
-  if (!uibuff)
-    return 0;
+  if (!uibuff) {
+    rc = 0;
+    goto done;
+  }
 
   pthread_mutex_lock(&uibuff->mutex);
   char need_index = !uibuff->index_started && !uibuff->write_in_progress;
@@ -234,8 +253,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   pthread_mutex_unlock(&uibuff->mutex);
 
   if (need_index) {
-    if (asprintf(&uibuff->status, "%s(building index) ", old_ui_status ? old_ui_status : "") == -1)
-      return -1;
+    if (asprintf(&uibuff->status, "%s(building index) ", old_ui_status ? old_ui_status : "") == -1) {
+      rc = -1;
+      goto done;
+    }
 
     uibuff->buff_used_rows = rows_read;
     uibuff->dimensions.row_count = rows_read;
@@ -248,7 +269,12 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     uibuff->dimensions.row_count = rows_read;
   }
 
-  return 0;
+ done:
+  uib_parse_errs_free(&parse_errs);
+  if(fp)
+     fclose(fp);
+  zsv_delete(parser);
+  return rc;
 }
 
 // get_data_index(): return an index for constant-time access

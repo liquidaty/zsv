@@ -63,7 +63,7 @@ inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
   size_t capacity = scanner->buff.size - scanner->partial_row_length;
   if (VERY_UNLIKELY(capacity == 0)) {
     // our row size was too small to fit a single row of data
-    fprintf(stderr, "Warning: row %zu truncated\n", scanner->data_row_count);
+    scanner->errprintf(scanner->errf, "Warning: row %zu truncated\n", scanner->data_row_count);
     if (scanner->mode == ZSV_MODE_FIXED) {
       if (VERY_UNLIKELY(row_fx(scanner, scanner->buff.buff, 0, scanner->buff.size)))
         return zsv_status_cancelled;
@@ -266,32 +266,32 @@ unsigned char *zsv_get_cell_str(zsv_parser parser, size_t ix) {
 
 ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count, size_t *offsets) {
   if (!count) {
-    fprintf(stderr, "Fixed offset count must be greater than zero\n");
+    parser->errprintf(parser->errf, "Fixed offset count must be greater than zero\n");
     return zsv_status_invalid_option;
   }
   if (offsets[0] == 0)
-    fprintf(stderr, "Warning: first cell width is zero\n");
+    parser->errprintf(parser->errf, "Warning: first cell width is zero\n");
   for (size_t i = 1; i < count; i++) {
     if (offsets[i - 1] > offsets[i]) {
-      fprintf(stderr, "Invalid offset %zu may not exceed prior offset %zu\n", offsets[i], offsets[i - 1]);
+      parser->errprintf(parser->errf, "Invalid offset %zu may not exceed prior offset %zu\n", offsets[i], offsets[i - 1]);
       return zsv_status_invalid_option;
     } else if (offsets[i - 1] == offsets[i])
-      fprintf(stderr, "Warning: offset %zu repeated, will always yield empty cell\n", offsets[i - 1]);
+      parser->errprintf(parser->errf, "Warning: offset %zu repeated, will always yield empty cell\n", offsets[i - 1]);
   }
 
   if (offsets[count - 1] > parser->buff.size) {
-    fprintf(stderr, "Offset %zu exceeds total buffer size %zu\n", offsets[count - 1], parser->buff.size);
+    parser->errprintf(parser->errf, "Offset %zu exceeds total buffer size %zu\n", offsets[count - 1], parser->buff.size);
     return zsv_status_invalid_option;
   }
   if (parser->cum_scanned_length) {
-    fprintf(stderr, "Scanner mode cannot be changed after parsing has begun\n");
+    parser->errprintf(parser->errf, "Scanner mode cannot be changed after parsing has begun\n");
     return zsv_status_invalid_option;
   }
 
   free(parser->fixed.offsets);
   parser->fixed.offsets = calloc(count, sizeof(*parser->fixed.offsets));
   if (parser->fixed.offsets == NULL) {
-    fprintf(stderr, "Out of memory!\n");
+    parser->errprintf(parser->errf, "Out of memory!\n");
     return zsv_status_memory;
   }
   parser->fixed.count = count;
@@ -331,7 +331,8 @@ zsv_parser zsv_new(struct zsv_opts *opts) {
   if (!opts->max_columns)
     opts->max_columns = ZSV_MAX_COLS_DEFAULT;
   if (opts->delimiter == '\n' || opts->delimiter == '\r' || opts->delimiter == '"') {
-    fprintf(stderr, "Invalid delimiter\n");
+    int (*errprintf)(void *, const char *fmt, ...) = opts->errprintf ? opts->errprintf : zsv_generic_fprintf;
+    errprintf(opts->errf ? opts->errf : stderr, "Invalid delimiter\n");
     return NULL;
   }
   struct zsv_scanner *scanner = calloc(1, sizeof(*scanner));
@@ -406,6 +407,8 @@ enum zsv_status zsv_delete(zsv_parser parser) {
       parser->overwrite.close(parser->overwrite.ctx);
 #endif
 
+    if(parser->errclose)
+      parser->errclose(parser->errf);
     free(parser);
   }
   return zsv_status_ok;

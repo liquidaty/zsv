@@ -213,3 +213,8 @@ size_t zsv_filter_write(void *FILEp, unsigned char *buff, size_t bytes_read) {
   fwrite(buff, 1, bytes_read, (FILE *)FILEp);
   return bytes_read;
 }
+
+
+int zsv_no_printf(void *_ctx, const char *_format, ...) {
+  // do nothing!
+}

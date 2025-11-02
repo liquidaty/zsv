@@ -75,6 +75,9 @@ typedef size_t (*zsv_generic_write)(const void *restrict, size_t, size_t, void *
 typedef size_t (*zsv_generic_read)(void *restrict, size_t n, size_t size, void *restrict);
 typedef int (*zsv_generic_seek)(void *, long, int);
 
+#define zsv_generic_fprintf (int (*)(void *, const char *, ...))fprintf;
+#define zsv_generic_fclose (int (*)(void *))fclose;
+
 #ifdef ZSV_EXTRAS
 /**
  * progress callback function signature
@@ -283,6 +286,10 @@ struct zsv_opts {
     unsigned char malformed_utf8_replacement : 1;
     unsigned char _ : 4;
   } option_overrides;
+
+  int (*errprintf)(void *ctx, const char * format, ...);
+  void *errf;
+  int (*errclose)(void *ctx);
 
 #ifdef ZSV_EXTRAS
   struct {
