@@ -69,95 +69,9 @@ Other features under current consideration or plan:
 
 Feel free to suggest new features by creating a new issue.
 
-# Quick usage guide
+# Command list
 
-The below examples use the following files. Note that noaa.csv has a 2-row header:
-```
-curl -LO 'https://burntsushi.net/stuff/worldcitiespop_mil.csv'
-curl -o noaa.csv 'https://data.pmel.noaa.gov/pmel/erddap/tabledap/pmel_co2_moorings_cb2d_135a_c444.csv?station_id,longitude,latitude,time,SST&time>=2024-01-01'
-
-# some examples use tab-delimited data:
-zsv 2tsv noaa.csv > noaa.tsv
-```
-
-The term "buffer" is used herein to describe data that is loaded into `sheet` for viewing.
-
-## Loading a CSV file (into a buffer) for viewing
-
-Run `sheet` and load a file:
-
-`zsv sheet worldcitiespop_mil.csv`
-
-<img width="649" height="480" alt="image" src="https://github.com/user-attachments/assets/80f11eae-9971-46d1-8d49-5d8607dc81c7" />
-
-To load another file for viewing, type `e` and type in the file name at the prompt, then press Enter.
-
-You can also use the global parser modifiers to modify how the file is parsed e.g.
-
-```
-> head -5 noaa.tsv  # view raw data
-
-station_id	longitude	latitude	time	SST
-	degrees_east	degrees_north	UTC	deg C
-cce1	-122.51	33.48	2024-01-01T00:17:00Z	15.771
-cce1	-122.51	33.48	2024-01-01T03:17:00Z	15.676
-cce1	-122.51	33.48	2024-01-01T06:17:00Z	15.655
-
-> zsv sheet --header-row-span 2 -t noaa.tsv # open in sheet viewer; combine first 2 rows
-```
-<img width="628" height="292" alt="image" src="https://github.com/user-attachments/assets/4c21ff11-f7f9-4182-a73d-531c41fa9528" />
-
-## Closing a buffer or the application
-
-Press `Esc` to close the current buffer, and `q` to close the application
-
-## Navigation
-
-Use arrow keys to move one row or column at a time, or `Shift-right`, `Shirt-left`, `G` or `g g` to move
-to the last column, the first column, the last row or the first row, respectively
-
-## Find (exact+contains)
-
-Type `/` and enter some test to find the next cell containing that exact text. Type `n` to find again
-
-## Filter (exact+contains or regex)
-
-Type `f` or `F` to apply a global filter, or a filter on only the current column, respectively. If the search value
-starts with a slash (`/`), the string following the slash is treated as a regular expression.
-
-For example, running a filter of `/^Dö[nm]` on worldcitiespop_mil.csv:
-
-<img width="823" height="350" alt="image" src="https://github.com/user-attachments/assets/06389c59-7b14-4435-ba81-5b1da62dbc9d" />
-
-
-## Pivot
-
-Type `v` to generate a pivot table on the unique values of your current column. For example, after navigating to the Country
-column in worldcitiespop_mil.csv and pressing `v`:
-
-<img width="631" height="346" alt="image" src="https://github.com/user-attachments/assets/a4da2cf7-235c-4a2f-9484-e8b3e4243135" />
-
-In the above image, the cursor was moved to the value `ir` because that was the value under the cursor when the pivot table
-was generated.
-
-Within the pivot table buffer, you can "drill-down" on any row by navigating to the row and pressing Enter. For example,
-from the above image, moving down three rows to the `je` row with a Count of `18`, then typing Enter opens
-a new buffer displaying the underlying 18 rows:
-
-<img width="355" height="425" alt="image" src="https://github.com/user-attachments/assets/f28118cc-9e31-4c5a-b0f5-75ef8fb2a3d2" />
-
-<img width="383" height="422" alt="image" src="https://github.com/user-attachments/assets/43f1b97f-01d1-4222-a08d-1499f96725df" />
-
-
-### Pivot table with custom bucket
-
-Type `V` to generate a pivot table based on a custom SQL expression. For example, after loading worldcitiespop_mil.csv and
-typing `V`, then entering `case when latitude > 35 then '>35' else '<=35' end`:
-<img width="643" height="91" alt="image" src="https://github.com/user-attachments/assets/6379d227-a796-43f9-93bf-8f98d3d0cf48" />
-
-## Command list
-
-Type `?` to see a list of commands:
+Press `?` to see a list of commands:
 
 |Key(s)        |Action    |Description                        |
 |--------------|----------|-----------------------------------|
@@ -194,3 +108,95 @@ Type `?` to see a list of commands:
 |v             |pivot     |Group rows by the column under the…|
 |V             |pivotexpr |Group rows with group-by SQL expre…|
 |              |where     |Filter by sql expression           |
+
+# Quick usage guide
+
+The below examples use the following files. Note that noaa.csv has a 2-row header:
+```
+curl -LO 'https://burntsushi.net/stuff/worldcitiespop_mil.csv'
+curl -o noaa.csv 'https://data.pmel.noaa.gov/pmel/erddap/tabledap/pmel_co2_moorings_cb2d_135a_c444.csv?station_id,longitude,latitude,time,SST&time>=2024-01-01'
+
+# some examples use tab-delimited data:
+zsv 2tsv noaa.csv > noaa.tsv
+```
+
+The term "buffer" is used herein to describe data that is loaded into `sheet` for viewing.
+
+## Loading a CSV file (into a buffer) for viewing
+
+Run `sheet` and load a file:
+
+`zsv sheet worldcitiespop_mil.csv`
+
+<img width="649" height="480" alt="image" src="https://github.com/user-attachments/assets/80f11eae-9971-46d1-8d49-5d8607dc81c7" />
+
+To load another file for viewing, press `e` and enter the file name at the prompt, then press Enter.
+
+You can also use the global parser modifiers to modify how the file is parsed e.g.
+
+```
+> head -5 noaa.tsv  # view raw data
+
+station_id	longitude	latitude	time	SST
+	degrees_east	degrees_north	UTC	deg C
+cce1	-122.51	33.48	2024-01-01T00:17:00Z	15.771
+cce1	-122.51	33.48	2024-01-01T03:17:00Z	15.676
+cce1	-122.51	33.48	2024-01-01T06:17:00Z	15.655
+
+> zsv sheet --header-row-span 2 -t noaa.tsv # open in sheet viewer; combine first 2 rows
+```
+<img width="628" height="292" alt="image" src="https://github.com/user-attachments/assets/4c21ff11-f7f9-4182-a73d-531c41fa9528" />
+
+## Closing a buffer or the application
+
+Press `Esc` to close the current buffer, and `q` to close the application
+
+## Navigation
+
+Use arrow keys to move one row or column at a time, or `Shift-right`, `Shirt-left`, `G` or `g g` to move
+to the last column, the first column, the last row or the first row, respectively
+
+## Find (exact+contains)
+
+Press `/` and enter some test to find the next cell containing that exact text. Press `n` to find again
+
+## Filter (exact+contains or regex)
+
+Press `f` or `F` to apply a global filter, or a filter on only the current column, respectively. If the search value
+starts with a slash (`/`), the string following the slash is treated as a regular expression.
+
+For example, running a filter of `/^Dö[nm]` on worldcitiespop_mil.csv:
+
+<img width="823" height="350" alt="image" src="https://github.com/user-attachments/assets/06389c59-7b14-4435-ba81-5b1da62dbc9d" />
+
+
+## Pivot
+
+## Unique values of current column
+
+Press `v` to generate a pivot table on the unique values of your current column. For example, after navigating to the Country
+column in worldcitiespop_mil.csv and pressing `v`:
+
+<img width="631" height="346" alt="image" src="https://github.com/user-attachments/assets/a4da2cf7-235c-4a2f-9484-e8b3e4243135" />
+
+In the above image, the cursor was moved to the value `ir` because that was the value under the cursor when the pivot table
+was generated.
+
+Within the pivot table buffer, you can "drill-down" on any row by navigating to the row and pressing Enter. For example,
+from the above image, moving down three rows to the `je` row with a Count of `18`, then pressing `Enter` opens
+a new buffer displaying the underlying 18 rows:
+
+<img width="355" height="425" alt="image" src="https://github.com/user-attachments/assets/f28118cc-9e31-4c5a-b0f5-75ef8fb2a3d2" />
+
+<img width="383" height="422" alt="image" src="https://github.com/user-attachments/assets/43f1b97f-01d1-4222-a08d-1499f96725df" />
+
+
+### Custom values / expression
+
+Press `V` to generate a pivot table based on a custom SQL expression. For example, after loading worldcitiespop_mil.csv and
+pressing `V`, then entering `case when latitude > 35 then '>35' else '<=35' end`:
+<img width="643" height="91" alt="image" src="https://github.com/user-attachments/assets/6379d227-a796-43f9-93bf-8f98d3d0cf48" />
+
+## Viewing / clearing errors
+
+If any parsing errors occur, the status bar will indicate with a message `? for help, :errors for errors`. Entering the command `:errors` will show the list of errors, and entering the command `:errors-clear` will clear the errors and reset the status bar.
