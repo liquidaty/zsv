@@ -188,7 +188,7 @@ static int uib_parse_errs_printf(void *uib_parse_errs_ptr, const char *fmt, ...)
   if (parse_errs->count < parse_errs->max) {
     va_list argv;
     va_start(argv, fmt);
-    n = asprintf(&err_msg, fmt, argv);
+    n = vasprintf(&err_msg, fmt, argv);
     va_end(argv);
     if (!(n <= 0 || !err_msg || !*err_msg)) {
       if (!parse_errs->errors)
