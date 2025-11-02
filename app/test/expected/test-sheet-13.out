@@ -32,8 +32,8 @@ F                         filtercol                 Filter by specified text
 v                         pivot                     Group rows by the column
 V                         pivotexpr                 Group rows with group-by
                           where                     Filter by sql expression
-
-
+                          errors                    Show errors (if any)
+                          errors-clear              Clear any/all errors
 
 
 

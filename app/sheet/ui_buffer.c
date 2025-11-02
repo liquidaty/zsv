@@ -3,6 +3,27 @@
 #include "../utils/index.h"
 #include "index.h"
 
+struct uib_parse_errs {
+  size_t count;
+  size_t max;
+  char **errors;
+};
+
+static void uib_parse_errs_init(struct uib_parse_errs *p, size_t max) {
+  memset(p, 0, sizeof(*p));
+  p->max = max;
+}
+
+static void uib_parse_errs_clear(struct uib_parse_errs *parse_errs) {
+  for (size_t i = 0; i < parse_errs->count; i++)
+    free(parse_errs->errors[i]);
+  free(parse_errs->errors);
+
+  // reset so it can be used again
+  size_t max = parse_errs->max;
+  uib_parse_errs_init(parse_errs, max);
+}
+
 struct zsvsheet_ui_buffer {
   char *filename;
   char *data_filename;              // if this dataset was filtered from another, the filtered data is stored here
@@ -36,6 +57,8 @@ struct zsvsheet_ui_buffer {
   void (*ext_on_close)(void *);
 
   enum zsv_ext_status (*get_cell_attrs)(void *, zsvsheet_cell_attr_t *, size_t, size_t, size_t);
+
+  struct uib_parse_errs parse_errs;
 
   unsigned char index_ready : 1;
   unsigned char rownum_col_offset : 1;
@@ -99,6 +122,7 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
     free(ub->status);
     if (ub->data_filename)
       unlink(ub->data_filename);
+    uib_parse_errs_clear(&ub->parse_errs);
     free(ub->data_filename);
     free(ub->filename);
     free(ub);
@@ -155,6 +179,34 @@ int zsvsheet_ui_buffer_update_cell_attr(struct zsvsheet_ui_buffer *uib) {
     }
   }
   return 0;
+}
+
+static int uib_parse_errs_printf(void *uib_parse_errs_ptr, const char *fmt, ...) {
+  struct uib_parse_errs *parse_errs = uib_parse_errs_ptr;
+  char *err_msg = NULL;
+  int n = 0;
+  if (parse_errs->count < parse_errs->max) {
+    va_list argv;
+    va_start(argv, fmt);
+    n = vasprintf(&err_msg, fmt, argv);
+    va_end(argv);
+    if (!(n <= 0 || !err_msg || !*err_msg)) {
+      if (!parse_errs->errors)
+        parse_errs->errors = (char **)calloc(parse_errs->max + 1, sizeof(*parse_errs->errors));
+      if (parse_errs->errors) {
+        parse_errs->errors[parse_errs->count++] = err_msg;
+        return n;
+      }
+    }
+  } else if (parse_errs->count > 0 && parse_errs->count == parse_errs->max && parse_errs->errors) {
+    err_msg = strdup("Additional errors ignored");
+    if (err_msg) {
+      parse_errs->errors[parse_errs->count++] = err_msg;
+      return strlen(err_msg);
+    }
+  }
+  free(err_msg);
+  return n;
 }
 
 enum zsvsheet_priv_status zsvsheet_ui_buffer_new_blank(struct zsvsheet_ui_buffer **uibp) {
