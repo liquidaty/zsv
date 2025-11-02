@@ -65,7 +65,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
                      size_t start_row, size_t start_col, size_t header_span, struct zsvsheet_opts *zsvsheet_opts,
                      struct zsv_prop_handler *custom_prop_handler) {
   int rc = 0;
-  struct uib_parse_errs parse_errs = { 0 };
+  struct uib_parse_errs parse_errs;
+  uib_parse_errs_init(&parse_errs, 100);
   FILE *fp = NULL;
   const char *filename = (uibufferp && *uibufferp) ? (*uibufferp)->filename : uibopts ? uibopts->filename : NULL;
   struct zsv_opts opts = {0};
@@ -103,7 +104,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   opts.stream = fp; // Input file stream
 
   opts.errprintf = uib_parse_errs_printf;
-  if(uibuff)
+  if (uibuff)
     opts.errf = &uibuff->parse_errs;
   else
     opts.errf = &parse_errs;
@@ -165,9 +166,9 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
         goto done;
       }
       *uibufferp = uibuff = tmp_uibuff;
-      if(uibuff) {
-        uibuff->parse_errs = parse_errs;
-        memset(&parse_errs, 0, sizeof(parse_errs));
+      if (uibuff) {
+        uibuff->parse_errs = parse_errs;            // transfer errors
+        memset(&parse_errs, 0, sizeof(parse_errs)); // prevent double-free
       }
     }
 
@@ -269,10 +270,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     uibuff->dimensions.row_count = rows_read;
   }
 
- done:
-  uib_parse_errs_free(&parse_errs);
-  if(fp)
-     fclose(fp);
+done:
+  uib_parse_errs_clear(&parse_errs);
+  if (fp)
+    fclose(fp);
   zsv_delete(parser);
   return rc;
 }

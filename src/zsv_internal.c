@@ -171,7 +171,7 @@ struct zsv_scanner {
     unsigned char now;
   } pull;
 
-  int (*errprintf)(void *ctx, const char * format, ...);
+  int (*errprintf)(void *ctx, const char *format, ...);
   void *errf;
   int (*errclose)(void *ctx);
 
@@ -339,7 +339,7 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *sc
 __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_scanner *scanner) {
   if (VERY_UNLIKELY(scanner->row.overflow)) {
     scanner->errprintf(scanner->errf, "Warning: number of columns (%zu) exceeds row max (%zu)\n",
-            scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
+                       scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
     scanner->row.overflow = 0;
   }
   if (VERY_LIKELY(scanner->opts.row_handler != NULL)) // TO DO: disallow row_handler to be null; if null, set to dummy
@@ -409,8 +409,8 @@ __attribute__((always_inline)) static inline enum zsv_status cell_and_row_dl(str
 #include <arm_neon.h>
 static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
   // see https://stackoverflow.com/questions/11870910/
-  static const uint8_t __attribute__((aligned(16)))
-  _powers[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
+  static const uint8_t
+    __attribute__((aligned(16))) _powers[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
   uint8x16_t mm_powers = vld1q_u8(_powers);
 
   // compute the mask from the input
@@ -520,8 +520,7 @@ static void skip_to_first_row_w_data(void *ctx) {
   if (LIKELY(zsv_internal_row_is_blank(scanner) == 0)) {
     scanner->opts.keep_empty_header_rows = 1;
     if (scanner->empty_header_rows) {
-      scanner->errprintf(scanner->errf,
-                         "Warning: skipped %zu empty header rows; suggest using:\n  --skip-head %zu\n",
+      scanner->errprintf(scanner->errf, "Warning: skipped %zu empty header rows; suggest using:\n  --skip-head %zu\n",
                          scanner->empty_header_rows, scanner->empty_header_rows + scanner->opts_orig.rows_to_ignore);
     }
     set_callbacks(scanner);
@@ -670,8 +669,8 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
       if (need_buff_size == ZSV_MIN_SCANNER_BUFFSIZE)
         scanner->errprintf(scanner->errf, "Increasing --buff-size to minimum %zu\n", need_buff_size);
       else
-        scanner->errprintf(scanner->errf, "Increasing --buff-size to %zu to accommmodate max-row-size of %u\n", need_buff_size,
-                opts->max_row_size);
+        scanner->errprintf(scanner->errf, "Increasing --buff-size to %zu to accommmodate max-row-size of %u\n",
+                           need_buff_size, opts->max_row_size);
     }
     opts->buffsize = need_buff_size;
   }

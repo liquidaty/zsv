@@ -203,7 +203,11 @@ static void zsvsheet_priv_set_status(const struct zsvsheet_display_dimensions *d
   if (overwrite || !*zsvsheet_status_text) {
     va_list argv;
     va_start(argv, fmt);
-    vsnprintf(zsvsheet_status_text, sizeof(zsvsheet_status_text), fmt, argv);
+    int n = vsnprintf(zsvsheet_status_text, sizeof(zsvsheet_status_text), fmt, argv);
+    if (n > 0 && (size_t)(n + 2) < sizeof(zsvsheet_status_text) && zsvsheet_status_text[n - 1] != ' ') {
+      zsvsheet_status_text[n] = ' ';
+      zsvsheet_status_text[n + 1] = '\0';
+    }
     va_end(argv);
     // note: if (n < (int)sizeof(zsvsheet_status_text)), then we just ignore
   }
@@ -553,14 +557,11 @@ static zsvsheet_status zsvsheet_subcommand_handler(struct zsvsheet_proc_context 
   return rc;
 }
 
-static zsvsheet_status zsvsheet_buffer_new_static(struct zsvsheet_proc_context *ctx,
-                                                  const size_t cols,
+static zsvsheet_status zsvsheet_buffer_new_static(struct zsvsheet_proc_context *ctx, const size_t cols,
                                                   const unsigned char **(*get_header)(void *cbctx),
                                                   const unsigned char **(*get_row)(void *cbctx),
-                                                  const unsigned char *(*get_status)(void *cbctx),
-                                                  void *cbctx,
-                                                  struct zsvsheet_screen_buffer_opts *boptsp
-                                                  ) {
+                                                  const unsigned char *(*get_status)(void *cbctx), void *cbctx,
+                                                  struct zsvsheet_screen_buffer_opts *boptsp) {
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_display_info *di = &state->display_info;
   struct zsvsheet_screen_buffer_opts bopts = {
@@ -569,7 +570,7 @@ static zsvsheet_status zsvsheet_buffer_new_static(struct zsvsheet_proc_context *
     .max_cell_len = 0,
     .rows = 256,
   };
-  if(boptsp)
+  if (boptsp)
     bopts = *boptsp;
   struct zsvsheet_ui_buffer_opts uibopts = {
     .buff_opts = &bopts,
@@ -592,8 +593,8 @@ static zsvsheet_status zsvsheet_buffer_new_static(struct zsvsheet_proc_context *
     goto free_buffer;
 
   const unsigned char **head = get_header(cbctx);
-  for(size_t j = 0; j < cols && head[j]; j++) {
-    if(*head[j])
+  for (size_t j = 0; j < cols && head[j]; j++) {
+    if (*head[j])
       pstat = zsvsheet_screen_buffer_write_cell(buffer, 0, j, head[j]);
     if (pstat != zsvsheet_priv_status_ok)
       goto free_buffer;
@@ -601,7 +602,7 @@ static zsvsheet_status zsvsheet_buffer_new_static(struct zsvsheet_proc_context *
 
   size_t row = 1;
   const unsigned char **row_data;
-  while((row_data = get_row(cbctx)) != NULL) {
+  while ((row_data = get_row(cbctx)) != NULL) {
     for (size_t j = 0; j < cols && row_data[j]; j++) {
       if (*row_data[j]) {
         pstat = zsvsheet_screen_buffer_write_cell(buffer, row, j, row_data[j]);
@@ -617,8 +618,8 @@ static zsvsheet_status zsvsheet_buffer_new_static(struct zsvsheet_proc_context *
   uib->buff_used_rows = row;
 
   const unsigned char *status = get_status(cbctx);
-  if (status && asprintf(&uib->status, "%s ", status) == -1)
-    goto free_buffer;
+  if (status)
+    zsvsheet_ui_buffer_set_status(uib, (const char *)status);
 
   zsvsheet_ui_buffer_push(di->ui_buffers.base, di->ui_buffers.current, uib);
   stat = zsvsheet_status_ok;
@@ -634,7 +635,7 @@ out:
 }
 
 #include "sheet/help.c"
-// #include "sheet/errors.c"
+#include "sheet/errors.c"
 
 #include "sheet/pivot.c"
 #include "sheet/sqlfilter.c"
@@ -730,8 +731,8 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_newline,        "<Enter>",     "Follow hyperlink (if any)",                                       zsvsheet_newline_handler      },
   { zsvsheet_builtin_proc_pivot_cur_col,  "pivot",       "Group rows by the column under the cursor",                       zsvsheet_pivot_handler        },
   { zsvsheet_builtin_proc_pivot_expr,     "pivotexpr",   "Group rows with group-by SQL expression",                         zsvsheet_pivot_handler        },
-  //  { zsvsheet_builtin_proc_errors,         "errors",      "Show errors (if any)",                                            zsvsheet_errors_handler       },
-  //  { zsvsheet_builtin_proc_errors_clear,   "errors-clear","Clear any/all errors",                                            zsvsheet_errors_handler       },
+  { zsvsheet_builtin_proc_errors,         "errors",      "Show errors (if any)",                                            zsvsheet_errors_handler       },
+  { zsvsheet_builtin_proc_errors_clear,   "errors-clear","Clear any/all errors",                                            zsvsheet_errors_handler       },
   { -1, NULL, NULL, NULL }
 };
 /* clang-format on */
@@ -750,7 +751,7 @@ static void zsvsheet_check_buffer_worker_updates(struct zsvsheet_ui_buffer *ub,
   pthread_mutex_lock(&ub->mutex);
   if (ub->status) {
     if (display_dims)
-      zsvsheet_priv_set_status(display_dims, 1, ub->status);
+      zsvsheet_priv_set_status(display_dims, 1, "%s", ub->status);
   }
   if (ub->index_ready && ub->dimensions.row_count != ub->index->row_count + 1) {
     ub->dimensions.row_count = ub->index->row_count + 1;
@@ -1000,7 +1001,11 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
     }
   }
 
-  zsvsheet_priv_set_status(ddims, 0, "? for help ");
+  if (ui_buffer->parse_errs.count > 0)
+    zsvsheet_priv_set_status(ddims, 0, "? for help, :errors for errors");
+  else
+    zsvsheet_priv_set_status(ddims, 0, "? for help");
+
   if (cursor_value)
     mvprintw(ddims->rows - ddims->footer_span, strlen(zsvsheet_status_text), "%s", cursor_value);
   refresh();

@@ -18,9 +18,9 @@ const unsigned char *zsvsheet_get_help_status(void *_) {
 
 const unsigned char **zsvsheet_get_help_row(void *d) {
   struct zsvsheet_help_data *data = d;
-  while(1) {
+  while (1) {
     size_t i = data->rows_fetched++;
-    if(zsvsheet_get_key_binding(i) == NULL)
+    if (zsvsheet_get_key_binding(i) == NULL)
       return NULL;
 
     struct zsvsheet_key_binding *kb = zsvsheet_get_key_binding(i);
@@ -37,10 +37,7 @@ const unsigned char **zsvsheet_get_help_row(void *d) {
 
 static zsvsheet_status zsvsheet_help_handler(struct zsvsheet_proc_context *ctx) {
   const size_t cols = 3;
-  struct zsvsheet_help_data d = { 0 };
-  return zsvsheet_buffer_new_static(ctx, cols,
-                                    zsvsheet_get_help_header, zsvsheet_get_help_row, zsvsheet_get_help_status,
-                                    &d,
-                                    NULL
-                                    );
+  struct zsvsheet_help_data d = {0};
+  return zsvsheet_buffer_new_static(ctx, cols, zsvsheet_get_help_header, zsvsheet_get_help_row,
+                                    zsvsheet_get_help_status, &d, NULL);
 }

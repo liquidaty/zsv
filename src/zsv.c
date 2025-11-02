@@ -273,14 +273,16 @@ ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count
     parser->errprintf(parser->errf, "Warning: first cell width is zero\n");
   for (size_t i = 1; i < count; i++) {
     if (offsets[i - 1] > offsets[i]) {
-      parser->errprintf(parser->errf, "Invalid offset %zu may not exceed prior offset %zu\n", offsets[i], offsets[i - 1]);
+      parser->errprintf(parser->errf, "Invalid offset %zu may not exceed prior offset %zu\n", offsets[i],
+                        offsets[i - 1]);
       return zsv_status_invalid_option;
     } else if (offsets[i - 1] == offsets[i])
       parser->errprintf(parser->errf, "Warning: offset %zu repeated, will always yield empty cell\n", offsets[i - 1]);
   }
 
   if (offsets[count - 1] > parser->buff.size) {
-    parser->errprintf(parser->errf, "Offset %zu exceeds total buffer size %zu\n", offsets[count - 1], parser->buff.size);
+    parser->errprintf(parser->errf, "Offset %zu exceeds total buffer size %zu\n", offsets[count - 1],
+                      parser->buff.size);
     return zsv_status_invalid_option;
   }
   if (parser->cum_scanned_length) {
@@ -407,7 +409,7 @@ enum zsv_status zsv_delete(zsv_parser parser) {
       parser->overwrite.close(parser->overwrite.ctx);
 #endif
 
-    if(parser->errclose)
+    if (parser->errclose)
       parser->errclose(parser->errf);
     free(parser);
   }

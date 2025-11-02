@@ -183,22 +183,17 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
     .ch = '\0',
     .ch_name = "",
     .proc_id = zsvsheet_builtin_proc_sqlfilter,
-    // .handler = zsvsheet_vim_g_key_binding_dmux_handler
   },
-  /*
   {
     .ch = '\0',
     .ch_name = "",
     .proc_id = zsvsheet_builtin_proc_errors,
-    // .handler = zsvsheet_vim_g_key_binding_dmux_handler
   },
   {
     .ch = '\0',
     .ch_name = "",
     .proc_id = zsvsheet_builtin_proc_errors_clear,
-    // .handler = zsvsheet_vim_g_key_binding_dmux_handler
   },
-  */
   { .ch = -1                                                                   }
 };
 /* clang-format on */
@@ -263,22 +258,23 @@ struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
   { .ch = '\n',                   .proc_id = zsvsheet_builtin_proc_newline,       },
   { .ch = '\r',                   .proc_id = zsvsheet_builtin_proc_newline,       },
 
-  /*
   { .ch = 'v',                    .proc_id = zsvsheet_builtin_proc_pivot_cur_col, },
   { .ch = 'V',                    .proc_id = zsvsheet_builtin_proc_pivot_expr,    },
   {
     .ch = '\0',
     .ch_name = "",
     .proc_id = zsvsheet_builtin_proc_sqlfilter,
-    // .handler = zsvsheet_vim_g_key_binding_dmux_handler
   },
   {
     .ch = '\0',
     .ch_name = "",
     .proc_id = zsvsheet_builtin_proc_errors,
-    // .handler = zsvsheet_vim_g_key_binding_dmux_handler
   },
-  */
+  {
+    .ch = '\0',
+    .ch_name = "",
+    .proc_id = zsvsheet_builtin_proc_errors_clear,
+  },
 
   { .ch = -1                                                          }
 };
