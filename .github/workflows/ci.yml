@@ -152,7 +152,7 @@ jobs:
     - name: Build on Linux (${{ env.AMD64_LINUX_GCC }})
       env:
         PREFIX: ${{ env.AMD64_LINUX_GCC }}
-        CC: gcc
+        CC: gcc-12
         MAKE: make
         RUN_TESTS: false
       run: |
