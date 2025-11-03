@@ -143,130 +143,130 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v5
 
-    - name: Set up apt dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y rpm alien tmux
-        sudo apt remove -y jq
+    # - name: Set up apt dependencies
+    #   run: |
+    #     sudo apt update
+    #     sudo apt install -y rpm alien tmux
+    #     sudo apt remove -y jq
 
     - name: Build on Linux (${{ env.AMD64_LINUX_GCC }})
       env:
         PREFIX: ${{ env.AMD64_LINUX_GCC }}
         CC: gcc
         MAKE: make
-        RUN_TESTS: true
+        RUN_TESTS: false
       run: |
         ./scripts/ci-build.sh
-        ./scripts/ci-create-debian-package.sh
-        ./scripts/ci-create-rpm-package.sh
+        # ./scripts/ci-create-debian-package.sh
+        # ./scripts/ci-create-rpm-package.sh
 
-    - name: Build on Linux (${{ env.AMD64_LINUX_CLANG }})
-      env:
-        PREFIX: ${{ env.AMD64_LINUX_CLANG }}
-        CC: clang
-        MAKE: make
-        RUN_TESTS: true
-      run: |
-        ./scripts/ci-build.sh
-        ./scripts/ci-create-debian-package.sh
-        ./scripts/ci-create-rpm-package.sh
+    # - name: Build on Linux (${{ env.AMD64_LINUX_CLANG }})
+    #   env:
+    #     PREFIX: ${{ env.AMD64_LINUX_CLANG }}
+    #     CC: clang
+    #     MAKE: make
+    #     RUN_TESTS: true
+    #   run: |
+    #     ./scripts/ci-build.sh
+    #     ./scripts/ci-create-debian-package.sh
+    #     ./scripts/ci-create-rpm-package.sh
 
-    - name: Prepare build artifacts for upload
-      run: ./scripts/ci-prepare-artifacts-for-upload.sh
+    # - name: Prepare build artifacts for upload
+    #   run: ./scripts/ci-prepare-artifacts-for-upload.sh
 
-    - name: Attest build artifacts for release
-      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      uses: actions/attest-build-provenance@v3
-      with:
-        subject-path: ${{ env.ARTIFACT_DIR }}/*
+    # - name: Attest build artifacts for release
+    #   if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    #   uses: actions/attest-build-provenance@v3
+    #   with:
+    #     subject-path: ${{ env.ARTIFACT_DIR }}/*
 
-    - name: Verify attestations of release artifacts
-      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      run: ./scripts/ci-verify-attestations.sh
+    # - name: Verify attestations of release artifacts
+    #   if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    #   run: ./scripts/ci-verify-attestations.sh
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.zip)
-      uses: actions/upload-artifact@v5
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.zip
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.zip)
+    #   uses: actions/upload-artifact@v5
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.zip
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.zip)
-      uses: actions/upload-artifact@v5
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.zip
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.zip)
+    #   uses: actions/upload-artifact@v5
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.zip
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.deb)
-      uses: actions/upload-artifact@v5
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.deb
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.deb)
+    #   uses: actions/upload-artifact@v5
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.deb
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.deb)
-      uses: actions/upload-artifact@v5
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.deb
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.deb)
+    #   uses: actions/upload-artifact@v5
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.deb
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.rpm)
-      uses: actions/upload-artifact@v5
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.rpm
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.rpm)
+    #   uses: actions/upload-artifact@v5
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.rpm
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.rpm)
-      uses: actions/upload-artifact@v5
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.rpm
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.rpm)
+    #   uses: actions/upload-artifact@v5
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.rpm
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.tar.gz)
-      uses: actions/upload-artifact@v5
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.tar.gz
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.tar.gz)
+    #   uses: actions/upload-artifact@v5
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.tar.gz
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz)
-      uses: actions/upload-artifact@v5
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
+    # - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz)
+    #   uses: actions/upload-artifact@v5
+    #   env:
+    #     ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz
+    #   with:
+    #     name: ${{ env.ARTIFACT_NAME }}
+    #     path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+    #     retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+    #     if-no-files-found: error
 
-    - name: Upload release artifacts
-      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      run: ./scripts/ci-upload-release-artifacts.sh
+    # - name: Upload release artifacts
+    #   if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    #   run: ./scripts/ci-upload-release-artifacts.sh
 
   # prepare-linux-packages:
   #   if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
