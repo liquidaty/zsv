@@ -487,6 +487,7 @@ ifeq ($(ARM64),)
 endif
 
 # CLI, select and sheet use PCRE2-8
+BULITIN_PCRE2_PREFIX=${BUILD_DIR}-external/pcre2
 ifeq ($(HAVE_PCRE2_8),1)
   NO_PCRE2_JIT=
   # TO DO: make PCRE2_STATIC a configure option / detection
@@ -499,9 +500,10 @@ ifeq ($(HAVE_PCRE2_8),1)
   ifeq ($(PCRE2_STATIC),1)
     CFLAGS+= -DPCRE2_STATIC
     ifeq ($(PCRE2_8_PREFIX),builtin)
-      PCRE2_8_PREFIX=${BUILD_DIR}/external/pcre2
+      PCRE2_8_PREFIX=${BULITIN_PCRE2_PREFIX}
       # add dependency
       ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: ${PCRE2_8_PREFIX}/lib/libpcre2-8.a
+
     endif
     PCRE2_LIB=${PCRE2_8_PREFIX}/lib/libpcre2-8.a
   endif
@@ -521,20 +523,28 @@ ifeq ($(HAVE_PCRE2_8),1)
   INCLUDE_PCRE2_8=${PREFIX}/include
   ifneq ($(PCRE2_8_PREFIX),$(PREFIX))
     ifneq ($(PCRE2_STATIC),1)
-      LDFLAGS_PCRE2_8=-L${BUILD_DIR}/external/pcre2/lib
+      LDFLAGS_PCRE2_8=-L${PCRE2_8_PREFIX}/lib
     endif
-    INCLUDE_PCRE2_8=${BUILD_DIR}/external/pcre2/include
+    INCLUDE_PCRE2_8=${PCRE2_8_PREFIX}/include
   endif
 
   ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: MORE_LIBS+=${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o ${LDFLAGS_PCRE2_8} ${PCRE2_LIB}
 endif
 
-${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o : ${BUILD_DIR}/objs/utils/%.o : utils/%.c utils/%.h ${INCLUDE_PCRE2_8}/pcre2.h
+# pcre2-8.o actually only needs ${PCRE2_8_PREFIX}/include/pcre2.h, but if we are using builtin pcre2, then
+# that will only exist after the builtin library has been built
+ifeq ($(PCRE2_8_PREFIX),$(BULITIN_PCRE2_PREFIX))
+  PCRE2_8_O_DEP=${PCRE2_8_PREFIX}/lib/libpcre2-8.a
+else
+  PCRE2_8_O_DEP=
+endif
+
+${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o: ${BUILD_DIR}/objs/utils/%.o : utils/%.c utils/%.h ${PCRE2_8_O_DEP}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_PCRE2_8} -o $@ -c utils/$*.c
 
-${BUILD_DIR}/external/pcre2/lib/libpcre2-8.a ${BUILD_DIR}/external/pcre2/include/pcre2.h:
-	${MAKE} -e -C external -f build.mk ${BUILD_DIR}/external/pcre2/lib/libpcre2-8.a BUILD_DIR=${BUILD_DIR} CONFIGURE_HOST=${CONFIGURE_HOST}
+${BULITIN_PCRE2_PREFIX}/lib/libpcre2-8.a:
+	${MAKE} -C external -f ${CONFIGFILEPATH} -f build.mk $@ BUILD_DIR=${BUILD_DIR} CONFIGURE_HOST=${CONFIGURE_HOST}
 
 # utils/db uses jsonwriter
 ${BUILD_DIR}/objs/utils/db.o : MORE_SOURCE+= ${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
