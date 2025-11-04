@@ -30,8 +30,8 @@ direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3
 conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste`, `overwrite` and more.
 
 The ZSV CLI also includes [`sheet`](docs/sheet.md), an in-console interactive
-grid viewer that includes basic navigation, filtering, and pivot table with drill down,
-and that supports custom extensions:
+grid viewer that includes basic navigation, filtering, and pivot table with
+drill down, and that supports custom extensions:
 
 <img src="https://github.com/user-attachments/assets/c2ae32a3-48c4-499d-8ef7-7748687bd24f" width="50%">
 
@@ -137,7 +137,7 @@ that implements the expected
   [app/benchmark/README.md](app/benchmark/README.md)
 - Low memory usage (regardless of how big your data is) and size footprint for
   both lib (~20k) and CLI executable (< 1MB)
-- Handles general delimited data (e.g. pipe-delimited) and fixed-with input
+- Handles general delimited data (e.g. pipe-delimited) and fixed-width input
   (with specified widths or auto-detected widths)
 - Handles multi-row headers
 - Handles input from any stream, including caller-defined streams accessed via a
