@@ -80,3 +80,8 @@ overwrite.sqlite3
 playground/*
 !playground/index.html
 playground/favicon.ico
+pkg/.*
+pkg/deb/*
+pkg/rpm/*
+!pkg/rpm/Dockerfile
+!pkg/rpm/rpmbuild/SPECS/zsv.spec
