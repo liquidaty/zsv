@@ -441,7 +441,7 @@ jobs:
       uses: actions/checkout@v5
 
     - name: Build (${{ env.AMD64_FREEBSD_GCC }})
-      uses: cross-platform-actions/action@v0.29.0
+      uses: cross-platform-actions/action@v0.30.0
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc
