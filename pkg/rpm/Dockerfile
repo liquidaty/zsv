@@ -12,6 +12,7 @@ RUN \
         perl \
         rpmdevtools \
         fedora-packager \
+        fedora-packager-kerberos \
         copr-cli \
         mock \
         ncurses-devel \
@@ -49,3 +50,8 @@ CMD ["/bin/bash"]
 # sudo dnf install zsv
 # sudo dnf remove zsv
 # sudo dnf copr disable iamazeem/zsv
+
+# KOJI: https://docs.fedoraproject.org/en-US/package-maintainers/Using_the_Koji_Build_System/
+# fkinit -u USERNAME
+# koji build --scratch rawhide SRPMS/zsv-1.1.0-1.fc44.src.rpm
+# koji build --scratch f43 SRPMS/zsv-1.1.0-1.fc44.src.rpm

@@ -42,7 +42,7 @@ rm -rf %{buildroot}
 
 make install VERSION=%{version}
 
-# Create bulid tree
+# Create build root tree
 mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_includedir}/zsv
 mkdir -p %{buildroot}%{_libdir}
