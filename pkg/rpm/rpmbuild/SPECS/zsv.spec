@@ -44,7 +44,7 @@ make install VERSION=%{version}
 # Create bulid tree
 mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_includedir}/zsv
-mkdir -p %{buildroot}/lib
+mkdir -p %{buildroot}%{_libdir}
 mkdir -p %{buildroot}%{_mandir}/man1
 
 # Install binary
@@ -56,7 +56,7 @@ cp -pr build/usr/include/zsv/* %{buildroot}%{_includedir}/zsv/
 
 # Install library
 # NOTE: zsv uses `lib`, not `lib64` even on 64-bit systems
-install -p -m 644 build/usr/lib/libzsv.a %{buildroot}/lib
+install -p -m 644 build/usr/lib/libzsv.a %{buildroot}%{_libdir}
 
 # Install manpage
 install -p -m 644 %{SOURCE1} %{buildroot}%{_mandir}/man1/zsv.1
