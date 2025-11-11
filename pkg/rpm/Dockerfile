@@ -9,6 +9,7 @@ RUN \
         gcc \
         man \
         tree \
+        perl \
         rpmdevtools \
         fedora-packager \
         copr-cli \
@@ -37,6 +38,9 @@ CMD ["/bin/bash"]
 # Docker
 # docker build -t fedora:zsv .
 # docker run -it --privileged -v $PWD:/home/zsv fedora:zsv
+
+# docker run -it --privileged -v $HOME/.ssh:/home/zsv/.ssh:ro -v $PWD:/home/zsv fedora:zsv
+# chown -R $(whoami) ~/.ssh
 
 # RPM: https://developer.fedoraproject.org/deployment/rpm/about.html
 
