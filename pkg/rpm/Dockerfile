@@ -4,6 +4,7 @@ RUN \
     dnf install -y \
         dnf-plugins-core \
         glibc-langpack-en \
+        sudo \
         git \
         gcc \
         man \
@@ -20,7 +21,8 @@ RUN \
 # mock needs --privileged to run properly
 
 RUN \
-    useradd -m -u 1000 zsv && \
+    useradd -m -s /bin/bash -u 1000 zsv && \
+    echo "zsv ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && \
     usermod -a -G mock zsv
 
 USER zsv
@@ -30,7 +32,16 @@ WORKDIR /home/zsv
 RUN mkdir ~/.config
 COPY copr ~/.config/
 
-CMD ["bash"]
+CMD ["/bin/bash"]
 
+# Docker
 # docker build -t fedora:zsv .
-# docker run -it -v $PWD:/home/zsv --privileged fedora:zsv
+# docker run -it --privileged -v $PWD:/home/zsv fedora:zsv
+
+# RPM: https://developer.fedoraproject.org/deployment/rpm/about.html
+
+# COPR: https://developer.fedoraproject.org/deployment/copr/copr-cli.html
+# sudo dnf copr enable iamazeem/zsv
+# sudo dnf install zsv
+# sudo dnf remove zsv
+# sudo dnf copr disable iamazeem/zsv
