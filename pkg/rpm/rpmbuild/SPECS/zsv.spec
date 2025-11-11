@@ -9,6 +9,7 @@ URL:            https://github.com/liquidaty/zsv
 Source0:        %{url}/archive/refs/tags/v%{version}.tar.gz
 Source1:        zsv.1
 
+BuildRequires:  perl
 BuildRequires:  gcc
 BuildRequires:  make
 BuildRequires:  ncurses-devel

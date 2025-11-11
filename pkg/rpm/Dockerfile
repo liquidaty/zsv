@@ -16,7 +16,13 @@ RUN \
         ncurses \
     && dnf clean all
 
-RUN useradd -m -u 1000 zsv
+# https://rpm-software-management.github.io/mock/#setup
+# mock needs --privileged to run properly
+
+RUN \
+    useradd -m -u 1000 zsv && \
+    usermod -a -G mock zsv
+
 USER zsv
 WORKDIR /home/zsv
 
@@ -25,3 +31,6 @@ RUN mkdir ~/.config
 COPY copr ~/.config/
 
 CMD ["bash"]
+
+# docker build -t fedora:zsv .
+# docker run -it -v $PWD:/home/zsv --privileged fedora:zsv
