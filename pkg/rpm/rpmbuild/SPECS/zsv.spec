@@ -34,37 +34,33 @@ The zsv-devel package contains the headers and library.
 %autosetup
 
 %build
-%configure
+%configure --exec-prefix=$PWD/build/usr
 
 %install
-# Build and install to /usr/bin, /usr/include, /usr/lib
+rm -rf %{buildroot}
+
 make install VERSION=%{version}
 
 # Create bulid tree
-rm -rf %{buildroot}
 mkdir -p %{buildroot}%{_bindir}
 mkdir -p %{buildroot}%{_includedir}/zsv
-mkdir -p %{buildroot}%{_libdir}
+mkdir -p %{buildroot}/lib
 mkdir -p %{buildroot}%{_mandir}/man1
 
 # Install binary
-install -p -m 755 /usr/bin/zsv %{buildroot}%{_bindir}/
+install -p -m 755 build/usr/bin/zsv %{buildroot}%{_bindir}/
 
 # Install headers
-install -p -m 644 /usr/include/zsv.h %{buildroot}%{_includedir}/
-cp -pr /usr/include/zsv/* %{buildroot}%{_includedir}/zsv/
+install -p -m 644 build/usr/include/zsv.h %{buildroot}%{_includedir}/
+cp -pr build/usr/include/zsv/* %{buildroot}%{_includedir}/zsv/
 
 # Install library
 # NOTE: zsv uses `lib`, not `lib64` even on 64-bit systems
-install -p -m 644 /usr/lib/libzsv.a %{buildroot}%{_libdir}/
+install -p -m 644 build/usr/lib/libzsv.a %{buildroot}/lib
 
 # Install manpage
 install -p -m 644 %{SOURCE1} %{buildroot}%{_mandir}/man1/zsv.1
 %{__gzip} %{buildroot}%{_mandir}/man1/zsv.1
-
-# Cleanup
-# NOTE: Uninstall will remove files from /usr/bin, /usr/include, /usr/lib.
-make uninstall
 
 %check
 

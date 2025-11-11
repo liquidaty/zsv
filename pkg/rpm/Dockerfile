@@ -2,6 +2,7 @@ FROM fedora:44
 
 RUN \
     dnf install -y \
+        dnf-plugins-core \
         glibc-langpack-en \
         git \
         gcc \
@@ -15,10 +16,12 @@ RUN \
         ncurses \
     && dnf clean all
 
-USER root
-WORKDIR /root
+RUN useradd -m -u 1000 zsv
+USER zsv
+WORKDIR /home/zsv
 
 # https://copr.fedorainfracloud.org/api/
-COPY copr ~/.config/copr
+RUN mkdir ~/.config
+COPY copr ~/.config/
 
 CMD ["bash"]
