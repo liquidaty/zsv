@@ -16,6 +16,8 @@ BuildRequires:  ncurses-devel
 
 Requires:       ncurses
 
+ExcludeArch:    ppc64le
+
 %description
 zsv is a fast and extensible CLI utility for CSV data.
 It achieves high performance using SIMD operations,
