@@ -29,6 +29,7 @@ formats, as well as multi-row-span headers.
 Summary:        C headers and static library for zsv
 Group:          Development/Libraries
 Requires:       %{name}%{?_isa} = %{version}-%{release}
+Provides:       %{name}-static = %{version}-%{release}
 
 %description devel
 The zsv-devel package contains the headers and library.
