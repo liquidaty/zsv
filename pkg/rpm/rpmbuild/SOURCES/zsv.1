@@ -1,0 +1,140 @@
+.TH ZSV "1" "October 2025" "zsv 1.1.0" "User Commands"
+.SH NAME
+zsv \- tabular data swiss-army knife
+.SH DESCRIPTION
+zsv is a fast and extensible CLI utility for CSV data.
+It achieves high performance using SIMD operations,
+efficient memory use and other optimization techniques,
+and can also parse generic-delimited and fixed-width
+formats, as well as multi-row-span headers.
+.SH USAGE
+.TP
+\fBzsv version\fR
+display version info (and if applicable, extension info)
+.TP
+\fBzsv (un)register\fR [<extension_id>]
+(un)register an extension
+.IP
+Registration info is saved in zsv.ini located in a directory determined as:
+\fBZSV_CONFIG_DIR\fR environment variable value, if set
+otherwise, \fI\,/usr/local/etc\/\fP
+.TP
+\fBzsv help\fR [<command>]
+.TP
+\fBzsv\fR <command> <options> <arguments>
+run a command on data (see below for details)
+.TP
+\fBzsv\fR <id>\-<cmd> <options> <arguments>
+invoke command 'cmd' of extension 'id'
+.TP
+\fBzsv license\fR [<extension_id>]
+.TP
+\fBzsv thirdparty\fR
+view third\-party licenses & acknowledgements
+.SS "Options common to all commands except `prop`, `rm` and `jq`:"
+.TP
+\fB\-L\fR,\fB\-\-limit\-rows\fR <n>
+limit processing to the given number of rows (including any header row(s))
+.TP
+\fB\-c\fR,\fB\-\-max\-column\-count\fR <n>
+set the maximum number of columns parsed per row. defaults to 1024
+.TP
+\fB\-r\fR,\fB\-\-max\-row\-size\fR <n>
+set the minimum supported maximum row size. defaults to 64k
+.TP
+\fB\-B\fR,\fB\-\-buff\-size\fR <n>
+set internal buffer size. defaults to 256k
+.TP
+\fB\-t\fR,\fB\-\-tab\-delim\fR
+set column delimiter to tab
+.TP
+\fB\-O\fR,\fB\-\-other\-delim\fR <char>
+set column delimiter to specified character
+.TP
+\fB\-q\fR,\fB\-\-no\-quote\fR
+turn off quote handling
+.TP
+\fB\-R\fR,\fB\-\-skip\-head\fR <n>
+skip specified number of initial rows
+.TP
+\fB\-d\fR,\fB\-\-header\-row\-span\fR <n>
+apply header depth (rowspan) of n
+.TP
+\fB\-u\fR,\fB\-\-malformed\-utf8\-replacement\fR <string>
+replacement string (can be empty) in case of malformed UTF8 input
+(default for "desc" command is '?')
+.TP
+\fB\-S\fR,\fB\-\-keep\-blank\-headers\fR
+disable default behavior of ignoring leading blank rows
+.TP
+\fB\-0\fR,\fB\-\-header\-row\fR <header>
+insert the provided CSV as the first row (in position 0)
+e.g. \fB\-\-header\-row\fR 'col1,col2,"my col 3"'
+.TP
+\fB\-1\fR,\fB\-\-apply\-overwrites\fR
+automatically apply overwrites saved via `overwrite` command
+.TP
+\fB\-v\fR,\fB\-\-verbose\fR
+verbose output
+.SS "Commands that parse CSV or other tabular data:"
+.TP
+\fBselect\fR
+extract rows/columns by name or position and perform other basic and 'cleanup' operations
+.TP
+\fBecho\fR
+write tabular input to stdout with optional cell overwrites
+.TP
+\fBoverwrite\fR
+save, modify or apply overwrites
+.TP
+\fBsql\fR
+run ad\-hoc SQL
+.TP
+\fBcount\fR
+print the number of rows
+.TP
+\fBdesc\fR
+describe each column
+.TP
+\fBpretty\fR
+pretty print for console display
+.TP
+\fBflatten\fR
+flatten a table consisting of N groups of data, each with 1 or
+more rows in the table, into a table of N rows
+.TP
+\fB2json\fR
+convert CSV or sqlite3 db table to json
+.TP
+\fB2tsv\fR
+convert to tab\-delimited text
+.TP
+\fBserialize\fR
+convert into 3\-column format (id, column name, cell value)
+.TP
+\fBstack\fR
+stack tables vertically, aligning columns with common names
+.TP
+\fBcompare\fR
+compare two or more tables and output differences
+.SS "Other commands:"
+.TP
+\fB2db\fR
+convert json to sqlite3 db
+.TP
+\fBprop\fR
+save parsing options associated with a file that are subsequently
+applied by default when processing that file
+.TP
+\fBrm\fR
+remove a file and its related cache
+.TP
+\fBmv\fR
+rename (move) a file and/or its related cache
+.TP
+\fBjq\fR
+run a jq filter on json input
+.SH MAINTAINER
+Liquidaty <https://github.com/liquidaty/zsv>
+.SH LICENSE
+MIT License
