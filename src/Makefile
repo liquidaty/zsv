@@ -131,6 +131,9 @@ ifeq ($(BUILD_SHAREDLIB),1)
   LIBZSV_SHARED_BUILD+=${BUILD_DIR}/lib/${LIBZSV_SHARED}
   LIBZSV_BUILD+=${LIBZSV_SHARED_BUILD}
   LIBZSV_INSTALL+=${LIBDIR}/${LIBZSV_SHARED}
+  ifeq ($(UNAME_S),Linux)
+    LDFLAGS += -Wl,-soname,libzsv.$(SHAREDLIB_EXT_SO_NAME)
+  endif
   ifeq ($(WIN),)
     CFLAGS+= ${CFLAGS_OPENMP}
   endif
@@ -163,7 +166,8 @@ ${LIBZSV_STATIC_BUILD}: ${ZSV_OBJ}
 
 ${LIBZSV_SHARED_BUILD}: zsv.c zsv_internal.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${CFLAGS_VISIBILITY_HIDDEN} -DZSV_BUILD_SHARED -DZSV_VERSION=\"${VERSION}\" -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -shared -fPIC -o $@ $< -I../app/external/sqlite3
+	${CC} ${CFLAGS} ${CFLAGS_VISIBILITY_HIDDEN} -DZSV_BUILD_SHARED -DZSV_VERSION=\"${VERSION}\" -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -shared -fPIC ${LDFLAGS} -o $@ $< -I../app/external/sqlite3
+	@echo Built $@
 
 ../include/zsv.h:
 ifeq ($(ZSV_EXTRAS),1)
@@ -173,10 +177,17 @@ else
 endif
 
 install: ../include/zsv.h ${LIBZSV_INSTALL}
-	@mkdir -p  $(INCLUDEDIR)
+	@mkdir -p $(INCLUDEDIR)
 	@cp -p ../include/*.h $(INCLUDEDIR)
 	@cp -pR ../include/zsv $(INCLUDEDIR)/
-	@echo "include files copied to $(INCLUDEDIR)"
+	@echo "Header files copied to $(INCLUDEDIR)"
+ifeq ($(BUILD_SHAREDLIB),1)
+ifeq ($(UNAME_S),Linux)
+	@echo "Creating shared library symlinks:"
+	ln -sf $(LIBDIR)/libzsv.$(SHAREDLIB_EXT) $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_SO_NAME)
+	ln -sf $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_SO_NAME) $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_LINK_NAME)
+endif
+endif
 
 ${LIBZSV_INSTALL}: ${LIBDIR}/% : ${BUILD_DIR}/lib/%
 	@mkdir -p `dirname "$@"`
@@ -191,7 +202,7 @@ clean:
 	rm -rf ${BUILD_DIR}/objs ${LIBZSV_BUILD}
 	rm -f ../include/zsv.h
 
-.PHONY: build install uninstall clean  ${LIBZSV_INSTALL}
+.PHONY: build install uninstall clean ${LIBZSV_INSTALL}
 
 ${BUILD_DIR}/objs/zsv.o: zsv.c zsv_internal.c
 	@mkdir -p `dirname "$@"`
