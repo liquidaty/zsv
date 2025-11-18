@@ -184,8 +184,8 @@ install: ../include/zsv.h ${LIBZSV_INSTALL}
 ifeq ($(BUILD_SHAREDLIB),1)
 ifeq ($(UNAME_S),Linux)
 	@echo "Creating shared library symlinks:"
-	ln -sf $(LIBDIR)/libzsv.$(SHAREDLIB_EXT) $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_SO_NAME)
-	ln -sf $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_SO_NAME) $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_LINK_NAME)
+	ln -srf $(LIBDIR)/libzsv.$(SHAREDLIB_EXT) $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_SO_NAME)
+	ln -srf $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_SO_NAME) $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_LINK_NAME)
 endif
 endif
 
