@@ -166,7 +166,7 @@ ${LIBZSV_STATIC_BUILD}: ${ZSV_OBJ}
 
 ${LIBZSV_SHARED_BUILD}: zsv.c zsv_internal.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${CFLAGS_VISIBILITY_HIDDEN} -DZSV_BUILD_SHARED -DZSV_VERSION=\"${VERSION}\" -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -shared -fPIC ${LDFLAGS} -o $@ $< -I../app/external/sqlite3
+	${CC} ${CFLAGS} -DZSV_BUILD_SHARED -DZSV_VERSION=\"${VERSION}\" -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -shared -fPIC ${LDFLAGS} -o $@ $< -I../app/external/sqlite3
 	@echo Built $@
 
 ../include/zsv.h:
@@ -186,6 +186,7 @@ ifeq ($(UNAME_S),Linux)
 	@echo "Creating shared library symlinks:"
 	ln -srf $(LIBDIR)/libzsv.$(SHAREDLIB_EXT) $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_SO_NAME)
 	ln -srf $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_SO_NAME) $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_LINK_NAME)
+	ldconfig
 endif
 endif
 
