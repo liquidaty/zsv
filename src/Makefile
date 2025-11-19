@@ -186,7 +186,6 @@ ifeq ($(UNAME_S),Linux)
 	@echo "Creating shared library symlinks:"
 	ln -srf $(LIBDIR)/libzsv.$(SHAREDLIB_EXT) $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_SO_NAME)
 	ln -srf $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_SO_NAME) $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_LINK_NAME)
-	ldconfig
 endif
 endif
 
