@@ -102,7 +102,7 @@ unsigned char *zsv_csv_quote(const unsigned char *utf8_value, size_t len, unsign
   return target;
 }
 
-#define ZSV_OUTPUT_BUFF_SIZE 65536 * 4
+#define ZSV_OUTPUT_BUFF_SIZE 65536 * 4 * 8
 
 struct zsv_output_buff {
   char *buff; // will be ZSV_OUTPUT_BUFF_SIZE. to do: option to modify buff size
