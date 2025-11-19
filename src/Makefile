@@ -42,6 +42,8 @@ ifeq ($(WIN),)
   endif
 endif
 
+VERSION= $(shell (git describe --always --dirty --tags 2>/dev/null || echo "v0.0.0-zsv") | sed 's/^v//')
+
 ifeq ($(BUILD_SHAREDLIB),1)
   include ${THIS_MAKEFILE_DIR}/../make/sharedlib.mk # sets SHAREDLIB_EXT
 endif
@@ -54,8 +56,6 @@ CFLAGS+=-fsigned-char
 ifeq ($(VERBOSE),1)
   CFLAGS+= ${CFLAGS_VECTORIZE_OPTIMIZED} ${CFLAGS_VECTORIZE_MISSED} ${CFLAGS_VECTORIZE_ALL}
 endif
-
-VERSION= $(shell (git describe --always --dirty --tags 2>/dev/null || echo "v0.0.0-zsv") | sed 's/^v//')
 
 ZSV_EXTRAS ?=
 ifneq ($(findstring emcc,$(CC)),) # emcc
