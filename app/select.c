@@ -28,9 +28,9 @@
 #include <zsv/utils/arg.h>
 
 #include "select/internal.h" // various defines and structs
-#include "select/usage.c" // zsv_select_usage_msg
-#include "select/rand.c" // demo_random_bw_1_and_100()
-#include "select/fixed.c" // auto_detect_fixed_column_sizes()
+#include "select/usage.c"    // zsv_select_usage_msg
+#include "select/rand.c"     // demo_random_bw_1_and_100()
+#include "select/fixed.c"    // auto_detect_fixed_column_sizes()
 
 // zsv_select_add_search(), zsv_select_search_str_delete()
 #include "select/search.c"
@@ -198,7 +198,6 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
 
   free(data->fixed.offsets);
 }
-
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
                                struct zsv_prop_handler *custom_prop_handler) {
