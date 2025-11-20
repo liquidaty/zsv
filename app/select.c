@@ -6,8 +6,8 @@
  */
 
 // proof of concept for parallelization
-// - change NUM_CHUNKS to be dynamic, default to number of cores
-// - to do: change temp output file to a) use tmpfile, and-- maybe if improves performnace-- b) use memory first before falling back to file?
+// - to do: change temp output file to a) use tmpfile, and-- maybe if improves performnace-- b) use memory first before
+// falling back to file?
 // - disallow parallelization when certain options are enabled:
 //    - max_rows
 //    - overwrite_auto
@@ -64,77 +64,82 @@
 // zsv_select_check_exclusions_are_indexes()
 #include "select/selection.c"
 
-#define NUM_CHUNKS 4
+#ifndef NO_PARALLEL
+#include "select/parallel.c"
+// TO DO: make PARALLEL_THRESHOLD_BYTES customizable
 #define PARALLEL_THRESHOLD_BYTES (10 * 1024 * 1024)
+#endif
 
 static void zsv_select_data_row(void *ctx);
+static void zsv_select_data_row_parallel(void *ctx);
 
 void *zsv_process_chunk(void *arg) {
-    struct zsv_chunk_data *cdata = (struct zsv_chunk_data *)arg;
-    struct zsv_select_data data = {0}; // Local, non-shared zsv_select_data instance
+  struct zsv_chunk_data *cdata = (struct zsv_chunk_data *)arg;
+  struct zsv_select_data data = {0}; // Local, non-shared zsv_select_data instance
 
-    // Copy necessary setup data from the global context
-    memcpy(&data, cdata->opts->ctx, sizeof(data));
+  // Copy necessary setup data from the global context
+  memcpy(&data, cdata->opts->ctx, sizeof(data));
 
-    struct zsv_opts opts = { 0 };
-    opts.max_columns = cdata->opts->max_columns;
-    opts.max_row_size = cdata->opts->max_row_size;
-    opts.delimiter = cdata->opts->delimiter;
-    opts.no_quotes = cdata->opts->no_quotes;
-    opts.verbose = cdata->opts->verbose;
-    opts.malformed_utf8_replace = cdata->opts->malformed_utf8_replace;
-    opts.errprintf = cdata->opts->errprintf;
-    opts.errf = cdata->opts->errf;
-    opts.errclose = cdata->opts->errclose;
-    opts.progress = cdata->opts->progress;
+  struct zsv_opts opts = {0};
+  opts.max_columns = cdata->opts->max_columns;
+  opts.max_row_size = cdata->opts->max_row_size;
+  opts.delimiter = cdata->opts->delimiter;
+  opts.no_quotes = cdata->opts->no_quotes;
+  opts.verbose = cdata->opts->verbose;
+  opts.malformed_utf8_replace = cdata->opts->malformed_utf8_replace;
+  opts.errprintf = cdata->opts->errprintf;
+  opts.errf = cdata->opts->errf;
+  opts.errclose = cdata->opts->errclose;
+  opts.progress = cdata->opts->progress;
 
-    data.parallel_data = NULL; // Clear parallel data pointer in local copy
+  data.parallel_data = NULL; // Clear parallel data pointer in local copy
 
-    // 1. Setup Input Stream for the Chunk
-    FILE *stream = fopen(data.input_path, "rb");
-    if (!stream) {
-        cdata->status = zsv_status_error;
-        return NULL;
-    }
-    // Seek to the start of the chunk
-    fseeko(stream, cdata->start_offset, SEEK_SET);
-    fprintf(stderr, "chunk %i seek'd to %zu, will process up to %zu\n", cdata->id, cdata->start_offset, cdata->end_offset);
-
-    // 2. Setup Temporary Output Buffer (open_memstream for private buffering)
-    struct zsv_csv_writer_options writer_opts = { 0 } ;
-
-    asprintf(&cdata->tmp_output_filename, "/tmp/select_chunk_%i.csv", cdata->id);
-    writer_opts.stream = fopen(cdata->tmp_output_filename, "wb");
-
-    if (!writer_opts.stream) {
-        cdata->status = zsv_status_memory;
-        fclose(stream);
-        return NULL;
-    }
-    data.csv_writer = zsv_writer_new(&writer_opts);
-
-    // 3. Initialize Parser for Chunk
-    opts.stream = stream;
-    opts.row_handler = zsv_select_data_row; // Use the existing data row handler
-    opts.ctx = &data;
-    data.end_offset_limit = cdata->end_offset - cdata->start_offset; // Set chunk boundary
-    data.parser = zsv_new(&opts);
-
-    // 4. Process
-    enum zsv_status status = zsv_status_ok;
-    while (status == zsv_status_ok && !zsv_signal_interrupted && !data.cancelled)
-        status = zsv_parse_more(data.parser);
-
-    fprintf(stderr, "id %i row count: %zu\n", cdata->id, data.data_row_count);
-    // Clean up
-    zsv_delete(data.parser);
-    fflush(stream);
-    fclose(stream);
-    zsv_writer_delete(data.csv_writer);
-    fclose(writer_opts.stream);
-
-    cdata->status = zsv_status_ok; 
+  // 1. Setup Input Stream for the Chunk
+  FILE *stream = fopen(data.input_path, "rb");
+  if (!stream) {
+    cdata->status = zsv_status_error;
     return NULL;
+  }
+  // Seek to the start of the chunk
+  fseeko(stream, cdata->start_offset, SEEK_SET);
+  fprintf(stderr, "chunk %i seek'd to %zu, will process up to %zu\n", cdata->id, cdata->start_offset,
+          cdata->end_offset);
+
+  // 2. Setup Temporary Output Buffer (open_memstream for private buffering)
+  struct zsv_csv_writer_options writer_opts = {0};
+
+  asprintf(&cdata->tmp_output_filename, "/tmp/select_chunk_%03d.csv", cdata->id);
+  writer_opts.stream = fopen(cdata->tmp_output_filename, "wb");
+
+  if (!writer_opts.stream) {
+    cdata->status = zsv_status_memory;
+    fclose(stream);
+    return NULL;
+  }
+  data.csv_writer = zsv_writer_new(&writer_opts);
+
+  // 3. Initialize Parser for Chunk
+  opts.stream = stream;
+  opts.row_handler = zsv_select_data_row_parallel; // Use the existing data row handler
+  opts.ctx = &data;
+  data.end_offset_limit = cdata->end_offset - cdata->start_offset; // Set chunk boundary
+  data.parser = zsv_new(&opts);
+
+  // 4. Process
+  enum zsv_status status = zsv_status_ok;
+  while (status == zsv_status_ok && !zsv_signal_interrupted && !data.cancelled)
+    status = zsv_parse_more(data.parser);
+
+  fprintf(stderr, "id %i row count: %zu\n", cdata->id, data.data_row_count);
+  // Clean up
+  zsv_delete(data.parser);
+  fflush(stream);
+  fclose(stream);
+  zsv_writer_delete(data.csv_writer);
+  fclose(writer_opts.stream);
+
+  cdata->status = zsv_status_ok;
+  return NULL;
 }
 
 // zsv_select_output_data_row(): output row data (No change needed)
@@ -173,12 +178,6 @@ static void zsv_select_output_data_row(struct zsv_select_data *data) {
 
 static void zsv_select_data_row(void *ctx) {
   struct zsv_select_data *data = ctx;
-
-  if (UNLIKELY(zsv_cum_scanned_length(data->parser) > data->end_offset_limit)) {
-    data->cancelled = 1;
-      return;
-  }
-
   if (UNLIKELY(zsv_cell_count(data->parser) == 0 || data->cancelled))
     return;
 
@@ -214,6 +213,16 @@ static void zsv_select_data_row(void *ctx) {
     fprintf(stderr, "Processed %zu rows\n", data->data_row_count);
 }
 
+static void zsv_select_data_row_parallel(void *ctx) {
+  struct zsv_select_data *data = ctx;
+
+  if (UNLIKELY(zsv_cum_scanned_length(data->parser) > data->end_offset_limit)) {
+    data->cancelled = 1;
+    return;
+  }
+  zsv_select_data_row(ctx);
+}
+
 static void zsv_select_print_header_row(struct zsv_select_data *data) {
   if (data->no_header)
     return;
@@ -238,22 +247,22 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
     zsv_select_print_header_row(data);
 
     // start worker threads
-    for (int i = 1; i < NUM_CHUNKS; i++) {
-        struct zsv_chunk_data *cdata = &pdata->chunk_data[i];
-        cdata->id = i;
-        // cdata->input_path = pdata->chunk_data[0].input_path; // Use the path from chunk 1
-        cdata->opts = data->opts;
+    for (int i = 1; i < data->num_chunks; i++) {
+      struct zsv_chunk_data *cdata = &pdata->chunk_data[i];
+      cdata->id = i;
+      // cdata->input_path = pdata->chunk_data[0].input_path; // Use the path from chunk 1
+      cdata->opts = data->opts;
 
-        int create_status = pthread_create(&pdata->threads[i - 1], NULL, zsv_process_chunk, cdata);
-        if (create_status != 0) {
-            data->cancelled = 1;
-            zsv_printerr(1, "Error creating worker thread for chunk %d: %s\n", i, strerror(create_status));
-            return;
-        }
+      int create_status = pthread_create(&pdata->threads[i - 1], NULL, zsv_process_chunk, cdata);
+      if (create_status != 0) {
+        data->cancelled = 1;
+        zsv_printerr(1, "Error creating worker thread for chunk %d: %s\n", i, strerror(create_status));
+        return;
+      }
     }
 
     // 3. Main thread continues processing Chunk 1
-    zsv_set_row_handler(data->parser, zsv_select_data_row);
+    zsv_set_row_handler(data->parser, zsv_select_data_row_parallel);
   } else {
     // Original serial logic
     zsv_select_print_header_row(data);
@@ -321,11 +330,8 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
 
   free(data->fixed.offsets);
 
-  if (data->run_in_parallel) {
-      struct zsv_parallel_data *pdata = data->parallel_data;
-      for (int i = 1; i < NUM_CHUNKS; i++)
-        free(pdata->chunk_data[i].tmp_output_filename);
-  }
+  if (data->run_in_parallel)
+    zsv_parallel_data_delete(data->parallel_data);
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
@@ -462,7 +468,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     else if (!strcmp(argv[arg_i], "-H") || !strcmp(argv[arg_i], "--head")) {
       if (!(arg_i + 1 < argc && atoi(argv[arg_i + 1]) >= 0))
         stat = zsv_printerr(1, "%s option value invalid: should be positive integer; got %s", argv[arg_i],
-                             arg_i + 1 < argc ? argv[arg_i + 1] : "");
+                            arg_i + 1 < argc ? argv[arg_i + 1] : "");
       else
         data.data_rows_limit = atoi(argv[++arg_i]) + 1;
     } else if (!strcmp(argv[arg_i], "-D") || !strcmp(argv[arg_i], "--skip-data")) {
@@ -471,6 +477,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         stat = zsv_printerr(1, "%s option value invalid: should be positive integer", argv[arg_i - 1]);
       else
         data.skip_data_rows = atoi(argv[arg_i]);
+#ifndef NO_PARALLEL
+    } else if (!strcmp(argv[arg_i], "-j") || !strcmp(argv[arg_i], "--jobs")) {
+      if (!(arg_i + 1 < argc && atoi(argv[arg_i + 1]) >= 2))
+        stat = zsv_printerr(1, "%s option value invalid: should be an integer => 2; got %s", argv[arg_i],
+                            arg_i + 1 < argc ? argv[arg_i + 1] : "");
+      else
+        data.num_chunks = (unsigned)atoi(argv[++arg_i]);
+    } else if (!strcmp(argv[arg_i], "--parallel")) {
+      data.num_chunks = zsv_get_number_of_cores();
+#endif
     } else if (!strcmp(argv[arg_i], "-e")) {
       ++arg_i;
       if (data.embedded_lineend)
@@ -499,9 +515,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   // Set default output stream if none specified
   if (!writer_opts.stream) {
-      writer_opts.stream = stdout;
+    writer_opts.stream = stdout;
   }
-  
+
   if (stat == zsv_status_ok) {
     if (data.sample_pct)
       srand(time(0));
@@ -531,53 +547,61 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           stat = zsv_printerr(zsv_status_memory, "Out of memory!");
         else
           stat = auto_detect_fixed_column_sizes(&data.fixed, data.opts, preview_buff, buffsize, &preview_buff_len,
-                                                 opts->verbose);
+                                                opts->verbose);
       }
     }
   }
 
-  struct zsv_parallel_data pdata = {0};
-
-  // Only attempt parallelization for a file and if it meets the size threshold
-  if (stat == zsv_status_ok && data.input_path && data.opts->stream != stdin) {
-      // NOTE: File size check should ideally be done with fstat() on the file descriptor.
-      // Assuming a valid file is open and we can infer its size or use a heuristic.
-      // For this example, we assume we can get the file size.
-      // file_size = get_file_size(input_path);
-      // if (file_size >= PARALLEL_THRESHOLD_BYTES) {
-
-          // NOTE: We MUST ensure the FILE* is at the start for zsv_calculate_file_chunks to work.
-          // Since data.opts->stream was just opened (or is NULL if using preview_buff), this is likely fine.
-          struct zsv_chunk_position *chunk_offsets = zsv_calculate_file_chunks(data.input_path, NUM_CHUNKS);
-          if(chunk_offsets) {
-              data.run_in_parallel = 1;
-              data.parallel_data = &pdata;
-              pdata.main_data = &data;
-
-              // Configure Chunk 1 for the main thread
-              data.end_offset_limit = chunk_offsets[0].end;
-              
-              // Prepare chunk data for workers
-              for (int i = 0; i < NUM_CHUNKS; i++) {
-                  pdata.chunk_data[i].start_offset = chunk_offsets[i].start;
-                  pdata.chunk_data[i].end_offset = chunk_offsets[i].end;
-                  fprintf(stderr, "Chunk %i: %zu - %zu\n", i, (size_t)pdata.chunk_data[i].start_offset, (size_t)pdata.chunk_data[i].end_offset);
-              }
-
-              // The main thread's parser will start at chunk_offsets[0][0]
-              //              if (fseeko(data.opts->stream, pdata.chunk_data[0].start_offset, SEEK_SET) != 0) {
-              //                  stat = zsv_printerr(1, "Error seeking to start offset of chunk 1\n");
-              //                  data.run_in_parallel = 0;
-              //              }
-              zsv_free_chunks(chunk_offsets);
-          } else {
-             // Chunk calculation failed, fall back to serial
-             data.run_in_parallel = 0;
-          }
-      // }
+  if (data.opts->verbose) {
+    if (data.num_chunks > 1)
+      fprintf(stderr, "Running parallelized with %u jobs\n", data.num_chunks);
+    else
+      fprintf(stderr, "Running single-threaded\n");
   }
-  // ====================================================================
+  // Only attempt parallelization for a file and if it meets the size threshold
+  if (stat == zsv_status_ok && data.input_path && data.opts->stream != stdin && data.num_chunks > 1) {
+    // NOTE: File size check should ideally be done with fstat() on the file descriptor.
+    // Assuming a valid file is open and we can infer its size or use a heuristic.
+    // For this example, we assume we can get the file size.
+    // file_size = get_file_size(input_path);
+    // if (file_size >= PARALLEL_THRESHOLD_BYTES) {
 
+    // NOTE: We MUST ensure the FILE* is at the start for zsv_calculate_file_chunks to work.
+    // Since data.opts->stream was just opened (or is NULL if using preview_buff), this is likely fine.
+    struct zsv_chunk_position *chunk_offsets = zsv_calculate_file_chunks(data.input_path, data.num_chunks);
+    if (chunk_offsets) {
+      if (!(data.parallel_data = zsv_parallel_data_new(data.num_chunks))) {
+        stat = zsv_status_memory;
+        fprintf(stderr, "Out of memory!\n");
+      } else {
+        struct zsv_parallel_data *pdata = data.parallel_data;
+        data.run_in_parallel = 1;
+        pdata->main_data = &data;
+
+        // Configure Chunk 1 for the main thread
+        data.end_offset_limit = chunk_offsets[0].end;
+
+        // Prepare chunk data for workers
+        for (int i = 0; i < data.num_chunks; i++) {
+          pdata->chunk_data[i].start_offset = chunk_offsets[i].start;
+          pdata->chunk_data[i].end_offset = chunk_offsets[i].end;
+          fprintf(stderr, "Chunk %i: %zu - %zu\n", i, (size_t)pdata->chunk_data[i].start_offset,
+                  (size_t)pdata->chunk_data[i].end_offset);
+        }
+
+        // The main thread's parser will start at chunk_offsets[0][0]
+        //              if (fseeko(data.opts->stream, pdata->chunk_data[0].start_offset, SEEK_SET) != 0) {
+        //                  stat = zsv_printerr(1, "Error seeking to start offset of chunk 1\n");
+        //                  data.run_in_parallel = 0;
+        //              }
+      }
+      zsv_free_chunks(chunk_offsets);
+    } else {
+      // Chunk calculation failed, fall back to serial
+      data.run_in_parallel = 0;
+    }
+    // }
+  }
 
   if (stat == zsv_status_ok) {
     if (!col_index_arg_i)
@@ -619,68 +643,74 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         // Main thread processes Chunk 1 (or the whole file if not parallel)
         while (status == zsv_status_ok && !zsv_signal_interrupted && !data.cancelled)
           status = zsv_parse_more(data.parser);
-        
+
         if (status == zsv_status_no_more_input)
           status = zsv_finish(data.parser);
 
         zsv_delete(data.parser);
 
         if (data.run_in_parallel) {
-            // Wait for all worker threads to finish (Join)
-            for (int i = 0; i < NUM_CHUNKS - 1; i++) {
-                pthread_join(pdata.threads[i], NULL);
+          struct zsv_parallel_data *pdata = data.parallel_data;
+          // Wait for all worker threads to finish (Join)
+          for (int i = 0; i < data.num_chunks - 1; i++) {
+            pthread_join(pdata->threads[i], NULL);
+          }
+
+          // Serialize Output (Chunk 2, 3, 4) - Minimizing performance impact
+          // Write the output buffers in order (2, 3, 4) to the main output stream
+          // TO DO: use concatenate_copy() here!
+
+          // we must make sure the main thread's writer has finished
+          // and explicitly flush the file since we will use file descriptors
+          // it is also necessary to use zsv_writer_delete() to flush the final
+          zsv_writer_delete(data.csv_writer);
+          data.csv_writer = NULL; // prevent double-free
+          fflush(writer_opts.stream);
+          int out_fd = fileno(writer_opts.stream); // Get FD of the main output stream
+          for (int i = 1; i < data.num_chunks; i++) {
+            struct zsv_chunk_data *c = &pdata->chunk_data[i];
+            const char *tmp_filename = c->tmp_output_filename;
+
+            // Open the temporary chunk file
+            int in_fd = open(tmp_filename, O_RDONLY);
+            if (in_fd < 0) {
+              zsv_printerr(1, "Error opening chunk file %s: %s\n", tmp_filename, strerror(errno));
+              stat = zsv_status_error;
+              break;
             }
 
-            // Serialize Output (Chunk 2, 3, 4) - Minimizing performance impact
-            // Write the output buffers in order (2, 3, 4) to the main output stream
-            // TO DO: use concatenate_copy() here!
-            int out_fd = fileno(writer_opts.stream); // Get FD of the main output stream
-            for (int i = 1; i < NUM_CHUNKS; i++) {
-                struct zsv_chunk_data *c = &pdata.chunk_data[i];
-                const char *tmp_filename = c->tmp_output_filename;
-
-                // Open the temporary chunk file
-                int in_fd = open(tmp_filename, O_RDONLY);
-                if (in_fd < 0) {
-                    zsv_printerr(1, "Error opening chunk file %s: %s\n", tmp_filename, strerror(errno));
-                    stat = zsv_status_error;
-                    break;
-                }
-
-                // Get file size (necessary for safe, fixed-length copy)
-                struct stat st;
-                if (fstat(in_fd, &st) != 0) {
-                    zsv_printerr(1, "Error stat'ing chunk file %s: %s\n", tmp_filename, strerror(errno));
-                    close(in_fd);
-                    stat = zsv_status_error;
-                    break;
-                }
-                off_t file_size = st.st_size;
-
-                // Use cross-platform/zero-copy utility to transfer data
-                long bytes_copied = concatenate_copy(out_fd, in_fd, file_size);
-                
-                close(in_fd); // Close the input chunk file FD
-
-                if (bytes_copied != file_size) {
-                  zsv_printerr(1, "Warning: Failed to copy all output from chunk %d: copied %lli\n", i, bytes_copied);
-                }
-
-                // Delete the temporary file immediately after use
-                if (unlink(tmp_filename) != 0) {
-                    zsv_printerr(1, "Warning: Failed to delete temporary file %s: %s\n", tmp_filename, strerror(errno));
-                }
-                
+            // Get file size (necessary for safe, fixed-length copy)
+            struct stat st;
+            if (fstat(in_fd, &st) != 0) {
+              zsv_printerr(1, "Error stat'ing chunk file %s: %s\n", tmp_filename, strerror(errno));
+              close(in_fd);
+              stat = zsv_status_error;
+              break;
             }
-            zsv_writer_flush(data.csv_writer);
+            off_t file_size = st.st_size;
+
+            // Use cross-platform/zero-copy utility to transfer data
+            long bytes_copied = concatenate_copy(out_fd, in_fd, file_size);
+
+            close(in_fd); // Close the input chunk file FD
+
+            if (bytes_copied != file_size) {
+              zsv_printerr(1, "Warning: Failed to copy all output from chunk %d: copied %lli\n", i, bytes_copied);
+            }
+
+            // Delete the temporary file immediately after use
+            if (unlink(tmp_filename) != 0) {
+              zsv_printerr(1, "Warning: Failed to delete temporary file %s: %s\n", tmp_filename,
+                           strerror(errno));
+            }
+          }
         }
         // ====================================================================
-
       }
     }
   }
   fprintf(stderr, "id %i row count: %zu\n", 0, data.data_row_count);
-  
+
   free(preview_buff);
   zsv_select_cleanup(&data);
   if (writer_opts.stream && writer_opts.stream != stdout)

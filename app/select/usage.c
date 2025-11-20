@@ -57,6 +57,10 @@ const char *zsv_select_usage_msg[] = {
   "  -L,--max-row-size <n>        : set the maximum memory used for a single row",
   "                                 Default: " ZSV_ROW_MAX_SIZE_MIN_S " (min), " ZSV_ROW_MAX_SIZE_DEFAULT_S " (max)",
 #endif
+#ifndef NO_PARALLEL
+  "  -j,--jobs <N>                : parallelize using N threads",
+  "  --parallel                   : parallelize using a number of threads equal to the number of cores",
+#endif
   "  -o <filename>                : filename to save output to",
   NULL,
 };

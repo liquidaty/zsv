@@ -25,6 +25,12 @@ CC ?= cc
 
 CFLAGS_EXE ?=
 
+ifeq ($(NO_PARALLEL),1)
+  # TO DO: add to configure
+  CFLAGS+=-DNO_PARALLEL
+endif
+
+
 LIB_SUFFIX=
 LIBZSV_L=-lzsv${LIB_SUFFIX}
 LIBZSV_A=libzsv${LIB_SUFFIX}.a

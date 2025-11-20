@@ -1,38 +1,11 @@
 #include <sys/types.h> // Required for off_t
-#include <pthread.h>   // Required for pthread_t
+
+#ifndef NO_PARALLEL
+#include "parallel.h"
+#endif
 
 #define ZSV_SELECT_MAX_COLS_DEFAULT 1024
 #define ZSV_SELECT_MAX_COLS_DEFAULT_S "1024"
-
-#define NUM_CHUNKS 4 // Define the constant here for struct visibility
-
-/**
- * @brief Data structure passed to each worker thread (Chunk 2, 3, 4)
- * Uses in-memory output buffer to avoid I/O lock contention.
- */
-struct zsv_chunk_data {
-  char *tmp_output_filename;
-    off_t start_offset;
-    off_t end_offset;       // Stop processing when current offset exceeds this
-    struct zsv_opts *opts;  // Configuration options (read-only)
-    
-    // Output result for non-main threads
-  //    unsigned char *output_buffer; 
-//    size_t output_buffer_len;
-    enum zsv_status status;
-  int id;
-};
-
-/**
- * @brief Structure to manage thread handles and chunk data for parallel processing.
- */
-struct zsv_parallel_data {
-    struct zsv_select_data *main_data;
-    pthread_t threads[NUM_CHUNKS - 1]; // Handles for the 3 worker threads
-    struct zsv_chunk_data chunk_data[NUM_CHUNKS]; // Data for all 4 chunks
-};
-
-// ====================================================================
 
 struct zsv_select_search_str {
   struct zsv_select_search_str *next;
@@ -108,14 +81,14 @@ struct zsv_select_data {
 
   struct fixed fixed;
 
-  unsigned char whitespace_clean_flags;
+#ifndef NO_PARALLEL
+  unsigned num_chunks;
+  off_t end_offset_limit;                  // Byte offset where the current parser instance should stop
+  struct zsv_parallel_data *parallel_data; // Pointer to the thread management structure
+#endif
 
-// ====================================================================
-// NEW: Fields for Parallel Processing
-// ====================================================================
-    off_t end_offset_limit; // Byte offset where the current parser instance should stop
-    struct zsv_parallel_data *parallel_data; // Pointer to the thread management structure
-// ====================================================================
+  // FLAGS
+  unsigned char whitespace_clean_flags;
 
   unsigned char print_all_cols : 1;
   unsigned char use_header_indexes : 1;
@@ -131,9 +104,9 @@ struct zsv_select_data {
   unsigned char distinct : 2; // 1 = ignore subsequent cols, ZSV_SELECT_DISTINCT_MERGE = merge subsequent cols (first
                               // non-null value)
   unsigned char unescape : 1;
-  unsigned char no_header : 1; // --no-header
+  unsigned char no_header : 1;       // --no-header
   unsigned char run_in_parallel : 1; // Flag if parallel mode is active
-  unsigned char _ : 2; // Reduced padding by 1 bit due to addition of run_in_parallel
+  unsigned char _ : 2;               // Reduced padding by 1 bit due to addition of run_in_parallel
 };
 
 enum zsv_select_column_index_selection_type {
