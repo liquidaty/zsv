@@ -1,9 +1,20 @@
 /*
- * Copyright (C) 2021 Liquidaty and zsv contributors. All rights reserved.
+ * Copyright (C) 2025 Liquidaty and zsv contributors. All rights reserved.
  *
  * This file is part of zsv/lib, distributed under the MIT license as defined at
  * https://opensource.org/licenses/MIT
  */
+
+// proof of concept for parallelization
+// - change NUM_CHUNKS to be dynamic, default to number of cores
+// - to do: change temp output file to a) use tmpfile, and-- maybe if improves performnace-- b) use memory first before falling back to file?
+// - disallow parallelization when certain options are enabled:
+//    - max_rows
+//    - overwrite_auto
+//    - overwrite
+// - after processing chunk N, once start is verified, verify starting position of chunk N+1 and handle error:
+//   - exit with error, and/or
+//   - reprocess N+1
 
 #include <stdio.h>
 #include <assert.h>
@@ -65,16 +76,6 @@ void *zsv_process_chunk(void *arg) {
     // Copy necessary setup data from the global context
     memcpy(&data, cdata->opts->ctx, sizeof(data));
 
-    // TO DO: cannot parallelize if options used:
-    //    - max_rows
-    //    - overwrite_auto
-    //    - overwrite
-
-    /// TO DO: do not copy all opts. only keep:
-    //    - max_columns, max_row_size, delimiter, no_quotes, verbose
-    //    - malformed_utf8_replace, errprintf, errf, errclose
-    //    - progress (maybe)
-    // data.opts = cdata->opts;
     struct zsv_opts opts = { 0 };
     opts.max_columns = cdata->opts->max_columns;
     opts.max_row_size = cdata->opts->max_row_size;
