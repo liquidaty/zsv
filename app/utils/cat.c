@@ -69,18 +69,6 @@ long concatenate_copy(int out_fd, int in_fd, off_t size) {
   long result = sendfile(out_fd, in_fd, &offset, bytes_to_copy);
   return result;
 
-#elif defined(__FreeBSD__)
-  // --- macOS/BSD Implementation (Zero-Copy) ---
-  off_t offset = 0; // Use offset in case we needed to seek, but it's fine starting at 0
-  off_t copied_len = size;
-  // sendfile: source_fd, target_fd, offset, count*, headers, flags
-  // The off_t offset argument needs to be 0 for a standard copy from the start.
-  // The size to copy is passed via the in/out pointer copied_len.
-  int result = sendfile(in_fd, out_fd, offset, &copied_len, NULL, 0);
-  if (result != 0)
-    perror(NULL);
-  return (result == 0) ? copied_len : -1;
-
 #else
   // --- Generic POSIX Fallback (Buffered Copy) ---
   char *buffer = malloc(COPY_BUFFER_SIZE);
