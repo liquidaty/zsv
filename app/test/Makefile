@@ -67,6 +67,10 @@ ifeq ($(ZSVSHEET_BUILD),1)
   TESTS+=test-sheet test-sheet-subcommand
 endif
 
+ifneq ($(ZSV_NO_PARALLEL),1)
+  TESTS+=test-parallel
+endif
+
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
 COLOR_RED=\033[1;31m
@@ -136,11 +140,11 @@ test-prop:
 	@${TEST_INIT}
 	@EXE=${BUILD_DIR}/bin/zsv_prop${EXE} ${MAKE} -C prop test
 
-#ifneq ($(ZSV_NO_PARALLEL),1)
-#test-parallel: worldcitiespop_mil.csv
-#	@${TEST_INIT}
-#	@EXE=${BUILD_DIR}/bin/zsv_select${EXE} ${MAKE} -C parallel test
-#endif
+ifneq ($(ZSV_NO_PARALLEL),1)
+test-parallel: ${BUILD_DIR}/bin/zsv_select${EXE} worldcitiespop_mil.csv
+	@${TEST_INIT}
+	@EXE=${BUILD_DIR}/bin/zsv_select${EXE} ${MAKE} -C parallel test
+endif
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
@@ -365,6 +369,8 @@ test-12-select test-12-select-pull: test-12-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 
 test-13-select test-13-select-pull: test-13-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
+	@echo "test result:"
+	@echo 'aaa,bb,cxa,bbxx,y,z' | tr x '\n' | $< --header-row-span 2 | head -1
 	@${PREFIX} [ "$$(echo 'aaa,bb,cxa,bbxx,y,z' | tr x '\n' | $< --header-row-span 2 | head -1)" = "aaa a,bb bb,c" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-search-select: test-search-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
