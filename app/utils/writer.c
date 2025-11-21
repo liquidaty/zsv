@@ -217,7 +217,7 @@ zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
   }
   return w;
 
-zsv_writer_new_err : {
+zsv_writer_new_err: {
   int e = errno;
   zsv_writer_delete(w);
   errno = e;

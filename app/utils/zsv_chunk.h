@@ -1,16 +1,16 @@
 #ifndef ZSV_CHUNK_H
 #define ZSV_CHUNK_H
 
-#include <stddef.h> // For size_t
-#include <stdint.h> // For uint64_t
+#include <stddef.h>    // For size_t
+#include <stdint.h>    // For uint64_t
 #include <sys/types.h> // For off_t
 
 typedef off_t zsv_file_pos;
 
 // Define a struct to hold the (start, end) pair using the standard zsv_file_pos type
 struct zsv_chunk_position {
-    zsv_file_pos start;
-    zsv_file_pos end;
+  zsv_file_pos start;
+  zsv_file_pos end;
 };
 
 /**
