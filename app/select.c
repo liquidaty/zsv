@@ -251,7 +251,7 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
       int create_status = pthread_create(&pdata->threads[i - 1], NULL, zsv_process_chunk, cdata);
       if (create_status != 0) {
         data->cancelled = 1;
-        zsv_printerr(1, "Error creating worker thread for chunk %d: %s\n", i, strerror(create_status));
+        zsv_printerr(1, "Error creating worker thread for chunk %d: %s", i, strerror(create_status));
         return;
       }
     }
@@ -351,7 +351,7 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
     int in_fd = open(c->tmp_output_filename, O_RDONLY);
 
     if (in_fd < 0) {
-      zsv_printerr(1, "Error opening chunk %s: %s\n", c->tmp_output_filename, strerror(errno));
+      zsv_printerr(1, "Error opening chunk %s: %s", c->tmp_output_filename, strerror(errno));
       status = zsv_status_error;
       break;
     }
@@ -360,14 +360,14 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
     if (fstat(in_fd, &st) == 0) {
       long copied = concatenate_copy(out_fd, in_fd, st.st_size);
       if (copied != st.st_size)
-        zsv_printerr(1, "Warning: Partial copy chunk %d (%lli/%lli)\n", i, copied, (long long)st.st_size);
+        zsv_printerr(1, "Warning: Partial copy chunk %d (%lli/%lli)", i, copied, (long long)st.st_size);
     } else {
       status = zsv_status_error;
     }
 
     close(in_fd);
     if (unlink(c->tmp_output_filename) != 0)
-      zsv_printerr(1, "Warning: Failed to delete %s\n", c->tmp_output_filename);
+      zsv_printerr(1, "Warning: Failed to delete %s", c->tmp_output_filename);
   }
   return status;
 }
@@ -443,14 +443,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       free(data.fixed.offsets);
       data.fixed.offsets = calloc(data.fixed.count, sizeof(*data.fixed.offsets));
       if (!data.fixed.offsets) {
-        stat = zsv_printerr(1, "Out of memory!\n");
+        stat = zsv_printerr(1, "Out of memory!");
         goto zsv_select_main_done;
       }
       size_t count = 0;
       char *dup = strdup(argv[arg_i]), *tok;
       for (tok = strtok(dup, ","); tok && count < data.fixed.count; tok = strtok(NULL, ",")) {
         if (sscanf(tok, "%zu", &data.fixed.offsets[count++]) != 1)
-          stat = zsv_printerr(1, "Invalid offset: %.*s\n", end - start, start);
+          stat = zsv_printerr(1, "Invalid offset: %s", tok);
       }
       free(dup);
     } else if (!strcmp(arg, "--distinct"))
