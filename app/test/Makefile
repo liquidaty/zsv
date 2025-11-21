@@ -240,10 +240,18 @@ worldcitiespop_mil.tsv: worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2tsv${EXE}
 
 test-count test-count-pull: test-% : test-1-% test-2-%
 
+ifeq ($(NO_PARALLEL),1)
 ifeq ($(HAVE_PCRE2_8),1)
   HELP_SELECT_LINES=40
 else
   HELP_SELECT_LINES=39
+endif
+else
+ifeq ($(HAVE_PCRE2_8),1)
+  HELP_SELECT_LINES=42
+else
+  HELP_SELECT_LINES=41
+endif
 endif
 test-cli: ${CLI}
 	@${TEST_INIT}
