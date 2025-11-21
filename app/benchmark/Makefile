@@ -42,8 +42,10 @@ MAKE_BIN=$(notdir ${MAKE})
 TSV_UTILS=~/install/tsv-utils/bin
 
 HAVE_DUCKDB=$(shell command -v duckdb >/dev/null && echo 1 || echo 0)
+HAVE_XSV=$(shell command -v xsv >/dev/null && echo 1 || echo 0)
 HAVE_C2TSV=$(shell command -v c2tsv >/dev/null && echo 1 || echo 0)
 HAVE_TSVUTILS=$(shell [ -f $(TSV_UTILS)/tsv-select ] && echo 1 || echo 0)
+HAVE_POLARS=$(shell [ -f venv/bin/activate ] && echo 1 || echo 0)
 
 help:
 	@echo "To run:"
@@ -88,6 +90,9 @@ count-worldcitiespop_mil count-worldcitiespop_big: count-% : %.csv %.tsv
 	@(time ${ZSVBIN}${COUNT} < $< > /dev/null) 2>&1 | xargs
 	@echo ""
 
+ifneq ($(HAVE_XSV),1)
+	@echo "xsv not found: skipping (run \'brew install xsv\' to install)"
+else
 	@printf "xsv                  : "
 	@(time xsv count < $< > /dev/null) 2>&1 | xargs
 	@printf "xsv                  : "
@@ -95,7 +100,23 @@ count-worldcitiespop_mil count-worldcitiespop_big: count-% : %.csv %.tsv
 	@printf "xsv                  : "
 	@(time xsv count < $< > /dev/null) 2>&1 | xargs
 	@echo ""
+endif
 
+ifneq ($(HAVE_POLARS),1)
+	@echo "polars not found: skipping (run \`make polars-setup\` to set up)"
+else
+	@printf "polars               : "
+	@. ${VENV_ACTIVATE}; (time python3 -c 'import polars as pl; print(pl.scan_csv("$<").select(pl.len()).collect().item())' > /dev/null) 2>&1 | xargs
+	@printf "polars               : "
+	@. ${VENV_ACTIVATE}; (time python3 -c 'import polars as pl; print(pl.scan_csv("$<").select(pl.len()).collect().item())' > /dev/null) 2>&1 | xargs
+	@printf "polars               : "
+	@. ${VENV_ACTIVATE}; (time python3 -c 'import polars as pl; print(pl.scan_csv("$<").select(pl.len()).collect().item())' > /dev/null) 2>&1 | xargs
+	@echo ""
+endif
+
+ifneq ($(HAVE_DUCKDB),1)
+	@echo "duckdb not found: skipping"
+else
 	@printf "duckdb               : "
 	@(time duckdb -c "SELECT count(*) FROM '$<'" > /dev/null) 2>&1 | xargs
 	@printf "duckdb               : "
@@ -103,6 +124,7 @@ count-worldcitiespop_mil count-worldcitiespop_big: count-% : %.csv %.tsv
 	@printf "duckdb               : "
 	@(time duckdb -c "SELECT count(*) FROM '$<'" > /dev/null) 2>&1 | xargs
 	@echo ""
+endif
 
 	@printf "tsv-utils            : "
 	@(time ~/install/tsv-utils/bin/number-lines -d, < $< > /dev/null) 2>&1 | xargs
@@ -174,6 +196,9 @@ select-worldcitiespop_mil select-worldcitiespop_big: select-% : %.csv %.tsv
 	@(time ${ZSVBIN}${SELECT} -j 8 -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
 	@echo ""
 
+ifneq ($(HAVE_XSV),1)
+	@echo "xsv not found: skipping (run \'brew install xsv\' to install)"
+else
 	@printf "xsv                  : "
 	@(time xsv select 2,1,3-7 < $< > /dev/null) 2>&1 | xargs
 	@printf "xsv                  : "
@@ -181,6 +206,19 @@ select-worldcitiespop_mil select-worldcitiespop_big: select-% : %.csv %.tsv
 	@printf "xsv                  : "
 	@(time xsv select 2,1,3-7 < $< > /dev/null) 2>&1 | xargs
 	@echo ""
+endif
+
+ifneq ($(HAVE_POLARS),1)
+	@echo "polars not found: skipping (run \`make polars-setup\` to set up)"
+else
+	@printf "polars               : "
+	@. ${VENV_ACTIVATE}; (time python3 -c 'import polars as pl; pl.scan_csv("$<", infer_schema=False).select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 | xargs
+	@printf "polars               : "
+	@. ${VENV_ACTIVATE}; (time python3 -c 'import polars as pl; pl.scan_csv("$<", infer_schema=False).select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 | xargs
+	@printf "polars               : "
+	@. ${VENV_ACTIVATE}; (time python3 -c 'import polars as pl; pl.scan_csv("$<", infer_schema=False).select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 | xargs
+	@echo ""
+endif
 
 ifneq ($(HAVE_DUCKDB),1)
 	@echo "duckdb not found: skipping"
@@ -235,4 +273,21 @@ endif
 clean:
 	rm -f worldcitiespop_big.csv worldcitiespop_big.tsv worldcitiespop_mil.csv worldcitiespop_mil.tsv worldcitiespop.csv
 
-.PHONY: help all count select select-% clean
+.PHONY: help all count select select-% clean polars-setup
+
+
+##### python / polars
+
+ifeq ($(OS),Windows_NT)
+VENV_ACTIVATE=venv/Scripts/activate
+else
+VENV_ACTIVATE=venv/bin/activate
+endif
+
+polars-setup: venv/setup-done
+
+venv/setup-done:
+	test -d venv || virtualenv venv
+	. ${VENV_ACTIVATE}; pip install polars
+	touch $@
+
