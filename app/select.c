@@ -64,13 +64,10 @@
 // zsv_select_check_exclusions_are_indexes()
 #include "select/selection.c"
 
-#ifndef NO_PARALLEL
+#ifndef ZSV_NO_PARALLEL
 #include "select/parallel.c"
 // TO DO: make PARALLEL_THRESHOLD_BYTES customizable
 #define PARALLEL_THRESHOLD_BYTES (10 * 1024 * 1024)
-#endif
-
-static void zsv_select_data_row(void *ctx);
 static void zsv_select_data_row_parallel(void *ctx);
 
 void *zsv_process_chunk(void *arg) {
@@ -119,7 +116,9 @@ void *zsv_process_chunk(void *arg) {
   opts.stream = stream;
   opts.row_handler = zsv_select_data_row_parallel; // Use the existing data row handler
   opts.ctx = &data;
+#ifndef ZSV_NO_PARALLEL
   data.end_offset_limit = cdata->end_offset - cdata->start_offset; // Set chunk boundary
+#endif
   data.parser = zsv_new(&opts);
 
   // 4. Process
@@ -137,6 +136,7 @@ void *zsv_process_chunk(void *arg) {
   cdata->status = zsv_status_ok;
   return NULL;
 }
+#endif
 
 // zsv_select_output_data_row(): output row data (No change needed)
 static void zsv_select_output_data_row(struct zsv_select_data *data) {
@@ -209,6 +209,7 @@ static void zsv_select_data_row(void *ctx) {
     fprintf(stderr, "Processed %zu rows\n", data->data_row_count);
 }
 
+#ifndef ZSV_NO_PARALLEL
 static void zsv_select_data_row_parallel(void *ctx) {
   struct zsv_select_data *data = ctx;
 
@@ -218,6 +219,7 @@ static void zsv_select_data_row_parallel(void *ctx) {
   }
   zsv_select_data_row(ctx);
 }
+#endif
 
 static void zsv_select_print_header_row(struct zsv_select_data *data) {
   if (data->no_header)
@@ -237,7 +239,7 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
     data->cancelled = 1;
     return;
   }
-
+#ifndef ZSV_NO_PARALLEL
   if (data->run_in_parallel) {
     struct zsv_parallel_data *pdata = data->parallel_data;
     zsv_select_print_header_row(data);
@@ -258,7 +260,9 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
 
     // Main thread continues processing Chunk 1
     zsv_set_row_handler(data->parser, zsv_select_data_row_parallel);
-  } else {
+  } else
+#endif
+  {
     // Original serial logic
     zsv_select_print_header_row(data);
     zsv_set_row_handler(data->parser, zsv_select_data_row);
@@ -325,8 +329,10 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
 
   free(data->fixed.offsets);
 
+#ifndef ZSV_NO_PARALLEL
   if (data->run_in_parallel)
     zsv_parallel_data_delete(data->parallel_data);
+#endif
 }
 
 #define ARG_require_val(tgt, conv_func)                                                                                \
@@ -338,6 +344,7 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
     tgt = conv_func(argv[arg_i]);                                                                                      \
   } while (0)
 
+#ifndef ZSV_NO_PARALLEL
 static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_stream) {
   if (!data->run_in_parallel || !data->parallel_data)
     return 0;
@@ -401,6 +408,7 @@ static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *p
   zsv_free_chunks(offsets);
   return 0;
 }
+#endif
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
                                struct zsv_prop_handler *custom_prop_handler) {
@@ -509,7 +517,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       data.data_rows_limit = val + 1;
     } else if (!strcmp(arg, "-D") || !strcmp(arg, "--skip-data"))
       ARG_require_val(data.skip_data_rows, atoi);
-#ifndef NO_PARALLEL
+#ifndef ZSV_NO_PARALLEL
     else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs"))
       ARG_require_val(data.num_chunks, atoi);
     else if (!strcmp(arg, "--parallel"))
@@ -567,15 +575,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   if (stat != zsv_status_ok)
     goto zsv_select_main_done;
 
+#ifndef ZSV_NO_PARALLEL
   // Parallel Setup
   if (data.input_path && data.num_chunks > 1) {
     stat = zsv_setup_parallel_chunks(&data, data.input_path);
     if (stat == zsv_status_memory)
       goto zsv_select_main_done;
   }
-
   if (data.opts->verbose)
     fprintf(stderr, "Running %s\n", data.run_in_parallel ? "parallel" : "single-threaded");
+#endif
 
   // 3. Parser Initialization
   if (col_index_arg_i) {
@@ -619,6 +628,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       zsv_finish(data.parser);
     zsv_delete(data.parser);
 
+#ifndef ZSV_NO_PARALLEL
     // Join Parallel Threads & Merge Output
     if (data.run_in_parallel) {
       for (int i = 0; i < data.num_chunks - 1; i++)
@@ -631,6 +641,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       if (zsv_merge_worker_outputs(&data, writer_opts.stream) != 0)
         stat = zsv_status_error;
     }
+#endif
   }
 
 zsv_select_main_done:

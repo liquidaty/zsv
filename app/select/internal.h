@@ -1,6 +1,6 @@
 #include <sys/types.h> // Required for off_t
 
-#ifndef NO_PARALLEL
+#ifndef ZSV_NO_PARALLEL
 #include "parallel.h"
 #endif
 
@@ -81,7 +81,7 @@ struct zsv_select_data {
 
   struct fixed fixed;
 
-#ifndef NO_PARALLEL
+#ifndef ZSV_NO_PARALLEL
   unsigned num_chunks;
   off_t end_offset_limit;                  // Byte offset where the current parser instance should stop
   struct zsv_parallel_data *parallel_data; // Pointer to the thread management structure

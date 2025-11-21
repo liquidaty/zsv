@@ -52,6 +52,9 @@ ifeq ($(IS_WSL),1)
 endif
 
 SOURCES=echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare
+ifneq ($(ZSV_NO_PARALLEL),1)
+  SOURCES+=worldcitiespop_mil.csv
+endif
 ifneq ($(ZSV_EXTRAS),)
   SOURCES+=overwrite
 endif
@@ -135,6 +138,12 @@ ${TIMINGS_CSV}:
 test-prop:
 	@${TEST_INIT}
 	@EXE=${BUILD_DIR}/bin/zsv_prop${EXE} ${MAKE} -C prop test
+
+ifneq ($(ZSV_NO_PARALLEL),1)
+test-parallel: worldcitiespop_mil.csv
+	@${TEST_INIT}
+	@EXE=${BUILD_DIR}/bin/zsv_select${EXE} ${MAKE} -C parallel test
+endif
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
@@ -240,7 +249,7 @@ worldcitiespop_mil.tsv: worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2tsv${EXE}
 
 test-count test-count-pull: test-% : test-1-% test-2-%
 
-ifeq ($(NO_PARALLEL),1)
+ifeq ($(ZSV_NO_PARALLEL),1)
 ifeq ($(HAVE_PCRE2_8),1)
   HELP_SELECT_LINES=40
 else

@@ -1,4 +1,4 @@
-#include <err.h>
+#include <errno.h>
 
 unsigned int zsv_get_number_of_cores() {
   long ncores = 1; // Default to 1 in case of failure

@@ -25,12 +25,6 @@ CC ?= cc
 
 CFLAGS_EXE ?=
 
-ifeq ($(NO_PARALLEL),1)
-  # TO DO: add to configure
-  CFLAGS+=-DNO_PARALLEL
-endif
-
-
 LIB_SUFFIX=
 LIBZSV_L=-lzsv${LIB_SUFFIX}
 LIBZSV_A=libzsv${LIB_SUFFIX}.a
@@ -193,7 +187,13 @@ UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
 
 ifeq ($(NO_THREADING),1)
   CFLAGS+= -DNO_THREADING
+  ZSV_NO_PARALLEL=1
 endif
+
+ifeq ($(ZSV_NO_PARALLEL),1)
+  CFLAGS+=-DZSV_NO_PARALLEL
+endif
+
 
 ifeq ($(ZSV_EXTRAS),1)
   CFLAGS+= -DZSV_EXTRAS
