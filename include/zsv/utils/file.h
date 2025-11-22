@@ -10,7 +10,7 @@
 #define ZSV_FILE_H
 
 #include <stdio.h>
-#include <file-mem.h>
+#include "file-mem.h"
 
 #ifndef LINEEND
 #if defined(WIN32) || defined(_WIN64) || defined(_WIN32)

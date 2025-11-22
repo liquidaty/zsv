@@ -185,7 +185,6 @@ int zsv_copy_filelike_ptr(
   size_t (*fwritex)(const void *restrict ptr, size_t size, size_t nitems, void *restrict stream)) {
   int err = 0;
   char buffer[4096 * 16];
-  size_t written = 0;
   size_t bytes_read;
   while ((bytes_read = freadx(buffer, 1, sizeof(buffer), src)) > 0) {
     if (fwritex(buffer, 1, bytes_read, dest) != bytes_read) {

@@ -2,7 +2,6 @@
 #include <errno.h>
 
 // The structure defining our dual-storage stream
-// typedef zsv_memfile is already defined (in file-mem.h included in file.h)
 struct zsv_memfile {
   size_t size;          // size of buffer
   size_t used;          // Actual bytes written to memory
@@ -13,6 +12,7 @@ struct zsv_memfile {
   bool write_mode;      // Flag to prevent writing after rewind
   char buffer_start;    // start of buffer
 };
+typedef struct zsv_memfile zsv_memfile;
 
 // --- API Implementation ---
 /**
