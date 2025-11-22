@@ -45,7 +45,7 @@
 #include "utils/zsv_chunk.h"
 
 #include "select/internal.h" // various defines and structs
-#include "select/usage.c"    // zsv_select_usage_msg
+#include "select/usage.c"    // zsv_select_usage()
 #include "select/rand.c"     // demo_random_bw_1_and_100()
 #include "select/fixed.c"    // auto_detect_fixed_column_sizes()
 #include "utils/cat.c"
@@ -64,16 +64,25 @@
 #include "select/selection.c"
 
 #ifndef ZSV_NO_PARALLEL
-#include "select/parallel.c"
+#include "select/parallel.c" // zsv_parallel_data_new(), zsv_parallel_data_delete()
 
-// don't parallelize if < 2 MB of data (after header)
-#define PARALLEL_MIN_BYTES (1024 * 1024 * 2)
-
-static void zsv_select_data_row_parallel(void *ctx);
-
+#define PARALLEL_MIN_BYTES (1024 * 1024 * 2) // don't parallelize if < 2 MB of data (after header)
 #define PARALLEL_BUFFER_SZ (1024 * 1024 * 32) // to do: make customizable or dynamic
 
-void *zsv_process_chunk(void *arg) {
+static void zsv_select_data_row(void *ctx);
+static void zsv_select_data_row_parallel(void *ctx) {
+  struct zsv_select_data *data = ctx;
+  zsv_select_data_row(ctx);
+
+  if (UNLIKELY(zsv_cum_scanned_length(data->parser) >= data->end_offset_limit)) {
+    data->last_row_end = zsv_cum_scanned_length(data->parser);
+    zsv_abort(data->parser);
+    data->cancelled = 1;
+    return;
+  }
+}
+
+static void *zsv_select_process_chunk(void *arg) {
   struct zsv_chunk_data *cdata = (struct zsv_chunk_data *)arg;
   struct zsv_select_data data = {0}; // Local, non-shared zsv_select_data instance
 
@@ -134,9 +143,7 @@ void *zsv_process_chunk(void *arg) {
   opts.stream = stream;
   opts.row_handler = zsv_select_data_row_parallel;
   opts.ctx = &data;
-#ifndef ZSV_NO_PARALLEL
   data.end_offset_limit = cdata->end_offset - cdata->start_offset; // set chunk boundary
-#endif
   data.parser = zsv_new(&opts);
 
   // process
@@ -156,7 +163,7 @@ void *zsv_process_chunk(void *arg) {
   cdata->status = zsv_status_ok;
   return NULL;
 }
-#endif
+#endif // ZSV_NO_PARALLEL
 
 // zsv_select_output_data_row(): output row data (No change needed)
 static void zsv_select_output_data_row(struct zsv_select_data *data) {
@@ -229,21 +236,6 @@ static void zsv_select_data_row(void *ctx) {
     fprintf(stderr, "Processed %zu rows\n", data->data_row_count);
 }
 
-#ifndef ZSV_NO_PARALLEL
-static void zsv_select_data_row_parallel(void *ctx) {
-  struct zsv_select_data *data = ctx;
-
-  zsv_select_data_row(ctx);
-
-  if (UNLIKELY(zsv_cum_scanned_length(data->parser) >= data->end_offset_limit)) {
-    data->last_row_end = zsv_cum_scanned_length(data->parser);
-    zsv_abort(data->parser);
-    data->cancelled = 1;
-    return;
-  }
-}
-#endif
-
 static void zsv_select_print_header_row(struct zsv_select_data *data) {
   if (data->no_header)
     return;
@@ -257,7 +249,38 @@ static void zsv_select_print_header_row(struct zsv_select_data *data) {
   zsv_writer_cell_prepend(data->csv_writer, NULL);
 }
 
-static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *path, size_t header_row_offset);
+#ifndef ZSV_NO_PARALLEL
+static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *path, size_t header_row_offset) {
+  if (data->num_chunks <= 1 || !path || !strcmp(path, "-")) {
+    data->run_in_parallel = 0;
+    return 0;
+  }
+
+  struct zsv_chunk_position *offsets =
+    zsv_calculate_file_chunks(path, data->num_chunks, PARALLEL_MIN_BYTES, header_row_offset + 1);
+  if (!offsets)
+    return -1; // Fallback to serial
+
+  if (!(data->parallel_data = zsv_parallel_data_new(data->num_chunks))) {
+    zsv_free_chunks(offsets);
+    fprintf(stderr, "Insufficient memory to parallelize!\n");
+    return zsv_status_memory;
+  }
+
+  data->run_in_parallel = 1;
+  data->parallel_data->main_data = data;
+  data->end_offset_limit = offsets[0].end;
+
+  for (int i = 0; i < data->num_chunks; i++) {
+    data->parallel_data->chunk_data[i].start_offset = offsets[i].start;
+    data->parallel_data->chunk_data[i].end_offset = offsets[i].end;
+    if (data->opts->verbose)
+      fprintf(stderr, "Chunk %i: %zu - %zu\n", i, (size_t)offsets[i].start, (size_t)offsets[i].end);
+  }
+  zsv_free_chunks(offsets);
+  return 0;
+}
+#endif // ZSV_NO_PARALLEL
 
 static void zsv_select_header_finish(struct zsv_select_data *data) {
   if (zsv_select_set_output_columns(data)) {
@@ -265,8 +288,8 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
     return;
   }
 #ifndef ZSV_NO_PARALLEL
-  // set up parallelization. TO DO: move this into header_finish() in order to
-  // adjust the chunk sizing by the amount of bytes already read
+  // set up parallelization; on error fall back to serial
+  // TO DO: option to exit on error (instead of fall back)
   if (data->input_path && data->num_chunks > 1) {
     size_t header_row_end = zsv_cum_scanned_length(data->parser);
     zsv_setup_parallel_chunks(data, data->input_path, header_row_end);
@@ -284,7 +307,7 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
       cdata->id = i;
       cdata->opts = data->opts;
 
-      int create_status = pthread_create(&pdata->threads[i - 1], NULL, zsv_process_chunk, cdata);
+      int create_status = pthread_create(&pdata->threads[i - 1], NULL, zsv_select_process_chunk, cdata);
       if (create_status != 0) {
         data->cancelled = 1;
         zsv_printerr(1, "Error creating worker thread for chunk %d: %s", i, strerror(create_status));
@@ -332,11 +355,6 @@ static void zsv_select_header_row(void *ctx) {
   zsv_select_header_finish(data);
 }
 
-static void zsv_select_usage(void) {
-  for (size_t i = 0; zsv_select_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", zsv_select_usage_msg[i]);
-}
-
 static void zsv_select_cleanup(struct zsv_select_data *data) {
   if (data->opts->stream && data->opts->stream != stdin)
     fclose(data->opts->stream);
@@ -369,13 +387,13 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
 #endif
 }
 
-#define ARG_require_val(tgt, conv_func)                                                                                \
-  do {                                                                                                                 \
-    if (++arg_i >= argc) {                                                                                             \
-      stat = zsv_printerr(1, "%s option requires parameter", argv[arg_i - 1]);                                         \
-      goto zsv_select_main_done;                                                                                       \
-    }                                                                                                                  \
-    tgt = conv_func(argv[arg_i]);                                                                                      \
+#define ARG_require_val(tgt, conv_func)                                 \
+  do {                                                                  \
+    if (++arg_i >= argc) {                                              \
+      stat = zsv_printerr(1, "%s option requires parameter", argv[arg_i - 1]); \
+      goto zsv_select_main_done;                                        \
+    }                                                                   \
+    tgt = conv_func(argv[arg_i]);                                       \
   } while (0)
 
 #ifndef ZSV_NO_PARALLEL
@@ -443,37 +461,6 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
 #endif
   }
   return status;
-}
-
-static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *path, size_t header_row_offset) {
-  if (data->num_chunks <= 1 || !path || !strcmp(path, "-")) {
-    data->run_in_parallel = 0;
-    return 0;
-  }
-
-  struct zsv_chunk_position *offsets =
-    zsv_calculate_file_chunks(path, data->num_chunks, PARALLEL_MIN_BYTES, header_row_offset + 1);
-  if (!offsets)
-    return -1; // Fallback to serial
-
-  if (!(data->parallel_data = zsv_parallel_data_new(data->num_chunks))) {
-    zsv_free_chunks(offsets);
-    fprintf(stderr, "Insufficient memory to parallelize!\n");
-    return zsv_status_memory;
-  }
-
-  data->run_in_parallel = 1;
-  data->parallel_data->main_data = data;
-  data->end_offset_limit = offsets[0].end;
-
-  for (int i = 0; i < data->num_chunks; i++) {
-    data->parallel_data->chunk_data[i].start_offset = offsets[i].start;
-    data->parallel_data->chunk_data[i].end_offset = offsets[i].end;
-    if (data->opts->verbose)
-      fprintf(stderr, "Chunk %i: %zu - %zu\n", i, (size_t)offsets[i].start, (size_t)offsets[i].end);
-  }
-  zsv_free_chunks(offsets);
-  return 0;
 }
 #endif
 
