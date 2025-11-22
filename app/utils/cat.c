@@ -21,8 +21,9 @@
 #endif
 #endif
 
-// Renamed to reflect that it performs a copy (zero-copy only when sendfile is available)
-long concatenate_copy(int out_fd, int in_fd, off_t size) {
+// Concatenate two files
+// If possible, use zero-copy via sendfile
+long zsv_concatenate_copy(int out_fd, int in_fd, off_t size) {
   long total_written = 0;
 
 #ifdef _WIN32

@@ -43,6 +43,7 @@
 #include <zsv/utils/mem.h>
 #include <zsv/utils/memmem.h>
 #include <zsv/utils/arg.h>
+#include <zsv/utils/file.h>
 
 #include "select/internal.h" // various defines and structs
 #include "select/usage.c"    // zsv_select_usage_msg
@@ -66,9 +67,12 @@
 
 #ifndef ZSV_NO_PARALLEL
 #include "select/parallel.c"
+
 // TO DO: make PARALLEL_THRESHOLD_BYTES customizable
 #define PARALLEL_THRESHOLD_BYTES (10 * 1024 * 1024)
 static void zsv_select_data_row_parallel(void *ctx);
+
+#define PARALLEL_BUFFER_SZ (1024 * 1024 * 8) // to do: make this customizable
 
 void *zsv_process_chunk(void *arg) {
   struct zsv_chunk_data *cdata = (struct zsv_chunk_data *)arg;
@@ -102,8 +106,14 @@ void *zsv_process_chunk(void *arg) {
   // output buffer for concurrent threads
   struct zsv_csv_writer_options writer_opts = {0};
 
-  asprintf(&cdata->tmp_output_filename, "/tmp/select_chunk_%03d.csv", cdata->id);
+#ifdef __linux__
+  cdata->tmp_output_filename = zsv_get_temp_filename("zsvselect");
   writer_opts.stream = fopen(cdata->tmp_output_filename, "wb");
+#else
+  cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ);
+  writer_opts.stream = cdata->tmp_f;
+  writer_opts.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))zsv_memfile_write;
+#endif
 
   if (!writer_opts.stream) {
     cdata->status = zsv_status_memory;
@@ -131,7 +141,9 @@ void *zsv_process_chunk(void *arg) {
   fflush(stream);
   fclose(stream);
   zsv_writer_delete(data.csv_writer);
+#ifdef __linux__
   fclose(writer_opts.stream);
+#endif
 
   cdata->status = zsv_status_ok;
   return NULL;
@@ -350,13 +362,15 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
     return 0;
 
   fflush(dest_stream);
+#ifdef __linux__
   int out_fd = fileno(dest_stream);
+#endif
   int status = 0;
 
   for (int i = 1; i < data->num_chunks; i++) {
     struct zsv_chunk_data *c = &data->parallel_data->chunk_data[i];
+#ifdef __linux__
     int in_fd = open(c->tmp_output_filename, O_RDONLY);
-
     if (in_fd < 0) {
       zsv_printerr(1, "Error opening chunk %s: %s", c->tmp_output_filename, strerror(errno));
       status = zsv_status_error;
@@ -365,16 +379,29 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
 
     struct stat st;
     if (fstat(in_fd, &st) == 0) {
-      long copied = concatenate_copy(out_fd, in_fd, st.st_size);
-      if (copied != st.st_size)
+      long copied = zsv_concatenate_copy(out_fd, in_fd, st.st_size);
+      if (copied != st.st_size) {
         zsv_printerr(1, "Warning: Partial copy chunk %d (%lli/%lli)", i, copied, (long long)st.st_size);
+        status = zsv_status_error;
+      }
     } else {
       status = zsv_status_error;
     }
-
     close(in_fd);
     if (unlink(c->tmp_output_filename) != 0)
       zsv_printerr(1, "Warning: Failed to delete %s", c->tmp_output_filename);
+#else
+    zsv_memfile_rewind(c->tmp_f);
+    if (zsv_copy_filelike_ptr(
+          c->tmp_f, (size_t(*)(void *restrict ptr, size_t size, size_t nitems, void *restrict stream))zsv_memfile_read,
+          dest_stream,
+          (size_t(*)(const void *restrict ptr, size_t size, size_t nitems, void *restrict stream))fwrite)) {
+      perror("zsv temp mem file");
+      status = zsv_status_error;
+    }
+    zsv_memfile_close(c->tmp_f);
+    c->tmp_f = NULL;
+#endif
   }
   return status;
 }
@@ -466,7 +493,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     else if (!strcmp(arg, "--merge"))
       data.distinct = ZSV_SELECT_DISTINCT_MERGE;
     else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
-      if (writer_opts.stream)
+      if (writer_opts.stream && writer_opts.stream != stdout)
         stat = zsv_printerr(1, "Output specified twice");
       else {
         ARG_require_val(arg, (const char *));

@@ -40,7 +40,12 @@ void zsv_parallel_data_delete(struct zsv_parallel_data *pdata) {
   if (pdata) {
     for (int i = 0; i < pdata->num_chunks; i++) {
       if (pdata->chunk_data)
+#ifdef __linux__
         free(pdata->chunk_data[i].tmp_output_filename);
+#else
+        if (pdata->chunk_data[i].tmp_f)
+          zsv_memfile_close(pdata->chunk_data[i].tmp_f);
+#endif
     }
 
     free(pdata->threads);

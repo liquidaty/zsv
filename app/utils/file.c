@@ -70,6 +70,27 @@ char *zsv_get_temp_filename(const char *prefix) {
 #endif
 
 /**
+ *  Replacement for tmpfile().
+ *  Returns filename; file must be manually removed after fclose
+ *
+ *  @param mode optional mode passed to fopen(); if NULL, defaults to "wb"
+ */
+FILE *zsv_tmpfile(const char *prefix, char **filename, const char *mode) {
+  char *fn = zsv_get_temp_filename(prefix);
+  if (fn) {
+    FILE *f = fopen(fn, mode == NULL ? "wb" : mode);
+    if (f) {
+      *filename = fn;
+      return f;
+    }
+  }
+  int e = errno;
+  free(fn);
+  errno = e;
+  return NULL;
+}
+
+/**
  * Temporarily redirect a FILE * (e.g. stdout / stderr) to a temp file
  * temp_filename and bak are set as return values
  * caller must free temp_filename
@@ -155,20 +176,34 @@ int zsv_copy_file(const char *src, const char *dest) {
 }
 
 /**
- * Copy a file, given source and destination FILE pointers
+ * Copy a file-like, given source and destination handles
+ * and read/write functions
  * Return error number per errno.h
  */
-int zsv_copy_file_ptr(FILE *src, FILE *dest) {
+int zsv_copy_filelike_ptr(
+  FILE *src, size_t (*freadx)(void *restrict ptr, size_t size, size_t nitems, void *restrict stream), FILE *dest,
+  size_t (*fwritex)(const void *restrict ptr, size_t size, size_t nitems, void *restrict stream)) {
   int err = 0;
-  char buffer[4096];
+  char buffer[4096 * 16];
+  size_t written = 0;
   size_t bytes_read;
-  while ((bytes_read = fread(buffer, 1, sizeof(buffer), src)) > 0) {
-    if (fwrite(buffer, 1, bytes_read, dest) != bytes_read) {
+  while ((bytes_read = freadx(buffer, 1, sizeof(buffer), src)) > 0) {
+    if (fwritex(buffer, 1, bytes_read, dest) != bytes_read) {
       err = errno ? errno : -1;
       break;
     }
   }
   return err;
+}
+
+/**
+ * Copy a file, given source and destination FILE pointers
+ * Return error number per errno.h
+ */
+int zsv_copy_file_ptr(FILE *src, FILE *dest) {
+  return zsv_copy_filelike_ptr(
+    src, (size_t(*)(void *restrict ptr, size_t size, size_t nitems, void *restrict stream))fread, dest,
+    (size_t(*)(const void *restrict ptr, size_t size, size_t nitems, void *restrict stream))fwrite);
 }
 
 size_t zsv_dir_len_basename(const char *filepath, const char **basename) {
@@ -216,4 +251,7 @@ size_t zsv_filter_write(void *FILEp, unsigned char *buff, size_t bytes_read) {
 
 int zsv_no_printf(void *_ctx, const char *_format, ...) {
   // do nothing!
+  return 0;
 }
+
+#include "file-mem.c"
