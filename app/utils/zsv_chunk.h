@@ -23,8 +23,7 @@ struct zsv_chunk_position {
  * @param initial_offset The initial offset bytes to skip from chunking
  * @return zsv_chunk_position* A dynamically allocated array of N pairs, or NULL on error.
  */
-struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint64_t N,
-                                                     uint64_t min_size,
+struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint64_t N, uint64_t min_size,
                                                      zsv_file_pos initial_offset);
 
 /**

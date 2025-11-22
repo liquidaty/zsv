@@ -137,7 +137,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         err = 1;
       } else {
         n_jobs = atoi(argv[i]);
-        if(n_jobs < 1) {
+        if (n_jobs < 1) {
           fprintf(stderr, "%s option requires a number > 0\n", arg);
           err = 1;
         }

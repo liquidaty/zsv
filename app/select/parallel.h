@@ -15,7 +15,7 @@ struct zsv_chunk_data {
   void *tmp_f; // use zsv_memfile * because we cannot do zero-copy file concatenation
 #endif
   off_t start_offset;
-  off_t end_offset;      // Stop processing when current offset exceeds this
+  off_t end_offset; // Stop processing when current offset exceeds this
   off_t actual_end_offset;
   struct zsv_opts *opts; // Configuration options (read-only)
   enum zsv_status status;

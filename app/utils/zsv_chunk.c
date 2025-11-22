@@ -61,8 +61,7 @@ static zsv_file_pos zsv_find_chunk_start(FILE *fp, zsv_file_pos initial_offset, 
 
 // --- Public Library Implementations ---
 
-struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint64_t N,
-                                                     uint64_t min_size,
+struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint64_t N, uint64_t min_size,
                                                      zsv_file_pos initial_offset) {
   if (N == 0)
     return NULL;
@@ -89,7 +88,7 @@ struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint6
   }
   total_size -= initial_offset;
 
-  if(total_size < min_size) {
+  if (total_size < min_size) {
     fprintf(stderr, "file size too small for parallelization\n");
     fclose(fp);
     return NULL;
@@ -103,7 +102,7 @@ struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint6
     return NULL;
   }
 
-  if(initial_offset)
+  if (initial_offset)
     fseek(fp, initial_offset, SEEK_SET);
 
   zsv_file_pos base_size = total_size / N;

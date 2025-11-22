@@ -5,12 +5,13 @@
  * https://opensource.org/licenses/MIT
  */
 
-//  Parallelization TO DO:
+// Parallelization TO DO:
 //   - on last_row_end/next_row_start mismatch, self-correct
 //   - disallow parallelization when certain options are enabled:
-//    - max_rows
-//    - overwrite_auto
-//    - overwrite
+//     - max_rows
+//     - overwrite_auto
+//     - overwrite
+//   - rename zsv_chunk.c to chunk.c
 
 #include <stdio.h>
 #include <assert.h>
@@ -109,12 +110,12 @@ void *zsv_process_chunk(void *arg) {
   writer_opts.stream = fopen(cdata->tmp_output_filename, "wb");
 #else
   cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ);
-  if(!cdata->tmp_f) {
-    cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ/2);
-    if(!cdata->tmp_f) {
-      cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ/4);
-      if(!cdata->tmp_f) {
-        cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ/8);
+  if (!cdata->tmp_f) {
+    cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ / 2);
+    if (!cdata->tmp_f) {
+      cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ / 4);
+      if (!cdata->tmp_f) {
+        cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ / 8);
       }
     }
   }
@@ -388,16 +389,17 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
 #endif
   int status = 0;
 
-  for (int i = 0; i < data->num_chunks-1; i++) {
+  for (int i = 0; i < data->num_chunks - 1; i++) {
     off_t last_row_end = i == 0 ? data->last_row_end : data->parallel_data->chunk_data[i].actual_end_offset;
-    off_t next_row_start = data->parallel_data->chunk_data[i+1].start_offset;
-    if(last_row_end > next_row_start) {
-      zsv_printerr(1, "Chunking error, please run without parallelization\n (in a future version, this will self-correct. Sorry, not implemented yet)");
+    off_t next_row_start = data->parallel_data->chunk_data[i + 1].start_offset;
+    if (last_row_end > next_row_start) {
+      zsv_printerr(1, "Chunking error, please run without parallelization\n (in a future version, this will "
+                      "self-correct. Sorry, not implemented yet)");
       // TO DO: self-correct: main thread re-processes next chunk
       status = zsv_status_error;
     }
   }
-  
+
   for (int i = 1; i < data->num_chunks && status == 0; i++) {
     struct zsv_chunk_data *c = &data->parallel_data->chunk_data[i];
 #ifdef __linux__
@@ -447,7 +449,8 @@ static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *p
     return 0;
   }
 
-  struct zsv_chunk_position *offsets = zsv_calculate_file_chunks(path, data->num_chunks, PARALLEL_MIN_BYTES, header_row_offset + 1);
+  struct zsv_chunk_position *offsets =
+    zsv_calculate_file_chunks(path, data->num_chunks, PARALLEL_MIN_BYTES, header_row_offset + 1);
   if (!offsets)
     return -1; // Fallback to serial
 
