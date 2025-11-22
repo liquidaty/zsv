@@ -20,6 +20,8 @@ struct zsv_chunk_data {
   struct zsv_opts *opts; // Configuration options (read-only)
   enum zsv_status status;
   int id;
+  unsigned char skip:1;
+  unsigned char _:7;
 };
 
 /**

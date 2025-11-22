@@ -82,13 +82,18 @@ static void zsv_select_data_row_parallel(void *ctx) {
   }
 }
 
-static void *zsv_select_process_chunk(void *arg) {
-  struct zsv_chunk_data *cdata = (struct zsv_chunk_data *)arg;
+static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
+  if (cdata->start_offset >= cdata->end_offset) {
+    cdata->skip = 1;
+    return NULL;
+  }
+
   struct zsv_select_data data = {0}; // Local, non-shared zsv_select_data instance
 
   // Copy necessary setup data from the global context
   memcpy(&data, cdata->opts->ctx, sizeof(data));
   data.parallel_data = NULL; // clear parallel data pointer in local copy
+  data.cancelled = 0;
 
   struct zsv_opts opts = {0};
   opts.max_columns = cdata->opts->max_columns;
@@ -151,6 +156,13 @@ static void *zsv_select_process_chunk(void *arg) {
   while (status == zsv_status_ok && !zsv_signal_interrupted && !data.cancelled)
     status = zsv_parse_more(data.parser);
 
+#ifndef ZSV_NOPARALLEL
+  if(!data.last_row_end)
+    // unlikely, but maybe conceivable if chunk split was not accurate and
+    // a correctly-split chunk's last row entirely ate the next incorrectly-split chunk
+    data.last_row_end = zsv_cum_scanned_length(data.parser);
+#endif
+
   // clean up
   zsv_delete(data.parser);
   fflush(stream);
@@ -162,6 +174,11 @@ static void *zsv_select_process_chunk(void *arg) {
   cdata->actual_end_offset = data.last_row_end + cdata->start_offset;
   cdata->status = zsv_status_ok;
   return NULL;
+}
+
+static void *zsv_select_process_chunk(void *arg) {
+  struct zsv_chunk_data *cdata = (struct zsv_chunk_data *)arg;
+  return zsv_select_process_chunk_internal(cdata);
 }
 #endif // ZSV_NO_PARALLEL
 
@@ -408,18 +425,48 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
   int status = 0;
 
   for (int i = 0; i < data->num_chunks - 1; i++) {
+    pthread_join(data->parallel_data->threads[i], NULL);
+
+    struct zsv_chunk_data *next_chunk = &data->parallel_data->chunk_data[i + 1];
     off_t last_row_end = i == 0 ? data->last_row_end : data->parallel_data->chunk_data[i].actual_end_offset;
-    off_t next_row_start = data->parallel_data->chunk_data[i + 1].start_offset;
+    off_t next_row_start = next_chunk->start_offset;
     if (last_row_end > next_row_start) {
-      zsv_printerr(1, "Chunking error, please run without parallelization\n (in a future version, this will "
-                      "self-correct. Sorry, not implemented yet)");
-      // TO DO: self-correct: main thread re-processes next chunk
-      status = zsv_status_error;
+      if (data->opts->verbose) {
+        fprintf(stderr, "Chunk overlap detected (Prev End: %zu, Next Start: %zu). Reprocessing chunk %d.\n", 
+          (size_t)last_row_end, (size_t)next_row_start, i + 1);
+      }
+
+      // 1. Cleanup the invalid results from the worker thread
+      // to do: move below into zsv_chunk_data_free()
+#ifdef __linux__
+      if (next_chunk->tmp_output_filename) {
+        unlink(next_chunk->tmp_output_filename);
+        free(next_chunk->tmp_output_filename);
+        next_chunk->tmp_output_filename = NULL;
+      }
+#else
+      if (next_chunk->tmp_f) {
+        zsv_memfile_close(next_chunk->tmp_f);
+        next_chunk->tmp_f = NULL;
+      }
+#endif
+
+      // 2. Adjust the start offset to where the previous chunk actually ended
+      next_chunk->start_offset = last_row_end + 1;
+
+      // 3. Re-process synchronously on the main thread
+      zsv_select_process_chunk_internal(next_chunk);
+
+      // 4. Update status check (if reprocessing failed)
+      if (next_chunk->status != zsv_status_ok) {
+        status = zsv_status_error;
+      }
     }
   }
-
   for (int i = 1; i < data->num_chunks && status == 0; i++) {
     struct zsv_chunk_data *c = &data->parallel_data->chunk_data[i];
+    if(c->skip)
+      continue;
 #ifdef __linux__
     int in_fd = open(c->tmp_output_filename, O_RDONLY);
     if (in_fd < 0) {
@@ -454,6 +501,7 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
   }
 
   for (int i = 1; i < data->num_chunks; i++) {
+    // to do: move this into a function zsv_chunk_data_free()
     struct zsv_chunk_data *c = &data->parallel_data->chunk_data[i];
 #ifndef __linux__
     zsv_memfile_close(c->tmp_f);
@@ -667,20 +715,27 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     while (p_stat == zsv_status_ok && !zsv_signal_interrupted && !data.cancelled)
       p_stat = zsv_parse_more(data.parser);
 
-    if (p_stat == zsv_status_no_more_input)
+    if (p_stat == zsv_status_no_more_input) {
       zsv_finish(data.parser);
+#ifndef ZSV_NO_PARALLEL
+      // unlikely, but maybe conceivable if chunk split was not accurate and
+      // a correctly-split chunk's last row entirely ate the next incorrectly-split chunk
+      if(data.run_in_parallel && !data.last_row_end)
+        data.last_row_end = zsv_cum_scanned_length(data.parser);
+#endif
+    }
     zsv_delete(data.parser);
 
 #ifndef ZSV_NO_PARALLEL
     // Join Parallel Threads & Merge Output
     if (data.run_in_parallel) {
+      /*
       for (int i = 0; i < data.num_chunks - 1; i++)
         pthread_join(data.parallel_data->threads[i], NULL);
-
+      */
       // Explicitly flush and delete main writer before raw fd merge
       zsv_writer_delete(data.csv_writer);
       data.csv_writer = NULL;
-
       if (zsv_merge_worker_outputs(&data, writer_opts.stream) != 0)
         stat = zsv_status_error;
     }

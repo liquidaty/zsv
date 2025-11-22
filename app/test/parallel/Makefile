@@ -43,8 +43,9 @@ endif
 $(info SELECT_EXE=$(SELECT_EXE) COUNT_EXE=$(COUNT_EXE))
 
 help:
-	@echo "# run all tests:"
-	@echo "    make test"
+	@echo "# targets:"
+	@echo "#    make test # run all tests"
+	@echo "#    make test-parallel-1|test-parallel-2|test-parallel-3 # run individual tests"
 
 test: test-parallel-1 test-parallel-2 test-parallel-3
 
