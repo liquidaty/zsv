@@ -327,7 +327,7 @@ jobs:
       uses: actions/checkout@v5
 
     - name: Set up homebrew dependencies
-      run: brew install --quiet coreutils tree autoconf automake libtool tmux sqlite3 ccache
+      run: brew install --quiet coreutils tree autoconf automake libtool tmux sqlite3 ccache make
 
     - name: Set PREFIX and ZIP env var
       env:
@@ -342,7 +342,7 @@ jobs:
     - name: Build on macOS (${{ env.AMD64_MACOSX_GCC }})
       env:
         CC: gcc
-        MAKE: make
+        MAKE: gmake
         MAKE_PARALLEL: true
         ENABLE_CCACHE: true
         RUN_TESTS: true
@@ -538,7 +538,7 @@ jobs:
 
   ci-linux-mingw:
     needs: [tag, clang-format, cppcheck, shellcheck, mingw-ncurses]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 15
 
     env:
