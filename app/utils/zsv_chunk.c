@@ -1,10 +1,11 @@
 // /src/app/utils/zsv_chunk.c: implements /src/app/utils/zsv_chunk.h
 
-#include "zsv_chunk.h"
-
+#include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "zsv_chunk.h"
 
 /**
  * @brief Checks if a character is a newline character ('\n' or '\r').
@@ -60,7 +61,9 @@ static zsv_file_pos zsv_find_chunk_start(FILE *fp, zsv_file_pos initial_offset, 
 
 // --- Public Library Implementations ---
 
-struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint64_t N) {
+struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint64_t N,
+                                                     uint64_t min_size,
+                                                     zsv_file_pos initial_offset) {
   if (N == 0)
     return NULL;
 
@@ -71,15 +74,23 @@ struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint6
     return NULL;
   }
 
-  // 1. Get total file size (use SEEK_END and ftell for off_t compatibility)
-  if (fseek(fp, 0, SEEK_END) != 0) {
-    perror("zsv_calculate_file_chunks: fseek SEEK_END failed");
+  // 1. Get total file size using fstat() on the file descriptor
+  struct stat st;
+  if (fstat(fileno(fp), &st) == -1) {
+    perror("zsv_calculate_file_chunks: fstat failed");
     fclose(fp);
     return NULL;
   }
-  zsv_file_pos total_size = ftell(fp);
-  if (total_size < 0) {
+  zsv_file_pos total_size = (zsv_file_pos)st.st_size;
+  if (total_size < initial_offset) {
     perror("zsv_calculate_file_chunks: ftell failed");
+    fclose(fp);
+    return NULL;
+  }
+  total_size -= initial_offset;
+
+  if(total_size < min_size) {
+    fprintf(stderr, "file size too small for parallelization\n");
     fclose(fp);
     return NULL;
   }
@@ -92,8 +103,11 @@ struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint6
     return NULL;
   }
 
+  if(initial_offset)
+    fseek(fp, initial_offset, SEEK_SET);
+
   zsv_file_pos base_size = total_size / N;
-  zsv_file_pos current_offset = 0;
+  zsv_file_pos current_offset = initial_offset;
 
   for (uint64_t i = 0; i < N; ++i) {
     chunks[i].start = current_offset;
@@ -116,13 +130,12 @@ struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint6
       }
     } else {
       // The last chunk always ends at the total_size - 1 byte (or 0 if size is 0)
-      chunks[i].end = total_size > 0 ? total_size - 1 : 0;
+      chunks[i].end = total_size + initial_offset > 0 ? total_size + initial_offset - 1 : 0;
     }
 
-    // Defensive check for inverted start/end (common in edge cases)
-    if (chunks[i].start > chunks[i].end && total_size > 0) {
+    // Defensive check for inverted start/end
+    if (chunks[i].start > chunks[i].end && total_size > 0)
       chunks[i].end = chunks[i].start; // Adjust to a single byte or start
-    }
   }
 
   fclose(fp);

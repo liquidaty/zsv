@@ -32,13 +32,21 @@ else
   CHECK=
 endif
 
-###
+ifeq ($(SELECT_EXE),)
+  $(error Missing SELECT_EXE)
+endif
+
+ifeq ($(COUNT_EXE),)
+  $(error Missing COUNT_EXE)
+endif
+
+$(info SELECT_EXE=$(SELECT_EXE) COUNT_EXE=$(COUNT_EXE))
 
 help:
 	@echo "# run all tests:"
 	@echo "    make test"
 
-test: test-parallel-1 test-parallel-2
+test: test-parallel-1 test-parallel-2 test-parallel-3
 
 test-parallel-1: $(SELECT_EXE) ../worldcitiespop_mil.csv
 	@${TEST_INIT}
@@ -57,6 +65,17 @@ test-parallel-2: $(COUNT_EXE) ../worldcitiespop_mil.csv
 	@mv ${TMP_DIR}/$@.parallel.tmp ${TMP_DIR}/$@.parallel
 	@cmp ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel && ${TEST_PASS} || ${TEST_FAIL}
 	@rm -f ${TMP_DIR}/$@.serial.tmp ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel.tmp ${TMP_DIR}/$@.parallel
+
+chunk_break.csv: ../worldcitiespop_mil.csv
+	@head -100000 ../worldcitiespop_mil.csv > chunk_break.csv.tmp
+	@git apply chunk_break.diff
+	@mv chunk_break.csv.tmp chunk_break.csv
+
+test-parallel-3: $(SELECT_EXE) chunk_break.csv
+	@${TEST_INIT}
+	@rm -f ${TMP_DIR}/$@.out
+	@${SELECT_EXE} chunk_break.csv -j 3 > /dev/null 2>${TMP_DIR}/$@.out || [ 1 == 1 ]
+	@cmp ${TMP_DIR}/$@.out $@.expected.out && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
 	@rm -rf ${TMP_DIR}

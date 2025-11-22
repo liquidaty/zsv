@@ -17,11 +17,15 @@ struct zsv_chunk_position {
  * @brief Calculates N (start, end) file position pairs for a given file,
  * adjusting boundaries to fall immediately after a newline sequence.
  *
- * @param filename The path to the file.
- * @param N The desired number of chunks.
+ * @param filename       The path to the file.
+ * @param N              The desired number of chunks.
+ * @param min_size       The minimum size (excluding offset) required for chunking
+ * @param initial_offset The initial offset bytes to skip from chunking
  * @return zsv_chunk_position* A dynamically allocated array of N pairs, or NULL on error.
  */
-struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint64_t N);
+struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint64_t N,
+                                                     uint64_t min_size,
+                                                     zsv_file_pos initial_offset);
 
 /**
  * @brief Frees the memory allocated by zsv_calculate_file_chunks. (DRY Cleanup)

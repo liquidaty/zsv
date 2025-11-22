@@ -6,6 +6,16 @@
  * https://opensource.org/licenses/MIT
  */
 
+// Parallelization TO DO
+// 1. after processing chunk N, once start is verified, verify starting position of chunk N+1. if err:
+//   - exit, or
+//   - reprocess N+1
+// 2. disallow parallelization when certain options are enabled:
+//    - max_rows
+//    - overwrite_auto
+//    - overwrite
+// 3. Minimal file size, header offset
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -51,8 +61,6 @@ static void row(void *ctx) {
 #ifndef ZSV_NO_PARALLEL
 static void row_parallel(void *ctx) {
   struct data *d = (struct data *)ctx;
-
-  // Check bounds
   if (d->end_offset_limit && zsv_cum_scanned_length(d->parser) > d->end_offset_limit) {
     zsv_abort(d->parser);
     return;
@@ -62,35 +70,26 @@ static void row_parallel(void *ctx) {
 
 static void row_verbose_parallel(void *ctx) {
   row_parallel(ctx);
-  // Optional: Add verbose logging for threads here if needed,
-  // though usually distinct thread logging is noisy.
 }
 
 static void *count_chunk(void *arg) {
   struct chunk_opts *c_opts = (struct chunk_opts *)arg;
-
-  // 1. Open separate stream for this thread
   FILE *stream = fopen(c_opts->input_path, "rb");
   if (!stream) {
     perror("fopen");
     return NULL;
   }
-
-  // 2. Seek to start
   if (fseeko(stream, c_opts->start, SEEK_SET) != 0) {
     fclose(stream);
     return NULL;
   }
 
-  // 3. Configure parser
+  // Configure parser
   c_opts->opts.stream = stream;
   c_opts->opts.ctx = &c_opts->data;
   c_opts->data.end_offset_limit = c_opts->end - c_opts->start;
-
-  // Use parallel handlers that check bounds
   c_opts->opts.row_handler = c_opts->opts.verbose ? row_verbose_parallel : row_parallel;
 
-  // 4. Parse
   if (!(c_opts->data.parser = zsv_new(&c_opts->opts))) {
     perror(NULL);
   } else {
@@ -123,7 +122,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   struct data data = {0};
   struct zsv_opts opts = *optsp;
   const char *input_path = NULL;
-  int n_jobs = 1;
+  int n_jobs = 0;
   int err = 0;
 
   for (int i = 1; !err && i < argc; i++) {
@@ -134,10 +133,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
     if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs")) {
       if (++i >= argc) {
-        fprintf(stderr, "%s option requires a number\n", arg);
+        fprintf(stderr, "%s option requires a number > 0\n", arg);
         err = 1;
       } else {
         n_jobs = atoi(argv[i]);
+        if(n_jobs < 1) {
+          fprintf(stderr, "%s option requires a number > 0\n", arg);
+          err = 1;
+        }
       }
     } else if (!strcmp(arg, "--parallel")) {
       n_jobs = zsv_get_number_of_cores();
@@ -150,13 +153,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           fprintf(stderr, "Input may not be specified more than once\n");
         else {
           input_path = argv[i];
-          // If not parallel, open immediately. If parallel, threads open their own.
-          if (n_jobs <= 1) {
-            if (!(opts.stream = fopen(argv[i], "rb"))) {
-              fprintf(stderr, "Unable to open for reading: %s\n", argv[i]);
-              err = 1;
-            }
-          }
         }
       }
     } else {
@@ -168,6 +164,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   if (input_path && n_jobs > 1 && access(input_path, F_OK) == -1) {
     fprintf(stderr, "Unable to open for reading: %s\n", input_path);
     err = 1;
+  }
+
+  // If not parallel, open immediately. If parallel, threads open their own.
+  if (n_jobs <= 1 && input_path) {
+    if (!(opts.stream = fopen(input_path, "rb"))) {
+      fprintf(stderr, "Unable to open for reading: %s\n", input_path);
+      err = 1;
+    }
   }
 
 #ifdef NO_STDIN
@@ -183,7 +187,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #ifndef ZSV_NO_PARALLEL
     if (n_jobs > 1 && input_path) {
       // Parallel Execution
-      struct zsv_chunk_position *chunks = zsv_calculate_file_chunks(input_path, n_jobs);
+      struct zsv_chunk_position *chunks = zsv_calculate_file_chunks(input_path, n_jobs, 0, 0);
       if (!chunks) {
         fprintf(stderr, "Unable to calculate file chunks for parallel processing\n");
         goto count_done; // or fallback to serial

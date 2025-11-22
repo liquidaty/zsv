@@ -5,13 +5,9 @@
  * https://opensource.org/licenses/MIT
  */
 
-// proof of concept for parallelization
-// - to do:
-// 1. change /tmp/select_chunk_ to tmpfile. maybe allow mem-only option? look for hybrid library mem + file fallback
-// 2. after processing chunk N, once start is verified, verify starting position of chunk N+1. if err:
-//   - exit, or
-//   - reprocess N+1
-// 3. disallow parallelization when certain options are enabled:
+//  Parallelization TO DO:
+//   - on last_row_end/next_row_start mismatch, self-correct
+//   - disallow parallelization when certain options are enabled:
 //    - max_rows
 //    - overwrite_auto
 //    - overwrite
@@ -69,11 +65,12 @@
 #ifndef ZSV_NO_PARALLEL
 #include "select/parallel.c"
 
-// TO DO: make PARALLEL_THRESHOLD_BYTES customizable
-#define PARALLEL_THRESHOLD_BYTES (10 * 1024 * 1024)
+// don't parallelize if < 2 MB of data (after header)
+#define PARALLEL_MIN_BYTES (1024 * 1024 * 2)
+
 static void zsv_select_data_row_parallel(void *ctx);
 
-#define PARALLEL_BUFFER_SZ (1024 * 1024 * 8) // to do: make this customizable
+#define PARALLEL_BUFFER_SZ (1024 * 1024 * 32) // to do: make customizable or dynamic
 
 void *zsv_process_chunk(void *arg) {
   struct zsv_chunk_data *cdata = (struct zsv_chunk_data *)arg;
@@ -81,7 +78,7 @@ void *zsv_process_chunk(void *arg) {
 
   // Copy necessary setup data from the global context
   memcpy(&data, cdata->opts->ctx, sizeof(data));
-  data.parallel_data = NULL; // Clear parallel data pointer in local copy
+  data.parallel_data = NULL; // clear parallel data pointer in local copy
 
   struct zsv_opts opts = {0};
   opts.max_columns = cdata->opts->max_columns;
@@ -95,7 +92,7 @@ void *zsv_process_chunk(void *arg) {
   opts.errclose = cdata->opts->errclose;
   opts.progress = cdata->opts->progress;
 
-  // 1. Setup Input Stream for the Chunk
+  // Setup Input Stream for the Chunk
   FILE *stream = fopen(data.input_path, "rb");
   if (!stream) {
     cdata->status = zsv_status_error;
@@ -112,6 +109,15 @@ void *zsv_process_chunk(void *arg) {
   writer_opts.stream = fopen(cdata->tmp_output_filename, "wb");
 #else
   cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ);
+  if(!cdata->tmp_f) {
+    cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ/2);
+    if(!cdata->tmp_f) {
+      cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ/4);
+      if(!cdata->tmp_f) {
+        cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ/8);
+      }
+    }
+  }
   writer_opts.stream = cdata->tmp_f;
   writer_opts.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))zsv_memfile_write;
 #endif
@@ -123,21 +129,21 @@ void *zsv_process_chunk(void *arg) {
   }
   data.csv_writer = zsv_writer_new(&writer_opts);
 
-  // 3. Initialize Parser for Chunk
+  // initialize parser
   opts.stream = stream;
-  opts.row_handler = zsv_select_data_row_parallel; // Use the existing data row handler
+  opts.row_handler = zsv_select_data_row_parallel;
   opts.ctx = &data;
 #ifndef ZSV_NO_PARALLEL
-  data.end_offset_limit = cdata->end_offset - cdata->start_offset; // Set chunk boundary
+  data.end_offset_limit = cdata->end_offset - cdata->start_offset; // set chunk boundary
 #endif
   data.parser = zsv_new(&opts);
 
-  // 4. Process
+  // process
   enum zsv_status status = zsv_status_ok;
   while (status == zsv_status_ok && !zsv_signal_interrupted && !data.cancelled)
     status = zsv_parse_more(data.parser);
 
-  // Clean up
+  // clean up
   zsv_delete(data.parser);
   fflush(stream);
   fclose(stream);
@@ -145,7 +151,7 @@ void *zsv_process_chunk(void *arg) {
 #ifdef __linux__
   fclose(writer_opts.stream);
 #endif
-
+  cdata->actual_end_offset = data.last_row_end + cdata->start_offset;
   cdata->status = zsv_status_ok;
   return NULL;
 }
@@ -226,11 +232,14 @@ static void zsv_select_data_row(void *ctx) {
 static void zsv_select_data_row_parallel(void *ctx) {
   struct zsv_select_data *data = ctx;
 
-  if (UNLIKELY(zsv_cum_scanned_length(data->parser) > data->end_offset_limit)) {
+  zsv_select_data_row(ctx);
+
+  if (UNLIKELY(zsv_cum_scanned_length(data->parser) >= data->end_offset_limit)) {
+    data->last_row_end = zsv_cum_scanned_length(data->parser);
+    zsv_abort(data->parser);
     data->cancelled = 1;
     return;
   }
-  zsv_select_data_row(ctx);
 }
 #endif
 
@@ -247,12 +256,23 @@ static void zsv_select_print_header_row(struct zsv_select_data *data) {
   zsv_writer_cell_prepend(data->csv_writer, NULL);
 }
 
+static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *path, size_t header_row_offset);
+
 static void zsv_select_header_finish(struct zsv_select_data *data) {
   if (zsv_select_set_output_columns(data)) {
     data->cancelled = 1;
     return;
   }
 #ifndef ZSV_NO_PARALLEL
+  // set up parallelization. TO DO: move this into header_finish() in order to
+  // adjust the chunk sizing by the amount of bytes already read
+  if (data->input_path && data->num_chunks > 1) {
+    size_t header_row_end = zsv_cum_scanned_length(data->parser);
+    zsv_setup_parallel_chunks(data, data->input_path, header_row_end);
+  }
+  if (data->opts->verbose)
+    fprintf(stderr, "Running %s\n", data->run_in_parallel ? "parallel" : "single-threaded");
+
   if (data->run_in_parallel) {
     struct zsv_parallel_data *pdata = data->parallel_data;
     zsv_select_print_header_row(data);
@@ -368,7 +388,17 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
 #endif
   int status = 0;
 
-  for (int i = 1; i < data->num_chunks; i++) {
+  for (int i = 0; i < data->num_chunks-1; i++) {
+    off_t last_row_end = i == 0 ? data->last_row_end : data->parallel_data->chunk_data[i].actual_end_offset;
+    off_t next_row_start = data->parallel_data->chunk_data[i+1].start_offset;
+    if(last_row_end > next_row_start) {
+      zsv_printerr(1, "Chunking error, please run without parallelization\n (in a future version, this will self-correct. Sorry, not implemented yet)");
+      // TO DO: self-correct: main thread re-processes next chunk
+      status = zsv_status_error;
+    }
+  }
+  
+  for (int i = 1; i < data->num_chunks && status == 0; i++) {
     struct zsv_chunk_data *c = &data->parallel_data->chunk_data[i];
 #ifdef __linux__
     int in_fd = open(c->tmp_output_filename, O_RDONLY);
@@ -400,26 +430,30 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
       perror("zsv temp mem file");
       status = zsv_status_error;
     }
+#endif
+  }
+
+  for (int i = 1; i < data->num_chunks; i++) {
+    struct zsv_chunk_data *c = &data->parallel_data->chunk_data[i];
     zsv_memfile_close(c->tmp_f);
     c->tmp_f = NULL;
-#endif
   }
   return status;
 }
 
-static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *path) {
+static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *path, size_t header_row_offset) {
   if (data->num_chunks <= 1 || !path || !strcmp(path, "-")) {
     data->run_in_parallel = 0;
     return 0;
   }
 
-  // Note: Ensure file is valid for seeking before calculation
-  struct zsv_chunk_position *offsets = zsv_calculate_file_chunks(path, data->num_chunks);
+  struct zsv_chunk_position *offsets = zsv_calculate_file_chunks(path, data->num_chunks, PARALLEL_MIN_BYTES, header_row_offset + 1);
   if (!offsets)
     return -1; // Fallback to serial
 
   if (!(data->parallel_data = zsv_parallel_data_new(data->num_chunks))) {
     zsv_free_chunks(offsets);
+    fprintf(stderr, "Insufficient memory to parallelize!\n");
     return zsv_status_memory;
   }
 
@@ -603,17 +637,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   if (stat != zsv_status_ok)
     goto zsv_select_main_done;
 
-#ifndef ZSV_NO_PARALLEL
-  // Parallel Setup
-  if (data.input_path && data.num_chunks > 1) {
-    stat = zsv_setup_parallel_chunks(&data, data.input_path);
-    if (stat == zsv_status_memory)
-      goto zsv_select_main_done;
-  }
-  if (data.opts->verbose)
-    fprintf(stderr, "Running %s\n", data.run_in_parallel ? "parallel" : "single-threaded");
-#endif
-
   // 3. Parser Initialization
   if (col_index_arg_i) {
     data.col_argv = &argv[col_index_arg_i];
@@ -629,7 +652,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     goto zsv_select_main_done;
   }
 
-  // 4. Execution
+  // Execution
   data.opts->row_handler = zsv_select_header_row;
   data.opts->ctx = &data;
 
