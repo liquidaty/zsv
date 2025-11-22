@@ -4,6 +4,11 @@ set -e
 
 echo "[INF] Running $0"
 
+if [ "$CI" != true ]; then
+  echo "[ERR] $0 is intended to be run only in CI environment!"
+  exit 1
+fi
+
 if [ "$TAG" = "" ]; then
   echo "[INF] TAG env var is not set!"
   echo "[INF] Setting TAG from the latest release..."

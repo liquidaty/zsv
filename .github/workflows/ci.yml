@@ -54,7 +54,7 @@ env:
 
 jobs:
   tag:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
 
     outputs:
       TAG: ${{ steps.tag.outputs.TAG }}
@@ -85,7 +85,7 @@ jobs:
         ./scripts/ci-run-clang-format.sh
 
   cppcheck:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout
@@ -117,7 +117,7 @@ jobs:
         if-no-files-found: error
 
   shellcheck:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout
@@ -128,7 +128,7 @@ jobs:
 
   ci-linux:
     needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
 
     env:
@@ -144,7 +144,7 @@ jobs:
     - name: Set up apt dependencies
       run: |
         sudo apt update
-        sudo apt install -y rpm alien tmux
+        sudo apt install -y rpm alien tmux ccache
         sudo apt remove -y jq
 
     - name: Build on Linux (${{ env.AMD64_LINUX_GCC }})
@@ -152,6 +152,8 @@ jobs:
         PREFIX: ${{ env.AMD64_LINUX_GCC }}
         CC: gcc
         MAKE: make
+        MAKE_PARALLEL: true
+        ENABLE_CCACHE: true
         RUN_TESTS: true
       run: |
         ./scripts/ci-build.sh
@@ -325,7 +327,7 @@ jobs:
       uses: actions/checkout@v5
 
     - name: Set up homebrew dependencies
-      run: brew install --quiet coreutils tree autoconf automake libtool tmux sqlite3
+      run: brew install --quiet coreutils tree autoconf automake libtool tmux sqlite3 ccache
 
     - name: Set PREFIX and ZIP env var
       env:
@@ -339,8 +341,10 @@ jobs:
 
     - name: Build on macOS (${{ env.AMD64_MACOSX_GCC }})
       env:
-        CC: gcc-13
+        CC: gcc
         MAKE: make
+        MAKE_PARALLEL: true
+        ENABLE_CCACHE: true
         RUN_TESTS: true
       run: ./scripts/ci-build.sh
 
@@ -494,7 +498,7 @@ jobs:
       run: ./scripts/ci-upload-release-artifacts.sh
 
   mingw-ncurses:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
     - name: Cache
@@ -508,7 +512,7 @@ jobs:
       if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       run: |
         sudo apt update
-        sudo apt install -y mingw-w64
+        sudo apt install -y mingw-w64 ccache
 
     - name: Checkout
       uses: actions/checkout@v5
@@ -519,6 +523,9 @@ jobs:
 
     - name: Build ncurses with MinGW
       if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+      env:
+        MAKE_PARALLEL: true
+        ENABLE_CCACHE: true
       run: ./scripts/ci-build-ncurses-with-mingw.sh
 
     - name: Upload mingw-ncurses.zip
@@ -531,7 +538,7 @@ jobs:
 
   ci-linux-mingw:
     needs: [tag, clang-format, cppcheck, shellcheck, mingw-ncurses]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
 
     env:
@@ -566,6 +573,8 @@ jobs:
         PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
+        MAKE_PARALLEL: true
+        ENABLE_CCACHE: true
         RUN_TESTS: false
       run: |
         export CFLAGS="-I$PWD/app/external/mingw-ncurses/include"
@@ -650,6 +659,7 @@ jobs:
           zip
           tar
           tmux
+          ccache
 
     - name: Checkout
       uses: actions/checkout@v5
@@ -670,6 +680,8 @@ jobs:
         PREFIX: ${{ env.AMD64_WSL_MINGW }}
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
+        MAKE_PARALLEL: true
+        ENABLE_CCACHE: true
         RUN_TESTS: true
         SKIP_BUILD: true
         SKIP_ZIP_ARCHIVE: false
@@ -696,7 +708,7 @@ jobs:
     steps:
     - name: Set up dependencies
       shell: sh
-      run: apk add bash gcc make musl-dev ncurses-dev ncurses-static tmux file sqlite curl zip wget tar git
+      run: apk add bash gcc make musl-dev ncurses-dev ncurses-static tmux file sqlite curl zip wget tar git ccache
 
     - name: Checkout
       uses: actions/checkout@v5
@@ -709,6 +721,8 @@ jobs:
         PREFIX: ${{ env.AMD64_LINUX_MUSL }}
         CC: gcc
         MAKE: make
+        MAKE_PARALLEL: true
+        ENABLE_CCACHE: true
         RUN_TESTS: true
         STATIC_BUILD: "1"
       run: ./scripts/ci-build.sh
@@ -825,7 +839,7 @@ jobs:
 
   ci-wasm-playground:
     needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
 
     env:
@@ -846,6 +860,8 @@ jobs:
         PREFIX: ${{ env.AMD64_LINUX_WASM }}
         CC: emcc
         MAKE: make
+        MAKE_PARALLEL: true
+        ENABLE_CCACHE: true
         RUN_TESTS: false
         CONFIGFILE: "config.emcc"
         CFLAGS: "-msse2 -msimd128"
@@ -862,6 +878,8 @@ jobs:
         PREFIX: ${{ env.AMD64_LINUX_WASM }}
         CC: emcc
         MAKE: make
+        MAKE_PARALLEL: true
+        ENABLE_CCACHE: true
         RUN_TESTS: false
         CONFIGFILE: "config.emcc"
         CROSS_COMPILING: "yes"
