@@ -74,7 +74,7 @@ chunk_break.csv: ../worldcitiespop_mil.csv
 test-parallel-3: $(SELECT_EXE) chunk_break.csv
 	@${TEST_INIT}
 	@rm -f ${TMP_DIR}/$@.out
-	@${SELECT_EXE} chunk_break.csv -j 3 > /dev/null 2>${TMP_DIR}/$@.out || [ 1 == 1 ]
+	@${SELECT_EXE} chunk_break.csv -j 3 > /dev/null 2>${TMP_DIR}/$@.out || [ 1 = 1 ]
 	@cmp ${TMP_DIR}/$@.out $@.expected.out && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
