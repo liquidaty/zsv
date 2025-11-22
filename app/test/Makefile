@@ -253,14 +253,18 @@ test-count test-count-pull: test-% : test-1-% test-2-%
 ifeq ($(ZSV_NO_PARALLEL),1)
 ifeq ($(HAVE_PCRE2_8),1)
   HELP_SELECT_LINES=40
+  HELP_COUNT_LINES=6
 else
   HELP_SELECT_LINES=39
+  HELP_COUNT_LINES=6
 endif
 else
 ifeq ($(HAVE_PCRE2_8),1)
   HELP_SELECT_LINES=42
+  HELP_COUNT_LINES=8
 else
   HELP_SELECT_LINES=41
+  HELP_COUNT_LINES=8
 endif
 endif
 test-cli: ${CLI}
@@ -269,7 +273,7 @@ test-cli: ${CLI}
 	@$< help select 2>&1 > ${TMP_DIR}/$@.out
 	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "select: extracts and outputs specified columns" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_SELECT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@$< help count 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "6" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_COUNT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-1-count test-1-count-pull: test-1-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
