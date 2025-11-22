@@ -38,17 +38,22 @@ help:
 	@echo "# run all tests:"
 	@echo "    make test"
 
-ifeq ($(EXE),)
-  $(error EXE is not defined)
-endif
+test: test-parallel-1 test-parallel-2
 
-test: test-parallel-1
-
-test-parallel-1: $(EXE) ../worldcitiespop_mil.csv
+test-parallel-1: $(SELECT_EXE) ../worldcitiespop_mil.csv
 	@${TEST_INIT}
-	@${EXE} ../worldcitiespop_mil.csv > ${TMP_DIR}/$@.serial.tmp
+	@${SELECT_EXE} ../worldcitiespop_mil.csv > ${TMP_DIR}/$@.serial.tmp
 	@mv ${TMP_DIR}/$@.serial.tmp ${TMP_DIR}/$@.serial
-	@${EXE} ../worldcitiespop_mil.csv -j 4 > ${TMP_DIR}/$@.parallel.tmp
+	@${SELECT_EXE} ../worldcitiespop_mil.csv -j 4 > ${TMP_DIR}/$@.parallel.tmp
+	@mv ${TMP_DIR}/$@.parallel.tmp ${TMP_DIR}/$@.parallel
+	@cmp ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel && ${TEST_PASS} || ${TEST_FAIL}
+	@rm -f ${TMP_DIR}/$@.serial.tmp ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel.tmp ${TMP_DIR}/$@.parallel
+
+test-parallel-2: $(COUNT_EXE) ../worldcitiespop_mil.csv
+	@${TEST_INIT}
+	@${COUNT_EXE} ../worldcitiespop_mil.csv > ${TMP_DIR}/$@.serial.tmp
+	@mv ${TMP_DIR}/$@.serial.tmp ${TMP_DIR}/$@.serial
+	@${COUNT_EXE} ../worldcitiespop_mil.csv -j 4 > ${TMP_DIR}/$@.parallel.tmp
 	@mv ${TMP_DIR}/$@.parallel.tmp ${TMP_DIR}/$@.parallel
 	@cmp ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel && ${TEST_PASS} || ${TEST_FAIL}
 	@rm -f ${TMP_DIR}/$@.serial.tmp ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel.tmp ${TMP_DIR}/$@.parallel

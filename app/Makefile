@@ -164,7 +164,7 @@ CFLAGS+= -I${PREFIX}/include
 THIS_LIB_BASE:=$(shell cd .. && pwd)
 INCLUDE_DIR:=${THIS_LIB_BASE}/include
 BUILD_DIR:=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
-UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index
+UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index zsv_chunk
 
 ZSV_EXTRAS ?=
 
@@ -397,7 +397,7 @@ ${CLEANS}: clean-%:
 .SUFFIXES:
 .SUFFIXES: .o .c .a
 
-${BUILD_DIR}/objs/sql_internal.o ${BUILD_DIR}/objs/utils/index.o: ${BUILD_DIR}/objs/%.o: %.c %.h # ${BUILD_DIR}/objs/%.o: %.c %.h
+${BUILD_DIR}/objs/sql_internal.o ${BUILD_DIR}/objs/utils/index.o ${BUILD_DIR}/objs/utils/zsv_chunk.o: ${BUILD_DIR}/objs/%.o: %.c %.h # ${BUILD_DIR}/objs/%.o: %.c %.h
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ -c $<
 

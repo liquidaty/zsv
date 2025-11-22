@@ -90,6 +90,14 @@ count-worldcitiespop_mil count-worldcitiespop_big: count-% : %.csv %.tsv
 	@(time ${ZSVBIN}${COUNT} < $< > /dev/null) 2>&1 | xargs
 	@echo ""
 
+	@printf "zsv --parallel       : "
+	@(time ${ZSVBIN}${COUNT} --parallel $< > /dev/null) 2>&1 | xargs
+	@printf "zsv --parallel       : "
+	@(time ${ZSVBIN}${COUNT} --parallel $< > /dev/null) 2>&1 | xargs
+	@printf "zsv --parallel       : "
+	@(time ${ZSVBIN}${COUNT} --parallel $< > /dev/null) 2>&1 | xargs
+	@echo ""
+
 ifneq ($(HAVE_XSV),1)
 	@echo "xsv not found: skipping (run \'brew install xsv\' to install)"
 else
@@ -188,12 +196,12 @@ select-worldcitiespop_mil select-worldcitiespop_big: select-% : %.csv %.tsv
 	@(time ${ZSVBIN}${SELECT} -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
 	@echo ""
 
-	@printf "zsv -j 8             : "
-	@(time ${ZSVBIN}${SELECT} -j 8 -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
-	@printf "zsv -j 8             : "
-	@(time ${ZSVBIN}${SELECT} -j 8 -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
-	@printf "zsv -j 8             : "
-	@(time ${ZSVBIN}${SELECT} -j 8 -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
+	@printf "zsv --parallel       : "
+	@(time ${ZSVBIN}${SELECT} --parallel -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
+	@printf "zsv --parallel       : "
+	@(time ${ZSVBIN}${SELECT} --parallel -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
+	@printf "zsv --parallel       : "
+	@(time ${ZSVBIN}${SELECT} --parallel -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
 	@echo ""
 
 ifneq ($(HAVE_XSV),1)

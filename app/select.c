@@ -43,13 +43,14 @@
 #include <zsv/utils/mem.h>
 #include <zsv/utils/memmem.h>
 #include <zsv/utils/arg.h>
+#include <zsv/utils/os.h>
 #include <zsv/utils/file.h>
+#include "utils/zsv_chunk.h"
 
 #include "select/internal.h" // various defines and structs
 #include "select/usage.c"    // zsv_select_usage_msg
 #include "select/rand.c"     // demo_random_bw_1_and_100()
 #include "select/fixed.c"    // auto_detect_fixed_column_sizes()
-#include "utils/zsv_chunk.c"
 #include "utils/cat.c"
 
 // zsv_select_add_search(), zsv_select_search_str_delete()

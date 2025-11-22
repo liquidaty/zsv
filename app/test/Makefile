@@ -141,9 +141,9 @@ test-prop:
 	@EXE=${BUILD_DIR}/bin/zsv_prop${EXE} ${MAKE} -C prop test
 
 ifneq ($(ZSV_NO_PARALLEL),1)
-test-parallel: ${BUILD_DIR}/bin/zsv_select${EXE} worldcitiespop_mil.csv
+test-parallel: ${BUILD_DIR}/bin/zsv_select${EXE} ${BUILD_DIR}/bin/zsv_count${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
-	@EXE=${BUILD_DIR}/bin/zsv_select${EXE} ${MAKE} -C parallel test
+	@SELECT_EXE=${BUILD_DIR}/bin/zsv_select${EXE} COUNT_EXE=${BUILD_DIR}/bin/zsv_count${EXE} ${MAKE} -C parallel test
 endif
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
