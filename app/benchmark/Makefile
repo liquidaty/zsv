@@ -132,6 +132,15 @@ else
 	@printf "duckdb               : "
 	@(time duckdb -c "SELECT count(*) FROM '$<'" > /dev/null) 2>&1 | xargs
 	@echo ""
+
+	@printf "duckdb (NO_QUOTE)    : "
+	@(time duckdb -c "SELECT count(*) FROM read_csv('$<',all_varchar=true,quote='')" > /dev/null) 2>&1 | xargs
+	@printf "duckdb (NO_QUOTE)    : "
+	@(time duckdb -c "SELECT count(*) FROM read_csv('$<',all_varchar=true,quote='')" > /dev/null) 2>&1 | xargs
+	@printf "duckdb (NO_QUOTE)    : "
+	@(time duckdb -c "SELECT count(*) FROM read_csv('$<',all_varchar=true,quote='')" > /dev/null) 2>&1 | xargs
+	@echo ""
+
 endif
 
 	@printf "tsv-utils            : "

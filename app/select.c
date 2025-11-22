@@ -437,8 +437,10 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
 
   for (int i = 1; i < data->num_chunks; i++) {
     struct zsv_chunk_data *c = &data->parallel_data->chunk_data[i];
+#ifndef __linux__
     zsv_memfile_close(c->tmp_f);
     c->tmp_f = NULL;
+#endif
   }
   return status;
 }
