@@ -24,10 +24,7 @@ zsv_memfile *zsv_memfile_open(size_t buffersize) {
   zsv_memfile *zfm = malloc(sizeof(zsv_memfile) + buffersize);
   if (!zfm)
     return NULL;
-  zfm->used = 0;
-  zfm->tmp_f = NULL;
-  zfm->total_written = 0;
-  zfm->read_offset = 0;
+  memset(zfm, 0, sizeof(zsv_memfile));
   zfm->size = buffersize;
   zfm->write_mode = true;
   return zfm;
@@ -176,6 +173,7 @@ void zsv_memfile_close(zsv_memfile *zfm) {
     unlink(zfm->tmp_fn);
   }
   free(zfm->tmp_fn);
+  zfm->tmp_fn = NULL;
 
   // Free the main structure
   free(zfm);
