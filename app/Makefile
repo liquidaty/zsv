@@ -330,8 +330,14 @@ help:
 	@echo "where xx is any of:"
 	@echo "  echo count count-pull paste select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm mv overwrite"
 	@echo ""
+	@echo "To run benchmarks:"
+	@echo "  ${MAKE} benchmark"
+	@echo ""
 
 install: ${ZSV}
+
+benchmark: ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}count${EXE} ${STANDALONE_PFX}2tsv${EXE}
+	make -C benchmark all
 
 uninstall-all: uninstall uninstall-util-lib
 
