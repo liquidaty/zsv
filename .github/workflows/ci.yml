@@ -146,11 +146,14 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y rpm alien tmux
+        # sudo apt remove -y jq
 
     - name: Set up ccache
       uses: hendrikmuhs/ccache-action@bfa03e1de4d7f7c3e80ad9109feedd05c4f5a716
       with:
         create-symlink: true
+        save: false
+        restore: false
 
     - name: Build on Linux (${{ env.AMD64_LINUX_GCC }})
       env:
