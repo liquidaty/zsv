@@ -327,6 +327,13 @@ jobs:
     - name: Set up homebrew dependencies
       run: brew install --quiet coreutils tree autoconf automake libtool tmux sqlite3
 
+    - name: Set up ccache
+      uses: hendrikmuhs/ccache-action@v1.2.19
+      with:
+        create-symlink: true
+        save: false
+        restore: false
+
     - name: Set PREFIX and ZIP env var
       env:
         PREFIX: ${{ runner.arch == 'X64' && env.AMD64_MACOSX_GCC || env.ARM64_MACOSX_GCC }}
@@ -339,7 +346,7 @@ jobs:
 
     - name: Build on macOS (${{ env.AMD64_MACOSX_GCC }})
       env:
-        CC: gcc-13
+        CC: gcc
         MAKE: make
         RUN_TESTS: true
       run: ./scripts/ci-build.sh
