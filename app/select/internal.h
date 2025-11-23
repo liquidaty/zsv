@@ -22,6 +22,7 @@ struct fixed {
   size_t *offsets;
   size_t count;
   size_t max_lines; // max lines to use to calculate offsets
+  char autodetect;
 };
 
 struct zsv_select_data {
@@ -84,7 +85,7 @@ struct zsv_select_data {
 #ifndef ZSV_NO_PARALLEL
   unsigned num_chunks;
   off_t end_offset_limit;                  // Byte offset where the current parser instance should stop
-  off_t last_row_end;                      // Actual byte offset of the last row that was processed
+  off_t next_row_start;                    // Actual byte offset of the last row that was processed
   struct zsv_parallel_data *parallel_data; // Pointer to the thread management structure
 #endif
 

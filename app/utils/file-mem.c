@@ -1,6 +1,8 @@
 #include <string.h>
 #include <errno.h>
 
+// TO DO: make this a standalone repo
+
 // The structure defining our dual-storage stream
 struct zsv_memfile {
   size_t size;          // size of buffer
@@ -19,14 +21,9 @@ typedef struct zsv_memfile zsv_memfile;
  * Equivalent to fopen: Allocates and initializes the stream.
  */
 zsv_memfile *zsv_memfile_open(size_t buffersize) {
-  if (buffersize == 0)
-    return NULL;
   zsv_memfile *zfm = malloc(sizeof(zsv_memfile) + buffersize);
-  if (!zfm) {
-    perror("Failed to allocate HybridStream");
+  if (!zfm)
     return NULL;
-  }
-  // Initialize state
   zfm->used = 0;
   zfm->tmp_f = NULL;
   zfm->total_written = 0;

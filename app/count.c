@@ -30,7 +30,7 @@
 #include "zsv_command.h"
 #include "zsv/utils/arg.h"
 #include "zsv/utils/os.h"
-#include "utils/zsv_chunk.h"
+#include "utils/chunk.h"
 
 struct data {
   zsv_parser parser;

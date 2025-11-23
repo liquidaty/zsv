@@ -1,6 +1,6 @@
 #include <errno.h>
 
-struct zsv_parallel_data *zsv_parallel_data_new(unsigned num_chunks) {
+static struct zsv_parallel_data *zsv_parallel_data_new(unsigned num_chunks) {
   struct zsv_parallel_data *pdata = calloc(1, sizeof(*pdata));
   if (pdata) {
     pdata->threads = calloc(num_chunks, sizeof(*pdata->threads));
@@ -15,18 +15,29 @@ struct zsv_parallel_data *zsv_parallel_data_new(unsigned num_chunks) {
   return NULL;
 }
 
-void zsv_parallel_data_delete(struct zsv_parallel_data *pdata) {
-  if (pdata) {
-    for (int i = 0; i < pdata->num_chunks; i++) {
-      if (pdata->chunk_data)
+static void zsv_chunk_data_clear_output(struct zsv_chunk_data *c) {
+  if (c) {
 #ifdef __linux__
-        free(pdata->chunk_data[i].tmp_output_filename);
-#else
-        if (pdata->chunk_data[i].tmp_f)
-          zsv_memfile_close(pdata->chunk_data[i].tmp_f);
-#endif
+    if (c->tmp_output_filename) {
+      unlink(c->tmp_output_filename);
+      free(c->tmp_output_filename);
+      c->tmp_output_filename = NULL;
     }
+#else
+    if (c->tmp_f) {
+      zsv_memfile_close(c->tmp_f);
+      c->tmp_f = NULL;
+    }
+#endif
+  }
+}
 
+static void zsv_parallel_data_delete(struct zsv_parallel_data *pdata) {
+  if (pdata) {
+    for (unsigned int i = 0; i < pdata->num_chunks; i++) {
+      if (pdata->chunk_data)
+        zsv_chunk_data_clear_output(&pdata->chunk_data[i]);
+    }
     free(pdata->threads);
     free(pdata->chunk_data);
     free(pdata);

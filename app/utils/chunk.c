@@ -1,11 +1,11 @@
-// /src/app/utils/zsv_chunk.c: implements /src/app/utils/zsv_chunk.h
+// /src/app/utils/chunk.c: implements /src/app/utils/chunk.h
 
 #include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "zsv_chunk.h"
+#include "chunk.h"
 
 /**
  * @brief Checks if a character is a newline character ('\n' or '\r').

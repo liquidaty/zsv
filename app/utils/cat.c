@@ -2,32 +2,31 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <stdlib.h> // for malloc/free
-#include <errno.h>  // For error reporting
+#include <stdlib.h> // malloc/free
+#include <errno.h>  // error reporting
 
 // Define a reasonable buffer size for the buffered copy
 #define COPY_BUFFER_SIZE (1024 * 64) // 64KB
 
 #ifdef _WIN32
 // Windows target (via mingw64)
-#include <io.h>      // For _get_osfhandle
-#include <windows.h> // For HANDLE, ReadFile, WriteFile
+#include <io.h>      // _get_osfhandle
+#include <windows.h> // HANDLE, ReadFile, WriteFile
 #else
 // POSIX target (Linux/macOS)
-#include <sys/stat.h> // For fstat, stat
-#include <sys/uio.h>  // Crucial for macOS/BSD sendfile() definition
+#include <sys/stat.h> // fstat, stat
+// #include <sys/uio.h>  // macOS/BSD sendfile() definition
 #ifdef __linux__
-#include <sys/sendfile.h> // Only on Linux
+#include <sys/sendfile.h> // only on Linux
 #endif
 #endif
 
-// Concatenate two files
-// If possible, use zero-copy via sendfile
+// concatenate two files. if possible, use zero-copy via sendfile
 long zsv_concatenate_copy(int out_fd, int in_fd, off_t size) {
   long total_written = 0;
 
 #ifdef _WIN32
-  // --- Windows Implementation (Buffered Copy via Native APIs) ---
+  // --- windows: buffered copy via native apis
   HANDLE hOut = (HANDLE)_get_osfhandle(out_fd);
   HANDLE hIn = (HANDLE)_get_osfhandle(in_fd);
   if (hOut == INVALID_HANDLE_VALUE || hIn == INVALID_HANDLE_VALUE)
@@ -63,7 +62,7 @@ long zsv_concatenate_copy(int out_fd, int in_fd, off_t size) {
   return total_written;
 
 #elif defined(__linux__)
-  // --- Linux Implementation (Zero-Copy) ---
+  // --- linux: zero-copy! ---
   off_t offset = 0;
   long bytes_to_copy = size;
   // sendfile: target_fd, source_fd, offset*, count
@@ -71,7 +70,8 @@ long zsv_concatenate_copy(int out_fd, int in_fd, off_t size) {
   return result;
 
 #else
-  // --- Generic POSIX Fallback (Buffered Copy) ---
+  (void)(size);
+  // --- generic posix fallback (buffered copy) ---
   char *buffer = malloc(COPY_BUFFER_SIZE);
   if (!buffer)
     return -1;

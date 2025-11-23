@@ -72,11 +72,13 @@ chunk_break.csv: ../worldcitiespop_mil.csv
 	@git apply chunk_break.diff
 	@mv chunk_break.csv.tmp chunk_break.csv
 
-test-parallel-3: $(SELECT_EXE) chunk_break.csv
+${TMP_DIR}/chunk_clean.csv: chunk_break.csv
+	@${SELECT_EXE} --whitespace-clean-no-newline < chunk_break.csv > $@
+
+test-parallel-3: $(SELECT_EXE) chunk_break.csv ${TMP_DIR}/chunk_clean.csv
 	@${TEST_INIT}
-	@rm -f ${TMP_DIR}/$@.out
-	@${SELECT_EXE} chunk_break.csv -j 3 > /dev/null 2>${TMP_DIR}/$@.out || [ 1 = 1 ]
-	@cmp ${TMP_DIR}/$@.out $@.expected.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${SELECT_EXE} chunk_break.csv -j 3 --whitespace-clean-no-newline > ${TMP_DIR}/$@.out
+	@cmp ${TMP_DIR}/$@.out ${TMP_DIR}/chunk_clean.csv && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
 	@rm -rf ${TMP_DIR}

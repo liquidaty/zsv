@@ -16,12 +16,12 @@ struct zsv_chunk_data {
 #endif
   off_t start_offset;
   off_t end_offset; // Stop processing when current offset exceeds this
-  off_t actual_end_offset;
+  off_t actual_next_row_start;
   struct zsv_opts *opts; // Configuration options (read-only)
   enum zsv_status status;
   int id;
-  unsigned char skip:1;
-  unsigned char _:7;
+  unsigned char skip : 1;
+  unsigned char _ : 7;
 };
 
 /**
@@ -34,7 +34,8 @@ struct zsv_parallel_data {
   struct zsv_chunk_data *chunk_data; // array of N chunk datas
 };
 
-struct zsv_parallel_data *zsv_parallel_data_new(unsigned num_chunks);
-void zsv_parallel_data_delete(struct zsv_parallel_data *pdata);
+static struct zsv_parallel_data *zsv_parallel_data_new(unsigned num_chunks);
+static void zsv_chunk_data_clear_output(struct zsv_chunk_data *c);
+static void zsv_parallel_data_delete(struct zsv_parallel_data *pdata);
 
 #endif
