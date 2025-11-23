@@ -145,8 +145,12 @@ jobs:
     - name: Set up apt dependencies
       run: |
         sudo apt update
-        sudo apt install -y rpm alien tmux ccache
-        sudo apt remove -y jq
+        sudo apt install -y rpm alien tmux
+
+    - name: Set up ccache
+      uses: hendrikmuhs/ccache-action@v1
+      with:
+        create-symlink: true
 
     - name: Build on Linux (${{ env.AMD64_LINUX_GCC }})
       env:
@@ -154,7 +158,6 @@ jobs:
         CC: gcc
         MAKE: make
         MAKE_PARALLEL: false
-        ENABLE_CCACHE: true
         RUN_TESTS: true
       run: |
         ./scripts/ci-build.sh
@@ -345,7 +348,6 @@ jobs:
   #       CC: gcc
   #       MAKE: gmake
   #       MAKE_PARALLEL: true
-  #       ENABLE_CCACHE: true
   #       RUN_TESTS: true
   #     run: ./scripts/ci-build.sh
 
@@ -526,7 +528,6 @@ jobs:
   #     if: ${{ steps.cache.outputs.cache-hit != 'true' }}
   #     env:
   #       MAKE_PARALLEL: true
-  #       ENABLE_CCACHE: true
   #     run: ./scripts/ci-build-ncurses-with-mingw.sh
 
   #   - name: Upload mingw-ncurses.zip
@@ -575,7 +576,6 @@ jobs:
   #       CC: x86_64-w64-mingw32-gcc
   #       MAKE: make
   #       MAKE_PARALLEL: true
-  #       ENABLE_CCACHE: true
   #       RUN_TESTS: false
   #     run: |
   #       export CFLAGS="-I$PWD/app/external/mingw-ncurses/include"
@@ -682,7 +682,6 @@ jobs:
   #       CC: x86_64-w64-mingw32-gcc
   #       MAKE: make
   #       MAKE_PARALLEL: true
-  #       ENABLE_CCACHE: true
   #       RUN_TESTS: true
   #       SKIP_BUILD: true
   #       SKIP_ZIP_ARCHIVE: false
@@ -723,7 +722,6 @@ jobs:
   #       CC: gcc
   #       MAKE: make
   #       MAKE_PARALLEL: true
-  #       ENABLE_CCACHE: true
   #       RUN_TESTS: true
   #       STATIC_BUILD: "1"
   #     run: ./scripts/ci-build.sh
@@ -862,7 +860,6 @@ jobs:
   #       CC: emcc
   #       MAKE: make
   #       MAKE_PARALLEL: true
-  #       ENABLE_CCACHE: true
   #       RUN_TESTS: false
   #       CONFIGFILE: "config.emcc"
   #       CFLAGS: "-msse2 -msimd128"
@@ -880,7 +877,6 @@ jobs:
   #       CC: emcc
   #       MAKE: make
   #       MAKE_PARALLEL: true
-  #       ENABLE_CCACHE: true
   #       RUN_TESTS: false
   #       CONFIGFILE: "config.emcc"
   #       CROSS_COMPILING: "yes"

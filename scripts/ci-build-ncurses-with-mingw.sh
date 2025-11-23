@@ -19,14 +19,6 @@ if [ "$MAKE_PARALLEL" = true ]; then
   MAKE_FLAGS="--jobs --output-sync"
 fi
 
-ENABLE_CCACHE=${ENABLE_CCACHE:-false}
-CCACHE=
-if [ "$ENABLE_CCACHE" = true ]; then
-  CCACHE=ccache
-  echo "[INF] Using ccache for compilation"
-  ccache --version
-fi
-
 ./configure \
   --host=x86_64-w64-mingw32 \
   --prefix="$NCURSES_PREFIX" \
@@ -49,7 +41,7 @@ fi
   --disable-db-install
 
 # shellcheck disable=SC2086
-make $MAKE_FLAGS CC="$CCACHE $CC"
+make $MAKE_FLAGS
 make install
 
 if [ "$CI" = true ]; then

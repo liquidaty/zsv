@@ -21,14 +21,6 @@ if [ "$MAKE_PARALLEL" = true ]; then
   MAKE_FLAGS="--jobs --output-sync"
 fi
 
-ENABLE_CCACHE=${ENABLE_CCACHE:-false}
-CCACHE=
-if [ "$ENABLE_CCACHE" = true ]; then
-  CCACHE=ccache
-  echo "[INF] Using ccache for compilation"
-  ccache --version
-fi
-
 if [ "$RUN_TESTS" != true ]; then
   RUN_TESTS=false
 fi
@@ -64,7 +56,6 @@ echo "[INF] MAKE_PARALLEL:    $MAKE_PARALLEL"
 echo "[INF] MAKE_FLAGS:       $MAKE_FLAGS"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
 echo "[INF] STATIC_BUILD:     $STATIC_BUILD"
-echo "[INF] ENABLE_CCACHE:    $ENABLE_CCACHE"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
 echo "[INF] WITHOUT_SIMD:     $WITHOUT_SIMD"
 echo "[INF] SKIP_BUILD:       $SKIP_BUILD"
@@ -119,7 +110,7 @@ if [ "$SKIP_BUILD" = false ]; then
   echo "[INF] Building"
   rm -rf build "$PREFIX" /usr/local/etc/zsv.ini
   # shellcheck disable=SC2086
-  $MAKE $MAKE_FLAGS install CC="$CCACHE $CC"
+  $MAKE $MAKE_FLAGS install
   tree "$PREFIX"
   echo "[INF] Built successfully!"
 
