@@ -5,12 +5,6 @@
  * https://opensource.org/licenses/MIT
  */
 
-// Parallelization TO DO:
-//   - disallow parallelization when certain options are enabled:
-//     - max_rows
-//     - overwrite_auto
-//     - overwrite
-
 #include <stdio.h>
 #include <assert.h>
 #ifdef _WIN32
@@ -611,8 +605,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #ifndef ZSV_NO_PARALLEL
     else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs"))
       ARG_require_val(data.num_chunks, atoi);
-    else if (!strcmp(arg, "--parallel"))
+    else if (!strcmp(arg, "--parallel")) {
       data.num_chunks = zsv_get_number_of_cores();
+      if (data.num_chunks < 2) {
+        fprintf(stderr, "Warning: --parallel specified but only one core found; using -j 4 instead");
+        data.num_chunks = 4;
+      }
+    }
 #endif
     else if (!strcmp(arg, "-e")) {
       const char *v;
@@ -640,6 +639,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     srand(time(0));
   if (data.use_header_indexes && (stat = zsv_select_check_exclusions_are_indexes(&data)))
     goto zsv_select_main_done;
+
+#ifndef ZSV_NO_PARALLEL
+  if (data.num_chunks > 1) {
+    enum zsv_chunk_status chstat = zsv_chunkable(data.input_path, data.opts);
+    if (chstat != zsv_chunk_status_ok) {
+      stat = zsv_printerr(1, "%s", zsv_chunk_status_str(chstat));
+      goto zsv_select_main_done;
+    }
+  }
+#endif
 
   // input stream
   if (data.input_path) {

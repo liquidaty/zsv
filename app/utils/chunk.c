@@ -88,7 +88,7 @@ struct zsv_chunk_position *zsv_guess_file_chunks(const char *filename, uint64_t 
   }
   total_size -= initial_offset;
 
-  if (total_size < min_size) {
+  if (total_size < (zsv_file_pos)min_size) {
     fprintf(stderr, "file size too small for parallelization\n");
     fclose(fp);
     return NULL;
@@ -112,7 +112,7 @@ struct zsv_chunk_position *zsv_guess_file_chunks(const char *filename, uint64_t 
     chunks[i].start = current_offset;
 
     // Calculate the initial nominal boundary for this chunk
-    zsv_file_pos nominal_boundary = (i == N - 1) ? total_size : (i + 1) * base_size;
+    zsv_file_pos nominal_boundary = (i == N - 1) ? total_size : (zsv_file_pos)((i + 1) * base_size);
 
     if (i < N - 1) {
       // Adjust the boundary for all but the last chunk
@@ -187,4 +187,29 @@ int zsv_read_first_line_at_offset(const char *filename, zsv_file_pos offset, cha
 
   fclose(fp);
   return 0;
+}
+
+const char *zsv_chunk_status_str(enum zsv_chunk_status stat) {
+  switch (stat) {
+  case zsv_chunk_status_ok:
+    return NULL;
+  case zsv_chunk_status_no_file_input:
+    return "Parallelization requires a file input";
+  case zsv_chunk_status_overwrite:
+    return "Parallelization cannot be used with overwrite";
+  case zsv_chunk_status_max_rows:
+    return "Parallelization cannot be used with -L,--limit-rows";
+  }
+  return NULL;
+}
+
+enum zsv_chunk_status zsv_chunkable(const char *inputpath, struct zsv_opts *opts) {
+  if (!inputpath)
+    return zsv_chunk_status_no_file_input;
+  struct zsv_opt_overwrite o = {0};
+  if (memcmp(&opts->overwrite, &o, sizeof(o)) || opts->overwrite_auto)
+    return zsv_chunk_status_overwrite;
+  if (opts->max_rows)
+    return zsv_chunk_status_max_rows;
+  return zsv_chunk_status_ok;
 }

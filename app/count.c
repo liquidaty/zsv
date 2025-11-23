@@ -20,32 +20,24 @@
 
 #define ZSV_COUNT_PARALLEL_MIN_BYTES (1024 * 1024 * 2)
 
-/* * ---------------------------------------------------------------------------
- * Parallel Structures (Inlined to remove select/parallel.c dependency)
- * ---------------------------------------------------------------------------
- */
-
-struct zsv_chunk_data {
+struct zsv_chunk_count_data {
   unsigned int id;
   size_t start_offset;
   size_t end_offset;
 
-  /* Outputs */
   size_t actual_next_row_start;
   size_t row_count;
   int status;
 
-  /* Inputs */
   const char *input_path;
   struct zsv_opts *opts_template;
 
-  /* Runtime state for workers */
   int skip;
 };
 
-struct zsv_parallel_data {
+struct zsv_count_parallel_data {
   unsigned int chunk_count;
-  struct zsv_chunk_data *chunks;
+  struct zsv_chunk_count_data *chunks;
   pthread_t *threads;
 };
 
@@ -53,30 +45,24 @@ struct data {
   zsv_parser parser;
   size_t rows;
 
-  /* Configuration */
   struct zsv_opts *opts;
   const char *input_path;
   unsigned int num_chunks;
 
-  /* Parallel State */
   int run_in_parallel;
-  struct zsv_parallel_data *pdata;
-
-  /* Chunk 0 / Boundary State */
-  size_t end_offset_limit; /* Where this chunk (chunk 0) should stop */
-  int cancelled;           /* Stops the parse loop if chunk limit reached */
-  size_t next_row_start;   /* Where chunk 0 actually ended */
+  int cancelled;
+#ifndef ZSV_NO_PARALLEL
+  struct zsv_count_parallel_data *pdata;
+  size_t end_offset_limit; // where this chunk (chunk 0) should stop
+  size_t next_row_start;   // where chunk 0 actually ended
+#endif
 };
 
-/* Forward declaration */
-static void *process_chunk_internal(struct zsv_chunk_data *cdata);
+#ifndef ZSV_NO_PARALLEL
+static void *process_chunk_internal(struct zsv_chunk_count_data *cdata);
 
-/* * ---------------------------------------------------------------------------
- * Helper: Parallel Data Management
- * ---------------------------------------------------------------------------
- */
-static struct zsv_parallel_data *parallel_data_new(unsigned int count) {
-  struct zsv_parallel_data *pd = calloc(1, sizeof(*pd));
+static struct zsv_count_parallel_data *parallel_data_new(unsigned int count) {
+  struct zsv_count_parallel_data *pd = calloc(1, sizeof(*pd));
   if (!pd)
     return NULL;
   pd->chunk_count = count;
@@ -91,7 +77,7 @@ static struct zsv_parallel_data *parallel_data_new(unsigned int count) {
   return pd;
 }
 
-static void parallel_data_delete(struct zsv_parallel_data *pd) {
+static void parallel_data_delete(struct zsv_count_parallel_data *pd) {
   if (pd) {
     free(pd->chunks);
     free(pd->threads);
@@ -99,12 +85,9 @@ static void parallel_data_delete(struct zsv_parallel_data *pd) {
   }
 }
 
-/* * ---------------------------------------------------------------------------
- * Row Handlers
- * ---------------------------------------------------------------------------
- */
+#endif
 
-/* Serial / Standard Handlers */
+/* serial (non-parallelized) row handlers */
 static void row_verbose(void *ctx) {
   struct data *data = ctx;
   data->rows++;
@@ -116,16 +99,16 @@ static void row_simple(void *ctx) {
   ((struct data *)ctx)->rows++;
 }
 
-/* Chunk 0 (Main Thread) End Handler */
+#ifndef ZSV_NO_PARALLEL
+/* parallelized row handers */
 static void row_parallel_done(void *ctx) {
   struct data *data = ctx;
-  // We are finding the start of the row *after* the boundary
+  // Find start of the next row
   data->next_row_start = zsv_cum_scanned_length(data->parser) - zsv_row_length_raw_bytes(data->parser);
   zsv_abort(data->parser);
   data->cancelled = 1;
 }
 
-/* Chunk 0 (Main Thread) Parallel Handler */
 static void row_parallel(void *ctx) {
   struct data *data = ctx;
   data->rows++;
@@ -137,9 +120,8 @@ static void row_parallel(void *ctx) {
   }
 }
 
-/* Worker Thread Row Context */
 struct worker_ctx {
-  struct zsv_chunk_data *cdata;
+  struct zsv_chunk_count_data *cdata;
   zsv_parser parser;
   size_t limit_len;
   int cancelled;
@@ -163,16 +145,12 @@ static void worker_row(void *ctx) {
   }
 }
 
-/* * ---------------------------------------------------------------------------
- * Worker Thread Execution
- * ---------------------------------------------------------------------------
- */
 static void *process_chunk_thread(void *arg) {
-  struct zsv_chunk_data *cdata = arg;
+  struct zsv_chunk_count_data *cdata = arg;
   return process_chunk_internal(cdata);
 }
 
-static void *process_chunk_internal(struct zsv_chunk_data *cdata) {
+static void *process_chunk_internal(struct zsv_chunk_count_data *cdata) {
   cdata->row_count = 0;
   cdata->status = 0;
 
@@ -215,7 +193,7 @@ static void *process_chunk_internal(struct zsv_chunk_data *cdata) {
     status = zsv_parse_more(wctx.parser);
   }
 
-  // If finished naturally (EOF)
+  // if finished naturally (eof)
   if (!wctx.cancelled) {
     cdata->actual_next_row_start = cdata->start_offset + zsv_cum_scanned_length(wctx.parser);
   }
@@ -225,43 +203,32 @@ static void *process_chunk_internal(struct zsv_chunk_data *cdata) {
   fclose(f);
   return NULL;
 }
-
-/* * ---------------------------------------------------------------------------
- * Header & Setup Logic
- * ---------------------------------------------------------------------------
- */
+#endif
 
 static void header_handler(void *ctx) {
   struct data *data = ctx;
-
-  /* 1. Calculate Header End */
-  size_t header_end = zsv_cum_scanned_length(data->parser);
-
-  /* 2. Decide Strategy */
-  int setup_ok = 0;
-
+#ifndef ZSV_NO_PARALLEL
   if (data->input_path && data->num_chunks > 1) {
-    /* Try to guess chunks */
+    size_t header_end = zsv_cum_scanned_length(data->parser);
     struct zsv_chunk_position *offsets =
       zsv_guess_file_chunks(data->input_path, data->num_chunks, ZSV_COUNT_PARALLEL_MIN_BYTES, header_end);
 
     if (offsets) {
       data->pdata = parallel_data_new(data->num_chunks);
       if (!data->pdata) {
+        fprintf(stderr, "Out of memory!\n");
         zsv_free_chunks(offsets);
-        fprintf(stderr, "Insufficient memory for parallelization\n");
       } else {
         data->run_in_parallel = 1;
-
         if (data->opts->verbose) {
           for (unsigned int i = 0; i < data->num_chunks; i++) {
             fprintf(stderr, "Chunk %i: %zu - %zu\n", i + 1, offsets[i].start, offsets[i].end);
           }
         }
 
-        /* Setup Worker Chunks (1..N) */
+        /* set up worker chunks (1..n) */
         for (unsigned int i = 1; i < data->num_chunks; i++) {
-          struct zsv_chunk_data *c = &data->pdata->chunks[i];
+          struct zsv_chunk_count_data *c = &data->pdata->chunks[i];
           c->id = i;
           c->start_offset = offsets[i].start;
           c->end_offset = offsets[i].end;
@@ -276,31 +243,21 @@ static void header_handler(void *ctx) {
         }
 
         if (data->run_in_parallel) {
-          /* Setup Chunk 0 (Main Thread) */
-          data->end_offset_limit = offsets[0].end; // Absolute offset
-
-          /* * CRITICAL: Switch handler on the LIVE parser.
-           * Do NOT abort. Do NOT seek. Just change the function pointer.
-           */
+          data->end_offset_limit = offsets[0].end;
           zsv_set_row_handler(data->parser, row_parallel);
-          setup_ok = 1;
+          data->run_in_parallel = 1;
         }
       }
       zsv_free_chunks(offsets);
     }
   }
+#endif
 
-  if (!setup_ok) {
-    /* Fallback to Serial */
+  if (!data->run_in_parallel) { // single-threaded serial run
     data->run_in_parallel = 0;
     zsv_set_row_handler(data->parser, data->opts->verbose ? row_verbose : row_simple);
   }
 }
-
-/* * ---------------------------------------------------------------------------
- * Main
- * ---------------------------------------------------------------------------
- */
 
 static int count_usage(void) {
   static const char *usage = "Usage: count [options]\n"
@@ -308,8 +265,11 @@ static int count_usage(void) {
                              "Options:\n"
                              "  -h,--help             : show usage\n"
                              "  -i,--input <filename> : use specified file input\n"
+#ifndef ZSV_NO_PARALLEL
                              "  -j,--jobs <n>         : number of jobs (parallel threads)\n"
-                             "  --parallel            : use all available cores\n";
+                             "  --parallel            : use all available cores\n"
+#endif
+    ;
   printf("%s\n", usage);
   return 0;
 }
@@ -341,6 +301,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           err = 0;
         }
       }
+#ifndef ZSV_NO_PARALLEL
     } else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs")) {
       if (++i >= argc)
         err = 1;
@@ -348,6 +309,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         data.num_chunks = atoi(argv[i]);
     } else if (!strcmp(arg, "--parallel")) {
       data.num_chunks = zsv_get_number_of_cores();
+      if (data.num_chunks < 2) {
+        fprintf(stderr, "Warning: --parallel specified but only one core found; using -j 4 instead");
+        data.num_chunks = 4;
+      }
+#endif
     } else {
       fprintf(stderr, "Unrecognized option: %s\n", arg);
       err = 1;
@@ -360,9 +326,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     err = 1;
   }
 #endif
-
+#ifndef ZSV_NO_PARALLEL
+  if (data.num_chunks > 1) {
+    enum zsv_chunk_status chstat = zsv_chunkable(data.input_path, &opts);
+    if (chstat != zsv_chunk_status_ok) {
+      fprintf(stderr, "%s\n", zsv_chunk_status_str(chstat));
+      err = 1;
+    }
+  }
+#endif
   if (!err) {
-    /* Start with Header Handler */
     opts.row_handler = header_handler;
     opts.ctx = &data;
 
@@ -375,38 +348,31 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       /* Main Parse Loop */
       while (!data.cancelled && (status = zsv_parse_more(data.parser)) == zsv_status_ok)
         ;
-
       zsv_finish(data.parser);
 
-      /* Handle Parsing Results */
+#ifndef ZSV_NO_PARALLEL
       if (data.run_in_parallel) {
-        /* 1. Finalize Chunk 0 */
-        if (!data.next_row_start) {
-          // If cancelled wasn't set, we hit EOF
+        if (!data.next_row_start)
+          // not likely to get here but just in case
           data.next_row_start = zsv_cum_scanned_length(data.parser);
-        }
-        // Note: We assume chunk 0 starts at 0, but strictly speaking header_end is handled implicitly
-        // because we continued parsing with the SAME parser.
 
         size_t total_rows = data.rows;
-
-        /* 2. Join and Merge */
+        // aggregate results
         for (unsigned int i = 1; i < data.num_chunks; i++) {
           pthread_join(data.pdata->threads[i], NULL);
 
-          struct zsv_chunk_data *prev_chunk = (i == 1) ? NULL : &data.pdata->chunks[i - 1];
-          struct zsv_chunk_data *curr_chunk = &data.pdata->chunks[i];
+          struct zsv_chunk_count_data *prev_chunk = (i == 1) ? NULL : &data.pdata->chunks[i - 1];
+          struct zsv_chunk_count_data *curr_chunk = &data.pdata->chunks[i];
 
-          /* Determine where the previous chunk actually ended */
+          // determine where the previous chunk actually ended
           size_t prev_end = (i == 1) ? data.next_row_start : prev_chunk->actual_next_row_start;
-
-          /* Check Overlap */
+          // check overlap
           if (prev_end > curr_chunk->start_offset) {
             if (data.opts->verbose) {
               fprintf(stderr, "Overlap detected at chunk %u (expected %zu, got %zu). Reprocessing.\n", i,
                       curr_chunk->start_offset, prev_end);
             }
-            /* Reprocess Synchronously */
+            // reprocess synchronously
             curr_chunk->start_offset = prev_end;
             process_chunk_internal(curr_chunk);
           }
@@ -417,11 +383,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         printf("%zu\n", total_rows);
         parallel_data_delete(data.pdata);
 
-      } else {
-        /* Serial Result */
+      } else
+#endif
+        // result from running serially
         printf("%zu\n", data.rows);
-      }
-
       zsv_delete(data.parser);
     }
   }

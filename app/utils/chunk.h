@@ -1,9 +1,10 @@
 #ifndef ZSV_CHUNK_H
 #define ZSV_CHUNK_H
 
-#include <stddef.h>    // For size_t
-#include <stdint.h>    // For uint64_t
-#include <sys/types.h> // For off_t
+#include <zsv/common.h> // struct zsv_opts
+#include <stddef.h>     // For size_t
+#include <stdint.h>     // For uint64_t
+#include <sys/types.h>  // For off_t
 
 typedef off_t zsv_file_pos;
 
@@ -41,5 +42,22 @@ void zsv_free_chunks(struct zsv_chunk_position *chunks);
  * @return int 0 on success, -1 on error.
  */
 int zsv_read_first_line_at_offset(const char *filename, zsv_file_pos offset, char *buffer, size_t buf_size);
+
+enum zsv_chunk_status {
+  zsv_chunk_status_ok = 0,
+  zsv_chunk_status_no_file_input,
+  zsv_chunk_status_overwrite,
+  zsv_chunk_status_max_rows
+};
+
+/**
+ * zsv_chunkable(): check if chunking is compatible wth options; return chunk_status
+ */
+enum zsv_chunk_status zsv_chunkable(const char *inputpath, struct zsv_opts *opts);
+
+/**
+ * Convert zsv_chunk_status to string description
+ */
+const char *zsv_chunk_status_str(enum zsv_chunk_status stat);
 
 #endif // ZSV_CHUNK_H
