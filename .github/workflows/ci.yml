@@ -551,7 +551,7 @@ jobs:
     - name: Set up apt dependencies
       run: |
         sudo apt update
-        sudo apt install -y mingw-w64 nuget
+        sudo apt install -y mingw-w64 nuget ccache
         sudo apt remove -y jq
 
     - name: Checkout
