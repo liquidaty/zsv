@@ -26,10 +26,12 @@ mkdir -p "$CPPCHECK_BUILD_DIR"
 
 echo "[INF] Generating XML report..."
 cppcheck \
+  -j "$(nproc)" \
   --quiet \
   --enable=all \
   --project="$CPPCHECK_PROJECT_FILE" \
-  --xml 2>"$CPPCHECK_XML_OUTPUT_FILE"
+  --xml \
+  --output-file="$CPPCHECK_XML_OUTPUT_FILE"
 
 ls -hl "$CPPCHECK_XML_OUTPUT_FILE"
 
@@ -79,6 +81,7 @@ if [ "$CI" = true ]; then
     echo "| File:Line | Column | Severity |  ID   | Message |  CWE  |"
     echo "| :-------: | :----: | :------: | :---: | :-----: | :---: |"
     cppcheck \
+      -j "$(nproc)" \
       --quiet \
       --enable=all \
       --project="$CPPCHECK_PROJECT_FILE" \
