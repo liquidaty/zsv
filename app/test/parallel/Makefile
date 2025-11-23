@@ -47,7 +47,7 @@ help:
 	@echo "#    make test # run all tests"
 	@echo "#    make test-parallel-1|test-parallel-2|test-parallel-3 # run individual tests"
 
-test: test-parallel-1 test-parallel-2 test-parallel-3 test-parallel-4
+test: test-parallel-1 test-parallel-2 test-parallel-3 test-parallel-4 test-parallel-5
 
 test-parallel-1: $(SELECT_EXE) ../worldcitiespop_mil.csv
 	@${TEST_INIT}
@@ -86,6 +86,13 @@ test-parallel-4: $(COUNT_EXE) chunk_break.csv
 	@${COUNT_EXE} chunk_break.csv -j 3 > ${TMP_DIR}/$@.out -v 2>${TMP_DIR}/$@.err
 	@cmp ${TMP_DIR}/$@.out $@.expected.out && ${TEST_PASS} || ${TEST_FAIL}
 	@cmp ${TMP_DIR}/$@.err $@.expected.err && ${TEST_PASS} || ${TEST_FAIL}
+
+test-parallel-5: $(SELECT_EXE) ../worldcitiespop_mil.csv
+	@${TEST_INIT}
+	@${SELECT_EXE} --regex-search '^[BSZ]an Tala[qt]' ../worldcitiespop.csv > ${TMP_DIR}/$@.out
+	@${SELECT_EXE} -j 10 --regex-search '^[BSZ]an Tala[qt]' ../worldcitiespop.csv > ${TMP_DIR}/$@.parallel.out
+	@cmp ${TMP_DIR}/$@.out ${TMP_DIR}/$@.parallel.out && ${TEST_PASS} || ${TEST_FAIL}
+	@[ `wc -l < ${TMP_DIR}/$@.out` = 150 ] && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
 	@rm -rf ${TMP_DIR}

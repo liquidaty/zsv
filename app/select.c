@@ -201,8 +201,14 @@ static void zsv_select_output_data_row(struct zsv_select_data *data) {
   for (unsigned int i = 0; i < cnt; i++) { // for each output column
     unsigned int in_ix = data->out2in[i].ix;
     struct zsv_cell cell = zsv_get_cell(data->parser, in_ix);
-    if (UNLIKELY(data->any_clean != 0))
+    if (UNLIKELY(data->any_clean != 0)) {
+      // leading/trailing white may have been converted to NULL for regex search
+      while (cell.len && *cell.str == '\0')
+        cell.str++, cell.len--;
+      while (cell.len && cell.str[cell.len - 1] == '\0')
+        cell.len--;
       cell.str = zsv_select_cell_clean(data, cell.str, &cell.quoted, &cell.len);
+    }
     if (VERY_UNLIKELY(data->distinct == ZSV_SELECT_DISTINCT_MERGE)) {
       if (UNLIKELY(cell.len == 0)) {
         for (struct zsv_select_uint_list *ix = data->out2in[i].merge.indexes; ix; ix = ix->next) {
