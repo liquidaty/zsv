@@ -26,7 +26,6 @@ struct fixed {
 };
 
 struct zsv_select_data {
-  //  FILE *in;
   const char *input_path;
   unsigned int current_column_ix;
   size_t data_row_count;

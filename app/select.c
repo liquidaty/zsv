@@ -98,6 +98,12 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
   data.parallel_data = NULL; // clear parallel data pointer in local copy
   data.cancelled = 0;        // necessary in case we are re-running due to incorrect chunk start
 
+#ifdef HAVE_PCRE2_8
+  // duplicate data.search_regexs for thread safety
+  if (data.search_regexs)
+    data.search_regexs = zsv_select_regexs_dup(data.search_regexs);
+#endif
+
   struct zsv_opts opts = {0};
   opts.max_columns = cdata->opts->max_columns;
   opts.max_row_size = cdata->opts->max_row_size;
@@ -159,9 +165,12 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
     // a correctly-split chunk's last row entirely ate the next incorrectly-split chunk
     data.next_row_start = zsv_cum_scanned_length(data.parser) + 1;
 #endif
-
+ 
   // clean up
   zsv_delete(data.parser);
+#ifdef HAVE_PCRE2_8
+  zsv_select_regexs_delete(data.search_regexs);
+#endif
   fflush(stream);
   fclose(stream);
   zsv_writer_delete(data.csv_writer);
