@@ -148,7 +148,7 @@ jobs:
         sudo apt install -y rpm alien tmux
 
     - name: Set up ccache
-      uses: hendrikmuhs/ccache-action@v1
+      uses: hendrikmuhs/ccache-action@bfa03e1de4d7f7c3e80ad9109feedd05c4f5a716
       with:
         create-symlink: true
 
@@ -157,7 +157,7 @@ jobs:
         PREFIX: ${{ env.AMD64_LINUX_GCC }}
         CC: gcc
         MAKE: make
-        MAKE_PARALLEL: false
+        MAKE_PARALLEL: true
         RUN_TESTS: true
       run: |
         ./scripts/ci-build.sh
