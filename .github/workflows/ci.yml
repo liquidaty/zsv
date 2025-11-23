@@ -147,6 +147,13 @@ jobs:
         sudo apt install -y rpm alien tmux
         sudo apt remove -y jq
 
+    - name: Set up ccache
+      uses: hendrikmuhs/ccache-action@v1.2.19
+      with:
+        create-symlink: true
+        save: false
+        restore: false
+
     - name: Build on Linux (${{ env.AMD64_LINUX_GCC }})
       env:
         PREFIX: ${{ env.AMD64_LINUX_GCC }}
@@ -556,6 +563,13 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v5
+
+    - name: Set up ccache
+      uses: hendrikmuhs/ccache-action@v1.2.19
+      with:
+        create-symlink: true
+        save: false
+        restore: false
 
     - name: Download mingw-ncurses.zip
       uses: actions/download-artifact@v6
