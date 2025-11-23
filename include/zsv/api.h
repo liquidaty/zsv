@@ -255,7 +255,9 @@ ZSV_EXPORT size_t zsv_scanned_length(zsv_parser);
 ZSV_EXPORT size_t zsv_cum_scanned_length(zsv_parser parser);
 
 /**
- * @return number of raw bytes scanned from the beginning to the end of this row
+ * @return number of raw bytes scanned from the beginning of the row
+ * to the end of this row. Subtract from zsv_cum_scanned_length() to get the
+ * position of the beginning of the row
  */
 ZSV_EXPORT size_t zsv_row_length_raw_bytes(zsv_parser parser);
 

@@ -23,6 +23,7 @@ Optional configuration:
                           builtin=build from included source (pcre2-10.47)
                           otherwise, specify dir with lib/libpcre2-8 and include/pcre2-8.h
                           defaults to 'builtin' if not specified
+  --no-parallel           disable parallelization in the CLI 'select' command
 
 Installation directories:
   --prefix=PREFIX         main installation prefix [\$PREFIX or /usr/local]
@@ -58,6 +59,7 @@ Some influential environment variables:
   LDFLAGS                 Linker flags
 
   CROSS_COMPILING=no      Set to yes to disable auto-detect compilation flags
+  NO_THREADING            Set to 1 to disable threading
 
 Use these variables to override the choices made by configure.
 
@@ -333,6 +335,7 @@ usepie=auto
 usepic=auto
 usetermcap=auto
 
+ZSV_NO_PARALLEL=
 NCURSES_DYNAMIC=
 for arg ; do
     case "$arg" in
@@ -356,6 +359,8 @@ for arg ; do
         --docdir=*) DOCDIR=${arg#*=} ;;
         --mandir=*) MANDIR=${arg#*=} ;;
         --minimal|--minimal=yes) MINIMAL=yes;;
+
+        --no-parallel) ZSV_NO_PARALLEL=1;;
 
         --try-avx512|--try-avx512=yes) TRY_AVX512=yes;;
         --try-avx512=no) TRY_AVX512=no;;
@@ -750,10 +755,10 @@ fi
 
 tryldflag LDFLAGS_JQ -lm
 tryldflag LDFLAGS_JQ -lshlwapi
-if [ "$MINGW" = "1" ]; then
-    tryldflag LDFLAGS_TMP -pthread && STATIC_LIBS="$STATIC_LIBS -pthread"
-else
-    if [ "$NO_THREADING" != "1" ]; then
+if [ "$NO_THREADING" != "1" ]; then
+    if [ "$MINGW" = "1" ]; then
+        tryldflag LDFLAGS_TMP -pthread && STATIC_LIBS="$STATIC_LIBS -pthread"
+    else
         tryldflag LDFLAGS_JQ -pthread
     fi
 fi
@@ -871,6 +876,8 @@ BUILD_SHAREDLIB = $BUILD_SHAREDLIB
 
 ZSVSHEET_BUILD = $ZSVSHEET_BUILD
 
+ZSV_NO_PARALLEL = $ZSV_NO_PARALLEL
+
 NO_STDIN = $NO_STDIN
 
 $NO_HAVE
@@ -928,6 +935,12 @@ elif [ "$CFLAGS_AVX" = "-mavx" ]; then
     printf '%-64s*\n' "*  - using 128-bit + AVX instruction set"
 else
     printf '%-64s*\n' "*  - using 128-bit vector size, no AVX"
+fi
+
+if [ "$ZSV_NO_PARALLEL" = "1" ]; then
+    printf '%-64s*\n' "*  - CLI parallelization: DISABLED"
+else
+    printf '%-64s*\n' "*  - CLI parallelization: enabled"
 fi
 
 echo "*****************************************************************"

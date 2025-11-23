@@ -10,29 +10,25 @@
  */
 struct zsv_pcre2_handle {
   pcre2_code *re;
+  pcre2_match_data *cached_match_data;
 };
 
 /**
  * @brief Implementation of zsv_pcre2_8_new.
  */
 regex_handle_t *zsv_pcre2_8_new(const char *pattern, uint32_t options) {
-  // Allocate memory for the handle struct
-  regex_handle_t *handle = malloc(sizeof(regex_handle_t));
+  regex_handle_t *handle = calloc(1, sizeof(regex_handle_t));
   if (handle == NULL) {
-    printf("Error: Failed to allocate memory for handle.\n");
+    perror("zsv_pcre2_8_new");
     return NULL;
   }
-  handle->re = NULL;
 
   int error_number;
   PCRE2_SIZE error_offset;
 
-  // Force UTF-8 and Multiline support
+  // utf-8 and multiline support
   uint32_t compile_options = options | PCRE2_UTF | PCRE2_MULTILINE;
 
-  // --- Start Fix ---
-
-  // 1. Create a COMPILE context
   pcre2_compile_context *compile_context = pcre2_compile_context_create_8(NULL);
   if (compile_context == NULL) {
     printf("Error: Failed to create compile context.\n");
@@ -40,10 +36,9 @@ regex_handle_t *zsv_pcre2_8_new(const char *pattern, uint32_t options) {
     return NULL;
   }
 
-  // 2. Set the newline convention to '\0' (NUL) on the COMPILE context
+  // set newline convention to '\0'
   pcre2_set_newline_8(compile_context, PCRE2_NEWLINE_NUL);
 
-  // 3. Compile the pattern, passing the compile context
   handle->re = pcre2_compile_8((PCRE2_SPTR)pattern,   // the pattern
                                PCRE2_ZERO_TERMINATED, // pattern is zero-terminated
                                compile_options,       // user options + UTF + MULTILINE
@@ -52,10 +47,8 @@ regex_handle_t *zsv_pcre2_8_new(const char *pattern, uint32_t options) {
                                compile_context        // use our configured compile context
   );
 
-  // 4. Free the compile context (it's no longer needed)
+  // free the compile context (no longer needed)
   pcre2_compile_context_free_8(compile_context);
-
-  // --- End Fix ---
 
   if (handle->re == NULL) {
     PCRE2_UCHAR buffer[256];
@@ -65,53 +58,21 @@ regex_handle_t *zsv_pcre2_8_new(const char *pattern, uint32_t options) {
     return NULL;
   }
 
-  // We no longer need to create or store a match context.
+  handle->cached_match_data = pcre2_match_data_create_from_pattern_8(handle->re, NULL);
+
   return handle;
 }
 
 /**
  * @brief Implementation of zsv_pcre2_8_match.
  */
-int zsv_pcre2_8_match(regex_handle_t *handle, const unsigned char *subject, size_t subject_length) {
-  // Removed check for handle->match_context
-  if (handle == NULL || handle->re == NULL || subject == NULL) {
-    return 0; // Invalid input
-  }
-
-  pcre2_match_data *match_data;
-  int rc;
-  int result = 0;
-
-  // 1. Create a match data block
-  match_data = pcre2_match_data_create_from_pattern_8(handle->re, NULL);
-  if (match_data == NULL) {
-    printf("Error: Failed to create match data block.\n");
-    return 0;
-  }
-
-  // 2. Run the match. Pass NULL for the match context.
-  // The newline behavior is now compiled into handle->re.
-  rc = pcre2_match_8(handle->re,          // the compiled pattern
-                     (PCRE2_SPTR)subject, // the subject string
-                     subject_length,      // the length of the subject
-                     0,                   // start at offset 0
-                     0,                   // default options
-                     match_data,          // block for storing match data
-                     NULL                 // use default match context
-  );
-
-  // 3. Check result
-  if (rc >= 0) {
-    result = 1; // Match found
-  } else if (rc != PCRE2_ERROR_NOMATCH) {
-    // An error occurred (other than no match)
-    printf("Matching error %d\n", rc);
-  }
-  // If rc == PCRE2_ERROR_NOMATCH, result remains 0 (no match)
-
-  // 4. Free match data
-  pcre2_match_data_free_8(match_data);
-  return result;
+int zsv_pcre2_8_match(regex_handle_t *handle, const unsigned char *subject, size_t len) {
+  int rc = pcre2_match_8(handle->re, (PCRE2_SPTR)subject, len, 0, 0, handle->cached_match_data, NULL);
+  if (rc >= 0) // matched
+    return 1;
+  if (rc != PCRE2_ERROR_NOMATCH)
+    fprintf(stderr, "zsv_pcre2_8_match: match error %i\n", rc);
+  return 0;
 }
 
 /**
@@ -182,11 +143,11 @@ int zsv_pcre2_8_has_anchors(const char *pattern) {
  * @brief Implementation of zsv_pcre2_8_delete.
  */
 void zsv_pcre2_8_delete(regex_handle_t *handle) {
-  if (handle != NULL) {
-    if (handle->re != NULL) {
+  if (handle) {
+    if (handle->cached_match_data)
+      pcre2_match_data_free_8(handle->cached_match_data);
+    if (handle->re)
       pcre2_code_free_8(handle->re);
-    }
-    // Removed free for handle->match_context
     free(handle);
   }
 }

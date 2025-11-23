@@ -164,7 +164,7 @@ CFLAGS+= -I${PREFIX}/include
 THIS_LIB_BASE:=$(shell cd .. && pwd)
 INCLUDE_DIR:=${THIS_LIB_BASE}/include
 BUILD_DIR:=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
-UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index
+UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index chunk
 
 ZSV_EXTRAS ?=
 
@@ -187,7 +187,13 @@ UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
 
 ifeq ($(NO_THREADING),1)
   CFLAGS+= -DNO_THREADING
+  ZSV_NO_PARALLEL=1
 endif
+
+ifeq ($(ZSV_NO_PARALLEL),1)
+  CFLAGS+=-DZSV_NO_PARALLEL
+endif
+
 
 ifeq ($(ZSV_EXTRAS),1)
   CFLAGS+= -DZSV_EXTRAS
@@ -324,8 +330,14 @@ help:
 	@echo "where xx is any of:"
 	@echo "  echo count count-pull paste select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm mv overwrite"
 	@echo ""
+	@echo "To run benchmarks:"
+	@echo "  ${MAKE} benchmark"
+	@echo ""
 
 install: ${ZSV}
+
+benchmark: ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}count${EXE} ${STANDALONE_PFX}2tsv${EXE}
+	make -C benchmark all
 
 uninstall-all: uninstall uninstall-util-lib
 
@@ -391,7 +403,7 @@ ${CLEANS}: clean-%:
 .SUFFIXES:
 .SUFFIXES: .o .c .a
 
-${BUILD_DIR}/objs/sql_internal.o ${BUILD_DIR}/objs/utils/index.o: ${BUILD_DIR}/objs/%.o: %.c %.h # ${BUILD_DIR}/objs/%.o: %.c %.h
+${BUILD_DIR}/objs/sql_internal.o ${BUILD_DIR}/objs/utils/index.o ${BUILD_DIR}/objs/utils/chunk.o: ${BUILD_DIR}/objs/%.o: %.c %.h # ${BUILD_DIR}/objs/%.o: %.c %.h
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ -c $<
 

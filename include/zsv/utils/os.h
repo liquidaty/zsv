@@ -47,4 +47,8 @@ void zsv_win_to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len);
 
 #endif // #ifdef _WIN32
 
+/**
+ * get number of cores
+ */
+unsigned int zsv_get_number_of_cores();
 #endif // ZSV_OS_H

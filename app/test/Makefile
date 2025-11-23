@@ -67,6 +67,10 @@ ifeq ($(ZSVSHEET_BUILD),1)
   TESTS+=test-sheet test-sheet-subcommand
 endif
 
+ifneq ($(ZSV_NO_PARALLEL),1)
+  TESTS+=test-parallel
+endif
+
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
 COLOR_RED=\033[1;31m
@@ -135,6 +139,12 @@ ${TIMINGS_CSV}:
 test-prop:
 	@${TEST_INIT}
 	@EXE=${BUILD_DIR}/bin/zsv_prop${EXE} ${MAKE} -C prop test
+
+ifneq ($(ZSV_NO_PARALLEL),1)
+test-parallel: ${BUILD_DIR}/bin/zsv_select${EXE} ${BUILD_DIR}/bin/zsv_count${EXE} worldcitiespop_mil.csv
+	@${TEST_INIT}
+	@SELECT_EXE=${BUILD_DIR}/bin/zsv_select${EXE} COUNT_EXE=${BUILD_DIR}/bin/zsv_count${EXE} ${MAKE} -C parallel test
+endif
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
@@ -240,10 +250,22 @@ worldcitiespop_mil.tsv: worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2tsv${EXE}
 
 test-count test-count-pull: test-% : test-1-% test-2-%
 
+ifeq ($(ZSV_NO_PARALLEL),1)
 ifeq ($(HAVE_PCRE2_8),1)
   HELP_SELECT_LINES=40
+  HELP_COUNT_LINES=6
 else
   HELP_SELECT_LINES=39
+  HELP_COUNT_LINES=6
+endif
+else
+ifeq ($(HAVE_PCRE2_8),1)
+  HELP_SELECT_LINES=42
+  HELP_COUNT_LINES=8
+else
+  HELP_SELECT_LINES=41
+  HELP_COUNT_LINES=8
+endif
 endif
 test-cli: ${CLI}
 	@${TEST_INIT}
@@ -251,7 +273,7 @@ test-cli: ${CLI}
 	@$< help select 2>&1 > ${TMP_DIR}/$@.out
 	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "select: extracts and outputs specified columns" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_SELECT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@$< help count 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "6" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_COUNT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-1-count test-1-count-pull: test-1-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
@@ -351,6 +373,8 @@ test-12-select test-12-select-pull: test-12-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 
 test-13-select test-13-select-pull: test-13-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
+#	@echo "test result:"
+#	@echo 'aaa,bb,cxa,bbxx,y,z' | tr x '\n' | $< --header-row-span 2 | head -1
 	@${PREFIX} [ "$$(echo 'aaa,bb,cxa,bbxx,y,z' | tr x '\n' | $< --header-row-span 2 | head -1)" = "aaa a,bb bb,c" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-search-select: test-search-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv

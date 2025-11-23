@@ -1,3 +1,9 @@
+#include <sys/types.h> // Required for off_t
+
+#ifndef ZSV_NO_PARALLEL
+#include "parallel.h"
+#endif
+
 #define ZSV_SELECT_MAX_COLS_DEFAULT 1024
 #define ZSV_SELECT_MAX_COLS_DEFAULT_S "1024"
 
@@ -16,10 +22,11 @@ struct fixed {
   size_t *offsets;
   size_t count;
   size_t max_lines; // max lines to use to calculate offsets
+  char autodetect;
 };
 
 struct zsv_select_data {
-  FILE *in;
+  const char *input_path;
   unsigned int current_column_ix;
   size_t data_row_count;
 
@@ -74,6 +81,14 @@ struct zsv_select_data {
 
   struct fixed fixed;
 
+#ifndef ZSV_NO_PARALLEL
+  unsigned num_chunks;
+  off_t end_offset_limit;                  // Byte offset where the current parser instance should stop
+  off_t next_row_start;                    // Actual byte offset of the last row that was processed
+  struct zsv_parallel_data *parallel_data; // Pointer to the thread management structure
+#endif
+
+  // FLAGS
   unsigned char whitespace_clean_flags;
 
   unsigned char print_all_cols : 1;
@@ -90,8 +105,9 @@ struct zsv_select_data {
   unsigned char distinct : 2; // 1 = ignore subsequent cols, ZSV_SELECT_DISTINCT_MERGE = merge subsequent cols (first
                               // non-null value)
   unsigned char unescape : 1;
-  unsigned char no_header : 1; // --no-header
-  unsigned char _ : 3;
+  unsigned char no_header : 1;       // --no-header
+  unsigned char run_in_parallel : 1; // Flag if parallel mode is active
+  unsigned char _ : 2;               // Reduced padding by 1 bit due to addition of run_in_parallel
 };
 
 enum zsv_select_column_index_selection_type {

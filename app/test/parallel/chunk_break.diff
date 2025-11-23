@@ -1,0 +1,15 @@
+diff --git a/app/test/parallel/chunk_break.csv.tmp b/app/test/parallel/chunk_break.csv.tmp
+index 6ba560e..09942a3 100644
+--- a/app/test/parallel/chunk_break.csv.tmp
++++ b/app/test/parallel/chunk_break.csv.tmp
+@@ -33391,7 +33391,9 @@ pk,daman hindko,Daman Hindko,03,,34.068769,71.629399
+ af,kalaallakhnazar,Kalaallakhnazar,18,,34.394184,70.285118
+ pk,butak,Butak,02,,29.143646,63.281609
+ id,krisik,Krisik,10,,-7.909444,110.290278
+-id,masong,Masong,08,,-8.101111,111.213611
++"
++id",masong,Masong,08,,-8.101111,"111.213611
++   "
+ sl,nyandeama,Nyandeama,03,,8.1166667,-11.6166667
+ id,penggaron-kidul,Penggaron-kidul,07,,-7.013889,110.492778
+ mx,noria san gasper,Noria San Gasper,32,,23.633333,-102.233333

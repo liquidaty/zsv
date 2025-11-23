@@ -102,6 +102,7 @@ unsigned char *zsv_csv_quote(const unsigned char *utf8_value, size_t len, unsign
   return target;
 }
 
+// to do: test #define ZSV_OUTPUT_BUFF_SIZE 65536 * 4 * 8
 #define ZSV_OUTPUT_BUFF_SIZE 65536 * 4
 
 struct zsv_output_buff {
@@ -217,11 +218,11 @@ zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
   }
   return w;
 
-zsv_writer_new_err : {
-  int e = errno;
+  int e;
+zsv_writer_new_err:
+  e = errno;
   zsv_writer_delete(w);
   errno = e;
-}
   return NULL;
 }
 
