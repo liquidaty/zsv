@@ -46,6 +46,7 @@ Optional features:
   --enable-pie            build with position independent executables [auto]
   --enable-pic            build with position independent shared libraries [auto]
   --enable-termcap        build with ncurses / termcap (used by \`pretty\` to get console width) [auto]
+  --disable-stdin         disable stdin from CLI commands
 
 Some influential environment variables:
   CC                      C compiler command [detected]
@@ -326,6 +327,8 @@ FORCE_AVX2=auto
 FORCE_AVX=auto
 FORCE_SSE2=auto
 
+NO_STDIN=
+
 usepie=auto
 usepic=auto
 usetermcap=auto
@@ -390,6 +393,8 @@ for arg ; do
         --enable-termcap|--enable-termcap=yes) usetermcap=yes ;;
         --enable-termcap=auto) usetermcap=auto ;;
         --disable-termcap|--enable-termcap=no) usetermcap=no ;;
+
+        --disable-stdin|--enable-stdin=no) NO_STDIN=1 ;;
 
         --enable-pic=auto) usepic=auto ;;
         --disable-pic|--enable-pic=no) usepic=no ;;
@@ -865,6 +870,8 @@ ZSV_EXTRAS = $ZSV_EXTRAS
 BUILD_SHAREDLIB = $BUILD_SHAREDLIB
 
 ZSVSHEET_BUILD = $ZSVSHEET_BUILD
+
+NO_STDIN = $NO_STDIN
 
 $NO_HAVE
 $USE_LIBS
