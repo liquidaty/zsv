@@ -50,9 +50,10 @@ HAVE_POLARS=$(shell [ -f venv/bin/activate ] && echo 1 || echo 0)
 help:
 	@echo "To run:"
 	@echo "    ${MAKE_BIN} all [PULL=1] [TSV_UTILS=~/install/tsv-utils/bin]"
-	@echo "    ${MAKE_BIN} tsv"
+	@echo "    ${MAKE_BIN} csv   # same as all but saves to benchmark.csv"
+	@echo "    ${MAKE_BIN} reset # reset saved e.g. results e.g. csv"
 	@echo "    ${MAKE_BIN} CLI"
-	@echo "    ${MAKE_BIN} clean"
+	@echo "    ${MAKE_BIN} clean # remove all data, intermediate and result files"
 	@echo "make all does not actually run everything, you can also run":
 	@echo "    ${MAKE_BIN} tsv"
 
@@ -62,6 +63,15 @@ CLI:
 	${MAKE} all ZSVBIN=${ZSVBIN} -n | sed 's/[.]*\/.*\/bin\/zsv_/zsv /g' | sh
 
 all: count select
+
+csv: benchmarks.csv
+	@echo "Results saved at $<. To re-run, first run \`make all\`"
+
+benchmarks.txt:
+	${MAKE} -e all > $@
+
+benchmarks.csv: benchmarks.txt
+	@cat $< | ./benchmark.awk > $@
 
 worldcitiespop_mil.csv:
 	curl -LO 'https://burntsushi.net/stuff/worldcitiespop_mil.csv'
@@ -290,10 +300,13 @@ endif
 	@(time mlr --csv cut -o -f City,Country,AccentCity,Region,Population,Latitude,Longitude $< > /dev/null) 2>&1 | xargs
 	@echo ""
 
-clean:
+reset:
+	rm -f benchmarks.csv benchmarks.txt
+
+clean: reset
 	rm -f worldcitiespop_big.csv worldcitiespop_big.tsv worldcitiespop_mil.csv worldcitiespop_mil.tsv worldcitiespop.csv
 
-.PHONY: help all count select select-% clean polars-setup
+.PHONY: help all count select select-% clean polars-setup csv
 
 
 ##### python / polars
