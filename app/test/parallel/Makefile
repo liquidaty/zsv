@@ -89,10 +89,10 @@ test-parallel-4: $(COUNT_EXE) chunk_break.csv
 
 test-parallel-5: $(SELECT_EXE) ../worldcitiespop_mil.csv
 	@${TEST_INIT}
-	@${SELECT_EXE} --regex-search '^[BSZ]an Tala[qt]' ../worldcitiespop.csv > ${TMP_DIR}/$@.out
-	@${SELECT_EXE} -j 10 --regex-search '^[BSZ]an Tala[qt]' ../worldcitiespop.csv > ${TMP_DIR}/$@.parallel.out
+	@${SELECT_EXE} --regex-search '^[BSZ]an Tala[qt]' ../worldcitiespop_mil.csv > ${TMP_DIR}/$@.out
+	@${SELECT_EXE} -j 10 --regex-search '^[BSZ]an Tala[qt]' ../worldcitiespop_mil.csv > ${TMP_DIR}/$@.parallel.out
 	@cmp ${TMP_DIR}/$@.out ${TMP_DIR}/$@.parallel.out && ${TEST_PASS} || ${TEST_FAIL}
-	@[ `wc -l < ${TMP_DIR}/$@.out` = 150 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ `wc -l < ${TMP_DIR}/$@.out` = 49 ] && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
 	@rm -rf ${TMP_DIR}
