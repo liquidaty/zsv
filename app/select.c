@@ -64,8 +64,8 @@
 #ifndef ZSV_NO_PARALLEL
 #include "select/parallel.c" // zsv_parallel_data_new(), zsv_parallel_data_delete()
 
-#define PARALLEL_MIN_BYTES (1024 * 1024 * 2)  // don't parallelize if < 2 MB of data (after header)
-#define PARALLEL_BUFFER_SZ (1024 * 1024 * 32) // to do: make customizable or dynamic
+#define ZSV_SELECT_PARALLEL_MIN_BYTES (1024 * 1024 * 2)  // don't parallelize if < 2 MB of data (after header)
+#define ZSV_SELECT_PARALLEL_BUFFER_SZ (1024 * 1024 * 32) // to do: make customizable or dynamic
 
 static void zsv_select_data_row(void *ctx);
 
@@ -125,10 +125,10 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
   cdata->tmp_output_filename = zsv_get_temp_filename("zsvselect");
   writer_opts.stream = fopen(cdata->tmp_output_filename, "wb");
 #else
-  if (!(cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ)) &&
-      !(cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ / 2)) &&
-      !(cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ / 4)) &&
-      !(cdata->tmp_f = zsv_memfile_open(PARALLEL_BUFFER_SZ / 8)))
+  if (!(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ)) &&
+      !(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ / 2)) &&
+      !(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ / 4)) &&
+      !(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ / 8)))
     cdata->tmp_f = zsv_memfile_open(0);
   writer_opts.stream = cdata->tmp_f;
   writer_opts.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))zsv_memfile_write;
@@ -264,14 +264,14 @@ static void zsv_select_print_header_row(struct zsv_select_data *data) {
 }
 
 #ifndef ZSV_NO_PARALLEL
-static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *path, size_t header_row_offset) {
+static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *path, size_t header_row_end) {
   if (data->num_chunks <= 1 || !path || !strcmp(path, "-")) {
     data->run_in_parallel = 0;
     return 0;
   }
 
   struct zsv_chunk_position *offsets =
-    zsv_calculate_file_chunks(path, data->num_chunks, PARALLEL_MIN_BYTES, header_row_offset + 1);
+    zsv_guess_file_chunks(path, data->num_chunks, ZSV_SELECT_PARALLEL_MIN_BYTES, header_row_end + 1);
   if (!offsets)
     return -1; // fall back to serial
 

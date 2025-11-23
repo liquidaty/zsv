@@ -47,7 +47,7 @@ help:
 	@echo "#    make test # run all tests"
 	@echo "#    make test-parallel-1|test-parallel-2|test-parallel-3 # run individual tests"
 
-test: test-parallel-1 test-parallel-2 test-parallel-3
+test: test-parallel-1 test-parallel-2 test-parallel-3 test-parallel-4
 
 test-parallel-1: $(SELECT_EXE) ../worldcitiespop_mil.csv
 	@${TEST_INIT}
@@ -77,8 +77,15 @@ ${TMP_DIR}/chunk_clean.csv: chunk_break.csv
 
 test-parallel-3: $(SELECT_EXE) chunk_break.csv ${TMP_DIR}/chunk_clean.csv
 	@${TEST_INIT}
-	@${SELECT_EXE} chunk_break.csv -j 3 --whitespace-clean-no-newline > ${TMP_DIR}/$@.out
+	@${SELECT_EXE} chunk_break.csv -j 3 --whitespace-clean-no-newline > ${TMP_DIR}/$@.out -v 2>${TMP_DIR}/$@.err
 	@cmp ${TMP_DIR}/$@.out ${TMP_DIR}/chunk_clean.csv && ${TEST_PASS} || ${TEST_FAIL}
+	@cmp ${TMP_DIR}/$@.err $@.expected.err && ${TEST_PASS} || ${TEST_FAIL}
+
+test-parallel-4: $(COUNT_EXE) chunk_break.csv
+	@${TEST_INIT}
+	@${COUNT_EXE} chunk_break.csv -j 3 > ${TMP_DIR}/$@.out -v 2>${TMP_DIR}/$@.err
+	@cmp ${TMP_DIR}/$@.out $@.expected.out && ${TEST_PASS} || ${TEST_FAIL}
+	@cmp ${TMP_DIR}/$@.err $@.expected.err && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
 	@rm -rf ${TMP_DIR}

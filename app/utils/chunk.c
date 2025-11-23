@@ -61,28 +61,28 @@ static zsv_file_pos zsv_find_chunk_start(FILE *fp, zsv_file_pos initial_offset, 
 
 // --- Public Library Implementations ---
 
-struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint64_t N, uint64_t min_size,
-                                                     zsv_file_pos initial_offset) {
+struct zsv_chunk_position *zsv_guess_file_chunks(const char *filename, uint64_t N, uint64_t min_size,
+                                                 zsv_file_pos initial_offset) {
   if (N == 0)
     return NULL;
 
   // Open in binary mode ('rb') is crucial for accurate byte counts on all platforms, including Windows/MinGW.
   FILE *fp = fopen(filename, "rb");
   if (fp == NULL) {
-    perror("zsv_calculate_file_chunks: Failed to open file");
+    perror("zsv_guess_file_chunks: Failed to open file");
     return NULL;
   }
 
   // 1. Get total file size using fstat() on the file descriptor
   struct stat st;
   if (fstat(fileno(fp), &st) == -1) {
-    perror("zsv_calculate_file_chunks: fstat failed");
+    perror("zsv_guess_file_chunks: fstat failed");
     fclose(fp);
     return NULL;
   }
   zsv_file_pos total_size = (zsv_file_pos)st.st_size;
   if (total_size < initial_offset) {
-    perror("zsv_calculate_file_chunks: ftell failed");
+    perror("zsv_guess_file_chunks: ftell failed");
     fclose(fp);
     return NULL;
   }
@@ -97,7 +97,7 @@ struct zsv_chunk_position *zsv_calculate_file_chunks(const char *filename, uint6
   // Allocate memory for the N chunk positions
   struct zsv_chunk_position *chunks = (struct zsv_chunk_position *)malloc(N * sizeof(*chunks));
   if (chunks == NULL) {
-    perror("zsv_calculate_file_chunks: malloc failed");
+    perror("zsv_guess_file_chunks: malloc failed");
     fclose(fp);
     return NULL;
   }

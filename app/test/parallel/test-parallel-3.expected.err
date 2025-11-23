@@ -1,0 +1,5 @@
+Chunk 0: 61 - 1611010
+Chunk 1: 1611011 - 3221957
+Chunk 2: 3221958 - 4832978
+Running parallel
+Chunk overlap detected (Prev End: 1611016, Next Start: 1611011). Reprocessing chunk 1.

@@ -1,0 +1,4 @@
+Chunk 1: 60 - 1611010
+Chunk 2: 1611011 - 3221957
+Chunk 3: 3221958 - 4832978
+Overlap detected at chunk 1 (expected 1611011, got 1611016). Reprocessing.
