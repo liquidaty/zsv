@@ -50,15 +50,18 @@ HAVE_POLARS=$(shell [ -f venv/bin/activate ] && echo 1 || echo 0)
 help:
 	@echo "To run:"
 	@echo "    ${MAKE_BIN} all [PULL=1] [TSV_UTILS=~/install/tsv-utils/bin]"
+	@echo "    ${MAKE_BIN} tsv"
 	@echo "    ${MAKE_BIN} CLI"
 	@echo "    ${MAKE_BIN} clean"
+	@echo "make all does not actually run everything, you can also run":
+	@echo "    ${MAKE_BIN} tsv"
 
 CLI: ZSVBIN="zsv "
 
 CLI:
 	${MAKE} all ZSVBIN=${ZSVBIN} -n | sed 's/[.]*\/.*\/bin\/zsv_/zsv /g' | sh
 
-all: count select tsv
+all: count select
 
 worldcitiespop_mil.csv:
 	curl -LO 'https://burntsushi.net/stuff/worldcitiespop_mil.csv'
