@@ -41,10 +41,10 @@ static struct zsv_select_regex *zsv_select_regexs_dup(struct zsv_select_regex *s
   while (src) {
     struct zsv_select_regex *new_node = calloc(1, sizeof(*new_node));
     if (!new_node) {
-      zsv_select_regexs_delete(head); 
+      zsv_select_regexs_delete(head);
       return NULL;
     }
-    
+
     // Copy the pattern pointer (safe, strings are static/const)
     new_node->pattern = src->pattern;
 

@@ -67,9 +67,8 @@ regex_handle_t *zsv_pcre2_8_new(const char *pattern, uint32_t options) {
  * @brief Implementation of zsv_pcre2_8_match.
  */
 int zsv_pcre2_8_match(regex_handle_t *handle, const unsigned char *subject, size_t len) {
-  int rc = pcre2_match_8(handle->re, (PCRE2_SPTR)subject, len, 0, 0, 
-                         handle->cached_match_data, NULL);
-  if(rc >= 0) // matched
+  int rc = pcre2_match_8(handle->re, (PCRE2_SPTR)subject, len, 0, 0, handle->cached_match_data, NULL);
+  if (rc >= 0) // matched
     return 1;
   if (rc != PCRE2_ERROR_NOMATCH)
     fprintf(stderr, "zsv_pcre2_8_match: match error %i\n", rc);
@@ -145,8 +144,10 @@ int zsv_pcre2_8_has_anchors(const char *pattern) {
  */
 void zsv_pcre2_8_delete(regex_handle_t *handle) {
   if (handle) {
-    if (handle->cached_match_data) pcre2_match_data_free_8(handle->cached_match_data);
-    if (handle->re) pcre2_code_free_8(handle->re);
+    if (handle->cached_match_data)
+      pcre2_match_data_free_8(handle->cached_match_data);
+    if (handle->re)
+      pcre2_code_free_8(handle->re);
     free(handle);
   }
 }

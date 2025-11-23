@@ -165,7 +165,7 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
     // a correctly-split chunk's last row entirely ate the next incorrectly-split chunk
     data.next_row_start = zsv_cum_scanned_length(data.parser) + 1;
 #endif
- 
+
   // clean up
   zsv_delete(data.parser);
 #ifdef HAVE_PCRE2_8
