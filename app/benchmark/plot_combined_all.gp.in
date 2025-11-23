@@ -1,0 +1,39 @@
+# Output Settings
+set terminal pngcairo size 1000,600 enhanced font 'Verdana,10'
+set output 'bench_combined.png'
+
+# Data Parsing
+set datafile separator ","
+
+# Chart Style: Clustered Histogram
+# "cluster" puts bars from the same row side-by-side
+# "gap 1" puts a gap between the tool groups
+set style data histograms
+set style histogram cluster gap 1
+set style fill solid 1.0 border -1
+set boxwidth 0.9
+
+# Axis Configuration
+set title "Benchmark Comparison: Time vs Memory"
+set grid y
+
+# --- CRITICAL: Log Scale ---
+# We use a log scale so 0.1 seconds and 100 MB can coexist on one chart.
+set logscale y
+
+# Format the Y-axis labels to look like powers of 10 (e.g., 10^-1, 10^7)
+set format y "10^{%L}"
+set ylabel "Magnitude (Log Scale)"
+
+# X-Axis Labels
+set xtics rotate by -45
+set xlabel "Tools"
+
+# --- The Plot Command ---
+# 1. Real Time (Blue)
+# 2. User Time (Orange)
+# 3. Memory (Red) - We divide by 1 MB (1048576) to bring the raw number 
+#    closer to the time values, making the chart easier to read.
+plot 'INPUT_CSV' every ::1 using 4:xtic(3) title 'Real Time (s)'  lc rgb "#4E79A7", \
+     ''             every ::1 using 5         title 'User Time (s)'  lc rgb "#F28E2B", \
+     ''             every ::1 using ($6/1048576) title 'Max RSS (MB)'   lc rgb "#E15759"
