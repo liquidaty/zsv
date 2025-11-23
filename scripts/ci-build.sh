@@ -33,6 +33,8 @@ fi
 
 WITHOUT_SIMD=${WITHOUT_SIMD:-false}
 
+MAKE_FLAGS=${MAKE_FLAGS:-}
+
 #JQ_DIR="$PWD/jq"
 #JQ_PREFIX="$JQ_DIR/build"
 #JQ_INCLUDE_DIR="$JQ_PREFIX/include"
@@ -46,6 +48,7 @@ echo "[INF] CC:               $CC"
 echo "[INF] CFLAGS:           $CFLAGS"
 echo "[INF] LDFLAGS:          $LDFLAGS"
 echo "[INF] MAKE:             $MAKE"
+echo "[INF] MAKE_FLAGS:       $MAKE_FLAGS"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
 echo "[INF] STATIC_BUILD:     $STATIC_BUILD"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
@@ -101,7 +104,8 @@ fi
 if [ "$SKIP_BUILD" = false ]; then
   echo "[INF] Building"
   rm -rf build "$PREFIX" /usr/local/etc/zsv.ini
-  "$MAKE" install
+  # shellcheck disable=SC2086
+  "$MAKE" $MAKE_FLAGS install
   tree "$PREFIX"
   echo "[INF] Built successfully!"
 
