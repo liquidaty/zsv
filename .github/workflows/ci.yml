@@ -856,18 +856,12 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: ccache
-      uses: hendrikmuhs/ccache-action@v1.2.19
-      with:
-        create-symlink: true
-        key: ${{ github.job }}-${{ runner.os }}
-
     - name: Update version in index.html
       run: sed "s|__VERSION__|$TAG|g" -i playground/index.html
 
     - name: Build with SIMD (${{ env.AMD64_LINUX_WASM }})
       env:
-        PREFIX: ${{ env.AMD64_LINUX_WASM }}-simd
+        PREFIX: ${{ env.AMD64_LINUX_WASM }}
         CC: emcc
         MAKE: make
         RUN_TESTS: false
