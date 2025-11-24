@@ -138,14 +138,20 @@ jobs:
       TAG: ${{ needs.tag.outputs.TAG }}
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v6
-
     - name: Set up apt dependencies
       run: |
         sudo apt update
         sudo apt install -y rpm alien tmux
         sudo apt remove -y jq
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: ccache
+      uses: hendrikmuhs/ccache-action@v1.2.19
+      with:
+        create-symlink: true
+        key: ${{ github.job }}-${{ runner.os }}
 
     - name: Build on Linux (${{ env.AMD64_LINUX_GCC }})
       env:
@@ -308,6 +314,7 @@ jobs:
     needs: [tag, clang-format, cppcheck, shellcheck]
 
     strategy:
+      fail-fast: false
       matrix:
         os: [macos-15-intel, macos-latest]
 
@@ -327,6 +334,12 @@ jobs:
     - name: Set up homebrew dependencies
       run: brew install --quiet coreutils tree tmux sqlite3
 
+    - name: ccache
+      uses: hendrikmuhs/ccache-action@v1.2.19
+      with:
+        create-symlink: true
+        key: ${{ github.job }}-${{ matrix.os }}
+
     - name: Set PREFIX and ZIP env var
       env:
         PREFIX: ${{ runner.arch == 'X64' && env.AMD64_MACOSX_GCC || env.ARM64_MACOSX_GCC }}
@@ -339,7 +352,7 @@ jobs:
 
     - name: Build on macOS (${{ env.AMD64_MACOSX_GCC }})
       env:
-        CC: gcc-13
+        CC: gcc
         MAKE: make
         RUN_TESTS: true
       run: ./scripts/ci-build.sh
@@ -700,6 +713,12 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
+    - name: ccache
+      uses: hendrikmuhs/ccache-action@v1.2.19
+      with:
+        create-symlink: true
+        key: ${{ github.job }}-${{ runner.os }}
+
     - name: Configure git in container
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
@@ -836,6 +855,12 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v6
+
+    - name: ccache
+      uses: hendrikmuhs/ccache-action@v1.2.19
+      with:
+        create-symlink: true
+        key: ${{ github.job }}-${{ runner.os }}
 
     - name: Update version in index.html
       run: sed "s|__VERSION__|$TAG|g" -i playground/index.html
