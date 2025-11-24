@@ -59,7 +59,7 @@
 #include "select/parallel.c" // zsv_parallel_data_new(), zsv_parallel_data_delete()
 
 #define ZSV_SELECT_PARALLEL_MIN_BYTES (1024 * 1024 * 2)  // don't parallelize if < 2 MB of data (after header)
-#define ZSV_SELECT_PARALLEL_BUFFER_SZ (1024 * 1024 * 32) // to do: make customizable or dynamic
+#define ZSV_SELECT_PARALLEL_BUFFER_SZ (1024 * 1024 * 8) // to do: make customizable or dynamic
 
 static void zsv_select_data_row(void *ctx);
 

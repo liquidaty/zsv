@@ -99,8 +99,8 @@ all: count select
 
 BENCHMARKS_CSV=benchmarks${ALL_SUFFIX}.csv
 BENCHMARKS_TXT=benchmarks${ALL_SUFFIX}.txt
-BENCHMARKS_AVG_CSV=benchmarks_average${ALL_SUFFIX}.csv
-BENCHMARKS_AVG_SQL=benchmarks_average${ALL_SUFFIX}.sql
+BENCHMARKS_AGG_CSV=benchmarks_agg${ALL_SUFFIX}.csv
+BENCHMARKS_AGG_SQL=benchmarks_agg${ALL_SUFFIX}.sql
 
 csv: ${BENCHMARKS_CSV}
 	@echo "Results saved at $<. To re-run, first run \`make reset\`"
@@ -108,8 +108,8 @@ csv: ${BENCHMARKS_CSV}
 csv_average: benchmarks_average${ALL_SUFFIX}.csv
 	@echo "Results saved at $<. To re-run, first run \`make reset\`"
 
-${BENCHMARKS_AVG_CSV}: ${BENCHMARKS_CSV} ${BENCHMARKS_AVG_SQL}
-	cat $< | grep -v tsv-utils | zsv sql "`cat ${BENCHMARKS_AVG_SQL}`" > $@.tmp
+${BENCHMARKS_AGG_CSV}: ${BENCHMARKS_CSV} ${BENCHMARKS_AGG_SQL}
+	cat $< | grep -v tsv-utils | zsv sql "`cat ${BENCHMARKS_AGG_SQL}`" > $@.tmp
 	mv $@.tmp $@
 
 GRAPH_GP=plot_metrics${ALL_SUFFIX}
@@ -119,24 +119,23 @@ HAVE_GNUPLOT=$(shell command -v gnuplot > /dev/null && echo 1 || echo 0)
 
 graph: graph-select graph-count graph-combined
 
-graph-count graph-select: graph-%: ${BENCHMARKS_AVG_CSV} ${GRAPH_GP}.gp.in ${GRAPH_TIME_GP}.gp.in
+graph-count graph-select: graph-%: ${BENCHMARKS_AGG_CSV} ${GRAPH_GP}.gp.in ${GRAPH_TIME_GP}.gp.in
 ifneq ($(HAVE_GNUPLOT),1)
 	echo "Please install gnuplot" && exit 1
 else
 	cat ${GRAPH_GP}.gp.in | sed 's#INPUT_CSV#${GRAPH_INPUT}-$*.csv#g' \
 	| sed 's/OPERATION/$*/g' > /tmp/${GRAPH_GP}-$*.gp
-	head -n1 $< > ${GRAPH_INPUT}-$*.csv
-	grep '$*,worldcitiespop_big' $< >> ${GRAPH_INPUT}-$*.csv
+	zsv select --search '$*' $< | zsv select --search '_big' > ${GRAPH_INPUT}-$*.csv
 	gnuplot /tmp/${GRAPH_GP}-$*.gp
 
 	cat ${GRAPH_TIME_GP}.gp.in | sed 's#INPUT_CSV#${GRAPH_INPUT}-$*.csv#g' \
 	| sed 's/OPERATION/$*/g' > /tmp/${GRAPH_TIME_GP}-$*.gp
 	gnuplot /tmp/${GRAPH_TIME_GP}-$*.gp
-
+	echo "Generated benchmark_$*_time.png and benchmark_$*_memory.png"
 endif
 
 GRAPH_GP_COMBINED=plot_combined${ALL_SUFFIX}.gp
-graph-combined: ${BENCHMARKS_AVG_CSV} ${GRAPH_GP_COMBINED}.in
+graph-combined: ${BENCHMARKS_AGG_CSV} ${GRAPH_GP_COMBINED}.in
 ifneq ($(HAVE_GNUPLOT),1)
 	echo "Please install gnuplot" && exit 1
 else
@@ -146,7 +145,7 @@ else
 	gnuplot /tmp/${GRAPH_GP_COMBINED}
 endif
 
-${BENCHMARKS_TXT}:
+${BENCHMARKS_TXT}: worldcitiespop.csv
 	${MAKE} -e all TIME_ALL=${TIME_ALL} | tee $@.tmp
 	@mv $@.tmp $@
 
