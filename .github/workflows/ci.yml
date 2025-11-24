@@ -61,7 +61,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         sparse-checkout: |
           scripts/ci-set-tag-output-parameter.sh
@@ -77,7 +77,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Run clang-format
       run: |
@@ -89,7 +89,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Install cppcheck
       run: |
@@ -121,7 +121,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Run shellcheck
       run: ./scripts/ci-run-shellcheck.sh
@@ -139,7 +139,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Set up apt dependencies
       run: |
@@ -283,7 +283,7 @@ jobs:
         sudo gem install --no-document fpm
 
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         sparse-checkout: |
           .fpm
@@ -322,7 +322,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Set up homebrew dependencies
       run: brew install --quiet coreutils tree autoconf automake libtool tmux sqlite3
@@ -399,7 +399,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         sparse-checkout: |
           scripts/ci-update-homebrew-tap.sh
@@ -438,7 +438,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Build (${{ env.AMD64_FREEBSD_GCC }})
       uses: cross-platform-actions/action@v0.30.0
@@ -511,7 +511,7 @@ jobs:
         sudo apt install -y mingw-w64
 
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       if: ${{ steps.cache.outputs.cache-hit != 'true' }}
       with:
         sparse-checkout: |
@@ -548,7 +548,7 @@ jobs:
         sudo apt remove -y jq
 
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Download mingw-ncurses.zip
       uses: actions/download-artifact@v6
@@ -652,7 +652,7 @@ jobs:
           tmux
 
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Download mingw-ncurses.zip
       uses: actions/download-artifact@v6
@@ -699,7 +699,7 @@ jobs:
       run: apk add bash gcc make musl-dev ncurses-dev ncurses-static tmux file sqlite curl zip wget tar git
 
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Configure git in container
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -772,7 +772,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         sparse-checkout: |
           Dockerfile.ci
@@ -836,7 +836,7 @@ jobs:
       uses: mymindstorm/setup-emsdk@v14
 
     - name: Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Update version in index.html
       run: sed "s|__VERSION__|$TAG|g" -i playground/index.html
