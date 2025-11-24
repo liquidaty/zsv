@@ -112,21 +112,27 @@ ${BENCHMARKS_AVG_CSV}: ${BENCHMARKS_CSV} ${BENCHMARKS_AVG_SQL}
 	cat $< | grep -v tsv-utils | zsv sql "`cat ${BENCHMARKS_AVG_SQL}`" > $@.tmp
 	mv $@.tmp $@
 
-GRAPH_GP=plot_metrics${ALL_SUFFIX}.gp
-GRAPH_SUBSET_CSV=/tmp/graph.csv
+GRAPH_GP=plot_metrics${ALL_SUFFIX}
+GRAPH_TIME_GP=plot_metrics_time${ALL_SUFFIX}
+GRAPH_INPUT=/tmp/graph
 HAVE_GNUPLOT=$(shell command -v gnuplot > /dev/null && echo 1 || echo 0)
 
-graph: ${BENCHMARKS_AVG_CSV} ${GRAPH_GP}.in
+graph: graph-select graph-count graph-combined
+
+graph-count graph-select: graph-%: ${BENCHMARKS_AVG_CSV} ${GRAPH_GP}.gp.in ${GRAPH_TIME_GP}.gp.in
 ifneq ($(HAVE_GNUPLOT),1)
 	echo "Please install gnuplot" && exit 1
 else
-## separate charts
-	cat ${GRAPH_GP}.in | sed 's#INPUT_CSV#${GRAPH_SUBSET_CSV}#g' > /tmp/${GRAPH_GP}
-	head -n1 $< > ${GRAPH_SUBSET_CSV}
-# to do: separate outputs for count vs select
-#	grep 'count,worldcitiespop_big' $< >> ${GRAPH_SUBSET_CSV}
-	grep 'select,worldcitiespop_big' $< >> ${GRAPH_SUBSET_CSV}
-	gnuplot /tmp/${GRAPH_GP}
+	cat ${GRAPH_GP}.gp.in | sed 's#INPUT_CSV#${GRAPH_INPUT}-$*.csv#g' \
+	| sed 's/OPERATION/$*/g' > /tmp/${GRAPH_GP}-$*.gp
+	head -n1 $< > ${GRAPH_INPUT}-$*.csv
+	grep '$*,worldcitiespop_big' $< >> ${GRAPH_INPUT}-$*.csv
+	gnuplot /tmp/${GRAPH_GP}-$*.gp
+
+	cat ${GRAPH_TIME_GP}.gp.in | sed 's#INPUT_CSV#${GRAPH_INPUT}-$*.csv#g' \
+	| sed 's/OPERATION/$*/g' > /tmp/${GRAPH_TIME_GP}-$*.gp
+	gnuplot /tmp/${GRAPH_TIME_GP}-$*.gp
+
 endif
 
 GRAPH_GP_COMBINED=plot_combined${ALL_SUFFIX}.gp
@@ -134,11 +140,9 @@ graph-combined: ${BENCHMARKS_AVG_CSV} ${GRAPH_GP_COMBINED}.in
 ifneq ($(HAVE_GNUPLOT),1)
 	echo "Please install gnuplot" && exit 1
 else
-## separate charts
-	cat ${GRAPH_GP_COMBINED}.in | sed 's#INPUT_CSV#${GRAPH_SUBSET_CSV}#g' > /tmp/${GRAPH_GP_COMBINED}
-	head -n1 $< > ${GRAPH_SUBSET_CSV}
-# to do: separate outputs for count vs select
-	grep 'select,worldcitiespop_big' $< >> ${GRAPH_SUBSET_CSV}
+	cat ${GRAPH_GP_COMBINED}.in | sed 's#INPUT_CSV#${GRAPH_INPUT}-combined.csv#g' > /tmp/${GRAPH_GP_COMBINED}
+	head -n1 $< > ${GRAPH_INPUT}-combined.csv
+	grep 'select,worldcitiespop_big' $< >> ${GRAPH_INPUT}-combined.csv
 	gnuplot /tmp/${GRAPH_GP_COMBINED}
 endif
 
@@ -383,7 +387,7 @@ reset:
 clean: reset
 	rm -f worldcitiespop_big.csv worldcitiespop_big.tsv worldcitiespop_mil.csv worldcitiespop_mil.tsv worldcitiespop.csv
 
-.PHONY: help all count select select-% clean polars-setup csv% tsv% graph
+.PHONY: help all count select select-% clean polars-setup csv% tsv% graph%
 
 
 ##### python / polars
