@@ -867,7 +867,7 @@ jobs:
 
     - name: Build with SIMD (${{ env.AMD64_LINUX_WASM }})
       env:
-        PREFIX: ${{ env.AMD64_LINUX_WASM }}
+        PREFIX: ${{ env.AMD64_LINUX_WASM }}-simd
         CC: emcc
         MAKE: make
         RUN_TESTS: false
