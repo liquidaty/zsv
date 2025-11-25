@@ -29,7 +29,7 @@ Earlier versions should exhibit the same performance when run single-threaded (w
 
 ## Takeaways
 - in real time, `zsv --parallel` was the fastest for both count (>= ~25%) and select (>= ~2x)
-  - lmited to single-threaded mode, `zsv` was fastest for select (>= ~2.1x), and `polars` was fastest (by a whopping 3.5x!) for count
+  - lmited to single-threaded mode, `zsv` was fastest for select (>= 25% vs xsv, ~2.1x vs polars). `polars` was fastest (by 3.5x!) for count, but see below
     - the select results suggest that for count, `polars` is only parsing rows, and not cells
     - as noted below, polars imposes limitations to the CSV input format that other parsers do not
 - in memory footprint, `zsv` and `xsv` are *several orders of magnitude* smaller than DuckDB or Polars:
