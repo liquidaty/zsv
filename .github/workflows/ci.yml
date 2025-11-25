@@ -91,11 +91,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Install cppcheck
-      run: |
-        sudo apt update
-        sudo apt install -y cppcheck
-        cppcheck --version
+    - name: Install apt dependencies
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: cppcheck
 
     - name: Run cppcheck
       run: ./scripts/ci-run-cppcheck.sh
@@ -141,11 +140,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Set up apt dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y rpm alien tmux
-        sudo apt remove -y jq
+    - name: Install apt dependencies
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: rpm alien tmux
 
     - name: Build on Linux (${{ env.AMD64_LINUX_GCC }})
       env:
@@ -276,11 +274,13 @@ jobs:
       AMD64_ZIP: zsv-${{ needs.ci-linux.outputs.TAG }}-amd64-linux-gcc.zip
 
     steps:
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y rpm dpkg-dev createrepo-c
-        sudo gem install --no-document fpm
+    - name: Install apt dependencies
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: rpm dpkg-dev createrepo-c
+
+    - name: Install fpm gem
+      run: sudo gem install --no-document fpm
 
     - name: Checkout
       uses: actions/checkout@v6
@@ -497,18 +497,18 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Cache
+    - name: Cache MinGW ncurses build
       uses: actions/cache@v4
       id: cache
       with:
         key: mingw-ncurses.zip
         path: ${{ github.workspace }}/mingw-ncurses.zip
 
-    - name: Install MinGW
+    - name: Install apt dependencies
       if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-      run: |
-        sudo apt update
-        sudo apt install -y mingw-w64
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: mingw-w64
 
     - name: Checkout
       uses: actions/checkout@v6
@@ -541,11 +541,10 @@ jobs:
       TAG: ${{ needs.tag.outputs.TAG }}
 
     steps:
-    - name: Set up apt dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y mingw-w64 nuget
-        sudo apt remove -y jq
+    - name: Install apt dependencies
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: mingw-w64 nuget
 
     - name: Checkout
       uses: actions/checkout@v6
