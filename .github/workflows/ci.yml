@@ -504,12 +504,11 @@ jobs:
         key: mingw-ncurses.zip
         path: ${{ github.workspace }}/mingw-ncurses.zip
 
-    - name: Install apt dependencies
+    - name: Install MinGW
       if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: mingw-w64
-        execute_install_scripts: true
+      run: |
+        sudo apt update
+        sudo apt install -y mingw-w64
 
     - name: Checkout
       uses: actions/checkout@v6
@@ -543,10 +542,10 @@ jobs:
 
     steps:
     - name: Install apt dependencies
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: mingw-w64 nuget
-        execute_install_scripts: true
+      run: |
+        sudo apt update
+        sudo apt install -y mingw-w64 nuget
+        sudo apt remove -y jq
 
     - name: Checkout
       uses: actions/checkout@v6
@@ -642,6 +641,7 @@ jobs:
         wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
         set-as-default: true
         distribution: Ubuntu-22.04
+        use-cache: true
         additional-packages: |
           build-essential
           mingw-w64
