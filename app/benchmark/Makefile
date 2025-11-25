@@ -243,12 +243,13 @@ else
 	@printf "polars               : "
 	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import polars as pl; print(pl.scan_csv("$<").select(pl.len()).collect().item())' >> /tmp/polars-$@.count) 2>&1 | xargs
 	@echo ""
-	@printf "polars-stdin         : "
-	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import sys, io, polars as pl; print(pl.read_csv(io.BytesIO(sys.stdin.buffer.read()),infer_schema_length=0).select(pl.len()).item())' > /tmp/polars_stdin-$@.count) 2>&1 < $< | xargs
-	@printf "polars-stdin         : "
-	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import sys, io, polars as pl; print(pl.read_csv(io.BytesIO(sys.stdin.buffer.read()),infer_schema_length=0).select(pl.len()).item())' >> /tmp/polars_stdin-$@.count) 2>&1 < $< | xargs
-	@printf "polars-stdin         : "
-	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import sys, io, polars as pl; print(pl.read_csv(io.BytesIO(sys.stdin.buffer.read()),infer_schema_length=0).select(pl.len()).item())' >> /tmp/polars_stdin-$@.count) 2>&1 < $< | xargs
+
+	@printf "polars-1thread       : "
+	@. ${VENV_ACTIVATE}; (POLARS_MAX_THREADS=1 ${TIMER} python3 -c 'import polars as pl; print(pl.scan_csv("$<").select(pl.len()).collect().item())' > /tmp/polars-$@.count) 2>&1 | xargs
+	@printf "polars-1thread       : "
+	@. ${VENV_ACTIVATE}; (POLARS_MAX_THREADS=1 ${TIMER} python3 -c 'import polars as pl; print(pl.scan_csv("$<").select(pl.len()).collect().item())' >> /tmp/polars-$@.count) 2>&1 | xargs
+	@printf "polars-1thread       : "
+	@. ${VENV_ACTIVATE}; (POLARS_MAX_THREADS=1 ${TIMER} python3 -c 'import polars as pl; print(pl.scan_csv("$<").select(pl.len()).collect().item())' >> /tmp/polars-$@.count) 2>&1 | xargs
 	@echo ""
 endif
 
@@ -272,13 +273,14 @@ else
 	@(${TIMER} duckdb -c "SELECT count(*) FROM read_csv('$<',all_varchar=true,quote='')" >> /tmp/duckdb-nq-$@.count) 2>&1 | xargs
 	@echo ""
 
-	@printf "duckdb-stdin (QUOTE='') : "
-	@(${TIMER} duckdb -c "SELECT count(*) FROM read_csv('/dev/stdin', all_varchar=true, quote='')" < $< > /tmp/duckdb-nq-$@.count) 2>&1 | xargs
-	@printf "duckdb-stdin (QUOTE='') : "
-	@(${TIMER} duckdb -c "SELECT count(*) FROM read_csv('/dev/stdin', all_varchar=true, quote='')" < $< >> /tmp/duckdb-nq-$@.count) 2>&1 | xargs
-	@printf "duckdb-stdin (QUOTE='') : "
-	@(${TIMER} duckdb -c "SELECT count(*) FROM read_csv('/dev/stdin', all_varchar=true, quote='')" < $< >> /tmp/duckdb-nq-$@.count) 2>&1 | xargs
+	@printf "duckdb-1thread (QUOTE='') : "
+	@(${TIMER} duckdb -c "SET threads=1; SELECT count(*) FROM read_csv('$<',all_varchar=true,quote='')" > /tmp/duckdb-nq-$@.count) 2>&1 | xargs
+	@printf "duckdb-1thread (QUOTE='') : "
+	@(${TIMER} duckdb -c "SET threads=1; SELECT count(*) FROM read_csv('$<',all_varchar=true,quote='')" >> /tmp/duckdb-nq-$@.count) 2>&1 | xargs
+	@printf "duckdb-1thread (QUOTE='') : "
+	@(${TIMER} duckdb -c "SET threads=1; SELECT count(*) FROM read_csv('$<',all_varchar=true,quote='')" >> /tmp/duckdb-nq-$@.count) 2>&1 | xargs
 	@echo ""
+
 endif
 
 tsv: worldcitiespop_mil.csv
@@ -370,12 +372,13 @@ else
 	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import polars as pl; pl.scan_csv("$<", infer_schema=False).select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 | xargs
 	@echo ""
 
-	@printf "polars-stdin         : "
-	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import sys, io, polars as pl; pl.read_csv(io.BytesIO(sys.stdin.buffer.read()), infer_schema=False).lazy().select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 < $< | xargs
-	@printf "polars-stdin         : "
-	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import sys, io, polars as pl; pl.read_csv(io.BytesIO(sys.stdin.buffer.read()), infer_schema=False).lazy().select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 < $< | xargs
-	@printf "polars-stdin         : "
-	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import sys, io, polars as pl; pl.read_csv(io.BytesIO(sys.stdin.buffer.read()), infer_schema=False).lazy().select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 < $< | xargs
+	@printf "polars-1thread       : "
+	@. ${VENV_ACTIVATE}; (POLARS_MAX_THREADS=1 ${TIMER} python3 -c 'import polars as pl; pl.scan_csv("$<", infer_schema=False).select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 | xargs
+	@printf "polars-1thread       : "
+	@. ${VENV_ACTIVATE}; (POLARS_MAX_THREADS=1 ${TIMER} python3 -c 'import polars as pl; pl.scan_csv("$<", infer_schema=False).select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 | xargs
+	@printf "polars-1thread       : "
+	@. ${VENV_ACTIVATE}; (POLARS_MAX_THREADS=1 ${TIMER} python3 -c 'import polars as pl; pl.scan_csv("$<", infer_schema=False).select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 | xargs
+	@echo ""
 
 endif
 
@@ -399,12 +402,12 @@ else
 	@(${TIMER} duckdb -c "COPY (from read_csv('$<', all_varchar=true, quote='') select #2, #1, #3, #4, #5, #6, #7) TO '/dev/null' (quote '')") 2>&1 | xargs
 	@echo ""
 
-	@printf "duckdb-stdin (QUOTE='') : "
-	@(${TIMER} duckdb -c "COPY (from read_csv('/dev/stdin', all_varchar=true, quote='') select #2, #1, #3, #4, #5, #6, #7) TO '/dev/null' (quote '')") 2>&1 < $< | xargs
-	@printf "duckdb-stdin (QUOTE='') : "
-	@(${TIMER} duckdb -c "COPY (from read_csv('/dev/stdin', all_varchar=true, quote='') select #2, #1, #3, #4, #5, #6, #7) TO '/dev/null' (quote '')") 2>&1 < $< | xargs
-	@printf "duckdb-stdin (QUOTE='') : "
-	@(${TIMER} duckdb -c "COPY (from read_csv('/dev/stdin', all_varchar=true, quote='') select #2, #1, #3, #4, #5, #6, #7) TO '/dev/null' (quote '')") 2>&1 < $< | xargs
+	@printf "duckdb-1thread (QUOTE='') : "
+	@(${TIMER} duckdb -c "SET threads=1; COPY (from read_csv('$<', all_varchar=true, quote='') select #2, #1, #3, #4, #5, #6, #7) TO '/dev/null' (quote '')") 2>&1 | xargs
+	@printf "duckdb-1thread (QUOTE='') : "
+	@(${TIMER} duckdb -c "SET threads=1; COPY (from read_csv('$<', all_varchar=true, quote='') select #2, #1, #3, #4, #5, #6, #7) TO '/dev/null' (quote '')") 2>&1 | xargs
+	@printf "duckdb-1thread (QUOTE='') : "
+	@(${TIMER} duckdb -c "SET threads=1; COPY (from read_csv('$<', all_varchar=true, quote='') select #2, #1, #3, #4, #5, #6, #7) TO '/dev/null' (quote '')") 2>&1 | xargs
 
 endif
 
