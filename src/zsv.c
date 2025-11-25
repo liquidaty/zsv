@@ -64,6 +64,7 @@ inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
   if (VERY_UNLIKELY(capacity == 0)) {
     // our row size was too small to fit a single row of data
     scanner->errprintf(scanner->errf, "Warning: row %zu truncated\n", scanner->data_row_count);
+    zsv_clear_cell(scanner);
     if (scanner->mode == ZSV_MODE_FIXED) {
       if (VERY_UNLIKELY(row_fx(scanner, scanner->buff.buff, 0, scanner->buff.size)))
         return zsv_status_cancelled;
