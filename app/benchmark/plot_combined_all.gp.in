@@ -1,6 +1,6 @@
 # Output Settings
 set terminal pngcairo size 1000,600 enhanced font 'Verdana,10'
-set output 'bench_combined.png'
+set output 'bench_combined-OPERATION.png'
 
 # Data Parsing
 set datafile separator ","
@@ -14,7 +14,7 @@ set style fill solid 1.0 border -1
 set boxwidth 0.9
 
 # Axis Configuration
-set title "Benchmark Comparison: Time vs Memory"
+set title "Benchmark Comparison (OPERATION): Min Time (Real, User) and Memory"
 set grid y
 
 # --- CRITICAL: Log Scale ---
@@ -36,4 +36,4 @@ set xlabel "Tools"
 #    closer to the time values, making the chart easier to read.
 plot 'INPUT_CSV' every ::1 using 4:xtic(3) title 'Real Time (s)'  lc rgb "#4E79A7", \
      ''             every ::1 using 5         title 'User Time (s)'  lc rgb "#F28E2B", \
-     ''             every ::1 using ($6/1048576) title 'Max RSS (MB)'   lc rgb "#E15759"
+     ''             every ::1 using ($7/1048576) title 'Max RSS (MB)'   lc rgb "#E15759"

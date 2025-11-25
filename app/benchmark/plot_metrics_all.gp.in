@@ -33,7 +33,7 @@ set grid ytics
 # -----------------------------------------------------------------------------
 # Order: Min Real, Avg Real, Min User, Avg User
 set output 'benchmark_OPERATION_time.png'
-set title "Execution Time (OPERATION): Minimum vs Average" font ",16"
+set title "Execution Time (OPERATION): Minimum, Average" font ",16"
 set ylabel "Time (Seconds)"
 
 # Columns in CSV: 4=real_min, 8=real_avg, 5=user_min, 9=user_avg

@@ -67,6 +67,9 @@ else
 endif
 AWK_SCRIPT=./benchmark${ALL_SUFFIX}.awk
 
+DATA_TARGETS=worldcitiespop_big # select-worldcitiespop_mil
+
+
 help:
 	@echo "========================================================================"
 	@echo "Running benchmarks"
@@ -82,9 +85,16 @@ help:
 	@echo "Other targets:"
 	@echo "------------------------------------------------------------------------"
 	@echo "    ${MAKE_BIN} clean  : remove all data, intermediate and result files"
-	@echo "    ${MAKE_BIN} all [PULL=1] [TSV_UTILS=~/install/tsv-utils/bin]"
+	@echo "    ${MAKE_BIN} all [TIME_ALL=0] [PULL=1] [TSV_UTILS=~/install/tsv-utils/bin]"
 	@echo "    ${MAKE_BIN} csv    : same as all but saves to benchmark.csv"
 	@echo "    ${MAKE_BIN} CLI    : use CLI instead of standalone command binaries"
+	@echo "========================================================================"
+	@echo ""
+	@echo "------------------------------------------------------------------------"
+	@echo "Tool-specific targets"
+	@echo "------------------------------------------------------------------------"
+	@echo "    ${MAKE_BIN} $(addprefix count-,zsv xsv polars duckdb)"
+	@echo "    ${MAKE_BIN} $(addprefix select-,zsv xsv polars duckdb)"
 	@echo ""
 	@echo "make all does not actually run everything; you can also run:"
 	@echo "    ${MAKE_BIN} tsv"
@@ -134,15 +144,20 @@ else
 	echo "Generated benchmark_$*_time.png and benchmark_$*_memory.png"
 endif
 
-GRAPH_GP_COMBINED=plot_combined${ALL_SUFFIX}.gp
-graph-combined: ${BENCHMARKS_AGG_CSV} ${GRAPH_GP_COMBINED}.in
+GRAPH_GP_COMBINED=plot_combined${ALL_SUFFIX}
+graph-combined: graph-combined-select graph-combined-count
+
+graph-combined-select graph-combined-count: graph-combined-%: ${BENCHMARKS_AGG_CSV} ${GRAPH_GP_COMBINED}.gp.in
 ifneq ($(HAVE_GNUPLOT),1)
 	echo "Please install gnuplot" && exit 1
 else
-	cat ${GRAPH_GP_COMBINED}.in | sed 's#INPUT_CSV#${GRAPH_INPUT}-combined.csv#g' > /tmp/${GRAPH_GP_COMBINED}
-	head -n1 $< > ${GRAPH_INPUT}-combined.csv
-	grep 'select,worldcitiespop_big' $< >> ${GRAPH_INPUT}-combined.csv
-	gnuplot /tmp/${GRAPH_GP_COMBINED}
+	cat ${GRAPH_GP_COMBINED}.gp.in \
+	  | sed 's#INPUT_CSV#${GRAPH_INPUT}-combined-$*.csv#g' \
+	  | sed 's#OPERATION#$*#g' \
+	  > /tmp/${GRAPH_GP_COMBINED}-$*.gp
+	head -n1 $< > ${GRAPH_INPUT}-combined-$*.csv
+	grep '$*,worldcitiespop_big' $< >> ${GRAPH_INPUT}-combined-$*.csv
+	gnuplot /tmp/${GRAPH_GP_COMBINED}-$*.gp
 endif
 
 ${BENCHMARKS_TXT}: worldcitiespop.csv
@@ -160,97 +175,111 @@ worldcitiespop.csv:
 	curl -LO 'https://burntsushi.net/stuff/worldcitiespop.csv'
 
 worldcitiespop_big.csv: worldcitiespop.csv
-	cat worldcitiespop.csv worldcitiespop.csv worldcitiespop.csv > $@.tmp
+	cat worldcitiespop.csv > $@.tmp
+	awk ' NR > 1 { print $0 }' < worldcitiespop.csv >> $@.tmp
+	awk ' NR > 1 { print $0 }' < worldcitiespop.csv >> $@.tmp
 	mv $@.tmp $@
 
 worldcitiespop_big.tsv worldcitiespop_mil.tsv: %.tsv : %.csv
-	${ZSVBIN}2tsv $< > $@.tmp
+	zsv 2tsv $< > $@.tmp
 	mv $@.tmp $@
 
-count: count-worldcitiespop_mil count-worldcitiespop_big
+count: $(addprefix count-,$(DATA_TARGETS))
 
-count-worldcitiespop_mil count-worldcitiespop_big: count-% : %.csv %.tsv
+count-worldcitiespop_mil count-worldcitiespop_big: count-% : count-intro-% count-zsv-% count-xsv-% count-polars-% count-duckdb-%
+
+### additional convenience targets
+count-zsv: $(addprefix count-zsv-,$(DATA_TARGETS))
+count-xsv: $(addprefix count-xsv-,$(DATA_TARGETS))
+count-polars: $(addprefix count-polars-,$(DATA_TARGETS))
+count-duckdb: $(addprefix count-duckdb-,$(DATA_TARGETS))
+###
+
+
+$(addprefix count-intro-,$(DATA_TARGETS)): count-intro-% :
 	@echo "-----------------------------------------------"
 	@echo "  Benchmarking count: $*"
 	@echo "-----------------------------------------------"
+
+count-zsv-worldcitiespop_mil count-zsv-worldcitiespop_big: count-zsv-%: %.csv %.tsv
 	@echo "${ZSVBIN}"${COUNT}
-
 	@printf "zsv                  : "
-	@(${TIMER} ${ZSVBIN}${COUNT} < $< > /dev/null) 2>&1 | xargs
+	@(${TIMER} ${ZSVBIN}${COUNT} < $< > /tmp/zsv-$@.count) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(${TIMER} ${ZSVBIN}${COUNT} < $< > /dev/null) 2>&1 | xargs
+	@(${TIMER} ${ZSVBIN}${COUNT} < $< >> /tmp/zsv-$@.count) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(${TIMER} ${ZSVBIN}${COUNT} < $< > /dev/null) 2>&1 | xargs
+	@(${TIMER} ${ZSVBIN}${COUNT} < $< >> /tmp/zsv-$@.count) 2>&1 | xargs
 	@echo ""
 
 	@printf "zsv --parallel       : "
-	@(${TIMER} ${ZSVBIN}${COUNT} --parallel $< > /dev/null) 2>&1 | xargs
+	@(${TIMER} ${ZSVBIN}${COUNT} --parallel $< >/tmp/zsv-parallel-$@.count) 2>&1 | xargs
 	@printf "zsv --parallel       : "
-	@(${TIMER} ${ZSVBIN}${COUNT} --parallel $< > /dev/null) 2>&1 | xargs
+	@(${TIMER} ${ZSVBIN}${COUNT} --parallel $< >>/tmp/zsv-parallel-$@.count) 2>&1 | xargs
 	@printf "zsv --parallel       : "
-	@(${TIMER} ${ZSVBIN}${COUNT} --parallel $< > /dev/null) 2>&1 | xargs
+	@(${TIMER} ${ZSVBIN}${COUNT} --parallel $< >>/tmp/zsv-parallel-$@.count) 2>&1 | xargs
 	@echo ""
 
+count-xsv-worldcitiespop_mil count-xsv-worldcitiespop_big: count-xsv-%: %.csv %.tsv
 ifneq ($(HAVE_XSV),1)
 	@echo "xsv not found: skipping (run \'brew install xsv\' to install)"
 else
 	@printf "xsv                  : "
-	@(${TIMER} xsv count < $< > /dev/null) 2>&1 | xargs
+	@(${TIMER} xsv count < $< > /tmp/xsv-$@.count) 2>&1 | xargs
 	@printf "xsv                  : "
-	@(${TIMER} xsv count < $< > /dev/null) 2>&1 | xargs
+	@(${TIMER} xsv count < $< >> /tmp/xsv-$@.count) 2>&1 | xargs
 	@printf "xsv                  : "
-	@(${TIMER} xsv count < $< > /dev/null) 2>&1 | xargs
+	@(${TIMER} xsv count < $< >> /tmp/xsv-$@.count) 2>&1 | xargs
 	@echo ""
 endif
 
+count-polars-worldcitiespop_mil count-polars-worldcitiespop_big: count-polars-%: %.csv %.tsv
 ifneq ($(HAVE_POLARS),1)
 	@echo "polars not found: skipping (run \`make polars-setup\` to set up)"
 else
 	@printf "polars               : "
-	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import polars as pl; print(pl.scan_csv("$<").select(pl.len()).collect().item())' > /dev/null) 2>&1 | xargs
+	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import polars as pl; print(pl.scan_csv("$<").select(pl.len()).collect().item())' > /tmp/polars-$@.count) 2>&1 | xargs
 	@printf "polars               : "
-	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import polars as pl; print(pl.scan_csv("$<").select(pl.len()).collect().item())' > /dev/null) 2>&1 | xargs
+	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import polars as pl; print(pl.scan_csv("$<").select(pl.len()).collect().item())' >> /tmp/polars-$@.count) 2>&1 | xargs
 	@printf "polars               : "
-	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import polars as pl; print(pl.scan_csv("$<").select(pl.len()).collect().item())' > /dev/null) 2>&1 | xargs
+	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import polars as pl; print(pl.scan_csv("$<").select(pl.len()).collect().item())' >> /tmp/polars-$@.count) 2>&1 | xargs
+	@echo ""
+	@printf "polars-stdin         : "
+	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import sys, io, polars as pl; print(pl.read_csv(io.BytesIO(sys.stdin.buffer.read()),infer_schema_length=0).select(pl.len()).item())' > /tmp/polars_stdin-$@.count) 2>&1 < $< | xargs
+	@printf "polars-stdin         : "
+	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import sys, io, polars as pl; print(pl.read_csv(io.BytesIO(sys.stdin.buffer.read()),infer_schema_length=0).select(pl.len()).item())' >> /tmp/polars_stdin-$@.count) 2>&1 < $< | xargs
+	@printf "polars-stdin         : "
+	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import sys, io, polars as pl; print(pl.read_csv(io.BytesIO(sys.stdin.buffer.read()),infer_schema_length=0).select(pl.len()).item())' >> /tmp/polars_stdin-$@.count) 2>&1 < $< | xargs
 	@echo ""
 endif
 
+count-duckdb-worldcitiespop_mil count-duckdb-worldcitiespop_big: count-duckdb-%: %.csv %.tsv
 ifneq ($(HAVE_DUCKDB),1)
 	@echo "duckdb not found: skipping"
 else
 	@printf "duckdb               : "
-	@(${TIMER} duckdb -c "SELECT count(*) FROM '$<'" > /dev/null) 2>&1 | xargs
+	@(${TIMER} duckdb -c "SELECT count(*) FROM '$<'" > /tmp/duckdb-$@.count) 2>&1 | xargs
 	@printf "duckdb               : "
-	@(${TIMER} duckdb -c "SELECT count(*) FROM '$<'" > /dev/null) 2>&1 | xargs
+	@(${TIMER} duckdb -c "SELECT count(*) FROM '$<'" >> /tmp/duckdb-$@.count) 2>&1 | xargs
 	@printf "duckdb               : "
-	@(${TIMER} duckdb -c "SELECT count(*) FROM '$<'" > /dev/null) 2>&1 | xargs
+	@(${TIMER} duckdb -c "SELECT count(*) FROM '$<'" >> /tmp/duckdb-$@.count) 2>&1 | xargs
 	@echo ""
 
 	@printf "duckdb (QUOTE='')    : "
-	@(${TIMER} duckdb -c "SELECT count(*) FROM read_csv('$<',all_varchar=true,quote='')" > /dev/null) 2>&1 | xargs
+	@(${TIMER} duckdb -c "SELECT count(*) FROM read_csv('$<',all_varchar=true,quote='')" > /tmp/duckdb-nq-$@.count) 2>&1 | xargs
 	@printf "duckdb (QUOTE='')    : "
-	@(${TIMER} duckdb -c "SELECT count(*) FROM read_csv('$<',all_varchar=true,quote='')" > /dev/null) 2>&1 | xargs
+	@(${TIMER} duckdb -c "SELECT count(*) FROM read_csv('$<',all_varchar=true,quote='')" >> /tmp/duckdb-nq-$@.count) 2>&1 | xargs
 	@printf "duckdb (QUOTE='')    : "
-	@(${TIMER} duckdb -c "SELECT count(*) FROM read_csv('$<',all_varchar=true,quote='')" > /dev/null) 2>&1 | xargs
+	@(${TIMER} duckdb -c "SELECT count(*) FROM read_csv('$<',all_varchar=true,quote='')" >> /tmp/duckdb-nq-$@.count) 2>&1 | xargs
 	@echo ""
 
+	@printf "duckdb-stdin (QUOTE='') : "
+	@(${TIMER} duckdb -c "SELECT count(*) FROM read_csv('/dev/stdin', all_varchar=true, quote='')" < $< > /tmp/duckdb-nq-$@.count) 2>&1 | xargs
+	@printf "duckdb-stdin (QUOTE='') : "
+	@(${TIMER} duckdb -c "SELECT count(*) FROM read_csv('/dev/stdin', all_varchar=true, quote='')" < $< >> /tmp/duckdb-nq-$@.count) 2>&1 | xargs
+	@printf "duckdb-stdin (QUOTE='') : "
+	@(${TIMER} duckdb -c "SELECT count(*) FROM read_csv('/dev/stdin', all_varchar=true, quote='')" < $< >> /tmp/duckdb-nq-$@.count) 2>&1 | xargs
+	@echo ""
 endif
-
-	@printf "tsv-utils            : "
-	@(${TIMER} ~/install/tsv-utils/bin/number-lines -d, < $< > /dev/null) 2>&1 | xargs
-	@printf "tsv-utils            : "
-	@(${TIMER} ~/install/tsv-utils/bin/number-lines -d, < $< > /dev/null) 2>&1 | xargs
-	@printf "tsv-utils            : "
-	@(${TIMER} ~/install/tsv-utils/bin/number-lines -d, < $< > /dev/null) 2>&1 | xargs
-	@echo ""
-
-	@printf "tsv-utils (tsv input): "
-	@(${TIMER} ~/install/tsv-utils/bin/number-lines < $(word 2,$^) > /dev/null) 2>&1 | xargs
-	@printf "tsv-utils (tsv input): "
-	@(${TIMER} ~/install/tsv-utils/bin/number-lines < $(word 2,$^) > /dev/null) 2>&1 | xargs
-	@printf "tsv-utils (tsv input): "
-	@(${TIMER} ~/install/tsv-utils/bin/number-lines < $(word 2,$^) > /dev/null) 2>&1 | xargs
-	@echo ""
 
 tsv: worldcitiespop_mil.csv
 	@echo "${ZSVBIN}"2tsv
@@ -283,13 +312,23 @@ else
 endif
 	@echo ""
 
-select: select-worldcitiespop_mil select-worldcitiespop_big
+select: $(addprefix select-,$(DATA_TARGETS))
 
-select-worldcitiespop_mil select-worldcitiespop_big: select-% : %.csv %.tsv
+select-worldcitiespop_big select-select-worldcitiespop_mil: select-% : select-intro-% $(addsuffix -%,select-zsv select-xsv select-polars select-duckdb)
+
+### additional convenience targets
+select-zsv: $(addprefix select-zsv-,$(DATA_TARGETS))
+select-xsv: $(addprefix select-xsv-,$(DATA_TARGETS))
+select-polars: $(addprefix select-polars-,$(DATA_TARGETS))
+select-duckdb: $(addprefix select-duckdb-,$(DATA_TARGETS))
+###
+
+select-intro-worldcitiespop_big select-intro-worldcitiespop_mil: select-intro-% :
 	@echo "-----------------------------------------------"
 	@echo "  Benchmarking select: $*"
 	@echo "-----------------------------------------------"
 
+select-zsv-worldcitiespop_mil select-zsv-worldcitiespop_big: select-zsv-%: %.csv %.tsv
 	@printf "zsv                  : "
 	@(${TIMER} ${ZSVBIN}${SELECT} -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
 	@printf "zsv                  : "
@@ -306,6 +345,7 @@ select-worldcitiespop_mil select-worldcitiespop_big: select-% : %.csv %.tsv
 	@(${TIMER} ${ZSVBIN}${SELECT} --parallel -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
 	@echo ""
 
+select-xsv-worldcitiespop_mil select-xsv-worldcitiespop_big: select-xsv-%: %.csv %.tsv
 ifneq ($(HAVE_XSV),1)
 	@echo "xsv not found: skipping (run \'brew install xsv\' to install)"
 else
@@ -318,6 +358,7 @@ else
 	@echo ""
 endif
 
+select-polars-worldcitiespop_mil select-polars-worldcitiespop_big: select-polars-%: %.csv %.tsv
 ifneq ($(HAVE_POLARS),1)
 	@echo "polars not found: skipping (run \`make polars-setup\` to set up)"
 else
@@ -328,8 +369,17 @@ else
 	@printf "polars               : "
 	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import polars as pl; pl.scan_csv("$<", infer_schema=False).select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 | xargs
 	@echo ""
+
+	@printf "polars-stdin         : "
+	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import sys, io, polars as pl; pl.read_csv(io.BytesIO(sys.stdin.buffer.read()), infer_schema=False).lazy().select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 < $< | xargs
+	@printf "polars-stdin         : "
+	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import sys, io, polars as pl; pl.read_csv(io.BytesIO(sys.stdin.buffer.read()), infer_schema=False).lazy().select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 < $< | xargs
+	@printf "polars-stdin         : "
+	@. ${VENV_ACTIVATE}; (${TIMER} python3 -c 'import sys, io, polars as pl; pl.read_csv(io.BytesIO(sys.stdin.buffer.read()), infer_schema=False).lazy().select(pl.nth(1, 0, 2, 3, 4, 5, 6)).sink_csv("/dev/null")') 2>&1 < $< | xargs
+
 endif
 
+select-duckdb-worldcitiespop_mil select-duckdb-worldcitiespop_big: select-duckdb-%: %.csv %.tsv
 ifneq ($(HAVE_DUCKDB),1)
 	@echo "duckdb not found: skipping"
 else
@@ -348,8 +398,17 @@ else
 	@printf "duckdb (QUOTE='')    : "
 	@(${TIMER} duckdb -c "COPY (from read_csv('$<', all_varchar=true, quote='') select #2, #1, #3, #4, #5, #6, #7) TO '/dev/null' (quote '')") 2>&1 | xargs
 	@echo ""
+
+	@printf "duckdb-stdin (QUOTE='') : "
+	@(${TIMER} duckdb -c "COPY (from read_csv('/dev/stdin', all_varchar=true, quote='') select #2, #1, #3, #4, #5, #6, #7) TO '/dev/null' (quote '')") 2>&1 < $< | xargs
+	@printf "duckdb-stdin (QUOTE='') : "
+	@(${TIMER} duckdb -c "COPY (from read_csv('/dev/stdin', all_varchar=true, quote='') select #2, #1, #3, #4, #5, #6, #7) TO '/dev/null' (quote '')") 2>&1 < $< | xargs
+	@printf "duckdb-stdin (QUOTE='') : "
+	@(${TIMER} duckdb -c "COPY (from read_csv('/dev/stdin', all_varchar=true, quote='') select #2, #1, #3, #4, #5, #6, #7) TO '/dev/null' (quote '')") 2>&1 < $< | xargs
+
 endif
 
+select-tsvutils-worldcitiespop_mil select-tsvutils-worldcitiespop_big: select-tsvutils-%: %.csv %.tsv
 ifneq ($(HAVE_TSVUTILS),1)
 	@echo "tsv-utils not found: skipping"
 else
@@ -370,10 +429,12 @@ endif
 	@(${TIMER} ${TSV_UTILS}/tsv-select -f 1-7 < $(word 2,$^) > /dev/null) 2>&1 | xargs
 	@echo ""
 
+select-csvcut-worldcitiespop_mil select-csvcut-worldcitiespop_big: select-csvcut-%: %.csv %.tsv
 	@printf "csvcut               : "
 	@(${TIMER} csvcut -c 2,1,3-7 < $< > /dev/null) 2>&1 | xargs
 	@echo ""
 
+select-miller-worldcitiespop_mil select-miller-worldcitiespop_big: select-miller-%: %.csv %.tsv
 	@printf "miller (mlr)         : "
 	@(${TIMER} mlr --csv cut -o -f City,Country,AccentCity,Region,Population,Latitude,Longitude $< > /dev/null) 2>&1 | xargs
 	@printf "miller (mlr)         : "
