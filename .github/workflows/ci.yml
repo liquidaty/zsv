@@ -509,6 +509,7 @@ jobs:
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         packages: mingw-w64
+        execute_install_scripts: true
 
     - name: Checkout
       uses: actions/checkout@v6
@@ -545,6 +546,7 @@ jobs:
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         packages: mingw-w64 nuget
+        execute_install_scripts: true
 
     - name: Checkout
       uses: actions/checkout@v6
