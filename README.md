@@ -17,7 +17,7 @@ npm:
 
 Playground (without `sheet` viewer command): https://liquidaty.github.io/zsv
 
-zsv+lib is a fast CSV parser library and extensible command-line utility. It
+zsv+lib is a [fast CSV parser](./app/benchmark/README.md) library and extensible command-line utility. It
 achieves high performance using SIMD operations, [efficient memory
 use](docs/memory.md) and other optimization techniques, and can also parse
 generic-delimited and fixed-width formats, as well as multi-row-span headers.
@@ -60,17 +60,9 @@ If you like zsv+lib, do not forget to give it a star! 🌟
 ## Performance
 
 Performance results compare favorably vs other CSV utilities (`xsv`,
-`tsv-utils`, `csvkit`, `mlr` (miller) etc). Below were results on a pre-M1 macOS
-MBA; on most platforms zsvlib was 2x faster, though in some cases the advantage
-was smaller e.g. 15-25% (below, `mlr` not shown as it was about 25x slower).
+`tsv-utils`, `csvkit`, `mlr` (miller) etc).
 
-<img src="https://user-images.githubusercontent.com/26302468/146497899-48174114-3b18-49b0-97da-35754ab56e48.png" alt="count speed" height="150px"><img src="https://user-images.githubusercontent.com/26302468/146498211-afc77ce6-4229-4599-bf33-81bf00c725a8.png" alt="select speed" height="150px">
-
-** See 12/19 update re M1 processor at
-<https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md>
-
-Performance tests on newer chips across Windows, Linux and MacOS as of 2025
-yielded similar results.
+See [benchmarks](./app/benchmark/README.md)
 
 ## Which "CSV"
 
