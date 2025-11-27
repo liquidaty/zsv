@@ -143,7 +143,9 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
       } else
         // we are inside an open quote, which is needed to escape this char
         scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
-    } else if (UNLIKELY(c == '\r') && !scanner->opts.only_crlf_rowend) {
+    } else if (UNLIKELY(c == '\r')) {
+      if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend))
+        continue;
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
         enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
@@ -172,11 +174,10 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         int is_crlf = (scanner_last == '\r');
 
         // Handle logic for when we should SKIP this char (not a row end)
-        if (scanner->opts.only_crlf_rowend) {
+        if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend)) {
           if (!is_crlf) {
             scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
-            // scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
-            continue; // Strict mode: ignore lone \n
+            continue; // only-crlf mode: ignore lone \n
           }
         } else {
           if (is_crlf) {
@@ -190,9 +191,9 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         // If we reached here, this is a row end
         scanner->scanned_length = i;
 
-        // Calculate cell length. In strict mode, we must exclude the preceding \r
+        // Calculate cell length. In only-crlf mode, we must exclude the preceding \r
         size_t cell_len = i - scanner->cell_start;
-        if (scanner->opts.only_crlf_rowend)
+        if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend))
           cell_len--;
 
         enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, cell_len);
