@@ -33,6 +33,7 @@ struct zsv_echo_data {
   zsv_csv_writer csv_writer;
   zsv_parser parser;
   size_t row_ix;
+  size_t start_row, end_row;
 
   unsigned char *skip_until_prefix;
   size_t skip_until_prefix_len;
@@ -45,8 +46,8 @@ struct zsv_echo_data {
   unsigned char _ : 5;
 };
 
-static void zsv_echo_get_max_nonempty_cols(void *hook) {
-  struct zsv_echo_data *data = hook;
+static void zsv_echo_get_max_nonempty_cols(void *ctx) {
+  struct zsv_echo_data *data = ctx;
   unsigned row_nonempty_col_count = 0;
   for (size_t i = 0, j = zsv_cell_count(data->parser); i < j; i++) {
     struct zsv_cell cell = zsv_get_cell(data->parser, i);
@@ -59,8 +60,12 @@ static void zsv_echo_get_max_nonempty_cols(void *hook) {
     data->max_nonempty_cols = row_nonempty_col_count;
 }
 
-static void zsv_echo_row(void *hook) {
-  struct zsv_echo_data *data = hook;
+static void zsv_echo_row(void *ctx) {
+  struct zsv_echo_data *data = ctx;
+  if (VERY_UNLIKELY((data->end_row > 0 && data->end_row <= data->row_ix))) {
+    zsv_abort(data->parser);
+    return;
+  }
   size_t j = zsv_cell_count(data->parser);
   if (UNLIKELY(data->trim_columns && j > data->max_nonempty_cols))
     j = data->max_nonempty_cols;
@@ -85,14 +90,24 @@ static void zsv_echo_row(void *hook) {
   data->row_ix++;
 }
 
-static void zsv_echo_row_skip_until(void *hook) {
-  struct zsv_echo_data *data = hook;
+static void zsv_echo_row_skip_until(void *ctx) {
+  struct zsv_echo_data *data = ctx;
   struct zsv_cell cell = zsv_get_cell(data->parser, 0);
   if (cell.len && cell.str && cell.len >= data->skip_until_prefix_len &&
       (!data->skip_until_prefix_len ||
        !zsv_strincmp(cell.str, data->skip_until_prefix_len, data->skip_until_prefix, data->skip_until_prefix_len))) {
     zsv_set_row_handler(data->parser, zsv_echo_row);
-    zsv_echo_row(hook);
+    zsv_echo_row(ctx);
+  }
+}
+
+static void zsv_echo_row_start_at(void *ctx) {
+  struct zsv_echo_data *data = ctx;
+  data->row_ix++;
+  if (data->row_ix >= data->start_row) {
+    void (*row_handler)(void *) = data->skip_until_prefix ? zsv_echo_row_skip_until : zsv_echo_row;
+    zsv_set_row_handler(data->parser, row_handler);
+    row_handler(ctx);
   }
 }
 
@@ -111,6 +126,8 @@ const char *zsv_echo_usage_msg[] = {
   "  --trim               : trim whitespace",
   "  --trim-columns       : trim blank columns",
   "  --contiguous         : stop output upon scanning an entire row of blank values",
+  "  --start-row          : only output from row N (starting at 1)",
+  "  --end-row            : only output from row N (starting at 1)",
   "  --skip-until <value> : skip rows until the row where first column starts with the given value",
 #ifdef ZSV_EXTRAS
   "  --overwrite <source> : overwrite cells using given source",
@@ -185,6 +202,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if (!strcmp(arg, "--overwrite")) {
       overwrite_opts.src = zsv_next_arg(++arg_i, argc, argv, &err);
 #endif
+    } else if (!strcmp(arg, "--end-row") || !strcmp(arg, "--start-row")) {
+      const char *val = zsv_next_arg(++arg_i, argc, argv, &err);
+      if (!val || !*val || !(atol(val) > 0))
+        fprintf(stderr, "%s requires an integer value > 0\n", arg);
+      else if (!strcmp(arg, "--end-row"))
+        data.end_row = (size_t)atol(val);
+      else if (!strcmp(arg, "--start-row"))
+        data.start_row = (size_t)atol(val);
     } else if (!data.in) {
 #ifndef NO_STDIN
       if (!strcmp(arg, "-"))
@@ -218,9 +243,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   unsigned char buff[4096];
-  if (data.skip_until_prefix)
+
+  if (data.start_row)
+    opts.row_handler = zsv_echo_row_start_at;
+  else if (data.skip_until_prefix)
     opts.row_handler = zsv_echo_row_skip_until;
   else {
+    // TO DO: fix this implementation to single-pass and compatible w all
+    // other options
     if (data.trim_columns) {
       // first, save the file if it is stdin
       if (data.in == stdin) {

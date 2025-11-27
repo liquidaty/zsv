@@ -174,7 +174,8 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         // Handle logic for when we should SKIP this char (not a row end)
         if (scanner->opts.only_crlf_rowend) {
           if (!is_crlf) {
-            scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
+            scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
+            // scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
             continue; // Strict mode: ignore lone \n
           }
         } else {

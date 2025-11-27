@@ -57,20 +57,18 @@ struct zsv_csv_writer_options zsv_writer_get_default_opts(void) {
 unsigned char *zsv_csv_quote(const unsigned char *utf8_value, size_t len, unsigned char *buff, size_t buffsize) {
   char need = 0;
   unsigned quotes = 0;
-  char clen;
-  for (unsigned int i = 0; i < len; i += clen) {
-    if ((clen = UTF8_charLenC_noerr(utf8_value[i])) == 1)
-      switch (utf8_value[i]) {
-      case ',':
-      case '\n':
-      case '\r':
-        need = 1;
-        break;
-      case '"':
-        need = 1;
-        quotes++;
-        break;
-      }
+  for (unsigned int i = 0; i < len; i++) {
+    switch (utf8_value[i]) {
+    case ',':
+    case '\n':
+    case '\r':
+      need = 1;
+      break;
+    case '"':
+      need = 1;
+      quotes++;
+      break;
+    }
   }
   if (!need)
     return NULL;
@@ -87,13 +85,9 @@ unsigned char *zsv_csv_quote(const unsigned char *utf8_value, size_t len, unsign
     if (!quotes)
       memcpy(target + 1, utf8_value, len);
     else {
-      for (unsigned int i = 0, j = 0; i < len; i += clen, j += clen) {
-        if (utf8_value[i] == '"')
-          target[++j] = '"';
-        clen = UTF8_charLenC_noerr(utf8_value[i]);
-        if (i + clen > len) // safety in case of invalid utf8 input
-          clen = len - i;
-        memcpy(target + 1 + j, utf8_value + i, clen);
+      for (unsigned int i = 0, j = 1; i < len; i++) {
+        if ((target[j++] = utf8_value[i]) == '"')
+          target[j++] = '"';
       }
     }
     target[mem_length - 2] = '"';
