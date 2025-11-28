@@ -225,6 +225,13 @@ struct zsv_opts {
   char no_quotes;
 
   /**
+   * only_crlf_rowend: if non-zero, *only* accept CRLF as row end
+   *
+   * cli option: --only-crlf
+   */
+  char only_crlf_rowend;
+
+  /**
    * flag to print more verbose messages to the console
    * cli option: -v,--verbose
    */

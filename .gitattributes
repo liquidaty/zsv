@@ -15,3 +15,5 @@ data/test/crlf-line-ending.csv -text
 data/test/embedded_dos.csv -text
 data/test/mixed-line-endings.csv -text
 data/test/select-merge.csv -text
+
+data/test/crlf.txt -text

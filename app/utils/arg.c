@@ -183,6 +183,9 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, co
         arg = argv[i][1];
         found_ix = strchr_result - short_args;
       }
+    } else if (!strcmp(argv[i] + 2, "only-crlf")) {
+      opts_out->only_crlf_rowend = 1;
+      continue;
     } else {
       found_ix = str_array_index_of(long_args, argv[i] + 2);
       arg = short_args[found_ix];

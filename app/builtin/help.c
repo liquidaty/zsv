@@ -54,6 +54,8 @@ static int main_help(int argc, const char *argv[]) {
     "  -S,--keep-blank-headers  : disable default behavior of ignoring leading blank rows",
     "  -0,--header-row <header> : insert the provided CSV as the first row (in position 0)",
     "                             e.g. --header-row 'col1,col2,\"my col 3\"'",
+    "  --only-crlf              : only treat CRLF as row delimiter",
+    "                             CR or LF alone are treated as normal chars that do not require quotes",
 #ifdef ZSV_EXTRAS
     "  -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command",
 #endif
