@@ -285,7 +285,7 @@ test-2-count test-2-count-pull: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR
 	@for x in 5000 5002 5004 5006 5008 5010 5013 5015 5017 5019 5021 5101 5105 5111 5113 5115 5117 5119 5121 5123 5125 5127 5129 5131 5211 5213 5215 5217 5311 5313 5315 5317 5413 5431 5433 5455 6133 ; do $< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv ; done > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/test-2-count.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select test-select-pull: test-% : test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-11-% test-12-% test-13-% test-search-% test-regex-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-fixed-3-% test-fixed-4-% test-merge-%
+test-select test-select-pull: test-% : test-onlycrlf-% test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-11-% test-12-% test-13-% test-search-% test-regex-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-fixed-3-% test-fixed-4-% test-merge-%
 
 test-merge-select test-merge-select-pull: test-merge-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -356,9 +356,16 @@ test-9-select test-9-select-pull: test-9-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 test-10-select: test-10-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
 	@${PREFIX} $< expected/test-2tsv-2.out -t --unescape ${REDIRECT} ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/test-10-select.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-10-select-pull test-search-select-pull test-regex-select-pull:
+test-onlycrlf-select: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_INIT}
+	@${PREFIX} $< -O "|" --no-quote ../../data/crlf-test.txt > ${TMP_DIR}/$@.out1
+	@${CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< -O "|" --only-crlf --no-quote ../../data/crlf-test.txt > ${TMP_DIR}/$@.out2
+	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+
+test-10-select-pull test-search-select-pull test-regex-select-pull test-onlycrlf-select-pull:
 	@echo 'N/a ($@)'
 
 test-11-select test-11-select-pull: test-11-% : ${BUILD_DIR}/bin/zsv_%${EXE}
