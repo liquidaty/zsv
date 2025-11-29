@@ -27,7 +27,8 @@ generic-delimited and fixed-width formats, as well as multi-row-span headers.
 The ZSV CLI can be compiled to virtually any target, including
 [WebAssembly](examples/js), and offers features including `select`, `count`,
 direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3
-conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste`, `overwrite` and more.
+conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste`, `overwrite`,
+`check` and more.
 
 The ZSV CLI also includes [`sheet`](docs/sheet.md), an in-console interactive
 grid viewer that includes basic navigation, filtering, and pivot table with
@@ -139,7 +140,7 @@ that implements the expected
 - Includes the `zsv` CLI with the following built-in commands:
   - [`sheet`](docs/sheet.md), an in-console interactive and extendable grid viewer
   - `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
-    `2db`, `stack`, `pretty`, `2tsv`, `paste`, `compare`, `overwrite`,
+    `2db`, `stack`, `pretty`, `2tsv`, `paste`, `check`, `compare`, `overwrite`,
     `jq`, `prop`, `rm`
   - easily [convert between CSV/JSON/sqlite3](docs/csv_json_sqlite.md)
   - [compare multiple files](docs/compare.md)
@@ -195,6 +196,8 @@ needs.
   bad UTF8, whitespace or blank column trimming, limiting output to a contiguous
   data block, skipping leading garbage, and even proving substitution values
   without modifying the underlying source
+- `check`: scan for anomolies such as rows with a different number of cells
+  than the header row
 - `select`: re-shape CSV by skipping leading garbage, combining header rows into
   a single header, selecting or excluding specified columns, removing duplicate
   columns, sampling, converting from fixed-width input, searching and more

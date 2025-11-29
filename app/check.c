@@ -12,6 +12,7 @@
 #include <string.h>
 #include <zsv/utils/arg.h>
 #include <zsv/utils/err.h>
+#include "check/simdutf_wrapper.h"
 
 #define ZSV_COMMAND check
 #include "zsv_command.h"
@@ -25,23 +26,38 @@ struct zsv_check_data {
   size_t column_count;
   int err;
   unsigned char display_row : 1;
-  unsigned char _ : 7;
+  unsigned char check_utf8 : 1;
+  unsigned char _ : 6;
 };
 
 static void zsv_check_row(void *ctx) {
   struct zsv_check_data *data = ctx;
   size_t column_count = zsv_cell_count(data->parser);
+  unsigned const char *row_start = NULL;
+  size_t row_len;
   if (column_count != data->column_count) {
     fprintf(data->out, "Row %zu column count (%zu) differs from header (%zu)", data->row_ix, column_count,
             data->column_count);
     if (data->display_row && column_count > 0) {
-      unsigned const char *row_start = zsv_get_cell(data->parser, 0).str;
+      row_start = zsv_get_cell(data->parser, 0).str;
       struct zsv_cell last_cell = zsv_get_cell(data->parser, column_count - 1);
-      unsigned const char *row_end = last_cell.str + last_cell.len;
-      fprintf(data->out, ": %.*s", (int)(row_end - row_start), row_start);
+      row_len = (last_cell.str + last_cell.len - row_start);
+      fprintf(data->out, ": %.*s", (int)row_len, row_start);
     }
     fprintf(data->out, "\n");
-    data->err = 1;
+  }
+  if(data->check_utf8) {
+    if(!row_start) {
+      row_start = zsv_get_cell(data->parser, 0).str;
+      struct zsv_cell last_cell = zsv_get_cell(data->parser, column_count - 1);
+      row_len = (last_cell.str + last_cell.len - row_start);
+    }
+    if(row_len > 0 && !simdutf_is_valid_utf8((const char *)row_start, row_len)) {
+      fprintf(data->out, "Row %zu invalid utf8", data->row_ix);
+      if (data->display_row)
+        fprintf(data->out, ": %.*s", (int)row_len, row_start);
+      fprintf(data->out, "\n");
+    }
   }
   data->row_ix++;
 }
@@ -62,6 +78,7 @@ static int zsv_check_usage(void) {
     "Options:",
     "  -o,--output <path> : output to specified file path",
     "  --display-row      : display the row contents with any reported issue",
+    "  --utf8             : check for invalid utf8"
     // TO DO: JSON output
     "",
     NULL,
@@ -91,6 +108,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     const char *arg = argv[arg_i];
     if (!strcmp(arg, "--display-row"))
       data.display_row = 1;
+    else if (!strcmp(arg, "--utf8"))
+      data.check_utf8 = 1;
     else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
       if (data.out)
         err = zsv_printerr(1, "Output specified more than once");

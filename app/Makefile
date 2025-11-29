@@ -491,6 +491,14 @@ ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o ${STANDALONE_PFX}flatten${EXE} ${CLI_OBJ_PFX}flatten.o: MORE_SOURCE+=${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
 
+SIMDUTF_OBJECT=${BUILD_DIR}/check/simdutf_wrapper.o
+${SIMDUTF_OBJECT}: check/simdutf_wrapper.cpp
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -std=c++17 -ffunction-sections -fdata-sections -fno-exceptions -fno-rtti -c check/simdutf_wrapper.cpp -o $@
+
+${CLI} ${STANDALONE_PFX}check${EXE}: ${SIMDUTF_OBJECT}
+${CLI} ${STANDALONE_PFX}check${EXE}: MORE_OBJECTS+=${SIMDUTF_OBJECT} -lstdc++
+
 # check if we are on arm64
 ifeq ($(ARM64),)
   ifneq ($(shell uname -a | grep Darwin | grep arm64),)
