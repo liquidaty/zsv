@@ -8,14 +8,21 @@
 #include <stdio.h>
 #include <errno.h>
 
+#define ZSV_COMMAND check
+#include "zsv_command.h"
+
 #define _GNU_SOURCE 1
 #include <string.h>
 #include <zsv/utils/arg.h>
 #include <zsv/utils/err.h>
-#include "check/simdutf_wrapper.h"
 
-#define ZSV_COMMAND check
-#include "zsv_command.h"
+#ifdef USE_SIMDUTF
+#  include "check/simdutf_wrapper.h"
+#  define USAGE_APPNAME APPNAME " (simdutf8)"
+#else
+#  include "check/utf8.c"
+#  define USAGE_APPNAME APPNAME
+#endif
 
 struct zsv_check_data {
   FILE *in;
@@ -29,6 +36,12 @@ struct zsv_check_data {
   unsigned char check_utf8 : 1;
   unsigned char _ : 6;
 };
+
+#ifdef USE_SIMDUTF
+#  define UTF8VALIDATOR simdutf_is_valid_utf8
+#else
+#  define UTF8VALIDATOR utf8_is_valid
+#endif
 
 static void zsv_check_row(void *ctx) {
   struct zsv_check_data *data = ctx;
@@ -52,7 +65,7 @@ static void zsv_check_row(void *ctx) {
       struct zsv_cell last_cell = zsv_get_cell(data->parser, column_count - 1);
       row_len = (last_cell.str + last_cell.len - row_start);
     }
-    if(row_len > 0 && !simdutf_is_valid_utf8((const char *)row_start, row_len)) {
+    if(row_len > 0 && !UTF8VALIDATOR(row_start, row_len)) {
       fprintf(data->out, "Row %zu invalid utf8", data->row_ix);
       if (data->display_row)
         fprintf(data->out, ": %.*s", (int)row_len, row_start);
@@ -71,7 +84,7 @@ static void zsv_check_header(void *ctx) {
 
 static int zsv_check_usage(void) {
   const char *zsv_check_usage_msg[] = {
-    APPNAME ": check input for anomalies",
+    USAGE_APPNAME ": check input for anomalies",
     "",
     "Usage: " APPNAME " <filename>",
     "",
@@ -79,7 +92,6 @@ static int zsv_check_usage(void) {
     "  -o,--output <path> : output to specified file path",
     "  --display-row      : display the row contents with any reported issue",
     "  --utf8             : check for invalid utf8"
-    // TO DO: JSON output
     "",
     NULL,
   };
