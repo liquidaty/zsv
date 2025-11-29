@@ -70,6 +70,8 @@ endif
 ifneq ($(ZSV_NO_PARALLEL),1)
   TESTS+=test-parallel
 endif
+TESTS+=test-check
+
 
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
@@ -145,6 +147,9 @@ test-parallel: ${BUILD_DIR}/bin/zsv_select${EXE} ${BUILD_DIR}/bin/zsv_count${EXE
 	@${TEST_INIT}
 	@SELECT_EXE=${BUILD_DIR}/bin/zsv_select${EXE} COUNT_EXE=${BUILD_DIR}/bin/zsv_count${EXE} ${MAKE} -C parallel test
 endif
+
+test-check: ${BUILD_DIR}/bin/zsv_check${EXE}
+	@${TEST_INIT}
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
