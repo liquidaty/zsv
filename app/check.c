@@ -24,18 +24,19 @@ struct zsv_check_data {
   size_t row_ix;
   size_t column_count;
   int err;
-  unsigned char display_row:1;
-  unsigned char _:7;
+  unsigned char display_row : 1;
+  unsigned char _ : 7;
 };
 
 static void zsv_check_row(void *ctx) {
   struct zsv_check_data *data = ctx;
   size_t column_count = zsv_cell_count(data->parser);
   if (column_count != data->column_count) {
-    fprintf(data->out, "Row %zu column count (%zu) differs from header (%zu)", data->row_ix, column_count, data->column_count);
-    if(data->display_row && column_count > 0) {
+    fprintf(data->out, "Row %zu column count (%zu) differs from header (%zu)", data->row_ix, column_count,
+            data->column_count);
+    if (data->display_row && column_count > 0) {
       unsigned const char *row_start = zsv_get_cell(data->parser, 0).str;
-      struct zsv_cell last_cell = zsv_get_cell(data->parser, column_count-1);
+      struct zsv_cell last_cell = zsv_get_cell(data->parser, column_count - 1);
       unsigned const char *row_end = last_cell.str + last_cell.len;
       fprintf(data->out, ": %.*s", (int)(row_end - row_start), row_start);
     }
@@ -91,13 +92,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     if (!strcmp(arg, "--display-row"))
       data.display_row = 1;
     else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
-      if(data.out)
+      if (data.out)
         err = zsv_printerr(1, "Output specified more than once");
       else {
         const char *fn = zsv_next_arg(++arg_i, argc, argv, &err);
-        if(!(fn && *fn))
+        if (!(fn && *fn))
           err = zsv_printerr(1, "%s requires a filename value", arg);
-        else if(!(data.out = fopen(fn, "wb"))) {
+        else if (!(data.out = fopen(fn, "wb"))) {
           err = errno;
           perror(fn);
         }
@@ -134,7 +135,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return 1;
   }
 
-  if(!data.out)
+  if (!data.out)
     data.out = stdout;
   opts.row_handler = zsv_check_header;
   opts.stream = data.in;
