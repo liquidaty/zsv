@@ -84,7 +84,7 @@ Excel compatibility) are dropped.
 ### Examples of input that does not comply with RFC 4180
 
 The following is a comprehensive list of all input patterns that are
-non-compliant with RFC 4180, and how zsv parses each:
+non-compliant with RFC 4180, and how zsv (by default) parses each:
 
 |Input Description|Parser treatment|Example input|How example input is parsed|
 |--|--|--|--|
@@ -98,8 +98,14 @@ non-compliant with RFC 4180, and how zsv parses each:
 |Row and header contain different number of columns (cells)|Number of cells in each row is independent of other rows|`aaa,bbb\n`<br>`aaa,bbb,ccc`|Row 1 = 2 cells; Row 2 = 3 cells|
 |Header row contains duplicate cells or embedded newlines|Header rows are parsed the same was as other rows (see NOTE below)|`<BOF>"a\na","a\na"`|Two cells of `a\na`|
 
-NOTE: Header rows can be treated differently if options are used to skip rows
+The above behavior can be altered with various optional flags:
+* Header rows can be treated differently if options are used to skip rows
 and/or use multi-row header span -- see documentation for further detail.
+* Quote support can be turned off, to treat quotes just like any other non-
+  delimiter character
+* Cell delimiter can be a character other than comma
+* Row delimiter can be specfied as CRLF only, in which case a standalone CR
+  or LF is simply part of the cell value, even without quoting
 
 ## Built-in and extensible features
 

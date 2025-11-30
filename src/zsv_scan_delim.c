@@ -144,8 +144,18 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         // we are inside an open quote, which is needed to escape this char
         scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
     } else if (UNLIKELY(c == '\r')) {
-      if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend))
+      if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend)) {
+        if(scanner->quoted & ZSV_PARSER_QUOTE_PENDING_LF)
+          // if we already had a lone \r in this cell,
+          // flip the flag to ZSV_PARSER_QUOTE_NEEDED
+          scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
+        else
+          // otherwise this is the first \r in this cell,
+          // so set ZSV_PARSER_QUOTE_PENDING_LF, which
+          // will be removed if the next char is LF
+          scanner->quoted |= ZSV_PARSER_QUOTE_PENDING_LF;
         continue;
+      }
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
         enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
@@ -178,10 +188,12 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
           if (!is_crlf) {
             scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
             continue; // only-crlf mode: ignore lone \n
-          }
+          } else
+            // remove ZSV_PARSER_QUOTE_PENDING_LF if we have it
+            scanner->quoted &= ~ZSV_PARSER_QUOTE_PENDING_LF;
         } else {
           if (is_crlf) {
-            // Standard mode: ignore \n because \r handled the row end
+            // Standard mode: ignore \n because \r already handled the row end
             scanner->cell_start = i + 1;
             scanner->row_start = i + 1;
             continue;
