@@ -29,16 +29,19 @@ bool utf8_is_valid(const uint8_t *s, size_t len) {
 
     // 2-byte sequence: 110xxxxx 10xxxxxx
     if (c < 0xE0) {
-      if (i + 1 >= len) return false;
+      if (i + 1 >= len)
+        return false;
       uint8_t c1 = s[i + 1];
-      if (!is_cont(c1)) return false;
+      if (!is_cont(c1))
+        return false;
       i += 2;
       continue;
     }
 
     // 3-byte sequence: 1110xxxx 10xxxxxx 10xxxxxx
     if (c < 0xF0) {
-      if (i + 2 >= len) return false;
+      if (i + 2 >= len)
+        return false;
       uint8_t c1 = s[i + 1];
       uint8_t c2 = s[i + 2];
 
@@ -47,17 +50,21 @@ bool utf8_is_valid(const uint8_t *s, size_t len) {
       //   E1–EC 80–BF 80–BF
       //   ED 80–9F 80–BF (avoid D800–DFFF)
       //   EE–EF 80–BF 80–BF
-      if (!is_cont(c2)) return false;
+      if (!is_cont(c2))
+        return false;
 
       switch (c) {
       case 0xE0:
-        if (c1 < 0xA0 || c1 > 0xBF) return false;
+        if (c1 < 0xA0 || c1 > 0xBF)
+          return false;
         break;
       case 0xED:
-        if (c1 < 0x80 || c1 > 0x9F) return false;
+        if (c1 < 0x80 || c1 > 0x9F)
+          return false;
         break;
       default:
-        if (!is_cont(c1)) return false;
+        if (!is_cont(c1))
+          return false;
         break;
       }
 
@@ -71,24 +78,29 @@ bool utf8_is_valid(const uint8_t *s, size_t len) {
     //   F1–F3 80–BF 80–BF 80–BF
     //   F4 80–8F 80–BF 80–BF
     if (c < 0xF5) {
-      if (i + 3 >= len) return false;
+      if (i + 3 >= len)
+        return false;
       uint8_t c1 = s[i + 1];
       uint8_t c2 = s[i + 2];
       uint8_t c3 = s[i + 3];
 
-      if (!is_cont(c2) || !is_cont(c3)) return false;
+      if (!is_cont(c2) || !is_cont(c3))
+        return false;
 
       switch (c) {
       case 0xF0:
         // Avoid overlongs: codepoints < 0x10000
-        if (c1 < 0x90 || c1 > 0xBF) return false;
+        if (c1 < 0x90 || c1 > 0xBF)
+          return false;
         break;
       case 0xF4:
         // Avoid values > U+10FFFF
-        if (c1 < 0x80 || c1 > 0x8F) return false;
+        if (c1 < 0x80 || c1 > 0x8F)
+          return false;
         break;
       default:
-        if (!is_cont(c1)) return false;
+        if (!is_cont(c1))
+          return false;
         break;
       }
 

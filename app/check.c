@@ -17,11 +17,11 @@
 #include <zsv/utils/err.h>
 
 #ifdef USE_SIMDUTF
-#  include "check/simdutf_wrapper.h"
-#  define USAGE_APPNAME APPNAME " (simdutf8)"
+#include "check/simdutf_wrapper.h"
+#define USAGE_APPNAME APPNAME " (simdutf8)"
 #else
-#  include "check/utf8.c"
-#  define USAGE_APPNAME APPNAME
+#include "check/utf8.c"
+#define USAGE_APPNAME APPNAME
 #endif
 
 struct zsv_check_data {
@@ -38,9 +38,9 @@ struct zsv_check_data {
 };
 
 #ifdef USE_SIMDUTF
-#  define UTF8VALIDATOR simdutf_is_valid_utf8
+#define UTF8VALIDATOR simdutf_is_valid_utf8
 #else
-#  define UTF8VALIDATOR utf8_is_valid
+#define UTF8VALIDATOR utf8_is_valid
 #endif
 
 static void zsv_check_row(void *ctx) {
@@ -60,13 +60,13 @@ static void zsv_check_row(void *ctx) {
     }
     fprintf(data->out, "\n");
   }
-  if(data->check_utf8) {
-    if(!row_start) {
+  if (data->check_utf8) {
+    if (!row_start) {
       row_start = zsv_get_cell(data->parser, 0).str;
       struct zsv_cell last_cell = zsv_get_cell(data->parser, column_count - 1);
       row_len = (last_cell.str + last_cell.len - row_start);
     }
-    if(row_len > 0 && !UTF8VALIDATOR(row_start, row_len)) {
+    if (row_len > 0 && !UTF8VALIDATOR(row_start, row_len)) {
       data->err = 1;
       fprintf(data->out, "Row %zu invalid utf8", data->row_ix);
       if (data->display_row)

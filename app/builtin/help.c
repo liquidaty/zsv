@@ -73,7 +73,7 @@ static int main_help(int argc, const char *argv[]) {
     "  2json    : convert CSV or sqlite3 db table to json",
     "  2tsv     : convert to tab-delimited text",
     "  stack    : stack tables vertically, aligning columns with common names",
-    "  paste    : horizontally paste two tables together: given inputs X, Y, ... of N rows", 
+    "  paste    : horizontally paste two tables together: given inputs X, Y, ... of N rows",
     "  compare  : compare two or more tables and output differences",
     "  overwrite: save, modify or apply overwrites",
     "",
