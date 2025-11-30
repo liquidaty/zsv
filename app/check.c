@@ -51,6 +51,7 @@ static void zsv_check_row(void *ctx) {
   if (column_count != data->column_count) {
     fprintf(data->out, "Row %zu column count (%zu) differs from header (%zu)", data->row_ix, column_count,
             data->column_count);
+    data->err = 1;
     if (data->display_row && column_count > 0) {
       row_start = zsv_get_cell(data->parser, 0).str;
       struct zsv_cell last_cell = zsv_get_cell(data->parser, column_count - 1);
@@ -66,6 +67,7 @@ static void zsv_check_row(void *ctx) {
       row_len = (last_cell.str + last_cell.len - row_start);
     }
     if(row_len > 0 && !UTF8VALIDATOR(row_start, row_len)) {
+      data->err = 1;
       fprintf(data->out, "Row %zu invalid utf8", data->row_ix);
       if (data->display_row)
         fprintf(data->out, ": %.*s", (int)row_len, row_start);
@@ -91,8 +93,10 @@ static int zsv_check_usage(void) {
     "Options:",
     "  -o,--output <path> : output to specified file path",
     "  --display-row      : display the row contents with any reported issue",
-    "  --utf8             : check for invalid utf8"
+    //    "  --utf8             : check for invalid utf8",
+    // "  --all              : run all checks",
     "",
+    "If no check options are provided, all checks are run",
     NULL,
   };
   for (size_t i = 0; zsv_check_usage_msg[i]; i++)
@@ -120,8 +124,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     const char *arg = argv[arg_i];
     if (!strcmp(arg, "--display-row"))
       data.display_row = 1;
-    else if (!strcmp(arg, "--utf8"))
-      data.check_utf8 = 1;
+    // else if (!strcmp(arg, "--utf8"))
+    // data.check_utf8 = 1;
     else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
       if (data.out)
         err = zsv_printerr(1, "Output specified more than once");
@@ -166,6 +170,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return 1;
   }
 
+  data.check_utf8 = 1;
   if (!data.out)
     data.out = stdout;
   opts.row_handler = zsv_check_header;
