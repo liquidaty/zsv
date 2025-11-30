@@ -15,33 +15,33 @@ struct zsv_chunk_position {
 };
 
 /**
- * @brief Calculates N (start, end) file position pairs for a given file,
- * adjusting boundaries to fall immediately after a newline sequence.
+ * @brief Divide a file into N chunks for parallel processing.
  *
- * @param filename       The path to the file.
- * @param N              The desired number of chunks.
- * @param min_size       The minimum size (excluding offset) required for chunking
- * @param initial_offset The initial offset bytes to skip from chunking
- * @return zsv_chunk_position* A dynamically allocated array of N pairs, or NULL on error.
+ * Scans the file to find N approximately equal sections, ensuring that
+ * chunk boundaries align with newline sequences so rows are not split.
+ *
+ * @param filename Path to the file to be chunked.
+ * @param N The target number of chunks.
+ * @param min_size The minimum file size required to attempt parallelization.
+ * @param initial_offset The byte offset to start chunking from (usually 0).
+ * @param only_crlf If non-zero, boundaries are split strictly on \r\n sequences.
+ * If zero, \r or \n are accepted as boundaries.
+ * @return struct zsv_chunk_position* An array of N chunk positions (must be freed by caller),
+ * or NULL if the file cannot be chunked or an error occurs.
  */
 struct zsv_chunk_position *zsv_guess_file_chunks(const char *filename, uint64_t N, uint64_t min_size,
-                                                 zsv_file_pos initial_offset);
+                                                 zsv_file_pos initial_offset
+#ifndef ZSV_NO_ONLY_CRLF
+                                                 ,
+                                                 int only_crlf
+#endif
+);
 
 /**
  * @brief Frees the memory allocated by zsv_guess_file_chunks. (DRY Cleanup)
  * @param chunks The pointer to the allocated chunk array.
  */
 void zsv_free_chunks(struct zsv_chunk_position *chunks);
-
-/**
- * @brief Seeks to a specific offset and reads the first line of text.
- * @param filename The file path.
- * @param offset The starting position to read from (zsv_file_pos).
- * @param buffer Output buffer for the line.
- * @param buf_size Size of the output buffer.
- * @return int 0 on success, -1 on error.
- */
-int zsv_read_first_line_at_offset(const char *filename, zsv_file_pos offset, char *buffer, size_t buf_size);
 
 enum zsv_chunk_status {
   zsv_chunk_status_ok = 0,

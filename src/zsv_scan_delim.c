@@ -144,6 +144,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         // we are inside an open quote, which is needed to escape this char
         scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
     } else if (UNLIKELY(c == '\r')) {
+#ifndef ZSV_NO_ONLY_CRLF
       if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend)) {
         if (scanner->quoted & ZSV_PARSER_QUOTE_PENDING_LF)
           // if we already had a lone \r in this cell,
@@ -156,6 +157,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
           scanner->quoted |= ZSV_PARSER_QUOTE_PENDING_LF;
         continue;
       }
+#endif
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
         enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
@@ -184,6 +186,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         int is_crlf = (scanner_last == '\r');
 
         // Handle logic for when we should SKIP this char (not a row end)
+#ifndef ZSV_NO_ONLY_CRLF
         if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend)) {
           if (!is_crlf) {
             scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
@@ -191,7 +194,9 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
           } else
             // remove ZSV_PARSER_QUOTE_PENDING_LF if we have it
             scanner->quoted &= ~ZSV_PARSER_QUOTE_PENDING_LF;
-        } else {
+        } else
+#endif
+        {
           if (is_crlf) {
             // Standard mode: ignore \n because \r already handled the row end
             scanner->cell_start = i + 1;
@@ -205,9 +210,10 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
 
         // Calculate cell length. In only-crlf mode, we must exclude the preceding \r
         size_t cell_len = i - scanner->cell_start;
+#ifndef ZSV_NO_ONLY_CRLF
         if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend))
           cell_len--;
-
+#endif
         enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, cell_len);
         if (VERY_UNLIKELY(stat))
           return stat;

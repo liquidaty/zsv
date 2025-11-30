@@ -384,12 +384,14 @@ test-10-select: test-10-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 
 test-onlycrlf-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
+ifneq ($(ZSV_NO_ONLY_CRLF),1)
 	@${PREFIX} $< -O "|" --no-quote ../../data/test/crlf.txt > ${TMP_DIR}/$@.out1
 	@${CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< -O "|" --only-crlf --no-quote ../../data/test/crlf.txt > ${TMP_DIR}/$@.out2
 	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< --only-crlf ../../data/test/crlf-2.csv > ${TMP_DIR}/$@.out3
 	@${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
+endif
 
 test-10-select-pull test-search-select-pull test-regex-select-pull test-onlycrlf-select-pull:
 	@echo 'N/a ($@)'

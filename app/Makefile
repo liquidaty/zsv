@@ -54,6 +54,10 @@ ifneq ($(ZSV_IS_PROP_FILE_DEPTH),)
 	CFLAGS+=-DZSV_IS_PROP_FILE_DEPTH=${ZSV_IS_PROP_FILE_DEPTH}
 endif
 
+ifeq ($(ZSV_NO_ONLY_CRLF),1)
+  CFLAGS+= -DZSV_NO_ONLY_CRLF
+endif
+
 DEBUG=0
 WIN=
 ifeq ($(WIN),)
@@ -639,4 +643,3 @@ clean-internal:
 ${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: ${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1.tar.gz
 	@cd external && tar xf utf8proc-2.6.1.tar.gz && chown -R `whoami` utf8proc-2.6.1
 	@touch $@
-
