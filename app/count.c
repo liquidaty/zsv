@@ -211,7 +211,12 @@ static void header_handler(void *ctx) {
   if (data->input_path && data->num_chunks > 1) {
     size_t header_end = zsv_cum_scanned_length(data->parser);
     struct zsv_chunk_position *offsets =
-      zsv_guess_file_chunks(data->input_path, data->num_chunks, ZSV_COUNT_PARALLEL_MIN_BYTES, header_end);
+      zsv_guess_file_chunks(data->input_path, data->num_chunks, ZSV_COUNT_PARALLEL_MIN_BYTES, header_end
+#ifndef ZSV_NO_ONLY_CRLF
+                            ,
+                            data->opts->only_crlf_rowend
+#endif
+      );
 
     if (offsets) {
       data->pdata = parallel_data_new(data->num_chunks);

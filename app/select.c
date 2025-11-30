@@ -280,7 +280,12 @@ static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *p
   }
 
   struct zsv_chunk_position *offsets =
-    zsv_guess_file_chunks(path, data->num_chunks, ZSV_SELECT_PARALLEL_MIN_BYTES, header_row_end + 1);
+    zsv_guess_file_chunks(path, data->num_chunks, ZSV_SELECT_PARALLEL_MIN_BYTES, header_row_end + 1
+#ifndef ZSV_NO_ONLY_CRLF
+                          ,
+                          data->opts->only_crlf_rowend
+#endif
+    );
   if (!offsets)
     return -1; // fall back to serial
 
