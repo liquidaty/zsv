@@ -172,7 +172,16 @@ endif
 test-echo: \
 	test-echo1 test-echo-overwrite-all test-echo-eol test-echo-chars test-echo-trim \
 	test-echo-skip-until test-echo-contiguous test-echo-trim-columns test-echo-trim-columns-2 test-echo-buffsize \
-	test-echo-quoted
+	test-echo-quoted test-echo-rows
+
+test-echo-rows: ${BUILD_DIR}/bin/zsv_echo${EXE}
+	@${TEST_INIT}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/6x3.csv --start-row 3 ${REDIRECT} ${TMP_DIR}/$@.out1
+	@${CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/6x3.csv --end-row 3 ${REDIRECT} ${TMP_DIR}/$@.out2
+	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/6x3.csv --between-row 2 4 ${REDIRECT} ${TMP_DIR}/$@.out3
+	@${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
 
 test-echo-overwrite-all: test-echo-overwrite test-echo-overwrite-csv test-echo-overwrite-auto
 
