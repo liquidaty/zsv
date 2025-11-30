@@ -145,7 +145,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
     } else if (UNLIKELY(c == '\r')) {
       if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend)) {
-        if(scanner->quoted & ZSV_PARSER_QUOTE_PENDING_LF)
+        if (scanner->quoted & ZSV_PARSER_QUOTE_PENDING_LF)
           // if we already had a lone \r in this cell,
           // flip the flag to ZSV_PARSER_QUOTE_NEEDED
           scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
