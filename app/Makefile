@@ -209,11 +209,11 @@ endif
 
 ZSV=$(BINDIR)/zsv${EXE}
 
-SOURCES=echo paste count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq
+SOURCES=echo paste check count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq
 ifeq ($(ZSV_EXTRAS),1)
   SOURCES+=overwrite
 endif
-CLI_SOURCES=echo select desc count paste 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq
+CLI_SOURCES=echo select desc count paste check 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq
 ifeq ($(ZSV_EXTRAS),1)
   CLI_SOURCES+=overwrite
 endif
@@ -328,7 +328,7 @@ help:
 	@echo "which will build and test all apps, or to build/test a single app:"
 	@echo "  ${MAKE} test-xx"
 	@echo "where xx is any of:"
-	@echo "  echo count count-pull paste select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm mv overwrite"
+	@echo "  echo count count-pull paste check select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm mv overwrite"
 	@echo ""
 	@echo "To run benchmarks:"
 	@echo "  ${MAKE} benchmark"
@@ -490,6 +490,17 @@ MORE_SOURCE+=-I${THIS_MAKEFILE_DIR}/external/sglib
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: ${JSONWRITER_OBJECT}
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o ${STANDALONE_PFX}flatten${EXE} ${CLI_OBJ_PFX}flatten.o: MORE_SOURCE+=${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
+
+ifeq ($(USE_SIMDUTF),1)
+CFLAGS+=-DUSE_SIMDUTF
+SIMDUTF_OBJECT=${BUILD_DIR}/check/simdutf_wrapper.o
+${SIMDUTF_OBJECT}: check/simdutf_wrapper.cpp
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -std=c++17 -ffunction-sections -fdata-sections -fno-exceptions -fno-rtti -c check/simdutf_wrapper.cpp -o $@
+
+${CLI} ${STANDALONE_PFX}check${EXE}: ${SIMDUTF_OBJECT}
+${CLI} ${STANDALONE_PFX}check${EXE}: MORE_OBJECTS+=${SIMDUTF_OBJECT} -lstdc++
+endif
 
 # check if we are on arm64
 ifeq ($(ARM64),)

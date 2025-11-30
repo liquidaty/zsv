@@ -48,6 +48,7 @@ Optional features:
   --enable-pic            build with position independent shared libraries [auto]
   --enable-termcap        build with ncurses / termcap (used by \`pretty\` to get console width) [auto]
   --disable-stdin         disable stdin from CLI commands
+  --enable-simdutf        use simdutf for 'check --utf8'. Faster, but adds ~300k to binary
 
 Some influential environment variables:
   CC                      C compiler command [detected]
@@ -379,6 +380,10 @@ for arg ; do
         --enable-sheet|--enable-sheet=yes) TRY_SHEET=yes;;
         --enable-sheet=auto) TRY_SHEET=auto;;
         --disable-sheet|--enable-sheet=no) TRY_SHEET=no;;
+
+        --enable-simdutf|--enable-simdutf=yes) USE_SIMDUTF=1;;
+        --enable-simdutf=auto) USE_SIMDUTF=0;;
+        --disable-simdutf|--enable-simdutf=no) USE_SIMDUTF=0;;
 
         --enable-shared|--enable-shared=yes) BUILD_SHAREDLIB=1;;
         --disable-shared|--enable-shared=no) BUILD_SHAREDLIB=0;;
@@ -880,6 +885,8 @@ ZSV_NO_PARALLEL = $ZSV_NO_PARALLEL
 
 NO_STDIN = $NO_STDIN
 
+USE_SIMDUTF = $USE_SIMDUTF
+
 $NO_HAVE
 $USE_LIBS
 
@@ -942,6 +949,13 @@ if [ "$ZSV_NO_PARALLEL" = "1" ]; then
 else
     printf '%-64s*\n' "*  - CLI parallelization: enabled"
 fi
+
+if [ "$USE_SIMDUTF" = "1" ]; then
+    printf '%-64s*\n' "*  - CLI check utf8: using simdutf"
+else
+    printf '%-64s*\n' "*  - CLI check utf8: not using simdutf"
+fi
+
 
 echo "*****************************************************************"
 
