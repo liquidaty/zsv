@@ -17,7 +17,7 @@ npm:
 
 Playground (without `sheet` viewer command): https://liquidaty.github.io/zsv
 
-zsv+lib is a [fast CSV parser](./app/benchmark/README.md) library and extensible command-line utility. It
+zsv+lib is [the world's fastest CSV parser](./app/benchmark/README.md) library and extensible command-line utility. It
 achieves high performance using SIMD operations, [efficient memory
 use](docs/memory.md) and other optimization techniques, and can also parse
 generic-delimited and fixed-width formats, as well as multi-row-span headers.
