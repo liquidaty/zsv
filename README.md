@@ -22,9 +22,7 @@ achieves high performance using SIMD operations, [efficient memory
 use](docs/memory.md) and other optimization techniques, and can also parse
 generic-delimited and fixed-width formats, as well as multi-row-span headers.
 
-While `zsv` is written in C, it can be used in other languages such as [ruby](https://github.com/sebyx07/zsv-ruby).
-
-See [below](#language-bindings--wrappers) for more details.
+While `zsv` is written in C, it can be used in other languages such as [ruby](https://github.com/sebyx07/zsv-ruby). See [below](#language-bindings--wrappers) for more details.
 
 ## CLI
 
@@ -61,7 +59,7 @@ Binding [contributions](#contribute) are welcome!
 
 | Language | Project | Maintainer |
 | :--- | :--- | :--- |
-| **Ruby** | [zsv](https://github.com/user/ruby-zsv) | [@sebyx07](https://github.com/sebyx07) |
+| **Ruby** | https://github.com/user/ruby-zsv | [@sebyx07](https://github.com/sebyx07) |
 
 > **Note:** These projects are maintained independently. Please file issues related to specific bindings in their respective repositories.
 
