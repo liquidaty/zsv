@@ -59,7 +59,7 @@ Binding [contributions](#contribute) are welcome!
 
 | Language | Project | Maintainer |
 | :--- | :--- | :--- |
-| **Ruby** | https://github.com/user/ruby-zsv | [@sebyx07](https://github.com/sebyx07) |
+| **Ruby** | [https://github.com/sebyx07/zsv-ruby](https://github.com/sebyx07/zsv-ruby) | [@sebyx07](https://github.com/sebyx07) |
 
 > **Note:** These projects are maintained independently. Please file issues related to specific bindings in their respective repositories.
 
