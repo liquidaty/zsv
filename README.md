@@ -342,3 +342,7 @@ template files in [app/ext_template](app/ext_template/README.md)
 
 The zsv CLI uses some permissively-licensed third-party libraries.
 See [misc/THIRDPARTY.md](misc/THIRDPARTY.md) for details.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=liquidaty/zsv&type=date&legend=top-left)](https://www.star-history.com/#liquidaty/zsv&type=date&legend=top-left)
