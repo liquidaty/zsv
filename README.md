@@ -22,6 +22,8 @@ achieves high performance using SIMD operations, [efficient memory
 use](docs/memory.md) and other optimization techniques, and can also parse
 generic-delimited and fixed-width formats, as well as multi-row-span headers.
 
+While `zsv` is written in C, it can be used in other languages such as [ruby](https://github.com/sebyx07/zsv-ruby). See [below](#language-bindings--wrappers) for more details.
+
 ## CLI
 
 The ZSV CLI can be compiled to virtually any target, including
@@ -49,7 +51,17 @@ drill down, and that supports custom extensions:
     downloaded from the [Releases](https://github.com/liquidaty/zsv/releases)
     page.
 - Build
-  - See [BUILD.md](BUILD.md) to build from source.
+  - See [BUILD.md](BUILD.md) to build from source
+
+## Language Bindings & Wrappers
+
+Binding [contributions](#contribute) are welcome!
+
+| Language | Project | Maintainer |
+| :--- | :--- | :--- |
+| **Ruby** | [https://github.com/sebyx07/zsv-ruby](https://github.com/sebyx07/zsv-ruby) | [@sebyx07](https://github.com/sebyx07) |
+
+> **Note:** These projects are maintained independently. Please file issues related to specific bindings in their respective repositories.
 
 ## Playground
 
@@ -327,6 +339,10 @@ template files in [app/ext_template](app/ext_template/README.md)
 
 ## Contribute
 
+Feel free to open an issue or discussion.
+
+### Via PR
+
 - [Fork](https://github.com/liquidaty/zsv/fork) the project.
 - Check out the latest [`main`](https://github.com/liquidaty/zsv/tree/main)
   branch.
@@ -335,6 +351,15 @@ template files in [app/ext_template](app/ext_template/README.md)
 - Make sure to run `clang-format` (version 15 or later) for C source updates.
 - Commit and push your changes.
 - Submit the PR.
+
+### Language bindings
+
+We currently have community support for Ruby, and we'd love to see a zsv
+wrapper for Python, Rust, Go, or Java or any of your other favorite languages
+
+- Why build a binding? zsv is designed to be embeddable and extremely fast.
+  A binding brings this speed to higher-level languages that often struggle
+  with CSV parsing performance.
 
 ## License
 
