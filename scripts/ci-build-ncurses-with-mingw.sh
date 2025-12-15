@@ -30,7 +30,7 @@ NCURSES_PREFIX=${NCURSES_PREFIX:-"$PWD/mingw-ncurses"}
   --disable-termcap \
   --disable-db-install
 
-make
+make --jobs --output-sync
 make install
 
 if [ "$CI" = true ]; then

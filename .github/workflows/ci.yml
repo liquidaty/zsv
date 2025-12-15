@@ -91,11 +91,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Install cppcheck
-      run: |
-        sudo apt update
-        sudo apt install -y cppcheck
-        cppcheck --version
+    - name: Install apt dependencies
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: cppcheck
 
     - name: Run cppcheck
       run: ./scripts/ci-run-cppcheck.sh
@@ -141,11 +140,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Set up apt dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y rpm alien tmux
-        sudo apt remove -y jq
+    - name: Install apt dependencies
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: rpm alien tmux
 
     - name: Build on Linux (${{ env.AMD64_LINUX_GCC }})
       env:
@@ -276,11 +274,13 @@ jobs:
       AMD64_ZIP: zsv-${{ needs.ci-linux.outputs.TAG }}-amd64-linux-gcc.zip
 
     steps:
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y rpm dpkg-dev createrepo-c
-        sudo gem install --no-document fpm
+    - name: Install apt dependencies
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: rpm dpkg-dev createrepo-c
+
+    - name: Install fpm gem
+      run: sudo gem install --no-document fpm
 
     - name: Checkout
       uses: actions/checkout@v6
@@ -541,7 +541,7 @@ jobs:
       TAG: ${{ needs.tag.outputs.TAG }}
 
     steps:
-    - name: Set up apt dependencies
+    - name: Install apt dependencies
       run: |
         sudo apt update
         sudo apt install -y mingw-w64 nuget
@@ -641,6 +641,7 @@ jobs:
         wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
         set-as-default: true
         distribution: Ubuntu-22.04
+        use-cache: true
         additional-packages: |
           build-essential
           mingw-w64
