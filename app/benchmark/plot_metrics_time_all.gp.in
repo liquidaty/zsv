@@ -1,0 +1,24 @@
+# Output Settings (Single Image)
+set terminal pngcairo size 800,600 enhanced font 'Verdana,10'
+set output 'bench_time_OPERATION.png'
+
+# Input Settings
+set datafile separator ","
+set style data histograms
+set style fill solid 1.0 border -1
+set boxwidth 0.9
+
+# Layout: Cluster the bars side-by-side with a small gap between tool groups
+set style histogram cluster gap 1
+
+# Axis Labels
+set title "Time (OPERATION): Real vs User"
+set ylabel "Time (seconds)"
+set xtics rotate by -45
+set grid y
+
+# --- Combined Plot ---
+# We plot Real Time (col 4) and User Time (col 5) from the same file.
+# The 'xtic(3)' takes the labels from column 3 (Tool name).
+plot 'INPUT_CSV' every ::1 using 4:xtic(3) title 'Real Time' linecolor rgb "#4E79A7", \
+     ''          every ::1 using 5         title 'User Time' linecolor rgb "#F28E2B"

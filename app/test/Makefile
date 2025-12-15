@@ -70,6 +70,7 @@ endif
 ifneq ($(ZSV_NO_PARALLEL),1)
   TESTS+=test-parallel
 endif
+TESTS+=test-check
 
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
@@ -146,6 +147,20 @@ test-parallel: ${BUILD_DIR}/bin/zsv_select${EXE} ${BUILD_DIR}/bin/zsv_count${EXE
 	@SELECT_EXE=${BUILD_DIR}/bin/zsv_select${EXE} COUNT_EXE=${BUILD_DIR}/bin/zsv_count${EXE} ${MAKE} -C parallel test
 endif
 
+test-check: test-check-1 test-check-2
+
+test-check-1: ${BUILD_DIR}/bin/zsv_check${EXE}
+	@${TEST_INIT}
+	@$< ${TEST_DATA_DIR}/test/check.csv -o ${TMP_DIR}/$@.out1 && (echo "should have failed!") || [ 1 = 1 ]
+	@cmp ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
+	@$< ${TEST_DATA_DIR}/test/check.csv --display-row -o ${TMP_DIR}/$@.out2 && (echo "should have failed!" && exit 1) || [ 1 = 1 ]
+	@cmp ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+
+test-check-2: ${BUILD_DIR}/bin/zsv_check${EXE}
+	@${TEST_INIT}
+	@$< --display-row ${TEST_DATA_DIR}/test/latin1.csv -o ${TMP_DIR}/$@.out && (echo "should have failed!") || [ 1 = 1 ]
+	@cmp ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
 ifeq ($(IS_WSL),1)
@@ -157,7 +172,16 @@ endif
 test-echo: \
 	test-echo1 test-echo-overwrite-all test-echo-eol test-echo-chars test-echo-trim \
 	test-echo-skip-until test-echo-contiguous test-echo-trim-columns test-echo-trim-columns-2 test-echo-buffsize \
-	test-echo-quoted
+	test-echo-quoted test-echo-rows
+
+test-echo-rows: ${BUILD_DIR}/bin/zsv_echo${EXE}
+	@${TEST_INIT}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/6x3.csv --start-row 3 ${REDIRECT} ${TMP_DIR}/$@.out1
+	@${CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/6x3.csv --end-row 3 ${REDIRECT} ${TMP_DIR}/$@.out2
+	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/6x3.csv --between-row 2 4 ${REDIRECT} ${TMP_DIR}/$@.out3
+	@${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
 
 test-echo-overwrite-all: test-echo-overwrite test-echo-overwrite-csv test-echo-overwrite-auto
 
@@ -260,10 +284,10 @@ else
 endif
 else
 ifeq ($(HAVE_PCRE2_8),1)
-  HELP_SELECT_LINES=42
+  HELP_SELECT_LINES=43
   HELP_COUNT_LINES=8
 else
-  HELP_SELECT_LINES=41
+  HELP_SELECT_LINES=42
   HELP_COUNT_LINES=8
 endif
 endif
@@ -285,7 +309,7 @@ test-2-count test-2-count-pull: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR
 	@for x in 5000 5002 5004 5006 5008 5010 5013 5015 5017 5019 5021 5101 5105 5111 5113 5115 5117 5119 5121 5123 5125 5127 5129 5131 5211 5213 5215 5217 5311 5313 5315 5317 5413 5431 5433 5455 6133 ; do $< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv ; done > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/test-2-count.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select test-select-pull: test-% : test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-11-% test-12-% test-13-% test-search-% test-regex-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-fixed-3-% test-fixed-4-% test-merge-%
+test-select test-select-pull: test-% : test-onlycrlf-% test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-11-% test-12-% test-13-% test-search-% test-regex-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-fixed-3-% test-fixed-4-% test-merge-%
 
 test-merge-select test-merge-select-pull: test-merge-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -356,9 +380,20 @@ test-9-select test-9-select-pull: test-9-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 test-10-select: test-10-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
 	@${PREFIX} $< expected/test-2tsv-2.out -t --unescape ${REDIRECT} ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/test-10-select.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-10-select-pull test-search-select-pull test-regex-select-pull:
+test-onlycrlf-select: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_INIT}
+ifneq ($(ZSV_NO_ONLY_CRLF),1)
+	@${PREFIX} $< -O "|" --no-quote ../../data/test/crlf.txt > ${TMP_DIR}/$@.out1
+	@${CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< -O "|" --only-crlf --no-quote ../../data/test/crlf.txt > ${TMP_DIR}/$@.out2
+	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --only-crlf ../../data/test/crlf-2.csv > ${TMP_DIR}/$@.out3
+	@${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
+endif
+
+test-10-select-pull test-search-select-pull test-regex-select-pull test-onlycrlf-select-pull:
 	@echo 'N/a ($@)'
 
 test-11-select test-11-select-pull: test-11-% : ${BUILD_DIR}/bin/zsv_%${EXE}

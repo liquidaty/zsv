@@ -54,12 +54,13 @@ struct zsv_cell {
   /**
    * bitfield values for `quoted` flags
    */
-#define ZSV_PARSER_QUOTE_NONE 0     /* content does not need to be quoted */
-#define ZSV_PARSER_QUOTE_UNCLOSED 1 /* only used internally by parser */
-#define ZSV_PARSER_QUOTE_CLOSED 2   /* value was quoted */
-#define ZSV_PARSER_QUOTE_NEEDED 4   /* value contains delimiter or dbl-quote */
-#define ZSV_PARSER_QUOTE_EMBEDDED 8 /* value contains dbl-quote */
-#define ZSV_PARSER_QUOTE_PENDING 16 /* only used internally by parser */
+#define ZSV_PARSER_QUOTE_NONE 0        /* content does not need to be quoted */
+#define ZSV_PARSER_QUOTE_UNCLOSED 1    /* only used internally by parser */
+#define ZSV_PARSER_QUOTE_CLOSED 2      /* value was quoted */
+#define ZSV_PARSER_QUOTE_NEEDED 4      /* value contains delimiter or dbl-quote */
+#define ZSV_PARSER_QUOTE_EMBEDDED 8    /* value contains dbl-quote */
+#define ZSV_PARSER_QUOTE_PENDING 16    /* only used internally by parser */
+#define ZSV_PARSER_QUOTE_PENDING_LF 32 /* only used internally by parser */
   /**
    * quoted flags enable additional efficiency, in particular when input data will
    * be output as text (csv, json etc), by indicating whether the cell contents may
@@ -224,6 +225,14 @@ struct zsv_opts {
    */
   char no_quotes;
 
+#ifndef ZSV_NO_ONLY_CRLF
+  /**
+   * only_crlf_rowend: if non-zero, *only* accept CRLF as row end
+   *
+   * cli option: --only-crlf
+   */
+  char only_crlf_rowend;
+#endif
   /**
    * flag to print more verbose messages to the console
    * cli option: -v,--verbose
