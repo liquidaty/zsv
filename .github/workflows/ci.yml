@@ -683,7 +683,7 @@ jobs:
   ci-musl:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-latest
-    container: alpine:latest
+    container: alpine:3.22
     timeout-minutes: 15
 
     outputs:
