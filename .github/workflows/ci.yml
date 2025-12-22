@@ -428,7 +428,7 @@ jobs:
         push-to: liquidaty/homebrew-core
         tag-name: v${{ env.TAG }}
 
-  ci-bsd:
+  ci-freebsd:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -447,10 +447,11 @@ jobs:
         CC: gcc
         MAKE: gmake
         RUN_TESTS: true
+        HOST: ""
       with:
         operating_system: freebsd
         version: '13.2'
-        environment_variables: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
+        environment_variables: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR HOST'
         shell: sh
         run: |
           ./scripts/ci-freebsd-setup.sh
