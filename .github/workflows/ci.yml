@@ -447,14 +447,14 @@ jobs:
         CC: gcc
         MAKE: gmake
         RUN_TESTS: true
-        HOST: ""
       with:
         operating_system: freebsd
         version: '13.2'
-        environment_variables: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR HOST'
+        environment_variables: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
         shell: sh
         run: |
           ./scripts/ci-freebsd-setup.sh
+          export HOST=
           ./scripts/ci-build.sh
 
     - name: Prepare build artifacts for upload
