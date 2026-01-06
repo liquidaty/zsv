@@ -38,7 +38,7 @@ static enum zsv_status zsv_scan_fixed(struct zsv_scanner *scanner, unsigned char
   zsv_mask_t mask = 0;
   int mask_last_start = 0;
 
-  scanner->buffer_end = bytes_read;
+  //  scanner->buffer_end = bytes_read;
   for (size_t i = scanner->partial_row_length;; i++) {
     if (UNLIKELY(mask == 0)) {
       mask_last_start = i;

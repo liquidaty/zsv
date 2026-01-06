@@ -137,7 +137,7 @@ struct zsv_scanner {
   size_t (*filter)(void *ctx, unsigned char *buff, size_t bytes_read);
   void *filter_ctx;
 
-  size_t buffer_end;
+  //  size_t buffer_end;
   size_t old_bytes_read; // only non-zero if we must shift upon next parse_more()
 
   const char *insert_string;
@@ -183,6 +183,7 @@ struct zsv_scanner {
   } progress;
   struct zsv_overwrite overwrite;
 #endif
+  int inside_quote_global;
 };
 
 void collate_header_destroy(struct collate_header **chp) {
@@ -335,9 +336,11 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *sc
   scanner->have_cell = 1;
 
   zsv_clear_cell(scanner);
+  scanner->cell_start = scanner->scanned_length + 1;
 }
 
-__attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_scanner *scanner) {
+// __attribute__((always_inline))
+static /* inline */ enum zsv_status row_dl(struct zsv_scanner *scanner) {
   if (VERY_UNLIKELY(scanner->row.overflow)) {
     scanner->errprintf(scanner->errf, "Warning: number of columns (%zu) exceeds row max (%zu)\n",
                        scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
@@ -384,10 +387,42 @@ __attribute__((always_inline)) static inline enum zsv_status row_dl(struct zsv_s
 #endif
   if (VERY_UNLIKELY(scanner->abort))
     return zsv_status_cancelled;
+  // scanner->cell_start = scanner->scanned_length + 1;
   scanner->have_cell = 0;
   scanner->row.used = 0;
+
+  scanner->row_start = scanner->cell_start = scanner->scanned_length + 1;
+  //  fprintf(stderr, "scanner->data_row_count++-- NEW\n");
+  scanner->data_row_count++;
+  
   return zsv_status_ok;
 }
+
+static enum zsv_status row_dl_truncated(struct zsv_scanner *scanner) {
+  // since this row was truncated, we need to 
+  size_t row_start = scanner->row_start;
+  size_t data_row_count = scanner->data_row_count;
+  size_t cell_start = scanner->cell_start;
+  enum zsv_status stat = row_dl(scanner);
+  scanner->row_start = row_start;
+  scanner->data_row_count = data_row_count;
+  scanner->cell_start = cell_start;
+  return stat;
+}
+
+/*
+//  __attribute__((always_inline)) static inline
+static void cell_dl_fast(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+  scanner->cell_start = s - scanner->buff.buff;
+  cell_dl(scanner, s, n);
+}
+
+__attribute__((always_inline)) static inline enum zsv_status row_dl_fast(struct zsv_scanner *scanner, size_t row_start_offset) {
+  scanner->row_start = row_start_offset;
+  row_dl(scanner);
+  scanner->data_row_count++;
+}
+*/
 
 __attribute__((always_inline)) static inline enum zsv_status cell_and_row_dl(struct zsv_scanner *scanner,
                                                                              unsigned char *s, size_t n) {

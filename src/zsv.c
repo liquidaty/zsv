@@ -67,7 +67,7 @@ inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
     if (scanner->mode == ZSV_MODE_FIXED) {
       if (VERY_UNLIKELY(row_fx(scanner, scanner->buff.buff, 0, scanner->buff.size)))
         return zsv_status_cancelled;
-    } else if (VERY_UNLIKELY(row_dl(scanner)))
+    } else if(VERY_UNLIKELY(row_dl_truncated(scanner)))
       return zsv_status_cancelled;
 
     // throw away the next row end

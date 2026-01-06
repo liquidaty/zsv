@@ -40,6 +40,31 @@
   } while (0)
 #endif
 
+#define scanner_last (i ? buff[i - 1] : scanner->last)
+
+#define EXPERIMENTAL
+
+#ifdef EXPERIMENTAL
+#include "../experimental/cell-count-balanced-quotes-callback-neon.c"
+
+static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
+  //  bytes_read += scanner->partial_row_length;
+  size_t partial_row_length = scanner->partial_row_length;
+  scanner->partial_row_length = 0;
+  //  size_t partial_row_length = 0;
+  process_buffer(buff + partial_row_length, bytes_read, &scanner->inside_quote_global,
+                 scanner, (parser_callback_row_t)row_dl, (parser_callback_cell_t)cell_dl, 1, scanner->opts.delimiter);
+
+  //  scanner->scanned_length = bytes_read;
+
+  // save bytes_read-- we will need to shift any remaining partial row
+  // before we read next from our input. however, we intentionally refrain
+  // from doing this until the next parse_more() call, so that the entirety
+  // of all rows parsed thus far are still available until that next call
+  // scanner->old_bytes_read = bytes_read;
+  return zsv_status_ok;
+}
+#else
 static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   struct {
     zsv_uc_vector dl;
@@ -100,11 +125,9 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
     }
   }
 
-#define scanner_last (i ? buff[i - 1] : scanner->last)
-
   mask_total_offset = 0;
   mask = 0;
-  scanner->buffer_end = bytes_read;
+  //  scanner->buffer_end = bytes_read;
   for (; i < bytes_read; i++) {
     if (UNLIKELY(mask == 0)) {
       mask_last_start = i;
@@ -137,7 +160,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
         cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-        scanner->cell_start = i + 1;
+        // scanner->cell_start = i + 1;
         c = 0;
         continue; // this char is not part of the cell content
       } else
@@ -160,7 +183,9 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
 #endif
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
+        //        fprintf(stderr, "cell_and_row_dl 187\n");
         enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+        //        fprintf(stderr, "cell_and_row_dl 187 done\n");
         if (VERY_UNLIKELY(stat))
           return stat;
 #ifdef ZSV_SUPPORT_PULL_PARSER
@@ -174,9 +199,10 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         scanner->row.used = 0;
         scanner->pull.regs->delim.location = 0;
 #endif
-        scanner->cell_start = i + 1;
-        scanner->row_start = i + 1;
-        scanner->data_row_count++;
+        //         scanner->cell_start = i + 1;
+        //         scanner->row_start = i + 1;
+         //         fprintf(stderr, "scanner->data_row_count++-- OLD 205\n");
+         // scanner->data_row_count++;
         continue; // this char is not part of the cell content
       } else
         // we are inside an open quote, which is needed to escape this char
@@ -214,7 +240,9 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend))
           cell_len--;
 #endif
+        //        fprintf(stderr, "cell_and_row_dl 242\n");
         enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, cell_len);
+        //        fprintf(stderr, "cell_and_row_dl 242 done\n");
         if (VERY_UNLIKELY(stat))
           return stat;
 #ifdef ZSV_SUPPORT_PULL_PARSER
@@ -228,9 +256,10 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         scanner->row.used = 0;
         scanner->pull.regs->delim.location = 0;
 #endif
-        scanner->cell_start = i + 1;
-        scanner->row_start = i + 1;
-        scanner->data_row_count++;
+        //         scanner->cell_start = i + 1;
+        //         scanner->row_start = i + 1;
+         //         fprintf(stderr, "scanner->data_row_count++-- OLD 262\n");
+         // scanner->data_row_count++;
         continue; // this char is not part of the cell content
       } else
         // we are inside an open quote, which is needed to escape this char
@@ -283,3 +312,4 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
 
   return zsv_status_ok;
 }
+#endif

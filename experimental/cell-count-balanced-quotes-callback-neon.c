@@ -1,4 +1,8 @@
-// gcc -O3 -march=native -o cell-count-balanced-quotes-callback-neon cell-count-balanced-quotes-callback-neon.c
+// to compile:
+// gcc -DTEST_CELL_COUNT -O3 -march=native -o cell-count-balanced-quotes-callback-neon cell-count-balanced-quotes-callback-neon.c
+
+#ifndef CELL_COUNT_EXPERIMENTAL
+#define CELL_COUNT_EXPERIMENTAL
 
 #include <stdio.h>
 #include <stdint.h>
@@ -16,7 +20,7 @@ struct counts {
     size_t row;
 };
 
-inline uint16_t neon_movemask(uint8x16_t input) {
+static inline uint16_t neon_movemask(uint8x16_t input) {
     const uint8x16_t bit_weights = {
         1, 2, 4, 8, 16, 32, 64, 128, 
         1, 2, 4, 8, 16, 32, 64, 128
@@ -34,9 +38,9 @@ static void _process_buffer_core(
     void *ctx, 
     parser_callback_row_t cb_row,
     parser_callback_cell_t cb_cell,
-    const bool enable_cell_parsing,
     const char cell_delimiter // ignored if enable_cell_parsing is false
 ) {
+  const bool enable_cell_parsing = cb_cell ? true : false;
     size_t i = 0;
     uint64_t quote_state = *inside_quote_global ? ~0ULL : 0ULL;
     const uint8_t *current_field_start = data;
@@ -49,7 +53,6 @@ static void _process_buffer_core(
     if (enable_cell_parsing) {
         v_cell = vdupq_n_u8(cell_delimiter);
     }
-
     for (; i + 64 <= len; i += 64) {
         // 1. Load Data
         uint8x16_t b0 = vld1q_u8(data + i);
@@ -113,7 +116,7 @@ static void _process_buffer_core(
                 } else {
                     cb_cell(ctx, current_field_start, len);
                 }
-            } else {
+            } else { // we only iterate on rows
               cb_row(ctx);
             }
 
@@ -151,7 +154,7 @@ static void _process_buffer_core(
 // --- PUBLIC API ---
 
 // Public wrapper that dispatches to the correct optimized kernel
-void process_buffer(
+static inline void process_buffer(
     const uint8_t *data, 
     size_t len, 
     int *inside_quote_global, 
@@ -163,24 +166,24 @@ void process_buffer(
 ) {
     if (enable_cell) {
         // Generates code with Vector ORs and Branching callbacks
-        _process_buffer_core(data, len, inside_quote_global, ctx, cb_row, cb_cell, true, cell_delimiter);
+        _process_buffer_core(data, len, inside_quote_global, ctx, cb_row, cb_cell, cell_delimiter);
     } else {
         // Generates code with NO Vector ORs and Unconditional callbacks
-        _process_buffer_core(data, len, inside_quote_global, ctx, cb_row, cb_cell, false, 0);
+        _process_buffer_core(data, len, inside_quote_global, ctx, cb_row, NULL, 0);
     }
 }
 
-void count_row(void *ctx) {
+static void count_row(void *ctx) {
   struct counts *counts = (struct counts *)ctx;
   counts->row++;
 }
 
-void count_cell(void *ctx, const uint8_t *start, size_t len) {
+static void count_cell(void *ctx, const uint8_t *start, size_t len) {
   struct counts *counts = (struct counts *)ctx;
   counts->cell++;
 }
 
-
+#ifdef TEST_CELL_COUNT
 int main(int argc, const char *argv[]) {
     static uint8_t buffer[BUF_SIZE] __attribute__((aligned(64)));
     struct counts counts = { 0 };
@@ -188,12 +191,19 @@ int main(int argc, const char *argv[]) {
     size_t bytes_read;
     int do_count_cells = 0;
 
+    FILE *fin = NULL;
     for(int i = 1; i < argc; i++) {
       if(!strcmp(argv[i], "--count-cells"))
         do_count_cells = 1;
       else if(!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
         printf("%s [--count-cells] [--help,-h]\n", argv[0]);
         return 0;
+      } else if(!fin) {
+        fin = fopen(argv[i], "rb");
+        if(!fin) {
+          perror(argv[i]);
+          return 1;
+        }
       } else {
         fprintf(stderr, "Unrecognized argument %s\n", argv[i]);
         return 1;
@@ -204,11 +214,17 @@ int main(int argc, const char *argv[]) {
     // Note: For a real parser, you would need logic here to handle fields 
     // that get cut off at the end of the buffer (using memcpy to move the 
     // partial field to the start of the next buffer).
-    
-    while ((bytes_read = fread(buffer, 1, BUF_SIZE, stdin)) > 0) {
+    if(!fin)
+      fin = stdin;
+    while ((bytes_read = fread(buffer, 1, BUF_SIZE, fin)) > 0) {
       process_buffer(buffer, bytes_read, &inside_quote, &counts, count_row, count_cell, do_count_cells, ',');
     }
 
     printf("Rows: %zu, cells: %zu\n", counts.row, counts.cell);
+    if(fin != stdin)
+      fclose(fin);
     return 0;
 }
+
+#endif
+#endif
