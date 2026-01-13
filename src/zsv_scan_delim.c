@@ -46,6 +46,7 @@
 
 #ifdef EXPERIMENTAL
 #include "../experimental/cell-count-balanced-quotes-callback-neon.c"
+// #include "../experimental/count-neon-columns-callback-v3.c"
 
 static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   //  bytes_read += scanner->partial_row_length;
