@@ -26,7 +26,7 @@ const char *zsv_stack_usage_msg[] = {
   "  -o <filename>      : output file",
   "  -b                 : output with BOM",
   "  -q                 : always add double-quotes",
-  //  "  --prepend-filename : output source filename as the first column of each output row",
+  "  --prepend-filename : output source filename as the first column of each output row",
   "  --unique           : only output unique column names;",
   "                       in case of duplicates, only the last (right-most) column will be kept",
   NULL,
@@ -126,7 +126,8 @@ struct zsv_stack_data {
   zsv_csv_writer csv_writer;
 
   unsigned char unique_column_names : 1;
-  unsigned char _ : 7;
+  unsigned char prepend_filename : 1;
+  unsigned char _ : 6;
 };
 
 static struct zsv_stack_input_file **zsv_stack_input_file_add(const char *filename,
@@ -221,14 +222,21 @@ static void zsv_stack_data_row(void *ctx) {
     return;
   }
   if (!zsv_row_is_blank(input->parser)) {
+    char new_row = 1;
+    if (input->ctx->prepend_filename) {
+      zsv_writer_cell(input->ctx->csv_writer, new_row, input->fname, strlen(input->fname), 1);
+      new_row = 0;
+    }
+
     size_t colnames_count = input->ctx->colnames_count;
     for (unsigned i = 0; i < colnames_count; i++) {
       size_t raw_ix_plus_1;
       if (i < input->output_column_map_size && ((raw_ix_plus_1 = input->output_column_map[i]))) {
         struct zsv_cell cell = zsv_get_cell(input->parser, raw_ix_plus_1 - 1);
-        zsv_writer_cell(input->ctx->csv_writer, !i, cell.str, cell.len, cell.quoted);
+        zsv_writer_cell(input->ctx->csv_writer, new_row, cell.str, cell.len, cell.quoted);
       } else
-        zsv_writer_cell(input->ctx->csv_writer, !i, 0x0, 0, 0);
+        zsv_writer_cell(input->ctx->csv_writer, new_row, 0x0, 0, 0);
+      new_row = 0;
     }
   }
 }
@@ -254,8 +262,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     const char *arg = argv[arg_i];
     if (!strcmp(arg, "-b"))
       writer_opts.with_bom = 1;
-    //    else if (!strcmp(arg, "--prepend-filename")_)
-    //      data.prepend_filename
+    else if (!strcmp(arg, "--prepend-filename"))
+      data.prepend_filename = 1;
     else if (!strcmp(arg, "--unique"))
       data.unique_column_names = 1;
     else if (!strcmp(arg, "-o")) {
@@ -356,9 +364,17 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   // print headers
+  char new_row = 1;
+#define ZSV_STACK_PREPEND_FILENAME_HEADER "Filename"
+  if (data.prepend_filename && data.first_colname) {
+    zsv_writer_cell(data.csv_writer, new_row, ZSV_STACK_PREPEND_FILENAME_HEADER,
+                    strlen(ZSV_STACK_PREPEND_FILENAME_HEADER), 1);
+    new_row = 0;
+  }
   for (struct zsv_stack_colname *e = data.first_colname; !data.err && e; e = e->next) {
     const unsigned char *name = e->orig_name ? e->orig_name : e->name ? e->name : (const unsigned char *)"";
-    zsv_writer_cell(data.csv_writer, e == data.first_colname, name, strlen((const char *)name), 1);
+    zsv_writer_cell(data.csv_writer, new_row, name, strlen((const char *)name), 1);
+    new_row = 0;
   }
 
   // process data
