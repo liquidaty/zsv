@@ -224,7 +224,7 @@ static void zsv_stack_data_row(void *ctx) {
   if (!zsv_row_is_blank(input->parser)) {
     char new_row = 1;
     if (input->ctx->prepend_filename) {
-      zsv_writer_cell(input->ctx->csv_writer, new_row, input->fname, strlen(input->fname), 1);
+      zsv_writer_cell(input->ctx->csv_writer, new_row, (const unsigned char *)input->fname, strlen(input->fname), 1);
       new_row = 0;
     }
 
@@ -367,7 +367,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   char new_row = 1;
 #define ZSV_STACK_PREPEND_FILENAME_HEADER "Filename"
   if (data.prepend_filename && data.first_colname) {
-    zsv_writer_cell(data.csv_writer, new_row, ZSV_STACK_PREPEND_FILENAME_HEADER,
+    zsv_writer_cell(data.csv_writer, new_row, (const unsigned char *)ZSV_STACK_PREPEND_FILENAME_HEADER,
                     strlen(ZSV_STACK_PREPEND_FILENAME_HEADER), 1);
     new_row = 0;
   }
