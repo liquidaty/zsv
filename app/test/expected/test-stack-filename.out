@@ -1,0 +1,5 @@
+Filename,a,b,c,d,e,f,x,y,z
+stack1.csv,1,2,3,4,5,6,,,
+stack1.csv,11,12,13,14,15,16,,,
+stack2.csv,,,4,2,,,1,3,5
+stack2.csv,,,9,7,,,6,8,10
