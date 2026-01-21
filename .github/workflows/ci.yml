@@ -444,7 +444,7 @@ jobs:
       uses: cross-platform-actions/action@v0.32.0
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
-        CC: gcc
+        CC: gcc13
         MAKE: gmake
         RUN_TESTS: true
       with:
