@@ -156,8 +156,8 @@ static void serialize_header(void *hook) {
         asprintf((char **)&data->header_names[i].str, "%u", i);
       else {
         struct zsv_cell c = zsv_get_cell(data->parser, i);
-        if (c.len == 0)
-          asprintf((char **)&data->header_names[i].str, "(Blank column %i)", i + 1);
+        if (c.len == 0 && i == data->id_column_position)
+          data->header_names[i].str = (unsigned char *)strdup("(Blank)");
         else
           data->header_names[i].str = zsv_writer_str_to_csv(cell.str, cell.len);
       }
