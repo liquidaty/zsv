@@ -1,0 +1,11 @@
+# compile:  gcc -O3 -march=native -o count-neon-columns-callback-v3 count-neon-columns-callback-v3.c -lzsvutil
+
+# compare count time (run a few times each) (assuming zsv_main is the zsv executable compiled from the main branch):
+#   time ./count-neon-columns-callback-v3 < ../app/test/worldcitiespop.csv
+#   time zsv_main count < ../app/test/worldcitiespop.csv
+
+
+# compare select time (run a few times each) (assuming zsv_main is the zsv executable compiled from the main branch):
+#   time ./count-neon-columns-callback-v3 test1 < ../app/test/worldcitiespop.csv
+#   time zsv_main select -n -- 1 2 3 6 7 < ../app/test/worldcitiespop.csv >/dev/null
+
