@@ -282,7 +282,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
       // first, save the file if it is stdin
       if (data.in == stdin) {
-        if (!(data.tmp_fn = zsv_get_temp_filename("zsv_echo_XXXXXXXX"))) {
+        if (!(data.tmp_fn = zsv_get_temp_filename("zec"))) {
           zsv_echo_cleanup(&data);
           return 1;
         }

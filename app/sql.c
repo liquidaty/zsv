@@ -258,7 +258,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       f = stdin;
 
     if (f == stdin) {
-      tmpfn = zsv_get_temp_filename("zsv_sql_XXXXXXXX");
+      tmpfn = zsv_get_temp_filename("zsq");
       if (!tmpfn) {
         fprintf(stderr, "Unable to create temp file name\n");
       } else {
@@ -445,7 +445,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     zsv_writer_delete(cw);
 
     if (tmpfn) {
-      unlink(tmpfn);
+      if (unlink(tmpfn))
+        perror(tmpfn);
       free(tmpfn);
     }
   }
