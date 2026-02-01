@@ -95,8 +95,10 @@ Excel compatibility) are dropped.
 
 ### Examples of input that does not comply with RFC 4180
 
-The following is a comprehensive list of all input patterns that are
-non-compliant with RFC 4180, and how zsv (by default) parses each:
+The following is a list of all input patterns that are
+non-compliant with RFC 4180, and how zsv (by default) parses each.
+It is believed to be comprehensive, please log an issue if you think
+it is missing any pattern:
 
 |Input Description|Parser treatment|Example input|How example input is parsed|
 |--|--|--|--|
