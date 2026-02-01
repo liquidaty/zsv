@@ -65,8 +65,9 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
                      size_t start_row, size_t start_col, size_t header_span, struct zsvsheet_opts *zsvsheet_opts,
                      struct zsv_prop_handler *custom_prop_handler) {
   int rc = 0;
-  struct uib_parse_errs parse_errs;
+  struct uib_parse_errs parse_errs = {0};
   uib_parse_errs_init(&parse_errs, 100);
+  zsv_parser parser = {0};
   FILE *fp = NULL;
   const char *filename = (uibufferp && *uibufferp) ? (*uibufferp)->filename : uibopts ? uibopts->filename : NULL;
   struct zsv_opts opts = {0};
@@ -109,7 +110,6 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   else
     opts.errf = &parse_errs;
 
-  zsv_parser parser = {0};
   if (zsv_new_with_properties(&opts, custom_prop_handler, filename, &parser) != zsv_status_ok) {
     rc = errno ? errno : -1;
     goto done;
