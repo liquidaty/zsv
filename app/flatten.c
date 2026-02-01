@@ -787,7 +787,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   if (passes == 1)
     in = data.in;
   else {
-    tmp_fn = zsv_get_temp_filename("zsv_flatten_XXXXXXXX");
+    tmp_fn = zsv_get_temp_filename("zfl");
     if (tmp_fn) {
       FILE *tmp_f = fopen(tmp_fn, "w+b");
       opts.cell_handler = flatten_cell1;

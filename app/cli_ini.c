@@ -51,7 +51,7 @@ static int config_save(struct cli_config *config) {
     return 1;
   }
   int err = 1;
-  char *tmp = zsv_get_temp_filename("zsv_config_XXXXXXXX");
+  char *tmp = zsv_get_temp_filename("zcf");
   if (!tmp)
     fprintf(stderr, "Out of memory!\n");
   else {

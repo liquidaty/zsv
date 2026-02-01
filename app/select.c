@@ -122,7 +122,7 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
   struct zsv_csv_writer_options writer_opts = {0};
 
 #ifdef __linux__
-  cdata->tmp_output_filename = zsv_get_temp_filename("zsvselect");
+  cdata->tmp_output_filename = zsv_get_temp_filename("zsl");
   writer_opts.stream = fopen(cdata->tmp_output_filename, "wb");
 #else
   if (!(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ)) &&

@@ -153,13 +153,15 @@ int zsv_dir_from_json(const unsigned char *target_dir, FILE *src,
   int force = !!(flags & ZSV_DIR_FLAG_FORCE);
   int dry = !!(flags & ZSV_DIR_FLAG_DRY);
   char *tmp_fn = NULL; // only used if force = 0 and src == stdin
+  char src_was_stdin = 0;
   if (!force) {
     // if input is stdin, we'll need to read it twice, so save it first
     // this isn't the most efficient way to do it, as it reads it 3 times
     // but it's easier and the diff is immaterial
     if (src == stdin) {
+      src_was_stdin = 1;
       src = NULL;
-      tmp_fn = zsv_get_temp_filename("zsv_prop_XXXXXXXX");
+      tmp_fn = zsv_get_temp_filename("zpr");
       FILE *tmp_f;
       if (!tmp_fn) {
         err = errno = ENOMEM;
@@ -245,7 +247,10 @@ int zsv_dir_from_json(const unsigned char *target_dir, FILE *src,
     }
   }
   if (tmp_fn) {
-    unlink(tmp_fn);
+    if (src && src != stdin && src_was_stdin)
+      fclose(src);
+    if (unlink(tmp_fn))
+      perror(tmp_fn);
     free(tmp_fn);
   }
 
