@@ -1,6 +1,5 @@
-#define ENABLE_CELL_OUTPUT 1
-#define ENABLE_FAST 1
-// #define SKIP_PROCESSING 1
+// #define DISABLE_CELL_OUTPUT 1
+// #define DISABLE_FAST 1
 
 #ifdef ZSV_SUPPORT_PULL_PARSER
 
@@ -130,7 +129,6 @@ static enum zsv_status ZSV_SCAN_DELIM_SLOW_PATH(struct zsv_scanner *scanner, uns
         }
       } else if (skip_next_delim) {
         skip_next_delim = 0;
-        // fprintf(stderr, "\nskip_next_delim - cleared (character at %zu ignored)\n", i);
         continue;
       }
     }
@@ -140,7 +138,6 @@ static enum zsv_status ZSV_SCAN_DELIM_SLOW_PATH(struct zsv_scanner *scanner, uns
       mask = clear_lowest_bit(mask);
       if (VERY_UNLIKELY(skip_next_delim)) {
         skip_next_delim = 0;
-        // fprintf(stderr, "\nskip_next_delim - cleared (character at %zu ignored)\n", i);
         continue;
       }
     }
@@ -150,8 +147,7 @@ static enum zsv_status ZSV_SCAN_DELIM_SLOW_PATH(struct zsv_scanner *scanner, uns
     if (LIKELY(c == delimiter)) { // case ',':
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
-        // fprintf(stderr, "\ncalling cell_dl()\n");
-#ifdef ENABLE_CELL_OUTPUT
+#ifndef DISABLE_CELL_OUTPUT
         cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
 #endif
         scanner->cell_start = i + 1;
@@ -177,8 +173,7 @@ static enum zsv_status ZSV_SCAN_DELIM_SLOW_PATH(struct zsv_scanner *scanner, uns
 #endif
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
-        //      fprintf(stderr, "\ncalling cell_and_row_dl()\n");
-#ifdef ENABLE_CELL_OUTPUT
+#ifndef DISABLE_CELL_OUTPUT
         enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
         if (VERY_UNLIKELY(stat))
           return stat;
@@ -234,7 +229,7 @@ static enum zsv_status ZSV_SCAN_DELIM_SLOW_PATH(struct zsv_scanner *scanner, uns
         if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend))
           cell_len--;
 #endif
-#ifdef ENABLE_CELL_OUTPUT
+#ifndef DISABLE_CELL_OUTPUT
         enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, cell_len);
         if (VERY_UNLIKELY(stat))
           return stat;
@@ -283,7 +278,6 @@ static enum zsv_status ZSV_SCAN_DELIM_SLOW_PATH(struct zsv_scanner *scanner, uns
             scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
             scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
             skip_next_delim = 1;
-            // fprintf(stderr, "\nskip_next_delim - cleared (character at %zu ignored)\n", i);
           }
         } else // we are at the end of this input chunk
           scanner->quoted |= ZSV_PARSER_QUOTE_PENDING;
@@ -350,7 +344,7 @@ static inline enum zsv_status ZSV_SCAN_DELIM_FAST_PATH_PROCESS_CHAR(struct zsv_s
   if (LIKELY(c == delimiter)) {
     if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
       scanner->scanned_length = idx;
-#ifdef ENABLE_CELL_OUTPUT
+#ifndef DISABLE_CELL_OUTPUT
       cell_dl(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
 #endif
       scanner->cell_start = idx + 1;
@@ -366,7 +360,7 @@ static inline enum zsv_status ZSV_SCAN_DELIM_FAST_PATH_PROCESS_CHAR(struct zsv_s
     } else {
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = idx;
-#ifdef ENABLE_CELL_OUTPUT
+#ifndef DISABLE_CELL_OUTPUT
         enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
         if (VERY_UNLIKELY(stat))
           return stat;
@@ -467,12 +461,22 @@ static enum zsv_status ZSV_SCAN_DELIM_FAST_PATH(struct zsv_scanner *scanner, uns
     uint64_t valid_openers = qt_filtered & line_ends_shifted;
     uint64_t A = ~(qt_filtered & ~line_ends_shifted);
 
-    // Prefix-XOR state machine
+    // Prefix-XOR state machine - allows the compiler to
+    // schedule these bitwise operations optimally rather than
+    // calculate in a for loop
     uint64_t B = valid_openers;
-    for (int s = 0; s < 6; s++) {
-      B ^= (A & (B << (1 << s)));
-      A &= (A << (1 << s));
-    }
+    B ^= (A & (B << 1));
+    A &= (A << 1);
+    B ^= (A & (B << 2));
+    A &= (A << 2);
+    B ^= (A & (B << 4));
+    A &= (A << 4);
+    B ^= (A & (B << 8));
+    A &= (A << 8);
+    B ^= (A & (B << 16));
+    A &= (A << 16);
+    B ^= (A & (B << 32));
+    A &= (A << 32);
     uint64_t state_mask = (current_inside_quote ? A : 0) ^ B;
 
     // Stop for delims/newlines outside quotes, and ALL quotes (for PROCESS_CHAR metadata)
@@ -522,8 +526,7 @@ static enum zsv_status ZSV_SCAN_DELIM_FAST_PATH(struct zsv_scanner *scanner, uns
 
 static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
 
-#ifndef SKIP_PROCESSING
-#ifdef ENABLE_FAST
+#ifndef DISABLE_FAST
 #if defined(ZSV_SUPPORT_PULL_PARSER) || !defined(__aarch64__)
   // Use slow path
   return ZSV_SCAN_DELIM_SLOW_PATH(scanner, buff, bytes_read);
@@ -537,8 +540,5 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
 #endif
 #else
   return ZSV_SCAN_DELIM_SLOW_PATH(scanner, buff, bytes_read);
-#endif
-#else
-  return zsv_status_ok;
 #endif
 }
