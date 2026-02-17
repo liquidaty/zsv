@@ -1,3 +1,7 @@
+#define ENABLE_CELL_OUTPUT 1
+#define ENABLE_FAST 1
+// #define SKIP_PROCESSING 1
+
 #ifdef ZSV_SUPPORT_PULL_PARSER
 
 #define zsv_internal_save_reg(x) scanner->pull.regs->delim.x = x
@@ -40,7 +44,15 @@
   } while (0)
 #endif
 
-static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
+#define CONCAT_DEFS_INNER(a, b) a##b
+#define CONCAT_DEFS(a, b) CONCAT_DEFS_INNER(a, b)
+#define ZSV_SCAN_DELIM_SLOW_PATH CONCAT_DEFS(ZSV_SCAN_DELIM, _slow)
+#ifndef ZSV_SUPPORT_PULL_PARSER
+#define ZSV_SCAN_DELIM_FAST_PATH CONCAT_DEFS(ZSV_SCAN_DELIM, _fast)
+#define ZSV_SCAN_DELIM_FAST_PATH_PROCESS_CHAR CONCAT_DEFS(ZSV_SCAN_DELIM_FAST_PATH, _process_char)
+#endif
+
+static enum zsv_status ZSV_SCAN_DELIM_SLOW_PATH(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   struct {
     zsv_uc_vector dl;
     zsv_uc_vector nl;
@@ -118,6 +130,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         }
       } else if (skip_next_delim) {
         skip_next_delim = 0;
+        // fprintf(stderr, "\nskip_next_delim - cleared (character at %zu ignored)\n", i);
         continue;
       }
     }
@@ -127,6 +140,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
       mask = clear_lowest_bit(mask);
       if (VERY_UNLIKELY(skip_next_delim)) {
         skip_next_delim = 0;
+        // fprintf(stderr, "\nskip_next_delim - cleared (character at %zu ignored)\n", i);
         continue;
       }
     }
@@ -136,7 +150,10 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
     if (LIKELY(c == delimiter)) { // case ',':
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
+        // fprintf(stderr, "\ncalling cell_dl()\n");
+#ifdef ENABLE_CELL_OUTPUT
         cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+#endif
         scanner->cell_start = i + 1;
         c = 0;
         continue; // this char is not part of the cell content
@@ -160,9 +177,12 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
 #endif
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
+        //      fprintf(stderr, "\ncalling cell_and_row_dl()\n");
+#ifdef ENABLE_CELL_OUTPUT
         enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
         if (VERY_UNLIKELY(stat))
           return stat;
+#endif
 #ifdef ZSV_SUPPORT_PULL_PARSER
         if (scanner->pull.now) {
           scanner->pull.now = 0;
@@ -214,9 +234,11 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend))
           cell_len--;
 #endif
+#ifdef ENABLE_CELL_OUTPUT
         enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, cell_len);
         if (VERY_UNLIKELY(stat))
           return stat;
+#endif
 #ifdef ZSV_SUPPORT_PULL_PARSER
         if (scanner->pull.now) {
           scanner->pull.now = 0;
@@ -261,6 +283,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
             scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
             scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
             skip_next_delim = 1;
+            // fprintf(stderr, "\nskip_next_delim - cleared (character at %zu ignored)\n", i);
           }
         } else // we are at the end of this input chunk
           scanner->quoted |= ZSV_PARSER_QUOTE_PENDING;
@@ -282,4 +305,251 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
   scanner->old_bytes_read = bytes_read;
 
   return zsv_status_ok;
+}
+
+#ifndef ZSV_SUPPORT_PULL_PARSER
+#if defined(__aarch64__)
+#include <arm_neon.h>
+
+#ifndef NEON_MOVEMASK_64_DEFINED
+#define NEON_MOVEMASK_64_DEFINED
+/**
+ * Extract an 8-bit mask from NEON registers based on a target character.
+ * This simulates the behavior of _mm_movemask_epi8 for ARM architecture.
+ */
+// static inline uint64_t neon_movemask_64(uint8x16_t b0, uint8x16_t b1, uint8x16_t b2, uint8x16_t b3, uint8_t c) {
+//   const uint8x16_t bit_weights = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
+//   uint8x16_t m0 = vandq_u8(vceqq_u8(b0, vdupq_n_u8(c)), bit_weights);
+//   uint8x16_t m1 = vandq_u8(vceqq_u8(b1, vdupq_n_u8(c)), bit_weights);
+//   uint8x16_t m2 = vandq_u8(vceqq_u8(b2, vdupq_n_u8(c)), bit_weights);
+//   uint8x16_t m3 = vandq_u8(vceqq_u8(b3, vdupq_n_u8(c)), bit_weights);
+//   return (uint64_t)vaddv_u8(vget_low_u8(m0)) | ((uint64_t)vaddv_u8(vget_high_u8(m0)) << 8) |
+//          ((uint64_t)vaddv_u8(vget_low_u8(m1)) << 16) | ((uint64_t)vaddv_u8(vget_high_u8(m1)) << 24) |
+//          ((uint64_t)vaddv_u8(vget_low_u8(m2)) << 32) | ((uint64_t)vaddv_u8(vget_high_u8(m2)) << 40) |
+//          ((uint64_t)vaddv_u8(vget_low_u8(m3)) << 48) | ((uint64_t)vaddv_u8(vget_high_u8(m3)) << 56);
+// }
+static inline uint64_t neon_movemask_64_optimized(uint8x16_t b0, uint8x16_t b1, uint8x16_t b2, uint8x16_t b3,
+                                                  uint8x16_t v_c, uint8x16_t bit_weights) {
+
+  uint8x16_t m0 = vandq_u8(vceqq_u8(b0, v_c), bit_weights);
+  uint8x16_t m1 = vandq_u8(vceqq_u8(b1, v_c), bit_weights);
+  uint8x16_t m2 = vandq_u8(vceqq_u8(b2, v_c), bit_weights);
+  uint8x16_t m3 = vandq_u8(vceqq_u8(b3, v_c), bit_weights);
+
+  return (uint64_t)vaddv_u8(vget_low_u8(m0)) | ((uint64_t)vaddv_u8(vget_high_u8(m0)) << 8) |
+         ((uint64_t)vaddv_u8(vget_low_u8(m1)) << 16) | ((uint64_t)vaddv_u8(vget_high_u8(m1)) << 24) |
+         ((uint64_t)vaddv_u8(vget_low_u8(m2)) << 32) | ((uint64_t)vaddv_u8(vget_high_u8(m2)) << 40) |
+         ((uint64_t)vaddv_u8(vget_low_u8(m3)) << 48) | ((uint64_t)vaddv_u8(vget_high_u8(m3)) << 56);
+}
+#endif
+
+/**
+ * Character-by-character processing used by the tail and the "relevant" bits found by SIMD.
+ * Manages the scanner state machine, including row/cell boundaries and quoted fields.
+ */
+static inline enum zsv_status ZSV_SCAN_DELIM_FAST_PATH_PROCESS_CHAR(struct zsv_scanner *scanner, char delimiter,
+                                                                    char quote, unsigned char *buff, size_t bytes_read,
+                                                                    size_t idx, char *skip_next_delim) {
+  unsigned char c = buff[idx];
+
+  // Handle escaped quotes: skip the second quote in a "" sequence
+  if (VERY_UNLIKELY(*skip_next_delim)) {
+    *skip_next_delim = 0;
+    return zsv_status_ok;
+  }
+
+  if (LIKELY(c == delimiter)) {
+    if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
+      scanner->scanned_length = idx;
+#ifdef ENABLE_CELL_OUTPUT
+      cell_dl(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
+#endif
+      scanner->cell_start = idx + 1;
+    } else {
+      scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
+    }
+  } else if (c == '\r' || c == '\n') {
+    // Handle row endings. Guard CRLF sequences from double-triggering row ends
+    if (c == '\n' && (idx > 0 ? buff[idx - 1] : scanner->last) == '\r' &&
+        (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
+      scanner->cell_start = idx + 1;
+      scanner->row_start = idx + 1;
+    } else {
+      if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
+        scanner->scanned_length = idx;
+#ifdef ENABLE_CELL_OUTPUT
+        enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
+        if (VERY_UNLIKELY(stat))
+          return stat;
+#endif
+        scanner->cell_start = idx + 1;
+        scanner->row_start = idx + 1;
+        scanner->data_row_count++;
+      } else {
+        scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
+      }
+    }
+  } else if (LIKELY(c == quote)) {
+    // Structural logic for opening and closing quoted fields
+    if (idx == scanner->cell_start && !scanner->buffer_exceeded) {
+      scanner->quoted = ZSV_PARSER_QUOTE_UNCLOSED;
+      scanner->quote_close_position = 0;
+    } else if (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) {
+      if (VERY_LIKELY(idx + 1 < bytes_read)) {
+        if (LIKELY(buff[idx + 1] != quote)) {
+          // Found closing quote
+          scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
+          scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
+          if (LIKELY(scanner->quote_close_position == 0))
+            scanner->quote_close_position = idx - scanner->cell_start;
+        } else {
+          // Found escaped quote ("")
+          scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
+          scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
+          (*skip_next_delim) = 1;
+        }
+      } else {
+        // Quote at end of buffer; check next chunk to see if it's escaped
+        scanner->quoted |= ZSV_PARSER_QUOTE_PENDING;
+      }
+    } else {
+      // Literal quote inside unquoted data
+      scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
+      scanner->quote_close_position = scanner->quoted & ZSV_PARSER_QUOTE_CLOSED ? scanner->quote_close_position : 0;
+    }
+  }
+  return zsv_status_ok;
+}
+
+static enum zsv_status ZSV_SCAN_DELIM_FAST_PATH(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
+  size_t i = scanner->partial_row_length;
+  bytes_read += i;
+  scanner->partial_row_length = 0;
+  char delimiter = scanner->opts.delimiter;
+  char skip_next_delim = 0;
+  int quote = scanner->opts.no_quotes > 0 ? -1 : '"';
+
+  // 1. Resolve quotes split across buffer boundaries
+  if (scanner->quoted & ZSV_PARSER_QUOTE_PENDING) {
+    scanner->quoted &= ~ZSV_PARSER_QUOTE_PENDING;
+    if (buff[i] != quote) {
+      scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
+      scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
+      scanner->quote_close_position = i - scanner->cell_start - 1;
+    } else {
+      scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
+      scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
+      i++;
+    }
+  }
+
+  // 2. Initialize trackers based on the post-resolve quotes split starting index
+  unsigned char prev_c = (i > 0) ? buff[i - 1] : scanner->last;
+  uint64_t last_char_was_line_end = (prev_c == '\n' || prev_c == '\r' || (i == 0 && scanner->last == 0));
+  int current_inside_quote = (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) ? 1 : 0;
+
+  // 3. Primary SIMD Loop: 64 bytes per iteration
+
+  // Initialize constant vectors once
+  const uint8x16_t bit_weights = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
+  uint8x16_t v_nl = vdupq_n_u8('\n');
+  uint8x16_t v_cr = vdupq_n_u8('\r');
+  uint8x16_t v_dl = vdupq_n_u8(delimiter);
+  uint8x16_t v_qt = vdupq_n_u8(quote);
+
+  for (; i + 64 <= bytes_read; i += 64) {
+    uint8x16_t b0 = vld1q_u8(buff + i), b1 = vld1q_u8(buff + i + 16);
+    uint8x16_t b2 = vld1q_u8(buff + i + 32), b3 = vld1q_u8(buff + i + 48);
+
+    uint64_t nl = neon_movemask_64_optimized(b0, b1, b2, b3, v_nl, bit_weights);
+    uint64_t qt = neon_movemask_64_optimized(b0, b1, b2, b3, v_qt, bit_weights);
+    uint64_t dl = neon_movemask_64_optimized(b0, b1, b2, b3, v_dl, bit_weights);
+    uint64_t cr = neon_movemask_64_optimized(b0, b1, b2, b3, v_cr, bit_weights);
+
+    // Filter escaped pairs for the state machine
+    uint64_t qt_shifted = (qt << 1) | (scanner->last == quote ? 1ULL : 0ULL);
+    uint64_t escaped_pairs = qt & qt_shifted;
+    uint64_t all_escaped_bits = escaped_pairs | (escaped_pairs >> 1);
+    uint64_t qt_filtered = qt & ~all_escaped_bits;
+
+    uint64_t line_ends = nl | cr;
+    uint64_t line_ends_shifted = (line_ends << 1) | (last_char_was_line_end ? 1ULL : 0ULL);
+
+    uint64_t valid_openers = qt_filtered & line_ends_shifted;
+    uint64_t A = ~(qt_filtered & ~line_ends_shifted);
+
+    // Prefix-XOR state machine
+    uint64_t B = valid_openers;
+    for (int s = 0; s < 6; s++) {
+      B ^= (A & (B << (1 << s)));
+      A &= (A << (1 << s));
+    }
+    uint64_t state_mask = (current_inside_quote ? A : 0) ^ B;
+
+    // Stop for delims/newlines outside quotes, and ALL quotes (for PROCESS_CHAR metadata)
+    uint64_t relevant = ((dl | nl | cr) & ~state_mask) | qt;
+    while (VERY_LIKELY(relevant)) {
+      int bit = __builtin_ctzll(relevant);
+      size_t idx = i + bit;
+      enum zsv_status stat =
+        ZSV_SCAN_DELIM_FAST_PATH_PROCESS_CHAR(scanner, delimiter, quote, buff, bytes_read, idx, &skip_next_delim);
+      if (VERY_UNLIKELY(stat))
+        return stat;
+      relevant &= (relevant - 1);
+    }
+
+    // Capture the state for next block
+    current_inside_quote = (state_mask >> 63) & 1;
+
+    // The "Priority Sync": If PROCESS_CHAR closed the quote, SIMD must respect it
+    if (!(scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED))
+      current_inside_quote = 0;
+
+    last_char_was_line_end = ((nl | cr) >> 63) & 1;
+    scanner->last = buff[i + 63];
+  }
+
+  // 4. Final Sync for parallelization and tail
+  if (current_inside_quote) {
+    scanner->quoted |= ZSV_PARSER_QUOTE_UNCLOSED;
+    scanner->quote_close_position = 0;
+  }
+
+  // 5. Scalar Tail
+  for (; i < bytes_read; i++) {
+    enum zsv_status stat =
+      ZSV_SCAN_DELIM_FAST_PATH_PROCESS_CHAR(scanner, delimiter, quote, buff, bytes_read, i, &skip_next_delim);
+    if (VERY_UNLIKELY(stat))
+      return stat;
+    scanner->last = buff[i];
+  }
+
+  scanner->scanned_length = i;
+  scanner->old_bytes_read = bytes_read;
+  return zsv_status_ok;
+}
+#endif // #if defined(__aarch64__)
+#endif // ifndef ZSV_SUPPORT_PULL_PARSER
+
+static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
+
+#ifndef SKIP_PROCESSING
+#ifdef ENABLE_FAST
+#if defined(ZSV_SUPPORT_PULL_PARSER) || !defined(__aarch64__)
+  // Use slow path
+  return ZSV_SCAN_DELIM_SLOW_PATH(scanner, buff, bytes_read);
+#else
+#ifndef ZSV_NO_ONLY_CRLF
+  if (scanner->opts.only_crlf_rowend)
+    return ZSV_SCAN_DELIM_SLOW_PATH(scanner, buff, bytes_read);
+#endif
+  // Use fast
+  return ZSV_SCAN_DELIM_FAST_PATH(scanner, buff, bytes_read);
+#endif
+#else
+  return ZSV_SCAN_DELIM_SLOW_PATH(scanner, buff, bytes_read);
+#endif
+#else
+  return zsv_status_ok;
+#endif
 }

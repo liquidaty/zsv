@@ -1,4 +1,7 @@
 // gcc -O3 -march=native -o count-neon-columns-callback-v3 count-neon-columns-callback-v3.c -lzsvutil
+
+// #define DISABLE_CELL_OUTPUT 1
+
 #ifndef CELL_COUNT_EXPERIMENTAL
 #define CELL_COUNT_EXPERIMENTAL
 
@@ -410,7 +413,9 @@ static void print_some_columns(void *ctx_void) {
   const size_t out_colcount = 5;
   for (size_t i = 0; i < out_colcount; i++) {
     column_t c = get_column(ctx, out_cols[i]);
+#ifndef DISABLE_CELL_OUTPUT
     zsv_writer_cell(ctx->writer, i == 0, (const unsigned char *)c.str, c.len, c.quoted);
+#endif
   }
 }
 
