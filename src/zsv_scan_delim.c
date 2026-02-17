@@ -317,19 +317,8 @@ static enum zsv_status ZSV_SCAN_DELIM_SLOW_PATH(struct zsv_scanner *scanner, uns
  * Extract an 8-bit mask from NEON registers based on a target character.
  * This simulates the behavior of _mm_movemask_epi8 for ARM architecture.
  */
-// static inline uint64_t neon_movemask_64(uint8x16_t b0, uint8x16_t b1, uint8x16_t b2, uint8x16_t b3, uint8_t c) {
-//   const uint8x16_t bit_weights = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
-//   uint8x16_t m0 = vandq_u8(vceqq_u8(b0, vdupq_n_u8(c)), bit_weights);
-//   uint8x16_t m1 = vandq_u8(vceqq_u8(b1, vdupq_n_u8(c)), bit_weights);
-//   uint8x16_t m2 = vandq_u8(vceqq_u8(b2, vdupq_n_u8(c)), bit_weights);
-//   uint8x16_t m3 = vandq_u8(vceqq_u8(b3, vdupq_n_u8(c)), bit_weights);
-//   return (uint64_t)vaddv_u8(vget_low_u8(m0)) | ((uint64_t)vaddv_u8(vget_high_u8(m0)) << 8) |
-//          ((uint64_t)vaddv_u8(vget_low_u8(m1)) << 16) | ((uint64_t)vaddv_u8(vget_high_u8(m1)) << 24) |
-//          ((uint64_t)vaddv_u8(vget_low_u8(m2)) << 32) | ((uint64_t)vaddv_u8(vget_high_u8(m2)) << 40) |
-//          ((uint64_t)vaddv_u8(vget_low_u8(m3)) << 48) | ((uint64_t)vaddv_u8(vget_high_u8(m3)) << 56);
-// }
-static inline uint64_t neon_movemask_64_optimized(uint8x16_t b0, uint8x16_t b1, uint8x16_t b2, uint8x16_t b3,
-                                                  uint8x16_t v_c, uint8x16_t bit_weights) {
+static inline uint64_t neon_movemask_64(uint8x16_t b0, uint8x16_t b1, uint8x16_t b2, uint8x16_t b3, uint8x16_t v_c,
+                                        uint8x16_t bit_weights) {
 
   uint8x16_t m0 = vandq_u8(vceqq_u8(b0, v_c), bit_weights);
   uint8x16_t m1 = vandq_u8(vceqq_u8(b1, v_c), bit_weights);
@@ -461,10 +450,10 @@ static enum zsv_status ZSV_SCAN_DELIM_FAST_PATH(struct zsv_scanner *scanner, uns
     uint8x16_t b0 = vld1q_u8(buff + i), b1 = vld1q_u8(buff + i + 16);
     uint8x16_t b2 = vld1q_u8(buff + i + 32), b3 = vld1q_u8(buff + i + 48);
 
-    uint64_t nl = neon_movemask_64_optimized(b0, b1, b2, b3, v_nl, bit_weights);
-    uint64_t qt = neon_movemask_64_optimized(b0, b1, b2, b3, v_qt, bit_weights);
-    uint64_t dl = neon_movemask_64_optimized(b0, b1, b2, b3, v_dl, bit_weights);
-    uint64_t cr = neon_movemask_64_optimized(b0, b1, b2, b3, v_cr, bit_weights);
+    uint64_t nl = neon_movemask_64(b0, b1, b2, b3, v_nl, bit_weights);
+    uint64_t qt = neon_movemask_64(b0, b1, b2, b3, v_qt, bit_weights);
+    uint64_t dl = neon_movemask_64(b0, b1, b2, b3, v_dl, bit_weights);
+    uint64_t cr = neon_movemask_64(b0, b1, b2, b3, v_cr, bit_weights);
 
     // Filter escaped pairs for the state machine
     uint64_t qt_shifted = (qt << 1) | (scanner->last == quote ? 1ULL : 0ULL);
