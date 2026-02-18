@@ -1,0 +1,4 @@
+# Overrids: `E: zsv: embedded-library yajl [usr/bin/zsv]`
+# Reason: `yajl` has been forked and customized for `zsv`.
+# See https://github.com/liquidaty/yajl for details.
+zsv: embedded-library
