@@ -4,11 +4,13 @@ struct zsvsheet_help_data {
 };
 
 const unsigned char **zsvsheet_get_help_header(void *d) {
-  struct zsvsheet_help_data *data = d;
-  data->row_data[0] = "Key(s)";
-  data->row_data[1] = "Action";
-  data->row_data[2] = "Description";
-  return (const unsigned char **)data->row_data;
+  // struct zsvsheet_help_data *data = d;
+  // data->row_data[0] = "Key(s)";
+  // data->row_data[1] = "Action";
+  // data->row_data[2] = "Description";
+  // return (const unsigned char **)data->row_data;
+  static const char *help_headers[] = {"Key(s)", "Action", "Description", NULL};
+  return (const unsigned char **)help_headers;
 }
 
 const unsigned char *zsvsheet_get_help_status(void *_) {

@@ -1,0 +1,15 @@
+# compile:  gcc -O3 -march=native -o count-neon-columns-callback-v3 count-neon-columns-callback-v3.c -lzsvutil
+
+# compare count time (run a few times each) (assuming zsv_main is the zsv executable compiled from the main branch):
+#   time ./count-neon-columns-callback-v3 < ../app/test/worldcitiespop.csv
+#   time zsv_main count < ../app/test/worldcitiespop.csv
+
+
+# compare select time (run a few times each) (assuming zsv_main is the zsv executable compiled from the main branch):
+#   time ./count-neon-columns-callback-v3 test1 < ../app/test/worldcitiespop.csv
+#   time zsv_main select -n -- 1 2 3 6 7 < ../app/test/worldcitiespop.csv >/dev/null
+
+# Alternatively, after the builds, run the following scripts to download/prepare the test data locally and then compare 
+# outputs of count-neon-columns-callback-v3 vs. zsv_main vs. the current zsv branch build:
+*   sh prepare_data.sh  (once)
+#   sh compare.sh
