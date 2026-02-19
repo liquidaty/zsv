@@ -80,3 +80,4 @@ overwrite.sqlite3
 playground/*
 !playground/index.html
 playground/favicon.ico
+app/test/zSE*
