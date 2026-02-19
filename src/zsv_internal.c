@@ -670,7 +670,7 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
       if (need_buff_size == ZSV_MIN_SCANNER_BUFFSIZE)
         scanner->errprintf(scanner->errf, "Increasing --buff-size to minimum %zu\n", need_buff_size);
       else
-        scanner->errprintf(scanner->errf, "Increasing --buff-size to %zu to accommmodate max-row-size of %u\n",
+        scanner->errprintf(scanner->errf, "Increasing --buff-size to %zu to accommodate max-row-size of %u\n",
                            need_buff_size, opts->max_row_size);
     }
     opts->buffsize = need_buff_size;
