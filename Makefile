@@ -50,6 +50,10 @@ help:
 	@echo "To test:"
 	@echo "  ${THIS_MAKE} test"
 	@echo
+	@echo "To install/uninstall to/from a stage directory with DESTDIR:"
+	@echo "  ${THIS_MAKE} install DESTDIR=/tmp/stage"
+	@echo "  ${THIS_MAKE} uninstall DESTDIR=/tmp/stage"
+	@echo
 	@echo "Additional make options available for the library or the apps by"
 	@echo "  running ${THIS_MAKE} from the src or app directory"
 	@echo
@@ -59,9 +63,11 @@ check test:
 	@${MAKE} -C app test CONFIGFILE=${CONFIGFILEPATH}
 	@${MAKE} -C examples/lib test CONFIGFILE=${CONFIGFILEPATH}
 
+DESTDIR ?=
+
 build install uninstall: % :
-	@${MAKE} -C src $* CONFIGFILE=${CONFIGFILEPATH}
-	@${MAKE} -C app $* CONFIGFILE=${CONFIGFILEPATH}
+	@${MAKE} -C src $* CONFIGFILE=${CONFIGFILEPATH} DESTDIR="${DESTDIR}"
+	@${MAKE} -C app $* CONFIGFILE=${CONFIGFILEPATH} DESTDIR="${DESTDIR}"
 
 clean:
 	@${MAKE} -C src clean CONFIGFILE=${CONFIGFILEPATH}
