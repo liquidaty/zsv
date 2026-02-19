@@ -6,7 +6,7 @@ sudo pkg install -y \
   git \
   autotools \
   gmake \
-  lang/gcc \
+  gcc13 \
   tmux \
   sqlite3 \
   terminfo-db
