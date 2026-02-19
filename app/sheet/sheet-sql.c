@@ -6,7 +6,7 @@ static zsvsheet_status zsv_sqlite3_to_csv(zsvsheet_proc_context_t pctx, struct z
   sqlite3_stmt *stmt = NULL;
   char have_data = 0;
   if ((zdb->rc = sqlite3_prepare_v2(zdb->db, sql, -1, &stmt, NULL)) == SQLITE_OK) {
-    char *tmp_fn = zsv_get_temp_filename("zsv_mysheet_ext_XXXXXXXX");
+    char *tmp_fn = zsv_get_temp_filename("zSE");
     struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
     zsv_csv_writer cw = NULL;
     if (!tmp_fn)

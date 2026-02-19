@@ -27,6 +27,9 @@
 #include <windows.h>
 
 char *zsv_get_temp_filename(const char *prefix) {
+  if (prefix && strlen(prefix) > 3) {
+    fprintf(stderr, "Warning: zsv_get_temp_filename called with prefix longer than 3 chars (%s)\n", prefix);
+  }
   TCHAR lpTempPathBuffer[MAX_PATH];
   DWORD dwRetVal = GetTempPath(MAX_PATH,          // length of the buffer
                                lpTempPathBuffer); // buffer for path
@@ -52,7 +55,7 @@ char *zsv_get_temp_filename(const char *prefix) {
   char *tmpdir = getenv("TMPDIR");
   if (!tmpdir)
     tmpdir = ".";
-  asprintf(&s, "%s/%s_XXXXXXXX", tmpdir, prefix);
+  asprintf(&s, "%s/%sXXXXXXXX", tmpdir, prefix);
   if (!s) {
     const char *msg = strerror(errno);
     fprintf(stderr, "%s%c%s: %s\n", tmpdir, FILESLASH, prefix, msg ? msg : "Unknown error");

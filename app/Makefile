@@ -54,6 +54,10 @@ ifneq ($(ZSV_IS_PROP_FILE_DEPTH),)
 	CFLAGS+=-DZSV_IS_PROP_FILE_DEPTH=${ZSV_IS_PROP_FILE_DEPTH}
 endif
 
+ifeq ($(ZSV_NO_ONLY_CRLF),1)
+  CFLAGS+= -DZSV_NO_ONLY_CRLF
+endif
+
 DEBUG=0
 WIN=
 ifeq ($(WIN),)
@@ -209,11 +213,11 @@ endif
 
 ZSV=$(BINDIR)/zsv${EXE}
 
-SOURCES=echo paste count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq
+SOURCES=echo paste check count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq
 ifeq ($(ZSV_EXTRAS),1)
   SOURCES+=overwrite
 endif
-CLI_SOURCES=echo select desc count paste 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq
+CLI_SOURCES=echo select desc count paste check 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq
 ifeq ($(ZSV_EXTRAS),1)
   CLI_SOURCES+=overwrite
 endif
@@ -328,7 +332,7 @@ help:
 	@echo "which will build and test all apps, or to build/test a single app:"
 	@echo "  ${MAKE} test-xx"
 	@echo "where xx is any of:"
-	@echo "  echo count count-pull paste select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm mv overwrite"
+	@echo "  echo count count-pull paste check select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm mv overwrite"
 	@echo ""
 	@echo "To run benchmarks:"
 	@echo "  ${MAKE} benchmark"
@@ -491,6 +495,17 @@ ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o ${STANDALONE_PFX}flatten${EXE} ${CLI_OBJ_PFX}flatten.o: MORE_SOURCE+=${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
 
+ifeq ($(USE_SIMDUTF),1)
+CFLAGS+=-DUSE_SIMDUTF
+SIMDUTF_OBJECT=${BUILD_DIR}/check/simdutf_wrapper.o
+${SIMDUTF_OBJECT}: check/simdutf_wrapper.cpp
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -std=c++17 -ffunction-sections -fdata-sections -fno-exceptions -fno-rtti -c check/simdutf_wrapper.cpp -o $@
+
+${CLI} ${STANDALONE_PFX}check${EXE}: ${SIMDUTF_OBJECT}
+${CLI} ${STANDALONE_PFX}check${EXE}: MORE_OBJECTS+=${SIMDUTF_OBJECT} -lstdc++
+endif
+
 # check if we are on arm64
 ifeq ($(ARM64),)
   ifneq ($(shell uname -a | grep Darwin | grep arm64),)
@@ -628,4 +643,3 @@ clean-internal:
 ${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: ${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1.tar.gz
 	@cd external && tar xf utf8proc-2.6.1.tar.gz && chown -R `whoami` utf8proc-2.6.1
 	@touch $@
-

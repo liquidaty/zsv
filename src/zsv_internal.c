@@ -269,37 +269,18 @@ __attribute__((always_inline)) static inline void zsv_clear_cell(struct zsv_scan
 // always_inline has a noticeable impact. do not remove without benchmarking!
 __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
   // handle quoting
-  if (UNLIKELY(scanner->quoted > 0)) {
-    if (LIKELY(scanner->quote_close_position + 1 == n)) {
-      if (LIKELY((scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) == 0)) {
-        // this is the easy and usual case: no embedded double-quotes
-        // just remove surrounding quotes from content
-        s++;
-        n -= 2;
-      } else { // embedded dbl-quotes to remove
-        s++;
-        n--;
-        // remove dbl-quotes. TO DO: consider adding option to skip this
-        for (size_t i = 0; i + 1 < n; i++) {
-          if (s[i] == '"' && s[i + 1] == '"') {
-            if (n > i + 2)
-              memmove(s + i + 1, s + i + 2, n - i - 2);
-            n--;
-          }
-        }
-        n--;
-      }
-    } else {
-      if (scanner->quote_close_position) {
-        // the first char was a quote, and we have content after the closing quote
-        // the solution below is a generalized on that will work
-        // for the easy and usual case, but by handling separately
-        // we avoid the memmove in the easy / usual case
-        memmove(s + 1, s, scanner->quote_close_position);
-        s += 2;
-        n -= 2;
-        if (UNLIKELY((scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) != 0)) {
-          // remove dbl-quotes
+  if (VERY_LIKELY(!scanner->buffer_exceeded)) {
+    if (UNLIKELY(scanner->quoted > 0)) {
+      if (LIKELY(scanner->quote_close_position + 1 == n)) {
+        if (LIKELY((scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) == 0)) {
+          // this is the easy and usual case: no embedded double-quotes
+          // just remove surrounding quotes from content
+          s++;
+          n -= 2;
+        } else { // embedded dbl-quotes to remove
+          s++;
+          n--;
+          // remove dbl-quotes. TO DO: consider adding option to skip this
           for (size_t i = 0; i + 1 < n; i++) {
             if (s[i] == '"' && s[i + 1] == '"') {
               if (n > i + 2)
@@ -307,22 +288,42 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *sc
               n--;
             }
           }
+          n--;
+        }
+      } else {
+        if (scanner->quote_close_position) {
+          // the first char was a quote, and we have content after the closing quote
+          // the solution below is a generalized on that will work
+          // for the easy and usual case, but by handling separately
+          // we avoid the memmove in the easy / usual case
+          memmove(s + 1, s, scanner->quote_close_position);
+          s += 2;
+          n -= 2;
+          if (UNLIKELY((scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) != 0)) {
+            // remove dbl-quotes
+            for (size_t i = 0; i + 1 < n; i++) {
+              if (s[i] == '"' && s[i + 1] == '"') {
+                if (n > i + 2)
+                  memmove(s + i + 1, s + i + 2, n - i - 2);
+                n--;
+              }
+            }
+          }
         }
       }
+    } else if (UNLIKELY(scanner->opts.delimiter != ',')) {
+      if (memchr(s, ',', n))
+        scanner->quoted = ZSV_PARSER_QUOTE_NEEDED;
     }
-  } else if (UNLIKELY(scanner->opts.delimiter != ',')) {
-    if (memchr(s, ',', n))
-      scanner->quoted = ZSV_PARSER_QUOTE_NEEDED;
-  }
-  // end quote handling
+    // end quote handling
 
-  if (scanner->opts.malformed_utf8_replace) {
-    if (scanner->opts.malformed_utf8_replace < 0)
-      n = zsv_strencode(s, n, 0, NULL, NULL);
-    else
-      n = zsv_strencode(s, n, scanner->opts.malformed_utf8_replace, NULL, NULL);
+    if (scanner->opts.malformed_utf8_replace) {
+      if (scanner->opts.malformed_utf8_replace < 0)
+        n = zsv_strencode(s, n, 0, NULL, NULL);
+      else
+        n = zsv_strencode(s, n, scanner->opts.malformed_utf8_replace, NULL, NULL);
+    }
   }
-
   if (UNLIKELY(scanner->opts.cell_handler != NULL))
     scanner->opts.cell_handler(scanner->opts.ctx, s, n);
   if (VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
@@ -669,7 +670,7 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
       if (need_buff_size == ZSV_MIN_SCANNER_BUFFSIZE)
         scanner->errprintf(scanner->errf, "Increasing --buff-size to minimum %zu\n", need_buff_size);
       else
-        scanner->errprintf(scanner->errf, "Increasing --buff-size to %zu to accommmodate max-row-size of %u\n",
+        scanner->errprintf(scanner->errf, "Increasing --buff-size to %zu to accommodate max-row-size of %u\n",
                            need_buff_size, opts->max_row_size);
     }
     opts->buffsize = need_buff_size;

@@ -58,8 +58,8 @@
 #ifndef ZSV_NO_PARALLEL
 #include "select/parallel.c" // zsv_parallel_data_new(), zsv_parallel_data_delete()
 
-#define ZSV_SELECT_PARALLEL_MIN_BYTES (1024 * 1024 * 2)  // don't parallelize if < 2 MB of data (after header)
-#define ZSV_SELECT_PARALLEL_BUFFER_SZ (1024 * 1024 * 32) // to do: make customizable or dynamic
+#define ZSV_SELECT_PARALLEL_MIN_BYTES (1024 * 1024 * 2) // don't parallelize if < 2 MB of data (after header)
+#define ZSV_SELECT_PARALLEL_BUFFER_SZ (1024 * 1024 * 8) // to do: make customizable or dynamic
 
 static void zsv_select_data_row(void *ctx);
 
@@ -122,7 +122,7 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
   struct zsv_csv_writer_options writer_opts = {0};
 
 #ifdef __linux__
-  cdata->tmp_output_filename = zsv_get_temp_filename("zsvselect");
+  cdata->tmp_output_filename = zsv_get_temp_filename("zsl");
   writer_opts.stream = fopen(cdata->tmp_output_filename, "wb");
 #else
   if (!(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ)) &&
@@ -280,7 +280,12 @@ static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *p
   }
 
   struct zsv_chunk_position *offsets =
-    zsv_guess_file_chunks(path, data->num_chunks, ZSV_SELECT_PARALLEL_MIN_BYTES, header_row_end + 1);
+    zsv_guess_file_chunks(path, data->num_chunks, ZSV_SELECT_PARALLEL_MIN_BYTES, header_row_end + 1
+#ifndef ZSV_NO_ONLY_CRLF
+                          ,
+                          data->opts->only_crlf_rowend
+#endif
+    );
   if (!offsets)
     return -1; // fall back to serial
 

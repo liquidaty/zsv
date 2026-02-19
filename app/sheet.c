@@ -368,19 +368,14 @@ static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di, struct z
   zsvsheet_opts.find_exact = find_exact;
   zsvsheet_opts.found_rownum = 0;
   zsvsheet_opts.found_colnum = uib->cursor_col + uib->buff_offset.col;
-  FILE *x = fopen("/tmp/x.out", "wb");
   if (zsvsheet_find_next(uib, &zsvsheet_opts, header_span, custom_prop_handler) > 0) {
     *update_buffer = zsvsheet_goto_input_raw_row(uib, zsvsheet_opts.found_rownum, header_span, ddims, (size_t)-1);
 
     // move to zsvsheet_opts->found_colnum; + 1 to skip the "Row #" column
     zsvsheet_move_hor_to(di, zsvsheet_opts.found_colnum + 1);
-
-    fprintf(x, "Found %s on row %zu, column %zu\n", needle, zsvsheet_opts.found_rownum, zsvsheet_opts.found_colnum);
-    fclose(x);
     return 1;
   }
   zsvsheet_priv_set_status(ddims, 1, "Not found");
-  fclose(x);
   return 0;
 }
 

@@ -148,6 +148,8 @@ static void zsvTable_free(struct zsvTable *z) {
 static void zsvTable_delete(struct zsvTable *z) {
   if(z) {
     zsvTable_free(z);
+    if(z->parser_opts.stream)
+      fclose(z->parser_opts.stream);
     sqlite3_free(z->zFilename);
     sqlite3_free(z);
   }

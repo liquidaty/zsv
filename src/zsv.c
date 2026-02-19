@@ -269,6 +269,10 @@ ZSV_EXPORT enum zsv_status zsv_set_fixed_offsets(zsv_parser parser, size_t count
     parser->errprintf(parser->errf, "Fixed offset count must be greater than zero\n");
     return zsv_status_invalid_option;
   }
+  if (!offsets) {
+    parser->errprintf(parser->errf, "zsv_set_fixed_offsets: invalid NULL offsets argument\n");
+    return zsv_status_invalid_option;
+  }
   if (offsets[0] == 0)
     parser->errprintf(parser->errf, "Warning: first cell width is zero\n");
   for (size_t i = 1; i < count; i++) {

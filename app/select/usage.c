@@ -20,6 +20,7 @@ const char *zsv_select_usage_msg[] = {
   "  -v,--verbose                 : verbose output",
 #endif
   "  -H,--head <n>                : (head) only process the first n rows of input data (including header)",
+  "  --skip-data <n>              : skip the specified number of data rows",
   "  --no-header                  : do not output header row",
   "  --prepend-header <value>     : prepend each column header with the given text <value>",
   "  -s,--search <value>          : only output rows with at least one cell containing <value>",

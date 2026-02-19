@@ -17,17 +17,20 @@ npm:
 
 Playground (without `sheet` viewer command): https://liquidaty.github.io/zsv
 
-zsv+lib is a fast CSV parser library and extensible command-line utility. It
+zsv+lib is [the world's fastest CSV parser](./app/benchmark/README.md) library and extensible command-line utility. It
 achieves high performance using SIMD operations, [efficient memory
 use](docs/memory.md) and other optimization techniques, and can also parse
 generic-delimited and fixed-width formats, as well as multi-row-span headers.
 
+While `zsv` is written in C, it can be used in other languages such as [ruby](https://github.com/sebyx07/zsv-ruby). See [below](#language-bindings--wrappers) for more details.
+
 ## CLI
 
 The ZSV CLI can be compiled to virtually any target, including
-[WebAssembly](examples/js), and offers features including `select`, `count`,
+[WebAssembly](examples/js), and offers a variety of [commands](#batteries-included) including `select`, `count`,
 direct CSV `sql`, `flatten`, `serialize`, `2json` conversion, `2db` sqlite3
-conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste`, `overwrite` and more.
+conversion, `stack`, `pretty`, `2tsv`, `compare`, `paste`, `overwrite`,
+`check` and more.
 
 The ZSV CLI also includes [`sheet`](docs/sheet.md), an in-console interactive
 grid viewer that includes basic navigation, filtering, and pivot table with
@@ -48,7 +51,17 @@ drill down, and that supports custom extensions:
     downloaded from the [Releases](https://github.com/liquidaty/zsv/releases)
     page.
 - Build
-  - See [BUILD.md](BUILD.md) to build from source.
+  - See [BUILD.md](BUILD.md) to build from source
+
+## Language Bindings & Wrappers
+
+Binding [contributions](#contribute) are welcome!
+
+| Language | Project | Maintainer |
+| :--- | :--- | :--- |
+| **Ruby** | [https://github.com/sebyx07/zsv-ruby](https://github.com/sebyx07/zsv-ruby) | [@sebyx07](https://github.com/sebyx07) |
+
+> **Note:** These projects are maintained independently. Please file issues related to specific bindings in their respective repositories.
 
 ## Playground
 
@@ -60,17 +73,9 @@ If you like zsv+lib, do not forget to give it a star! 🌟
 ## Performance
 
 Performance results compare favorably vs other CSV utilities (`xsv`,
-`tsv-utils`, `csvkit`, `mlr` (miller) etc). Below were results on a pre-M1 macOS
-MBA; on most platforms zsvlib was 2x faster, though in some cases the advantage
-was smaller e.g. 15-25% (below, `mlr` not shown as it was about 25x slower).
+`tsv-utils`, `csvkit`, `mlr` (miller) etc).
 
-<img src="https://user-images.githubusercontent.com/26302468/146497899-48174114-3b18-49b0-97da-35754ab56e48.png" alt="count speed" height="150px"><img src="https://user-images.githubusercontent.com/26302468/146498211-afc77ce6-4229-4599-bf33-81bf00c725a8.png" alt="select speed" height="150px">
-
-** See 12/19 update re M1 processor at
-<https://github.com/liquidaty/zsv/blob/main/app/benchmark/README.md>
-
-Performance tests on newer chips across Windows, Linux and MacOS as of 2025
-yielded similar results.
+See [benchmarks](./app/benchmark/README.md)
 
 ## Which "CSV"
 
@@ -90,8 +95,10 @@ Excel compatibility) are dropped.
 
 ### Examples of input that does not comply with RFC 4180
 
-The following is a comprehensive list of all input patterns that are
-non-compliant with RFC 4180, and how zsv parses each:
+The following is a list of all input patterns that are
+non-compliant with RFC 4180, and how zsv (by default) parses each.
+It is believed to be comprehensive, please log an issue if you think
+it is missing any pattern:
 
 |Input Description|Parser treatment|Example input|How example input is parsed|
 |--|--|--|--|
@@ -105,8 +112,14 @@ non-compliant with RFC 4180, and how zsv parses each:
 |Row and header contain different number of columns (cells)|Number of cells in each row is independent of other rows|`aaa,bbb\n`<br>`aaa,bbb,ccc`|Row 1 = 2 cells; Row 2 = 3 cells|
 |Header row contains duplicate cells or embedded newlines|Header rows are parsed the same was as other rows (see NOTE below)|`<BOF>"a\na","a\na"`|Two cells of `a\na`|
 
-NOTE: Header rows can be treated differently if options are used to skip rows
+The above behavior can be altered with various optional flags:
+* Header rows can be treated differently if options are used to skip rows
 and/or use multi-row header span -- see documentation for further detail.
+* Quote support can be turned off, to treat quotes just like any other non-
+  delimiter character
+* Cell delimiter can be a character other than comma
+* Row delimiter can be specfied as CRLF only, in which case a standalone CR
+  or LF is simply part of the cell value, even without quoting
 
 ## Built-in and extensible features
 
@@ -132,13 +145,13 @@ that implements the expected
   "dirty".
 - Runs on macOS (tested on clang/gcc), Linux (gcc), Windows (mingw), BSD
   (gcc-only) and in-browser (emscripten/wasm)
-- Fastest (at least, vs all alternatives and on all platforms we've benchmarked
-  where 256-bit SIMD operations are available). See
+- High performance (fastest vs all alternatives we've benchmarked)
   [app/benchmark/README.md](app/benchmark/README.md)
-- Low memory usage (regardless of how big your data is) and size footprint for
-  both lib (~20k) and CLI executable (< 1MB)
+- Lightweight: low memory usage (regardless of input data size) and binary size for
+  both lib (~30k) and CLI (< 3MB)
 - Handles general delimited data (e.g. pipe-delimited) and fixed-width input
-  (with specified widths or auto-detected widths)
+  (with specified widths or auto-detected widths), as well as CRLF-only row delims
+  with unquoted embedded LF
 - Handles multi-row headers
 - Handles input from any stream, including caller-defined streams accessed via a
   single caller-defined `fread`-like function
@@ -147,11 +160,12 @@ that implements the expected
 - Includes the `zsv` CLI with the following built-in commands:
   - [`sheet`](docs/sheet.md), an in-console interactive and extendable grid viewer
   - `select`, `count`, `sql` query, `desc`ribe, `flatten`, `serialize`, `2json`,
-    `2db`, `stack`, `pretty`, `2tsv`, `paste`, `compare`, `overwrite`,
-    `jq`, `prop`, `rm`
+    `2db`, `stack`, `pretty`, `2tsv`, `paste`, `check`, `compare`, `overwrite`,
+    `jq`
   - easily [convert between CSV/JSON/sqlite3](docs/csv_json_sqlite.md)
   - [compare multiple files](docs/compare.md)
   - [overwrite cells in files](docs/overwrite.md)
+  - [and more](#batteries-included)
 - CLI is easy to extend/customize with a few lines of code via modular plug-in
   framework. Just write a few custom functions and compile into a distributable
   DLL that any existing zsv installation can use.
@@ -203,34 +217,37 @@ needs.
   bad UTF8, whitespace or blank column trimming, limiting output to a contiguous
   data block, skipping leading garbage, and even proving substitution values
   without modifying the underlying source
+- `check`: scan for anomolies such as rows with a different number of cells
+  than the header row or invalid utf8
+- `count`: print the number of rows
 - `select`: re-shape CSV by skipping leading garbage, combining header rows into
   a single header, selecting or excluding specified columns, removing duplicate
   columns, sampling, converting from fixed-width input, searching and more
-- `sql`: treat one or more CSV files like database tables and query with SQL
 - `desc`: provide a quick description of your table data
+- `sql`: treat one or more CSV files like database tables and query with SQL
 - `pretty`: format for console (fixed-width) display, or convert to markdown
   format
-- `2json`: convert CSV to JSON. Optionally, output in
-  [database schema](docs/db.schema.json)
-- `2tsv`: convert to TSV (tab-delimited) format
-- `compare`: compare two or more tables of data and output the differences
-- `paste`: horizontally paste two tables together (given inputs X and Y,
-   output 1...N rows where each row contains the entire corresponding
-   row in X followed by the entire corresponding row in Y)
 - `serialize` (inverse of flatten): convert an NxM table to a single 3x (Nx(M-1))
   table with columns: Row, Column Name, Column Value
 - `flatten` (inverse of serialize): flatten a table by combining rows that share
   a common value in a specified identifier column
+- `2json`: convert CSV to JSON. Optionally, output in
+  [database schema](docs/db.schema.json)
+- `2tsv`: convert to TSV (tab-delimited) format
 - `stack`: merge CSV files vertically
-- `jq`: run a `jq` filter
-- `2db`: [convert from JSON to sqlite3 db](docs/csv_json_sqlite.md)
+- `paste`: horizontally paste two tables together (given inputs X and Y,
+   output 1...N rows where each row contains the entire corresponding
+   row in X followed by the entire corresponding row in Y)
+- `compare`: compare two or more tables of data and output the differences
 - `overwrite`: overwrite a cell value; changes will be reflected in any zsv
   command when the --apply-overwrites option is specified
+- `jq`: run a `jq` filter
+- `2db`: [convert from JSON to sqlite3 db](docs/csv_json_sqlite.md)
 - `prop`: view or save parsing options associated with a file, such as initial
   rows to ignore, or header row span. Saved options are be applied by default
   when processing that file.
 
-Each of these can also be built as an independent executable named `zsv_xxx`
+Most of these can also be built as an independent executable named `zsv_xxx`
 where `xxx` is the command name.
 
 ## Running the CLI
@@ -324,6 +341,10 @@ template files in [app/ext_template](app/ext_template/README.md)
 
 ## Contribute
 
+Feel free to open an issue or discussion.
+
+### Via PR
+
 - [Fork](https://github.com/liquidaty/zsv/fork) the project.
 - Check out the latest [`main`](https://github.com/liquidaty/zsv/tree/main)
   branch.
@@ -332,6 +353,15 @@ template files in [app/ext_template](app/ext_template/README.md)
 - Make sure to run `clang-format` (version 15 or later) for C source updates.
 - Commit and push your changes.
 - Submit the PR.
+
+### Language bindings
+
+We currently have community support for Ruby, and we'd love to see a zsv
+wrapper for Python, Rust, Go, or Java or any of your other favorite languages
+
+- Why build a binding? zsv is designed to be embeddable and extremely fast.
+  A binding brings this speed to higher-level languages that often struggle
+  with CSV parsing performance.
 
 ## License
 

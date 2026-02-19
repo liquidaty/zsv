@@ -85,9 +85,9 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
     // if we're here, then the last chunk we read ended with a lone quote char inside
     // a quoted cell, and we are waiting to find out whether it is followed by
     // another dbl-quote e.g. if the end of the last chunk is |, we had:
-    //   ...,"hel"|"o"
-    //   ...,"hel"|,...
-    //   ...,"hel"|p,...
+    //    ...,"hel"|"o"
+    //    ...,"hel"|,...
+    //    ...,"hel"|p,...
     scanner->quoted -= ZSV_PARSER_QUOTE_PENDING;
     if (buff[i] != quote) {
       scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
@@ -144,6 +144,20 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         // we are inside an open quote, which is needed to escape this char
         scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
     } else if (UNLIKELY(c == '\r')) {
+#ifndef ZSV_NO_ONLY_CRLF
+      if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend)) {
+        if (scanner->quoted & ZSV_PARSER_QUOTE_PENDING_LF)
+          // if we already had a lone \r in this cell,
+          // flip the flag to ZSV_PARSER_QUOTE_NEEDED
+          scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
+        else
+          // otherwise this is the first \r in this cell,
+          // so set ZSV_PARSER_QUOTE_PENDING_LF, which
+          // will be removed if the next char is LF
+          scanner->quoted |= ZSV_PARSER_QUOTE_PENDING_LF;
+        continue;
+      }
+#endif
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
         enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
@@ -169,30 +183,54 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
     } else if (UNLIKELY(c == '\n')) {
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
-        if (scanner_last == '\r') { // ignore; we are outside a cell and last char was rowend
-          scanner->cell_start = i + 1;
-          scanner->row_start = i + 1;
-        } else {
-          // this is a row end
-          scanner->scanned_length = i;
-          enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-          if (VERY_UNLIKELY(stat))
-            return stat;
-#ifdef ZSV_SUPPORT_PULL_PARSER
-          if (scanner->pull.now) {
-            scanner->pull.now = 0;
-            scanner->row.used = scanner->pull.row_used;
-            zsv_internal_save_regs(2);
-            return zsv_status_row;
-          }
-        zsv_cell_and_row_dl_2:
-          scanner->row.used = 0;
-          scanner->pull.regs->delim.location = 0;
+        int is_crlf = (scanner_last == '\r');
+
+        // Handle logic for when we should SKIP this char (not a row end)
+#ifndef ZSV_NO_ONLY_CRLF
+        if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend)) {
+          if (!is_crlf) {
+            scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
+            continue; // only-crlf mode: ignore lone \n
+          } else
+            // remove ZSV_PARSER_QUOTE_PENDING_LF if we have it
+            scanner->quoted &= ~ZSV_PARSER_QUOTE_PENDING_LF;
+        } else
 #endif
-          scanner->cell_start = i + 1;
-          scanner->row_start = i + 1;
-          scanner->data_row_count++;
+        {
+          if (is_crlf) {
+            // Standard mode: ignore \n because \r already handled the row end
+            scanner->cell_start = i + 1;
+            scanner->row_start = i + 1;
+            continue;
+          }
         }
+
+        // If we reached here, this is a row end
+        scanner->scanned_length = i;
+
+        // Calculate cell length. In only-crlf mode, we must exclude the preceding \r
+        size_t cell_len = i - scanner->cell_start;
+#ifndef ZSV_NO_ONLY_CRLF
+        if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend))
+          cell_len--;
+#endif
+        enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, cell_len);
+        if (VERY_UNLIKELY(stat))
+          return stat;
+#ifdef ZSV_SUPPORT_PULL_PARSER
+        if (scanner->pull.now) {
+          scanner->pull.now = 0;
+          scanner->row.used = scanner->pull.row_used;
+          zsv_internal_save_regs(2);
+          return zsv_status_row;
+        }
+      zsv_cell_and_row_dl_2:
+        scanner->row.used = 0;
+        scanner->pull.regs->delim.location = 0;
+#endif
+        scanner->cell_start = i + 1;
+        scanner->row_start = i + 1;
+        scanner->data_row_count++;
         continue; // this char is not part of the cell content
       } else
         // we are inside an open quote, which is needed to escape this char
@@ -212,13 +250,13 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
 
             // keep track of closing quote position to handle the edge case
             // where content follows the closing quote e.g. cell content is:
-            //  "this-cell"-did-not-need-quotes
+            //   "this-cell"-did-not-need-quotes
             if (LIKELY(scanner->quote_close_position == 0))
               scanner->quote_close_position = i - scanner->cell_start;
           } else {
             // next char is also '"'
             // e.g. cell content is: "this "" is a dbl quote"
-            //           cursor is here => ^
+            //            cursor is here => ^
             // include in cell content and don't further process
             scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
             scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
