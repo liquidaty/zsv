@@ -369,3 +369,7 @@ wrapper for Python, Rust, Go, or Java or any of your other favorite languages
 
 The zsv CLI uses some permissively-licensed third-party libraries.
 See [misc/THIRDPARTY.md](misc/THIRDPARTY.md) for details.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=liquidaty/zsv&type=date&legend=top-left)](https://www.star-history.com/#liquidaty/zsv&type=date&legend=top-left)
