@@ -81,3 +81,5 @@ playground/*
 !playground/index.html
 playground/favicon.ico
 app/test/zSE*
+app/ext_example/zEE*
+app/test/parallel/chunk_break.csv
