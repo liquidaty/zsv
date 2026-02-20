@@ -84,7 +84,8 @@ fi
 
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
-  "$MAKE" clean test
+  rm -rf build "$PREFIX"
+  "$MAKE" test
   echo "[INF] Tests completed successfully!"
 
   if [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ] || [ "$STATIC_BUILD" = "1" ]; then
