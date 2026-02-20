@@ -54,8 +54,8 @@ help:
 	@echo "  ${THIS_MAKE} install DESTDIR=/tmp/stage"
 	@echo "  ${THIS_MAKE} uninstall DESTDIR=/tmp/stage"
 	@echo
-	@echo "Additional make options available for the library or the apps by"
-	@echo "  running ${THIS_MAKE} from the src or app directory"
+	@echo "Additional make options are available for the library or the apps by"
+	@echo "running ${THIS_MAKE} from the src or app directory."
 	@echo
 	@echo "For more information, see README.md"
 
