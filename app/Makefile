@@ -353,7 +353,7 @@ uninstall-all: uninstall uninstall-util-lib
 
 uninstall:
 ifneq ($(DESTDIR),)
-	rm -rf $(DESTDIR)
+	rm -rf $(DESTDIR)/bin/zsv
 else
 	rm -rf ${ZSV}
 endif

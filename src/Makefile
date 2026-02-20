@@ -208,7 +208,8 @@ ${LIBZSV_INSTALL}: ${LIBDIR}/% : ${BUILD_DIR}/lib/%
 
 uninstall:
 ifneq ($(DESTDIR),)
-	rm -rf $(DESTDIR)
+	rm -rf $(DESTDIR)/include/zsv*
+	rm -rf $(DESTDIR)/lib/libzsv*
 else
 	@rm -rf ${INCLUDEDIR}/zsv*
 	 rm  -f ${LIBDIR}/libzsv*
