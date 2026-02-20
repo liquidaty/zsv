@@ -84,8 +84,7 @@ fi
 
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
-  rm -rf build "$PREFIX"
-  "$MAKE" test
+  "$MAKE" clean test
   echo "[INF] Tests completed successfully!"
 
   if [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ] || [ "$STATIC_BUILD" = "1" ]; then
@@ -100,7 +99,7 @@ fi
 
 if [ "$SKIP_BUILD" = false ]; then
   echo "[INF] Building"
-  rm -rf build "$PREFIX" /usr/local/etc/zsv.ini
+  rm -rf "$PREFIX" /usr/local/etc/zsv.ini
   "$MAKE" install
   tree "$PREFIX"
   echo "[INF] Built successfully!"
