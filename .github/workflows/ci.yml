@@ -149,7 +149,7 @@ jobs:
       uses: actions/checkout@v6
 
     - name: ccache
-      uses: hendrikmuhs/ccache-action@v1.2.19
+      uses: hendrikmuhs/ccache-action@v1.2.20
       with:
         create-symlink: true
         key: ${{ github.job }}-${{ runner.os }}
@@ -338,7 +338,7 @@ jobs:
       run: brew install --quiet coreutils tree tmux sqlite3
 
     - name: ccache
-      uses: hendrikmuhs/ccache-action@v1.2.19
+      uses: hendrikmuhs/ccache-action@v1.2.20
       with:
         create-symlink: true
         key: ${{ github.job }}-${{ matrix.os }}
@@ -719,7 +719,7 @@ jobs:
       uses: actions/checkout@v6
 
     - name: ccache
-      uses: hendrikmuhs/ccache-action@v1.2.19
+      uses: hendrikmuhs/ccache-action@v1.2.20
       with:
         create-symlink: true
         key: ${{ github.job }}-${{ runner.os }}
