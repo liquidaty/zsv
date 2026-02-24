@@ -40,6 +40,8 @@ ifeq ($(EXE),)
   $(error EXE is not defined)
 endif
 
+HEADER=row,column,value,timestamp,author
+
 test: \
 	test-1 test-2 test-excel-cells test-add test-remove test-old-value test-force \
 	test-bulk-add test-bulk-remove test-echo-overwrite-auto test-timestamp
@@ -47,23 +49,22 @@ test: \
 test-1:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear
-	@${CHECK} [ "`${EXE} dummy.csv list`" = "row,column,value,timestamp,author" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "${HEADER}" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 TIMESTAMP=$(shell date +"%s")
-HEADER=row,column,value,timestamp,author
 
 test-2:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear
 	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC --no-timestamp
-	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf \"$(HEADER)\n2,1,ABC,,\n\"`" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "`cat expected/$@.out`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-excel-cells:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear
 	@${PREFIX} ${EXE} dummy.csv add C2 EXCEL --no-timestamp
-	@${CHECK} [ "`${EXE} dummy.csv list`" = "`printf \"$(HEADER)\n1,2,EXCEL,,\n\"`" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@${CHECK} [ "`${EXE} dummy.csv list --A1`" = "`printf \"$(HEADER)\nC2,EXCEL,,\n\"`" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv list`" = "`cat expected/$@.out`" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy.csv list --A1`" = "`cat expected/$@-a1.out`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-add:
 	@${TEST_INIT}
@@ -72,7 +73,7 @@ test-add:
 	@${PREFIX} ${EXE} dummy2.csv add 2-2 VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 2-3 VAL3 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 2-4 VAL4 --no-timestamp
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,2,VAL1,,\n2,2,VAL2,,\n2,3,VAL3,,\n2,4,VAL4,,\n\"`" ] \
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`cat expected/$@-list.out`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${ECHO_EXE} --apply-overwrites dummy2.csv > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
@@ -85,14 +86,11 @@ test-remove:
 	@${PREFIX} ${EXE} dummy2.csv add 3-1 V3 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 4-1 V4 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv remove 2-1
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n3,1,V3,,\n4,1,V4,,\n\"`" ] \
-		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`cat expected/$@-1.out`" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv remove 4-1
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n3,1,V3,,\n\"`" ] \
-		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`cat expected/$@-2.out`" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv remove --all
-	@${CHECK} [ ! -f ".zsv/overwrite/dummy2.csv/overwrite.sqlite3" ] \
-			&& ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ ! -f ".zsv/overwrite/dummy2.csv/overwrite.sqlite3" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-old-value:
 	@${TEST_INIT}
@@ -104,14 +102,11 @@ test-old-value:
 	@${CHECK} [ "`printf \"$$(${PREFIX} ${EXE} dummy2.csv add 3-1 NEW_V4 --no-timestamp 2>&1)\"`" = "`cat expected/$@-fail.out`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv remove 2-1 --old-value V3
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,V2,,\n3,1,V3,,\n4,1,V4,,\n\"`" ] \
-		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`cat expected/$@-1.out`" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 NEW_V2 --old-value V2 --no-timestamp
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,NEW_V2,,\n3,1,V3,,\n4,1,V4,,\n\"`" ] \
-		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`cat expected/$@-2.out`" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv remove 3-1 --old-value V3
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,V1,,\n2,1,NEW_V2,,\n4,1,V4,,\n\"`" ] \
-		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`cat expected/$@-3.out`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-force:
 	@${TEST_INIT}
@@ -122,11 +117,9 @@ test-force:
 	@${PREFIX} ${EXE} dummy2.csv add 2-4 VAL4 --no-timestamp
 	@${CHECK} [ "`printf \"$$(${PREFIX} ${EXE} dummy2.csv add 2-4 NEW_VAL4 --no-timestamp 2>&1)\"`" = "`cat expected/$@-fail.out`" ] \
 		&& ${TEST_PASS} || ${TEST_FAIL}
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,2,VAL1,,\n2,2,VAL2,,\n2,3,VAL3,,\n2,4,VAL4,,\n\"`" ] \
-		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`cat expected/$@-1.out`" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${EXE} dummy2.csv add 2-4 NEW_VAL4 --no-timestamp --force
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,2,VAL1,,\n2,2,VAL2,,\n2,3,VAL3,,\n2,4,NEW_VAL4,,\n\"`" ] \
-		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`cat expected/$@-2.out`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-bulk-add:
 	@${TEST_INIT}
@@ -134,8 +127,7 @@ test-bulk-add:
 	@${PREFIX} ${EXE} dummy2.csv add 1-1 OLD_V1 --no-timestamp # for old value test
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 OLD_VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv bulk-add overwrite.csv
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n1,1,VAL1,1731620001,\n2,1,OLD_VAL2,,\n3,1,VAL3,,\n4,1,VAL4,1731620001,\n\"`" ] \
-		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`cat expected/$@.out`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-bulk-remove:
 	@${TEST_INIT}
@@ -144,8 +136,7 @@ test-bulk-remove:
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 OLD_VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv bulk-add overwrite.csv
 	@${PREFIX} ${EXE} dummy2.csv bulk-remove remove.csv
-	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`printf \"$(HEADER)\n3,1,VAL3,,\n\"`" ] \
-		&& ${TEST_PASS} || ${TEST_FAIL}
+	@${CHECK} [ "`${EXE} dummy2.csv list`" = "`cat expected/$@.out`" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 STAT_MOD_TS=$(shell if stat -c %Y Makefile >/dev/null 2>/dev/null; then echo 'stat -c %Y' ; else echo 'stat -f %m' ; fi)
 test-timestamp:
