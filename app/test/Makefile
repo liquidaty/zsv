@@ -45,7 +45,6 @@ BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 export TMP_DIR=${THIS_LIB_BASE}/tmp
 TEST_DATA_DIR=${THIS_LIB_BASE}/data
 
-IS_WSL=$(shell grep -qi microsoft /proc/version 2>/dev/null && echo 1 || echo 0)
 ifeq ($(IS_WSL),1)
   TEST_DATA_DIR=./../../data
   TMP_DIR=./../../tmp
