@@ -1,5 +1,7 @@
 #!/usr/bin/make -f
 
+VERSION := $(shell dpkg-parsechangelog --show-field Version)
+
 %:
 	dh $@
 
@@ -12,7 +14,7 @@ override_dh_builddeb:
 	dh_builddeb -- -Zxz
 
 override_dh_auto_install:
-	$(MAKE) install
+	$(MAKE) install VERSION=$(VERSION)
 
 override_dh_auto_test:
 
