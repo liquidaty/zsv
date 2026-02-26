@@ -275,6 +275,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   struct zsv_overwrite *data = zsv_overwrite_writer_new(&args, &ctx_opts);
   free(overwrites_fn);
 
+  if (!data) {
+    return zsv_status_error;
+  }
+
   if (!err && data) {
     if (data->mode == zsvsheet_mode_list)
       err = show_all_overwrites(data, data->writer);
