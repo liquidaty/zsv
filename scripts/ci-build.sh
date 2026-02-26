@@ -100,7 +100,7 @@ fi
 
 if [ "$SKIP_BUILD" = false ]; then
   echo "[INF] Building"
-  rm -rf build "$PREFIX" /usr/local/etc/zsv.ini
+  rm -rf "$PREFIX" /usr/local/etc/zsv.ini
   "$MAKE" install
   tree "$PREFIX"
   echo "[INF] Built successfully!"
