@@ -93,7 +93,7 @@ struct zsv_overwrite *zsv_overwrite_writer_new(struct zsv_overwrite_args *args, 
   enum zsv_status err = zsv_status_ok;
   if (data->mode == zsvsheet_mode_list) {
     if ((err = (zsv_overwrite_open(data->ctx)))) // use open when it's read-only
-      fprintf(stderr, "Failed to initialize database\n");
+      fprintf(stderr, "Failed to open database\n");
   } else {
     if ((err = zsv_overwrite_writer_init(data))) // use init when writing to db
       fprintf(stderr, "Failed to initialize database\n");
@@ -103,9 +103,6 @@ struct zsv_overwrite *zsv_overwrite_writer_new(struct zsv_overwrite_args *args, 
 }
 
 void zsv_overwrite_writer_delete(struct zsv_overwrite *data) {
-  if (!data)
-    return;
-
   if (data->writer)
     zsv_writer_delete(data->writer);
   if (data->ctx)
