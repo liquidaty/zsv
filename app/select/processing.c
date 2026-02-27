@@ -1,6 +1,22 @@
 #ifndef NDEBUG
 __attribute__((always_inline)) static inline
 #endif
+  char
+  zsv_select_maybe_needs_trim(const unsigned char *s, size_t len) {
+  if (!len)
+    return 0;
+
+  unsigned char first = s[0];
+  unsigned char last = s[len - 1];
+
+  // Fast reject: if both edge bytes are printable ASCII, they cannot be trimmed.
+  // Non-ASCII edge bytes still route through zsv_strtrim() for correctness.
+  return first <= ' ' || last <= ' ' || first >= 0x80 || last >= 0x80;
+}
+
+#ifndef NDEBUG
+__attribute__((always_inline)) static inline
+#endif
   unsigned char *
   zsv_select_cell_clean(struct zsv_select_data *data, unsigned char *utf8_value, char *quoted, size_t *lenp) {
 
@@ -16,7 +32,7 @@ __attribute__((always_inline)) static inline
     }
   }
 
-  if (UNLIKELY(!data->no_trim_whitespace))
+  if (UNLIKELY(!data->no_trim_whitespace) && UNLIKELY(zsv_select_maybe_needs_trim(utf8_value, len)))
     utf8_value = (unsigned char *)zsv_strtrim(utf8_value, &len);
 
   if (UNLIKELY(data->clean_white))
@@ -37,7 +53,7 @@ __attribute__((always_inline)) static inline
         }
       }
     }
-    if (data->no_trim_whitespace)
+    if (data->no_trim_whitespace && UNLIKELY(zsv_select_maybe_needs_trim(utf8_value, len)))
       utf8_value = (unsigned char *)zsv_strtrim(utf8_value, &len);
   }
   *lenp = len;
