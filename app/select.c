@@ -142,7 +142,7 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
       !(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ / 8)))
     cdata->tmp_f = zsv_memfile_open(0);
   writer_opts.stream = cdata->tmp_f;
-  writer_opts.write = (size_t (*)(const void *restrict, size_t, size_t, void *restrict))zsv_memfile_write;
+  writer_opts.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))zsv_memfile_write;
 #endif
 
   if (!writer_opts.stream) {
@@ -521,9 +521,9 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
 #else
     zsv_memfile_rewind(c->tmp_f);
     if (zsv_copy_filelike_ptr(
-          c->tmp_f, (size_t (*)(void *restrict ptr, size_t size, size_t nitems, void *restrict stream))zsv_memfile_read,
+          c->tmp_f, (size_t(*)(void *restrict ptr, size_t size, size_t nitems, void *restrict stream))zsv_memfile_read,
           dest_stream,
-          (size_t (*)(const void *restrict ptr, size_t size, size_t nitems, void *restrict stream))fwrite)) {
+          (size_t(*)(const void *restrict ptr, size_t size, size_t nitems, void *restrict stream))fwrite)) {
       perror("zsv temp mem file");
       status = zsv_status_error;
     }

@@ -1,7 +1,8 @@
 #ifndef NDEBUG
 __attribute__((always_inline)) static inline
 #endif
-  char zsv_select_maybe_needs_trim(const unsigned char *s, size_t len) {
+  char
+  zsv_select_maybe_needs_trim(const unsigned char *s, size_t len) {
   if (!len)
     return 0;
 
@@ -16,8 +17,8 @@ __attribute__((always_inline)) static inline
 #ifndef NDEBUG
 __attribute__((always_inline)) static inline
 #endif
-  unsigned char *zsv_select_cell_clean(struct zsv_select_data *data, unsigned char *utf8_value, char *quoted,
-                                       size_t *lenp) {
+  unsigned char *
+  zsv_select_cell_clean(struct zsv_select_data *data, unsigned char *utf8_value, char *quoted, size_t *lenp) {
 
   size_t len = *lenp;
   // to do: option to replace or warn non-printable chars 0 - 31:
