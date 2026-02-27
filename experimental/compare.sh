@@ -71,7 +71,7 @@ bench() {
   echo
   bench "count-neon-columns-callback-v3 > LF" "./count-neon-columns-callback-v3 test1 < worldcitiespop_lf.csv >/dev/null" "$RUNS"
   bench "zsv_main > LF" "zsv_main select -n -- 1 2 3 6 7 < worldcitiespop_lf.csv >/dev/null" "$RUNS"
-  bench "zsv_main > LF" "zsv select -n -- 1 2 3 6 7 < worldcitiespop_lf.csv >/dev/null" "$RUNS"
+  bench "zsv > LF" "zsv select -n -- 1 2 3 6 7 < worldcitiespop_lf.csv >/dev/null" "$RUNS"
   echo
   echo "Running select tests with CRLF..." 
   echo
