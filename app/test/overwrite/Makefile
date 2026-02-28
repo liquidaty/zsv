@@ -148,18 +148,28 @@ test-bulk-remove:
 		&& ${TEST_PASS} || ${TEST_FAIL}
 
 STAT_MOD_TS=$(shell if stat -c %Y Makefile >/dev/null 2>/dev/null; then echo 'stat -c %Y' ; else echo 'stat -f %m' ; fi)
+# MOD_TS_OFFSET is to prevent false negative test results due to minor time differences due to second boundary updates,
+# or modified time being updated slightly later than the actual overwrite operation.
+# Adjust this value if you encounter false negatives.
+MOD_TS_OFFSET=3 # seconds
 test-timestamp:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy2.csv clear
 	@(${PREFIX} ${EXE} dummy2.csv add 1-2 ABC && ${STAT_MOD_TS} .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp1.txt)
 	@(${PREFIX} ${EXE} dummy2.csv add 1-3 ABC && ${STAT_MOD_TS} .zsv/data/dummy2.csv/overwrite.sqlite3 > ${TMP_DIR}/timestamp2.txt)
 	@{ \
-		EXPECTED_TS1=`cat ${TMP_DIR}/timestamp1.txt`; \
-		EXPECTED_TS2=`cat ${TMP_DIR}/timestamp2.txt`; \
-		LOWER_TS1=$$((EXPECTED_TS1 - 3)); \
-		LOWER_TS2=$$((EXPECTED_TS2 - 3)); \
-		OUTPUT="`${EXE} dummy2.csv list | tr -d '\n'`"; \
-		echo "$$OUTPUT" | grep -q "${HEADER}1,2,ABC,\($$LOWER_TS1\|$$EXPECTED_TS1\),1,3,ABC,\($$LOWER_TS2\|$$EXPECTED_TS2\)," && ${TEST_PASS} || ${TEST_FAIL}; \
+		MAX_EXPECTED_TS1=`cat ${TMP_DIR}/timestamp1.txt`; \
+		MIN_EXPECTED_TS1=`expr $$MAX_EXPECTED_TS1 - ${MOD_TS_OFFSET}`; \
+		SQL_QUERY1="SELECT * FROM data WHERE row=1 AND column=2 AND value='ABC' AND timestamp BETWEEN $$MIN_EXPECTED_TS1 AND $$MAX_EXPECTED_TS1;"; \
+		SQL_OUTPUT1=`${EXE} dummy2.csv list | ${SQL_EXE} "$$SQL_QUERY1"`; \
+		[ `echo "$$SQL_OUTPUT1" | wc -l` = 2 ] && ${TEST_PASS} || ${TEST_FAIL}; \
+	}
+	@{ \
+		MAX_EXPECTED_TS2=`cat ${TMP_DIR}/timestamp2.txt`; \
+		MIN_EXPECTED_TS2=`expr $$MAX_EXPECTED_TS2 - ${MOD_TS_OFFSET}`; \
+		SQL_QUERY2="SELECT * FROM data WHERE row=1 AND column=3 AND value='ABC' AND timestamp BETWEEN $$MIN_EXPECTED_TS2 AND $$MAX_EXPECTED_TS2;"; \
+		SQL_OUTPUT2=`${EXE} dummy2.csv list | ${SQL_EXE} "$$SQL_QUERY2"`; \
+		[ `echo "$$SQL_OUTPUT2" | wc -l` = 2 ] && ${TEST_PASS} || ${TEST_FAIL}; \
 	}
 
 test-echo-overwrite-auto:
