@@ -100,7 +100,7 @@ jobs:
       run: ./scripts/ci-run-cppcheck.sh
 
     - name: Upload (${{ env.CPPCHECK_XML_ARTIFACT_NAME }})
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ env.CPPCHECK_XML_ARTIFACT_NAME }}
         path: ${{ env.CPPCHECK_XML_ARTIFACT_NAME }}
@@ -108,7 +108,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (${{ env.CPPCHECK_HTML_ARTIFACT_NAME }})
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ env.CPPCHECK_HTML_ARTIFACT_NAME }}
         path: ${{ env.CPPCHECK_HTML_ARTIFACT_NAME }}
@@ -190,7 +190,7 @@ jobs:
       run: ./scripts/ci-verify-attestations.sh
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.zip)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.zip
       with:
@@ -200,7 +200,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.zip)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.zip
       with:
@@ -210,7 +210,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.deb)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.deb
       with:
@@ -220,7 +220,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.deb)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.deb
       with:
@@ -230,7 +230,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.rpm)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.rpm
       with:
@@ -240,7 +240,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.rpm)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.rpm
       with:
@@ -250,7 +250,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.tar.gz)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_GCC }}.tar.gz
       with:
@@ -260,7 +260,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_CLANG }}.tar.gz
       with:
@@ -308,7 +308,7 @@ jobs:
       run: ./scripts/ci-prepare-deb-rpm-repos.sh
 
     - name: Upload packages artifact
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: packages
         path: ${{ env.ARTIFACT_DIR }}/packages
@@ -382,7 +382,7 @@ jobs:
       run: ./scripts/ci-verify-attestations.sh
 
     - name: Upload (${{ env.ZIP }})
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: ${{ env.ZIP }}
       with:
@@ -392,7 +392,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (${{ env.TAR }})
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: ${{ env.TAR }}
       with:
@@ -487,7 +487,7 @@ jobs:
       run: ./scripts/ci-verify-attestations.sh
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.zip
       with:
@@ -497,7 +497,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_FREEBSD_GCC }}.tar.gz
       with:
@@ -539,7 +539,7 @@ jobs:
       run: ./scripts/ci-build-ncurses-with-mingw.sh
 
     - name: Upload mingw-ncurses.zip
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: mingw-ncurses.zip
         path: ${{ github.workspace }}/mingw-ncurses.zip
@@ -604,7 +604,7 @@ jobs:
       run: ./scripts/ci-verify-attestations.sh
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip
       with:
@@ -614,7 +614,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz
       with:
@@ -624,7 +624,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
       with:
@@ -758,7 +758,7 @@ jobs:
       run: ./scripts/ci-verify-attestations.sh
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.zip
       with:
@@ -768,7 +768,7 @@ jobs:
         if-no-files-found: error
 
     - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz)
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       env:
         ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_LINUX_MUSL }}.tar.gz
       with:
@@ -897,7 +897,7 @@ jobs:
         cp "$PREFIX"/bin/cli.em.{js,wasm} playground/non-simd
 
     - name: Upload playground artifact
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: playground
         path: playground
@@ -977,7 +977,7 @@ jobs:
           --submit
 
     - name: Upload manifest
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: zsv-${{ env.TAG }}-winget-manifest
         path: ${{ github.workspace }}/manifests
