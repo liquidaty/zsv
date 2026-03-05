@@ -158,6 +158,7 @@ jobs:
       env:
         PREFIX: ${{ env.AMD64_LINUX_GCC }}
         CC: gcc
+        CFLAGS: '-DPREFIX=\"\"'
         MAKE: make
         RUN_TESTS: true
       run: |
@@ -169,6 +170,7 @@ jobs:
       env:
         PREFIX: ${{ env.AMD64_LINUX_CLANG }}
         CC: clang
+        CFLAGS: '-DPREFIX=\"\"'
         MAKE: make
         RUN_TESTS: true
       run: |
@@ -356,6 +358,7 @@ jobs:
     - name: Build on macOS (${{ env.AMD64_MACOSX_GCC }})
       env:
         CC: gcc
+        CFLAGS: '-DPREFIX=\"\"'
         MAKE: make
         RUN_TESTS: true
       run: ./scripts/ci-build.sh
@@ -461,12 +464,13 @@ jobs:
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc13
+        CFLAGS: '-DPREFIX=\"\"'
         MAKE: gmake
         RUN_TESTS: true
       with:
         operating_system: freebsd
         version: '13.2'
-        environment_variables: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
+        environment_variables: 'PREFIX CC CFLAGS MAKE RUN_TESTS ARTIFACT_DIR'
         shell: sh
         run: |
           ./scripts/ci-freebsd-setup.sh
@@ -731,6 +735,7 @@ jobs:
       env:
         PREFIX: ${{ env.AMD64_LINUX_MUSL }}
         CC: gcc
+        CFLAGS: '-DPREFIX=\"\"'
         MAKE: make
         RUN_TESTS: true
         STATIC_BUILD: "1"
