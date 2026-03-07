@@ -1,12 +1,13 @@
 #!/usr/bin/make -f
 
-VERSION := $(shell dpkg-parsechangelog --show-field Version)
+VERSION := $(shell dpkg-parsechangelog --show-field Version | cut -d- -f1)
 
 %:
 	dh $@
 
 override_dh_auto_configure:
-	./configure --prefix=$(CURDIR)/debian/tmp
+	# Define PREFIX as empty to configure /etc instead of /usr/local as the config directory
+	CFLAGS='-DPREFIX=\"\"' ./configure --prefix=$(CURDIR)/debian/tmp
 
 override_dh_auto_build:
 
