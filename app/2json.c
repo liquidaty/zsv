@@ -372,6 +372,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     jsonwriter_delete(data.jsw);
   }
 
+  if (!err) {
+    if (data.compact && out == stdout)
+      fprintf(stdout, "\n");
+  }
+
   zsv_2json_cleanup(&data);
   if (opts.stream && opts.stream != stdin)
     fclose(opts.stream);
