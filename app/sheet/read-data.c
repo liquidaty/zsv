@@ -18,7 +18,9 @@
 
 // zsvsheet_found_in_row: return 0 if not found, else 1-based index of column
 static size_t zsvsheet_found_in_row(zsv_parser parser, size_t col_start, size_t col_count, const char *target,
-                                    size_t target_len) {
+                                    size_t target_len, size_t specified_column_plus_1,
+                                    char find_exact // not yet implemented
+) {
   if (col_start >= col_count)
     return 0;
 
@@ -27,9 +29,14 @@ static size_t zsvsheet_found_in_row(zsv_parser parser, size_t col_start, size_t 
 
   if (memmem(first_cell.str, last_cell.str - first_cell.str + last_cell.len, target, target_len)) {
     for (size_t i = col_start; i < col_count; i++) {
-      struct zsv_cell c = zsv_get_cell(parser, i);
-      if (memmem(c.str, c.len, target, target_len))
-        return i + 1;
+      if (specified_column_plus_1 == 0 || i + 1 == specified_column_plus_1) {
+        struct zsv_cell c = zsv_get_cell(parser, i);
+        if (find_exact) {
+          if (c.len == target_len && !memcmp(c.str, target, c.len))
+            return i + 1;
+        } else if (memmem(c.str, c.len, target, target_len))
+          return i + 1;
+      }
     }
   }
   return 0;
@@ -57,6 +64,11 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
                      struct zsvsheet_ui_buffer_opts *uibopts, // if *uibufferp == NULL and uibopts != NULL
                      size_t start_row, size_t start_col, size_t header_span, struct zsvsheet_opts *zsvsheet_opts,
                      struct zsv_prop_handler *custom_prop_handler) {
+  int rc = 0;
+  struct uib_parse_errs parse_errs = {0};
+  uib_parse_errs_init(&parse_errs, 100);
+  zsv_parser parser = {0};
+  FILE *fp = NULL;
   const char *filename = (uibufferp && *uibufferp) ? (*uibufferp)->filename : uibopts ? uibopts->filename : NULL;
   struct zsv_opts opts = {0};
   if (uibufferp && *uibufferp)
@@ -68,7 +80,6 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   size_t remaining_rows_to_skip = start_row;
   size_t remaining_header_to_skip = header_span;
   size_t original_row_num = 0;
-  FILE *fp;
 
   if (uibuff) {
     if (uibuff->data_filename)
@@ -86,23 +97,31 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
   assert(filename != NULL);
   fp = fopen(filename, "rb");
-  if (!fp)
-    return errno;
+  if (!fp) {
+    rc = errno;
+    goto done;
+  }
 
   opts.stream = fp; // Input file stream
 
-  zsv_parser parser = {0};
+  opts.errprintf = uib_parse_errs_printf;
+  if (uibuff)
+    opts.errf = &uibuff->parse_errs;
+  else
+    opts.errf = &parse_errs;
+
   if (zsv_new_with_properties(&opts, custom_prop_handler, filename, &parser) != zsv_status_ok) {
-    fclose(fp);
-    zsv_delete(parser);
-    return errno ? errno : -1;
+    rc = errno ? errno : -1;
+    goto done;
   }
 
+  // clear error logging before reusing opts
+  opts.errprintf = zsv_no_printf;
   if (uibuff) {
     pthread_mutex_lock(&uibuff->mutex);
 
     enum zsv_index_status zst = zsv_index_status_ok;
-    if (uibuff->index_ready) {
+    if (zsvsheet_ui_buffer_index_ready(uibuff, 1)) {
       opts.header_span = 0;
       opts.rows_to_ignore = 0;
 
@@ -116,8 +135,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       original_row_num = header_span + start_row;
     }
     pthread_mutex_unlock(&uibuff->mutex);
-    if (zst != zsv_index_status_ok)
-      return errno ? errno : -1;
+    if (zst != zsv_index_status_ok) {
+      rc = errno ? errno : -1;
+      goto done;
+    }
   }
 
   size_t rows_read = header_span;
@@ -141,15 +162,21 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
           zsvsheet_ui_buffer_delete(tmp_uibuff);
         else
           zsvsheet_screen_buffer_delete(buffer);
-        return -1;
+        rc = -1;
+        goto done;
       }
       *uibufferp = uibuff = tmp_uibuff;
+      if (uibuff) {
+        uibuff->parse_errs = parse_errs;            // transfer errors
+        memset(&parse_errs, 0, sizeof(parse_errs)); // prevent double-free
+      }
     }
 
     // row number
     size_t rownum_column_offset = 0;
     if (rows_read == 0 && zsvsheet_opts->hide_row_nums == 0) {
       // Check if we already have Row #
+      // TO DO: instead of checking the header, use (*uibufferp)->has_row_num
       struct zsv_cell c = zsv_get_cell(parser, 0);
       if (c.len == ZSVSHEET_ROWNUM_HEADER_LEN && !memcmp(c.str, ZSVSHEET_ROWNUM_HEADER, c.len)) {
         zsvsheet_opts->hide_row_nums = 1;
@@ -165,8 +192,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     }
     if (uibuff) {
       if (col_count + !buffer->opts.no_rownum_column > buffer->cols) {
-        if (zsvsheet_screen_buffer_grow(buffer, col_count) != zsvsheet_priv_status_ok)
-          return -1;
+        if (zsvsheet_screen_buffer_grow(buffer, col_count) != zsvsheet_priv_status_ok) {
+          rc = -1;
+          goto done;
+        }
       }
       if (col_count > uibuff->dimensions.col_count)
         uibuff->dimensions.col_count = col_count;
@@ -180,7 +209,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     if (zsvsheet_opts->find) { // find the next occurrence
       rows_searched++;
       size_t colIndexPlus1 =
-        zsvsheet_found_in_row(parser, zsvsheet_opts->found_colnum, col_count, zsvsheet_opts->find, find_len);
+        zsvsheet_found_in_row(parser, zsvsheet_opts->found_colnum, col_count, zsvsheet_opts->find, find_len,
+                              zsvsheet_opts->find_specified_column_plus_1, zsvsheet_opts->find_exact);
       if (colIndexPlus1) {
         zsvsheet_opts->found_rownum = rows_searched + start_row;
         zsvsheet_opts->found_colnum = colIndexPlus1 - 1;
@@ -211,11 +241,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
     rows_read++;
   }
-  fclose(fp);
-  zsv_delete(parser);
-
-  if (!uibuff)
-    return 0;
+  if (!uibuff) {
+    rc = 0;
+    goto done;
+  }
 
   pthread_mutex_lock(&uibuff->mutex);
   char need_index = !uibuff->index_started && !uibuff->write_in_progress;
@@ -225,8 +254,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   pthread_mutex_unlock(&uibuff->mutex);
 
   if (need_index) {
-    if (asprintf(&uibuff->status, "%s(building index) ", old_ui_status ? old_ui_status : "") == -1)
-      return -1;
+    if (asprintf(&uibuff->status, "%s(building index) ", old_ui_status ? old_ui_status : "") == -1) {
+      rc = -1;
+      goto done;
+    }
 
     uibuff->buff_used_rows = rows_read;
     uibuff->dimensions.row_count = rows_read;
@@ -239,7 +270,12 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     uibuff->dimensions.row_count = rows_read;
   }
 
-  return 0;
+done:
+  uib_parse_errs_clear(&parse_errs);
+  if (fp)
+    fclose(fp);
+  zsv_delete(parser);
+  return rc;
 }
 
 // get_data_index(): return an index for constant-time access
@@ -272,15 +308,11 @@ static void *get_data_index(void *gdi) {
   return NULL;
 }
 
-static size_t zsvsheet_find_next(struct zsvsheet_ui_buffer *uib, const char *needle,
-                                 struct zsvsheet_opts *zsvsheet_opts, size_t header_span,
-                                 struct zsv_prop_handler *custom_prop_handler) {
+static size_t zsvsheet_find_next(struct zsvsheet_ui_buffer *uib, struct zsvsheet_opts *zsvsheet_opts,
+                                 size_t header_span, struct zsv_prop_handler *custom_prop_handler) {
   struct zsvsheet_rowcol *input_offset = &uib->input_offset;
   struct zsvsheet_rowcol *buff_offset = &uib->buff_offset;
   size_t cursor_row = uib->cursor_row;
-  zsvsheet_opts->find = needle;
-  zsvsheet_opts->found_rownum = 0;
-  zsvsheet_opts->found_colnum = uib->cursor_col + uib->buff_offset.col;
   size_t start_row = input_offset->row + buff_offset->row + header_span + cursor_row - 1;
   if (start_row > 0)
     start_row--;

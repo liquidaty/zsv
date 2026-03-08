@@ -87,3 +87,15 @@ int zsv_sqlite3_add_csv(struct zsv_sqlite3_db *zdb, const char *csv_filename, st
   }
   return zdb->rc;
 }
+
+/**
+ * zsv_sqlite3_add_csv_no_dq is the same as zsv_sqlite3_add_csv() but also executes
+ * sqlite3_db_config(db, SQLITE_DBCONFIG_DQS_DML, 0, (void*)0);
+ */
+int zsv_sqlite3_add_csv_no_dq(struct zsv_sqlite3_db *zdb, const char *csv_filename, struct zsv_opts *opts,
+                              struct zsv_prop_handler *custom_prop_handler) {
+  int rc = zsv_sqlite3_add_csv(zdb, csv_filename, opts, custom_prop_handler);
+  if (rc == SQLITE_OK)
+    sqlite3_db_config(zdb->db, SQLITE_DBCONFIG_DQS_DDL, 0, (void *)0);
+  return rc;
+}

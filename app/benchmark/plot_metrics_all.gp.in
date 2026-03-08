@@ -1,0 +1,63 @@
+# =============================================================================
+# Gnuplot Script for Benchmark Visualization (Template)
+# =============================================================================
+# Input:  INPUT_CSV (Comma-separated values)
+# Output: benchmark_OPERATION_time.png, benchmark_OPERATION_memory.png
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Configuration & Initialization
+# -----------------------------------------------------------------------------
+set terminal pngcairo size 1280,720 enhanced font 'Segoe UI,12'
+set datafile separator ","
+
+# Color Definitions (Hex Integers for compatibility)
+c_blue   = "#4E79A7"
+c_aqua   = "#76B7B2"
+c_orange = "#F28E2B"
+c_green  = "#59A14F"
+
+# Style Settings
+set key outside right top vertical Right noreverse nobox
+set style data histogram
+set style histogram cluster gap 1
+set style fill solid 1.0 border -1
+set boxwidth 0.9
+
+# Axis formatting
+set xtics rotate by -45 scale 0
+set grid ytics
+
+# -----------------------------------------------------------------------------
+# Graph 1: Execution Time Analysis
+# -----------------------------------------------------------------------------
+# Order: Min Real, Avg Real, Min User, Avg User
+set output 'benchmark_OPERATION_time.png'
+set title "Execution Time (OPERATION): Minimum, Average" font ",16"
+set ylabel "Time (Seconds)"
+
+# Columns in CSV: 4=real_min, 8=real_avg, 5=user_min, 9=user_avg
+# NOTE: 'every ::1' is used to skip the CSV header row
+
+plot 'INPUT_CSV' every ::1 using 4:xtic(3) title "Min Real Time" lc rgb c_blue, \
+     ''          every ::1 using 8         title "Avg Real Time" lc rgb c_orange, \
+     ''          every ::1 using 5         title "Min User Time" lc rgb c_aqua, \
+     ''          every ::1 using 9         title "Avg User Time" lc rgb c_green
+
+# -----------------------------------------------------------------------------
+# Graph 2: Memory Usage Analysis (RSS)
+# -----------------------------------------------------------------------------
+set output 'benchmark_OPERATION_memory.png'
+set title "Memory Usage (Max RSS) (OPERATION): Minimum vs Average" font ",16"
+set ylabel "Memory Size (MB)"
+
+# Helper function
+bytes_to_mb(x) = x / 1024.0 / 1024.0
+
+# Columns in CSV: 7=rss_min, 11=rss_avg
+
+plot 'INPUT_CSV' every ::1 using (bytes_to_mb($7)):xtic(3) title "Min Max RSS" lc rgb c_blue, \
+     ''          every ::1 using (bytes_to_mb($11))        title "Avg Max RSS" lc rgb c_orange
+
+# Reset output
+set output

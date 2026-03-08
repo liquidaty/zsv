@@ -81,3 +81,5 @@ playground/*
 !playground/index.html
 playground/favicon.ico
 pkg
+app/test/zSE*
+!**/expected/*.out

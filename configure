@@ -18,6 +18,12 @@ Optional configuration:
   --arch=ARCH             use -march=ARCH. Set to 'none' for none, else defaults to 'native'
   --jq-prefix=JQ_PREFIX   specify directory containing lib/libjq and include/jq.h
                           defaults to PREFIX if not specified and PREFIX/include/jq.h exists
+  --pcre2-8-prefix=PCRE2_8_PREFIX
+                          no=do not use pcre2
+                          builtin=build from included source (pcre2-10.47)
+                          otherwise, specify dir with lib/libpcre2-8 and include/pcre2-8.h
+                          defaults to 'builtin' if not specified
+  --no-parallel           disable parallelization in the CLI 'select' command
 
 Installation directories:
   --prefix=PREFIX         main installation prefix [\$PREFIX or /usr/local]
@@ -41,6 +47,9 @@ Optional features:
   --enable-pie            build with position independent executables [auto]
   --enable-pic            build with position independent shared libraries [auto]
   --enable-termcap        build with ncurses / termcap (used by \`pretty\` to get console width) [auto]
+  --disable-stdin         disable stdin from CLI commands
+  --enable-simdutf        use simdutf for 'check --utf8'. Faster, but adds ~300k to binary
+  --disable-only-crlf     disable the --only-crlf parsing option
 
 Some influential environment variables:
   CC                      C compiler command [detected]
@@ -52,6 +61,7 @@ Some influential environment variables:
   LDFLAGS                 Linker flags
 
   CROSS_COMPILING=no      Set to yes to disable auto-detect compilation flags
+  NO_THREADING            Set to 1 to disable threading
 
 Use these variables to override the choices made by configure.
 
@@ -69,6 +79,7 @@ EOF
 }
 echo () { printf "%s\n" "$*" ; }
 fail () { echo "$*" ; exit 1 ; }
+# shellcheck disable=SC2329
 fnmatch () { eval "case \"\$2\" in $1) return 0 ;; *) return 1 ;; esac" ; }
 cmdexists () { type "$1" >/dev/null 2>&1 ; }
 trycc1 () { test -z "$CC" && cmdexists "$1" && ( "$1" --version | grep -i gcc ) >/dev/null 2>/dev/null && CC=$1 ; }
@@ -320,10 +331,13 @@ FORCE_AVX2=auto
 FORCE_AVX=auto
 FORCE_SSE2=auto
 
+NO_STDIN=
+
 usepie=auto
 usepic=auto
 usetermcap=auto
 
+ZSV_NO_PARALLEL=
 NCURSES_DYNAMIC=
 for arg ; do
     case "$arg" in
@@ -339,11 +353,16 @@ for arg ; do
         --jq-prefix=*) JQ_PREFIX=${arg#*=} ;;
         JQ_PREFIX=*) JQ_PREFIX=${arg#*=} ;;
 
+        --pcre2-8-prefix=*) PCRE2_8_PREFIX=${arg#*=} ;;
+        PCRE2_8_PREFIX=*) PCRE2_8_PREFIX=${arg#*=} ;;
+
         --prefix=*) ;; # already handled
         --exec-prefix=*) ;; # already handled EXEC_PREFIX=${arg#*=} ;;
         --docdir=*) DOCDIR=${arg#*=} ;;
         --mandir=*) MANDIR=${arg#*=} ;;
         --minimal|--minimal=yes) MINIMAL=yes;;
+
+        --no-parallel) ZSV_NO_PARALLEL=1;;
 
         --try-avx512|--try-avx512=yes) TRY_AVX512=yes;;
         --try-avx512=no) TRY_AVX512=no;;
@@ -363,6 +382,14 @@ for arg ; do
         --enable-sheet=auto) TRY_SHEET=auto;;
         --disable-sheet|--enable-sheet=no) TRY_SHEET=no;;
 
+        --enable-simdutf|--enable-simdutf=yes) USE_SIMDUTF=1;;
+        --enable-simdutf=auto) USE_SIMDUTF=0;;
+        --disable-simdutf|--enable-simdutf=no) USE_SIMDUTF=0;;
+
+        --enable-only-crlf|--enable-only-crlf=yes) ZSV_NO_ONLY_CRLF=0;;
+        --enable-only-crlf=auto) ZSV_NO_ONLY_CRLF=0;;
+        --disable-only-crlf|--enable-only-crlf=no) ZSV_NO_ONLY_CRLF=1;;
+
         --enable-shared|--enable-shared=yes) BUILD_SHAREDLIB=1;;
         --disable-shared|--enable-shared=no) BUILD_SHAREDLIB=0;;
 
@@ -381,6 +408,8 @@ for arg ; do
         --enable-termcap|--enable-termcap=yes) usetermcap=yes ;;
         --enable-termcap=auto) usetermcap=auto ;;
         --disable-termcap|--enable-termcap=no) usetermcap=no ;;
+
+        --disable-stdin|--enable-stdin=no) NO_STDIN=1 ;;
 
         --enable-pic=auto) usepic=auto ;;
         --disable-pic|--enable-pic=no) usepic=no ;;
@@ -439,8 +468,8 @@ test -n "$MAKE" || fail "$0: cannot find a MAKE tool"
 # Find a C compiler to use
 #
 printf "checking for C compiler... "
-for c in cc gcc gcc-14 gcc-13 gcc-12 gcc-11 gcc-10 gcc-9 gcc-8 gcc-7 clang; do trycc1 "$c"; done
-for c in cc gcc gcc-14 gcc-13 gcc-12 gcc-11 gcc-10 gcc-9 gcc-8 gcc-7 clang; do trycc2 "$c"; done
+for c in cc gcc gcc-15 gcc-14 gcc-13 gcc-12 gcc-11 gcc-10 gcc-9 gcc-8 gcc-7 clang; do trycc1 "$c"; done
+for c in cc gcc gcc-15 gcc-14 gcc-13 gcc-12 gcc-11 gcc-10 gcc-9 gcc-8 gcc-7 clang; do trycc2 "$c"; done
 printf "%s\n" "$CC"
 test -n "$CC" || fail "$0: cannot find a C compiler"
 
@@ -725,7 +754,7 @@ if [ "$JQ_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/jq.h" ]
 fi
 
 if [ "$JQ_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
-    echo "checking --prefix-jq ${JQ_PREFIX}"
+    printf '%s' "checking --jq-prefix ${JQ_PREFIX} ... "
     if ! tryldflag LDFLAGS_JQ -ljq -L"$JQ_PREFIX"/lib ; then
         echo "Error: Failed to compile with -ljq and -L$JQ_PREFIX/lib"
         exit 1
@@ -736,11 +765,35 @@ fi
 
 tryldflag LDFLAGS_JQ -lm
 tryldflag LDFLAGS_JQ -lshlwapi
-if [ "$MINGW" = "1" ]; then
-    tryldflag LDFLAGS_TMP -pthread && STATIC_LIBS="$STATIC_LIBS -pthread"
-else
-    if [ "$NO_THREADING" != "1" ]; then
+if [ "$NO_THREADING" != "1" ]; then
+    if [ "$MINGW" = "1" ]; then
+        tryldflag LDFLAGS_TMP -pthread && STATIC_LIBS="$STATIC_LIBS -pthread"
+    else
         tryldflag LDFLAGS_JQ -pthread
+    fi
+fi
+
+HAVE_PCRE2_8=
+if [ "$PCRE2_8_PREFIX" = "" ] ; then
+    PCRE2_8_PREFIX=builtin
+fi
+if [ "$PCRE2_8_PREFIX" = "builtin" ] ; then
+    HAVE_PCRE2_8=1
+else
+    if [ "$PCRE2_8_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/pcre2.h" ] ; then
+        PCRE2_8_PREFIX="$PREFIX"
+    fi
+
+    if [ "$PCRE2_8_PREFIX" != "no " ] ; then
+        if [ "$PCRE2_8_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
+            # TO DO: check for pcre2 static lib
+            printf "%s" "checking --pcre2-8-prefix ${PCRE2_8_PREFIX} ... "
+            if ! tryldflag LDFLAGS_PCRE2_8 -lpcre2-8 -L"$PCRE2_8_PREFIX"/lib ; then
+                echo "Error: Failed to compile with -lpcre2-8 and -L$PCRE2_8_PREFIX/lib"
+            else
+                HAVE_PCRE2_8=1
+            fi
+        fi
     fi
 fi
 
@@ -795,16 +848,20 @@ LDFLAGS_OPT = $LDFLAGS_OPT
 LDFLAGS_TERMCAP = $LDFLAGS_TERMCAP
 JQ_PREFIX = $JQ_PREFIX
 LDFLAGS_JQ = $LDFLAGS_JQ
+
+HAVE_PCRE2_8 = $HAVE_PCRE2_8
+PCRE2_8_PREFIX = $PCRE2_8_PREFIX
+
 STATIC_LIBS = $STATIC_LIBS
 CFLAGS_AUTO = $CFLAGS_AUTO
 CFLAGS_LTO = $CFLAGS_LTO
 LDFLAGS_AUTO = $LDFLAGS_AUTO
 
-HAVE_AVX512=$HAVE_AVX512
+HAVE_AVX512 = $HAVE_AVX512
 
-CFLAGS_AVX_512=$CFLAGS_AVX_512
-CFLAGS_AVX=$CFLAGS_AVX
-CFLAGS_SSE=$CFLAGS_SSE
+CFLAGS_AVX_512 = $CFLAGS_AVX_512
+CFLAGS_AVX = $CFLAGS_AVX
+CFLAGS_SSE = $CFLAGS_SSE
 
 CFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g -Wall -Wextra -Wno-missing-field-initializers -Wunused # -g3 -ggdb
 LDFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g # -g3 -ggdb
@@ -829,6 +886,14 @@ BUILD_SHAREDLIB = $BUILD_SHAREDLIB
 
 ZSVSHEET_BUILD = $ZSVSHEET_BUILD
 
+ZSV_NO_PARALLEL = $ZSV_NO_PARALLEL
+
+NO_STDIN = $NO_STDIN
+
+USE_SIMDUTF = $USE_SIMDUTF
+
+ZSV_NO_ONLY_CRLF = $ZSV_NO_ONLY_CRLF
+
 $NO_HAVE
 $USE_LIBS
 
@@ -838,48 +903,74 @@ exec 1>&3 3>&-
 printf "done\n"
 
 echo ""
-echo "****************************************************************"
-echo "*  zsv configuration                                           *"
-echo "****************************************************************"
+echo "*****************************************************************"
+echo "*  zsv build configuration                                      *"
+echo "*****************************************************************"
 
 if [ "$JQ_PREFIX" != "" ]; then
-    echo "*  - jq-prefix: $JQ_PREFIX                                     *"
+    printf '%-64s*\n' "*  - jq-prefix: $JQ_PREFIX"
+fi
+
+if [ "$PCRE2_8_PREFIX" != "" ] && [ "$HAVE_PCRE2_8" = "1" ]; then
+    printf '%-64s*\n' "*  - pcre2-8-prefix: $PCRE2_8_PREFIX"
+else
+    printf '%-64s*\n' "*  - pcre2-8 -> NOT FOUND"
+    printf '%-64s*\n' "       select and sheet regex features will not be built"
 fi
 
 if [ "$LDFLAGS_TERMCAP" = "" ]; then
-    echo "*  - termcap: no. \`pretty\` will use default width assumption   *"
+    printf '%-64s*\n' "*  - termcap: no. \`pretty\` will use default width assumption"
 else
-    echo "*  - termcap: yes                                              *"
+    printf '%-64s*\n' "*  - termcap: yes"
 fi
 
 if [ "$BUILD_SHAREDLIB" = "1" ]; then
-    echo "*  - build shared library: yes                                 *"
+    printf '%-64s*\n' "*  - build shared library: yes"
 else
-    echo "*  - build shared library: no                                  *"
+    printf '%-64s*\n' "*  - build shared library: no"
 fi
 
 if [ "$ZSVSHEET_BUILD" = "1" ]; then
-    echo "*  - build sheet feature: yes                                  *"
+    printf '%-64s*\n' "*  - build sheet feature: yes"
     if [ "$NCLIB" = "ncurses" ]; then
-        echo "*    ncurses library:     ncurses                              *"
+        printf '%-64s*\n' "*    ncurses library:     ncurses"
     elif [ "$NCLIB" = "ncursesw" ]; then
-        echo "*    ncurses library:     ncursesw                             *"
+        printf '%-64s*\n' "*    ncurses library:     ncursesw"
     fi
 else
-    echo "*  - build sheet feature: no                                   *"
+    printf '%-64s*\n' "*  - build sheet feature: no"
 fi
 
 if [ "$HAVE_AVX512" = "1" ]; then
-    echo "*  - using 512-bit AVX instruction set                         *"
+    printf '%-64s*\n' "*  - using 512-bit AVX instruction set"
 elif [ "$CFLAGS_AVX" = "-mavx2" ]; then
-    echo "*  - using 256-bit AVX2 instruction set                        *"
+    printf '%-64s*\n' "*  - using 256-bit AVX2 instruction set"
 elif [ "$CFLAGS_AVX" = "-mavx" ]; then
-    echo "*  - using 128-bit + AVX instruction set                       *"
+    printf '%-64s*\n' "*  - using 128-bit + AVX instruction set"
 else
-    echo "*  - using 128-bit vector size, no AVX                         *"
+    printf '%-64s*\n' "*  - using 128-bit vector size, no AVX"
 fi
 
-echo "****************************************************************"
+if [ "$ZSV_NO_PARALLEL" = "1" ]; then
+    printf '%-64s*\n' "*  - CLI parallelization: DISABLED"
+else
+    printf '%-64s*\n' "*  - CLI parallelization: enabled"
+fi
+
+if [ "$USE_SIMDUTF" = "1" ]; then
+    printf '%-64s*\n' "*  - CLI check utf8: using simdutf"
+else
+    printf '%-64s*\n' "*  - CLI check utf8: not using simdutf"
+fi
+
+if [ "$ZSV_NO_ONLY_CRLF" = "1" ]; then
+    printf '%-64s*\n' "*  - only-crlf mode: DISABLED"
+else
+    printf '%-64s*\n' "*  - only-crlf mode: enabled"
+fi
+
+
+echo "*****************************************************************"
 
 if ! [ "$MAKE" = "" ]; then
     echo

@@ -25,6 +25,8 @@ enum {
   zsvsheet_builtin_proc_move_left,
   zsvsheet_builtin_proc_move_right,
   zsvsheet_builtin_proc_filter,
+  zsvsheet_builtin_proc_filter_this,
+  zsvsheet_builtin_proc_sqlfilter,
   zsvsheet_builtin_proc_find,
   zsvsheet_builtin_proc_find_next,
   zsvsheet_builtin_proc_goto_column,
@@ -35,6 +37,10 @@ enum {
   zsvsheet_builtin_proc_help,
   zsvsheet_builtin_proc_vim_g_key_binding_dmux,
   zsvsheet_builtin_proc_newline,
+  zsvsheet_builtin_proc_pivot_expr,
+  zsvsheet_builtin_proc_pivot_cur_col,
+  zsvsheet_builtin_proc_errors,
+  zsvsheet_builtin_proc_errors_clear
 };
 
 #define ZSVSHEET_PROC_INVALID 0

@@ -54,6 +54,10 @@ ifneq ($(ZSV_IS_PROP_FILE_DEPTH),)
 	CFLAGS+=-DZSV_IS_PROP_FILE_DEPTH=${ZSV_IS_PROP_FILE_DEPTH}
 endif
 
+ifeq ($(ZSV_NO_ONLY_CRLF),1)
+  CFLAGS+= -DZSV_NO_ONLY_CRLF
+endif
+
 DEBUG=0
 WIN=
 ifeq ($(WIN),)
@@ -161,10 +165,10 @@ endif
 
 CCBN=$(shell basename ${CC})
 CFLAGS+= -I${PREFIX}/include
-THIS_LIB_BASE=$(shell cd .. && pwd)
-INCLUDE_DIR=${THIS_LIB_BASE}/include
-BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
-UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index
+THIS_LIB_BASE:=$(shell cd .. && pwd)
+INCLUDE_DIR:=${THIS_LIB_BASE}/include
+BUILD_DIR:=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
+UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index chunk
 
 ZSV_EXTRAS ?=
 
@@ -187,7 +191,13 @@ UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
 
 ifeq ($(NO_THREADING),1)
   CFLAGS+= -DNO_THREADING
+  ZSV_NO_PARALLEL=1
 endif
+
+ifeq ($(ZSV_NO_PARALLEL),1)
+  CFLAGS+=-DZSV_NO_PARALLEL
+endif
+
 
 ifeq ($(ZSV_EXTRAS),1)
   CFLAGS+= -DZSV_EXTRAS
@@ -203,11 +213,11 @@ endif
 
 ZSV=$(BINDIR)/zsv${EXE}
 
-SOURCES=echo paste count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq
+SOURCES=echo paste check count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq
 ifeq ($(ZSV_EXTRAS),1)
   SOURCES+=overwrite
 endif
-CLI_SOURCES=echo select desc count paste 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq
+CLI_SOURCES=echo select desc count paste check 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq
 ifeq ($(ZSV_EXTRAS),1)
   CLI_SOURCES+=overwrite
 endif
@@ -304,6 +314,8 @@ SQLITE_SRC=${THIS_MAKEFILE_DIR}/external/sqlite3/sqlite3*.c
 SQLITE_EXT=${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o
 SQLITE_EXT_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/sqlite3
 
+SQL_INTERNAL_OBJECT=${BUILD_DIR}/objs/sql_internal.o
+
 # everything uses prop, which in turn uses yajl and jq and json and sqlite3
 OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${BUILD_DIR}/objs/utils/json.o ${SQLITE_EXT}
 MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -I${JQ_INCLUDE_DIR} ${SQLITE_EXT_INCLUDE}
@@ -320,10 +332,16 @@ help:
 	@echo "which will build and test all apps, or to build/test a single app:"
 	@echo "  ${MAKE} test-xx"
 	@echo "where xx is any of:"
-	@echo "  echo count count-pull paste select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm mv overwrite"
+	@echo "  echo count count-pull paste check select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db prop rm mv overwrite"
+	@echo ""
+	@echo "To run benchmarks:"
+	@echo "  ${MAKE} benchmark"
 	@echo ""
 
 install: ${ZSV}
+
+benchmark: ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}count${EXE} ${STANDALONE_PFX}2tsv${EXE}
+	make -C benchmark all
 
 uninstall-all: uninstall uninstall-util-lib
 
@@ -389,7 +407,7 @@ ${CLEANS}: clean-%:
 .SUFFIXES:
 .SUFFIXES: .o .c .a
 
-${BUILD_DIR}/objs/utils/index.o: ${BUILD_DIR}/objs/utils/%.o : utils/%.c utils/%.h
+${BUILD_DIR}/objs/sql_internal.o ${BUILD_DIR}/objs/utils/index.o ${BUILD_DIR}/objs/utils/chunk.o: ${BUILD_DIR}/objs/%.o: %.c %.h # ${BUILD_DIR}/objs/%.o: %.c %.h
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ -c $<
 
@@ -418,13 +436,13 @@ ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8pro
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} ${MEMFILE_INCLUDE} -I${THIS_MAKEFILE_DIR}/external/sglib -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -c $< -o $@ ${MORE_SOURCE}
 
-${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS}
+${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS} ${SQL_INTERNAL_OBJECT}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBDIR} ${LIBZSV_L} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
 	@echo Built $@
 
 cli_internal.h.in: ${THIS_MAKEFILE_DIR}/../include/zsv/ext/implementation_private.h
-	cat $< | perl -ne 'print if /ZSV_EXT_EXPORT/ .. /;/' | sed 's/ZSV_EXT_EXPORT *//g' | sed $$'s/ *;.*/;\\\n/' | sed 's/(/)(/' | sed 's/zsv_ext_\([a-z]*\))/(*\1)/' | grep -v '^$$' > $@
+	cat $< | awk '/ZSV_EXT_EXPORT/,/;/' | sed 's/ZSV_EXT_EXPORT *//g' | sed $$'s/ *;.*/;\\\n/' | sed 's/(/)(/' | sed 's/zsv_ext_\([a-z]*\))/(*\1)/' | grep -v '^$$' > $@
 
 cli_internal.c.in: cli_internal.h.in
 	cat cli_internal.h.in | sed 's/\(.*(\*\)\([^)]*\)\(.*\);/zsv_ext_func_assign((\1\3), \2);/' > $@
@@ -477,6 +495,84 @@ ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o ${STANDALONE_PFX}flatten${EXE} ${CLI_OBJ_PFX}flatten.o: MORE_SOURCE+=${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
 
+ifeq ($(USE_SIMDUTF),1)
+CFLAGS+=-DUSE_SIMDUTF
+SIMDUTF_OBJECT=${BUILD_DIR}/check/simdutf_wrapper.o
+${SIMDUTF_OBJECT}: check/simdutf_wrapper.cpp
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -std=c++17 -ffunction-sections -fdata-sections -fno-exceptions -fno-rtti -c check/simdutf_wrapper.cpp -o $@
+
+${CLI} ${STANDALONE_PFX}check${EXE}: ${SIMDUTF_OBJECT}
+${CLI} ${STANDALONE_PFX}check${EXE}: MORE_OBJECTS+=${SIMDUTF_OBJECT} -lstdc++
+endif
+
+# check if we are on arm64
+ifeq ($(ARM64),)
+  ifneq ($(shell uname -a | grep Darwin | grep arm64),)
+    ARM64=1
+  endif
+endif
+
+# CLI, select and sheet use PCRE2-8
+BULITIN_PCRE2_PREFIX=${BUILD_DIR}-external/pcre2
+ifeq ($(HAVE_PCRE2_8),1)
+  NO_PCRE2_JIT=
+  # TO DO: make PCRE2_STATIC a configure option / detection
+  PCRE2_STATIC=1
+  CFLAGS+=-DHAVE_PCRE2_8
+  # add dependency
+  ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: ${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o
+
+  PCRE2_LIB=-lpcre2-8
+  ifeq ($(PCRE2_STATIC),1)
+    CFLAGS+= -DPCRE2_STATIC
+    ifeq ($(PCRE2_8_PREFIX),builtin)
+      PCRE2_8_PREFIX=${BULITIN_PCRE2_PREFIX}
+      # add dependency
+      ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: ${PCRE2_8_PREFIX}/lib/libpcre2-8.a
+
+    endif
+    PCRE2_LIB=${PCRE2_8_PREFIX}/lib/libpcre2-8.a
+  endif
+
+  ifeq ($(NO_PCRE2_JIT),)
+    ifeq ($(ARM64),1)
+      # see https://github.com/zherczeg/sljit/issues/99
+      NO_PCRE2_JIT=1
+    endif
+  endif
+
+  ifeq ($(NO_PCRE2_JIT),1)
+    CFLAGS+=-DNO_PCRE2_JIT
+  endif
+
+  LDFLAGS_PCRE2_8=
+  INCLUDE_PCRE2_8=${PREFIX}/include
+  ifneq ($(PCRE2_8_PREFIX),$(PREFIX))
+    ifneq ($(PCRE2_STATIC),1)
+      LDFLAGS_PCRE2_8=-L${PCRE2_8_PREFIX}/lib
+    endif
+    INCLUDE_PCRE2_8=${PCRE2_8_PREFIX}/include
+  endif
+
+  ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: MORE_LIBS+=${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o ${LDFLAGS_PCRE2_8} ${PCRE2_LIB}
+endif
+
+# pcre2-8.o actually only needs ${PCRE2_8_PREFIX}/include/pcre2.h, but if we are using builtin pcre2, then
+# that will only exist after the builtin library has been built
+ifeq ($(PCRE2_8_PREFIX),$(BULITIN_PCRE2_PREFIX))
+  PCRE2_8_O_DEP=${PCRE2_8_PREFIX}/lib/libpcre2-8.a
+else
+  PCRE2_8_O_DEP=
+endif
+
+${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o: ${BUILD_DIR}/objs/utils/%.o : utils/%.c utils/%.h ${PCRE2_8_O_DEP}
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -I${INCLUDE_PCRE2_8} -o $@ -c utils/$*.c
+
+${BULITIN_PCRE2_PREFIX}/lib/libpcre2-8.a:
+	${MAKE} -C external -f ${CONFIGFILEPATH} -f build.mk $@ BUILD_DIR=${BUILD_DIR} CONFIGURE_HOST=${CONFIGURE_HOST}
+
 # utils/db uses jsonwriter
 ${BUILD_DIR}/objs/utils/db.o : MORE_SOURCE+= ${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
 
@@ -492,6 +588,8 @@ ${CLI} ${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+= ${BUILD_DIR}/objs/utils/db.o
 # pretty uses termcap
 ${CLI} ${STANDALONE_PFX}pretty${EXE}: MORE_LIBS+=${LDFLAGS_TERMCAP}
 
+${CLI} ${STANDALONE_PFX}sheet${EXE} ${STANDALONE_PFX}sql${EXE}: ${SQL_INTERNAL_OBJECT}
+${CLI} ${STANDALONE_PFX}sheet${EXE} ${STANDALONE_PFX}sql${EXE}: MORE_OBJECTS+=${SQL_INTERNAL_OBJECT}
 
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`

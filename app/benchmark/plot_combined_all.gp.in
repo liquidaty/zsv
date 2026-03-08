@@ -1,0 +1,45 @@
+# Output Settings
+set terminal pngcairo size 1000,600 enhanced font 'Verdana,10'
+set output 'bench_combined-OPERATION.png'
+
+# Data Parsing
+set datafile separator ","
+
+# Chart Style: Clustered Histogram
+set style data histograms
+set style histogram cluster gap 1
+set style fill solid 1.0 border -1
+set boxwidth 0.9
+
+# Title
+set title "Benchmark Comparison (OPERATION): Time vs Memory"
+
+# --- Dual Axis Configuration ---
+
+# Left Y-Axis (Time)
+set ylabel "Time (seconds)"
+set ytics nomirror   # Do not show these tics on the right side
+set yrange [0:*]     # Start at 0
+
+# Right Y-Axis (Memory)
+set y2label "Max RSS (MB)"
+set y2tics           # Enable the right axis
+set y2range [0:*]    # Start at 0
+
+# Add a grid (optional, usually looks best aligned to the primary Y axis)
+set grid y
+
+# X-Axis Labels
+set xtics rotate by -45 scale 0
+set xlabel "Tools"
+
+# Key/Legend location (Top Left usually avoids hiding data in this dataset)
+set key top left
+
+# --- The Plot Command ---
+# 1. Real Time (Blue)   -> uses default axes (x1y1)
+# 2. User Time (Orange) -> uses default axes (x1y1)
+# 3. Memory (Red)       -> uses axes x1y2 (Right Axis)
+plot 'INPUT_CSV' every ::1 using 4:xtic(3) axes x1y1 title 'Real Time (s) (min)' lc rgb "#4E79A7", \
+     ''          every ::1 using 5         axes x1y1 title 'User Time (s) (min)' lc rgb "#F28E2B", \
+     ''          every ::1 using ($7/1048576) axes x1y2 title 'Max RSS (MB) (min)' lc rgb "#E15759"

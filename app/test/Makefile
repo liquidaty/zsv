@@ -67,6 +67,11 @@ ifeq ($(ZSVSHEET_BUILD),1)
   TESTS+=test-sheet test-sheet-subcommand
 endif
 
+ifneq ($(ZSV_NO_PARALLEL),1)
+  TESTS+=test-parallel
+endif
+TESTS+=test-check
+
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
 COLOR_RED=\033[1;31m
@@ -136,6 +141,26 @@ test-prop:
 	@${TEST_INIT}
 	@EXE=${BUILD_DIR}/bin/zsv_prop${EXE} ${MAKE} -C prop test
 
+ifneq ($(ZSV_NO_PARALLEL),1)
+test-parallel: ${BUILD_DIR}/bin/zsv_select${EXE} ${BUILD_DIR}/bin/zsv_count${EXE} worldcitiespop_mil.csv
+	@${TEST_INIT}
+	@SELECT_EXE=${BUILD_DIR}/bin/zsv_select${EXE} COUNT_EXE=${BUILD_DIR}/bin/zsv_count${EXE} ${MAKE} -C parallel test
+endif
+
+test-check: test-check-1 test-check-2
+
+test-check-1: ${BUILD_DIR}/bin/zsv_check${EXE}
+	@${TEST_INIT}
+	@$< ${TEST_DATA_DIR}/test/check.csv -o ${TMP_DIR}/$@.out1 && (echo "should have failed!") || [ 1 = 1 ]
+	@cmp ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
+	@$< ${TEST_DATA_DIR}/test/check.csv --display-row -o ${TMP_DIR}/$@.out2 && (echo "should have failed!" && exit 1) || [ 1 = 1 ]
+	@cmp ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+
+test-check-2: ${BUILD_DIR}/bin/zsv_check${EXE}
+	@${TEST_INIT}
+	@$< --display-row ${TEST_DATA_DIR}/test/latin1.csv -o ${TMP_DIR}/$@.out && (echo "should have failed!") || [ 1 = 1 ]
+	@cmp ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
 ifeq ($(IS_WSL),1)
@@ -147,7 +172,16 @@ endif
 test-echo: \
 	test-echo1 test-echo-overwrite-all test-echo-eol test-echo-chars test-echo-trim \
 	test-echo-skip-until test-echo-contiguous test-echo-trim-columns test-echo-trim-columns-2 test-echo-buffsize \
-	test-echo-quoted
+	test-echo-quoted test-echo-rows
+
+test-echo-rows: ${BUILD_DIR}/bin/zsv_echo${EXE}
+	@${TEST_INIT}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/6x3.csv --start-row 3 ${REDIRECT} ${TMP_DIR}/$@.out1
+	@${CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/6x3.csv --end-row 3 ${REDIRECT} ${TMP_DIR}/$@.out2
+	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/6x3.csv --between-row 2 4 ${REDIRECT} ${TMP_DIR}/$@.out3
+	@${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
 
 test-echo-overwrite-all: test-echo-overwrite test-echo-overwrite-csv test-echo-overwrite-auto
 
@@ -240,13 +274,30 @@ worldcitiespop_mil.tsv: worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2tsv${EXE}
 
 test-count test-count-pull: test-% : test-1-% test-2-%
 
+ifeq ($(ZSV_NO_PARALLEL),1)
+ifeq ($(HAVE_PCRE2_8),1)
+  HELP_SELECT_LINES=40
+  HELP_COUNT_LINES=6
+else
+  HELP_SELECT_LINES=39
+  HELP_COUNT_LINES=6
+endif
+else
+ifeq ($(HAVE_PCRE2_8),1)
+  HELP_SELECT_LINES=43
+  HELP_COUNT_LINES=8
+else
+  HELP_SELECT_LINES=42
+  HELP_COUNT_LINES=8
+endif
+endif
 test-cli: ${CLI}
 	@${TEST_INIT}
 	@[ "${CLI}" = "" ] && echo 1>&2 'test-cli: missing CLI env var' && exit 1 || exit 0
 	@$< help select 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "select: extracts and outputs specified columns" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "39" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "select: extracts and outputs specified columns" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_SELECT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@$< help count 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "6" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_COUNT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-1-count test-1-count-pull: test-1-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
@@ -258,7 +309,7 @@ test-2-count test-2-count-pull: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR
 	@for x in 5000 5002 5004 5006 5008 5010 5013 5015 5017 5019 5021 5101 5105 5111 5113 5115 5117 5119 5121 5123 5125 5127 5129 5131 5211 5213 5215 5217 5311 5313 5315 5317 5413 5431 5433 5455 6133 ; do $< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv ; done > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/test-2-count.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select test-select-pull: test-% : test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-11-% test-12-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-fixed-3-% test-fixed-4-% test-merge-%
+test-select test-select-pull: test-% : test-onlycrlf-% test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-11-% test-12-% test-13-% test-search-% test-regex-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-fixed-3-% test-fixed-4-% test-merge-%
 
 test-merge-select test-merge-select-pull: test-merge-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -329,10 +380,21 @@ test-9-select test-9-select-pull: test-9-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 test-10-select: test-10-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
 	@${PREFIX} $< expected/test-2tsv-2.out -t --unescape ${REDIRECT} ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/test-10-select.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-10-select-pull:
-	@echo 'N/a (test-10-select-pull)'
+test-onlycrlf-select: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_INIT}
+ifneq ($(ZSV_NO_ONLY_CRLF),1)
+	@${PREFIX} $< -O "|" --no-quote ../../data/test/crlf.txt > ${TMP_DIR}/$@.out1
+	@${CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< -O "|" --only-crlf --no-quote ../../data/test/crlf.txt > ${TMP_DIR}/$@.out2
+	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --only-crlf ../../data/test/crlf-2.csv > ${TMP_DIR}/$@.out3
+	@${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
+endif
+
+test-10-select-pull test-search-select-pull test-regex-select-pull test-onlycrlf-select-pull:
+	@echo 'N/a ($@)'
 
 test-11-select test-11-select-pull: test-11-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -346,7 +408,24 @@ test-12-select test-12-select-pull: test-12-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 
 test-13-select test-13-select-pull: test-13-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@${PREFIX} [ "$$(echo 'aaa,bb,c\na,bb\nx,y,z' | $< --header-row-span 2 | head -1)" = "aaa a,bb bb,c" ] && ${TEST_PASS} || ${TEST_FAIL}
+#	@echo "test result:"
+#	@echo 'aaa,bb,cxa,bbxx,y,z' | tr x '\n' | $< --header-row-span 2 | head -1
+	@${PREFIX} [ "$$(echo 'aaa,bb,cxa,bbxx,y,z' | tr x '\n' | $< --header-row-span 2 | head -1)" = "aaa a,bb bb,c" ] && ${TEST_PASS} || ${TEST_FAIL}
+
+test-search-select: test-search-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
+	@${TEST_INIT}
+	@${PREFIX} $< worldcitiespop_mil.csv --search escu > ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@echo "TO DO: select --search with overwritten values"
+
+test-regex-select: test-regex-% : ${BUILD_DIR}/bin/zsv_%${EXE}
+	@${TEST_INIT}
+ifeq ($(HAVE_PCRE2_8),1)
+	@${PREFIX} $< worldcitiespop_mil.csv --regex-search '^esc[uo]' > ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+else
+	@echo "  regex not available in this build"
+endif
 
 test-fixed-1-select-pull test-fixed-2-select-pull test-fixed-3-select-pull test-fixed-4-select-pull:
 	@echo "$@: n/a"
@@ -420,7 +499,12 @@ test-blank-leading-rows-4: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${PREFIX} $< -R 2 ${TEST_DATA_DIR}/test/blank-leading-rows.csv ${REDIRECT} ${TMP_DIR}/$@.out 2>&1
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-stack: test-stack1 test-stack2 test-stack3 test-stack4
+test-stack: test-stack1 test-stack2 test-stack3 test-stack4 test-stack-filename
+
+test-stack-filename: ${BUILD_DIR}/bin/zsv_stack${EXE}
+	@${TEST_INIT}
+	@${PREFIX} (cd ${TEST_DATA_DIR} && $< --prepend-filename stack[12].csv ) ${REDIRECT} ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-stack1: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${TEST_INIT}
@@ -666,8 +750,11 @@ test-sheet-cleanup:
 
 test-sheet-all: \
 	test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 \
-	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand test-sheet-prop-cmd-opt
-	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null; done && ${TEST_PASS} || ${TEST_FAIL})
+	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand test-sheet-prop-cmd-opt \
+	test-sheet-pivot \
+	test-sheet-sqlfilter \
+	test-sheet-errors
+	@(for SESSION in $^; do ! tmux kill-session -t "$$SESSION" 2>/dev/null || echo ''; done && ${TEST_PASS} || ${TEST_FAIL})
 
 TMUX_TERM=xterm-256color
 test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
@@ -795,8 +882,8 @@ endif
 test-sheet-13: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
-	tmux send-keys -t $@ "?" "/" "f" && \
+	@(tmux new-session -x 80 -y 40 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux send-keys -t $@ "?" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-14: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
@@ -805,7 +892,7 @@ ifeq ($(IS_WSL),1)
 	@${TEST_SKIP}
 else
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux new-session -x 80 -y 40 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux send-keys -t $@ "?" && \
 	${EXPECT} $@ help && \
 	tmux send-keys -t $@ ESCAPE && \
@@ -894,6 +981,107 @@ test-sheet-prop-cmd-opt: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_p
 #	@tmux -v capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out
 #	@tmux send-keys -t $@ "q"
 #	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL})
+
+test-sheet-pivot: test-sheet-pivot-1 test-sheet-pivot-V
+
+test-sheet-pivot-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@tmux kill-session 2>/dev/null >/dev/null || printf ''
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ l v && \
+	${EXPECT} $@ groups && \
+	tmux send-keys -t $@ j j Enter && \
+	${EXPECT} $@ drilldown && \
+	tmux send-keys -t $@ G && \
+	${EXPECT} $@ \
+	&& ${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-pivot-V: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@tmux kill-session 2>/dev/null >/dev/null || printf ''
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ "V" "Country||'hi'" ENTER && \
+	${EXPECT} $@ groups && \
+	tmux send-keys -t $@ j j j j j j j j j j j j j j j j j j j j j j j ENTER && \
+	${EXPECT} $@ drilldown && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-sqlfilter: test-sheet-sqlfilter-1
+
+test-sheet-sqlfilter-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@tmux kill-session 2>/dev/null >/dev/null || printf ''
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ ":where" ENTER "city like 'ber%'" ENTER && \
+	${EXPECT} $@ filter && \
+	tmux send-keys -t $@ ":where" ENTER "this is invalid" ENTER && \
+	${EXPECT} $@ invalid && \
+	tmux send-keys -t $@ ":where" ENTER "City = -1" ENTER && \
+	${EXPECT} $@ noresults && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-errors: test-sheet-errors-1
+
+/tmp/test-sheet-errors-1.txt: worldcitiespop_mil.csv
+	head -1000 worldcitiespop_mil.csv | tr '\n' '|' > $@.tmp
+	echo 'x' >> $@.tmp
+	echo 'x' >> $@.tmp
+	echo 'x' >> $@.tmp
+	mv $@.tmp $@
+
+test-sheet-errors-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} /tmp/test-sheet-errors-1.txt
+	@${TEST_INIT}
+	@tmux kill-session 2>/dev/null >/dev/null || printf ''
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< /tmp/test-sheet-errors-1.txt" && \
+	${EXPECT} $@ indexed-errors && \
+	tmux send-keys -t $@ ":errors" ENTER && \
+	${EXPECT} $@ errors && \
+	tmux send-keys -t $@ ESCAPE && \
+	${EXPECT} $@ indexed-errors && \
+	tmux send-keys -t $@ ":errors-clear" ENTER && \
+	${EXPECT} $@ indexed && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+ifeq ($(HAVE_PCRE2_8),1)
+test-sheet-filter-this: test-sheet-filter-this-1 test-sheet-filter-this-regex
+else
+test-sheet-filter-this: test-sheet-filter-this-1
+endif
+
+test-sheet-filter-this-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@tmux kill-session 2>/dev/null >/dev/null || printf ''
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ "l" "F" "casas" ENTER && \
+	${EXPECT} $@ nodata && \
+	tmux send-keys -t $@ ESCAPE "l" "F" "mx" ENTER && \
+	${EXPECT} $@ filter && \
+	tmux send-keys -t $@ ESCAPE ":filtercol" ENTER "mx" ENTER && \
+	${EXPECT} $@ filter && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-filter-this-regex: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@tmux kill-session 2>/dev/null >/dev/null || printf ''
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux send-keys -t $@ "l" "F" "/casas" ENTER && \
+	${EXPECT} $@ nodata && \
+	tmux send-keys -t $@ ESCAPE "l" "F" "/^mx" ENTER && \
+	${EXPECT} $@ filterregex && \
+	tmux send-keys -t $@ ESCAPE ":filtercol" ENTER "/^mx" ENTER && \
+	${EXPECT} $@ filterregex && \
+	${TEST_PASS} || ${TEST_FAIL})
 
 benchmark-sheet-index: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}

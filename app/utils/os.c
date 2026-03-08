@@ -6,6 +6,7 @@
  * https://opensource.org/licenses/MIT
  */
 
+#include <unistd.h>
 #include <zsv/utils/os.h>
 #include <stdio.h>
 #include <errno.h>
@@ -153,3 +154,25 @@ void zsv_perror(const char *s) {
 }
 
 #endif
+
+unsigned int zsv_get_number_of_cores() {
+  long ncores = 1; // Default to 1 in case of failure
+
+#ifdef _WIN32
+  // Implementation for Windows (when cross-compiled with mingw64)
+  SYSTEM_INFO sysinfo;
+  GetSystemInfo(&sysinfo);
+  ncores = sysinfo.dwNumberOfProcessors;
+#elif defined(_SC_NPROCESSORS_ONLN)
+  // Implementation for Linux and macOS (uses POSIX standard sysconf)
+  // _SC_NPROCESSORS_ONLN gets the number of *online* processors.
+  ncores = sysconf(_SC_NPROCESSORS_ONLN);
+#else
+  // Fallback for other POSIX-like systems that might not define the symbol
+  // or for unexpected compilation environments.
+#error Undefined! _SC_NPROCESSORS_ONLN
+  xx ncores = 1;
+#endif
+  // Ensure we return a positive value
+  return (unsigned int)(ncores > 0 ? ncores : 1);
+}

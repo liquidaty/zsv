@@ -17,19 +17,25 @@ CPPCHECK_BUILD_DIR="cppcheck-build-dir"
 CPPCHECK_XML_OUTPUT_FILE="cppcheck.xml"
 CPPCHECK_HTML_REPORT_DIR="cppcheck-html-report-dir"
 
-echo "[INF] CPPCHECK_PROJECT_FILE: $CPPCHECK_PROJECT_FILE"
-echo "[INF] CPPCHECK_BUILD_DIR: $CPPCHECK_BUILD_DIR"
+echo "[INF] CPPCHECK_PROJECT_FILE:    $CPPCHECK_PROJECT_FILE"
+echo "[INF] CPPCHECK_BUILD_DIR:       $CPPCHECK_BUILD_DIR"
 echo "[INF] CPPCHECK_XML_OUTPUT_FILE: $CPPCHECK_XML_OUTPUT_FILE"
 echo "[INF] CPPCHECK_HTML_REPORT_DIR: $CPPCHECK_HTML_REPORT_DIR"
+
+if [ "$(uname -s)" = "Darwin" ]; then
+  alias nproc="sysctl -n hw.logicalcpu"
+fi
 
 mkdir -p "$CPPCHECK_BUILD_DIR"
 
 echo "[INF] Generating XML report..."
 cppcheck \
+  -j "$(nproc)" \
   --quiet \
   --enable=all \
   --project="$CPPCHECK_PROJECT_FILE" \
-  --xml 2>"$CPPCHECK_XML_OUTPUT_FILE"
+  --xml \
+  --output-file="$CPPCHECK_XML_OUTPUT_FILE"
 
 ls -hl "$CPPCHECK_XML_OUTPUT_FILE"
 
@@ -79,6 +85,7 @@ if [ "$CI" = true ]; then
     echo "| File:Line | Column | Severity |  ID   | Message |  CWE  |"
     echo "| :-------: | :----: | :------: | :---: | :-----: | :---: |"
     cppcheck \
+      -j "$(nproc)" \
       --quiet \
       --enable=all \
       --project="$CPPCHECK_PROJECT_FILE" \

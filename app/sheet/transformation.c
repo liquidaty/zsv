@@ -68,7 +68,7 @@ enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts 
   trn->ui_buffer = opts.ui_buffer;
   zst = zsv_status_error;
 
-  temp_filename = zsv_get_temp_filename("zsvsheet_filter_XXXXXXXX");
+  temp_filename = zsv_get_temp_filename("zsf");
   if (!temp_filename)
     goto free;
   trn->output_filename = temp_filename;

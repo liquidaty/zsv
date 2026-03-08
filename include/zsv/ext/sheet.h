@@ -14,6 +14,7 @@ typedef enum zsvsheet_status {
   zsvsheet_status_memory,
   zsvsheet_status_exit,
   zsvsheet_status_busy,
+  zsvsheet_status_no_data
 } zsvsheet_status;
 
 typedef struct zsvsheet_context *zsvsheet_context_t;

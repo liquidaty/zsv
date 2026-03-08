@@ -15,7 +15,7 @@
 #   endif
 #  else
 #   ifdef __GNUC__
-#    define ZSV_EXPORT __attribute__((dllimport))
+#    define ZSV_EXPORT __attribute__((visibility("default")))
 #   else
 #    define ZSV_EXPORT __declspec(dllimport)
 #   endif

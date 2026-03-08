@@ -10,6 +10,7 @@
 #define ZSV_FILE_H
 
 #include <stdio.h>
+#include "file-mem.h"
 
 #ifndef LINEEND
 #if defined(WIN32) || defined(_WIN64) || defined(_WIN32)
@@ -25,6 +26,14 @@
  * @param prefix string with which the resulting file name will be prefixed
  */
 char *zsv_get_temp_filename(const char *prefix);
+
+/**
+ *  Replacement for tmpfile().
+ *  Returns filename; file must be manually removed after fclose
+ *
+ *  @param mode optional mode passed to fopen(); if NULL, defaults to "wb"
+ */
+FILE *zsv_tmpfile(const char *prefix, char **filename, const char *mode);
 
 /**
  * Check if a file exists and is readable (with fopen + "rb")
@@ -72,5 +81,19 @@ int zsv_copy_file(const char *src, const char *dest);
  * Return error number per errno.h
  */
 int zsv_copy_file_ptr(FILE *src, FILE *dest);
+
+/**
+ * Copy a file-like, given source and destination handles
+ * and read/write functions
+ * Return error number per errno.h
+ */
+int zsv_copy_filelike_ptr(
+  FILE *src, size_t (*freadx)(void *restrict ptr, size_t size, size_t nitems, void *restrict stream), FILE *dest,
+  size_t (*fwritex)(const void *restrict ptr, size_t size, size_t nitems, void *restrict stream));
+/**
+ * printf that does nothing. useful in certain circumstances for ignoring
+ * errors e.g. opening the same file twice and not dupicating error logs
+ */
+int zsv_no_printf(void *, const char *format, ...);
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Liquidaty and zsv contributors. All rights reserved.
+ * Copyright (C) 2025 Liquidaty and zsv contributors. All rights reserved.
  *
  * This file is part of zsv/lib, distributed under the MIT license as defined at
  * https://opensource.org/licenses/MIT
@@ -9,6 +9,8 @@
 #include <assert.h>
 #ifdef _WIN32
 #define _CRT_RAND_S /* for random number generator, used when sampling. must come before including stdlib.h */
+#else
+#include <sys/types.h> // off_t
 #endif
 #include <stdlib.h>
 #include <stdint.h>
@@ -16,6 +18,10 @@
 #include <ctype.h>
 #include <time.h>
 #include <stdarg.h>
+
+// Added for pthreads and parallel I/O management
+#include <pthread.h>
+#include <string.h> // memcpy, free, etc.
 
 #define ZSV_COMMAND select
 #include "zsv_command.h"
@@ -26,398 +32,157 @@
 #include <zsv/utils/mem.h>
 #include <zsv/utils/memmem.h>
 #include <zsv/utils/arg.h>
+#include <zsv/utils/os.h>
+#include <zsv/utils/file.h>
+#include "utils/chunk.h"
 
-struct zsv_select_search_str {
-  struct zsv_select_search_str *next;
-  const char *value;
-  size_t len;
-};
+#include "select/internal.h" // various defines and structs
+#include "select/usage.c"    // zsv_select_usage()
+#include "select/rand.c"     // demo_random_bw_1_and_100()
+#include "select/fixed.c"    // auto_detect_fixed_column_sizes()
+#include "utils/cat.c"
 
-static void zsv_select_search_str_delete(struct zsv_select_search_str *ss) {
-  for (struct zsv_select_search_str *next; ss; ss = next) {
-    next = ss->next;
-    free(ss);
+// zsv_select_add_search(), zsv_select_search_str_delete()
+#include "select/search.c"
+
+// struct zsv_select_regex, zsv_select_add_regex(), zsv_select_regexs_delete()
+#include "select/regex.c"
+
+// zsv_select_cell_clean(), zsv_select_row_search_hit()
+#include "select/processing.c"
+
+// zsv_select_add_exclusion(), zsv_select_get_header_name(),
+// zsv_select_check_exclusions_are_indexes()
+#include "select/selection.c"
+
+#ifndef ZSV_NO_PARALLEL
+#include "select/parallel.c" // zsv_parallel_data_new(), zsv_parallel_data_delete()
+
+#define ZSV_SELECT_PARALLEL_MIN_BYTES (1024 * 1024 * 2) // don't parallelize if < 2 MB of data (after header)
+#define ZSV_SELECT_PARALLEL_BUFFER_SZ (1024 * 1024 * 8) // to do: make customizable or dynamic
+
+static void zsv_select_data_row(void *ctx);
+
+static void zsv_select_data_row_parallel_done(void *ctx) {
+  struct zsv_select_data *data = ctx;
+  data->next_row_start = zsv_cum_scanned_length(data->parser) - zsv_row_length_raw_bytes(data->parser);
+  zsv_abort(data->parser);
+  data->cancelled = 1;
+}
+static void zsv_select_data_row_parallel(void *ctx) {
+  struct zsv_select_data *data = ctx;
+  zsv_select_data_row(ctx);
+
+  if (UNLIKELY((off_t)zsv_cum_scanned_length(data->parser) >= data->end_offset_limit)) {
+    // parse one more row to get accurate next-row start
+    zsv_set_row_handler(data->parser, zsv_select_data_row_parallel_done);
   }
 }
 
-struct zsv_select_uint_list {
-  struct zsv_select_uint_list *next;
-  unsigned int value;
-};
+static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
+  if (cdata->start_offset >= cdata->end_offset) {
+    cdata->skip = 1;
+    return NULL;
+  }
 
-struct fixed {
-  size_t *offsets;
-  size_t count;
-  size_t max_lines; // max lines to use to calculate offsets
-};
+  struct zsv_select_data data = {0}; // local, non-shared zsv_select_data instance
 
-struct zsv_select_data {
-  FILE *in;
-  unsigned int current_column_ix;
-  size_t data_row_count;
+  // Copy necessary setup data from the global context
+  memcpy(&data, cdata->opts->ctx, sizeof(data));
+  data.parallel_data = NULL; // clear parallel data pointer in local copy
+  data.cancelled = 0;        // necessary in case we are re-running due to incorrect chunk start
 
-  struct zsv_opts *opts;
-  zsv_parser parser;
-  unsigned int errcount;
+#ifdef HAVE_PCRE2_8
+  // duplicate data.search_regexs for thread safety
+  if (data.search_regexs)
+    data.search_regexs = zsv_select_regexs_dup(data.search_regexs);
+#endif
 
-  unsigned int output_col_index; // num of cols printed in current row
+  struct zsv_opts opts = {0};
+  opts.max_columns = cdata->opts->max_columns;
+  opts.max_row_size = cdata->opts->max_row_size;
+  opts.delimiter = cdata->opts->delimiter;
+  opts.no_quotes = cdata->opts->no_quotes;
+  opts.verbose = cdata->opts->verbose;
+  opts.malformed_utf8_replace = cdata->opts->malformed_utf8_replace;
+  opts.errprintf = cdata->opts->errprintf;
+  opts.errf = cdata->opts->errf;
+  opts.errclose = cdata->opts->errclose;
+  opts.progress = cdata->opts->progress;
 
-  // output columns:
-  const char **col_argv;
-  int col_argc;
-  char *cols_to_print; // better: bitfield
+  // set up input
+  FILE *stream = fopen(data.input_path, "rb");
+  if (!stream) {
+    cdata->status = zsv_status_error;
+    return NULL;
+  }
+  fseeko(stream, cdata->start_offset, SEEK_SET);
 
-  struct {
-    unsigned int ix; // index of the input column to be output
-    struct {         // merge data: only used with --merge
-      struct zsv_select_uint_list *indexes, **last_index;
-    } merge;
-  } *out2in; // array of .output_cols_count length; out2in[x] = y where x = output ix, y = input info
+  // set up output
+  struct zsv_csv_writer_options writer_opts = {0};
 
-  unsigned int output_cols_count; // total count of output columns
+#ifdef __linux__
+  cdata->tmp_output_filename = zsv_get_temp_filename("zsl");
+  writer_opts.stream = fopen(cdata->tmp_output_filename, "wb");
+#else
+  if (!(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ)) &&
+      !(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ / 2)) &&
+      !(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ / 4)) &&
+      !(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ / 8)))
+    cdata->tmp_f = zsv_memfile_open(0);
+  writer_opts.stream = cdata->tmp_f;
+  writer_opts.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))zsv_memfile_write;
+#endif
 
-#define MAX_EXCLUSIONS 1024
-  const unsigned char *exclusions[MAX_EXCLUSIONS];
-  unsigned int exclusion_count;
+  if (!writer_opts.stream) {
+    cdata->status = zsv_status_memory;
+    fclose(stream);
+    return NULL;
+  }
+  data.csv_writer = zsv_writer_new(&writer_opts);
 
-  unsigned int header_name_count;
-  unsigned char **header_names;
+  // initialize parser
+  opts.stream = stream;
+  opts.row_handler = zsv_select_data_row_parallel;
+  opts.ctx = &data;
+  data.end_offset_limit = cdata->end_offset - cdata->start_offset; // set chunk boundary
+  data.parser = zsv_new(&opts);
 
-  const char *prepend_header; // --prepend-header
+  // process
+  enum zsv_status status = zsv_status_ok;
+  while (status == zsv_status_ok && !zsv_signal_interrupted && !data.cancelled)
+    status = zsv_parse_more(data.parser);
 
-  char header_finished;
+#ifndef ZSV_NOPARALLEL
+  if (!data.next_row_start)
+    // unlikely, but maybe conceivable if chunk split was not accurate and
+    // a correctly-split chunk's last row entirely ate the next incorrectly-split chunk
+    data.next_row_start = zsv_cum_scanned_length(data.parser) + 1;
+#endif
 
-  char embedded_lineend;
-
-  double sample_pct;
-
-  unsigned sample_every_n;
-
-  size_t data_rows_limit;
-  size_t skip_data_rows;
-
-  struct zsv_select_search_str *search_strings;
-
-  zsv_csv_writer csv_writer;
-
-  size_t overflow_size;
-
-  struct fixed fixed;
-
-  unsigned char whitespace_clean_flags;
-
-  unsigned char print_all_cols : 1;
-  unsigned char use_header_indexes : 1;
-  unsigned char no_trim_whitespace : 1;
-  unsigned char cancelled : 1;
-  unsigned char skip_this_row : 1;
-  unsigned char verbose : 1;
-  unsigned char clean_white : 1;
-  unsigned char prepend_line_number : 1;
-
-  unsigned char any_clean : 1;
-#define ZSV_SELECT_DISTINCT_MERGE 2
-  unsigned char distinct : 2; // 1 = ignore subsequent cols, ZSV_SELECT_DISTINCT_MERGE = merge subsequent cols (first
-                              // non-null value)
-  unsigned char unescape : 1;
-  unsigned char no_header : 1; // --no-header
-  unsigned char _ : 3;
-};
-
-enum zsv_select_column_index_selection_type {
-  zsv_select_column_index_selection_type_none = 0,
-  zsv_select_column_index_selection_type_single,
-  zsv_select_column_index_selection_type_range,
-  zsv_select_column_index_selection_type_lower_bounded
-};
-
-static enum zsv_select_column_index_selection_type zsv_select_column_index_selection(const unsigned char *arg,
-                                                                                     unsigned *lo, unsigned *hi);
-
-static inline void zsv_select_add_exclusion(struct zsv_select_data *data, const char *name) {
-  if (data->exclusion_count < MAX_EXCLUSIONS)
-    data->exclusions[data->exclusion_count++] = (const unsigned char *)name;
-}
-
-static inline unsigned char *zsv_select_get_header_name(struct zsv_select_data *data, unsigned in_ix) {
-  if (in_ix < data->header_name_count)
-    return data->header_names[in_ix];
+  // clean up
+  zsv_delete(data.parser);
+#ifdef HAVE_PCRE2_8
+  zsv_select_regexs_delete(data.search_regexs);
+#endif
+  fflush(stream);
+  fclose(stream);
+  zsv_writer_delete(data.csv_writer);
+#ifdef __linux__
+  fclose(writer_opts.stream);
+#endif
+  cdata->actual_next_row_start = data.next_row_start + cdata->start_offset;
+  cdata->status = zsv_status_ok;
   return NULL;
 }
 
-static inline char zsv_select_excluded_current_header_name(struct zsv_select_data *data, unsigned in_ix) {
-  if (data->exclusion_count) {
-    if (data->use_header_indexes) {
-      for (unsigned int ix = 0; ix < data->exclusion_count; ix++) {
-        unsigned i, j;
-        switch (zsv_select_column_index_selection(data->exclusions[ix], &i, &j)) {
-        case zsv_select_column_index_selection_type_none:
-          // not expected!
-          break;
-        case zsv_select_column_index_selection_type_single:
-          if (in_ix + 1 == i)
-            return 1;
-          break;
-        case zsv_select_column_index_selection_type_range:
-          if (i <= in_ix + 1 && in_ix + 1 <= j)
-            return 1;
-          break;
-        case zsv_select_column_index_selection_type_lower_bounded:
-          if (i <= in_ix + 1)
-            return 1;
-          break;
-        }
-      }
-    } else {
-      unsigned char *header_name = zsv_select_get_header_name(data, in_ix);
-      if (header_name) {
-        for (unsigned int i = 0; i < data->exclusion_count; i++)
-          if (!zsv_stricmp(header_name, data->exclusions[i]))
-            return 1;
-      }
-    }
-  }
-  return 0;
+static void *zsv_select_process_chunk(void *arg) {
+  struct zsv_chunk_data *cdata = (struct zsv_chunk_data *)arg;
+  return zsv_select_process_chunk_internal(cdata);
 }
+#endif // ZSV_NO_PARALLEL
 
-// zsv_select_find_header(): return 1-based index, or 0 if not found
-static int zsv_select_find_header(struct zsv_select_data *data, const unsigned char *header_name) {
-  if (header_name) {
-    for (unsigned int i = 0; i < data->output_cols_count; i++) {
-      unsigned char *prior_header_name = zsv_select_get_header_name(data, data->out2in[i].ix);
-      if (prior_header_name && !zsv_stricmp(header_name, prior_header_name))
-        return i + 1;
-    }
-  }
-  return 0;
-}
-
-static int zsv_select_add_output_col(struct zsv_select_data *data, unsigned in_ix) {
-  int err = 0;
-  if (data->output_cols_count < data->opts->max_columns) {
-    int found = zsv_select_find_header(data, zsv_select_get_header_name(data, in_ix));
-    if (data->distinct && found) {
-      if (data->distinct == ZSV_SELECT_DISTINCT_MERGE) {
-        // add this index
-        struct zsv_select_uint_list *ix = calloc(1, sizeof(*ix));
-        if (!ix)
-          err = zsv_printerr(1, "Out of memory!\n");
-        else {
-          ix->value = in_ix;
-          if (!data->out2in[found - 1].merge.indexes)
-            data->out2in[found - 1].merge.indexes = ix;
-          else
-            *data->out2in[found - 1].merge.last_index = ix;
-          data->out2in[found - 1].merge.last_index = &ix->next;
-        }
-      }
-      return err;
-    }
-    if (zsv_select_excluded_current_header_name(data, in_ix))
-      return err;
-    data->out2in[data->output_cols_count++].ix = in_ix;
-  }
-  return err;
-}
-
-// not very fast, but we don't need it to be
-static inline unsigned int str_array_ifind(const unsigned char *needle, unsigned char *haystack[], unsigned hay_count) {
-  for (unsigned int i = 0; i < hay_count; i++) {
-    if (!(needle && *needle) && !(haystack[i] && *haystack[i]))
-      return i + 1;
-    if (!(needle && *needle && haystack[i] && *haystack[i]))
-      continue;
-    if (!zsv_stricmp(needle, haystack[i]))
-      return i + 1;
-  }
-  return 0;
-}
-
-static int zsv_select_set_output_columns(struct zsv_select_data *data) {
-  int err = 0;
-  unsigned int header_name_count = data->header_name_count;
-  if (!data->col_argc) {
-    for (unsigned int i = 0; !err && i < header_name_count; i++)
-      err = zsv_select_add_output_col(data, i);
-  } else if (data->use_header_indexes) {
-    for (int arg_i = 0; !err && arg_i < data->col_argc; arg_i++) {
-      const char *arg = data->col_argv[arg_i];
-      unsigned i, j;
-      switch (zsv_select_column_index_selection((const unsigned char *)arg, &i, &j)) {
-      case zsv_select_column_index_selection_type_none:
-        zsv_printerr(1, "Invalid column index: %s", arg);
-        err = -1;
-        break;
-      case zsv_select_column_index_selection_type_single:
-        err = zsv_select_add_output_col(data, i - 1);
-        break;
-      case zsv_select_column_index_selection_type_range:
-        while (i <= j && i < data->opts->max_columns) {
-          err = zsv_select_add_output_col(data, i - 1);
-          i++;
-        }
-        break;
-      case zsv_select_column_index_selection_type_lower_bounded:
-        if (i) {
-          for (unsigned int k = i - 1; !err && k < header_name_count; k++)
-            err = zsv_select_add_output_col(data, k);
-        }
-        break;
-      }
-    }
-  } else { // using header names
-    for (int arg_i = 0; !err && arg_i < data->col_argc; arg_i++) {
-      // find the location of the matching header name, if any
-      unsigned int in_pos =
-        str_array_ifind((const unsigned char *)data->col_argv[arg_i], data->header_names, header_name_count);
-      if (!in_pos) {
-        fprintf(stderr, "Column %s not found\n", data->col_argv[arg_i]);
-        err = -1;
-      } else
-        err = zsv_select_add_output_col(data, in_pos - 1);
-    }
-  }
-  return err;
-}
-
-static void zsv_select_add_search(struct zsv_select_data *data, const char *value) {
-  struct zsv_select_search_str *ss = calloc(1, sizeof(*ss));
-  ss->value = value;
-  ss->len = value ? strlen(value) : 0;
-  ss->next = data->search_strings;
-  data->search_strings = ss;
-}
-
-#ifndef NDEBUG
-__attribute__((always_inline)) static inline
-#endif
-  unsigned char *
-  zsv_select_cell_clean(struct zsv_select_data *data, unsigned char *utf8_value, char *quoted, size_t *lenp) {
-
-  size_t len = *lenp;
-  // to do: option to replace or warn non-printable chars 0 - 31:
-  // vectorized scan
-  // replace or warn if found
-  if (UNLIKELY(data->unescape)) {
-    size_t new_len = zsv_strunescape_backslash(utf8_value, len);
-    if (new_len != len) {
-      *quoted = 1;
-      len = new_len;
-    }
-  }
-
-  if (UNLIKELY(!data->no_trim_whitespace))
-    utf8_value = (unsigned char *)zsv_strtrim(utf8_value, &len);
-
-  if (UNLIKELY(data->clean_white))
-    len = zsv_strwhite(utf8_value, len, data->whitespace_clean_flags); // to do: zsv_clean
-
-  if (UNLIKELY(data->embedded_lineend && *quoted)) {
-    unsigned char *tmp;
-    const char *to_replace[] = {"\r\n", "\r", "\n"};
-    for (int i = 0; i < 3; i++) {
-      while ((tmp = memmem(utf8_value, len, to_replace[i], strlen(to_replace[i])))) {
-        if (strlen(to_replace[i]) == 1)
-          *tmp = data->embedded_lineend;
-        else {
-          size_t right_len = utf8_value + len - tmp;
-          memmove(tmp + 1, tmp + 2, right_len - 2);
-          *tmp = data->embedded_lineend;
-          len--;
-        }
-      }
-    }
-    if (data->no_trim_whitespace)
-      utf8_value = (unsigned char *)zsv_strtrim(utf8_value, &len);
-  }
-  *lenp = len;
-  return utf8_value;
-}
-
-static inline char zsv_select_row_search_hit(struct zsv_select_data *data) {
-  if (!data->search_strings)
-    return 1;
-
-  unsigned int j = zsv_cell_count(data->parser);
-  for (unsigned int i = 0; i < j; i++) {
-    struct zsv_cell cell = zsv_get_cell(data->parser, i);
-    if (UNLIKELY(data->any_clean != 0))
-      cell.str = zsv_select_cell_clean(data, cell.str, &cell.quoted, &cell.len);
-    if (cell.len) {
-      for (struct zsv_select_search_str *ss = data->search_strings; ss; ss = ss->next)
-        if (ss->value && *ss->value && memmem(cell.str, cell.len, ss->value, ss->len))
-          return 1;
-    }
-  }
-  return 0;
-}
-
-static enum zsv_select_column_index_selection_type zsv_select_column_index_selection(const unsigned char *arg,
-                                                                                     unsigned *lo, unsigned *hi) {
-  enum zsv_select_column_index_selection_type result = zsv_select_column_index_selection_type_none;
-
-  unsigned int i = 0;
-  unsigned int j = 0;
-  int n = 0;
-  int k = sscanf((const char *)arg, "%u-%u%n", &i, &j, &n);
-  if (k == 2) {
-    if (n >= 0 && (size_t)n == strlen((const char *)arg) && i > 0 && j >= i)
-      result = zsv_select_column_index_selection_type_range;
-  } else {
-    k = sscanf((const char *)arg, "%u%n", &i, &n);
-    if (k == 1 && n >= 0 && (size_t)n == strlen((const char *)arg)) {
-      if (i > 0)
-        result = zsv_select_column_index_selection_type_single;
-    } else {
-      k = sscanf((const char *)arg, "%u-%n", &i, &n);
-      if (k == 1 && n >= 0 && (size_t)n == strlen((const char *)arg)) {
-        if (i > 0) {
-          result = zsv_select_column_index_selection_type_lower_bounded;
-          j = 0;
-        }
-      }
-    }
-  }
-  if (lo)
-    *lo = i;
-  if (hi)
-    *hi = j;
-  return result;
-}
-
-// zsv_select_check_exclusions_are_indexes(): return err
-static int zsv_select_check_exclusions_are_indexes(struct zsv_select_data *data) {
-  int err = 0;
-  for (unsigned int e = 0; e < data->exclusion_count; e++) {
-    const unsigned char *arg = data->exclusions[e];
-    if (zsv_select_column_index_selection(arg, NULL, NULL) == zsv_select_column_index_selection_type_none)
-      err = zsv_printerr(1, "Invalid column index: %s", arg);
-  }
-  return err;
-}
-
-// demo_random_bw_1_and_100(): this is a poor random number generator. you probably
-// will want to use a better one
-static double demo_random_bw_1_and_100(void) {
-#ifdef HAVE_ARC4RANDOM_UNIFORM
-  return (long double)(arc4random_uniform(1000000)) / 10000;
-#else
-  double max = 100.0;
-  unsigned int n;
-#ifdef HAVE_RAND_S
-  unsigned int tries = 0;
-  while (rand_s(&n) && tries++ < 10)
-    ;
-  return (double)n / ((double)UINT_MAX + 1) * max;
-#else
-  unsigned int umax = ~0;
-  n = rand();
-  return (double)n / ((double)(umax) + 1) * max;
-#endif
-#endif
-}
-
-// zsv_select_output_row(): output row data
+// zsv_select_output_data_row(): output row data (No change needed)
 static void zsv_select_output_data_row(struct zsv_select_data *data) {
   unsigned int cnt = data->output_cols_count;
   char first = 1;
@@ -430,8 +195,14 @@ static void zsv_select_output_data_row(struct zsv_select_data *data) {
   for (unsigned int i = 0; i < cnt; i++) { // for each output column
     unsigned int in_ix = data->out2in[i].ix;
     struct zsv_cell cell = zsv_get_cell(data->parser, in_ix);
-    if (UNLIKELY(data->any_clean != 0))
+    if (UNLIKELY(data->any_clean != 0)) {
+      // leading/trailing white may have been converted to NULL for regex search
+      while (cell.len && *cell.str == '\0')
+        cell.str++, cell.len--;
+      while (cell.len && cell.str[cell.len - 1] == '\0')
+        cell.len--;
       cell.str = zsv_select_cell_clean(data, cell.str, &cell.quoted, &cell.len);
+    }
     if (VERY_UNLIKELY(data->distinct == ZSV_SELECT_DISTINCT_MERGE)) {
       if (UNLIKELY(cell.len == 0)) {
         for (struct zsv_select_uint_list *ix = data->out2in[i].merge.indexes; ix; ix = ix->next) {
@@ -453,10 +224,10 @@ static void zsv_select_output_data_row(struct zsv_select_data *data) {
 
 static void zsv_select_data_row(void *ctx) {
   struct zsv_select_data *data = ctx;
-  data->data_row_count++;
-
   if (UNLIKELY(zsv_cell_count(data->parser) == 0 || data->cancelled))
     return;
+
+  data->data_row_count++;
 
   // check if we should skip this row
   data->skip_this_row = 0;
@@ -501,10 +272,83 @@ static void zsv_select_print_header_row(struct zsv_select_data *data) {
   zsv_writer_cell_prepend(data->csv_writer, NULL);
 }
 
+#ifndef ZSV_NO_PARALLEL
+static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *path, size_t header_row_end) {
+  if (data->num_chunks <= 1 || !path || !strcmp(path, "-")) {
+    data->run_in_parallel = 0;
+    return 0;
+  }
+
+  struct zsv_chunk_position *offsets =
+    zsv_guess_file_chunks(path, data->num_chunks, ZSV_SELECT_PARALLEL_MIN_BYTES, header_row_end + 1
+#ifndef ZSV_NO_ONLY_CRLF
+                          ,
+                          data->opts->only_crlf_rowend
+#endif
+    );
+  if (!offsets)
+    return -1; // fall back to serial
+
+  if (!(data->parallel_data = zsv_parallel_data_new(data->num_chunks))) {
+    zsv_free_chunks(offsets);
+    fprintf(stderr, "Insufficient memory to parallelize!\n");
+    return zsv_status_memory;
+  }
+
+  data->run_in_parallel = 1;
+  data->parallel_data->main_data = data;
+  data->end_offset_limit = offsets[0].end;
+
+  for (unsigned int i = 0; i < data->num_chunks; i++) {
+    data->parallel_data->chunk_data[i].start_offset = offsets[i].start;
+    data->parallel_data->chunk_data[i].end_offset = offsets[i].end;
+    if (data->opts->verbose)
+      fprintf(stderr, "Chunk %i: %zu - %zu\n", i, (size_t)offsets[i].start, (size_t)offsets[i].end);
+  }
+  zsv_free_chunks(offsets);
+  return 0;
+}
+#endif // ZSV_NO_PARALLEL
+
 static void zsv_select_header_finish(struct zsv_select_data *data) {
-  if (zsv_select_set_output_columns(data))
+  if (zsv_select_set_output_columns(data)) {
     data->cancelled = 1;
-  else {
+    return;
+  }
+#ifndef ZSV_NO_PARALLEL
+  // set up parallelization; on error, fall back to serial
+  // TO DO: option to exit on error (instead of fall back)
+  if (data->input_path && data->num_chunks > 1) {
+    size_t header_row_end = zsv_cum_scanned_length(data->parser);
+    zsv_setup_parallel_chunks(data, data->input_path, header_row_end);
+  }
+  if (data->opts->verbose)
+    fprintf(stderr, "Running %s\n", data->run_in_parallel ? "parallel" : "single-threaded");
+
+  if (data->run_in_parallel) {
+    struct zsv_parallel_data *pdata = data->parallel_data;
+    zsv_select_print_header_row(data);
+
+    // start worker threads
+    for (unsigned int i = 1; i < data->num_chunks; i++) {
+      struct zsv_chunk_data *cdata = &pdata->chunk_data[i];
+      cdata->id = i;
+      cdata->opts = data->opts;
+
+      int create_status = pthread_create(&pdata->threads[i - 1], NULL, zsv_select_process_chunk, cdata);
+      if (create_status != 0) {
+        data->cancelled = 1;
+        zsv_printerr(1, "Error creating worker thread for chunk %d: %s", i, strerror(create_status));
+        return;
+      }
+    }
+
+    // main thread processes chunk 1
+    zsv_set_row_handler(data->parser, zsv_select_data_row_parallel);
+  } else
+#endif
+  {
+    // no parallelization
     zsv_select_print_header_row(data);
     zsv_set_row_handler(data->parser, zsv_select_data_row);
   }
@@ -539,80 +383,15 @@ static void zsv_select_header_row(void *ctx) {
   zsv_select_header_finish(data);
 }
 
-#define ZSV_SELECT_MAX_COLS_DEFAULT 1024
-#define ZSV_SELECT_MAX_COLS_DEFAULT_S "1024"
-
-const char *zsv_select_usage_msg[] = {
-  APPNAME ": extracts and outputs specified columns",
-  "",
-  "Usage: " APPNAME " [filename] [options] [-- col_specifier [... col_specifier]]",
-  "       where col_specifier is a column name or, if the -n option is used,",
-  "       a column index (starting at 1) or index range in the form of n-m",
-  "       e.g. " APPNAME " -n file.csv -- 1 4-6 50 10",
-  "            " APPNAME " file.csv -- first_col fiftieth_column \"Tenth Column\"",
-  "",
-  "Note: Outputs the columns specified after '--' separator, or all columns if omitted.",
-  "",
-  "Options:",
-  "  -b,--with-bom                : output with BOM",
-  "  --fixed <offset1,offset2,..> : parse as fixed-width text; use given CSV list of positive integers for",
-  "                                 cell and indexes",
-  "  --fixed-auto                 : parse as fixed-width text; derive widths from first row in input data (max 256k)",
-  "                                 assumes ASCII whitespace; multi-byte whitespace is not counted as whitespace",
-  "  --fixed-auto-max-lines       : maximum number of lines to use in calculating fixed widths",
-#ifndef ZSV_CLI
-  "  -v,--verbose                 : verbose output",
-#endif
-  "  -H,--head <n>                : (head) only process the first n rows of input data (including header)",
-  "  --no-header                  : do not output header row",
-  "  --prepend-header <value>     : prepend each column header with the given text <value>",
-  "  -s,--search <value>          : only output rows with at least one cell containing <value>",
-  // TO DO: " -s,--search /<pattern>/modifiers: search on regex pattern; modifiers include 'g' (global) and 'i'
-  // (case-insensitive)",
-  "  --sample-every <num_of_rows> : output a sample consisting of the first row, then every nth row",
-  "  --sample-pct <percentage>    : output a randomly-selected sample (32 bits of randomness) of n%% of input rows",
-  "  --distinct                   : skip subsequent occurrences of columns with the same name",
-  "  --merge                      : merge subsequent occurrences of columns with the same name",
-  "                                 outputting first non-null value",
-  // --rename: like distinct, but instead of removing cols with dupe names, renames them, trying _<n> for n up to max
-  // cols
-  "  -e <embedded_lineend_char>   : char to replace embedded lineend. If left empty, embedded lineends are preserved.",
-  "                                 If the provided string begins with 0x, it will be interpreted as the hex",
-  "                                 representation of a string.",
-  "  -x <column>                  : exclude the indicated column. can be specified more than once",
-  "  -N,--line-number             : prefix each row with the row number",
-  "  -n                           : provided column indexes are numbers corresponding to column positions",
-  "                                 (starting with 1), instead of names",
-#ifndef ZSV_CLI
-  "  -T                           : input is tab-delimited, instead of comma-delimited",
-  "  -O,--other-delim <delim>     : input is delimited with the given char",
-  "                                 Note: This option does not support quoted values with embedded delimiters.",
-#endif
-  "  --unescape                   : escape any backslash-escaped input e.g. \\t, \\n, \\r such as output from `2tsv`",
-  "  -w,--whitespace-clean        : normalize all whitespace to space or newline, single-char (non-consecutive)",
-  "                                 occurrences",
-  "  --whitespace-clean-no-newline: clean whitespace and remove embedded newlines",
-  "  -W,--no-trim                 : do not trim whitespace",
-#ifndef ZSV_CLI
-  "  -C <max_num_of_columns>      : defaults to " ZSV_SELECT_MAX_COLS_DEFAULT_S,
-  "  -L,--max-row-size <n>        : set the maximum memory used for a single row",
-  "                                 Default: " ZSV_ROW_MAX_SIZE_MIN_S " (min), " ZSV_ROW_MAX_SIZE_DEFAULT_S " (max)",
-#endif
-  "  -o <filename>                : filename to save output to",
-  NULL,
-};
-
-static void zsv_select_usage(void) {
-  for (size_t i = 0; zsv_select_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", zsv_select_usage_msg[i]);
-}
-
 static void zsv_select_cleanup(struct zsv_select_data *data) {
   if (data->opts->stream && data->opts->stream != stdin)
     fclose(data->opts->stream);
 
   zsv_writer_delete(data->csv_writer);
   zsv_select_search_str_delete(data->search_strings);
+#ifdef HAVE_PCRE2_8
+  zsv_select_regexs_delete(data->search_regexs);
+#endif
 
   if (data->distinct == ZSV_SELECT_DISTINCT_MERGE) {
     for (unsigned int i = 0; i < data->output_cols_count; i++) {
@@ -629,138 +408,98 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
   free(data->header_names);
 
   free(data->fixed.offsets);
+
+#ifndef ZSV_NO_PARALLEL
+  if (data->run_in_parallel)
+    zsv_parallel_data_delete(data->parallel_data);
+#endif
 }
 
-/**
- * Get a list of ending positions for each column name based on the ending position of each column name
- * where the first row is of the below form (dash = whitespace):
- * ----COLUMN1----COLUMN2-----COLUMN3----
- *
- * Approach:
- * - read the first [256k] of data [to do: alternatively, read only the first line]
- * - merge all read lines into a single line where line[i] = 'x' for each position i at which
- *   a non-white char appeared in any scanned line
- * - from the merged line, find each instance of white followed by not-white,
- *   but ignore the first instance of it
- */
-static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struct zsv_opts *opts, unsigned char *buff,
-                                                      size_t buffsize, size_t *buff_used, char verbose) {
-  size_t max_lines = fixed->max_lines ? fixed->max_lines : 9999999999;
-  enum zsv_status stat = zsv_status_ok;
+#define ARG_require_val(tgt, conv_func)                                                                                \
+  do {                                                                                                                 \
+    if (++arg_i >= argc) {                                                                                             \
+      stat = zsv_printerr(1, "%s option requires parameter", argv[arg_i - 1]);                                         \
+      goto zsv_select_main_done;                                                                                       \
+    }                                                                                                                  \
+    tgt = conv_func(argv[arg_i]);                                                                                      \
+  } while (0)
 
-  fixed->count = 0;
-  char *line = calloc(buffsize, sizeof(*buff));
-  if (!line) {
-    stat = zsv_status_memory;
-    goto auto_detect_fixed_column_sizes_exit;
-  }
-  memset(line, ' ', buffsize);
+#ifndef ZSV_NO_PARALLEL
+static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_stream) {
+  if (!data->run_in_parallel || !data->parallel_data)
+    return 0;
 
-  *buff_used = fread(buff, 1, buffsize, opts->stream);
-  if (!*buff_used) {
-    stat = zsv_status_no_more_input;
-    goto auto_detect_fixed_column_sizes_exit;
-  }
+  fflush(dest_stream);
+#ifdef __linux__
+  int out_fd = fileno(dest_stream);
+#endif
+  int status = 0;
 
-  size_t lines_read = 0;
-  size_t line_end = 0;
-  size_t line_cursor = 0;
-  char first = 1;
-  char was_space = 1;
-  char was_line_end = 0;
-  for (size_t i = 0; i < *buff_used && (!line_end || max_lines == 0 || lines_read < max_lines);
-       i++, line_cursor = was_line_end ? 0 : line_cursor + 1) {
-    was_line_end = 0;
-    // TO DO: support multi-byte unicode chars?
-    switch (buff[i]) {
-    case '\n':
-    case '\r':
-      if (line_cursor > line_end)
-        line_end = line_cursor;
-      was_line_end = 1;
-      was_space = 1;
-      lines_read++;
-      break;
-    case '\t':
-    case '\v':
-    case '\f':
-    case ' ':
-      was_space = 1;
-      break;
-    default:
-      line[line_cursor] = 'x';
-      if (was_space) {
-        if (!line_end) { // only count columns for the first line
-          if (first)
-            first = 0;
-          else
-            fixed->count++;
-        }
+  for (unsigned int i = 0; i < data->num_chunks - 1; i++) {
+    pthread_join(data->parallel_data->threads[i], NULL);
+
+    struct zsv_chunk_data *next_chunk = &data->parallel_data->chunk_data[i + 1];
+    off_t actual_next_row_start =
+      i == 0 ? data->next_row_start : data->parallel_data->chunk_data[i].actual_next_row_start;
+    off_t expected_next_row_start = next_chunk->start_offset;
+    if (actual_next_row_start > expected_next_row_start) {
+      if (data->opts->verbose) {
+        fprintf(stderr, "Chunk overlap detected (Prev End: %zu, Next Start: %zu). Reprocessing chunk %d.\n",
+                (size_t)actual_next_row_start, (size_t)expected_next_row_start, i + 1);
       }
-      was_space = 0;
+
+      // clean up invalid results from the worker thread
+      zsv_chunk_data_clear_output(next_chunk);
+
+      // adjust the start offset to the actual next row start
+      next_chunk->start_offset = actual_next_row_start;
+
+      // reprocess synchronously on the main thread
+      zsv_select_process_chunk_internal(next_chunk);
+
+      if (next_chunk->status != zsv_status_ok) // reprocessing failed!
+        status = zsv_status_error;
     }
   }
-  if (!first)
-    fixed->count++;
 
-  if (!line_end) {
-    stat = zsv_status_error;
-    goto auto_detect_fixed_column_sizes_exit;
-  }
+  // join all of the output files into a single output file
+  for (unsigned int i = 1; i < data->num_chunks && status == 0; i++) {
+    struct zsv_chunk_data *c = &data->parallel_data->chunk_data[i];
+    if (c->skip)
+      continue;
+#ifdef __linux__
+    int in_fd = open(c->tmp_output_filename, O_RDONLY);
+    if (in_fd < 0) {
+      zsv_printerr(1, "Error opening chunk %s: %s", c->tmp_output_filename, strerror(errno));
+      status = zsv_status_error;
+      break;
+    }
 
-  if (verbose)
-    fprintf(stderr, "Calculating %zu columns from line:\n%.*s\n", fixed->count, (int)line_end, line);
-
-  // allocate offsets
-  free(fixed->offsets);
-  fixed->offsets = NULL; // unnecessary line to silence codeQL false positive
-  fixed->offsets = calloc(fixed->count, sizeof(*fixed->offsets));
-  if (!fixed->offsets) {
-    stat = zsv_status_memory;
-    goto auto_detect_fixed_column_sizes_exit;
-  }
-
-  // now we have our merged line, so calculate the sizes
-  // do the loop again, but assign values this time
-  int count = 0;
-  was_space = 1;
-  first = 1;
-  if (verbose)
-    fprintf(stderr, "Running --fixed ");
-  size_t i;
-  for (i = 0; i < line_end; i++) {
-    if (line[i] == 'x') {
-      if (was_space) {
-        if (first)
-          first = 0;
-        else {
-          if (verbose)
-            fprintf(stderr, "%s%zu", count ? "," : "", i);
-          fixed->offsets[count++] = i;
-        }
+    struct stat st;
+    if (fstat(in_fd, &st) == 0) {
+      long copied = zsv_concatenate_copy(out_fd, in_fd, st.st_size);
+      if (copied != st.st_size) {
+        zsv_printerr(1, "Warning: Partial copy chunk %d (%lli/%lli)", i, copied, (long long)st.st_size);
+        status = zsv_status_error;
       }
-      was_space = 0;
-    } else
-      was_space = 1;
+    } else {
+      status = zsv_status_error;
+    }
+    close(in_fd);
+#else
+    zsv_memfile_rewind(c->tmp_f);
+    if (zsv_copy_filelike_ptr(
+          c->tmp_f, (size_t(*)(void *restrict ptr, size_t size, size_t nitems, void *restrict stream))zsv_memfile_read,
+          dest_stream,
+          (size_t(*)(const void *restrict ptr, size_t size, size_t nitems, void *restrict stream))fwrite)) {
+      perror("zsv temp mem file");
+      status = zsv_status_error;
+    }
+#endif
   }
-  if (!first) {
-    if (verbose)
-      fprintf(stderr, "%s%zu", count ? "," : "", i);
-    if (i)
-      fixed->offsets[count++] = i;
-    fixed->count = count;
-  }
-  if (verbose)
-    fprintf(stderr, "\n");
-
-  // add a buffer to the last column in case subsequent lines are longer than what we scanned
-  if (fixed->count)
-    fixed->offsets[fixed->count - 1] += 50;
-
-auto_detect_fixed_column_sizes_exit:
-  free(line);
-  return stat;
+  return status;
 }
+#endif
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
                                struct zsv_prop_handler *custom_prop_handler) {
@@ -769,238 +508,243 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     return zsv_status_ok;
   }
 
-  char fixed_auto = 0;
   struct zsv_select_data data = {0};
   data.opts = opts;
-  const char *input_path = NULL;
   struct zsv_csv_writer_options writer_opts = zsv_writer_get_default_opts();
   int col_index_arg_i = 0;
   unsigned char *preview_buff = NULL;
   size_t preview_buff_len = 0;
-
   enum zsv_status stat = zsv_status_ok;
+
   for (int arg_i = 1; stat == zsv_status_ok && arg_i < argc; arg_i++) {
-    if (!strcmp(argv[arg_i], "--")) {
+    const char *arg = argv[arg_i];
+    if (!strcmp(arg, "--")) {
       col_index_arg_i = arg_i + 1;
       break;
     }
-    if (!strcmp(argv[arg_i], "-b") || !strcmp(argv[arg_i], "--with-bom"))
+
+    if (!strcmp(arg, "-b") || !strcmp(arg, "--with-bom"))
       writer_opts.with_bom = 1;
-    else if (!strcmp(argv[arg_i], "--fixed-auto-max-lines")) {
-      if (++arg_i < argc && atoi(argv[arg_i]) > 0)
-        data.fixed.max_lines = (size_t)atoi(argv[arg_i]);
-      else
-        stat = zsv_printerr(1, "%s option requires value > 0", argv[arg_i - 1]);
-      ;
-    } else if (!strcmp(argv[arg_i], "--fixed-auto"))
-      fixed_auto = 1;
-    else if (!strcmp(argv[arg_i], "--fixed")) {
-      if (++arg_i >= argc)
-        stat = zsv_printerr(1, "%s option requires parameter", argv[arg_i - 1]);
-      else { // parse offsets
-        data.fixed.count = 1;
-        for (const char *s = argv[arg_i]; *s; s++)
-          if (*s == ',')
-            data.fixed.count++;
-        free(data.fixed.offsets);
-        data.fixed.offsets = calloc(data.fixed.count, sizeof(*data.fixed.offsets));
-        if (data.fixed.offsets == NULL) {
-          stat = zsv_printerr(1, "Out of memory!\n");
-          break;
-        }
-        size_t count = 0;
-        const char *start = argv[arg_i];
-        for (const char *end = argv[arg_i];; end++) {
-          if (*end == ',' || *end == '\0') {
-            if (sscanf(start, "%zu,", &data.fixed.offsets[count++]) != 1) {
-              stat = zsv_printerr(1, "Invalid offset: %.*s\n", end - start, start);
-              break;
-            } else if (*end == '\0')
-              break;
-            else {
-              start = end + 1;
-              if (*start == '\0')
-                break;
-            }
-          }
-        }
+    else if (!strcmp(arg, "--fixed-auto-max-lines"))
+      ARG_require_val(data.fixed.max_lines, atoi);
+    else if (!strcmp(arg, "--fixed-auto"))
+      data.fixed.autodetect = 1;
+    else if (!strcmp(arg, "--fixed")) {
+      if (++arg_i >= argc) {
+        stat = zsv_printerr(1, "--fixed requires val");
+        goto zsv_select_main_done;
       }
-    } else if (!strcmp(argv[arg_i], "--distinct"))
+      data.fixed.count = 1;
+      for (const char *s = argv[arg_i]; *s; s++)
+        if (*s == ',')
+          data.fixed.count++;
+      free(data.fixed.offsets);
+      data.fixed.offsets = calloc(data.fixed.count, sizeof(*data.fixed.offsets));
+      if (!data.fixed.offsets) {
+        stat = zsv_printerr(1, "Out of memory!");
+        goto zsv_select_main_done;
+      }
+      size_t count = 0;
+      char *dup = strdup(argv[arg_i]), *tok;
+      for (tok = strtok(dup, ","); tok && count < data.fixed.count; tok = strtok(NULL, ",")) {
+        if (sscanf(tok, "%zu", &data.fixed.offsets[count++]) != 1)
+          stat = zsv_printerr(1, "Invalid offset: %s", tok);
+      }
+      free(dup);
+    } else if (!strcmp(arg, "--distinct"))
       data.distinct = 1;
-    else if (!strcmp(argv[arg_i], "--merge"))
+    else if (!strcmp(arg, "--merge"))
       data.distinct = ZSV_SELECT_DISTINCT_MERGE;
-    else if (!strcmp(argv[arg_i], "-o") || !strcmp(argv[arg_i], "--output")) {
-      if (++arg_i >= argc)
-        stat = zsv_printerr(1, "%s option requires parameter", argv[arg_i - 1]);
-      else if (writer_opts.stream && writer_opts.stream != stdout)
-        stat = zsv_printerr(1, "Output file specified more than once");
-      else if (!(writer_opts.stream = fopen(argv[arg_i], "wb")))
-        stat = zsv_printerr(1, "Unable to open for writing: %s", argv[arg_i]);
-      else if (data.opts->verbose)
-        fprintf(stderr, "Opened %s for write\n", argv[arg_i]);
-    } else if (!strcmp(argv[arg_i], "-N") || !strcmp(argv[arg_i], "--line-number")) {
+    else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
+      if (writer_opts.stream && writer_opts.stream != stdout)
+        stat = zsv_printerr(1, "Output specified twice");
+      else {
+        ARG_require_val(arg, (const char *));
+        if (!(writer_opts.stream = fopen(arg, "wb")))
+          stat = zsv_printerr(1, "Unable to open %s", arg);
+      }
+    } else if (!strcmp(arg, "-N") || !strcmp(arg, "--line-number"))
       data.prepend_line_number = 1;
-    } else if (!strcmp(argv[arg_i], "-n"))
+    else if (!strcmp(arg, "-n"))
       data.use_header_indexes = 1;
-    else if (!strcmp(argv[arg_i], "-s") || !strcmp(argv[arg_i], "--search")) {
-      arg_i++;
-      if (arg_i < argc && strlen(argv[arg_i]))
-        zsv_select_add_search(&data, argv[arg_i]);
-      else
-        stat = zsv_printerr(1, "%s option requires a value", argv[arg_i - 1]);
-    } else if (!strcmp(argv[arg_i], "-v") || !strcmp(argv[arg_i], "--verbose")) {
+    else if (!strcmp(arg, "-s") || !strcmp(arg, "--search")) {
+      const char *v;
+      ARG_require_val(v, (const char *));
+      zsv_select_add_search(&data, v);
+    }
+#ifdef HAVE_PCRE2_8
+    else if (!strcmp(arg, "--regex-search")) {
+      const char *v;
+      ARG_require_val(v, (const char *));
+      zsv_select_add_regex(&data, v);
+    }
+#endif
+    else if (!strcmp(arg, "-v") || !strcmp(arg, "--verbose"))
       data.verbose = 1;
-    } else if (!strcmp(argv[arg_i], "--unescape")) {
+    else if (!strcmp(arg, "--unescape"))
       data.unescape = 1;
-    } else if (!strcmp(argv[arg_i], "-w") || !strcmp(argv[arg_i], "--whitespace-clean"))
+    else if (!strcmp(arg, "-w") || !strcmp(arg, "--whitespace-clean"))
       data.clean_white = 1;
-    else if (!strcmp(argv[arg_i], "--whitespace-clean-no-newline")) {
+    else if (!strcmp(arg, "--whitespace-clean-no-newline")) {
       data.clean_white = 1;
       data.whitespace_clean_flags = 1;
-    } else if (!strcmp(argv[arg_i], "-W") || !strcmp(argv[arg_i], "--no-trim")) {
+    } else if (!strcmp(arg, "-W") || !strcmp(arg, "--no-trim"))
       data.no_trim_whitespace = 1;
-    } else if (!strcmp(argv[arg_i], "--sample-every")) {
-      arg_i++;
-      if (!(arg_i < argc))
-        stat = zsv_printerr(1, "--sample-every option requires a value");
-      else if (atoi(argv[arg_i]) <= 0)
-        stat = zsv_printerr(1, "--sample-every value should be an integer > 0");
-      else
-        data.sample_every_n = atoi(argv[arg_i]); // TO DO: check for overflow
-    } else if (!strcmp(argv[arg_i], "--sample-pct")) {
-      arg_i++;
-      double d;
-      if (!(arg_i < argc))
-        stat = zsv_printerr(1, "--sample-pct option requires a value");
-      else if (!(d = atof(argv[arg_i])) && d > 0 && d < 100)
-        stat = zsv_printerr(
-          -1, "--sample-pct value should be a number between 0 and 100 (e.g. 1.5 for a sample of 1.5%% of the data");
-      else
-        data.sample_pct = d;
-    } else if (!strcmp(argv[arg_i], "--prepend-header")) {
-      int err1 = 0;
-      data.prepend_header = zsv_next_arg(++arg_i, argc, argv, &err1);
-      if (err1)
+    else if (!strcmp(arg, "--sample-every"))
+      ARG_require_val(data.sample_every_n, atoi);
+    else if (!strcmp(arg, "--sample-pct"))
+      ARG_require_val(data.sample_pct, atof);
+    else if (!strcmp(arg, "--prepend-header")) {
+      int err = 0;
+      data.prepend_header = zsv_next_arg(++arg_i, argc, argv, &err);
+      if (err)
         stat = zsv_status_error;
-    } else if (!strcmp(argv[arg_i], "--no-header"))
+    } else if (!strcmp(arg, "--no-header"))
       data.no_header = 1;
-    else if (!strcmp(argv[arg_i], "-H") || !strcmp(argv[arg_i], "--head")) {
-      if (!(arg_i + 1 < argc && atoi(argv[arg_i + 1]) >= 0))
-        stat = zsv_printerr(1, "%s option value invalid: should be positive integer; got %s", argv[arg_i],
-                            arg_i + 1 < argc ? argv[arg_i + 1] : "");
-      else
-        data.data_rows_limit = atoi(argv[++arg_i]) + 1;
-    } else if (!strcmp(argv[arg_i], "-D") || !strcmp(argv[arg_i], "--skip-data")) {
-      ++arg_i;
-      if (!(arg_i < argc && atoi(argv[arg_i]) >= 0))
-        stat = zsv_printerr(1, "%s option value invalid: should be positive integer", argv[arg_i - 1]);
-      else
-        data.skip_data_rows = atoi(argv[arg_i]);
-    } else if (!strcmp(argv[arg_i], "-e")) {
-      ++arg_i;
-      if (data.embedded_lineend)
-        stat = zsv_printerr(1, "-e option specified more than once");
-      else if (strlen(argv[arg_i]) != 1)
-        stat = zsv_printerr(1, "-e option value must be a single character");
-      else if (arg_i < argc)
-        data.embedded_lineend = *argv[arg_i];
-      else
-        stat = zsv_printerr(1, "-e option requires a value");
-    } else if (!strcmp(argv[arg_i], "-x")) {
-      arg_i++;
-      if (!(arg_i < argc))
-        stat = zsv_printerr(1, "%s option requires a value", argv[arg_i - 1]);
-      else
-        zsv_select_add_exclusion(&data, argv[arg_i]);
-    } else if (*argv[arg_i] == '-')
-      stat = zsv_printerr(1, "Unrecognized argument: %s", argv[arg_i]);
-    else if (data.opts->stream)
-      stat = zsv_printerr(1, "Input file was specified, cannot also read: %s", argv[arg_i]);
-    else if (!(data.opts->stream = fopen(argv[arg_i], "rb")))
-      stat = zsv_printerr(1, "Could not open for reading: %s", argv[arg_i]);
+    else if (!strcmp(arg, "-H") || !strcmp(arg, "--head")) {
+      int val;
+      ARG_require_val(val, atoi);
+      data.data_rows_limit = val + 1;
+    } else if (!strcmp(arg, "-D") || !strcmp(arg, "--skip-data"))
+      ARG_require_val(data.skip_data_rows, atoi);
+#ifndef ZSV_NO_PARALLEL
+    else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs"))
+      ARG_require_val(data.num_chunks, atoi);
+    else if (!strcmp(arg, "--parallel")) {
+      data.num_chunks = zsv_get_number_of_cores();
+      if (data.num_chunks < 2) {
+        fprintf(stderr, "Warning: --parallel specified but only one core found; using -j 4 instead");
+        data.num_chunks = 4;
+      }
+    }
+#endif
+    else if (!strcmp(arg, "-e")) {
+      const char *v;
+      ARG_require_val(v, (const char *));
+      data.embedded_lineend = *v;
+    } else if (!strcmp(arg, "-x")) {
+      const char *v;
+      ARG_require_val(v, (const char *));
+      zsv_select_add_exclusion(&data, v);
+    } else if (*arg == '-')
+      stat = zsv_printerr(1, "Unrecognized argument: %s", arg);
+    else if (data.input_path)
+      stat = zsv_printerr(1, "Input specified twice");
     else
-      input_path = argv[arg_i];
+      data.input_path = arg;
   }
 
-  if (stat == zsv_status_ok) {
-    if (data.sample_pct)
-      srand(time(0));
+  if (stat != zsv_status_ok)
+    goto zsv_select_main_done;
 
-    if (data.use_header_indexes && stat == zsv_status_ok)
-      stat = zsv_select_check_exclusions_are_indexes(&data);
+  // configuration & setup
+  if (!writer_opts.stream)
+    writer_opts.stream = stdout;
+  if (data.sample_pct)
+    srand(time(0));
+  if (data.use_header_indexes && (stat = zsv_select_check_exclusions_are_indexes(&data)))
+    goto zsv_select_main_done;
+
+#ifndef ZSV_NO_PARALLEL
+  if (data.num_chunks > 1) {
+    enum zsv_chunk_status chstat = zsv_chunkable(data.input_path, data.opts);
+    if (chstat != zsv_chunk_status_ok) {
+      stat = zsv_printerr(1, "%s", zsv_chunk_status_str(chstat));
+      goto zsv_select_main_done;
+    }
   }
+#endif
 
-  if (stat == zsv_status_ok) {
-    if (!data.opts->stream) {
+  // input stream
+  if (data.input_path) {
+    if (!(data.opts->stream = fopen(data.input_path, "rb")))
+      stat = zsv_printerr(1, "Cannot open %s", data.input_path);
+  } else {
 #ifdef NO_STDIN
-      stat = zsv_printerr(1, "Please specify an input file");
+    stat = zsv_printerr(1, "Input file required");
+    goto zsv_select_main_done;
 #else
-      data.opts->stream = stdin;
+    data.opts->stream = stdin;
+#endif
+  }
+
+  // auto-fixed column detection
+  if (data.fixed.autodetect) { // fixed-auto flag
+    if (data.fixed.count)
+      stat = zsv_printerr(1, "--fixed-auto cannot be used with --fixed");
+    else {
+      size_t bsz = 1024 * 256;
+      if (!(preview_buff = calloc(bsz, 1)))
+        stat = zsv_status_memory;
+      else
+        stat =
+          auto_detect_fixed_column_sizes(&data.fixed, data.opts, preview_buff, bsz, &preview_buff_len, opts->verbose);
+    }
+  }
+  if (stat != zsv_status_ok)
+    goto zsv_select_main_done;
+
+  // parser initialization
+  if (col_index_arg_i) {
+    data.col_argv = &argv[col_index_arg_i];
+    data.col_argc = argc - col_index_arg_i;
+  }
+
+  data.header_names = calloc(data.opts->max_columns, sizeof(*data.header_names));
+  data.out2in = calloc(data.opts->max_columns, sizeof(*data.out2in));
+  data.csv_writer = zsv_writer_new(&writer_opts);
+
+  if (!data.header_names || !data.out2in || !data.csv_writer) {
+    stat = zsv_status_memory;
+    goto zsv_select_main_done;
+  }
+
+  // execution
+  data.opts->row_handler = zsv_select_header_row;
+  data.opts->ctx = &data;
+
+  if (zsv_new_with_properties(data.opts, custom_prop_handler, data.input_path, &data.parser) == zsv_status_ok) {
+    data.any_clean = !data.no_trim_whitespace || data.clean_white || data.embedded_lineend || data.unescape;
+
+    // apply fixed offsets (whether from --fixed arg or --fixed-auto detection)
+    if (data.fixed.count && zsv_set_fixed_offsets(data.parser, data.fixed.count, data.fixed.offsets) != zsv_status_ok)
+      data.cancelled = 1;
+
+    unsigned char writer_buff[512];
+    zsv_writer_set_temp_buff(data.csv_writer, writer_buff, sizeof(writer_buff));
+
+    zsv_handle_ctrl_c_signal();
+
+    enum zsv_status p_stat = zsv_status_ok;
+    if (preview_buff_len)
+      p_stat = zsv_parse_bytes(data.parser, preview_buff, preview_buff_len);
+
+    while (p_stat == zsv_status_ok && !zsv_signal_interrupted && !data.cancelled)
+      p_stat = zsv_parse_more(data.parser);
+
+    if (p_stat == zsv_status_no_more_input) {
+      zsv_finish(data.parser);
+#ifndef ZSV_NO_PARALLEL
+      // unlikely, but maybe conceivable if chunk split was not accurate and
+      // a correctly-split chunk's last row entirely ate the next incorrectly-split chunk
+      if (data.run_in_parallel && !data.next_row_start)
+        data.next_row_start = zsv_cum_scanned_length(data.parser) + 1;
 #endif
     }
+    zsv_delete(data.parser);
 
-    if (stat == zsv_status_ok && fixed_auto) {
-      if (data.fixed.offsets)
-        stat = zsv_printerr(zsv_status_error, "Please specify either --fixed-auto or --fixed, but not both");
-      else if (data.opts->insert_header_row)
-        stat = zsv_printerr(zsv_status_error, "--fixed-auto can not be specified together with --header-row");
-      else {
-        size_t buffsize = 1024 * 256; // read the first
-        preview_buff = calloc(buffsize, sizeof(*preview_buff));
-        if (!preview_buff)
-          stat = zsv_printerr(zsv_status_memory, "Out of memory!");
-        else
-          stat = auto_detect_fixed_column_sizes(&data.fixed, data.opts, preview_buff, buffsize, &preview_buff_len,
-                                                opts->verbose);
-      }
+#ifndef ZSV_NO_PARALLEL
+    if (data.run_in_parallel) {
+      // explicitly flush and delete main writer before merge which uses raw fd
+      zsv_writer_delete(data.csv_writer);
+      data.csv_writer = NULL;
+      if (zsv_merge_worker_outputs(&data, writer_opts.stream) != 0)
+        stat = zsv_status_error;
     }
+#endif
   }
 
-  if (stat == zsv_status_ok) {
-    if (!col_index_arg_i)
-      data.col_argc = 0;
-    else {
-      data.col_argv = &argv[col_index_arg_i];
-      data.col_argc = argc - col_index_arg_i;
-    }
-
-    data.header_names = calloc(data.opts->max_columns, sizeof(*data.header_names));
-    assert(data.opts->max_columns > 0);
-    data.out2in = calloc(data.opts->max_columns, sizeof(*data.out2in));
-    data.csv_writer = zsv_writer_new(&writer_opts);
-    if (!(data.header_names && data.csv_writer))
-      stat = zsv_status_memory;
-    else {
-      data.opts->row_handler = zsv_select_header_row;
-      data.opts->ctx = &data;
-      if (zsv_new_with_properties(data.opts, custom_prop_handler, input_path, &data.parser) == zsv_status_ok) {
-        // all done with
-        data.any_clean = !data.no_trim_whitespace || data.clean_white || data.embedded_lineend || data.unescape;
-        ;
-
-        // set to fixed if applicable
-        if (data.fixed.count &&
-            zsv_set_fixed_offsets(data.parser, data.fixed.count, data.fixed.offsets) != zsv_status_ok)
-          data.cancelled = 1;
-
-        // create a local csv writer buff quoted values
-        unsigned char writer_buff[512];
-        zsv_writer_set_temp_buff(data.csv_writer, writer_buff, sizeof(writer_buff));
-
-        // process the input data
-        zsv_handle_ctrl_c_signal();
-        enum zsv_status status = zsv_status_ok;
-        if (preview_buff && preview_buff_len)
-          status = zsv_parse_bytes(data.parser, preview_buff, preview_buff_len);
-
-        while (status == zsv_status_ok && !zsv_signal_interrupted && !data.cancelled)
-          status = zsv_parse_more(data.parser);
-        if (status == zsv_status_no_more_input)
-          status = zsv_finish(data.parser);
-        zsv_delete(data.parser);
-      }
-    }
-  }
+zsv_select_main_done:
   free(preview_buff);
   zsv_select_cleanup(&data);
   if (writer_opts.stream && writer_opts.stream != stdout)
