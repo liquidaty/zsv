@@ -7,7 +7,7 @@ VERSION := $(shell dpkg-parsechangelog --show-field Version | cut -d- -f1)
 
 override_dh_auto_configure:
 	# Define PREFIX as empty to configure /etc instead of /usr/local as the config directory
-	CFLAGS='-DPREFIX=\"\"' ./configure --prefix=$(CURDIR)/debian/tmp
+	CFLAGS='-DPREFIX=\"\"' ./configure --prefix=$(CURDIR)/debian/tmp --arch=none --force-avx2=no --force-avx=no
 
 override_dh_auto_build:
 

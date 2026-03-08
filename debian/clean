@@ -1,3 +1,8 @@
+build/
 config.mk
 config.mk.log
 install.sh
+app/cli_internal.c.in
+app/cli_internal.h.in
+app/external/utf8proc-2.6.1/
+include/zsv.h
