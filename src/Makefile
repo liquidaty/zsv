@@ -165,7 +165,7 @@ ${LIBZSV_STATIC_BUILD}: ${ZSV_OBJ}
 	@rm -f $@
 	$(AR) rcv $@ $?
 	$(RANLIB) $@
-	$(AR) -t $@ # check it is there
+	$(AR) -t $@
 	@echo Built $@
 
 ${LIBZSV_SHARED_BUILD}: zsv.c zsv_internal.c
