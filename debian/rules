@@ -1,0 +1,26 @@
+#!/usr/bin/make -f
+
+VERSION := $(shell dpkg-parsechangelog --show-field Version | cut -d- -f1)
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	# Define PREFIX as empty to configure /etc instead of /usr/local as the config directory
+	CFLAGS='-DPREFIX=\"\"' ./configure --prefix=$(CURDIR)/debian/tmp --arch=none --force-avx2=no --force-avx=no
+
+override_dh_auto_build:
+
+override_dh_builddeb:
+	dh_builddeb -- -Zxz
+
+override_dh_auto_install:
+	$(MAKE) install VERSION=$(VERSION)
+
+override_dh_auto_test:
+
+override_dh_strip:
+	dh_strip --no-automatic-dbgsym
+
+override_dh_auto_clean:
+	[ -f config.mk ] && $(MAKE) clean || echo 'No config.mk found, skipping clean'

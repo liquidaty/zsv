@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+if [ "$1" = "remove" ] || [ "$1" = "purge" ]; then
+  rmdir --ignore-fail-on-non-empty /etc/zsv
+fi
+
+#DEBHELPER#
+
+exit 0
