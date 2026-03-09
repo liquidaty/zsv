@@ -55,13 +55,24 @@
 // zsv_select_check_exclusions_are_indexes()
 #include "select/selection.c"
 
+static void zsv_select_data_row(void *ctx);
+static void zsv_select_data_row_fast(void *ctx);
+
+static inline char zsv_select_has_search_filters(const struct zsv_select_data *data) {
+  if (data->search_strings)
+    return 1;
+#ifdef HAVE_PCRE2_8
+  if (data->search_regexs)
+    return 1;
+#endif
+  return 0;
+}
+
 #ifndef ZSV_NO_PARALLEL
 #include "select/parallel.c" // zsv_parallel_data_new(), zsv_parallel_data_delete()
 
 #define ZSV_SELECT_PARALLEL_MIN_BYTES (1024 * 1024 * 2) // don't parallelize if < 2 MB of data (after header)
 #define ZSV_SELECT_PARALLEL_BUFFER_SZ (1024 * 1024 * 8) // to do: make customizable or dynamic
-
-static void zsv_select_data_row(void *ctx);
 
 static void zsv_select_data_row_parallel_done(void *ctx) {
   struct zsv_select_data *data = ctx;
@@ -71,7 +82,7 @@ static void zsv_select_data_row_parallel_done(void *ctx) {
 }
 static void zsv_select_data_row_parallel(void *ctx) {
   struct zsv_select_data *data = ctx;
-  zsv_select_data_row(ctx);
+  data->data_row_handler(ctx);
 
   if (UNLIKELY((off_t)zsv_cum_scanned_length(data->parser) >= data->end_offset_limit)) {
     // parse one more row to get accurate next-row start
@@ -182,7 +193,6 @@ static void *zsv_select_process_chunk(void *arg) {
 }
 #endif // ZSV_NO_PARALLEL
 
-// zsv_select_output_data_row(): output row data (No change needed)
 static void zsv_select_output_data_row(struct zsv_select_data *data) {
   unsigned int cnt = data->output_cols_count;
   char first = 1;
@@ -259,6 +269,22 @@ static void zsv_select_data_row(void *ctx) {
     fprintf(stderr, "Processed %zu rows\n", data->data_row_count);
 }
 
+static void zsv_select_data_row_fast(void *ctx) {
+  struct zsv_select_data *data = ctx;
+  if (UNLIKELY(zsv_cell_count(data->parser) == 0 || data->cancelled))
+    return;
+
+  data->data_row_count++;
+  zsv_select_output_data_row(data);
+
+  if (UNLIKELY(data->data_rows_limit > 0))
+    if (data->data_row_count + 1 >= data->data_rows_limit)
+      data->cancelled = 1;
+
+  if (data->data_row_count % 25000 == 0 && data->verbose)
+    fprintf(stderr, "Processed %zu rows\n", data->data_row_count);
+}
+
 static void zsv_select_print_header_row(struct zsv_select_data *data) {
   if (data->no_header)
     return;
@@ -315,6 +341,12 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
     data->cancelled = 1;
     return;
   }
+
+  data->data_row_handler =
+    (!data->skip_data_rows && !data->sample_every_n && !data->sample_pct && !zsv_select_has_search_filters(data))
+      ? zsv_select_data_row_fast
+      : zsv_select_data_row;
+
 #ifndef ZSV_NO_PARALLEL
   // set up parallelization; on error, fall back to serial
   // TO DO: option to exit on error (instead of fall back)
@@ -350,7 +382,7 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
   {
     // no parallelization
     zsv_select_print_header_row(data);
-    zsv_set_row_handler(data->parser, zsv_select_data_row);
+    zsv_set_row_handler(data->parser, data->data_row_handler);
   }
 }
 

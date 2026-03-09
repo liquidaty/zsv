@@ -76,6 +76,7 @@ struct zsv_select_data {
 #endif
 
   zsv_csv_writer csv_writer;
+  void (*data_row_handler)(void *ctx);
 
   size_t overflow_size;
 
