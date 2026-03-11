@@ -801,6 +801,11 @@ tryccfn CFLAGS_AUTO "arc4random_uniform" "stdlib.h" || tryccfn CFLAGS_AUTO "rand
 tryccfn1 CFLAGS_AUTO "__builtin_expect" "0,0"
 tryccfn1 CFLAGS_AUTO "__builtin_expect_with_probability" "0,0,0.5"
 
+IS_WSL=0
+if grep -qi microsoft /proc/version 2>/dev/null; then
+    IS_WSL=1
+fi
+
 # Optional features
 # shellcheck disable=SC2154
 if test "$usedebugstderr" = "yes" ; then
@@ -893,6 +898,8 @@ NO_STDIN = $NO_STDIN
 USE_SIMDUTF = $USE_SIMDUTF
 
 ZSV_NO_ONLY_CRLF = $ZSV_NO_ONLY_CRLF
+
+IS_WSL = $IS_WSL
 
 $NO_HAVE
 $USE_LIBS
@@ -998,6 +1005,16 @@ if ! "$CC" --version | grep -i gcc >/dev/null && ! "$CC" --version | grep -i cla
     echo "* Non-gcc/clang compiler untested; use at your own risk *"
     echo "* consider using gcc or clang instead e.g.:             *"
     echo "*       ./configure CC=gcc-11                           *"
+    echo "*********************************************************"
+    echo
+fi
+
+if [ "$IS_WSL" = "1" ] && echo "$CC" | grep -i mingw >/dev/null; then
+    echo "*********************** WARNING!! ***********************"
+    echo "* Detected WSL environment with MinGW compiler; zsv may *"
+    echo "* not work properly due to locale (encoding) issues;    *"
+    echo "* consider using a native Linux compiler instead e.g.:  *"
+    echo "*       ./configure CC=gcc                              *"
     echo "*********************************************************"
     echo ""
 fi
