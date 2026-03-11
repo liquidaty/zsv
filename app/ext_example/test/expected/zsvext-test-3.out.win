@@ -6,7 +6,7 @@ Extension my was not already registered
 zsv: streaming csv processor
 
 Usage:
-  zsv version: display version info (and if applicable, extension info)
+  zsv version                          : display version info (and if applicable, extension info)
   zsv (un)register [<extension_id>]    : (un)register an extension
       Registration info is saved in zsv.ini located in a directory determined as:
         ZSV_CONFIG_DIR environment variable value, if set
@@ -66,7 +66,7 @@ Exiting extension example!
 zsv: streaming csv processor
 
 Usage:
-  zsv version: display version info (and if applicable, extension info)
+  zsv version                          : display version info (and if applicable, extension info)
   zsv (un)register [<extension_id>]    : (un)register an extension
       Registration info is saved in zsv.ini located in a directory determined as:
         ZSV_CONFIG_DIR environment variable value, if set
