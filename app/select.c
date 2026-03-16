@@ -690,6 +690,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     data.col_argc = argc - col_index_arg_i;
   }
 
+  if (!data.opts->max_columns)
+    data.opts->max_columns = ZSV_SELECT_MAX_COLS_DEFAULT;
+
   data.header_names = calloc(data.opts->max_columns, sizeof(*data.header_names));
   data.out2in = calloc(data.opts->max_columns, sizeof(*data.out2in));
   data.csv_writer = zsv_writer_new(&writer_opts);
