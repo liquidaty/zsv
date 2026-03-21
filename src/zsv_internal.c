@@ -149,6 +149,7 @@ struct zsv_scanner {
 #define ZSV_MODE_DELIM 0
 #define ZSV_MODE_FIXED 1
 #define ZSV_MODE_DELIM_PULL 2
+#define ZSV_MODE_DELIM_FAST 3
   unsigned char mode;
   struct {
     unsigned *offsets; // 0-based position of each cell end. offset[0] = end of first cell
@@ -465,6 +466,7 @@ static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
 #include "zsv_scan_delim.c"
 
 #include "zsv_scan_fixed.c"
+#include "zsv_scan_delim_fast.c"
 
 static enum zsv_status zsv_scan(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   switch (scanner->mode) {
@@ -473,6 +475,8 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner, unsigned char *buff
   case ZSV_MODE_DELIM_PULL:
     // return zsv_status_row or zsv_status_ok (next call to parse_more)
     return zsv_scan_delim_pull(scanner, buff, bytes_read);
+  case ZSV_MODE_DELIM_FAST:
+    return zsv_scan_delim_fast(scanner, buff, bytes_read);
   default:
     return zsv_scan_delim(scanner, buff, bytes_read);
   }
