@@ -598,7 +598,6 @@ static void set_callbacks(struct zsv_scanner *scanner) {
     scanner->opts.row_handler = ignore_header_rows;
     scanner->opts.cell_handler = NULL;
     scanner->opts.ctx = scanner;
-    scanner->skip_cells = 1;
   } else if (scanner->mode != ZSV_MODE_FIXED && !scanner->opts.keep_empty_header_rows) {
     scanner->opts.row_handler = skip_to_first_row_w_data;
     scanner->opts.cell_handler = NULL;
