@@ -60,6 +60,20 @@ static inline void fast_set_quote_flags(struct zsv_scanner *scanner, unsigned ch
 }
 
 /*
+ * Store a raw cell placeholder into the row. No normalization, no
+ * cell_handler callback. Used for columns that the caller doesn't need.
+ */
+__attribute__((always_inline))
+static inline void fast_store_cell_raw(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+  if (VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
+    struct zsv_cell c = {s, n, scanner->opts.no_quotes ? 1 : 0, 0};
+    scanner->row.cells[scanner->row.used++] = c;
+  } else
+    scanner->row.overflow++;
+  scanner->have_cell = 1;
+}
+
+/*
  * Store a cell directly into the row, bypassing cell_dl().
  * Used in the fast path when we know there are no quotes to normalize.
  * The 'quoted' field is set to 1 when no_quotes mode is active (matching
@@ -67,6 +81,13 @@ static inline void fast_set_quote_flags(struct zsv_scanner *scanner, unsigned ch
  */
 __attribute__((always_inline))
 static inline void fast_store_cell(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+  /* If column filter is active, check if this column needs full processing */
+  if (scanner->needed_cols) {
+    if (scanner->row.used >= scanner->needed_cols_count || !scanner->needed_cols[scanner->row.used]) {
+      fast_store_cell_raw(scanner, s, n);
+      return;
+    }
+  }
   if (scanner->opts.malformed_utf8_replace) {
     if (scanner->opts.malformed_utf8_replace < 0)
       n = zsv_strencode(s, n, 0, NULL, NULL);
@@ -479,8 +500,13 @@ normal_parse:
 
       if (LIKELY(bitmask & commas)) {
         scanner->scanned_length = idx;
-        fast_set_quote_flags(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
-        cell_dl(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
+        if (scanner->needed_cols &&
+            (scanner->row.used >= scanner->needed_cols_count || !scanner->needed_cols[scanner->row.used])) {
+          fast_store_cell_raw(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
+        } else {
+          fast_set_quote_flags(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
+          cell_dl(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
+        }
         scanner->cell_start = idx + 1;
       } else if (bitmask & crs) {
         FAST_ROWEND_QUOTED(scanner, buff, idx, 1, quote_char);
@@ -512,9 +538,14 @@ normal_parse:
 
     if (c == delimiter) {
       scanner->scanned_length = i;
-      if (quote_char > 0)
-        fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-      cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+      if (scanner->needed_cols &&
+          (scanner->row.used >= scanner->needed_cols_count || !scanner->needed_cols[scanner->row.used])) {
+        fast_store_cell_raw(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+      } else {
+        if (quote_char > 0)
+          fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+        cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+      }
       scanner->cell_start = i + 1;
     } else if (c == '\r') {
       FAST_ROWEND_QUOTED(scanner, buff, i, 1, quote_char);

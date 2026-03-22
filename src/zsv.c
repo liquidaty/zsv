@@ -140,6 +140,28 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
 }
 
 ZSV_EXPORT
+enum zsv_status zsv_set_column_filter(zsv_parser parser, const unsigned int *col_indices, unsigned int count) {
+  if (parser->needed_cols) {
+    free(parser->needed_cols);
+    parser->needed_cols = NULL;
+    parser->needed_cols_count = 0;
+  }
+  if (!col_indices || !count)
+    return zsv_status_ok;
+
+  unsigned int max_col = parser->row.allocated;
+  parser->needed_cols = calloc(max_col, 1);
+  if (!parser->needed_cols)
+    return zsv_status_memory;
+  parser->needed_cols_count = max_col;
+  for (unsigned int i = 0; i < count; i++) {
+    if (col_indices[i] < max_col)
+      parser->needed_cols[col_indices[i]] = 1;
+  }
+  return zsv_status_ok;
+}
+
+ZSV_EXPORT
 void zsv_set_skip_cells(zsv_parser parser, int skip) {
   parser->skip_cells = skip ? 1 : 0;
 }
@@ -410,6 +432,7 @@ enum zsv_status zsv_delete(zsv_parser parser) {
 
     free(parser->row.cells);
     free(parser->fixed.offsets);
+    free(parser->needed_cols);
     collate_header_destroy(&parser->collate_header);
     free(parser->pull.regs);
 

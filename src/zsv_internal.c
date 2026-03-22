@@ -123,6 +123,13 @@ struct zsv_scanner {
 
   unsigned char skip_cells : 1; // fast engine: skip cell storage, just count rows
 
+  /* Column filter for the fast engine. When non-NULL, only columns
+   * with needed_cols[col_ix] != 0 get full processing (quote normalization,
+   * UTF-8 encoding, cell_handler). Other columns get a raw placeholder.
+   * Array length must be >= max_columns. */
+  unsigned char *needed_cols;
+  unsigned int needed_cols_count; // length of needed_cols array
+
   size_t quote_close_position;
   struct zsv_opts opts;
 

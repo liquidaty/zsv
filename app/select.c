@@ -315,6 +315,22 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
     data->cancelled = 1;
     return;
   }
+
+  /* Set column filter for fast engine: only process columns we need */
+  if (data->output_cols_count > 0 && !data->search_strings
+#ifdef HAVE_PCRE2_8
+      && !data->search_regexs
+#endif
+      ) {
+    unsigned int *needed = malloc(data->output_cols_count * sizeof(*needed));
+    if (needed) {
+      for (unsigned int i = 0; i < data->output_cols_count; i++)
+        needed[i] = data->out2in[i].ix;
+      zsv_set_column_filter(data->parser, needed, data->output_cols_count);
+      free(needed);
+    }
+  }
+
 #ifndef ZSV_NO_PARALLEL
   // set up parallelization; on error, fall back to serial
   // TO DO: option to exit on error (instead of fall back)
