@@ -228,8 +228,12 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
   uint8x16_t v_qt = vdupq_n_u8(quote_char > 0 ? (uint8_t)quote_char : 0);
 
   /*
-   * Skip-cells mode: no cell storage, just count rows via popcount.
+   * Skip-cells mode: no cell storage, just count rows.
    * Used when the caller doesn't need cell data (e.g. count, skip-head).
+   *
+   * Uses SIMD to find row-ends and quotes in bulk. For blocks without
+   * quotes (common case), counts row-ends via popcount. For blocks
+   * with quotes, falls through to scalar processing.
    */
   if (scanner->skip_cells) {
     while (i + 64 <= bytes_read) {
@@ -243,66 +247,48 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
           quotes |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_qt)) << shift;
       }
 
-      uint64_t row_ends;
       if (LIKELY(quotes == 0 && !inside_quote)) {
-        /* No quote tracking needed — compute row-ends directly.
-         * Row-end = \r not followed by \n, or \n not preceded by \r.
-         * Exclude \n in CRLF pairs: those are handled by the \r. */
-        uint64_t crlf_n = (crs << 1) & newlines; /* \n that is part of CRLF */
-        row_ends = crs | (newlines & ~crlf_n);
-      } else {
-        /* Compute quote state mask */
-        uint64_t A = ~0ULL, B = quotes;
-        B = B ^ (A & (B << 1));  A = A & (A << 1);
-        B = B ^ (A & (B << 2));  A = A & (A << 2);
-        B = B ^ (A & (B << 4));  A = A & (A << 4);
-        B = B ^ (A & (B << 8));  A = A & (A << 8);
-        B = B ^ (A & (B << 16)); A = A & (A << 16);
-        B = B ^ (A & (B << 32));
-        uint64_t state_mask = inside_quote ? ~B : B;
-        inside_quote = (state_mask >> 63) & 1;
+        /* No quote state to track. Count row-ends via popcount. */
+        uint64_t crlf_n = (crs << 1) & newlines;
+        uint64_t row_ends = crs | (newlines & ~crlf_n);
 
-        uint64_t valid_nl = newlines & ~state_mask;
-        uint64_t valid_cr = crs & ~state_mask;
-        uint64_t crlf_n = (valid_cr << 1) & valid_nl;
-        row_ends = valid_cr | (valid_nl & ~crlf_n);
-      }
+        if (row_ends) {
+          int nrows = __builtin_popcountll(row_ends);
+          int last_bit = 63 - __builtin_clzll(row_ends);
+          size_t last_rowend_pos = i + last_bit;
 
-      if (row_ends) {
-        int nrows = __builtin_popcountll(row_ends);
-        /* Find position of last row-end for cell_start/row_start tracking */
-        int last_bit = 63 - __builtin_clzll(row_ends);
-        size_t last_rowend_pos = i + last_bit;
-
-        for (int r = 0; r < nrows; r++) {
-          scanner->data_row_count++;
-          if (VERY_LIKELY(scanner->opts.row_handler != NULL))
-            scanner->opts.row_handler(scanner->opts.ctx);
-          scanner->row.used = 0;
+          for (int r = 0; r < nrows; r++) {
+            scanner->data_row_count++;
+            if (VERY_LIKELY(scanner->opts.row_handler != NULL))
+              scanner->opts.row_handler(scanner->opts.ctx);
+            scanner->have_cell = 0;
+            scanner->row.used = 0;
 #ifdef ZSV_EXTRAS
-          scanner->progress.cum_row_count++;
-          if (VERY_UNLIKELY(scanner->progress.max_rows > 0 &&
-                            scanner->progress.cum_row_count == scanner->progress.max_rows)) {
-            scanner->abort = 1;
-            return zsv_status_max_rows_read;
-          }
+            scanner->progress.cum_row_count++;
+            if (VERY_UNLIKELY(scanner->progress.max_rows > 0 &&
+                              scanner->progress.cum_row_count == scanner->progress.max_rows)) {
+              scanner->abort = 1;
+              return zsv_status_max_rows_read;
+            }
 #endif
-          if (VERY_UNLIKELY(scanner->abort))
-            return zsv_status_cancelled;
+            if (VERY_UNLIKELY(scanner->abort))
+              return zsv_status_cancelled;
+          }
+          scanner->cell_start = last_rowend_pos + 1;
+          scanner->row_start = last_rowend_pos + 1;
         }
-
-        scanner->cell_start = last_rowend_pos + 1;
-        scanner->row_start = last_rowend_pos + 1;
-        /* Check if last byte is \r — next block's \n might need skipping */
+        i += 64;
+        if (!scanner->skip_cells)
+          break;
+        continue;
       }
-      i += 64;
-      /* If skip_cells was cleared by the row_handler (e.g. rows_to_ignore
-       * reached zero), break out to the normal parsing loop */
-      if (!scanner->skip_cells)
-        break;
+
+      /* Block has quotes or we're inside a quoted cell.
+       * Fall through to scalar processing for correctness. */
+      break;
     }
 
-    /* Scalar tail for skip_cells mode */
+    /* Scalar processing for skip_cells: handles quotes correctly */
     if (scanner->skip_cells) {
       for (; i < bytes_read; i++) {
         unsigned char c = buff[i];
@@ -324,6 +310,7 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
           scanner->row_start = i + 1;
           if (VERY_LIKELY(scanner->opts.row_handler != NULL))
             scanner->opts.row_handler(scanner->opts.ctx);
+          scanner->have_cell = 0;
           scanner->row.used = 0;
 #ifdef ZSV_EXTRAS
           scanner->progress.cum_row_count++;
@@ -338,7 +325,6 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
           if (!scanner->skip_cells)
             break;
         } else if (c == '\n') {
-          /* \n after \r — skip */
           scanner->cell_start = i + 1;
           scanner->row_start = i + 1;
         }
@@ -346,13 +332,14 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
     }
 
     if (!scanner->skip_cells && i < bytes_read) {
-      /* Transitioned out of skip mode mid-buffer. Continue with normal parsing. */
       inside_quote = (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) ? 1 : 0;
       goto normal_parse;
     }
 
     if (inside_quote)
       scanner->quoted |= ZSV_PARSER_QUOTE_UNCLOSED;
+    else
+      scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
     scanner->scanned_length = i;
     scanner->old_bytes_read = bytes_read;
     return zsv_status_ok;
