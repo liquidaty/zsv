@@ -67,6 +67,12 @@ static inline void fast_set_quote_flags(struct zsv_scanner *scanner, unsigned ch
  */
 __attribute__((always_inline))
 static inline void fast_store_cell(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+  if (scanner->opts.malformed_utf8_replace) {
+    if (scanner->opts.malformed_utf8_replace < 0)
+      n = zsv_strencode(s, n, 0, NULL, NULL);
+    else
+      n = zsv_strencode(s, n, scanner->opts.malformed_utf8_replace, NULL, NULL);
+  }
   if (VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
     struct zsv_cell c = {s, n, scanner->opts.no_quotes ? 1 : 0, 0};
     scanner->row.cells[scanner->row.used++] = c;
@@ -186,7 +192,6 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
 #ifndef ZSV_NO_ONLY_CRLF
       || scanner->opts.only_crlf_rowend   /* only-crlf mode — not yet supported */
 #endif
-      || scanner->opts.malformed_utf8_replace /* UTF-8 replacement — not yet supported */
       || scanner->opts.cell_handler       /* per-cell callback — not yet supported */
       ) {
     return zsv_scan_delim(scanner, buff, bytes_read);
