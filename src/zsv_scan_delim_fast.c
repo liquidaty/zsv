@@ -3,7 +3,10 @@
  *
  * Uses 64-byte SIMD processing to find delimiters and row-ends in bulk,
  * with prefix-XOR carry propagation for branchless quote state tracking.
- * Calls cell_dl() / cell_and_row_dl() for cell storage and normalization.
+ *
+ * In the common case (no quotes), cells are stored directly without
+ * going through cell_dl(), eliminating per-cell function call and
+ * branch overhead. Quoted cells still use cell_dl() for normalization.
  *
  * Falls back to the standard engine for unsupported configurations.
  */
@@ -57,14 +60,79 @@ static inline void fast_set_quote_flags(struct zsv_scanner *scanner, unsigned ch
 }
 
 /*
- * Handle a row-end character (\r or \n).
- * For \n after \r (CRLF), just advance past it without emitting a row.
- * Otherwise emit the row via cell_and_row_dl().
+ * Store a cell directly into the row, bypassing cell_dl().
+ * Used in the fast path when we know there are no quotes to normalize.
+ * The 'quoted' field is set to 1 when no_quotes mode is active (matching
+ * cell_dl behavior), or 0 otherwise.
  */
-#define FAST_HANDLE_ROWEND(scanner, buff, idx, is_cr)                          \
+__attribute__((always_inline))
+static inline void fast_store_cell(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+  if (VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
+    struct zsv_cell c = {s, n, scanner->opts.no_quotes ? 1 : 0, 0};
+    scanner->row.cells[scanner->row.used++] = c;
+  } else
+    scanner->row.overflow++;
+  scanner->have_cell = 1;
+}
+
+/*
+ * Store a cell and invoke the row handler, bypassing cell_dl()/row_dl().
+ * Returns non-zero status on abort/cancellation.
+ */
+__attribute__((always_inline))
+static inline enum zsv_status fast_store_cell_and_row(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+  fast_store_cell(scanner, s, n);
+
+  if (VERY_UNLIKELY(scanner->row.overflow)) {
+    scanner->errprintf(scanner->errf, "Warning: number of columns (%zu) exceeds row max (%zu)\n",
+                       scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
+    scanner->row.overflow = 0;
+  }
+  if (VERY_LIKELY(scanner->opts.row_handler != NULL))
+    scanner->opts.row_handler(scanner->opts.ctx);
+
+#ifdef ZSV_EXTRAS
+  scanner->progress.cum_row_count++;
+  if (VERY_UNLIKELY(scanner->opts.progress.rows_interval &&
+                    scanner->progress.cum_row_count % scanner->opts.progress.rows_interval == 0)) {
+    char ok;
+    if (!scanner->opts.progress.seconds_interval)
+      ok = 1;
+    else {
+      time_t now = time(NULL);
+      if (now > scanner->progress.last_time &&
+          (unsigned int)(now - scanner->progress.last_time) >= scanner->opts.progress.seconds_interval) {
+        ok = 1;
+        scanner->progress.last_time = now;
+      } else
+        ok = 0;
+    }
+    if (ok && scanner->opts.progress.callback)
+      scanner->abort = scanner->opts.progress.callback(scanner->opts.progress.ctx, scanner->progress.cum_row_count);
+  }
+  if (VERY_UNLIKELY(scanner->progress.max_rows > 0)) {
+    if (VERY_UNLIKELY(scanner->progress.cum_row_count == scanner->progress.max_rows)) {
+      scanner->abort = 1;
+      scanner->row.used = 0;
+      return zsv_status_max_rows_read;
+    }
+  }
+#endif
+
+  if (VERY_UNLIKELY(scanner->abort))
+    return zsv_status_cancelled;
+  scanner->have_cell = 0;
+  scanner->row.used = 0;
+  return zsv_status_ok;
+}
+
+/*
+ * Handle a row-end for an unquoted cell (fast path).
+ * Skips cell_dl()/row_dl() overhead.
+ */
+#define FAST_ROWEND_NOQUOTE(scanner, buff, idx, is_cr)                         \
   do {                                                                         \
     if (!(is_cr)) {                                                            \
-      /* \n: check if preceded by \r (CRLF pair — skip) */                     \
       char prev = (idx) > 0 ? (buff)[(idx) - 1] : (scanner)->last;            \
       if (prev == '\r') {                                                      \
         (scanner)->cell_start = (idx) + 1;                                     \
@@ -73,7 +141,7 @@ static inline void fast_set_quote_flags(struct zsv_scanner *scanner, unsigned ch
       }                                                                        \
     }                                                                          \
     (scanner)->scanned_length = (idx);                                         \
-    enum zsv_status stat_ = cell_and_row_dl(                                   \
+    enum zsv_status stat_ = fast_store_cell_and_row(                            \
       (scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start \
     );                                                                         \
     if (VERY_UNLIKELY(stat_))                                                  \
@@ -84,24 +152,10 @@ static inline void fast_set_quote_flags(struct zsv_scanner *scanner, unsigned ch
   } while (0)
 
 /*
- * Emit a cell: set quote flags from cell content, then call cell_dl().
+ * Handle a row-end for a potentially quoted cell.
+ * Sets quote flags, then calls cell_and_row_dl().
  */
-#define FAST_EMIT_CELL(scanner, buff, idx, quote_char)                         \
-  do {                                                                         \
-    (scanner)->scanned_length = (idx);                                         \
-    if ((quote_char) > 0)                                                      \
-      fast_set_quote_flags(                                                    \
-        (scanner), (buff) + (scanner)->cell_start,                             \
-        (idx) - (scanner)->cell_start);                                        \
-    cell_dl((scanner), (buff) + (scanner)->cell_start,                         \
-            (idx) - (scanner)->cell_start);                                    \
-    (scanner)->cell_start = (idx) + 1;                                         \
-  } while (0)
-
-/*
- * Emit a row-end cell: set quote flags, then call cell_and_row_dl().
- */
-#define FAST_EMIT_ROWEND(scanner, buff, idx, is_cr, quote_char)                \
+#define FAST_ROWEND_QUOTED(scanner, buff, idx, is_cr, quote_char)              \
   do {                                                                         \
     if (!(is_cr)) {                                                            \
       char prev = (idx) > 0 ? (buff)[(idx) - 1] : (scanner)->last;            \
@@ -182,7 +236,10 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
     uint64_t all_delims = commas | newlines | crs;
 
     if (LIKELY(quotes == 0 && !inside_quote)) {
-      /* Fast path: no quotes in chunk and not inside quoted cell */
+      /*
+       * Fast path: no quotes in this 64-byte chunk and not inside a quoted
+       * cell. Store cells directly without going through cell_dl().
+       */
       if (LIKELY(all_delims == 0)) {
         i += 64;
         continue;
@@ -198,11 +255,13 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
         all_delims &= (all_delims - 1);
 
         if (LIKELY(bitmask & commas)) {
-          FAST_EMIT_CELL(scanner, buff, idx, quote_char);
+          scanner->scanned_length = idx;
+          fast_store_cell(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
+          scanner->cell_start = idx + 1;
         } else if (bitmask & crs) {
-          FAST_EMIT_ROWEND(scanner, buff, idx, 1, quote_char);
+          FAST_ROWEND_NOQUOTE(scanner, buff, idx, 1);
         } else {
-          FAST_EMIT_ROWEND(scanner, buff, idx, 0, quote_char);
+          FAST_ROWEND_NOQUOTE(scanner, buff, idx, 0);
         }
       }
       continue;
@@ -212,11 +271,11 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
      * Quote-aware path: use prefix-XOR to compute state_mask.
      *
      * The state_mask has bit N set if position N is "inside quotes".
-     * We use the carry-less prefix-XOR propagation trick:
-     * each quote toggles the inside/outside state for all subsequent positions.
+     * Each quote toggles the inside/outside state for all subsequent
+     * positions via carry-less prefix-XOR propagation.
      */
-    uint64_t A = ~0ULL;  /* "carry" propagation mask */
-    uint64_t B = quotes; /* bits that toggle state */
+    uint64_t A = ~0ULL;
+    uint64_t B = quotes;
 
     B = B ^ (A & (B << 1));  A = A & (A << 1);
     B = B ^ (A & (B << 2));  A = A & (A << 2);
@@ -225,13 +284,9 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
     B = B ^ (A & (B << 16)); A = A & (A << 16);
     B = B ^ (A & (B << 32));
 
-    /* If we entered this block inside a quote, invert the mask */
     uint64_t state_mask = inside_quote ? ~B : B;
-
-    /* Update inside_quote for next block */
     inside_quote = (state_mask >> 63) & 1;
 
-    /* Mask out delimiters that fall inside quotes */
     uint64_t valid_delims = all_delims & ~state_mask;
 
     if (LIKELY(valid_delims == 0)) {
@@ -249,11 +304,14 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
       valid_delims &= (valid_delims - 1);
 
       if (LIKELY(bitmask & commas)) {
-        FAST_EMIT_CELL(scanner, buff, idx, quote_char);
+        scanner->scanned_length = idx;
+        fast_set_quote_flags(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
+        cell_dl(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
+        scanner->cell_start = idx + 1;
       } else if (bitmask & crs) {
-        FAST_EMIT_ROWEND(scanner, buff, idx, 1, quote_char);
+        FAST_ROWEND_QUOTED(scanner, buff, idx, 1, quote_char);
       } else {
-        FAST_EMIT_ROWEND(scanner, buff, idx, 0, quote_char);
+        FAST_ROWEND_QUOTED(scanner, buff, idx, 0, quote_char);
       }
     }
   }
@@ -279,15 +337,19 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
       continue;
 
     if (c == ',') {
-      FAST_EMIT_CELL(scanner, buff, i, quote_char);
+      scanner->scanned_length = i;
+      if (quote_char > 0)
+        fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+      cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+      scanner->cell_start = i + 1;
     } else if (c == '\r') {
-      FAST_EMIT_ROWEND(scanner, buff, i, 1, quote_char);
+      FAST_ROWEND_QUOTED(scanner, buff, i, 1, quote_char);
     } else if (c == '\n') {
-      FAST_EMIT_ROWEND(scanner, buff, i, 0, quote_char);
+      FAST_ROWEND_QUOTED(scanner, buff, i, 0, quote_char);
     }
   }
 
-  /* Handle quote pending at buffer boundary */
+  /* Carry inside_quote state across buffer boundaries */
   if (inside_quote)
     scanner->quoted |= ZSV_PARSER_QUOTE_UNCLOSED;
 
