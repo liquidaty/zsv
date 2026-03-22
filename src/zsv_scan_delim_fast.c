@@ -283,11 +283,54 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
       }
 
       /* Block has quotes or we're inside a quoted cell.
-       * Fall through to scalar processing for correctness. */
-      break;
+       * Use prefix-XOR to mask out newlines inside quotes. */
+      uint64_t A = ~0ULL, B = quotes;
+      B = B ^ (A & (B << 1));  A = A & (A << 1);
+      B = B ^ (A & (B << 2));  A = A & (A << 2);
+      B = B ^ (A & (B << 4));  A = A & (A << 4);
+      B = B ^ (A & (B << 8));  A = A & (A << 8);
+      B = B ^ (A & (B << 16)); A = A & (A << 16);
+      B = B ^ (A & (B << 32));
+      uint64_t state_mask = inside_quote ? ~B : B;
+      inside_quote = (state_mask >> 63) & 1;
+
+      uint64_t valid_nl = newlines & ~state_mask;
+      uint64_t valid_cr = crs & ~state_mask;
+      uint64_t crlf_n = (valid_cr << 1) & valid_nl;
+      uint64_t row_ends = valid_cr | (valid_nl & ~crlf_n);
+
+      if (row_ends) {
+        int nrows = __builtin_popcountll(row_ends);
+        int last_bit = 63 - __builtin_clzll(row_ends);
+        size_t last_rowend_pos = i + last_bit;
+
+        for (int r = 0; r < nrows; r++) {
+          scanner->data_row_count++;
+          if (VERY_LIKELY(scanner->opts.row_handler != NULL))
+            scanner->opts.row_handler(scanner->opts.ctx);
+          scanner->have_cell = 0;
+          scanner->row.used = 0;
+#ifdef ZSV_EXTRAS
+          scanner->progress.cum_row_count++;
+          if (VERY_UNLIKELY(scanner->progress.max_rows > 0 &&
+                            scanner->progress.cum_row_count == scanner->progress.max_rows)) {
+            scanner->abort = 1;
+            return zsv_status_max_rows_read;
+          }
+#endif
+          if (VERY_UNLIKELY(scanner->abort))
+            return zsv_status_cancelled;
+        }
+        scanner->cell_start = last_rowend_pos + 1;
+        scanner->row_start = last_rowend_pos + 1;
+      }
+      i += 64;
+      if (!scanner->skip_cells)
+        break;
+      continue;
     }
 
-    /* Scalar processing for skip_cells: handles quotes correctly */
+    /* Scalar tail for skip_cells: handles remaining bytes */
     if (scanner->skip_cells) {
       for (; i < bytes_read; i++) {
         unsigned char c = buff[i];
