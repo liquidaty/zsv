@@ -140,6 +140,11 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
 }
 
 ZSV_EXPORT
+void zsv_set_skip_cells(zsv_parser parser, int skip) {
+  parser->skip_cells = skip ? 1 : 0;
+}
+
+ZSV_EXPORT
 void zsv_abort(zsv_parser parser) {
   parser->abort = 1;
 }

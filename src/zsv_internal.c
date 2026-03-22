@@ -121,6 +121,8 @@ struct zsv_scanner {
   unsigned char have_cell : 1;
   unsigned char started : 1;
 
+  unsigned char skip_cells : 1; // fast engine: skip cell storage, just count rows
+
   size_t quote_close_position;
   struct zsv_opts opts;
 
@@ -589,6 +591,7 @@ static void set_callbacks(struct zsv_scanner *scanner) {
     scanner->opts.row_handler = ignore_header_rows;
     scanner->opts.cell_handler = NULL;
     scanner->opts.ctx = scanner;
+    scanner->skip_cells = 1;
   } else if (scanner->mode != ZSV_MODE_FIXED && !scanner->opts.keep_empty_header_rows) {
     scanner->opts.row_handler = skip_to_first_row_w_data;
     scanner->opts.cell_handler = NULL;
@@ -605,6 +608,7 @@ static void set_callbacks(struct zsv_scanner *scanner) {
 #endif
       scanner->get_cell = zsv_get_cell_1;
     scanner->data_row_count = 0;
+    scanner->skip_cells = 0;
     scanner->opts.row_handler = scanner->opts_orig.row_handler;
     scanner->opts.cell_handler = scanner->opts_orig.cell_handler;
     scanner->opts.ctx = scanner->opts_orig.ctx;

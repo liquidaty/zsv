@@ -227,6 +227,138 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
   uint8x16_t v_cr = vdupq_n_u8('\r');
   uint8x16_t v_qt = vdupq_n_u8(quote_char > 0 ? (uint8_t)quote_char : 0);
 
+  /*
+   * Skip-cells mode: no cell storage, just count rows via popcount.
+   * Used when the caller doesn't need cell data (e.g. count, skip-head).
+   */
+  if (scanner->skip_cells) {
+    while (i + 64 <= bytes_read) {
+      uint64_t newlines = 0, crs = 0, quotes = 0;
+      for (int chunk = 0; chunk < 4; chunk++) {
+        uint8x16_t b = vld1q_u8(buff + i + chunk * 16);
+        unsigned shift = chunk * 16;
+        newlines |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_nl)) << shift;
+        crs      |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_cr)) << shift;
+        if (quote_char > 0)
+          quotes |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_qt)) << shift;
+      }
+
+      uint64_t row_ends;
+      if (LIKELY(quotes == 0 && !inside_quote)) {
+        /* No quote tracking needed — compute row-ends directly.
+         * Row-end = \r not followed by \n, or \n not preceded by \r.
+         * Exclude \n in CRLF pairs: those are handled by the \r. */
+        uint64_t crlf_n = (crs << 1) & newlines; /* \n that is part of CRLF */
+        row_ends = crs | (newlines & ~crlf_n);
+      } else {
+        /* Compute quote state mask */
+        uint64_t A = ~0ULL, B = quotes;
+        B = B ^ (A & (B << 1));  A = A & (A << 1);
+        B = B ^ (A & (B << 2));  A = A & (A << 2);
+        B = B ^ (A & (B << 4));  A = A & (A << 4);
+        B = B ^ (A & (B << 8));  A = A & (A << 8);
+        B = B ^ (A & (B << 16)); A = A & (A << 16);
+        B = B ^ (A & (B << 32));
+        uint64_t state_mask = inside_quote ? ~B : B;
+        inside_quote = (state_mask >> 63) & 1;
+
+        uint64_t valid_nl = newlines & ~state_mask;
+        uint64_t valid_cr = crs & ~state_mask;
+        uint64_t crlf_n = (valid_cr << 1) & valid_nl;
+        row_ends = valid_cr | (valid_nl & ~crlf_n);
+      }
+
+      if (row_ends) {
+        int nrows = __builtin_popcountll(row_ends);
+        /* Find position of last row-end for cell_start/row_start tracking */
+        int last_bit = 63 - __builtin_clzll(row_ends);
+        size_t last_rowend_pos = i + last_bit;
+
+        for (int r = 0; r < nrows; r++) {
+          scanner->data_row_count++;
+          if (VERY_LIKELY(scanner->opts.row_handler != NULL))
+            scanner->opts.row_handler(scanner->opts.ctx);
+          scanner->row.used = 0;
+#ifdef ZSV_EXTRAS
+          scanner->progress.cum_row_count++;
+          if (VERY_UNLIKELY(scanner->progress.max_rows > 0 &&
+                            scanner->progress.cum_row_count == scanner->progress.max_rows)) {
+            scanner->abort = 1;
+            return zsv_status_max_rows_read;
+          }
+#endif
+          if (VERY_UNLIKELY(scanner->abort))
+            return zsv_status_cancelled;
+        }
+
+        scanner->cell_start = last_rowend_pos + 1;
+        scanner->row_start = last_rowend_pos + 1;
+        /* Check if last byte is \r — next block's \n might need skipping */
+      }
+      i += 64;
+      /* If skip_cells was cleared by the row_handler (e.g. rows_to_ignore
+       * reached zero), break out to the normal parsing loop */
+      if (!scanner->skip_cells)
+        break;
+    }
+
+    /* Scalar tail for skip_cells mode */
+    if (scanner->skip_cells) {
+      for (; i < bytes_read; i++) {
+        unsigned char c = buff[i];
+        if (c == '"' && quote_char > 0) {
+          if (inside_quote) {
+            if (i + 1 < bytes_read && buff[i + 1] == '"')
+              i++;
+            else
+              inside_quote = 0;
+          } else
+            inside_quote = 1;
+          continue;
+        }
+        if (inside_quote)
+          continue;
+        if (c == '\r' || (c == '\n' && (i == 0 ? scanner->last != '\r' : buff[i-1] != '\r'))) {
+          scanner->data_row_count++;
+          scanner->cell_start = i + 1;
+          scanner->row_start = i + 1;
+          if (VERY_LIKELY(scanner->opts.row_handler != NULL))
+            scanner->opts.row_handler(scanner->opts.ctx);
+          scanner->row.used = 0;
+#ifdef ZSV_EXTRAS
+          scanner->progress.cum_row_count++;
+          if (VERY_UNLIKELY(scanner->progress.max_rows > 0 &&
+                            scanner->progress.cum_row_count == scanner->progress.max_rows)) {
+            scanner->abort = 1;
+            return zsv_status_max_rows_read;
+          }
+#endif
+          if (VERY_UNLIKELY(scanner->abort))
+            return zsv_status_cancelled;
+          if (!scanner->skip_cells)
+            break;
+        } else if (c == '\n') {
+          /* \n after \r — skip */
+          scanner->cell_start = i + 1;
+          scanner->row_start = i + 1;
+        }
+      }
+    }
+
+    if (!scanner->skip_cells && i < bytes_read) {
+      /* Transitioned out of skip mode mid-buffer. Continue with normal parsing. */
+      inside_quote = (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) ? 1 : 0;
+      goto normal_parse;
+    }
+
+    if (inside_quote)
+      scanner->quoted |= ZSV_PARSER_QUOTE_UNCLOSED;
+    scanner->scanned_length = i;
+    scanner->old_bytes_read = bytes_read;
+    return zsv_status_ok;
+  }
+
+normal_parse:
   /* Process 64 bytes at a time */
   while (i + 64 <= bytes_read) {
     uint64_t commas = 0, newlines = 0, crs = 0, quotes = 0;

@@ -261,6 +261,8 @@ static void header_handler(void *ctx) {
   if (!data->run_in_parallel) { // single-threaded serial run
     data->run_in_parallel = 0;
     zsv_set_row_handler(data->parser, data->opts->verbose ? row_verbose : row_simple);
+    if (!data->opts->verbose)
+      zsv_set_skip_cells(data->parser, 1);
   }
 }
 

@@ -237,6 +237,18 @@ ZSV_EXPORT
 const unsigned char *zsv_parse_status_desc(enum zsv_status status);
 
 /**
+ * Hint to the parser that cell data is not needed. When set, the fast
+ * scanner engine skips per-cell storage and uses popcount-only row
+ * counting. The row_handler callback is still invoked for each row.
+ * Has no effect on the standard scanner engine.
+ *
+ * @param parser
+ * @param skip   non-zero to skip cell storage, 0 to resume normal parsing
+ */
+ZSV_EXPORT
+void zsv_set_skip_cells(zsv_parser parser, int skip);
+
+/**
  * Abort parsing. After this function is called, no further
  * `row_handler()` or `cell_handler()` calls will be made, and parse functions
  * will return zsv_status_cancelled
