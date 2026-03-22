@@ -188,6 +188,16 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, co
       opts_out->only_crlf_rowend = 1;
       continue;
 #endif
+    } else if (!strcmp(argv[i] + 2, "parser")) {
+      if (++i >= argc)
+        err = fprintf(stderr, "Error: --parser requires a value (default or fast)\n");
+      else if (!strcmp(argv[i], "default"))
+        opts_out->scan_engine = 0;
+      else if (!strcmp(argv[i], "fast"))
+        opts_out->scan_engine = 3; /* ZSV_MODE_DELIM_FAST */
+      else
+        err = fprintf(stderr, "Error: --parser value must be 'default' or 'fast' (got '%s')\n", argv[i]);
+      continue;
     } else {
       found_ix = str_array_index_of(long_args, argv[i] + 2);
       arg = short_args[found_ix];

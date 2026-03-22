@@ -684,6 +684,9 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
   else if (opts->buffsize < ZSV_MIN_SCANNER_BUFFSIZE)
     opts->buffsize = ZSV_MIN_SCANNER_BUFFSIZE;
 
+  if (opts->scan_engine)
+    scanner->mode = opts->scan_engine;
+
   scanner->in = opts->stream;
   if (!opts->read) {
     scanner->read = (zsv_generic_read)fread;
