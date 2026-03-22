@@ -220,7 +220,6 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
   }
 
   int inside_quote = (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) ? 1 : 0;
-
   char delimiter = scanner->opts.delimiter;
   uint8x16_t v_comma = vdupq_n_u8((uint8_t)delimiter);
   uint8x16_t v_nl = vdupq_n_u8('\n');
@@ -396,9 +395,15 @@ normal_parse:
     /*
      * Quote-aware path: use prefix-XOR to compute state_mask.
      *
-     * The state_mask has bit N set if position N is "inside quotes".
-     * Each quote toggles the inside/outside state for all subsequent
-     * positions via carry-less prefix-XOR propagation.
+     * Every quote toggles the inside/outside state. This correctly
+     * handles standard CSV quoting where:
+     *   - Opening quote toggles to "inside"
+     *   - Closing quote toggles to "outside"
+     *   - Escaped "" pairs cancel out (two toggles = no net change)
+     *
+     * Note: non-standard quoting (mid-cell quotes in unquoted cells,
+     * trailing data after close quotes) is NOT supported by the fast
+     * engine. Use --parser default for non-standard input.
      */
     uint64_t A = ~0ULL;
     uint64_t B = quotes;
