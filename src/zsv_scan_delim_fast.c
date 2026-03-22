@@ -190,7 +190,7 @@ static inline enum zsv_status fast_store_cell_and_row(struct zsv_scanner *scanne
 
 static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   /* Guard: fall back for unsupported configurations */
-  if (scanner->opts.delimiter != ','   /* non-comma delimiter — not yet supported */
+  if (0
 #ifndef ZSV_NO_ONLY_CRLF
       || scanner->opts.only_crlf_rowend   /* only-crlf mode — not yet supported */
 #endif
@@ -221,7 +221,8 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
 
   int inside_quote = (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) ? 1 : 0;
 
-  uint8x16_t v_comma = vdupq_n_u8(',');
+  char delimiter = scanner->opts.delimiter;
+  uint8x16_t v_comma = vdupq_n_u8((uint8_t)delimiter);
   uint8x16_t v_nl = vdupq_n_u8('\n');
   uint8x16_t v_cr = vdupq_n_u8('\r');
   uint8x16_t v_qt = vdupq_n_u8(quote_char > 0 ? (uint8_t)quote_char : 0);
@@ -342,7 +343,7 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
     if (inside_quote)
       continue;
 
-    if (c == ',') {
+    if (c == delimiter) {
       scanner->scanned_length = i;
       if (quote_char > 0)
         fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
