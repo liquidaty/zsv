@@ -160,7 +160,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
 #define FAST_ROWEND_NOQUOTE(scanner, buff, idx, is_cr)                                                                 \
   do {                                                                                                                 \
     if (!(is_cr)) {                                                                                                    \
-      char prev = (idx) > 0 ? (buff)[(idx) - 1] : (scanner)->last;                                                     \
+      char prev = (idx) > 0 ? (buff)[(idx)-1] : (scanner)->last;                                                     \
       if (prev == '\r') {                                                                                              \
         (scanner)->cell_start = (idx) + 1;                                                                             \
         (scanner)->row_start = (idx) + 1;                                                                              \
@@ -184,7 +184,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
 #define FAST_ROWEND_QUOTED(scanner, buff, idx, is_cr, quote_char)                                                      \
   do {                                                                                                                 \
     if (!(is_cr)) {                                                                                                    \
-      char prev = (idx) > 0 ? (buff)[(idx) - 1] : (scanner)->last;                                                     \
+      char prev = (idx) > 0 ? (buff)[(idx)-1] : (scanner)->last;                                                     \
       if (prev == '\r') {                                                                                              \
         (scanner)->cell_start = (idx) + 1;                                                                             \
         (scanner)->row_start = (idx) + 1;                                                                              \
