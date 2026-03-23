@@ -50,6 +50,9 @@ Optional features:
   --disable-stdin         disable stdin from CLI commands
   --enable-simdutf        use simdutf for 'check --utf8'. Faster, but adds ~300k to binary
   --disable-only-crlf     disable the --only-crlf parsing option
+  --support-nonstandard-quoting
+                          enable SIMD-level detection and fallback for
+                          non-standard CSV quoting in the fast parser [no]
 
 Some influential environment variables:
   CC                      C compiler command [detected]

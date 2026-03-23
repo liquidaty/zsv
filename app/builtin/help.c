@@ -61,6 +61,10 @@ static int main_help(int argc, const char *argv[]) {
 #ifdef ZSV_EXTRAS
     "  -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command",
 #endif
+    "  --parser <default|fast|legacy>",
+    "                           : select parser engine. 'fast' uses branchless SIMD",
+    "                             (aarch64 only, requires standard RFC 4180 quoting).",
+    "                             'legacy' uses the original character-by-character engine",
     "  -v,--verbose             : verbose output",
     "",
     "Commands that parse CSV or other tabular data:",

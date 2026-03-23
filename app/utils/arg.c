@@ -125,6 +125,7 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx) {
  * blank rows -0,--header-row <header> : insert the provided CSV as the first row (in position 0) e.g. --header-row
  * 'col1,col2,\"my col 3\"'", -v,--verbose
  *     -1,--apply-overwrites: automatically apply cached overwrites
+ *     --parser <default|fast|legacy>: select parser engine
  *
  * @param  argc      count of args to process
  * @param  argv      args to process
