@@ -161,7 +161,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
 #define FAST_ROWEND_NOQUOTE(scanner, buff, idx, is_cr)                                                                 \
   do {                                                                                                                 \
     if (!(is_cr)) {                                                                                                    \
-      char prev = (idx) > 0 ? (buff)[(idx)-1] : (scanner)->last;                                                     \
+      char prev = (idx) > 0 ? (buff)[(idx)-1] : (scanner)->last;                                                       \
       if (prev == '\r') {                                                                                              \
         (scanner)->cell_start = (idx) + 1;                                                                             \
         (scanner)->row_start = (idx) + 1;                                                                              \
@@ -185,7 +185,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
 #define FAST_ROWEND_QUOTED(scanner, buff, idx, is_cr, quote_char)                                                      \
   do {                                                                                                                 \
     if (!(is_cr)) {                                                                                                    \
-      char prev = (idx) > 0 ? (buff)[(idx)-1] : (scanner)->last;                                                     \
+      char prev = (idx) > 0 ? (buff)[(idx)-1] : (scanner)->last;                                                       \
       if (prev == '\r') {                                                                                              \
         (scanner)->cell_start = (idx) + 1;                                                                             \
         (scanner)->row_start = (idx) + 1;                                                                              \
@@ -329,8 +329,7 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
       unsigned char prev_byte = i > 0 ? buff[i - 1] : '\n';
       int prev_is_delim = (prev_byte == delimiter || prev_byte == '\n' || prev_byte == '\r');
       uint64_t sc_cell_starts = (all_sc_delims << 1) | (prev_is_delim ? 1ULL : 0ULL);
-      uint64_t sc_adj = ((quotes << 1) | ((prev_byte == '"') ? 1ULL : 0ULL)) |
-                         ((quotes >> 1) | (1ULL << 63));
+      uint64_t sc_adj = ((quotes << 1) | ((prev_byte == '"') ? 1ULL : 0ULL)) | ((quotes >> 1) | (1ULL << 63));
       uint64_t sc_before_delim = (all_sc_delims >> 1) | (1ULL << 63);
       uint64_t sc_nonstandard = quotes & ~(sc_cell_starts | sc_adj | sc_before_delim);
 
