@@ -69,6 +69,10 @@ ifeq ($(NO_THREADING),1)
   CFLAGS+= -DNO_THREADING
 endif
 
+ifeq ($(HAVE_NEON),1)
+  CFLAGS+= -DZSV_HAVE_NEON
+endif
+
 ifeq ($(ZSV_NO_ONLY_CRLF),1)
   CFLAGS+= -DZSV_NO_ONLY_CRLF
 endif

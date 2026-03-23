@@ -190,13 +190,15 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, co
 #endif
     } else if (!strcmp(argv[i] + 2, "parser")) {
       if (++i >= argc)
-        err = fprintf(stderr, "Error: --parser requires a value (default or fast)\n");
+        err = fprintf(stderr, "Error: --parser requires a value (default, fast, or legacy)\n");
       else if (!strcmp(argv[i], "default"))
-        opts_out->scan_engine = 0;
+        opts_out->scan_engine = 0; /* use compiled default */
       else if (!strcmp(argv[i], "fast"))
         opts_out->scan_engine = 3; /* ZSV_MODE_DELIM_FAST */
+      else if (!strcmp(argv[i], "legacy"))
+        opts_out->scan_engine = 255; /* force legacy/standard engine */
       else
-        err = fprintf(stderr, "Error: --parser value must be 'default' or 'fast' (got '%s')\n", argv[i]);
+        err = fprintf(stderr, "Error: --parser value must be 'default', 'fast', or 'legacy' (got '%s')\n", argv[i]);
       continue;
     } else {
       found_ix = str_array_index_of(long_args, argv[i] + 2);

@@ -694,8 +694,14 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
   else if (opts->buffsize < ZSV_MIN_SCANNER_BUFFSIZE)
     opts->buffsize = ZSV_MIN_SCANNER_BUFFSIZE;
 
-  if (opts->scan_engine)
+  if (opts->scan_engine == 255)
+    scanner->mode = ZSV_MODE_DELIM; /* force legacy/standard engine */
+  else if (opts->scan_engine)
     scanner->mode = opts->scan_engine;
+  /* Note: the fast engine (ZSV_MODE_DELIM_FAST) can be enabled via
+   * --parser fast. It requires standard CSV quoting (RFC 4180).
+   * Non-standard quoting (e.g. unescaped quotes mid-cell) is only
+   * handled correctly by the legacy engine (--parser legacy or default). */
 
   scanner->in = opts->stream;
   if (!opts->read) {

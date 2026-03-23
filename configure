@@ -665,6 +665,27 @@ elif [ "$FORCE_SSE2" = "auto" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     fi
 fi
 
+# Detect aarch64 NEON support (enables fast branchless parser engine)
+HAVE_NEON=
+if [ "$CROSS_COMPILING" = "no" ] ; then
+    rm -f "$tmpc"
+    printf "checking for aarch64 NEON support... "
+    cat > "$tmpc" <<EOF
+#if defined(__aarch64__)
+#include <arm_neon.h>
+int main() { uint8x16_t v = vdupq_n_u8(0); (void)v; return 0; }
+#else
+#error "not aarch64"
+#endif
+EOF
+    if $CC $CFLAGS -o "$tmpe" "$tmpc" >/dev/null 2>&1 ; then
+        echo "yes"
+        HAVE_NEON=1
+    else
+        echo "no"
+    fi
+fi
+
 HAVE_LTO=0
 if [ "$TRY_LTO" = "yes" ]; then
     HAVE_LTO=1
@@ -862,6 +883,8 @@ HAVE_AVX512 = $HAVE_AVX512
 CFLAGS_AVX_512 = $CFLAGS_AVX_512
 CFLAGS_AVX = $CFLAGS_AVX
 CFLAGS_SSE = $CFLAGS_SSE
+
+HAVE_NEON = $HAVE_NEON
 
 CFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g -Wall -Wextra -Wno-missing-field-initializers -Wunused # -g3 -ggdb
 LDFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g # -g3 -ggdb
