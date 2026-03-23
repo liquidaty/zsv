@@ -180,6 +180,7 @@ static void *process_chunk_internal(struct zsv_chunk_count_data *cdata) {
   opts.stream = f;
   opts.ctx = &wctx;
   opts.row_handler = worker_row;
+  opts.scan_engine = 255; // force legacy engine for parallel chunks
 
   wctx.parser = zsv_new(&opts);
   if (wctx.parser == NULL) {

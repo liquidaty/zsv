@@ -28,6 +28,7 @@ static inline uint16_t fast_neon_movemask(uint8x16_t input) {
  */
 __attribute__((always_inline)) static inline void fast_set_quote_flags(struct zsv_scanner *scanner, unsigned char *s,
                                                                        size_t n) {
+  scanner->quote_close_position = 0;
   if (n == 0 || *s != '"') {
     /* Not a quoted cell. Check for embedded quotes (quote in unquoted cell) */
     if (n > 0 && memchr(s, '"', n))
@@ -221,15 +222,9 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
    * combined with cell_dl's in-place memmove can produce incorrect results
    * for small inputs with complex quoting. No performance impact since
    * this only triggers for inputs < 64 bytes after partial row data. */
-  /* On the very first scan call, if the input is small and contains
-   * quotes, permanently switch to the legacy engine for this parser.
-   * This ensures correct handling of non-standard quoting in small
-   * files. The threshold is generous since performance for small files
-   * is irrelevant. */
-  if (scanner->old_bytes_read == 0 && i == 0 && bytes_read < 128 && quote_char > 0 && memchr(buff, '"', bytes_read)) {
-    scanner->mode = ZSV_MODE_DELIM;
-    return zsv_scan_delim(scanner, buff, bytes_read);
-  }
+  /* Note: non-standard quoting (mid-cell quotes in unquoted cells) is
+   * detected per-block in the SIMD loop and falls back to the scalar
+   * tail which uses the cell_start check for correct handling. */
 
   bytes_read += i;
   scanner->partial_row_length = 0;
@@ -252,7 +247,6 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
   int inside_quote = (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) ? 1 : 0;
   char delimiter = scanner->opts.delimiter;
 
-#ifdef ZSV_SUPPORT_NONSTANDARD_QUOTING
   /* Carry bits for non-standard quoting detection across 64-byte blocks */
   int last_was_delim;
   int last_was_quote = 0;
@@ -263,7 +257,6 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
     last_was_delim = (prev == delimiter || prev == '\n' || prev == '\r');
     last_was_quote = (prev == '"' && quote_char > 0);
   }
-#endif
   uint8x16_t v_comma = vdupq_n_u8((uint8_t)delimiter);
   uint8x16_t v_nl = vdupq_n_u8('\n');
   uint8x16_t v_cr = vdupq_n_u8('\r');
@@ -326,7 +319,26 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
       }
 
       /* Block has quotes or we're inside a quoted cell.
-       * Use prefix-XOR to mask out newlines inside quotes. */
+       * Check for non-standard quoting first. Need comma/tab bitmask. */
+      uint64_t sc_commas = 0;
+      for (int chunk = 0; chunk < 4; chunk++) {
+        uint8x16_t b = vld1q_u8(buff + i + chunk * 16);
+        sc_commas |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_comma)) << (chunk * 16);
+      }
+      uint64_t all_sc_delims = sc_commas | newlines | crs;
+      unsigned char prev_byte = i > 0 ? buff[i - 1] : '\n';
+      int prev_is_delim = (prev_byte == delimiter || prev_byte == '\n' || prev_byte == '\r');
+      uint64_t sc_cell_starts = (all_sc_delims << 1) | (prev_is_delim ? 1ULL : 0ULL);
+      uint64_t sc_adj = ((quotes << 1) | ((prev_byte == '"') ? 1ULL : 0ULL)) |
+                         ((quotes >> 1) | (1ULL << 63));
+      uint64_t sc_before_delim = (all_sc_delims >> 1) | (1ULL << 63);
+      uint64_t sc_nonstandard = quotes & ~(sc_cell_starts | sc_adj | sc_before_delim);
+
+      if (UNLIKELY(sc_nonstandard != 0))
+        /* Non-standard quoting — fall through to scalar tail */
+        break;
+
+      /* Use prefix-XOR to mask out newlines inside quotes. */
       uint64_t A = ~0ULL, B = quotes;
       B = B ^ (A & (B << 1));
       A = A & (A << 1);
@@ -456,14 +468,10 @@ normal_parse:
        * Fast path: no quotes in this 64-byte chunk and not inside a quoted
        * cell. Store cells directly without going through cell_dl().
        */
-#ifdef ZSV_SUPPORT_NONSTANDARD_QUOTING
       last_was_delim = (all_delims >> 63) & 1;
       last_was_quote = 0;
-#endif
       if (LIKELY(all_delims == 0)) {
-#ifdef ZSV_SUPPORT_NONSTANDARD_QUOTING
         last_was_delim = 0;
-#endif
         i += 64;
         continue;
       }
@@ -493,13 +501,12 @@ normal_parse:
     /*
      * Quote-aware path.
      */
-#ifdef ZSV_SUPPORT_NONSTANDARD_QUOTING
     /*
      * Check for non-standard quoting: a quote is "standard" if it's
      * an opener (preceded by delimiter), part of an escape pair
      * (adjacent to another quote), or a closer (followed by delimiter).
-     * Any other quote is non-standard and requires character-by-character
-     * fallback for this block.
+     * Any other quote is non-standard — break out of the SIMD loop
+     * and let the scalar tail handle the rest of this buffer.
      */
     uint64_t cell_starts = (all_delims << 1) | (last_was_delim ? 1ULL : 0ULL);
     uint64_t adj_to_quote = ((quotes << 1) | (last_was_quote ? 1ULL : 0ULL)) |
@@ -512,62 +519,44 @@ normal_parse:
     last_was_quote = (quotes >> 63) & 1;
 
     if (UNLIKELY(nonstandard != 0)) {
-      /*
-       * Non-standard quoting detected. Fall back to character-by-character
-       * processing for this block, using the legacy state machine that
-       * correctly handles mid-cell quotes and trailing data after close quotes.
-       */
+      /* Non-standard quoting detected in this 64-byte block.
+       * Process it character-by-character using the same logic as the
+       * scalar tail (cell_start check for quote openers), then continue
+       * with the SIMD loop for subsequent blocks. */
       size_t block_end = i + 64;
       for (; i < block_end; i++) {
         unsigned char c = buff[i];
         if (c == '"' && quote_char > 0) {
-          if (i == scanner->cell_start && !scanner->buffer_exceeded) {
-            scanner->quoted = ZSV_PARSER_QUOTE_UNCLOSED;
-            scanner->quote_close_position = 0;
+          if (inside_quote) {
+            if (i + 1 < bytes_read && buff[i + 1] == '"') {
+              i++;
+            } else {
+              inside_quote = 0;
+            }
+          } else if (i == scanner->cell_start) {
             inside_quote = 1;
-          } else if (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) {
-            if (VERY_LIKELY(i + 1 < bytes_read)) {
-              if (LIKELY(buff[i + 1] != '"')) {
-                scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
-                scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
-                if (LIKELY(scanner->quote_close_position == 0))
-                  scanner->quote_close_position = i - scanner->cell_start;
-                inside_quote = 0;
-              } else {
-                scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
-                scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
-                i++; /* skip next quote */
-              }
-            } else
-              scanner->quoted |= ZSV_PARSER_QUOTE_PENDING;
-          } else {
-            scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
-            scanner->quote_close_position =
-              scanner->quoted & ZSV_PARSER_QUOTE_CLOSED ? scanner->quote_close_position : 0;
           }
           continue;
         }
-
-        if (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) {
-          if (c == delimiter || c == '\r' || c == '\n')
-            scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
+        if (inside_quote)
           continue;
-        }
-
         if (c == delimiter) {
           scanner->scanned_length = i;
+          /* Use fast_set_quote_flags to set flags, then store via cell_dl.
+           * cell_dl's memmove only modifies bytes within [cell_start, i)
+           * which we've already passed — safe for forward iteration. */
+          if (quote_char > 0)
+            fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
           cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
           scanner->cell_start = i + 1;
         } else if (c == '\r') {
-          FAST_ROWEND_QUOTED(scanner, buff, i, 1, -1); /* -1: flags already set */
+          FAST_ROWEND_QUOTED(scanner, buff, i, 1, quote_char);
         } else if (c == '\n') {
-          FAST_ROWEND_QUOTED(scanner, buff, i, 0, -1);
+          FAST_ROWEND_QUOTED(scanner, buff, i, 0, quote_char);
         }
       }
-      inside_quote = (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) ? 1 : 0;
       continue;
     }
-#endif /* ZSV_SUPPORT_NONSTANDARD_QUOTING */
 
     /*
      * Standard quoting: use prefix-XOR to compute state_mask.
@@ -636,17 +625,11 @@ normal_parse:
         } else {
           inside_quote = 0;
         }
-#ifdef ZSV_SUPPORT_NONSTANDARD_QUOTING
       } else if (i == scanner->cell_start) {
         inside_quote = 1;
       }
       /* else: mid-cell quote in unquoted cell — ignore for delimiter detection.
        * fast_set_quote_flags() will handle it correctly for normalization. */
-#else
-      } else {
-        inside_quote = 1;
-      }
-#endif
       continue;
     }
 
@@ -674,6 +657,11 @@ normal_parse:
     scanner->quoted |= ZSV_PARSER_QUOTE_UNCLOSED;
   else
     scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
+
+  /* If there's remaining cell data (no trailing row-end), set quote
+   * flags so zsv_finish can properly normalize the final cell. */
+  if (quote_char > 0 && i > scanner->cell_start && !inside_quote)
+    fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
 
   scanner->scanned_length = i;
   scanner->old_bytes_read = bytes_read;
