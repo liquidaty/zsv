@@ -50,6 +50,9 @@ Optional features:
   --disable-stdin         disable stdin from CLI commands
   --enable-simdutf        use simdutf for 'check --utf8'. Faster, but adds ~300k to binary
   --disable-only-crlf     disable the --only-crlf parsing option
+  --default-parser=fast|legacy
+                          set the default parsing engine when --parser is
+                          not specified on the command line [legacy]
   --support-nonstandard-quoting
                           enable SIMD-level detection and fallback for
                           non-standard CSV quoting in the fast parser [no]
@@ -381,6 +384,9 @@ for arg ; do
 
         --support-nonstandard-quoting|--support-nonstandard-quoting=yes) SUPPORT_NONSTANDARD_QUOTING=1;;
         --support-nonstandard-quoting=no) SUPPORT_NONSTANDARD_QUOTING=;;
+
+        --default-parser=fast) DEFAULT_PARSER_FAST=1;;
+        --default-parser=legacy) DEFAULT_PARSER_FAST=;;
 
         --ncurses-dynamic) NCURSES_DYNAMIC=1;;
 
@@ -893,6 +899,8 @@ CFLAGS_SSE = $CFLAGS_SSE
 HAVE_NEON = $HAVE_NEON
 
 SUPPORT_NONSTANDARD_QUOTING = $SUPPORT_NONSTANDARD_QUOTING
+
+DEFAULT_PARSER_FAST = $DEFAULT_PARSER_FAST
 
 CFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g -Wall -Wextra -Wno-missing-field-initializers -Wunused # -g3 -ggdb
 LDFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g # -g3 -ggdb
