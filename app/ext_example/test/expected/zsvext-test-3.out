@@ -35,6 +35,10 @@ Options common to all commands except `prop`, `rm` and `jq`:
   --only-crlf              : only treat CRLF as row delimiter
                              CR or LF alone are treated as normal chars that do not require quotes
   -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command
+  --parser <default|fast|legacy>
+                           : select parser engine. 'fast' uses branchless SIMD
+                             (aarch64 only, requires standard RFC 4180 quoting).
+                             'legacy' uses the original character-by-character engine
   -v,--verbose             : verbose output
 
 Commands that parse CSV or other tabular data:
@@ -99,6 +103,10 @@ Options common to all commands except `prop`, `rm` and `jq`:
   --only-crlf              : only treat CRLF as row delimiter
                              CR or LF alone are treated as normal chars that do not require quotes
   -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command
+  --parser <default|fast|legacy>
+                           : select parser engine. 'fast' uses branchless SIMD
+                             (aarch64 only, requires standard RFC 4180 quoting).
+                             'legacy' uses the original character-by-character engine
   -v,--verbose             : verbose output
 
 Commands that parse CSV or other tabular data:
