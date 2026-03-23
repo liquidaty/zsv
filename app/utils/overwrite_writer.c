@@ -105,14 +105,14 @@ struct zsv_overwrite *zsv_overwrite_writer_new(struct zsv_overwrite_args *args, 
 void zsv_overwrite_writer_delete(struct zsv_overwrite *data) {
   if (data->writer)
     zsv_writer_delete(data->writer);
-  if (data->ctx)
-    zsv_overwrite_context_delete(data->ctx);
 
   if (data->overwrite && data->mode != zsvsheet_mode_bulk)
     free(data->overwrite->val.str);
 
-  if (data->all)
+  if (data->all && data->ctx)
     zsv_remove(data->ctx->src);
+
+  zsv_overwrite_context_delete(data->ctx);
   free(data);
 }
 
