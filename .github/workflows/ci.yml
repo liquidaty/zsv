@@ -435,7 +435,7 @@ jobs:
 
     steps:
     - name: Update
-      uses: mislav/bump-homebrew-formula-action@v3
+      uses: mislav/bump-homebrew-formula-action@v4
       env:
         COMMITTER_TOKEN: ${{ secrets.HOMEBREW_CORE_PR_PAT }}
       with:
