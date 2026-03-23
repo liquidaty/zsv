@@ -15,12 +15,10 @@
 #include <arm_neon.h>
 
 static inline uint16_t fast_neon_movemask(uint8x16_t input) {
-  static const uint8_t weights[16] = {1, 2, 4, 8, 16, 32, 64, 128,
-                                      1, 2, 4, 8, 16, 32, 64, 128};
+  static const uint8_t weights[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
   const uint8x16_t bit_weights = vld1q_u8(weights);
   uint8x16_t masked = vandq_u8(input, bit_weights);
-  return (uint16_t)vaddv_u8(vget_low_u8(masked)) |
-         ((uint16_t)vaddv_u8(vget_high_u8(masked)) << 8);
+  return (uint16_t)vaddv_u8(vget_low_u8(masked)) | ((uint16_t)vaddv_u8(vget_high_u8(masked)) << 8);
 }
 
 /*
@@ -28,8 +26,8 @@ static inline uint16_t fast_neon_movemask(uint8x16_t input) {
  * by scanning its content. This replicates the quote tracking that
  * the standard engine does character-by-character.
  */
-__attribute__((always_inline))
-static inline void fast_set_quote_flags(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+__attribute__((always_inline)) static inline void fast_set_quote_flags(struct zsv_scanner *scanner, unsigned char *s,
+                                                                       size_t n) {
   if (n == 0 || *s != '"') {
     /* Not a quoted cell. Check for embedded quotes (quote in unquoted cell) */
     if (n > 0 && memchr(s, '"', n))
@@ -63,8 +61,8 @@ static inline void fast_set_quote_flags(struct zsv_scanner *scanner, unsigned ch
  * Store a raw cell placeholder into the row. No normalization, no
  * cell_handler callback. Used for columns that the caller doesn't need.
  */
-__attribute__((always_inline))
-static inline void fast_store_cell_raw(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+__attribute__((always_inline)) static inline void fast_store_cell_raw(struct zsv_scanner *scanner, unsigned char *s,
+                                                                      size_t n) {
   if (VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
     struct zsv_cell c = {s, n, scanner->opts.no_quotes ? 1 : 0, 0};
     scanner->row.cells[scanner->row.used++] = c;
@@ -79,8 +77,8 @@ static inline void fast_store_cell_raw(struct zsv_scanner *scanner, unsigned cha
  * The 'quoted' field is set to 1 when no_quotes mode is active (matching
  * cell_dl behavior), or 0 otherwise.
  */
-__attribute__((always_inline))
-static inline void fast_store_cell(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+__attribute__((always_inline)) static inline void fast_store_cell(struct zsv_scanner *scanner, unsigned char *s,
+                                                                  size_t n) {
   /* If column filter is active, check if this column needs full processing */
   if (scanner->needed_cols) {
     if (scanner->row.used >= scanner->needed_cols_count || !scanner->needed_cols[scanner->row.used]) {
@@ -108,8 +106,8 @@ static inline void fast_store_cell(struct zsv_scanner *scanner, unsigned char *s
  * Store a cell and invoke the row handler, bypassing cell_dl()/row_dl().
  * Returns non-zero status on abort/cancellation.
  */
-__attribute__((always_inline))
-static inline enum zsv_status fast_store_cell_and_row(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+__attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and_row(struct zsv_scanner *scanner,
+                                                                                     unsigned char *s, size_t n) {
   fast_store_cell(scanner, s, n);
 
   if (VERY_UNLIKELY(scanner->row.overflow)) {
@@ -159,63 +157,58 @@ static inline enum zsv_status fast_store_cell_and_row(struct zsv_scanner *scanne
  * Handle a row-end for an unquoted cell (fast path).
  * Skips cell_dl()/row_dl() overhead.
  */
-#define FAST_ROWEND_NOQUOTE(scanner, buff, idx, is_cr)                         \
-  do {                                                                         \
-    if (!(is_cr)) {                                                            \
-      char prev = (idx) > 0 ? (buff)[(idx) - 1] : (scanner)->last;            \
-      if (prev == '\r') {                                                      \
-        (scanner)->cell_start = (idx) + 1;                                     \
-        (scanner)->row_start = (idx) + 1;                                      \
-        break;                                                                 \
-      }                                                                        \
-    }                                                                          \
-    (scanner)->scanned_length = (idx);                                         \
-    enum zsv_status stat_ = fast_store_cell_and_row(                            \
-      (scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start \
-    );                                                                         \
-    if (VERY_UNLIKELY(stat_))                                                  \
-      return stat_;                                                            \
-    (scanner)->cell_start = (idx) + 1;                                         \
-    (scanner)->row_start = (idx) + 1;                                          \
-    (scanner)->data_row_count++;                                               \
+#define FAST_ROWEND_NOQUOTE(scanner, buff, idx, is_cr)                                                                 \
+  do {                                                                                                                 \
+    if (!(is_cr)) {                                                                                                    \
+      char prev = (idx) > 0 ? (buff)[(idx) - 1] : (scanner)->last;                                                     \
+      if (prev == '\r') {                                                                                              \
+        (scanner)->cell_start = (idx) + 1;                                                                             \
+        (scanner)->row_start = (idx) + 1;                                                                              \
+        break;                                                                                                         \
+      }                                                                                                                \
+    }                                                                                                                  \
+    (scanner)->scanned_length = (idx);                                                                                 \
+    enum zsv_status stat_ =                                                                                            \
+      fast_store_cell_and_row((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start);               \
+    if (VERY_UNLIKELY(stat_))                                                                                          \
+      return stat_;                                                                                                    \
+    (scanner)->cell_start = (idx) + 1;                                                                                 \
+    (scanner)->row_start = (idx) + 1;                                                                                  \
+    (scanner)->data_row_count++;                                                                                       \
   } while (0)
 
 /*
  * Handle a row-end for a potentially quoted cell.
  * Sets quote flags, then calls cell_and_row_dl().
  */
-#define FAST_ROWEND_QUOTED(scanner, buff, idx, is_cr, quote_char)              \
-  do {                                                                         \
-    if (!(is_cr)) {                                                            \
-      char prev = (idx) > 0 ? (buff)[(idx) - 1] : (scanner)->last;            \
-      if (prev == '\r') {                                                      \
-        (scanner)->cell_start = (idx) + 1;                                     \
-        (scanner)->row_start = (idx) + 1;                                      \
-        break;                                                                 \
-      }                                                                        \
-    }                                                                          \
-    (scanner)->scanned_length = (idx);                                         \
-    if ((quote_char) > 0)                                                      \
-      fast_set_quote_flags(                                                    \
-        (scanner), (buff) + (scanner)->cell_start,                             \
-        (idx) - (scanner)->cell_start);                                        \
-    enum zsv_status stat_ = cell_and_row_dl(                                   \
-      (scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start \
-    );                                                                         \
-    if (VERY_UNLIKELY(stat_))                                                  \
-      return stat_;                                                            \
-    (scanner)->cell_start = (idx) + 1;                                         \
-    (scanner)->row_start = (idx) + 1;                                          \
-    (scanner)->data_row_count++;                                               \
+#define FAST_ROWEND_QUOTED(scanner, buff, idx, is_cr, quote_char)                                                      \
+  do {                                                                                                                 \
+    if (!(is_cr)) {                                                                                                    \
+      char prev = (idx) > 0 ? (buff)[(idx) - 1] : (scanner)->last;                                                     \
+      if (prev == '\r') {                                                                                              \
+        (scanner)->cell_start = (idx) + 1;                                                                             \
+        (scanner)->row_start = (idx) + 1;                                                                              \
+        break;                                                                                                         \
+      }                                                                                                                \
+    }                                                                                                                  \
+    (scanner)->scanned_length = (idx);                                                                                 \
+    if ((quote_char) > 0)                                                                                              \
+      fast_set_quote_flags((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start);                  \
+    enum zsv_status stat_ = cell_and_row_dl((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start); \
+    if (VERY_UNLIKELY(stat_))                                                                                          \
+      return stat_;                                                                                                    \
+    (scanner)->cell_start = (idx) + 1;                                                                                 \
+    (scanner)->row_start = (idx) + 1;                                                                                  \
+    (scanner)->data_row_count++;                                                                                       \
   } while (0)
 
 static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   /* Guard: fall back for unsupported configurations */
   if (0
 #ifndef ZSV_NO_ONLY_CRLF
-      || scanner->opts.only_crlf_rowend   /* only-crlf mode — not yet supported */
+      || scanner->opts.only_crlf_rowend /* only-crlf mode — not yet supported */
 #endif
-      ) {
+  ) {
     return zsv_scan_delim(scanner, buff, bytes_read);
   }
 
@@ -233,8 +226,7 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
    * This ensures correct handling of non-standard quoting in small
    * files. The threshold is generous since performance for small files
    * is irrelevant. */
-  if (scanner->old_bytes_read == 0 && i == 0 && bytes_read < 128 &&
-      quote_char > 0 && memchr(buff, '"', bytes_read)) {
+  if (scanner->old_bytes_read == 0 && i == 0 && bytes_read < 128 && quote_char > 0 && memchr(buff, '"', bytes_read)) {
     scanner->mode = ZSV_MODE_DELIM;
     return zsv_scan_delim(scanner, buff, bytes_read);
   }
@@ -292,7 +284,7 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
         uint8x16_t b = vld1q_u8(buff + i + chunk * 16);
         unsigned shift = chunk * 16;
         newlines |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_nl)) << shift;
-        crs      |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_cr)) << shift;
+        crs |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_cr)) << shift;
         if (quote_char > 0)
           quotes |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_qt)) << shift;
       }
@@ -336,11 +328,16 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
       /* Block has quotes or we're inside a quoted cell.
        * Use prefix-XOR to mask out newlines inside quotes. */
       uint64_t A = ~0ULL, B = quotes;
-      B = B ^ (A & (B << 1));  A = A & (A << 1);
-      B = B ^ (A & (B << 2));  A = A & (A << 2);
-      B = B ^ (A & (B << 4));  A = A & (A << 4);
-      B = B ^ (A & (B << 8));  A = A & (A << 8);
-      B = B ^ (A & (B << 16)); A = A & (A << 16);
+      B = B ^ (A & (B << 1));
+      A = A & (A << 1);
+      B = B ^ (A & (B << 2));
+      A = A & (A << 2);
+      B = B ^ (A & (B << 4));
+      A = A & (A << 4);
+      B = B ^ (A & (B << 8));
+      A = A & (A << 8);
+      B = B ^ (A & (B << 16));
+      A = A & (A << 16);
       B = B ^ (A & (B << 32));
       uint64_t state_mask = inside_quote ? ~B : B;
       inside_quote = (state_mask >> 63) & 1;
@@ -397,7 +394,7 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
         }
         if (inside_quote)
           continue;
-        if (c == '\r' || (c == '\n' && (i == 0 ? scanner->last != '\r' : buff[i-1] != '\r'))) {
+        if (c == '\r' || (c == '\n' && (i == 0 ? scanner->last != '\r' : buff[i - 1] != '\r'))) {
           scanner->data_row_count++;
           scanner->cell_start = i + 1;
           scanner->row_start = i + 1;
@@ -445,9 +442,9 @@ normal_parse:
     for (int chunk = 0; chunk < 4; chunk++) {
       uint8x16_t b = vld1q_u8(buff + i + chunk * 16);
       unsigned shift = chunk * 16;
-      commas   |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_comma)) << shift;
+      commas |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_comma)) << shift;
       newlines |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_nl)) << shift;
-      crs      |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_cr)) << shift;
+      crs |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_cr)) << shift;
       if (quote_char > 0)
         quotes |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_qt)) << shift;
     }
@@ -505,8 +502,8 @@ normal_parse:
      * fallback for this block.
      */
     uint64_t cell_starts = (all_delims << 1) | (last_was_delim ? 1ULL : 0ULL);
-    uint64_t adj_to_quote = ((quotes << 1) | (last_was_quote ? 1ULL : 0ULL))
-                          | ((quotes >> 1) | (1ULL << 63)); /* bit 63: can't see next block */
+    uint64_t adj_to_quote = ((quotes << 1) | (last_was_quote ? 1ULL : 0ULL)) |
+                            ((quotes >> 1) | (1ULL << 63)); /* bit 63: can't see next block */
     uint64_t before_delim = (all_delims >> 1) | (1ULL << 63);
     uint64_t standard_pos = cell_starts | adj_to_quote | before_delim;
     uint64_t nonstandard = quotes & ~standard_pos;
@@ -579,11 +576,16 @@ normal_parse:
     uint64_t A = ~0ULL;
     uint64_t B = quotes;
 
-    B = B ^ (A & (B << 1));  A = A & (A << 1);
-    B = B ^ (A & (B << 2));  A = A & (A << 2);
-    B = B ^ (A & (B << 4));  A = A & (A << 4);
-    B = B ^ (A & (B << 8));  A = A & (A << 8);
-    B = B ^ (A & (B << 16)); A = A & (A << 16);
+    B = B ^ (A & (B << 1));
+    A = A & (A << 1);
+    B = B ^ (A & (B << 2));
+    A = A & (A << 2);
+    B = B ^ (A & (B << 4));
+    A = A & (A << 4);
+    B = B ^ (A & (B << 8));
+    A = A & (A << 8);
+    B = B ^ (A & (B << 16));
+    A = A & (A << 16);
     B = B ^ (A & (B << 32));
 
     uint64_t state_mask = inside_quote ? ~B : B;

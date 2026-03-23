@@ -321,7 +321,7 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
 #ifdef HAVE_PCRE2_8
       && !data->search_regexs
 #endif
-      ) {
+  ) {
     unsigned int *needed = malloc(data->output_cols_count * sizeof(*needed));
     if (needed) {
       for (unsigned int i = 0; i < data->output_cols_count; i++)
