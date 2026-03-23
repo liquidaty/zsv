@@ -698,10 +698,10 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
     scanner->mode = ZSV_MODE_DELIM; /* force legacy/standard engine */
   else if (opts->scan_engine)
     scanner->mode = opts->scan_engine;
-  /* Note: the fast engine (ZSV_MODE_DELIM_FAST) can be enabled via
-   * --parser fast. It requires standard CSV quoting (RFC 4180).
-   * Non-standard quoting (e.g. unescaped quotes mid-cell) is only
-   * handled correctly by the legacy engine (--parser legacy or default). */
+#ifdef ZSV_HAVE_NEON
+  else
+    scanner->mode = ZSV_MODE_DELIM_FAST;
+#endif
 
   scanner->in = opts->stream;
   if (!opts->read) {
