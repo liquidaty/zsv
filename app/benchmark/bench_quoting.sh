@@ -159,17 +159,21 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
   for CMD in count select; do
     KEY="${DATA}:${CMD}"
 
+    # --no-trim: disable whitespace trimming for select (other tools don't trim)
+    ZSV_SELECT_OPTS=""
+    if [ "$CMD" = "select" ]; then ZSV_SELECT_OPTS="--no-trim"; fi
+
     # zsv legacy
-    TIMES["${KEY}:zsv-legacy"]=$(best_of "\"$ZSV\" $CMD --parser legacy \"$FILE\"")
+    TIMES["${KEY}:zsv-legacy"]=$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser legacy \"$FILE\"")
     CORRECT["${KEY}:zsv-legacy"]="correct"
 
     # zsv fast (prefix-XOR, explicitly disable malformed quoting)
-    TIMES["${KEY}:zsv-fast"]=$(best_of "\"$ZSV\" $CMD --parser fast --no-malformed-quoting \"$FILE\"")
+    TIMES["${KEY}:zsv-fast"]=$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --no-malformed-quoting \"$FILE\"")
     if [ "$CMD" = "count" ]; then
       CORRECT["${KEY}:zsv-fast"]=$(check_correct "\"$ZSV\" count --parser fast --no-malformed-quoting \"$FILE\"" "$REF")
     else
-      "$ZSV" $CMD --parser legacy "$FILE" | md5tool > "$TMPDIR/ref.md5"
-      "$ZSV" $CMD --parser fast --no-malformed-quoting "$FILE" | md5tool > "$TMPDIR/test.md5"
+      "$ZSV" $CMD $ZSV_SELECT_OPTS --parser legacy "$FILE" | md5tool > "$TMPDIR/ref.md5"
+      "$ZSV" $CMD $ZSV_SELECT_OPTS --parser fast --no-malformed-quoting "$FILE" | md5tool > "$TMPDIR/test.md5"
       if diff "$TMPDIR/ref.md5" "$TMPDIR/test.md5" > /dev/null 2>&1; then
         CORRECT["${KEY}:zsv-fast"]="correct"
       else
@@ -178,11 +182,11 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
     fi
 
     # zsv fast+MQ (malformed quoting)
-    TIMES["${KEY}:zsv-fast-mq"]=$(best_of "\"$ZSV\" $CMD --parser fast --malformed-quoting \"$FILE\"")
+    TIMES["${KEY}:zsv-fast-mq"]=$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --malformed-quoting \"$FILE\"")
     if [ "$CMD" = "count" ]; then
       CORRECT["${KEY}:zsv-fast-mq"]=$(check_correct "\"$ZSV\" count --parser fast --malformed-quoting \"$FILE\"" "$REF")
     else
-      "$ZSV" $CMD --parser fast --malformed-quoting "$FILE" | md5tool > "$TMPDIR/test.md5"
+      "$ZSV" $CMD $ZSV_SELECT_OPTS --parser fast --malformed-quoting "$FILE" | md5tool > "$TMPDIR/test.md5"
       if diff "$TMPDIR/ref.md5" "$TMPDIR/test.md5" > /dev/null 2>&1; then
         CORRECT["${KEY}:zsv-fast-mq"]="correct"
       else
@@ -256,13 +260,13 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
     fi
 
     # zsv legacy --parallel
-    TIMES["${KEY}:zsv-legacy-par"]=$(best_of "\"$ZSV\" $CMD --parser legacy --parallel \"$FILE\"")
+    TIMES["${KEY}:zsv-legacy-par"]=$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser legacy --parallel \"$FILE\"")
     # Parallel correctness: use count (order-independent). For select, parallel output
     # may reorder rows across chunks, so we check count match only.
     CORRECT["${KEY}:zsv-legacy-par"]=$(check_correct "\"$ZSV\" count --parser legacy --parallel \"$FILE\"" "$REF")
 
     # zsv fast --parallel
-    TIMES["${KEY}:zsv-fast-par"]=$(best_of "\"$ZSV\" $CMD --parser fast --no-malformed-quoting --parallel \"$FILE\"")
+    TIMES["${KEY}:zsv-fast-par"]=$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --no-malformed-quoting --parallel \"$FILE\"")
     CORRECT["${KEY}:zsv-fast-par"]=$(check_correct "\"$ZSV\" count --parser fast --no-malformed-quoting --parallel \"$FILE\"" "$REF")
 
     echo "  $DATA $CMD done" >&2
