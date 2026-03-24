@@ -458,7 +458,7 @@ CLI_BIN=$(dir ${ZSVBIN})cli${EXE}
 bench-quoting: ${CLI_BIN}
 	@mkdir -p $(RESULTS_DIR)
 	@bash $(BENCH_DIR)bench_quoting.sh ${CLI_BIN} \
-		$(RESULTS_DIR)/benchmark-fast-parser-quoting-$$(date +%F).md
+		$(RESULTS_DIR)/benchmark-fast-parser-quoting-$$(uname -s | tr A-Z a-z)-$$(uname -m)-$$(date +%F-%H%M).md
 
 .PHONY: help all count select select-% clean polars-setup csv% tsv% graph% bench-quoting
 
