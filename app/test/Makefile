@@ -763,10 +763,10 @@ test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@tmux kill-session 2>/dev/null >/dev/null || printf ''
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux -v new-session -x 80 -y 5 -d -s $@ && \
-	sleep 0.5 && \
+	sleep 1 && \
 	tmux send-keys -t $@ "clear" ENTER && \
 	tmux send-keys -t $@ "${PREFIX} $< worldcitiespop_mil.csv" ENTER && \
-	sleep 0.5 && \
+	sleep 1 && \
 	tmux send-keys -t $@ Down Up && \
 	tmux -v capture-pane -t $@ -p ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	tmux -v send-keys -t $@ "q" && \

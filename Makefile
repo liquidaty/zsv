@@ -57,6 +57,7 @@ help:
 
 check test:
 	@${MAKE} -C app test CONFIGFILE=${CONFIGFILEPATH}
+	@${MAKE} -C src install CONFIGFILE=${CONFIGFILEPATH}
 	@${MAKE} -C examples/lib test CONFIGFILE=${CONFIGFILEPATH}
 
 build install uninstall: % :
