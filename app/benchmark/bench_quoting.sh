@@ -99,6 +99,12 @@ detect() { command -v "$1" >/dev/null 2>&1; }
 HAVE_XSV=0; detect xsv && HAVE_XSV=1
 HAVE_XAN=0; detect xan && HAVE_XAN=1
 HAVE_POLARS=0; detect polars && HAVE_POLARS=1
+HAVE_QSV=0; QSV_BIN=""
+for qbin in qsvlite qsv; do
+  if detect "$qbin" && "$qbin" --version >/dev/null 2>&1; then
+    HAVE_QSV=1; QSV_BIN="$qbin"; break
+  fi
+done
 
 # --- md5 tool (Linux: md5sum, macOS: md5 -r) ---
 md5tool() {
@@ -233,6 +239,32 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
       fi
     fi
 
+    # qsv (qsvlite)
+    if [ "$HAVE_QSV" = "1" ]; then
+      if [ "$CMD" = "count" ]; then
+        TIMES["${KEY}:qsv"]=$(best_of "$QSV_BIN count \"$FILE\"")
+        CORRECT["${KEY}:qsv"]=$(check_correct "$QSV_BIN count \"$FILE\"" "$REF")
+      else
+        TIMES["${KEY}:qsv"]=$(best_of "$QSV_BIN select 1- \"$FILE\"")
+        if "$QSV_BIN" select 1- "$FILE" 2>/dev/null | md5tool > "$TMPDIR/test.md5" && \
+           diff "$TMPDIR/ref.md5" "$TMPDIR/test.md5" > /dev/null 2>&1; then
+          CORRECT["${KEY}:qsv"]="correct"
+        else
+          CORRECT["${KEY}:qsv"]="incorrect"
+        fi
+      fi
+    fi
+
+    # zsv legacy --parallel
+    TIMES["${KEY}:zsv-legacy-par"]=$(best_of "\"$ZSV\" $CMD --parser legacy --parallel \"$FILE\"")
+    # Parallel correctness: use count (order-independent). For select, parallel output
+    # may reorder rows across chunks, so we check count match only.
+    CORRECT["${KEY}:zsv-legacy-par"]=$(check_correct "\"$ZSV\" count --parser legacy --parallel \"$FILE\"" "$REF")
+
+    # zsv fast --parallel
+    TIMES["${KEY}:zsv-fast-par"]=$(best_of "\"$ZSV\" $CMD --parser fast --no-malformed-quoting --parallel \"$FILE\"")
+    CORRECT["${KEY}:zsv-fast-par"]=$(check_correct "\"$ZSV\" count --parser fast --no-malformed-quoting --parallel \"$FILE\"" "$REF")
+
     echo "  $DATA $CMD done" >&2
   done
 done
@@ -264,39 +296,25 @@ fmt_gbs() {
   fi
 }
 
-# Format as percentage of hardware max
-fmt_pct() {
-  local key="$1" tool="$2" data="$3"
-  local tkey="${key}:${tool}"
-  local t="${TIMES[$tkey]:-}" c="${CORRECT[$tkey]:-}"
-  if [ -z "$t" ]; then echo "-"; return; fi
-  if [ "$c" = "incorrect" ]; then echo "N/A"; return; fi
-  if [ "$(echo "$HW_MAX_GBS > 0" | bc)" = "0" ]; then echo "-"; return; fi
-  local bytes="${FILESIZES[$data]}"
-  if [ "$(echo "$t > 0" | bc)" = "1" ]; then
-    local gbs
-    gbs=$(echo "scale=4; $bytes / $t / 1073741824" | bc)
-    printf "%s%%" "$(echo "scale=0; $gbs * 100 / $HW_MAX_GBS" | bc)"
-  else
-    echo "-"
-  fi
-}
-
 # --- Enumerate tools in order ---
-TOOLS="zsv-legacy zsv-fast zsv-fast-mq"
+TOOLS="zsv-legacy zsv-legacy-par zsv-fast zsv-fast-par zsv-fast-mq"
 [ "$HAVE_XSV" = "1" ] && TOOLS="$TOOLS xsv"
 [ "$HAVE_XAN" = "1" ] && TOOLS="$TOOLS xan"
 [ "$HAVE_POLARS" = "1" ] && TOOLS="$TOOLS polars"
+[ "$HAVE_QSV" = "1" ] && TOOLS="$TOOLS qsv"
 
 tool_label() {
   case "$1" in
-    zsv-legacy)  echo "zsv legacy" ;;
-    zsv-fast)    echo "zsv fast" ;;
-    zsv-fast-mq) echo "zsv fast+MQ" ;;
-    xsv)         echo "xsv" ;;
-    xan)         echo "xan" ;;
-    polars)      echo "polars" ;;
-    *)           echo "$1" ;;
+    zsv-legacy)     echo "zsv legacy" ;;
+    zsv-legacy-par) echo "zsv legacy --parallel" ;;
+    zsv-fast)       echo "zsv fast" ;;
+    zsv-fast-par)   echo "zsv fast --parallel" ;;
+    zsv-fast-mq)    echo "zsv fast+MQ" ;;
+    xsv)            echo "xsv" ;;
+    xan)            echo "xan" ;;
+    polars)         echo "polars" ;;
+    qsv)            echo "qsv" ;;
+    *)              echo "$1" ;;
   esac
 }
 
@@ -321,12 +339,15 @@ Data: $ROWS rows x $COLS columns, best-of-$ITERS iterations
 | Tool | Version | Notes |
 |------|---------|-------|
 | zsv legacy | (this repo) | Standard character-by-character parser |
+| zsv legacy --parallel | (this repo) | Legacy parser, multi-threaded |
 | zsv fast | (this repo) | SIMD parser, prefix-XOR for quoted blocks |
+| zsv fast --parallel | (this repo) | SIMD parser, multi-threaded |
 | zsv fast+MQ | (this repo) | SIMD parser with \`--malformed-quoting\` (scalar for quoted blocks) |
 HEADER
   [ "$HAVE_XSV" = "1" ] && echo "| xsv | $XSV_VER | BurntSushi/xsv |"
   [ "$HAVE_XAN" = "1" ] && echo "| xan | $XAN_VER | medialab/xan |"
   [ "$HAVE_POLARS" = "1" ] && echo "| polars | $POLARS_VER | polars-cli (SQL interface over Polars engine) |"
+  [ "$HAVE_QSV" = "1" ] && echo "| qsv | $($QSV_BIN --version 2>&1 | head -1 | cut -d' ' -f1-2) | jqnatividad/qsv (${QSV_BIN}) |"
 
   cat << 'DATASETS'
 
@@ -418,11 +439,10 @@ NOTE
       local row="| $DATA |"
       for tool in $TOOLS; do
         local gbs=$(fmt_gbs "$key" "$tool" "$DATA")
-        local pct=$(fmt_pct "$key" "$tool" "$DATA")
         if [ "$gbs" = "N/A" ] || [ "$gbs" = "-" ]; then
           row="$row $gbs |"
         else
-          row="$row ${gbs} GB/s (${pct} of hw max) |"
+          row="$row ${gbs} GB/s |"
         fi
       done
       echo "$row"
