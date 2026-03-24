@@ -324,6 +324,14 @@ ifeq ($(SUPPORT_NONSTANDARD_QUOTING),1)
 	@${CMP} ${TMP_DIR}/$@-count-fast.out expected/test-quoted-nonstandard-count.out && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} --parser fast ${TEST_DATA_DIR}/test/quoted_nonstandard.csv ${REDIRECT} ${TMP_DIR}/$@-select-fast.out
 	@${CMP} ${TMP_DIR}/$@-select-fast.out expected/test-quoted-nonstandard-select.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_count${EXE} --parser fast ${TEST_DATA_DIR}/test/echo-quoted.csv ${REDIRECT} ${TMP_DIR}/$@-echo-count-fast.out
+	@${CMP} ${TMP_DIR}/$@-echo-count-fast.out expected/test-quoted-nonstandard-echo-count.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} --parser fast ${TEST_DATA_DIR}/test/echo-quoted.csv ${REDIRECT} ${TMP_DIR}/$@-echo-select-fast.out
+	@${CMP} ${TMP_DIR}/$@-echo-select-fast.out expected/test-quoted-nonstandard-echo-select.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_count${EXE} --parser fast ${TEST_DATA_DIR}/quoted2.csv ${REDIRECT} ${TMP_DIR}/$@-quoted2-count-fast.out
+	@${CMP} ${TMP_DIR}/$@-quoted2-count-fast.out expected/test-quoted-nonstandard-quoted2-count.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} --parser fast ${TEST_DATA_DIR}/quoted2.csv ${REDIRECT} ${TMP_DIR}/$@-quoted2-select-fast.out
+	@${CMP} ${TMP_DIR}/$@-quoted2-select-fast.out expected/test-quoted-nonstandard-quoted2-select.out && ${TEST_PASS} || ${TEST_FAIL}
 endif
 
 test-select test-select-pull: test-% : test-onlycrlf-% test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-11-% test-12-% test-13-% test-search-% test-regex-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-fixed-3-% test-fixed-4-% test-merge-%
