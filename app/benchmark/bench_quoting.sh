@@ -28,18 +28,28 @@ else
   CPU=$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | sed 's/.*: //' || echo "unknown")
 fi
 
-# --- Estimate single-core memory bandwidth ---
-# Uses a simple dd read test as a practical upper bound for sequential read throughput.
-estimate_membw() {
-  # Read 256MB from /dev/zero to measure memory/bus throughput.
-  # This overstates achievable bandwidth from storage but gives a ceiling.
-  local bytes=268435456  # 256 MB
+# --- Estimate disk I/O bandwidth ---
+# Measures sequential read throughput by reading a real file from disk.
+# The benchmark data files are used (after generation) so the estimate
+# reflects the actual storage backing this benchmark.
+estimate_disk_bw() {
+  local file="$1"
+  local bytes
+  if [ "$OS" = "Darwin" ]; then
+    bytes=$(stat -f%z "$file")
+  else
+    bytes=$(stat -c%s "$file")
+  fi
+  # Drop filesystem cache if possible (Linux only, requires root — skip if unavailable)
+  sync 2>/dev/null
+  if [ -w /proc/sys/vm/drop_caches ]; then
+    echo 3 > /proc/sys/vm/drop_caches 2>/dev/null
+  fi
   TIMEFORMAT='%R'
   local best=999
   for _ in 1 2 3; do
-    # Ensure we measure memory bandwidth, not storage
     local t
-    t=$( { time dd if=/dev/zero of=/dev/null bs=1M count=256 2>/dev/null; } 2>&1 )
+    t=$( { time cat "$file" > /dev/null; } 2>&1 )
     if [ "$(echo "$t < $best" | bc)" = "1" ]; then best=$t; fi
   done
   if [ "$(echo "$best > 0" | bc)" = "1" ]; then
@@ -48,10 +58,6 @@ estimate_membw() {
     echo "0"
   fi
 }
-
-echo "Estimating memory bandwidth..." >&2
-HW_MAX_GBS=$(estimate_membw)
-echo "  Estimated: ${HW_MAX_GBS} GB/s (single-core sequential read)" >&2
 
 # --- Temp directory (cleaned up on exit) ---
 TMPDIR=$(mktemp -d)
@@ -79,6 +85,11 @@ for name, gen in [
     sz = os.path.getsize(path)
     print(f"  {name}.csv: {sz/1024/1024:.0f} MB", file=sys.stderr)
 PYGEN
+
+# Estimate disk I/O bandwidth using the largest generated file
+echo "Estimating disk I/O bandwidth..." >&2
+HW_MAX_GBS=$(estimate_disk_bw "$TMPDIR/nonstandard_quoted.csv")
+echo "  Estimated: ${HW_MAX_GBS} GB/s (sequential read)" >&2
 
 # Warm filesystem cache
 cat "$TMPDIR"/*.csv > /dev/null 2>&1
@@ -335,7 +346,7 @@ report() {
 Date: $(date +%F)
 Platform: $OS $ARCH
 CPU: $CPU (single-threaded)
-Estimated sequential read bandwidth: ${HW_MAX_GBS} GB/s (single-core, from \`dd if=/dev/zero\`)
+Estimated disk I/O bandwidth: ${HW_MAX_GBS} GB/s (sequential read)
 Data: $ROWS rows x $COLS columns, best-of-$ITERS iterations
 
 ## Tools
@@ -429,7 +440,7 @@ NOTE
     # GB/s table
     echo "### Throughput (GB/s)"
     echo ""
-    echo "Hardware sequential read bandwidth: ${HW_MAX_GBS} GB/s"
+    echo "Disk I/O bandwidth: ${HW_MAX_GBS} GB/s (sequential read)"
     echo ""
     local hdr="| Dataset |" sep="|---------|"
     for tool in $TOOLS; do
