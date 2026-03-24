@@ -225,6 +225,18 @@ struct zsv_opts {
    */
   char no_quotes;
 
+  /**
+   * malformed_quoting: if > 0, handle CSV with quote characters in the middle
+   * of unquoted fields (e.g. 12" monitor). When enabled, quotes only open a
+   * quoted field at cell_start, matching the legacy parser. When disabled, the
+   * fast parser uses prefix-XOR SIMD for quoted blocks (faster but assumes
+   * RFC 4180 compliant quoting).
+   *
+   * Automatically set to 1 when built with ./configure --support-nonstandard-quoting.
+   * Can also be enabled at runtime via --malformed-quoting.
+   */
+  char malformed_quoting;
+
 #ifndef ZSV_NO_ONLY_CRLF
   /**
    * only_crlf_rowend: if non-zero, *only* accept CRLF as row end

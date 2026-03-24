@@ -145,7 +145,7 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
   opts.stream = stream;
   opts.row_handler = zsv_select_data_row_parallel;
   opts.ctx = &data;
-  opts.scan_engine = 255;                                          // force legacy engine for parallel chunks
+  /* inherit scan_engine from opts (user's --parser choice) */
   data.end_offset_limit = cdata->end_offset - cdata->start_offset; // set chunk boundary
   data.parser = zsv_new(&opts);
 

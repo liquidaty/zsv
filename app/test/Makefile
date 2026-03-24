@@ -71,6 +71,7 @@ ifneq ($(ZSV_NO_PARALLEL),1)
   TESTS+=test-parallel
 endif
 TESTS+=test-check
+TESTS+=test-quoted-nonstandard
 
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
@@ -308,6 +309,22 @@ test-2-count test-2-count-pull: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR
 	@${TEST_INIT}
 	@for x in 5000 5002 5004 5006 5008 5010 5013 5015 5017 5019 5021 5101 5105 5111 5113 5115 5117 5119 5121 5123 5125 5127 5129 5131 5211 5213 5215 5217 5311 5313 5315 5317 5413 5431 5433 5455 6133 ; do $< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv ; done > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/test-2-count.out && ${TEST_PASS} || ${TEST_FAIL}
+
+# Test nonstandard quoting: legacy parser always, fast parser only with --support-nonstandard-quoting
+# Verifies count and select produce correct output for CSV with mid-cell quotes,
+# standard quoted fields with commas, multiline quoted fields, and mixed patterns.
+test-quoted-nonstandard: ${BUILD_DIR}/bin/zsv_count${EXE} ${BUILD_DIR}/bin/zsv_select${EXE} ${TEST_DATA_DIR}/test/quoted_nonstandard.csv
+	@${TEST_INIT}
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_count${EXE} --parser legacy ${TEST_DATA_DIR}/test/quoted_nonstandard.csv ${REDIRECT} ${TMP_DIR}/$@-count-legacy.out
+	@${CMP} ${TMP_DIR}/$@-count-legacy.out expected/test-quoted-nonstandard-count.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} --parser legacy ${TEST_DATA_DIR}/test/quoted_nonstandard.csv ${REDIRECT} ${TMP_DIR}/$@-select-legacy.out
+	@${CMP} ${TMP_DIR}/$@-select-legacy.out expected/test-quoted-nonstandard-select.out && ${TEST_PASS} || ${TEST_FAIL}
+ifeq ($(SUPPORT_NONSTANDARD_QUOTING),1)
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_count${EXE} --parser fast ${TEST_DATA_DIR}/test/quoted_nonstandard.csv ${REDIRECT} ${TMP_DIR}/$@-count-fast.out
+	@${CMP} ${TMP_DIR}/$@-count-fast.out expected/test-quoted-nonstandard-count.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} --parser fast ${TEST_DATA_DIR}/test/quoted_nonstandard.csv ${REDIRECT} ${TMP_DIR}/$@-select-fast.out
+	@${CMP} ${TMP_DIR}/$@-select-fast.out expected/test-quoted-nonstandard-select.out && ${TEST_PASS} || ${TEST_FAIL}
+endif
 
 test-select test-select-pull: test-% : test-onlycrlf-% test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-11-% test-12-% test-13-% test-search-% test-regex-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-fixed-3-% test-fixed-4-% test-merge-%
 
