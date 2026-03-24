@@ -81,12 +81,14 @@ ASAN_CC ?= ${CC}
 test-asan:
 	CC=${ASAN_CC} \
 	CFLAGS="-fsanitize=address -fno-omit-frame-pointer -g" \
-	LDFLAGS="-fsanitize=address" \
+	LDFLAGS="-fsanitize=address -Wl,-z,now" \
 	./configure --config-file=${ASAN_CONFIGFILE} --prefix=/tmp/zsv-build-asan
+	@# Strip -fwhole-program from LDFLAGS_OPT -- it is incompatible with ASAN
+	@sed -i 's/-fwhole-program//' ${ASAN_CONFIGFILE}
 	@rm -rf build /tmp/zsv-build-asan
 	ASAN_OPTIONS="halt_on_error=1:detect_leaks=0" \
 	${MAKE} -C src install CONFIGFILE=${ASAN_CONFIGFILE}
-	ASAN_OPTIONS="halt_on_error=1:detect_leaks=0" \
+	LD_BIND_NOW=1 ASAN_OPTIONS="halt_on_error=1:detect_leaks=0" \
 	${MAKE} -C app/test test CONFIGFILE=${ASAN_CONFIGFILE}
 
 clean-asan:

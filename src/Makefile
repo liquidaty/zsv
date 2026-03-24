@@ -185,7 +185,7 @@ ${LIBZSV_SHARED_BUILD}: zsv.c zsv_internal.c
 	${CC} ${CFLAGS} ${CFLAGS_VISIBILITY_HIDDEN} -DZSV_BUILD_SHARED -DZSV_VERSION=\"${VERSION}\" -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -shared -fPIC ${LDFLAGS} -o $@ $< -I../app/external/sqlite3
 	@echo Built $@
 
-../include/zsv.h:
+../include/zsv.h: ../include/zsv.h.in
 ifeq ($(ZSV_EXTRAS),1)
 	@sed 's/__ZSV_EXTRAS__DEFINE__/#ifndef ZSV_EXTRAS\n#define ZSV_EXTRAS\n#endif/' < ../include/zsv.h.in > $@
 else
