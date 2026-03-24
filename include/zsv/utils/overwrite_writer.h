@@ -42,7 +42,7 @@ struct zsv_overwrite_args {
 
 struct zsv_overwrite *zsv_overwrite_writer_new(struct zsv_overwrite_args *args, struct zsv_overwrite_opts *ctx_opts);
 
-void zsv_overwrite_writer_delete();
+void zsv_overwrite_writer_delete(struct zsv_overwrite *data);
 
 enum zsv_status zsv_overwrite_writer_add(struct zsv_overwrite *data);
 
