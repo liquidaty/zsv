@@ -17,10 +17,14 @@ static int main_version(int argc, const char *argv[]) {
 
   if (verbose) {
     printf("\nBuild configuration:\n");
-#ifdef ZSV_HAVE_NEON
+#if defined(__aarch64__)
     printf("  Fast parser (NEON SIMD):     available\n");
+#elif defined(__AVX2__)
+    printf("  Fast parser (AVX2 SIMD):     available\n");
+#elif defined(__x86_64__) || defined(_M_X64)
+    printf("  Fast parser (SSE2 SIMD):     available\n");
 #else
-    printf("  Fast parser (NEON SIMD):     not available\n");
+    printf("  Fast parser (SIMD):          not available\n");
 #endif
 
 #ifdef ZSV_DEFAULT_PARSER_FAST

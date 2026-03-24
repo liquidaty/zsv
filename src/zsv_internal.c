@@ -698,7 +698,7 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
     scanner->mode = ZSV_MODE_DELIM; /* force legacy/standard engine */
   else if (opts->scan_engine)
     scanner->mode = opts->scan_engine;
-#if defined(ZSV_HAVE_NEON) && defined(ZSV_DEFAULT_PARSER_FAST)
+#if defined(ZSV_FAST_PARSER_AVAILABLE) && defined(ZSV_DEFAULT_PARSER_FAST)
   else
     scanner->mode = ZSV_MODE_DELIM_FAST;
 #endif

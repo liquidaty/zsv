@@ -8,18 +8,27 @@
  * going through cell_dl(), eliminating per-cell function call and
  * branch overhead. Quoted cells still use cell_dl() for normalization.
  *
- * Falls back to the standard engine for unsupported configurations.
+ * Platform-specific SIMD intrinsics are isolated in zsv_scan_simd_*.h
+ * headers, each providing a uniform interface:
+ *   fast_vec_t        — broadcast vector type
+ *   fast_vec_set1(c)  — broadcast byte c to all lanes
+ *   fast_cmpeq_64(p,v)— compare 64 bytes at p against v, return 64-bit mask
+ *
+ * Falls back to the standard engine on unsupported platforms.
  */
 
 #if defined(__aarch64__)
-#include <arm_neon.h>
+#include "zsv_scan_simd_neon.h"
+#define ZSV_FAST_PARSER_AVAILABLE 1
+#elif defined(__AVX2__)
+#include "zsv_scan_simd_avx2.h"
+#define ZSV_FAST_PARSER_AVAILABLE 1
+#elif defined(__x86_64__) || defined(_M_X64)
+#include "zsv_scan_simd_sse2.h"
+#define ZSV_FAST_PARSER_AVAILABLE 1
+#endif
 
-static inline uint16_t fast_neon_movemask(uint8x16_t input) {
-  static const uint8_t weights[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
-  const uint8x16_t bit_weights = vld1q_u8(weights);
-  uint8x16_t masked = vandq_u8(input, bit_weights);
-  return (uint16_t)vaddv_u8(vget_low_u8(masked)) | ((uint16_t)vaddv_u8(vget_high_u8(masked)) << 8);
-}
+#ifdef ZSV_FAST_PARSER_AVAILABLE
 
 /*
  * Set scanner->quoted and scanner->quote_close_position for a cell
@@ -257,10 +266,10 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
     last_was_delim = (prev == delimiter || prev == '\n' || prev == '\r');
     last_was_quote = (prev == '"' && quote_char > 0);
   }
-  uint8x16_t v_comma = vdupq_n_u8((uint8_t)delimiter);
-  uint8x16_t v_nl = vdupq_n_u8('\n');
-  uint8x16_t v_cr = vdupq_n_u8('\r');
-  uint8x16_t v_qt = vdupq_n_u8(quote_char > 0 ? (uint8_t)quote_char : 0);
+  fast_vec_t v_comma = fast_vec_set1((unsigned char)delimiter);
+  fast_vec_t v_nl = fast_vec_set1('\n');
+  fast_vec_t v_cr = fast_vec_set1('\r');
+  fast_vec_t v_qt = fast_vec_set1(quote_char > 0 ? (unsigned char)quote_char : 0);
 
   /*
    * Skip-cells mode: no cell storage, just count rows.
@@ -272,15 +281,9 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
    */
   if (scanner->skip_cells) {
     while (i + 64 <= bytes_read) {
-      uint64_t newlines = 0, crs = 0, quotes = 0;
-      for (int chunk = 0; chunk < 4; chunk++) {
-        uint8x16_t b = vld1q_u8(buff + i + chunk * 16);
-        unsigned shift = chunk * 16;
-        newlines |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_nl)) << shift;
-        crs |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_cr)) << shift;
-        if (quote_char > 0)
-          quotes |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_qt)) << shift;
-      }
+      uint64_t newlines = fast_cmpeq_64(buff + i, v_nl);
+      uint64_t crs = fast_cmpeq_64(buff + i, v_cr);
+      uint64_t quotes = quote_char > 0 ? fast_cmpeq_64(buff + i, v_qt) : 0;
 
       if (LIKELY(quotes == 0 && !inside_quote)) {
         /* No quote state to track. Count row-ends via popcount. */
@@ -320,11 +323,7 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
 
       /* Block has quotes or we're inside a quoted cell.
        * Check for non-standard quoting first. Need comma/tab bitmask. */
-      uint64_t sc_commas = 0;
-      for (int chunk = 0; chunk < 4; chunk++) {
-        uint8x16_t b = vld1q_u8(buff + i + chunk * 16);
-        sc_commas |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_comma)) << (chunk * 16);
-      }
+      uint64_t sc_commas = fast_cmpeq_64(buff + i, v_comma);
       uint64_t all_sc_delims = sc_commas | newlines | crs;
       unsigned char prev_byte = i > 0 ? buff[i - 1] : '\n';
       int prev_is_delim = (prev_byte == delimiter || prev_byte == '\n' || prev_byte == '\r');
@@ -449,16 +448,10 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
 normal_parse:
   /* Process 64 bytes at a time */
   while (i + 64 <= bytes_read) {
-    uint64_t commas = 0, newlines = 0, crs = 0, quotes = 0;
-    for (int chunk = 0; chunk < 4; chunk++) {
-      uint8x16_t b = vld1q_u8(buff + i + chunk * 16);
-      unsigned shift = chunk * 16;
-      commas |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_comma)) << shift;
-      newlines |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_nl)) << shift;
-      crs |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_cr)) << shift;
-      if (quote_char > 0)
-        quotes |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v_qt)) << shift;
-    }
+    uint64_t commas = fast_cmpeq_64(buff + i, v_comma);
+    uint64_t newlines = fast_cmpeq_64(buff + i, v_nl);
+    uint64_t crs = fast_cmpeq_64(buff + i, v_cr);
+    uint64_t quotes = quote_char > 0 ? fast_cmpeq_64(buff + i, v_qt) : 0;
 
     uint64_t all_delims = commas | newlines | crs;
 
@@ -667,8 +660,11 @@ normal_parse:
   return zsv_status_ok;
 }
 
-#else
-/* Non-aarch64: fall back to standard engine */
+#undef FAST_ROWEND_NOQUOTE
+#undef FAST_ROWEND_QUOTED
+
+#else /* !ZSV_FAST_PARSER_AVAILABLE */
+/* Unsupported platform: fall back to standard engine */
 static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   return zsv_scan_delim(scanner, buff, bytes_read);
 }
