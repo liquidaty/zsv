@@ -659,6 +659,11 @@ normal_parse:
       size_t base = i;
       i += 64;
 
+      /* Standard CSV: store cells raw (zero-copy passthrough).
+       * Prefix-XOR already identified correct delimiter positions,
+       * so cell data from cell_start to idx is the raw field content
+       * including any original quoting. The writer outputs it as-is,
+       * avoiding the normalize-then-re-quote overhead. */
       while (valid_delims) {
         int bit = __builtin_ctzll(valid_delims);
         size_t idx = base + bit;
@@ -667,18 +672,12 @@ normal_parse:
 
         if (LIKELY(bitmask & commas)) {
           scanner->scanned_length = idx;
-          if (scanner->needed_cols &&
-              (scanner->row.used >= scanner->needed_cols_count || !scanner->needed_cols[scanner->row.used])) {
-            fast_store_cell_raw(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
-          } else {
-            fast_set_quote_flags(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
-            cell_dl(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
-          }
+          fast_store_cell(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
           scanner->cell_start = idx + 1;
         } else if (bitmask & crs) {
-          FAST_ROWEND_QUOTED(scanner, buff, idx, 1, quote_char);
+          FAST_ROWEND_NOQUOTE(scanner, buff, idx, 1);
         } else {
-          FAST_ROWEND_QUOTED(scanner, buff, idx, 0, quote_char);
+          FAST_ROWEND_NOQUOTE(scanner, buff, idx, 0);
         }
       }
     }
@@ -706,17 +705,26 @@ normal_parse:
 
     if (c == delimiter) {
       scanner->scanned_length = i;
-      /* Use fast_set_quote_flags + cell_dl for cell normalization.
-       * cell_dl's memmove is safe here because it only shifts bytes
-       * within [cell_start, i), which precedes the current position. */
-      if (quote_char > 0)
-        fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-      cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+      if (malformed_quoting) {
+        if (quote_char > 0)
+          fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+        cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+      } else {
+        fast_store_cell(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+      }
       scanner->cell_start = i + 1;
     } else if (c == '\r') {
-      FAST_ROWEND_QUOTED(scanner, buff, i, 1, quote_char);
+      if (malformed_quoting) {
+        FAST_ROWEND_QUOTED(scanner, buff, i, 1, quote_char);
+      } else {
+        FAST_ROWEND_NOQUOTE(scanner, buff, i, 1);
+      }
     } else if (c == '\n') {
-      FAST_ROWEND_QUOTED(scanner, buff, i, 0, quote_char);
+      if (malformed_quoting) {
+        FAST_ROWEND_QUOTED(scanner, buff, i, 0, quote_char);
+      } else {
+        FAST_ROWEND_NOQUOTE(scanner, buff, i, 0);
+      }
     }
   }
 
@@ -727,8 +735,9 @@ normal_parse:
     scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
 
   /* If there's remaining cell data (no trailing row-end), set quote
-   * flags so zsv_finish can properly normalize the final cell. */
-  if (quote_char > 0 && i > scanner->cell_start && !inside_quote)
+   * flags so zsv_finish can properly normalize the final cell.
+   * Only needed when malformed_quoting is active (cell_dl normalization). */
+  if (malformed_quoting && quote_char > 0 && i > scanner->cell_start && !inside_quote)
     fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
 
   scanner->scanned_length = i;
