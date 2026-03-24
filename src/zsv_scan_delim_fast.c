@@ -336,19 +336,9 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
         /* Non-standard quoting — fall through to scalar tail */
         break;
 
-      /* Use prefix-XOR to mask out newlines inside quotes. */
-      uint64_t A = ~0ULL, B = quotes;
-      B = B ^ (A & (B << 1));
-      A = A & (A << 1);
-      B = B ^ (A & (B << 2));
-      A = A & (A << 2);
-      B = B ^ (A & (B << 4));
-      A = A & (A << 4);
-      B = B ^ (A & (B << 8));
-      A = A & (A << 8);
-      B = B ^ (A & (B << 16));
-      A = A & (A << 16);
-      B = B ^ (A & (B << 32));
+      /* Use prefix-XOR to mask out newlines inside quotes.
+       * PCLMULQDQ on x86 reduces this to a single instruction. */
+      uint64_t B = fast_prefix_xor(quotes);
       uint64_t state_mask = inside_quote ? ~B : B;
       inside_quote = (state_mask >> 63) & 1;
 
@@ -448,10 +438,10 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
 normal_parse:
   /* Process 64 bytes at a time */
   while (i + 64 <= bytes_read) {
-    uint64_t commas = fast_cmpeq_64(buff + i, v_comma);
-    uint64_t newlines = fast_cmpeq_64(buff + i, v_nl);
-    uint64_t crs = fast_cmpeq_64(buff + i, v_cr);
-    uint64_t quotes = quote_char > 0 ? fast_cmpeq_64(buff + i, v_qt) : 0;
+    uint64_t commas, newlines, crs, quotes;
+    fast_scan_block(buff + i, v_comma, v_nl, v_cr, v_qt, &commas, &newlines, &crs, &quotes);
+    if (quote_char <= 0)
+      quotes = 0;
 
     uint64_t all_delims = commas | newlines | crs;
 
@@ -475,7 +465,7 @@ normal_parse:
         int bit = __builtin_ctzll(all_delims);
         size_t idx = base + bit;
         uint64_t bitmask = 1ULL << bit;
-        all_delims &= (all_delims - 1);
+        all_delims = fast_clear_lowest(all_delims);
 
         if (LIKELY(bitmask & commas)) {
           scanner->scanned_length = idx;
@@ -553,22 +543,9 @@ normal_parse:
     /*
      * Standard quoting: use prefix-XOR to compute state_mask.
      * Every quote toggles the inside/outside state.
+     * PCLMULQDQ on x86 reduces this to a single instruction.
      */
-    uint64_t A = ~0ULL;
-    uint64_t B = quotes;
-
-    B = B ^ (A & (B << 1));
-    A = A & (A << 1);
-    B = B ^ (A & (B << 2));
-    A = A & (A << 2);
-    B = B ^ (A & (B << 4));
-    A = A & (A << 4);
-    B = B ^ (A & (B << 8));
-    A = A & (A << 8);
-    B = B ^ (A & (B << 16));
-    A = A & (A << 16);
-    B = B ^ (A & (B << 32));
-
+    uint64_t B = fast_prefix_xor(quotes);
     uint64_t state_mask = inside_quote ? ~B : B;
     inside_quote = (state_mask >> 63) & 1;
 
@@ -586,7 +563,7 @@ normal_parse:
       int bit = __builtin_ctzll(valid_delims);
       size_t idx = base + bit;
       uint64_t bitmask = 1ULL << bit;
-      valid_delims &= (valid_delims - 1);
+      valid_delims = fast_clear_lowest(valid_delims);
 
       if (LIKELY(bitmask & commas)) {
         scanner->scanned_length = idx;
