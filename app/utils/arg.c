@@ -192,6 +192,9 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, co
     } else if (!strcmp(argv[i] + 2, "malformed-quoting")) {
       opts_out->malformed_quoting = 1;
       continue;
+    } else if (!strcmp(argv[i] + 2, "no-malformed-quoting")) {
+      opts_out->malformed_quoting = -1; /* explicitly disabled; overrides compile-time default */
+      continue;
     } else if (!strcmp(argv[i] + 2, "parser")) {
       if (++i >= argc)
         err = fprintf(stderr, "Error: --parser requires a value (default, fast, or legacy)\n");

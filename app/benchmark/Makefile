@@ -450,7 +450,17 @@ reset:
 clean: reset
 	rm -f worldcitiespop_big.csv worldcitiespop_big.tsv worldcitiespop_mil.csv worldcitiespop_mil.tsv worldcitiespop.csv
 
-.PHONY: help all count select select-% clean polars-setup csv% tsv% graph%
+BENCH_DIR:=$(dir $(abspath $(firstword $(MAKEFILE_LIST))))
+RESULTS_DIR=$(BENCH_DIR)results
+
+CLI_BIN=$(dir ${ZSVBIN})cli${EXE}
+
+bench-quoting: ${CLI_BIN}
+	@mkdir -p $(RESULTS_DIR)
+	@bash $(BENCH_DIR)bench_quoting.sh ${CLI_BIN} \
+		$(RESULTS_DIR)/benchmark-fast-parser-quoting-$$(date +%F).md
+
+.PHONY: help all count select select-% clean polars-setup csv% tsv% graph% bench-quoting
 
 
 ##### python / polars

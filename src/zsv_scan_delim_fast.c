@@ -31,6 +31,43 @@
 #ifdef ZSV_FAST_PARSER_AVAILABLE
 
 /*
+ * Set scanner->quoted and scanner->quote_close_position for a cell
+ * by scanning its content. This replicates the quote tracking that
+ * the standard engine does character-by-character.
+ */
+__attribute__((always_inline)) static inline void fast_set_quote_flags(struct zsv_scanner *scanner, unsigned char *s,
+                                                                       size_t n) {
+  scanner->quote_close_position = 0;
+  if (n == 0 || *s != '"') {
+    /* Not a quoted cell. Check for embedded quotes (quote in unquoted cell) */
+    if (n > 0 && memchr(s, '"', n))
+      scanner->quoted = ZSV_PARSER_QUOTE_EMBEDDED;
+    return;
+  }
+
+  /* Cell starts with a quote — find closing quote */
+  scanner->quoted = ZSV_PARSER_QUOTE_UNCLOSED;
+  scanner->quote_close_position = 0;
+
+  for (size_t i = 1; i < n; i++) {
+    if (s[i] == '"') {
+      if (i + 1 < n && s[i + 1] == '"') {
+        /* Embedded "" pair */
+        scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
+        scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
+        i++; /* skip second quote */
+      } else {
+        /* Closing quote */
+        scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
+        scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
+        scanner->quote_close_position = i;
+        break;
+      }
+    }
+  }
+}
+
+/*
  * Process a 64-byte block character-by-character for malformed quoting mode.
  * Only quotes at cell_start open quoted fields; mid-cell quotes are ignored.
  * Used by both skip-cells and normal-parse paths.
@@ -158,43 +195,6 @@ fast_process_block_malformed(struct zsv_scanner *scanner, unsigned char *buff, s
   }
   *inside_quote_p = inside_quote;
   return i;
-}
-
-/*
- * Set scanner->quoted and scanner->quote_close_position for a cell
- * by scanning its content. This replicates the quote tracking that
- * the standard engine does character-by-character.
- */
-__attribute__((always_inline)) static inline void fast_set_quote_flags(struct zsv_scanner *scanner, unsigned char *s,
-                                                                       size_t n) {
-  scanner->quote_close_position = 0;
-  if (n == 0 || *s != '"') {
-    /* Not a quoted cell. Check for embedded quotes (quote in unquoted cell) */
-    if (n > 0 && memchr(s, '"', n))
-      scanner->quoted = ZSV_PARSER_QUOTE_EMBEDDED;
-    return;
-  }
-
-  /* Cell starts with a quote — find closing quote */
-  scanner->quoted = ZSV_PARSER_QUOTE_UNCLOSED;
-  scanner->quote_close_position = 0;
-
-  for (size_t i = 1; i < n; i++) {
-    if (s[i] == '"') {
-      if (i + 1 < n && s[i + 1] == '"') {
-        /* Embedded "" pair */
-        scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
-        scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
-        i++; /* skip second quote */
-      } else {
-        /* Closing quote */
-        scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
-        scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
-        scanner->quote_close_position = i;
-        break;
-      }
-    }
-  }
 }
 
 /*

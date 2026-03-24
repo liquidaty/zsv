@@ -726,9 +726,11 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
 #endif
   if (scanner->buff.buff) {
     scanner->opts = *opts;
+    if (scanner->opts.malformed_quoting < 0)
+      scanner->opts.malformed_quoting = 0; /* explicitly disabled via --no-malformed-quoting */
 #ifdef ZSV_SUPPORT_NONSTANDARD_QUOTING
-    if (!scanner->opts.malformed_quoting)
-      scanner->opts.malformed_quoting = 1;
+    else if (!scanner->opts.malformed_quoting)
+      scanner->opts.malformed_quoting = 1; /* compile-time default when not explicitly set */
 #endif
     scanner->opts_orig = *opts;
     if (!scanner->opts.max_columns)
