@@ -114,13 +114,29 @@ detect() { command -v "$1" >/dev/null 2>&1; }
 
 HAVE_XSV=0; detect xsv && HAVE_XSV=1
 HAVE_XAN=0; detect xan && HAVE_XAN=1
-HAVE_POLARS=0; detect polars && HAVE_POLARS=1
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+POLARS_VENV="$SCRIPT_DIR/venv/bin/activate"
+HAVE_POLARS=0
+if [ -f "$POLARS_VENV" ]; then
+  # polars is a Python library; activate the venv and check import
+  if (. "$POLARS_VENV"; python3 -c 'import polars' 2>/dev/null); then
+    HAVE_POLARS=1
+  fi
+fi
 HAVE_QSV=0; QSV_BIN=""
 for qbin in qsvlite qsv; do
   if detect "$qbin" && "$qbin" --version >/dev/null 2>&1; then
     HAVE_QSV=1; QSV_BIN="$qbin"; break
   fi
 done
+
+# --- polars helper: run python3 with polars venv ---
+run_polars() {
+  . "$POLARS_VENV"
+  POLARS_MAX_THREADS=1 python3 "$@"
+}
+export -f run_polars
+export POLARS_VENV
 
 # --- md5 tool (Linux: md5sum, macOS: md5 -r) ---
 md5tool() {
@@ -143,15 +159,9 @@ best_of() {
 }
 
 # --- Correctness check ---
-# Extracts the row count from tool output. Handles plain numbers (xsv/xan/zsv)
-# and table-formatted output (polars: extracts from │ N │ lines).
+# Extracts the row count from tool output (first standalone number on its own line).
 extract_count() {
   local output="$1"
-  # Try polars table format first: │ 500000 │
-  local polars_match
-  polars_match=$(echo "$output" | grep -E '^\│ [0-9]' | tr -d '│ ' | head -1)
-  if [ -n "$polars_match" ]; then echo "$polars_match"; return; fi
-  # Fall back to first standalone number on its own line
   echo "$output" | grep -xE '[[:space:]]*[0-9]+[[:space:]]*' | tr -d '[:space:]' | head -1
 }
 
@@ -241,14 +251,14 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
       fi
     fi
 
-    # polars
+    # polars (Python library via venv, single-threaded)
     if [ "$HAVE_POLARS" = "1" ]; then
       if [ "$CMD" = "count" ]; then
-        kv_set "time_${KEY}:polars" "$(best_of "polars -c \"SELECT COUNT(*) FROM read_csv('$FILE')\"")"
-        kv_set "correct_${KEY}:polars" "$(check_correct "polars -c \"SELECT COUNT(*) FROM read_csv('$FILE')\"" "$REF")"
+        kv_set "time_${KEY}:polars" "$(best_of "run_polars -c \"import polars as pl; print(pl.scan_csv('$FILE').select(pl.len()).collect().item())\"")"
+        kv_set "correct_${KEY}:polars" "$(check_correct "run_polars -c \"import polars as pl; print(pl.scan_csv('$FILE').select(pl.len()).collect().item())\"" "$REF")"
       else
-        kv_set "time_${KEY}:polars" "$(best_of "polars -o csv -c \"SELECT * FROM read_csv('$FILE')\"")"
-        if polars -o csv -c "SELECT * FROM read_csv('$FILE')" 2>/dev/null | md5tool > "$BENCH_TMPDIR/test.md5" && \
+        kv_set "time_${KEY}:polars" "$(best_of "run_polars -c \"import polars as pl; pl.scan_csv('$FILE', infer_schema=False).sink_csv('/dev/null')\"")"
+        if run_polars -c "import polars as pl; pl.scan_csv('$FILE', infer_schema=False).collect().write_csv('/dev/stdout')" 2>/dev/null | md5tool > "$BENCH_TMPDIR/test.md5" && \
            diff "$BENCH_TMPDIR/ref.md5" "$BENCH_TMPDIR/test.md5" > /dev/null 2>&1; then
           kv_set "correct_${KEY}:polars" "correct"
         else
@@ -282,6 +292,10 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
     # zsv fast --parallel
     kv_set "time_${KEY}:zsv-fast-par" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --no-malformed-quoting --parallel \"$FILE\"")"
     kv_set "correct_${KEY}:zsv-fast-par" "$(check_correct "\"$ZSV\" count --parser fast --no-malformed-quoting --parallel \"$FILE\"" "$REF")"
+
+    # zsv fast+MQ --parallel
+    kv_set "time_${KEY}:zsv-fast-mq-par" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --malformed-quoting --parallel \"$FILE\"")"
+    kv_set "correct_${KEY}:zsv-fast-mq-par" "$(check_correct "\"$ZSV\" count --parser fast --malformed-quoting --parallel \"$FILE\"" "$REF")"
 
     echo "  $DATA $CMD done" >&2
   done
@@ -317,7 +331,7 @@ fmt_gbs() {
 }
 
 # --- Enumerate tools in order ---
-TOOLS="zsv-legacy zsv-legacy-par zsv-fast zsv-fast-par zsv-fast-mq"
+TOOLS="zsv-legacy zsv-legacy-par zsv-fast zsv-fast-par zsv-fast-mq zsv-fast-mq-par"
 [ "$HAVE_XSV" = "1" ] && TOOLS="$TOOLS xsv"
 [ "$HAVE_XAN" = "1" ] && TOOLS="$TOOLS xan"
 [ "$HAVE_POLARS" = "1" ] && TOOLS="$TOOLS polars"
@@ -330,6 +344,7 @@ tool_label() {
     zsv-fast)       echo "zsv fast" ;;
     zsv-fast-par)   echo "zsv fast --parallel" ;;
     zsv-fast-mq)    echo "zsv fast+MQ" ;;
+    zsv-fast-mq-par) echo "zsv fast+MQ --parallel" ;;
     xsv)            echo "xsv" ;;
     xan)            echo "xan" ;;
     polars)         echo "polars" ;;
@@ -343,7 +358,7 @@ report() {
   local XSV_VER XAN_VER POLARS_VER
   XSV_VER=$(xsv --version 2>&1 || true)
   XAN_VER=$(xan --version 2>&1 | head -1 || true)
-  POLARS_VER=$(polars --version 2>&1 | head -1 || true)
+  POLARS_VER=$(run_polars -c "import polars as pl; print(pl.__version__)" 2>/dev/null || true)
 
   cat << HEADER
 # CSV Parser Benchmark: Fast Parser Quoting Modes
@@ -363,10 +378,11 @@ Data: $ROWS rows x $COLS columns, best-of-$ITERS iterations
 | zsv fast | (this repo) | SIMD parser, prefix-XOR for quoted blocks |
 | zsv fast --parallel | (this repo) | SIMD parser, multi-threaded |
 | zsv fast+MQ | (this repo) | SIMD parser with \`--malformed-quoting\` (scalar for quoted blocks) |
+| zsv fast+MQ --parallel | (this repo) | SIMD parser with \`--malformed-quoting\`, multi-threaded |
 HEADER
   [ "$HAVE_XSV" = "1" ] && echo "| xsv | $XSV_VER | BurntSushi/xsv |"
   [ "$HAVE_XAN" = "1" ] && echo "| xan | $XAN_VER | medialab/xan |"
-  [ "$HAVE_POLARS" = "1" ] && echo "| polars | $POLARS_VER | polars-cli (SQL interface over Polars engine) |"
+  [ "$HAVE_POLARS" = "1" ] && echo "| polars | $POLARS_VER | Python polars library (single-threaded, via venv) |"
   [ "$HAVE_QSV" = "1" ] && echo "| qsv | $($QSV_BIN --version 2>&1 | head -1 | cut -d' ' -f1-2) | jqnatividad/qsv (${QSV_BIN}) |"
 
   cat << 'DATASETS'
@@ -407,12 +423,14 @@ DATASETS
     echo "$row"
   done
 
-  cat << 'NOTE'
+  if [ "$HAVE_POLARS" = "1" ]; then
+    cat << 'NOTE'
 
 \*polars handles mid-cell quotes in unquoted fields but fails on other
 nonstandard patterns (e.g. malformed quoted fields like `"bb"bb"b`).
 
 NOTE
+  fi
 
   # Results tables
   for CMD in count select; do
