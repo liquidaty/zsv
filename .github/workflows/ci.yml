@@ -220,7 +220,7 @@ jobs:
       run: ./scripts/ci-upload-release-artifacts.sh
 
   prepare-linux-packages:
-    # if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
+    if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
     needs: [ci-linux]
     runs-on: ubuntu-latest
 
@@ -295,7 +295,7 @@ jobs:
 
     - name: Build on macOS (${{ env.AMD64_MACOSX_GCC }})
       env:
-        CC: gcc-13
+        CC: gcc-15
         MAKE: make
         RUN_TESTS: true
       run: ./scripts/ci-build.sh
@@ -782,7 +782,7 @@ jobs:
 
   ci-wasm-playground:
     needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-arm
     timeout-minutes: 15
 
     strategy:
@@ -835,7 +835,7 @@ jobs:
         path: playground
 
   upload-github-pages-artifact:
-    # if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
+    if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
     needs: [prepare-linux-packages, ci-wasm-playground]
     runs-on: ubuntu-latest
 
