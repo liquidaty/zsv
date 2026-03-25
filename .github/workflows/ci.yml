@@ -813,7 +813,7 @@ jobs:
     - name: Update version in index.html
       run: sed "s|__VERSION__|$TAG|g" -i playground/index.html
 
-    - name: Build (${{ matrix.name }})
+    - name: Build
       env:
         PREFIX: amd64-linux-wasm
         CC: emcc
@@ -834,7 +834,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: playground-${{ matrix.name }}
-        path: ${{ matrix.destdir }}
+        path: ${{ matrix.plgdir }}
 
   upload-github-pages-artifact:
     # if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
