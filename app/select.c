@@ -110,7 +110,6 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
   opts.errclose = cdata->opts->errclose;
   opts.progress = cdata->opts->progress;
   opts.scan_engine = cdata->opts->scan_engine;
-  opts.malformed_quoting = cdata->opts->malformed_quoting;
 #ifndef ZSV_NO_ONLY_CRLF
   opts.only_crlf_rowend = cdata->opts->only_crlf_rowend;
 #endif

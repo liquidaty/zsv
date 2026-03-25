@@ -67,135 +67,6 @@ __attribute__((always_inline)) static inline void fast_set_quote_flags(struct zs
   }
 }
 
-/*
- * Process a 64-byte block character-by-character for malformed quoting mode.
- * Only quotes at cell_start open quoted fields; mid-cell quotes are ignored.
- * Used by both skip-cells and normal-parse paths.
- *
- * skip_cells_mode: if 1, only count rows (no cell storage).
- *                  if 0, store cells via fast_set_quote_flags + cell_dl.
- *
- * Returns: updated position i (past the processed block).
- * Sets *inside_quote_p to the quote state at the end of the block.
- * Returns (size_t)-1 on abort/max_rows to signal the caller to return.
- */
-__attribute__((noinline, cold)) static size_t
-fast_process_block_malformed(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read, size_t i,
-                             int *inside_quote_p, int quote_char, char delimiter, int skip_cells_mode) {
-  int inside_quote = *inside_quote_p;
-  size_t block_end = i + 64;
-  for (; i < block_end; i++) {
-    unsigned char c = buff[i];
-    if (c == '"' && quote_char > 0) {
-      if (inside_quote) {
-        if (i + 1 < bytes_read && buff[i + 1] == '"')
-          i++;
-        else
-          inside_quote = 0;
-      } else if (i == scanner->cell_start) {
-        inside_quote = 1;
-      }
-      continue;
-    }
-    if (inside_quote)
-      continue;
-    if (c == delimiter) {
-      if (skip_cells_mode) {
-        scanner->cell_start = i + 1;
-      } else {
-        scanner->scanned_length = i;
-        if (quote_char > 0)
-          fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-        cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-        scanner->cell_start = i + 1;
-      }
-    } else if (c == '\r') {
-      if (skip_cells_mode) {
-        scanner->data_row_count++;
-        scanner->cell_start = i + 1;
-        scanner->row_start = i + 1;
-        if (VERY_LIKELY(scanner->opts.row_handler != NULL))
-          scanner->opts.row_handler(scanner->opts.ctx);
-        scanner->have_cell = 0;
-        scanner->row.used = 0;
-      } else {
-        scanner->scanned_length = i;
-        if (quote_char > 0)
-          fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-        enum zsv_status stat_ =
-            cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-        if (VERY_UNLIKELY(stat_)) {
-          *inside_quote_p = inside_quote;
-          return (size_t)-1;
-        }
-        scanner->cell_start = i + 1;
-        scanner->row_start = i + 1;
-        scanner->data_row_count++;
-      }
-#ifdef ZSV_EXTRAS
-      scanner->progress.cum_row_count++;
-      if (VERY_UNLIKELY(scanner->progress.max_rows > 0 &&
-                        scanner->progress.cum_row_count == scanner->progress.max_rows)) {
-        scanner->abort = 1;
-        *inside_quote_p = inside_quote;
-        return (size_t)-1;
-      }
-#endif
-      if (VERY_UNLIKELY(scanner->abort)) {
-        *inside_quote_p = inside_quote;
-        return (size_t)-1;
-      }
-      if (skip_cells_mode && !scanner->skip_cells)
-        break;
-    } else if (c == '\n') {
-      char prev = (i > 0) ? buff[i - 1] : scanner->last;
-      if (prev == '\r') {
-        scanner->cell_start = i + 1;
-        scanner->row_start = i + 1;
-      } else {
-        if (skip_cells_mode) {
-          scanner->data_row_count++;
-          scanner->cell_start = i + 1;
-          scanner->row_start = i + 1;
-          if (VERY_LIKELY(scanner->opts.row_handler != NULL))
-            scanner->opts.row_handler(scanner->opts.ctx);
-          scanner->have_cell = 0;
-          scanner->row.used = 0;
-        } else {
-          scanner->scanned_length = i;
-          if (quote_char > 0)
-            fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-          enum zsv_status stat_ =
-              cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-          if (VERY_UNLIKELY(stat_)) {
-            *inside_quote_p = inside_quote;
-            return (size_t)-1;
-          }
-          scanner->cell_start = i + 1;
-          scanner->row_start = i + 1;
-          scanner->data_row_count++;
-        }
-#ifdef ZSV_EXTRAS
-        scanner->progress.cum_row_count++;
-        if (VERY_UNLIKELY(scanner->progress.max_rows > 0 &&
-                          scanner->progress.cum_row_count == scanner->progress.max_rows)) {
-          scanner->abort = 1;
-          *inside_quote_p = inside_quote;
-          return (size_t)-1;
-        }
-#endif
-        if (VERY_UNLIKELY(scanner->abort)) {
-          *inside_quote_p = inside_quote;
-          return (size_t)-1;
-        }
-        if (skip_cells_mode && !scanner->skip_cells)
-          break;
-      }
-    }
-  }
-  *inside_quote_p = inside_quote;
-  return i;
-}
 
 /*
  * Out-of-line slow path for cell storage: handles column filtering,
@@ -395,7 +266,6 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
   }
 
   int quote_char = scanner->opts.no_quotes > 0 ? -1 : '"';
-  int malformed_quoting = scanner->opts.malformed_quoting;
 
   /* Pre-compute per-cell flags once, avoiding repeated field access in the hot loop. */
   int need_slow = (scanner->needed_cols || scanner->opts.malformed_utf8_replace || scanner->opts.cell_handler) ? 1 : 0;
@@ -413,9 +283,6 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
    * combined with cell_dl's in-place memmove can produce incorrect results
    * for small inputs with complex quoting. No performance impact since
    * this only triggers for inputs < 64 bytes after partial row data. */
-  /* Note: non-standard quoting (mid-cell quotes in unquoted cells) is
-   * detected per-block in the SIMD loop and falls back to the scalar
-   * tail which uses the cell_start check for correct handling. */
 
   bytes_read += i;
   scanner->partial_row_length = 0;
@@ -457,16 +324,6 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
       fast_scan_block(buff + i, v_comma, v_nl, v_cr, v_qt, &commas_sc, &newlines, &crs, &quotes);
       if (quote_char <= 0)
         quotes = 0;
-
-      /* Malformed quoting: fall back to scalar for blocks with quotes. */
-      if (UNLIKELY(malformed_quoting) && (quotes || inside_quote)) {
-        i = fast_process_block_malformed(scanner, buff, bytes_read, i, &inside_quote, quote_char, delimiter, 1);
-        if (VERY_UNLIKELY(i == (size_t)-1))
-          return scanner->abort ? zsv_status_cancelled : zsv_status_max_rows_read;
-        if (!scanner->skip_cells)
-          break;
-        continue;
-      }
 
       /* Unified path: prefix-XOR handles both quoted and unquoted blocks.
        * When quotes==0 and !inside_quote: B=0, state_mask=0, all delims valid.
@@ -515,14 +372,6 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
           scanner->cell_start = last_rowend_pos + 1;
         }
 
-        if (UNLIKELY(malformed_quoting)) {
-          uint64_t all_sc = commas_sc | newlines | crs;
-          if (all_sc) {
-            int last_delim = 63 - __builtin_clzll(all_sc);
-            scanner->cell_start = i + last_delim + 1;
-          }
-        }
-
         i += 64;
         if (!scanner->skip_cells)
           break;
@@ -540,16 +389,14 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
               i++;
             else
               inside_quote = 0;
-          } else if (malformed_quoting ? (i == scanner->cell_start) : 1) {
+          } else {
             inside_quote = 1;
           }
           continue;
         }
         if (inside_quote)
           continue;
-        if (malformed_quoting && c == delimiter) {
-          scanner->cell_start = i + 1;
-        } else if (c == '\r' || (c == '\n' && (i == 0 ? scanner->last != '\r' : buff[i - 1] != '\r'))) {
+        if (c == '\r' || (c == '\n' && (i == 0 ? scanner->last != '\r' : buff[i - 1] != '\r'))) {
           scanner->data_row_count++;
           scanner->cell_start = i + 1;
           scanner->row_start = i + 1;
@@ -623,12 +470,6 @@ normal_parse:
       size_t base = i;
       i += 64;
 
-      /* When malformed_quoting is active, the first cell in this no-quote
-       * block may span from a previous block that contained a mid-cell
-       * quote. Check once whether cell_start precedes this block; if so,
-       * use the full quote-aware path for that first cell only. */
-      int cross_block_cell = malformed_quoting && (scanner->cell_start < base);
-
       /* Cache scanner fields in locals to avoid aliasing-induced reloads.
        * The compiler can't hoist these because stores to cells[] could
        * alias any scanner field through the same pointer. */
@@ -645,50 +486,21 @@ normal_parse:
           all_delims = fast_clear_lowest(all_delims);
 
           if (LIKELY(bitmask & commas)) {
-            if (UNLIKELY(cross_block_cell)) {
-              scanner->cell_start = cell_start_local;
-              scanner->row.used = row_used;
-              scanner->scanned_length = idx;
-              if (quote_char > 0)
-                fast_set_quote_flags(scanner, buff + cell_start_local, idx - cell_start_local);
-              cell_dl(scanner, buff + cell_start_local, idx - cell_start_local);
-              row_used = scanner->row.used;
-              cross_block_cell = 0;
-            } else {
-              fast_store_cell_cached(cells, &row_used, row_allocated,
-                                     buff + cell_start_local, idx - cell_start_local, no_quotes);
-            }
+            fast_store_cell_cached(cells, &row_used, row_allocated,
+                                   buff + cell_start_local, idx - cell_start_local, no_quotes);
             cell_start_local = idx + 1;
           } else if (bitmask & crs) {
-            if (UNLIKELY(cross_block_cell)) {
-              scanner->cell_start = cell_start_local;
-              scanner->row.used = row_used;
-              FAST_ROWEND_QUOTED(scanner, buff, idx, 1, quote_char);
-              row_used = scanner->row.used;
-              cell_start_local = scanner->cell_start;
-              cross_block_cell = 0;
-            } else {
-              scanner->row.used = row_used;
-              scanner->cell_start = cell_start_local;
-              FAST_ROWEND_NOQUOTE(scanner, buff, idx, 1, need_slow, no_quotes);
-              row_used = scanner->row.used;
-              cell_start_local = scanner->cell_start;
-            }
+            scanner->row.used = row_used;
+            scanner->cell_start = cell_start_local;
+            FAST_ROWEND_NOQUOTE(scanner, buff, idx, 1, need_slow, no_quotes);
+            row_used = scanner->row.used;
+            cell_start_local = scanner->cell_start;
           } else {
-            if (UNLIKELY(cross_block_cell)) {
-              scanner->cell_start = cell_start_local;
-              scanner->row.used = row_used;
-              FAST_ROWEND_QUOTED(scanner, buff, idx, 0, quote_char);
-              row_used = scanner->row.used;
-              cell_start_local = scanner->cell_start;
-              cross_block_cell = 0;
-            } else {
-              scanner->row.used = row_used;
-              scanner->cell_start = cell_start_local;
-              FAST_ROWEND_NOQUOTE(scanner, buff, idx, 0, need_slow, no_quotes);
-              row_used = scanner->row.used;
-              cell_start_local = scanner->cell_start;
-            }
+            scanner->row.used = row_used;
+            scanner->cell_start = cell_start_local;
+            FAST_ROWEND_NOQUOTE(scanner, buff, idx, 0, need_slow, no_quotes);
+            row_used = scanner->row.used;
+            cell_start_local = scanner->cell_start;
           }
         }
         scanner->row.used = row_used;
@@ -704,13 +516,7 @@ normal_parse:
           if (LIKELY(bitmask & commas)) {
             scanner->scanned_length = idx;
             scanner->cell_start = cell_start_local;
-            if (UNLIKELY(cross_block_cell)) {
-              if (quote_char > 0)
-                fast_set_quote_flags(scanner, buff + cell_start_local, idx - cell_start_local);
-              cell_dl(scanner, buff + cell_start_local, idx - cell_start_local);
-              cross_block_cell = 0;
-            } else
-              fast_store_cell_slow(scanner, buff + cell_start_local, idx - cell_start_local);
+            fast_store_cell_slow(scanner, buff + cell_start_local, idx - cell_start_local);
             cell_start_local = idx + 1;
           } else if (bitmask & crs) {
             scanner->cell_start = cell_start_local;
@@ -728,16 +534,7 @@ normal_parse:
     }
 
     /*
-     * Quote-aware path.
-     */
-    if (UNLIKELY(malformed_quoting)) {
-      i = fast_process_block_malformed(scanner, buff, bytes_read, i, &inside_quote, quote_char, delimiter, 0);
-      if (VERY_UNLIKELY(i == (size_t)-1))
-        return scanner->abort ? zsv_status_cancelled : zsv_status_max_rows_read;
-      continue;
-    }
-
-    /* Standard quoting: use prefix-XOR to compute state_mask.
+     * Quote-aware path: use prefix-XOR to compute state_mask.
      * Every quote toggles the inside/outside state.
      * PCLMULQDQ on x86 reduces this to a single instruction. */
     {
@@ -830,7 +627,7 @@ normal_parse:
         } else {
           inside_quote = 0;
         }
-      } else if (malformed_quoting ? (i == scanner->cell_start) : 1) {
+      } else {
         inside_quote = 1;
       }
       continue;
@@ -841,26 +638,12 @@ normal_parse:
 
     if (c == delimiter) {
       scanner->scanned_length = i;
-      if (malformed_quoting) {
-        if (quote_char > 0)
-          fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-        cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
-      } else {
-        fast_store_cell(scanner, buff + scanner->cell_start, i - scanner->cell_start, need_slow, no_quotes);
-      }
+      fast_store_cell(scanner, buff + scanner->cell_start, i - scanner->cell_start, need_slow, no_quotes);
       scanner->cell_start = i + 1;
     } else if (c == '\r') {
-      if (malformed_quoting) {
-        FAST_ROWEND_QUOTED(scanner, buff, i, 1, quote_char);
-      } else {
-        FAST_ROWEND_NOQUOTE(scanner, buff, i, 1, need_slow, no_quotes);
-      }
+      FAST_ROWEND_NOQUOTE(scanner, buff, i, 1, need_slow, no_quotes);
     } else if (c == '\n') {
-      if (malformed_quoting) {
-        FAST_ROWEND_QUOTED(scanner, buff, i, 0, quote_char);
-      } else {
-        FAST_ROWEND_NOQUOTE(scanner, buff, i, 0, need_slow, no_quotes);
-      }
+      FAST_ROWEND_NOQUOTE(scanner, buff, i, 0, need_slow, no_quotes);
     }
   }
 
@@ -869,12 +652,6 @@ normal_parse:
     scanner->quoted |= ZSV_PARSER_QUOTE_UNCLOSED;
   else
     scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
-
-  /* If there's remaining cell data (no trailing row-end), set quote
-   * flags so zsv_finish can properly normalize the final cell.
-   * Only needed when malformed_quoting is active (cell_dl normalization). */
-  if (malformed_quoting && quote_char > 0 && i > scanner->cell_start && !inside_quote)
-    fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
 
   scanner->scanned_length = i;
   scanner->old_bytes_read = bytes_read;

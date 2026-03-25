@@ -33,12 +33,6 @@ static int main_version(int argc, const char *argv[]) {
     printf("  Default parser:              legacy\n");
 #endif
 
-#ifdef ZSV_SUPPORT_NONSTANDARD_QUOTING
-    printf("  Non-standard quoting:        supported (SIMD detection)\n");
-#else
-    printf("  Non-standard quoting:        scalar tail only\n");
-#endif
-
 #ifdef ZSV_EXTRAS
     printf("  Extras:                      enabled\n");
 #else

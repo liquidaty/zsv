@@ -53,11 +53,6 @@ Optional features:
   --default-parser=fast|legacy
                           set the default parsing engine when --parser is
                           not specified on the command line [legacy]
-  --support-nonstandard-quoting
-                          enable --malformed-quoting by default (handles
-                          non-standard mid-cell quotes in CSV). Still
-                          overridable at runtime with --malformed-quoting
-                          or --no-malformed-quoting [no]
   --parallel-tempfile     use temp files + sendfile for parallel select
                           output merge instead of in-memory buffers.
                           May be faster on systems with fast local storage [no]
@@ -389,9 +384,6 @@ for arg ; do
 
         --force-sse2|--force-sse2=yes) FORCE_SSE2=yes;;
         --force-sse2=no) FORCE_SSE2=no;;
-
-        --support-nonstandard-quoting|--support-nonstandard-quoting=yes) SUPPORT_NONSTANDARD_QUOTING=1;;
-        --support-nonstandard-quoting=no) SUPPORT_NONSTANDARD_QUOTING=;;
 
         --default-parser=fast) DEFAULT_PARSER_FAST=1;;
         --default-parser=legacy) DEFAULT_PARSER_FAST=;;
@@ -905,8 +897,6 @@ CFLAGS_AVX = $CFLAGS_AVX
 CFLAGS_SSE = $CFLAGS_SSE
 
 HAVE_NEON = $HAVE_NEON
-
-SUPPORT_NONSTANDARD_QUOTING = $SUPPORT_NONSTANDARD_QUOTING
 
 DEFAULT_PARSER_FAST = $DEFAULT_PARSER_FAST
 

@@ -5,7 +5,7 @@
 # Usage: bench_quoting.sh <zsv_cli_binary> [output_file]
 #
 # The zsv binary should be built from the current repo. The script will
-# test it in legacy mode, fast mode, and fast+--malformed-quoting mode.
+# test it in legacy mode and fast mode.
 # External tools (xsv, xan, polars) are used if found in PATH.
 #
 # Works on Linux (x86_64) and macOS (arm64/NEON).
@@ -195,30 +195,17 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
     kv_set "time_${KEY}:zsv-legacy" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser legacy \"$FILE\"")"
     kv_set "correct_${KEY}:zsv-legacy" "correct"
 
-    # zsv fast (prefix-XOR, explicitly disable malformed quoting)
-    kv_set "time_${KEY}:zsv-fast" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --no-malformed-quoting \"$FILE\"")"
+    # zsv fast (prefix-XOR SIMD)
+    kv_set "time_${KEY}:zsv-fast" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast \"$FILE\"")"
     if [ "$CMD" = "count" ]; then
-      kv_set "correct_${KEY}:zsv-fast" "$(check_correct "\"$ZSV\" count --parser fast --no-malformed-quoting \"$FILE\"" "$REF")"
+      kv_set "correct_${KEY}:zsv-fast" "$(check_correct "\"$ZSV\" count --parser fast \"$FILE\"" "$REF")"
     else
       "$ZSV" $CMD $ZSV_SELECT_OPTS --parser legacy "$FILE" | md5tool > "$BENCH_TMPDIR/ref.md5"
-      "$ZSV" $CMD $ZSV_SELECT_OPTS --parser fast --no-malformed-quoting "$FILE" | md5tool > "$BENCH_TMPDIR/test.md5"
+      "$ZSV" $CMD $ZSV_SELECT_OPTS --parser fast "$FILE" | md5tool > "$BENCH_TMPDIR/test.md5"
       if diff "$BENCH_TMPDIR/ref.md5" "$BENCH_TMPDIR/test.md5" > /dev/null 2>&1; then
         kv_set "correct_${KEY}:zsv-fast" "correct"
       else
         kv_set "correct_${KEY}:zsv-fast" "incorrect"
-      fi
-    fi
-
-    # zsv fast+MQ (malformed quoting)
-    kv_set "time_${KEY}:zsv-fast-mq" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --malformed-quoting \"$FILE\"")"
-    if [ "$CMD" = "count" ]; then
-      kv_set "correct_${KEY}:zsv-fast-mq" "$(check_correct "\"$ZSV\" count --parser fast --malformed-quoting \"$FILE\"" "$REF")"
-    else
-      "$ZSV" $CMD $ZSV_SELECT_OPTS --parser fast --malformed-quoting "$FILE" | md5tool > "$BENCH_TMPDIR/test.md5"
-      if diff "$BENCH_TMPDIR/ref.md5" "$BENCH_TMPDIR/test.md5" > /dev/null 2>&1; then
-        kv_set "correct_${KEY}:zsv-fast-mq" "correct"
-      else
-        kv_set "correct_${KEY}:zsv-fast-mq" "incorrect"
       fi
     fi
 
@@ -294,12 +281,8 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
     kv_set "correct_${KEY}:zsv-legacy-par" "$(check_correct "\"$ZSV\" count --parser legacy --parallel \"$FILE\"" "$REF")"
 
     # zsv fast --parallel
-    kv_set "time_${KEY}:zsv-fast-par" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --no-malformed-quoting --parallel \"$FILE\"")"
-    kv_set "correct_${KEY}:zsv-fast-par" "$(check_correct "\"$ZSV\" count --parser fast --no-malformed-quoting --parallel \"$FILE\"" "$REF")"
-
-    # zsv fast+MQ --parallel
-    kv_set "time_${KEY}:zsv-fast-mq-par" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --malformed-quoting --parallel \"$FILE\"")"
-    kv_set "correct_${KEY}:zsv-fast-mq-par" "$(check_correct "\"$ZSV\" count --parser fast --malformed-quoting --parallel \"$FILE\"" "$REF")"
+    kv_set "time_${KEY}:zsv-fast-par" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --parallel \"$FILE\"")"
+    kv_set "correct_${KEY}:zsv-fast-par" "$(check_correct "\"$ZSV\" count --parser fast --parallel \"$FILE\"" "$REF")"
 
     echo "  $DATA $CMD done" >&2
   done
@@ -335,7 +318,7 @@ fmt_gbs() {
 }
 
 # --- Enumerate tools in order ---
-TOOLS="zsv-legacy zsv-legacy-par zsv-fast zsv-fast-par zsv-fast-mq zsv-fast-mq-par"
+TOOLS="zsv-legacy zsv-legacy-par zsv-fast zsv-fast-par"
 [ "$HAVE_XSV" = "1" ] && TOOLS="$TOOLS xsv"
 [ "$HAVE_XAN" = "1" ] && TOOLS="$TOOLS xan"
 [ "$HAVE_POLARS" = "1" ] && TOOLS="$TOOLS polars"
@@ -347,8 +330,6 @@ tool_label() {
     zsv-legacy-par) echo "zsv legacy --parallel" ;;
     zsv-fast)       echo "zsv fast" ;;
     zsv-fast-par)   echo "zsv fast --parallel" ;;
-    zsv-fast-mq)    echo "zsv fast+MQ" ;;
-    zsv-fast-mq-par) echo "zsv fast+MQ --parallel" ;;
     xsv)            echo "xsv" ;;
     xan)            echo "xan" ;;
     polars)         echo "polars" ;;
@@ -381,8 +362,6 @@ Data: $ROWS rows x $COLS columns, best-of-$ITERS iterations
 | zsv legacy --parallel | (this repo) | Legacy parser, multi-threaded |
 | zsv fast | (this repo) | SIMD parser, prefix-XOR for quoted blocks |
 | zsv fast --parallel | (this repo) | SIMD parser, multi-threaded |
-| zsv fast+MQ | (this repo) | SIMD parser with \`--malformed-quoting\` (scalar for quoted blocks) |
-| zsv fast+MQ --parallel | (this repo) | SIMD parser with \`--malformed-quoting\`, multi-threaded |
 HEADER
   [ "$HAVE_XSV" = "1" ] && echo "| xsv | $XSV_VER | BurntSushi/xsv |"
   [ "$HAVE_XAN" = "1" ] && echo "| xan | $XAN_VER | medialab/xan |"
