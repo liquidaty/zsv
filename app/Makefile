@@ -338,7 +338,13 @@ help:
 	@echo "  ${MAKE} benchmark"
 	@echo ""
 
+DESTDIR ?=
+
 install: ${ZSV}
+ifneq ($(DESTDIR),)
+	mkdir -p $(DESTDIR)/bin
+	cp -p `dirname $<`/* $(DESTDIR)/bin/
+endif
 
 benchmark: ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}count${EXE} ${STANDALONE_PFX}2tsv${EXE}
 	make -C benchmark all
@@ -346,7 +352,11 @@ benchmark: ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}count${EXE} ${STANDALO
 uninstall-all: uninstall uninstall-util-lib
 
 uninstall:
+ifneq ($(DESTDIR),)
+	rm -rf $(DESTDIR)/bin/zsv
+else
 	rm -rf ${ZSV}
+endif
 
 ZSV_UTIL_A=${LIBDIR}/libzsvutil.a
 ${ZSV_UTIL_A}:SQLITE_EXT=
@@ -377,7 +387,7 @@ ${LIBZSV_INSTALL}:
 	${MAKE} -C ../src CONFIGFILE=${CONFIGFILEPATH} install DEBUG=${DEBUG}
 
 ${ZSV}: ${CLI}
-	@mkdir -p `dirname "$@"`
+	mkdir -p `dirname "$@"`
 ifneq ($(findstring emcc,$(CC)),) # emcc
 	cp -p $< `dirname "$@"`/
 	cp -p ${CLI_ADDITIONAL} `dirname "$@"`/
@@ -477,7 +487,7 @@ ${JQ_BUNDLE_LIB}: ${JQ_SRC} # -D_REENTRANT needed for clang to not break
 	    --disable-shared \
 	    --enable-static \
 	    ${JQ_CONFIGURE_HOST} \
-	&& (${MAKE} install -k)
+	&& (${MAKE} install -k DESTDIR=)
 
 ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 	@mkdir -p `dirname "$@"`
@@ -530,7 +540,6 @@ ifeq ($(HAVE_PCRE2_8),1)
       PCRE2_8_PREFIX=${BULITIN_PCRE2_PREFIX}
       # add dependency
       ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: ${PCRE2_8_PREFIX}/lib/libpcre2-8.a
-
     endif
     PCRE2_LIB=${PCRE2_8_PREFIX}/lib/libpcre2-8.a
   endif
@@ -571,7 +580,7 @@ ${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o: ${BUILD_DIR}/objs/utils/%.o : utils/%
 	${CC} ${CFLAGS} -I${INCLUDE_PCRE2_8} -o $@ -c utils/$*.c
 
 ${BULITIN_PCRE2_PREFIX}/lib/libpcre2-8.a:
-	${MAKE} -C external -f ${CONFIGFILEPATH} -f build.mk $@ BUILD_DIR=${BUILD_DIR} CONFIGURE_HOST=${CONFIGURE_HOST}
+	${MAKE} -C external -f ${CONFIGFILEPATH} -f build.mk $@ BUILD_DIR=${BUILD_DIR} CONFIGURE_HOST=${CONFIGURE_HOST} DESTDIR=
 
 # utils/db uses jsonwriter
 ${BUILD_DIR}/objs/utils/db.o : MORE_SOURCE+= ${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}

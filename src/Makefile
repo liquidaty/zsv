@@ -180,10 +180,12 @@ else
 	@sed 's/__ZSV_EXTRAS__DEFINE__//' < ../include/zsv.h.in > $@
 endif
 
+DESTDIR ?=
+
 install: ../include/zsv.h ${LIBZSV_INSTALL}
-	@mkdir -p $(INCLUDEDIR)
-	@cp -p ../include/*.h $(INCLUDEDIR)
-	@cp -pR ../include/zsv $(INCLUDEDIR)/
+	mkdir -p $(INCLUDEDIR)
+	cp -p ../include/*.h $(INCLUDEDIR)
+	cp -pR ../include/zsv $(INCLUDEDIR)/
 	@echo "Header files copied to $(INCLUDEDIR)"
 ifeq ($(BUILD_SHAREDLIB),1)
 ifeq ($(UNAME_S),Linux)
@@ -192,15 +194,26 @@ ifeq ($(UNAME_S),Linux)
 	ln -srf $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_SO_NAME) $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_LINK_NAME)
 endif
 endif
+ifneq ($(DESTDIR),)
+	mkdir -p $(DESTDIR)/include $(DESTDIR)/lib
+	cp -pR $(INCLUDEDIR)/* $(DESTDIR)/include
+	cp -p $(LIBDIR)/* $(DESTDIR)/lib
+	@echo "Headers and library files installed to DESTDIR=${DESTDIR}"
+endif
 
 ${LIBZSV_INSTALL}: ${LIBDIR}/% : ${BUILD_DIR}/lib/%
-	@mkdir -p `dirname "$@"`
+	mkdir -p `dirname "$@"`
 	cp -p "$<" "$@"
 	@echo "$* installed to $@"
 
 uninstall:
+ifneq ($(DESTDIR),)
+	rm -rf $(DESTDIR)/include/zsv*
+	rm -rf $(DESTDIR)/lib/libzsv*
+else
 	@rm -rf ${INCLUDEDIR}/zsv*
 	 rm  -f ${LIBDIR}/libzsv*
+endif
 
 clean:
 	rm -rf ${BUILD_DIR}/objs ${LIBZSV_BUILD}
