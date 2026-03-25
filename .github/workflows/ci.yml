@@ -44,7 +44,6 @@ env:
   AMD64_LINUX_MUSL: amd64-linux-musl
   AMD64_WINDOWS_MINGW: amd64-windows-mingw
   AMD64_WSL_MINGW: amd64-wsl-mingw
-  AMD64_LINUX_WASM: amd64-linux-wasm
   AMD64_MACOSX_GCC: amd64-macosx-gcc
   ARM64_MACOSX_GCC: arm64-macosx-gcc
   AMD64_FREEBSD_GCC: amd64-freebsd-gcc
@@ -788,6 +787,19 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
 
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: simd
+            cflags: -msse2 -msimd128
+            plgdir: playground
+          - name: non-simd
+            cflags:
+            plgdir: playground/non-simd
+
+    name: ci-wasm-playground (${{ matrix.name }})
+
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
 
@@ -801,46 +813,31 @@ jobs:
     - name: Update version in index.html
       run: sed "s|__VERSION__|$TAG|g" -i playground/index.html
 
-    - name: Build with SIMD (${{ env.AMD64_LINUX_WASM }})
+    - name: Build (${{ matrix.name }})
       env:
-        PREFIX: ${{ env.AMD64_LINUX_WASM }}
+        PREFIX: amd64-linux-wasm
         CC: emcc
         MAKE: make
         RUN_TESTS: false
-        CONFIGFILE: "config.emcc"
-        CFLAGS: "-msse2 -msimd128"
+        CONFIGFILE: config.emcc
+        CFLAGS: ${{ matrix.cflags }}
         CROSS_COMPILING: "yes"
         NO_THREADING: "1"
         STATIC_BUILD: "1"
       run: |
         emconfigure ./configure --enable-pic --disable-pie
         emmake make install NO_STDIN=1 NO_PLAYGROUND=0
-        cp "$PREFIX"/bin/cli.em.{js,wasm} playground
-
-    - name: Build without SIMD (${{ env.AMD64_LINUX_WASM }})
-      env:
-        PREFIX: ${{ env.AMD64_LINUX_WASM }}
-        CC: emcc
-        MAKE: make
-        RUN_TESTS: false
-        CONFIGFILE: "config.emcc"
-        CROSS_COMPILING: "yes"
-        NO_THREADING: "1"
-        STATIC_BUILD: "1"
-      run: |
-        emconfigure ./configure --enable-pic --disable-pie
-        emmake make clean install NO_STDIN=1 NO_PLAYGROUND=0
-        mkdir -p playground/non-simd
-        cp "$PREFIX"/bin/cli.em.{js,wasm} playground/non-simd
+        mkdir -p ${{ matrix.plgdir }}
+        cp "$PREFIX"/bin/cli.em.{js,wasm} ${{ matrix.plgdir }}
 
     - name: Upload playground artifact
       uses: actions/upload-artifact@v7
       with:
-        name: playground
-        path: playground
+        name: playground-${{ matrix.name }}
+        path: ${{ matrix.destdir }}
 
   upload-github-pages-artifact:
-    if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
+    # if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
     needs: [prepare-linux-packages, ci-wasm-playground]
     runs-on: ubuntu-latest
 
@@ -851,11 +848,12 @@ jobs:
         name: packages
         path: ${{ env.ARTIFACT_DIR }}/packages
 
-    - name: Download playground artifact
+    - name: Download playground artifacts
       uses: actions/download-artifact@v8
       with:
-        name: playground
+        pattern: playground-*
         path: ${{ env.ARTIFACT_DIR }}
+        merge-multiple: true
 
     - name: Upload GitHub Pages artifacts
       uses: actions/upload-pages-artifact@v4
