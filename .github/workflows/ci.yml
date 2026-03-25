@@ -39,8 +39,6 @@ defaults:
     shell: bash
 
 env:
-  AMD64_LINUX_GCC: amd64-linux-gcc
-  AMD64_LINUX_CLANG: amd64-linux-clang
   AMD64_LINUX_MUSL: amd64-linux-musl
   AMD64_WINDOWS_MINGW: amd64-windows-mingw
   AMD64_WSL_MINGW: amd64-wsl-mingw
@@ -297,7 +295,7 @@ jobs:
 
     - name: Build on macOS (${{ env.AMD64_MACOSX_GCC }})
       env:
-        CC: gcc
+        CC: gcc-13
         MAKE: make
         RUN_TESTS: true
       run: ./scripts/ci-build.sh
