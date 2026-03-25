@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <stdint.h> // uint64_t
+#include <zsv/common.h> // struct zsv_cell
 
 #define ZSV_WRITER_NEW_ROW 1
 #define ZSV_WRITER_SAME_ROW 0
@@ -62,6 +63,13 @@ void zsv_writer_set_temp_buff(zsv_csv_writer w, unsigned char *buff, size_t buff
 enum zsv_writer_status zsv_writer_cell(zsv_csv_writer,
                                        char new_row, // ZSV_WRITER_NEW_ROW or ZSV_WRITER_SAME_ROW
                                        const unsigned char *s, size_t len, char check_if_needs_quoting);
+
+/**
+ * Write an entire row of raw (pre-formatted) cells in one call.
+ * Skips per-cell quoting scans. Only valid when cells are already
+ * properly formatted (e.g., raw passthrough from the fast parser).
+ */
+enum zsv_writer_status zsv_writer_row_raw(zsv_csv_writer, const struct zsv_cell *cells, unsigned int count);
 
 /*
  * Get total bytes that have been written (to disk and buffer)

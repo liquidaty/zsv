@@ -186,6 +186,26 @@ static void *zsv_select_process_chunk(void *arg) {
 // zsv_select_output_data_row(): output row data (No change needed)
 static void zsv_select_output_data_row(struct zsv_select_data *data) {
   unsigned int cnt = data->output_cols_count;
+
+  /* Fast path: when no per-cell transforms are needed and cells don't
+   * require quoting checks, write the entire row in one call. */
+  if (LIKELY(!data->prepend_line_number && !data->any_clean &&
+             data->distinct != ZSV_SELECT_DISTINCT_MERGE)) {
+    struct zsv_cell row_cells[256]; /* stack-allocated; 256 cols max */
+    unsigned int n = cnt < 256 ? cnt : 256;
+    int all_raw = 1;
+    for (unsigned int i = 0; i < n; i++) {
+      row_cells[i] = zsv_get_cell(data->parser, data->out2in[i].ix);
+      if (row_cells[i].quoted)
+        all_raw = 0;
+    }
+    if (LIKELY(all_raw)) {
+      zsv_writer_row_raw(data->csv_writer, row_cells, n);
+      return;
+    }
+  }
+
+  /* Slow path: per-cell processing with cleaning, merging, etc. */
   char first = 1;
   if (data->prepend_line_number) {
     zsv_writer_cell_zu(data->csv_writer, first, data->data_row_count);
