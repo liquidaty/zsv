@@ -109,6 +109,11 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
   opts.errf = cdata->opts->errf;
   opts.errclose = cdata->opts->errclose;
   opts.progress = cdata->opts->progress;
+  opts.scan_engine = cdata->opts->scan_engine;
+  opts.malformed_quoting = cdata->opts->malformed_quoting;
+#ifndef ZSV_NO_ONLY_CRLF
+  opts.only_crlf_rowend = cdata->opts->only_crlf_rowend;
+#endif
 
   // set up input
   FILE *stream = fopen(data.input_path, "rb");
@@ -145,7 +150,6 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
   opts.stream = stream;
   opts.row_handler = zsv_select_data_row_parallel;
   opts.ctx = &data;
-  /* inherit scan_engine from opts (user's --parser choice) */
   data.end_offset_limit = cdata->end_offset - cdata->start_offset; // set chunk boundary
   data.parser = zsv_new(&opts);
 

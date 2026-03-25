@@ -403,6 +403,11 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
 
   size_t i = scanner->partial_row_length;
 
+  /* Reset scanned_length so zsv_cum_scanned_length() doesn't double-count
+   * the previous buffer's value (which was already absorbed into
+   * cum_scanned_length at the start of zsv_parse_more). */
+  scanner->scanned_length = i;
+
   /* If the entire buffer fits in the scalar tail and contains quotes,
    * use the legacy engine. The scalar tail's simplified quote handling
    * combined with cell_dl's in-place memmove can produce incorrect results
@@ -479,11 +484,15 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
         uint64_t row_ends = valid_cr | (valid_nl & ~crlf_n);
 
         if (row_ends) {
-          int nrows = __builtin_popcountll(row_ends);
-          int last_bit = 63 - __builtin_clzll(row_ends);
-          size_t last_rowend_pos = i + last_bit;
-
-          for (int r = 0; r < nrows; r++) {
+          /* Extract individual row-end positions via bit extraction so
+           * scanned_length and row_start are accurate per-row. This is
+           * needed for parallel boundary checks (zsv_cum_scanned_length). */
+          uint64_t re = row_ends;
+          while (re) {
+            int bit = __builtin_ctzll(re);
+            size_t rowend_pos = i + bit;
+            scanner->scanned_length = rowend_pos + 1;
+            scanner->row_start = rowend_pos + 1;
             scanner->data_row_count++;
             if (VERY_LIKELY(scanner->opts.row_handler != NULL))
               scanner->opts.row_handler(scanner->opts.ctx);
@@ -499,9 +508,11 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
 #endif
             if (VERY_UNLIKELY(scanner->abort))
               return zsv_status_cancelled;
+            re &= re - 1; /* clear lowest set bit */
           }
+          int last_bit = 63 - __builtin_clzll(row_ends);
+          size_t last_rowend_pos = i + last_bit;
           scanner->cell_start = last_rowend_pos + 1;
-          scanner->row_start = last_rowend_pos + 1;
         }
 
         if (UNLIKELY(malformed_quoting)) {
@@ -542,6 +553,7 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
           scanner->data_row_count++;
           scanner->cell_start = i + 1;
           scanner->row_start = i + 1;
+          scanner->scanned_length = i + 1;
           if (VERY_LIKELY(scanner->opts.row_handler != NULL))
             scanner->opts.row_handler(scanner->opts.ctx);
           scanner->have_cell = 0;
