@@ -188,6 +188,7 @@ static void *process_chunk_internal(struct zsv_chunk_count_data *cdata) {
     cdata->status = zsv_status_error;
     return NULL;
   }
+  zsv_set_skip_cells(wctx.parser, 1);
 
   enum zsv_status status = zsv_status_ok;
   while (status == zsv_status_ok && !wctx.cancelled) {
@@ -262,9 +263,8 @@ static void header_handler(void *ctx) {
   if (!data->run_in_parallel) { // single-threaded serial run
     data->run_in_parallel = 0;
     zsv_set_row_handler(data->parser, data->opts->verbose ? row_verbose : row_simple);
-    if (!data->opts->verbose)
-      zsv_set_skip_cells(data->parser, 1);
   }
+  zsv_set_skip_cells(data->parser, 1);
 }
 
 static int count_usage(void) {

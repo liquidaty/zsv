@@ -189,8 +189,7 @@ static void zsv_select_output_data_row(struct zsv_select_data *data) {
 
   /* Fast path: when no per-cell transforms are needed and cells don't
    * require quoting checks, write the entire row in one call. */
-  if (LIKELY(!data->prepend_line_number && !data->any_clean &&
-             data->distinct != ZSV_SELECT_DISTINCT_MERGE)) {
+  if (LIKELY(!data->prepend_line_number && !data->any_clean && data->distinct != ZSV_SELECT_DISTINCT_MERGE)) {
     struct zsv_cell row_cells[256]; /* stack-allocated; 256 cols max */
     unsigned int n = cnt < 256 ? cnt : 256;
     int all_raw = 1;

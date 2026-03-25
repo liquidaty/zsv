@@ -10,7 +10,7 @@
 #define ZSV_WRITER_H
 
 #include <stdio.h>
-#include <stdint.h> // uint64_t
+#include <stdint.h>     // uint64_t
 #include <zsv/common.h> // struct zsv_cell
 
 #define ZSV_WRITER_NEW_ROW 1

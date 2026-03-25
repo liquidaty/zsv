@@ -62,11 +62,12 @@ estimate_disk_bw() {
 # --- Temp directory (cleaned up on exit) ---
 BENCH_TMPDIR=$(mktemp -d)
 trap 'rm -rf "$BENCH_TMPDIR"' EXIT
-mkdir -p "$BENCH_TMPDIR/.kv"
 
-# --- Portable key-value store (bash 3.2 compatible, replaces associative arrays) ---
-_kv_set() { printf '%s\n' "$2" > "$BENCH_TMPDIR/.kv/$(printf '%s' "$1" | tr ':' '_')"; }
-_kv_get() { cat "$BENCH_TMPDIR/.kv/$(printf '%s' "$1" | tr ':' '_')" 2>/dev/null || true; }
+# --- Portable key-value store (works with bash 3.2) ---
+# Uses files under $BENCH_TMPDIR/_kv/ instead of associative arrays.
+mkdir -p "$BENCH_TMPDIR/_kv"
+kv_set() { printf '%s' "$2" > "$BENCH_TMPDIR/_kv/$1"; }
+kv_get() { cat "$BENCH_TMPDIR/_kv/$1" 2>/dev/null || true; }
 
 # --- Generate benchmark data ---
 echo "Generating benchmark data ($ROWS rows x $COLS cols)..." >&2
@@ -102,9 +103,9 @@ cat "$BENCH_TMPDIR"/*.csv > /dev/null 2>&1
 # Record file sizes in bytes
 for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
   if [ "$OS" = "Darwin" ]; then
-    _kv_set "FILESIZES_$DATA" "$(stat -f%z "$BENCH_TMPDIR/${DATA}.csv")"
+    kv_set "filesize_${DATA}" "$(stat -f%z "$BENCH_TMPDIR/${DATA}.csv")"
   else
-    _kv_set "FILESIZES_$DATA" "$(stat -c%s "$BENCH_TMPDIR/${DATA}.csv")"
+    kv_set "filesize_${DATA}" "$(stat -c%s "$BENCH_TMPDIR/${DATA}.csv")"
   fi
 done
 
@@ -177,48 +178,48 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
     if [ "$CMD" = "select" ]; then ZSV_SELECT_OPTS="--no-trim"; fi
 
     # zsv legacy
-    _kv_set "TIMES_${KEY}:zsv-legacy" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser legacy \"$FILE\"")"
-    _kv_set "CORRECT_${KEY}:zsv-legacy" "correct"
+    kv_set "time_${KEY}:zsv-legacy" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser legacy \"$FILE\"")"
+    kv_set "correct_${KEY}:zsv-legacy" "correct"
 
     # zsv fast (prefix-XOR, explicitly disable malformed quoting)
-    _kv_set "TIMES_${KEY}:zsv-fast" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --no-malformed-quoting \"$FILE\"")"
+    kv_set "time_${KEY}:zsv-fast" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --no-malformed-quoting \"$FILE\"")"
     if [ "$CMD" = "count" ]; then
-      _kv_set "CORRECT_${KEY}:zsv-fast" "$(check_correct "\"$ZSV\" count --parser fast --no-malformed-quoting \"$FILE\"" "$REF")"
+      kv_set "correct_${KEY}:zsv-fast" "$(check_correct "\"$ZSV\" count --parser fast --no-malformed-quoting \"$FILE\"" "$REF")"
     else
       "$ZSV" $CMD $ZSV_SELECT_OPTS --parser legacy "$FILE" | md5tool > "$BENCH_TMPDIR/ref.md5"
       "$ZSV" $CMD $ZSV_SELECT_OPTS --parser fast --no-malformed-quoting "$FILE" | md5tool > "$BENCH_TMPDIR/test.md5"
       if diff "$BENCH_TMPDIR/ref.md5" "$BENCH_TMPDIR/test.md5" > /dev/null 2>&1; then
-        _kv_set "CORRECT_${KEY}:zsv-fast" "correct"
+        kv_set "correct_${KEY}:zsv-fast" "correct"
       else
-        _kv_set "CORRECT_${KEY}:zsv-fast" "incorrect"
+        kv_set "correct_${KEY}:zsv-fast" "incorrect"
       fi
     fi
 
     # zsv fast+MQ (malformed quoting)
-    _kv_set "TIMES_${KEY}:zsv-fast-mq" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --malformed-quoting \"$FILE\"")"
+    kv_set "time_${KEY}:zsv-fast-mq" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --malformed-quoting \"$FILE\"")"
     if [ "$CMD" = "count" ]; then
-      _kv_set "CORRECT_${KEY}:zsv-fast-mq" "$(check_correct "\"$ZSV\" count --parser fast --malformed-quoting \"$FILE\"" "$REF")"
+      kv_set "correct_${KEY}:zsv-fast-mq" "$(check_correct "\"$ZSV\" count --parser fast --malformed-quoting \"$FILE\"" "$REF")"
     else
       "$ZSV" $CMD $ZSV_SELECT_OPTS --parser fast --malformed-quoting "$FILE" | md5tool > "$BENCH_TMPDIR/test.md5"
       if diff "$BENCH_TMPDIR/ref.md5" "$BENCH_TMPDIR/test.md5" > /dev/null 2>&1; then
-        _kv_set "CORRECT_${KEY}:zsv-fast-mq" "correct"
+        kv_set "correct_${KEY}:zsv-fast-mq" "correct"
       else
-        _kv_set "CORRECT_${KEY}:zsv-fast-mq" "incorrect"
+        kv_set "correct_${KEY}:zsv-fast-mq" "incorrect"
       fi
     fi
 
     # xsv
     if [ "$HAVE_XSV" = "1" ]; then
       if [ "$CMD" = "count" ]; then
-        _kv_set "TIMES_${KEY}:xsv" "$(best_of "xsv count \"$FILE\"")"
-        _kv_set "CORRECT_${KEY}:xsv" "$(check_correct "xsv count \"$FILE\"" "$REF")"
+        kv_set "time_${KEY}:xsv" "$(best_of "xsv count \"$FILE\"")"
+        kv_set "correct_${KEY}:xsv" "$(check_correct "xsv count \"$FILE\"" "$REF")"
       else
-        _kv_set "TIMES_${KEY}:xsv" "$(best_of "xsv select 1- \"$FILE\"")"
+        kv_set "time_${KEY}:xsv" "$(best_of "xsv select 1- \"$FILE\"")"
         xsv select 1- "$FILE" | md5tool > "$BENCH_TMPDIR/test.md5"
         if diff "$BENCH_TMPDIR/ref.md5" "$BENCH_TMPDIR/test.md5" > /dev/null 2>&1; then
-          _kv_set "CORRECT_${KEY}:xsv" "correct"
+          kv_set "correct_${KEY}:xsv" "correct"
         else
-          _kv_set "CORRECT_${KEY}:xsv" "incorrect"
+          kv_set "correct_${KEY}:xsv" "incorrect"
         fi
       fi
     fi
@@ -226,16 +227,16 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
     # xan
     if [ "$HAVE_XAN" = "1" ]; then
       if [ "$CMD" = "count" ]; then
-        _kv_set "TIMES_${KEY}:xan" "$(best_of "xan count \"$FILE\"")"
-        _kv_set "CORRECT_${KEY}:xan" "$(check_correct "xan count \"$FILE\"" "$REF")"
+        kv_set "time_${KEY}:xan" "$(best_of "xan count \"$FILE\"")"
+        kv_set "correct_${KEY}:xan" "$(check_correct "xan count \"$FILE\"" "$REF")"
       else
         LAST_COL="col$((COLS - 1))"
-        _kv_set "TIMES_${KEY}:xan" "$(best_of "xan select \"col0:${LAST_COL}\" \"$FILE\"")"
+        kv_set "time_${KEY}:xan" "$(best_of "xan select \"col0:${LAST_COL}\" \"$FILE\"")"
         if xan select "col0:${LAST_COL}" "$FILE" 2>/dev/null | md5tool > "$BENCH_TMPDIR/test.md5" && \
            diff "$BENCH_TMPDIR/ref.md5" "$BENCH_TMPDIR/test.md5" > /dev/null 2>&1; then
-          _kv_set "CORRECT_${KEY}:xan" "correct"
+          kv_set "correct_${KEY}:xan" "correct"
         else
-          _kv_set "CORRECT_${KEY}:xan" "incorrect"
+          kv_set "correct_${KEY}:xan" "incorrect"
         fi
       fi
     fi
@@ -243,15 +244,15 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
     # polars
     if [ "$HAVE_POLARS" = "1" ]; then
       if [ "$CMD" = "count" ]; then
-        _kv_set "TIMES_${KEY}:polars" "$(best_of "polars -c \"SELECT COUNT(*) FROM read_csv('$FILE')\"")"
-        _kv_set "CORRECT_${KEY}:polars" "$(check_correct "polars -c \"SELECT COUNT(*) FROM read_csv('$FILE')\"" "$REF")"
+        kv_set "time_${KEY}:polars" "$(best_of "polars -c \"SELECT COUNT(*) FROM read_csv('$FILE')\"")"
+        kv_set "correct_${KEY}:polars" "$(check_correct "polars -c \"SELECT COUNT(*) FROM read_csv('$FILE')\"" "$REF")"
       else
-        _kv_set "TIMES_${KEY}:polars" "$(best_of "polars -o csv -c \"SELECT * FROM read_csv('$FILE')\"")"
+        kv_set "time_${KEY}:polars" "$(best_of "polars -o csv -c \"SELECT * FROM read_csv('$FILE')\"")"
         if polars -o csv -c "SELECT * FROM read_csv('$FILE')" 2>/dev/null | md5tool > "$BENCH_TMPDIR/test.md5" && \
            diff "$BENCH_TMPDIR/ref.md5" "$BENCH_TMPDIR/test.md5" > /dev/null 2>&1; then
-          _kv_set "CORRECT_${KEY}:polars" "correct"
+          kv_set "correct_${KEY}:polars" "correct"
         else
-          _kv_set "CORRECT_${KEY}:polars" "incorrect"
+          kv_set "correct_${KEY}:polars" "incorrect"
         fi
       fi
     fi
@@ -259,28 +260,28 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
     # qsv (qsvlite)
     if [ "$HAVE_QSV" = "1" ]; then
       if [ "$CMD" = "count" ]; then
-        _kv_set "TIMES_${KEY}:qsv" "$(best_of "$QSV_BIN count \"$FILE\"")"
-        _kv_set "CORRECT_${KEY}:qsv" "$(check_correct "$QSV_BIN count \"$FILE\"" "$REF")"
+        kv_set "time_${KEY}:qsv" "$(best_of "$QSV_BIN count \"$FILE\"")"
+        kv_set "correct_${KEY}:qsv" "$(check_correct "$QSV_BIN count \"$FILE\"" "$REF")"
       else
-        _kv_set "TIMES_${KEY}:qsv" "$(best_of "$QSV_BIN select 1- \"$FILE\"")"
+        kv_set "time_${KEY}:qsv" "$(best_of "$QSV_BIN select 1- \"$FILE\"")"
         if "$QSV_BIN" select 1- "$FILE" 2>/dev/null | md5tool > "$BENCH_TMPDIR/test.md5" && \
            diff "$BENCH_TMPDIR/ref.md5" "$BENCH_TMPDIR/test.md5" > /dev/null 2>&1; then
-          _kv_set "CORRECT_${KEY}:qsv" "correct"
+          kv_set "correct_${KEY}:qsv" "correct"
         else
-          _kv_set "CORRECT_${KEY}:qsv" "incorrect"
+          kv_set "correct_${KEY}:qsv" "incorrect"
         fi
       fi
     fi
 
     # zsv legacy --parallel
-    _kv_set "TIMES_${KEY}:zsv-legacy-par" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser legacy --parallel \"$FILE\"")"
+    kv_set "time_${KEY}:zsv-legacy-par" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser legacy --parallel \"$FILE\"")"
     # Parallel correctness: use count (order-independent). For select, parallel output
     # may reorder rows across chunks, so we check count match only.
-    _kv_set "CORRECT_${KEY}:zsv-legacy-par" "$(check_correct "\"$ZSV\" count --parser legacy --parallel \"$FILE\"" "$REF")"
+    kv_set "correct_${KEY}:zsv-legacy-par" "$(check_correct "\"$ZSV\" count --parser legacy --parallel \"$FILE\"" "$REF")"
 
     # zsv fast --parallel
-    _kv_set "TIMES_${KEY}:zsv-fast-par" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --no-malformed-quoting --parallel \"$FILE\"")"
-    _kv_set "CORRECT_${KEY}:zsv-fast-par" "$(check_correct "\"$ZSV\" count --parser fast --no-malformed-quoting --parallel \"$FILE\"" "$REF")"
+    kv_set "time_${KEY}:zsv-fast-par" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --no-malformed-quoting --parallel \"$FILE\"")"
+    kv_set "correct_${KEY}:zsv-fast-par" "$(check_correct "\"$ZSV\" count --parser fast --no-malformed-quoting --parallel \"$FILE\"" "$REF")"
 
     echo "  $DATA $CMD done" >&2
   done
@@ -292,9 +293,8 @@ done
 fmt_time() {
   local key="$1" tool="$2"
   local tkey="${key}:${tool}"
-  local t c
-  t=$(_kv_get "TIMES_$tkey")
-  c=$(_kv_get "CORRECT_$tkey")
+  local t; t=$(kv_get "time_${tkey}")
+  local c; c=$(kv_get "correct_${tkey}")
   if [ -z "$t" ]; then echo "-"; return; fi
   if [ "$c" = "incorrect" ]; then echo "N/A"; return; fi
   printf "%ss" "$t"
@@ -304,13 +304,11 @@ fmt_time() {
 fmt_gbs() {
   local key="$1" tool="$2" data="$3"
   local tkey="${key}:${tool}"
-  local t c
-  t=$(_kv_get "TIMES_$tkey")
-  c=$(_kv_get "CORRECT_$tkey")
+  local t; t=$(kv_get "time_${tkey}")
+  local c; c=$(kv_get "correct_${tkey}")
   if [ -z "$t" ]; then echo "-"; return; fi
   if [ "$c" = "incorrect" ]; then echo "N/A"; return; fi
-  local bytes
-  bytes=$(_kv_get "FILESIZES_$data")
+  local bytes; bytes=$(kv_get "filesize_${data}")
   if [ "$(echo "$t > 0" | bc)" = "1" ]; then
     printf "%s" "$(echo "scale=2; $bytes / $t / 1073741824" | bc)"
   else
@@ -400,11 +398,10 @@ DATASETS
     local key="${DATA}:count"
     local row="| $DATA |"
     for tool in $TOOLS; do
-      local c
-      c=$(_kv_get "CORRECT_${key}:${tool}")
+      local c; c=$(kv_get "correct_${key}:${tool}")
       if [ -z "$c" ]; then c="n/a"; fi
       if [ "$c" = "incorrect" ]; then c="**incorrect**"; fi
-      if [ "$tool" = "polars" ]; then c="**incorrect**"; fi
+      if [ "$tool" = "polars" ]; then c="${c}*"; fi
       row="$row $c |"
     done
     echo "$row"
@@ -462,8 +459,7 @@ NOTE
       local key="${DATA}:${CMD}"
       local row="| $DATA |"
       for tool in $TOOLS; do
-        local gbs
-        gbs=$(fmt_gbs "$key" "$tool" "$DATA")
+        local gbs=$(fmt_gbs "$key" "$tool" "$DATA")
         if [ "$gbs" = "N/A" ] || [ "$gbs" = "-" ]; then
           row="$row $gbs |"
         else
