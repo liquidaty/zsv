@@ -113,10 +113,21 @@ DATE_TIME:=$(shell date +%F-%H-%M-%S)
 export TIMINGS_CSV:=${TMP_DIR}/timings-${DATE_TIME}.csv
 
 help:
-	@echo "To run all tests: ${MAKE_BIN} test [LEAKS=1]"
-	@echo "To run individual test: ${MAKE_BIN} test-xxx"
-	@echo "To run on cli: ${MAKE_BIN} CLI"
-	@echo "  where xxx can be: blank-leading-rows ${SOURCES}"
+	@echo "To run all tests:"
+	@echo "  ${MAKE_BIN} test-all [LEAKS=1]"
+	@echo ""
+	@echo "Main tests:"
+	@echo "  ${MAKE_BIN} test"
+	@echo ""
+	@echo "Only extension tests:"
+	@echo "  ${MAKE_BIN} test-ext"
+	@echo ""
+	@echo "To run individual test:"
+	@echo "  ${MAKE_BIN} test-xxx"
+	@echo "where xxx can be: blank-leading-rows ${SOURCES}"
+	@echo ""
+	@echo "To run on cli:"
+	@echo "  ${MAKE_BIN} CLI"
 
 clean:
 	rm -rf ${TMP_DIR}
@@ -124,6 +135,11 @@ clean:
 CLI:
 	@echo "Testing CLI..."
 	@${MAKE} CLI1=1 test -n | sed 's/\/[^ ]*\/bin\/zsv_/zsv /g' | sh
+
+test-ext:
+	(cd ${THIS_MAKEFILE_DIR}/../ext_example && "${MAKE}" CONFIGFILE=${CONFIGFILE} test)
+
+test-all: test test-ext
 
 test: ${TESTS}
 
