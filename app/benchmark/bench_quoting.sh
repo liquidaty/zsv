@@ -404,7 +404,7 @@ DATASETS
       c=$(_kv_get "CORRECT_${key}:${tool}")
       if [ -z "$c" ]; then c="n/a"; fi
       if [ "$c" = "incorrect" ]; then c="**incorrect**"; fi
-      if [ "$tool" = "polars" ]; then c="${c}*"; fi
+      if [ "$tool" = "polars" ]; then c="**incorrect**"; fi
       row="$row $c |"
     done
     echo "$row"
