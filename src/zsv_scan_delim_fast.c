@@ -198,31 +198,20 @@ fast_process_block_malformed(struct zsv_scanner *scanner, unsigned char *buff, s
 }
 
 /*
- * Store a raw cell placeholder into the row. No normalization, no
- * cell_handler callback. Used for columns that the caller doesn't need.
+ * Out-of-line slow path for cell storage: handles column filtering,
+ * UTF-8 replacement, and cell_handler callbacks. Kept out of the hot
+ * SIMD loop to reduce code size and register pressure on x86-64.
  */
-__attribute__((always_inline)) static inline void fast_store_cell_raw(struct zsv_scanner *scanner, unsigned char *s,
-                                                                      size_t n) {
-  if (VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
-    struct zsv_cell c = {s, n, scanner->opts.no_quotes ? 1 : 0, 0};
-    scanner->row.cells[scanner->row.used++] = c;
-  } else
-    scanner->row.overflow++;
-  scanner->have_cell = 1;
-}
-
-/*
- * Store a cell directly into the row, bypassing cell_dl().
- * Used in the fast path when we know there are no quotes to normalize.
- * The 'quoted' field is set to 1 when no_quotes mode is active (matching
- * cell_dl behavior), or 0 otherwise.
- */
-__attribute__((always_inline)) static inline void fast_store_cell(struct zsv_scanner *scanner, unsigned char *s,
-                                                                  size_t n) {
-  /* If column filter is active, check if this column needs full processing */
+__attribute__((noinline)) static void fast_store_cell_slow(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+  /* Column filter: skip unneeded columns */
   if (scanner->needed_cols) {
     if (scanner->row.used >= scanner->needed_cols_count || !scanner->needed_cols[scanner->row.used]) {
-      fast_store_cell_raw(scanner, s, n);
+      if (VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
+        struct zsv_cell c = {s, n, scanner->opts.no_quotes ? 1 : 0, 0};
+        scanner->row.cells[scanner->row.used++] = c;
+      } else
+        scanner->row.overflow++;
+      scanner->have_cell = 1;
       return;
     }
   }
@@ -243,13 +232,31 @@ __attribute__((always_inline)) static inline void fast_store_cell(struct zsv_sca
 }
 
 /*
- * Store a cell and invoke the row handler, bypassing cell_dl()/row_dl().
- * Returns non-zero status on abort/cancellation.
+ * Store a cell directly into the row, bypassing cell_dl().
+ * Tiny inline fast path: just store pointer+length when no special
+ * processing is needed. Falls back to out-of-line slow path for
+ * column filtering, UTF-8 replacement, and cell_handler callbacks.
  */
-__attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and_row(struct zsv_scanner *scanner,
-                                                                                     unsigned char *s, size_t n) {
-  fast_store_cell(scanner, s, n);
+__attribute__((always_inline)) static inline void fast_store_cell(struct zsv_scanner *scanner, unsigned char *s,
+                                                                  size_t n) {
+  if (UNLIKELY(scanner->needed_cols || scanner->opts.malformed_utf8_replace ||
+               scanner->opts.cell_handler)) {
+    fast_store_cell_slow(scanner, s, n);
+    return;
+  }
+  if (VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
+    struct zsv_cell c = {s, n, scanner->opts.no_quotes ? 1 : 0, 0};
+    scanner->row.cells[scanner->row.used++] = c;
+  } else
+    scanner->row.overflow++;
+  scanner->have_cell = 1;
+}
 
+/*
+ * Out-of-line row-end handler: overflow warning, progress tracking,
+ * max_rows check. Kept out of the hot loop.
+ */
+__attribute__((noinline)) static enum zsv_status fast_row_end_slow(struct zsv_scanner *scanner) {
   if (VERY_UNLIKELY(scanner->row.overflow)) {
     scanner->errprintf(scanner->errf, "Warning: number of columns (%zu) exceeds row max (%zu)\n",
                        scanner->row.allocated + scanner->row.overflow, scanner->row.allocated);
@@ -291,6 +298,16 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
   scanner->have_cell = 0;
   scanner->row.used = 0;
   return zsv_status_ok;
+}
+
+/*
+ * Store a cell and invoke the row handler, bypassing cell_dl()/row_dl().
+ * Returns non-zero status on abort/cancellation.
+ */
+__attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and_row(struct zsv_scanner *scanner,
+                                                                                     unsigned char *s, size_t n) {
+  fast_store_cell(scanner, s, n);
+  return fast_row_end_slow(scanner);
 }
 
 /*
@@ -402,61 +419,13 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
    */
   if (scanner->skip_cells) {
     while (i + 64 <= bytes_read) {
-      uint64_t newlines = fast_cmpeq_64(buff + i, v_nl);
-      uint64_t crs = fast_cmpeq_64(buff + i, v_cr);
-      uint64_t quotes = quote_char > 0 ? fast_cmpeq_64(buff + i, v_qt) : 0;
+      uint64_t commas_sc, newlines, crs, quotes;
+      fast_scan_block(buff + i, v_comma, v_nl, v_cr, v_qt, &commas_sc, &newlines, &crs, &quotes);
+      if (quote_char <= 0)
+        quotes = 0;
 
-      if (LIKELY(quotes == 0 && !inside_quote)) {
-        /* No quote state to track. Count row-ends via popcount. */
-        uint64_t crlf_n = (crs << 1) & newlines;
-        uint64_t row_ends = crs | (newlines & ~crlf_n);
-
-        if (row_ends) {
-          int nrows = __builtin_popcountll(row_ends);
-          int last_bit = 63 - __builtin_clzll(row_ends);
-          size_t last_rowend_pos = i + last_bit;
-
-          for (int r = 0; r < nrows; r++) {
-            scanner->data_row_count++;
-            if (VERY_LIKELY(scanner->opts.row_handler != NULL))
-              scanner->opts.row_handler(scanner->opts.ctx);
-            scanner->have_cell = 0;
-            scanner->row.used = 0;
-#ifdef ZSV_EXTRAS
-            scanner->progress.cum_row_count++;
-            if (VERY_UNLIKELY(scanner->progress.max_rows > 0 &&
-                              scanner->progress.cum_row_count == scanner->progress.max_rows)) {
-              scanner->abort = 1;
-              return zsv_status_max_rows_read;
-            }
-#endif
-            if (VERY_UNLIKELY(scanner->abort))
-              return zsv_status_cancelled;
-          }
-          scanner->cell_start = last_rowend_pos + 1;
-          scanner->row_start = last_rowend_pos + 1;
-        }
-
-        if (UNLIKELY(malformed_quoting)) {
-          /* Track cell_start from the last delimiter in this block so
-           * the quote-aware path's cell_start check works correctly for
-           * quoted fields that aren't the first cell in a row. */
-          uint64_t commas_sc = fast_cmpeq_64(buff + i, v_comma);
-          uint64_t all_sc = commas_sc | newlines | crs;
-          if (all_sc) {
-            int last_delim = 63 - __builtin_clzll(all_sc);
-            scanner->cell_start = i + last_delim + 1;
-          }
-        }
-
-        i += 64;
-        if (!scanner->skip_cells)
-          break;
-        continue;
-      }
-
-      /* Block has quotes or we're inside a quoted cell. */
-      if (UNLIKELY(malformed_quoting)) {
+      /* Malformed quoting: fall back to scalar for blocks with quotes. */
+      if (UNLIKELY(malformed_quoting) && (quotes || inside_quote)) {
         i = fast_process_block_malformed(scanner, buff, bytes_read, i, &inside_quote, quote_char, delimiter, 1);
         if (VERY_UNLIKELY(i == (size_t)-1))
           return scanner->abort ? zsv_status_cancelled : zsv_status_max_rows_read;
@@ -465,8 +434,11 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
         continue;
       }
 
-      /* Standard quoting: use prefix-XOR to mask out newlines inside quotes.
-       * PCLMULQDQ on x86 reduces this to a single instruction. */
+      /* Unified path: prefix-XOR handles both quoted and unquoted blocks.
+       * When quotes==0 and !inside_quote: B=0, state_mask=0, all delims valid.
+       * When quotes or inside_quote: state_mask masks out delims inside quotes.
+       * This eliminates the branch between quoted/unquoted paths, reducing
+       * code size and improving branch prediction. */
       {
         uint64_t B = fast_prefix_xor(quotes);
         uint64_t state_mask = inside_quote ? ~B : B;
@@ -502,6 +474,15 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
           scanner->cell_start = last_rowend_pos + 1;
           scanner->row_start = last_rowend_pos + 1;
         }
+
+        if (UNLIKELY(malformed_quoting)) {
+          uint64_t all_sc = commas_sc | newlines | crs;
+          if (all_sc) {
+            int last_delim = 63 - __builtin_clzll(all_sc);
+            scanner->cell_start = i + last_delim + 1;
+          }
+        }
+
         i += 64;
         if (!scanner->skip_cells)
           break;
