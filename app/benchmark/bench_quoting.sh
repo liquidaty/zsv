@@ -167,10 +167,14 @@ extract_count() {
 
 check_correct() {
   local tool_cmd="$1" ref="$2"
-  local output got
-  output=$(eval "$tool_cmd" 2>/dev/null)
+  local output got errtmp
+  errtmp="$BENCH_TMPDIR/check_stderr.tmp"
+  output=$(eval "$tool_cmd" 2>"$errtmp")
   got=$(extract_count "$output")
-  if [ "$got" = "$ref" ]; then echo "correct"; else echo "incorrect"; fi
+  # Fail if count doesn't match OR if parser warnings were emitted on stderr
+  if [ "$got" != "$ref" ]; then echo "incorrect"; return; fi
+  if grep -qiE 'warning|error|truncat' "$errtmp" 2>/dev/null; then echo "incorrect"; return; fi
+  echo "correct"
 }
 
 # --- Run benchmarks ---

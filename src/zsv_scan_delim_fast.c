@@ -578,7 +578,16 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
     }
 
     if (!scanner->skip_cells && i < bytes_read) {
-      inside_quote = (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) ? 1 : 0;
+      /* Sync scanner->quoted with the locally-tracked inside_quote state.
+       * The SIMD skip_cells loop updates inside_quote via prefix-XOR but
+       * does not update scanner->quoted until function exit. When skip_cells
+       * is cleared mid-buffer (e.g. at a parallel chunk boundary), we must
+       * persist the current state before transitioning to normal_parse,
+       * which reads scanner->quoted for its own quote tracking. */
+      if (inside_quote)
+        scanner->quoted |= ZSV_PARSER_QUOTE_UNCLOSED;
+      else
+        scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
       goto normal_parse;
     }
 
