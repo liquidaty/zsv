@@ -153,12 +153,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: ccache
-      uses: hendrikmuhs/ccache-action@v1.2.21
-      with:
-        create-symlink: true
-        key: ${{ github.job }}-${{ runner.os }}-${{ matrix.cc }}
-
     - name: Build (${{ matrix.prefix }})
       env:
         PREFIX: ${{ matrix.prefix }}
@@ -290,12 +284,6 @@ jobs:
 
     - name: Set up homebrew dependencies
       run: brew install --quiet coreutils tree tmux sqlite3
-
-    - name: ccache
-      uses: hendrikmuhs/ccache-action@v1.2.21
-      with:
-        create-symlink: true
-        key: ${{ github.job }}-${{ matrix.os }}
 
     - name: Set PREFIX and ZIP env var
       env:
@@ -671,12 +659,6 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v6
-
-    - name: ccache
-      uses: hendrikmuhs/ccache-action@v1.2.21
-      with:
-        create-symlink: true
-        key: ${{ github.job }}-${{ runner.os }}
 
     - name: Configure git in container
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
