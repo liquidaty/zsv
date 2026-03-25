@@ -121,6 +121,10 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
   // set up output
   struct zsv_csv_writer_options writer_opts = {0};
 
+#ifdef ZSV_PARALLEL_TEMPFILE
+  cdata->tmp_output_filename = zsv_get_temp_filename("zsl");
+  writer_opts.stream = fopen(cdata->tmp_output_filename, "wb");
+#else
   if (!(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ)) &&
       !(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ / 2)) &&
       !(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ / 4)) &&
@@ -128,6 +132,7 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
     cdata->tmp_f = zsv_memfile_open(0);
   writer_opts.stream = cdata->tmp_f;
   writer_opts.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))zsv_memfile_write;
+#endif
 
   if (!writer_opts.stream) {
     cdata->status = zsv_status_memory;
@@ -164,6 +169,9 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
   fflush(stream);
   fclose(stream);
   zsv_writer_delete(data.csv_writer);
+#ifdef ZSV_PARALLEL_TEMPFILE
+  fclose(writer_opts.stream);
+#endif
   cdata->actual_next_row_start = data.next_row_start + cdata->start_offset;
   cdata->status = zsv_status_ok;
   return NULL;
@@ -459,6 +467,9 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
     return 0;
 
   fflush(dest_stream);
+#ifdef ZSV_PARALLEL_TEMPFILE
+  int out_fd = fileno(dest_stream);
+#endif
   int status = 0;
 
   for (unsigned int i = 0; i < data->num_chunks - 1; i++) {
@@ -488,11 +499,30 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
     }
   }
 
-  // join all of the output files into a single output file
+  // merge worker outputs into the destination stream
   for (unsigned int i = 1; i < data->num_chunks && status == 0; i++) {
     struct zsv_chunk_data *c = &data->parallel_data->chunk_data[i];
     if (c->skip)
       continue;
+#ifdef ZSV_PARALLEL_TEMPFILE
+    int in_fd = open(c->tmp_output_filename, O_RDONLY);
+    if (in_fd < 0) {
+      zsv_printerr(1, "Error opening chunk %s: %s", c->tmp_output_filename, strerror(errno));
+      status = zsv_status_error;
+      break;
+    }
+    struct stat st;
+    if (fstat(in_fd, &st) == 0) {
+      long copied = zsv_concatenate_copy(out_fd, in_fd, st.st_size);
+      if (copied != st.st_size) {
+        zsv_printerr(1, "Warning: Partial copy chunk %d (%lli/%lli)", i, copied, (long long)st.st_size);
+        status = zsv_status_error;
+      }
+    } else {
+      status = zsv_status_error;
+    }
+    close(in_fd);
+#else
     zsv_memfile_rewind(c->tmp_f);
     if (zsv_copy_filelike_ptr(
           c->tmp_f, (size_t(*)(void *restrict ptr, size_t size, size_t nitems, void *restrict stream))zsv_memfile_read,
@@ -501,6 +531,7 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
       perror("zsv temp mem file");
       status = zsv_status_error;
     }
+#endif
   }
   return status;
 }

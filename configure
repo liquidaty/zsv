@@ -56,6 +56,10 @@ Optional features:
   --support-nonstandard-quoting
                           enable SIMD-level detection and fallback for
                           non-standard CSV quoting in the fast parser [no]
+  --parallel-tempfile     use temp files + sendfile for parallel select
+                          output merge instead of in-memory buffers.
+                          May be faster on systems with fast local storage
+                          and large datasets that exceed available RAM [no]
 
 Some influential environment variables:
   CC                      C compiler command [detected]
@@ -344,6 +348,7 @@ usepic=auto
 usetermcap=auto
 
 ZSV_NO_PARALLEL=
+ZSV_PARALLEL_TEMPFILE=
 NCURSES_DYNAMIC=
 for arg ; do
     case "$arg" in
@@ -369,6 +374,8 @@ for arg ; do
         --minimal|--minimal=yes) MINIMAL=yes;;
 
         --no-parallel) ZSV_NO_PARALLEL=1;;
+        --parallel-tempfile|--parallel-tempfile=yes) ZSV_PARALLEL_TEMPFILE=1;;
+        --parallel-tempfile=no) ZSV_PARALLEL_TEMPFILE=;;
 
         --try-avx512|--try-avx512=yes) TRY_AVX512=yes;;
         --try-avx512=no) TRY_AVX512=no;;
@@ -926,6 +933,8 @@ BUILD_SHAREDLIB = $BUILD_SHAREDLIB
 ZSVSHEET_BUILD = $ZSVSHEET_BUILD
 
 ZSV_NO_PARALLEL = $ZSV_NO_PARALLEL
+
+ZSV_PARALLEL_TEMPFILE = $ZSV_PARALLEL_TEMPFILE
 
 NO_STDIN = $NO_STDIN
 
