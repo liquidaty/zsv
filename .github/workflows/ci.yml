@@ -131,6 +131,7 @@ jobs:
     timeout-minutes: 15
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - prefix: amd64-linux-gcc
