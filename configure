@@ -54,12 +54,13 @@ Optional features:
                           set the default parsing engine when --parser is
                           not specified on the command line [legacy]
   --support-nonstandard-quoting
-                          enable SIMD-level detection and fallback for
-                          non-standard CSV quoting in the fast parser [no]
+                          enable --malformed-quoting by default (handles
+                          non-standard mid-cell quotes in CSV). Still
+                          overridable at runtime with --malformed-quoting
+                          or --no-malformed-quoting [no]
   --parallel-tempfile     use temp files + sendfile for parallel select
                           output merge instead of in-memory buffers.
-                          May be faster on systems with fast local storage
-                          and large datasets that exceed available RAM [no]
+                          May be faster on systems with fast local storage [no]
 
 Some influential environment variables:
   CC                      C compiler command [detected]

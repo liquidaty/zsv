@@ -63,8 +63,10 @@ static int main_help(int argc, const char *argv[]) {
 #endif
     "  --parser <default|fast|legacy>",
     "                           : select parser engine. 'fast' uses branchless SIMD",
-    "                             (aarch64 only, requires standard RFC 4180 quoting).",
+    "                             (aarch64 NEON or x86-64 AVX2/SSE2).",
     "                             'legacy' uses the original character-by-character engine",
+    "  --malformed-quoting      : handle non-standard mid-cell quotes in unquoted fields",
+    "  --no-malformed-quoting   : disable malformed quoting support (use prefix-XOR for all quoting)",
     "  -v,--verbose             : verbose output",
     "",
     "Commands that parse CSV or other tabular data:",
