@@ -236,20 +236,42 @@ __attribute__((noinline)) static void fast_store_cell_slow(struct zsv_scanner *s
  * Tiny inline fast path: just store pointer+length when no special
  * processing is needed. Falls back to out-of-line slow path for
  * column filtering, UTF-8 replacement, and cell_handler callbacks.
+ *
+ * The `need_slow` and `no_quotes` flags are pre-computed once at
+ * zsv_scan_delim_fast() entry and passed in to avoid re-checking
+ * scanner fields on every cell.
  */
 __attribute__((always_inline)) static inline void fast_store_cell(struct zsv_scanner *scanner, unsigned char *s,
-                                                                  size_t n) {
-  if (UNLIKELY(scanner->needed_cols || scanner->opts.malformed_utf8_replace ||
-               scanner->opts.cell_handler)) {
+                                                                  size_t n, int need_slow, unsigned char no_quotes) {
+  if (UNLIKELY(need_slow)) {
     fast_store_cell_slow(scanner, s, n);
     return;
   }
   if (VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
-    struct zsv_cell c = {s, n, scanner->opts.no_quotes ? 1 : 0, 0};
+    struct zsv_cell c = {s, n, no_quotes, 0};
     scanner->row.cells[scanner->row.used++] = c;
   } else
     scanner->row.overflow++;
   scanner->have_cell = 1;
+}
+
+/*
+ * Cache-friendly cell store using local variables.
+ * Stores directly into the cells array via a cached pointer and index,
+ * avoiding repeated loads of scanner->row.used, scanner->row.cells,
+ * and scanner->row.allocated through the scanner pointer (which the
+ * compiler cannot hoist due to aliasing).
+ */
+__attribute__((always_inline)) static inline void fast_store_cell_cached(struct zsv_cell *cells, size_t *used_p,
+                                                                         size_t allocated, unsigned char *s, size_t n,
+                                                                         unsigned char no_quotes) {
+  size_t u = *used_p;
+  if (VERY_LIKELY(u < allocated)) {
+    struct zsv_cell c = {s, n, no_quotes, 0};
+    cells[u] = c;
+    *used_p = u + 1;
+  }
+  /* overflow and have_cell handled by caller at row-end */
 }
 
 /*
@@ -305,8 +327,10 @@ __attribute__((noinline)) static enum zsv_status fast_row_end_slow(struct zsv_sc
  * Returns non-zero status on abort/cancellation.
  */
 __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and_row(struct zsv_scanner *scanner,
-                                                                                     unsigned char *s, size_t n) {
-  fast_store_cell(scanner, s, n);
+                                                                                     unsigned char *s, size_t n,
+                                                                                     int need_slow,
+                                                                                     unsigned char no_quotes) {
+  fast_store_cell(scanner, s, n, need_slow, no_quotes);
   return fast_row_end_slow(scanner);
 }
 
@@ -314,7 +338,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
  * Handle a row-end for an unquoted cell (fast path).
  * Skips cell_dl()/row_dl() overhead.
  */
-#define FAST_ROWEND_NOQUOTE(scanner, buff, idx, is_cr)                                                                 \
+#define FAST_ROWEND_NOQUOTE(scanner, buff, idx, is_cr, need_slow_, no_quotes_)                                          \
   do {                                                                                                                 \
     if (!(is_cr)) {                                                                                                    \
       char prev = (idx) > 0 ? (buff)[(idx)-1] : (scanner)->last;                                                       \
@@ -326,7 +350,8 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
     }                                                                                                                  \
     (scanner)->scanned_length = (idx);                                                                                 \
     enum zsv_status stat_ =                                                                                            \
-      fast_store_cell_and_row((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start);               \
+      fast_store_cell_and_row((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start,                \
+                              (need_slow_), (no_quotes_));                                                             \
     if (VERY_UNLIKELY(stat_))                                                                                          \
       return stat_;                                                                                                    \
     (scanner)->cell_start = (idx) + 1;                                                                                 \
@@ -371,6 +396,10 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
 
   int quote_char = scanner->opts.no_quotes > 0 ? -1 : '"';
   int malformed_quoting = scanner->opts.malformed_quoting;
+
+  /* Pre-compute per-cell flags once, avoiding repeated field access in the hot loop. */
+  int need_slow = (scanner->needed_cols || scanner->opts.malformed_utf8_replace || scanner->opts.cell_handler) ? 1 : 0;
+  unsigned char no_quotes = scanner->opts.no_quotes ? 1 : 0;
 
   size_t i = scanner->partial_row_length;
 
@@ -579,36 +608,101 @@ normal_parse:
        * use the full quote-aware path for that first cell only. */
       int cross_block_cell = malformed_quoting && (scanner->cell_start < base);
 
-      while (all_delims) {
-        int bit = __builtin_ctzll(all_delims);
-        size_t idx = base + bit;
-        uint64_t bitmask = 1ULL << bit;
-        all_delims = fast_clear_lowest(all_delims);
+      /* Cache scanner fields in locals to avoid aliasing-induced reloads.
+       * The compiler can't hoist these because stores to cells[] could
+       * alias any scanner field through the same pointer. */
+      size_t cell_start_local = scanner->cell_start;
+      if (LIKELY(!need_slow)) {
+        struct zsv_cell *cells = scanner->row.cells;
+        size_t row_used = scanner->row.used;
+        size_t row_allocated = scanner->row.allocated;
 
-        if (LIKELY(bitmask & commas)) {
-          scanner->scanned_length = idx;
-          if (UNLIKELY(cross_block_cell)) {
-            if (quote_char > 0)
-              fast_set_quote_flags(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
-            cell_dl(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
-            cross_block_cell = 0;
-          } else
-            fast_store_cell(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
-          scanner->cell_start = idx + 1;
-        } else if (bitmask & crs) {
-          if (UNLIKELY(cross_block_cell)) {
+        while (all_delims) {
+          int bit = __builtin_ctzll(all_delims);
+          size_t idx = base + bit;
+          uint64_t bitmask = 1ULL << bit;
+          all_delims = fast_clear_lowest(all_delims);
+
+          if (LIKELY(bitmask & commas)) {
+            if (UNLIKELY(cross_block_cell)) {
+              scanner->cell_start = cell_start_local;
+              scanner->row.used = row_used;
+              scanner->scanned_length = idx;
+              if (quote_char > 0)
+                fast_set_quote_flags(scanner, buff + cell_start_local, idx - cell_start_local);
+              cell_dl(scanner, buff + cell_start_local, idx - cell_start_local);
+              row_used = scanner->row.used;
+              cross_block_cell = 0;
+            } else {
+              fast_store_cell_cached(cells, &row_used, row_allocated,
+                                     buff + cell_start_local, idx - cell_start_local, no_quotes);
+            }
+            cell_start_local = idx + 1;
+          } else if (bitmask & crs) {
+            if (UNLIKELY(cross_block_cell)) {
+              scanner->cell_start = cell_start_local;
+              scanner->row.used = row_used;
+              FAST_ROWEND_QUOTED(scanner, buff, idx, 1, quote_char);
+              row_used = scanner->row.used;
+              cell_start_local = scanner->cell_start;
+              cross_block_cell = 0;
+            } else {
+              scanner->row.used = row_used;
+              scanner->cell_start = cell_start_local;
+              FAST_ROWEND_NOQUOTE(scanner, buff, idx, 1, need_slow, no_quotes);
+              row_used = scanner->row.used;
+              cell_start_local = scanner->cell_start;
+            }
+          } else {
+            if (UNLIKELY(cross_block_cell)) {
+              scanner->cell_start = cell_start_local;
+              scanner->row.used = row_used;
+              FAST_ROWEND_QUOTED(scanner, buff, idx, 0, quote_char);
+              row_used = scanner->row.used;
+              cell_start_local = scanner->cell_start;
+              cross_block_cell = 0;
+            } else {
+              scanner->row.used = row_used;
+              scanner->cell_start = cell_start_local;
+              FAST_ROWEND_NOQUOTE(scanner, buff, idx, 0, need_slow, no_quotes);
+              row_used = scanner->row.used;
+              cell_start_local = scanner->cell_start;
+            }
+          }
+        }
+        scanner->row.used = row_used;
+        scanner->have_cell = 1;
+      } else {
+        /* Slow path: need_slow is set, use original per-cell function */
+        while (all_delims) {
+          int bit = __builtin_ctzll(all_delims);
+          size_t idx = base + bit;
+          uint64_t bitmask = 1ULL << bit;
+          all_delims = fast_clear_lowest(all_delims);
+
+          if (LIKELY(bitmask & commas)) {
+            scanner->scanned_length = idx;
+            scanner->cell_start = cell_start_local;
+            if (UNLIKELY(cross_block_cell)) {
+              if (quote_char > 0)
+                fast_set_quote_flags(scanner, buff + cell_start_local, idx - cell_start_local);
+              cell_dl(scanner, buff + cell_start_local, idx - cell_start_local);
+              cross_block_cell = 0;
+            } else
+              fast_store_cell_slow(scanner, buff + cell_start_local, idx - cell_start_local);
+            cell_start_local = idx + 1;
+          } else if (bitmask & crs) {
+            scanner->cell_start = cell_start_local;
             FAST_ROWEND_QUOTED(scanner, buff, idx, 1, quote_char);
-            cross_block_cell = 0;
-          } else
-            FAST_ROWEND_NOQUOTE(scanner, buff, idx, 1);
-        } else {
-          if (UNLIKELY(cross_block_cell)) {
+            cell_start_local = scanner->cell_start;
+          } else {
+            scanner->cell_start = cell_start_local;
             FAST_ROWEND_QUOTED(scanner, buff, idx, 0, quote_char);
-            cross_block_cell = 0;
-          } else
-            FAST_ROWEND_NOQUOTE(scanner, buff, idx, 0);
+            cell_start_local = scanner->cell_start;
+          }
         }
       }
+      scanner->cell_start = cell_start_local;
       continue;
     }
 
@@ -645,22 +739,62 @@ normal_parse:
        * so cell data from cell_start to idx is the raw field content
        * including any original quoting. The writer outputs it as-is,
        * avoiding the normalize-then-re-quote overhead. */
-      while (valid_delims) {
-        int bit = __builtin_ctzll(valid_delims);
-        size_t idx = base + bit;
-        uint64_t bitmask = 1ULL << bit;
-        valid_delims = fast_clear_lowest(valid_delims);
+      size_t cell_start_q = scanner->cell_start;
+      if (LIKELY(!need_slow)) {
+        struct zsv_cell *cells = scanner->row.cells;
+        size_t row_used = scanner->row.used;
+        size_t row_allocated = scanner->row.allocated;
 
-        if (LIKELY(bitmask & commas)) {
-          scanner->scanned_length = idx;
-          fast_store_cell(scanner, buff + scanner->cell_start, idx - scanner->cell_start);
-          scanner->cell_start = idx + 1;
-        } else if (bitmask & crs) {
-          FAST_ROWEND_NOQUOTE(scanner, buff, idx, 1);
-        } else {
-          FAST_ROWEND_NOQUOTE(scanner, buff, idx, 0);
+        while (valid_delims) {
+          int bit = __builtin_ctzll(valid_delims);
+          size_t idx = base + bit;
+          uint64_t bitmask = 1ULL << bit;
+          valid_delims = fast_clear_lowest(valid_delims);
+
+          if (LIKELY(bitmask & commas)) {
+            fast_store_cell_cached(cells, &row_used, row_allocated,
+                                   buff + cell_start_q, idx - cell_start_q, no_quotes);
+            cell_start_q = idx + 1;
+          } else if (bitmask & crs) {
+            scanner->row.used = row_used;
+            scanner->cell_start = cell_start_q;
+            FAST_ROWEND_NOQUOTE(scanner, buff, idx, 1, need_slow, no_quotes);
+            row_used = scanner->row.used;
+            cell_start_q = scanner->cell_start;
+          } else {
+            scanner->row.used = row_used;
+            scanner->cell_start = cell_start_q;
+            FAST_ROWEND_NOQUOTE(scanner, buff, idx, 0, need_slow, no_quotes);
+            row_used = scanner->row.used;
+            cell_start_q = scanner->cell_start;
+          }
+        }
+        scanner->row.used = row_used;
+        scanner->have_cell = 1;
+      } else {
+        while (valid_delims) {
+          int bit = __builtin_ctzll(valid_delims);
+          size_t idx = base + bit;
+          uint64_t bitmask = 1ULL << bit;
+          valid_delims = fast_clear_lowest(valid_delims);
+
+          if (LIKELY(bitmask & commas)) {
+            scanner->scanned_length = idx;
+            scanner->cell_start = cell_start_q;
+            fast_store_cell_slow(scanner, buff + cell_start_q, idx - cell_start_q);
+            cell_start_q = idx + 1;
+          } else if (bitmask & crs) {
+            scanner->cell_start = cell_start_q;
+            FAST_ROWEND_QUOTED(scanner, buff, idx, 1, quote_char);
+            cell_start_q = scanner->cell_start;
+          } else {
+            scanner->cell_start = cell_start_q;
+            FAST_ROWEND_QUOTED(scanner, buff, idx, 0, quote_char);
+            cell_start_q = scanner->cell_start;
+          }
         }
       }
+      scanner->cell_start = cell_start_q;
     }
   }
 
@@ -691,20 +825,20 @@ normal_parse:
           fast_set_quote_flags(scanner, buff + scanner->cell_start, i - scanner->cell_start);
         cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
       } else {
-        fast_store_cell(scanner, buff + scanner->cell_start, i - scanner->cell_start);
+        fast_store_cell(scanner, buff + scanner->cell_start, i - scanner->cell_start, need_slow, no_quotes);
       }
       scanner->cell_start = i + 1;
     } else if (c == '\r') {
       if (malformed_quoting) {
         FAST_ROWEND_QUOTED(scanner, buff, i, 1, quote_char);
       } else {
-        FAST_ROWEND_NOQUOTE(scanner, buff, i, 1);
+        FAST_ROWEND_NOQUOTE(scanner, buff, i, 1, need_slow, no_quotes);
       }
     } else if (c == '\n') {
       if (malformed_quoting) {
         FAST_ROWEND_QUOTED(scanner, buff, i, 0, quote_char);
       } else {
-        FAST_ROWEND_NOQUOTE(scanner, buff, i, 0);
+        FAST_ROWEND_NOQUOTE(scanner, buff, i, 0, need_slow, no_quotes);
       }
     }
   }
