@@ -67,7 +67,6 @@ __attribute__((always_inline)) static inline void fast_set_quote_flags(struct zs
   }
 }
 
-
 /*
  * Out-of-line slow path for cell storage: handles column filtering,
  * UTF-8 replacement, and cell_handler callbacks. Kept out of the hot
@@ -209,7 +208,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
  * Handle a row-end for an unquoted cell (fast path).
  * Skips cell_dl()/row_dl() overhead.
  */
-#define FAST_ROWEND_NOQUOTE(scanner, buff, idx, is_cr, need_slow_, no_quotes_)                                          \
+#define FAST_ROWEND_NOQUOTE(scanner, buff, idx, is_cr, need_slow_, no_quotes_)                                         \
   do {                                                                                                                 \
     if (!(is_cr)) {                                                                                                    \
       char prev = (idx) > 0 ? (buff)[(idx)-1] : (scanner)->last;                                                       \
@@ -220,9 +219,8 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
       }                                                                                                                \
     }                                                                                                                  \
     (scanner)->scanned_length = (idx);                                                                                 \
-    enum zsv_status stat_ =                                                                                            \
-      fast_store_cell_and_row((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start,                \
-                              (need_slow_), (no_quotes_));                                                             \
+    enum zsv_status stat_ = fast_store_cell_and_row((scanner), (buff) + (scanner)->cell_start,                         \
+                                                    (idx) - (scanner)->cell_start, (need_slow_), (no_quotes_));        \
     if (VERY_UNLIKELY(stat_))                                                                                          \
       return stat_;                                                                                                    \
     (scanner)->cell_start = (idx) + 1;                                                                                 \
@@ -486,8 +484,8 @@ normal_parse:
           all_delims = fast_clear_lowest(all_delims);
 
           if (LIKELY(bitmask & commas)) {
-            fast_store_cell_cached(cells, &row_used, row_allocated,
-                                   buff + cell_start_local, idx - cell_start_local, no_quotes);
+            fast_store_cell_cached(cells, &row_used, row_allocated, buff + cell_start_local, idx - cell_start_local,
+                                   no_quotes);
             cell_start_local = idx + 1;
           } else if (bitmask & crs) {
             scanner->row.used = row_used;
@@ -570,8 +568,7 @@ normal_parse:
           valid_delims = fast_clear_lowest(valid_delims);
 
           if (LIKELY(bitmask & commas)) {
-            fast_store_cell_cached(cells, &row_used, row_allocated,
-                                   buff + cell_start_q, idx - cell_start_q, no_quotes);
+            fast_store_cell_cached(cells, &row_used, row_allocated, buff + cell_start_q, idx - cell_start_q, no_quotes);
             cell_start_q = idx + 1;
           } else if (bitmask & crs) {
             scanner->row.used = row_used;
