@@ -61,6 +61,9 @@ Other commands:
   jq       : run a jq filter on json input
 
 (No extended commands)
+
+To learn more, see README at https://github.com/liquidaty/zsv.
+Report any issues at https://github.com/liquidaty/zsv/issues.
 Extension my registered
 Exiting extension example!
 zsv: streaming csv processor
@@ -125,3 +128,6 @@ Extended commands:
     my-count: print the number of rows
     my-echo: print the input data back to stdout
 Exiting extension example!
+
+To learn more, see README at https://github.com/liquidaty/zsv.
+Report any issues at https://github.com/liquidaty/zsv/issues.
