@@ -7,13 +7,22 @@ These tests are designed to measure the core CSV parser only, and not various ot
 other tools compared here are often are far better than `zsv` for those, but when it comes just to CSV
 parsing, `zsv` is hard to beat.
 
-Note: zsv's `--parallel` feature used in some of these tests is available as of version 1.2.0.
-Earlier versions should exhibit the same performance when run single-threaded (without `--parallel`)
+Important notes!
+- Updated as of v1.4.0, which includes performance optimizations for all zsv modes (single-threaded
+  or parallel, legacy or fast engine)
+- zsv-fast means, zsv when run with `--parser fast` (available as of v1.4.0)
+- `--parallel` flag:
+  - available as of version 1.2.0.
+  - benchmarks are run on bare-metal machines/instances
+    - If run on a VM or physical machine with limited IO, then depending on output data size,
+      --parallel performance can be IO-bound since, in order to preserve output order, it may
+      write to temp files prior to final output
 
 ## Benchmark result summaries
 
 <!-- benchmark-results-start -->
 - [darwin-arm64: benchmark-fast-parser-quoting-darwin-arm64-2026-03-25-1544.md](results/benchmark-fast-parser-quoting-darwin-arm64-2026-03-25-1544.md)
+- [linux-x86_64: benchmark-fast-parser-quoting-linux-x86_64-2026-03-26-1713.md](results/benchmark-fast-parser-quoting-linux-x86_64-2026-03-26-1713.md)
 <!-- benchmark-results-end -->
 
 ### Graphs

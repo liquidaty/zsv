@@ -101,7 +101,9 @@ help:
 	@echo "  Publishing:"
 	@echo "    ${MAKE_BIN} update-benchmark-readme"
 	@echo "                            Update README.md with links to latest results"
-	@echo "                            (one per OS+arch) and stage result files + graphs"
+	@echo "                            (one per OS+arch)"
+	@echo "    ${MAKE_BIN} stage-benchmark-results"
+	@echo "                            Stage result files + graphs for git commit"
 	@echo ""
 	@echo "  Cleanup:"
 	@echo "    ${MAKE_BIN} reset           Remove saved results (csv, txt, png)"
@@ -117,7 +119,8 @@ help:
 	@echo "    1. Build zsv:        (cd ../.. && make install)"
 	@echo "    2. Run benchmarks:   ${MAKE_BIN} bench-quoting"
 	@echo "    3. Generate graphs:  ${MAKE_BIN} reset && ${MAKE_BIN} graph"
-	@echo "    4. Stage for commit: ${MAKE_BIN} update-benchmark-readme"
+	@echo "    4. Update README:    ${MAKE_BIN} update-benchmark-readme"
+	@echo "    5. Stage for commit: ${MAKE_BIN} stage-benchmark-results"
 	@echo ""
 
 CLI: ZSVBIN="zsv "
@@ -574,11 +577,13 @@ BENCH_PNGS=$(BENCH_DIR)bench_combined-count.png $(BENCH_DIR)bench_combined-selec
 
 update-benchmark-readme:
 	@bash $(BENCH_DIR)update_benchmark_readme.sh $(RESULTS_DIR) $(BENCH_README)
+
+stage-benchmark-results:
 	@for png in $(BENCH_PNGS); do \
 		if [ -f "$$png" ]; then git add "$$png"; fi; \
 	done
 
-.PHONY: help all count select select-% clean polars-setup csv% tsv% graph% bench-quoting update-benchmark-readme
+.PHONY: help all count select select-% clean polars-setup csv% tsv% graph% bench-quoting update-benchmark-readme stage-benchmark-results
 
 
 ##### python / polars
