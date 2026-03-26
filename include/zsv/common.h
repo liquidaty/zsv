@@ -236,7 +236,7 @@ struct zsv_opts {
   /**
    * scan engine: 0 = default, 3 = fast (branchless SIMD)
    *
-   * cli option: --parser <default|fast|legacy>
+   * cli option: --parser <default|fast|compat>
    */
   unsigned char scan_engine;
 

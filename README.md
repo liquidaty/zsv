@@ -108,11 +108,11 @@ The fast parser is only designed for input that uses quoting as defined in RFC 4
 (but does not require other limitations of RFC 4180 such as CRLF line ends).
 Like `polars` and `xan`, it does not correctly handle non-standard quoting
 such as unescaped quotes in unquoted fields (e.g. `12" monitor` or `say "hello" world`).
-For such data, use the default legacy parser which handles all real-world CSV the same way
+For such data, use the default compat parser which handles all real-world CSV the same way
 spreadsheet programs do.
 
 ## Parallel parsing
-Either the fast or legacy parser can be combined with `--parallel` for multi-threaded parsing:
+Either the fast or compat parser can be combined with `--parallel` for multi-threaded parsing:
 
 ```bash
 # Single-threaded

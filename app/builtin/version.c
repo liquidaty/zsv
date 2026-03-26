@@ -30,7 +30,7 @@ static int main_version(int argc, const char *argv[]) {
 #ifdef ZSV_DEFAULT_PARSER_FAST
     printf("  Default parser:              fast\n");
 #else
-    printf("  Default parser:              legacy\n");
+    printf("  Default parser:              compat\n");
 #endif
 
 #ifdef ZSV_EXTRAS

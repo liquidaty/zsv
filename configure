@@ -50,9 +50,9 @@ Optional features:
   --disable-stdin         disable stdin from CLI commands
   --enable-simdutf        use simdutf for 'check --utf8'. Faster, but adds ~300k to binary
   --disable-only-crlf     disable the --only-crlf parsing option
-  --default-parser=fast|legacy
+  --default-parser=fast|compat
                           set the default parsing engine when --parser is
-                          not specified on the command line [legacy]
+                          not specified on the command line [compat]
   --parallel-tempfile     use temp files + sendfile for parallel select
                           output merge instead of in-memory buffers.
                           May be faster on systems with fast local storage [no]
@@ -386,7 +386,7 @@ for arg ; do
         --force-sse2=no) FORCE_SSE2=no;;
 
         --default-parser=fast) DEFAULT_PARSER_FAST=1;;
-        --default-parser=legacy) DEFAULT_PARSER_FAST=;;
+        --default-parser=compat) DEFAULT_PARSER_FAST=;;
 
         --ncurses-dynamic) NCURSES_DYNAMIC=1;;
 

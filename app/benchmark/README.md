@@ -9,7 +9,7 @@ parsing, `zsv` is hard to beat.
 
 Important notes!
 - Updated as of v1.4.0, which includes performance optimizations for all zsv modes (single-threaded
-  or parallel, legacy or fast engine)
+  or parallel, compat or fast engine)
 - zsv-fast means, zsv when run with `--parser fast` (available as of v1.4.0)
 - `--parallel` flag:
   - available as of version 1.2.0.

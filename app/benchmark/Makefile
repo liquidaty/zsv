@@ -80,7 +80,7 @@ help:
 	@echo ""
 	@echo "  Main targets:"
 	@echo "    ${MAKE_BIN} bench-quoting   Compare fast parser quoting modes across tools"
-	@echo "                            (zsv legacy/fast, xsv, xan, polars, qsv)"
+	@echo "                            (zsv compat/fast, xsv, xan, polars, qsv)"
 	@echo "                            Results saved to results/ as markdown"
 	@echo "    ${MAKE_BIN} all             Run worldcitiespop count + select benchmarks"
 	@echo "    ${MAKE_BIN} graph           Run benchmarks and generate gnuplot graphs"

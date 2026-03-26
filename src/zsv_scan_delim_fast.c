@@ -14,7 +14,7 @@
  *   fast_vec_set1(c)  — broadcast byte c to all lanes
  *   fast_cmpeq_64(p,v)— compare 64 bytes at p against v, return 64-bit mask
  *
- * Falls back to the standard engine on unsupported platforms.
+ * Falls back to the compat/scalar engine on unsupported platforms.
  */
 
 #if defined(__aarch64__)
@@ -33,7 +33,7 @@
 /*
  * Set scanner->quoted and scanner->quote_close_position for a cell
  * by scanning its content. This replicates the quote tracking that
- * the standard engine does character-by-character.
+ * the compat/scalar engine does character-by-character.
  */
 __attribute__((always_inline)) static inline void fast_set_quote_flags(struct zsv_scanner *scanner, unsigned char *s,
                                                                        size_t n) {
@@ -277,7 +277,7 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
   scanner->scanned_length = i;
 
   /* If the entire buffer fits in the scalar tail and contains quotes,
-   * use the legacy engine. The scalar tail's simplified quote handling
+   * use the compat/scalar engine. The scalar tail's simplified quote handling
    * combined with cell_dl's in-place memmove can produce incorrect results
    * for small inputs with complex quoting. No performance impact since
    * this only triggers for inputs < 64 bytes after partial row data. */
@@ -659,7 +659,7 @@ normal_parse:
 #undef FAST_ROWEND_QUOTED
 
 #else /* !ZSV_FAST_PARSER_AVAILABLE */
-/* Unsupported platform: fall back to standard engine */
+/* Unsupported platform: fall back to compat/scalar engine */
 static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   return zsv_scan_delim(scanner, buff, bytes_read);
 }

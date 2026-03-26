@@ -695,7 +695,7 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
     opts->buffsize = ZSV_MIN_SCANNER_BUFFSIZE;
 
   if (opts->scan_engine == 255)
-    scanner->mode = ZSV_MODE_DELIM; /* force legacy/standard engine */
+    scanner->mode = ZSV_MODE_DELIM; /* force compat/standard engine */
   else if (opts->scan_engine)
     scanner->mode = opts->scan_engine;
 #if defined(ZSV_FAST_PARSER_AVAILABLE) && defined(ZSV_DEFAULT_PARSER_FAST)

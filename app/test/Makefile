@@ -329,29 +329,15 @@ test-2-count test-2-count-pull: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR
 	@for x in 5000 5002 5004 5006 5008 5010 5013 5015 5017 5019 5021 5101 5105 5111 5113 5115 5117 5119 5121 5123 5125 5127 5129 5131 5211 5213 5215 5217 5311 5313 5315 5317 5413 5431 5433 5455 6133 ; do $< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv ; done > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/test-2-count.out && ${TEST_PASS} || ${TEST_FAIL}
 
-# Test nonstandard quoting: legacy parser always, fast parser only with --support-nonstandard-quoting
+# Test nonstandard quoting: compat parser always, fast parser never
 # Verifies count and select produce correct output for CSV with mid-cell quotes,
 # standard quoted fields with commas, multiline quoted fields, and mixed patterns.
 test-quoted-nonstandard: ${BUILD_DIR}/bin/zsv_count${EXE} ${BUILD_DIR}/bin/zsv_select${EXE} ${TEST_DATA_DIR}/test/quoted_nonstandard.csv
 	@${TEST_INIT}
-	@${PREFIX} ${BUILD_DIR}/bin/zsv_count${EXE} --parser legacy ${TEST_DATA_DIR}/test/quoted_nonstandard.csv ${REDIRECT} ${TMP_DIR}/$@-count-legacy.out
-	@${CMP} ${TMP_DIR}/$@-count-legacy.out expected/test-quoted-nonstandard-count.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} --parser legacy ${TEST_DATA_DIR}/test/quoted_nonstandard.csv ${REDIRECT} ${TMP_DIR}/$@-select-legacy.out
-	@${CMP} ${TMP_DIR}/$@-select-legacy.out expected/test-quoted-nonstandard-select.out && ${TEST_PASS} || ${TEST_FAIL}
-ifeq ($(SUPPORT_NONSTANDARD_QUOTING),1)
-	@${PREFIX} ${BUILD_DIR}/bin/zsv_count${EXE} --parser fast ${TEST_DATA_DIR}/test/quoted_nonstandard.csv ${REDIRECT} ${TMP_DIR}/$@-count-fast.out
-	@${CMP} ${TMP_DIR}/$@-count-fast.out expected/test-quoted-nonstandard-count.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} --parser fast ${TEST_DATA_DIR}/test/quoted_nonstandard.csv ${REDIRECT} ${TMP_DIR}/$@-select-fast.out
-	@${CMP} ${TMP_DIR}/$@-select-fast.out expected/test-quoted-nonstandard-select.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} ${BUILD_DIR}/bin/zsv_count${EXE} --parser fast ${TEST_DATA_DIR}/test/echo-quoted.csv ${REDIRECT} ${TMP_DIR}/$@-echo-count-fast.out
-	@${CMP} ${TMP_DIR}/$@-echo-count-fast.out expected/test-quoted-nonstandard-echo-count.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} --parser fast ${TEST_DATA_DIR}/test/echo-quoted.csv ${REDIRECT} ${TMP_DIR}/$@-echo-select-fast.out
-	@${CMP} ${TMP_DIR}/$@-echo-select-fast.out expected/test-quoted-nonstandard-echo-select.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} ${BUILD_DIR}/bin/zsv_count${EXE} --parser fast ${TEST_DATA_DIR}/quoted2.csv ${REDIRECT} ${TMP_DIR}/$@-quoted2-count-fast.out
-	@${CMP} ${TMP_DIR}/$@-quoted2-count-fast.out expected/test-quoted-nonstandard-quoted2-count.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} --parser fast ${TEST_DATA_DIR}/quoted2.csv ${REDIRECT} ${TMP_DIR}/$@-quoted2-select-fast.out
-	@${CMP} ${TMP_DIR}/$@-quoted2-select-fast.out expected/test-quoted-nonstandard-quoted2-select.out && ${TEST_PASS} || ${TEST_FAIL}
-endif
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_count${EXE} --parser compat ${TEST_DATA_DIR}/test/quoted_nonstandard.csv ${REDIRECT} ${TMP_DIR}/$@-count-compat.out
+	@${CMP} ${TMP_DIR}/$@-count-compat.out expected/test-quoted-nonstandard-count.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} --parser compat ${TEST_DATA_DIR}/test/quoted_nonstandard.csv ${REDIRECT} ${TMP_DIR}/$@-select-compat.out
+	@${CMP} ${TMP_DIR}/$@-select-compat.out expected/test-quoted-nonstandard-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-select test-select-pull: test-% : test-onlycrlf-% test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-11-% test-12-% test-13-% test-search-% test-regex-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-fixed-3-% test-fixed-4-% test-merge-%
 

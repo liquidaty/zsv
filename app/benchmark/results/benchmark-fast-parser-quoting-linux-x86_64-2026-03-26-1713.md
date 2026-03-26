@@ -10,8 +10,8 @@ Data: 500000 rows x 20 columns, best-of-5 iterations
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| zsv legacy | (this repo) | Standard character-by-character parser |
-| zsv legacy --parallel | (this repo) | Legacy parser, multi-threaded |
+| zsv compat | (this repo) | Standard character-by-character parser |
+| zsv compat --parallel | (this repo) | Legacy parser, multi-threaded |
 | zsv fast | (this repo) | SIMD parser, prefix-XOR for quoted blocks |
 | zsv fast --parallel | (this repo) | SIMD parser, multi-threaded |
 | xsv | 0.13.0 | BurntSushi/xsv |
@@ -31,7 +31,7 @@ Data: 500000 rows x 20 columns, best-of-5 iterations
 
 N/A = produces incorrect results for this dataset.
 
-| Dataset | zsv legacy | zsv legacy --parallel | zsv fast | zsv fast --parallel | xsv | xan | qsv |
+| Dataset | zsv compat | zsv compat --parallel | zsv fast | zsv fast --parallel | xsv | xan | qsv |
 |---------|------|------|------|------|------|------|------|
 | unquoted | correct | correct | correct | correct | correct | correct | correct |
 | sparse_quoted | correct | correct | correct | correct | correct | correct | correct |
@@ -41,7 +41,7 @@ N/A = produces incorrect results for this dataset.
 
 ### Wall time
 
-| Dataset | zsv legacy | zsv legacy --parallel | zsv fast | zsv fast --parallel | xsv | xan | qsv |
+| Dataset | zsv compat | zsv compat --parallel | zsv fast | zsv fast --parallel | xsv | xan | qsv |
 |---------|------|------|------|------|------|------|------|
 | unquoted | 0.056s | 0.007s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.021s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.005s** | 0.126s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **0.026s** | 0.104s |
 | sparse_quoted | 0.057s | 0.007s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.020s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.005s** | 0.128s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **0.031s** | 0.106s |
@@ -52,7 +52,7 @@ N/A = produces incorrect results for this dataset.
 
 Disk I/O bandwidth: 6.8 GB/s (sequential read)
 
-| Dataset | zsv legacy | zsv legacy --parallel | zsv fast | zsv fast --parallel | xsv | xan | qsv |
+| Dataset | zsv compat | zsv compat --parallel | zsv fast | zsv fast --parallel | xsv | xan | qsv |
 |---------|------|------|------|------|------|------|------|
 | unquoted | 2.04 GB/s | 16.33 GB/s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **5.44 GB/s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **22.86 GB/s** | .90 GB/s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **4.39 GB/s** | 1.09 GB/s |
 | sparse_quoted | 2.01 GB/s | 16.40 GB/s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **5.74 GB/s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **22.97 GB/s** | .89 GB/s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **3.70 GB/s** | 1.08 GB/s |
@@ -63,7 +63,7 @@ Disk I/O bandwidth: 6.8 GB/s (sequential read)
 
 ### Wall time
 
-| Dataset | zsv legacy | zsv legacy --parallel | zsv fast | zsv fast --parallel | xsv | xan | qsv |
+| Dataset | zsv compat | zsv compat --parallel | zsv fast | zsv fast --parallel | xsv | xan | qsv |
 |---------|------|------|------|------|------|------|------|
 | unquoted | 0.115s | 0.030s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **0.113s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.029s** | 0.600s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.082s** | 0.222s |
 | sparse_quoted | 0.134s | 0.032s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **0.116s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.030s** | 0.609s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.085s** | 0.227s |
@@ -74,7 +74,7 @@ Disk I/O bandwidth: 6.8 GB/s (sequential read)
 
 Disk I/O bandwidth: 6.8 GB/s (sequential read)
 
-| Dataset | zsv legacy | zsv legacy --parallel | zsv fast | zsv fast --parallel | xsv | xan | qsv |
+| Dataset | zsv compat | zsv compat --parallel | zsv fast | zsv fast --parallel | xsv | xan | qsv |
 |---------|------|------|------|------|------|------|------|
 | unquoted | .99 GB/s | 3.81 GB/s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **1.01 GB/s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **3.94 GB/s** | .19 GB/s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **1.39 GB/s** | .51 GB/s |
 | sparse_quoted | .85 GB/s | 3.58 GB/s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **.99 GB/s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **3.82 GB/s** | .18 GB/s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **1.35 GB/s** | .50 GB/s |

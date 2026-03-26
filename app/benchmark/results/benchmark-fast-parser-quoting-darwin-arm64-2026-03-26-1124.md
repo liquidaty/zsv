@@ -10,8 +10,8 @@ Data: 500000 rows x 20 columns, best-of-5 iterations
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| zsv legacy | (this repo) | Standard character-by-character parser |
-| zsv legacy --parallel | (this repo) | Legacy parser, multi-threaded |
+| zsv compat | (this repo) | Standard character-by-character parser |
+| zsv compat --parallel | (this repo) | Compat parser, multi-threaded |
 | zsv fast | (this repo) | SIMD parser, prefix-XOR for quoted blocks |
 | zsv fast --parallel | (this repo) | SIMD parser, multi-threaded |
 | xsv | 0.13.0 | BurntSushi/xsv |
@@ -35,7 +35,7 @@ Data: 500000 rows x 20 columns, best-of-5 iterations
 
 N/A = produces incorrect results for this dataset.
 
-| Dataset | zsv legacy | zsv legacy --parallel | zsv fast | zsv fast --parallel | xsv | xan | polars | qsv | duckdb | duckdb (QUOTE='') | duckdb 1-thread (QUOTE='') |
+| Dataset | zsv compat | zsv compat --parallel | zsv fast | zsv fast --parallel | xsv | xan | polars | qsv | duckdb | duckdb (QUOTE='') | duckdb 1-thread (QUOTE='') |
 |---------|------|------|------|------|------|------|------|------|------|------|------|
 | unquoted | correct | correct | correct | correct | correct | correct | correct* | correct | correct | correct | correct |
 | sparse_quoted | correct | correct | correct | correct | correct | correct | correct* | correct | correct | correct | correct |
@@ -49,7 +49,7 @@ nonstandard patterns (e.g. malformed quoted fields like `"bb"bb"b`).
 
 ### Wall time
 
-| Dataset | zsv legacy | zsv legacy --parallel | zsv fast | zsv fast --parallel | xsv | xan | polars | qsv | duckdb | duckdb (QUOTE='') | duckdb 1-thread (QUOTE='') |
+| Dataset | zsv compat | zsv compat --parallel | zsv fast | zsv fast --parallel | xsv | xan | polars | qsv | duckdb | duckdb (QUOTE='') | duckdb 1-thread (QUOTE='') |
 |---------|------|------|------|------|------|------|------|------|------|------|------|
 | unquoted | 0.107s | 0.018s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.023s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.008s** | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **0.087s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.023s** | 0.092s | 0.124s | 0.085s | 0.049s | 0.112s |
 | sparse_quoted | 0.109s | 0.020s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.023s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.008s** | 0.092s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **0.028s** | 0.091s | 0.127s | 0.073s | 0.053s | 0.153s |
@@ -60,7 +60,7 @@ nonstandard patterns (e.g. malformed quoted fields like `"bb"bb"b`).
 
 Disk I/O bandwidth: 10.2 GB/s (sequential read)
 
-| Dataset | zsv legacy | zsv legacy --parallel | zsv fast | zsv fast --parallel | xsv | xan | polars | qsv | duckdb | duckdb (QUOTE='') | duckdb 1-thread (QUOTE='') |
+| Dataset | zsv compat | zsv compat --parallel | zsv fast | zsv fast --parallel | xsv | xan | polars | qsv | duckdb | duckdb (QUOTE='') | duckdb 1-thread (QUOTE='') |
 |---------|------|------|------|------|------|------|------|------|------|------|------|
 | unquoted | 1.06 GB/s | 6.35 GB/s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **4.97 GB/s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **14.29 GB/s** | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **1.31 GB/s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **4.97 GB/s** | 1.24 GB/s | .92 GB/s | 1.34 GB/s | 2.33 GB/s | 1.02 GB/s |
 | sparse_quoted | 1.05 GB/s | 5.74 GB/s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **4.99 GB/s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **14.35 GB/s** | 1.24 GB/s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **4.10 GB/s** | 1.26 GB/s | .90 GB/s | 1.57 GB/s | 2.16 GB/s | .75 GB/s |
@@ -71,7 +71,7 @@ Disk I/O bandwidth: 10.2 GB/s (sequential read)
 
 ### Wall time
 
-| Dataset | zsv legacy | zsv legacy --parallel | zsv fast | zsv fast --parallel | xsv | xan | polars | qsv | duckdb | duckdb (QUOTE='') | duckdb 1-thread (QUOTE='') |
+| Dataset | zsv compat | zsv compat --parallel | zsv fast | zsv fast --parallel | xsv | xan | polars | qsv | duckdb | duckdb (QUOTE='') | duckdb 1-thread (QUOTE='') |
 |---------|------|------|------|------|------|------|------|------|------|------|------|
 | unquoted | 0.143s | 0.044s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **0.097s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.036s** | 0.189s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.077s** | 0.410s | 0.215s | 0.110s | 0.104s | 0.395s |
 | sparse_quoted | 0.166s | 0.047s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **0.105s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.035s** | 0.195s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **0.081s** | 0.408s | 0.222s | 0.105s | 0.066s | 0.204s |
@@ -82,7 +82,7 @@ Disk I/O bandwidth: 10.2 GB/s (sequential read)
 
 Disk I/O bandwidth: 10.2 GB/s (sequential read)
 
-| Dataset | zsv legacy | zsv legacy --parallel | zsv fast | zsv fast --parallel | xsv | xan | polars | qsv | duckdb | duckdb (QUOTE='') | duckdb 1-thread (QUOTE='') |
+| Dataset | zsv compat | zsv compat --parallel | zsv fast | zsv fast --parallel | xsv | xan | polars | qsv | duckdb | duckdb (QUOTE='') | duckdb 1-thread (QUOTE='') |
 |---------|------|------|------|------|------|------|------|------|------|------|------|
 | unquoted | .79 GB/s | 2.59 GB/s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **1.17 GB/s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **3.17 GB/s** | .60 GB/s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **1.48 GB/s** | .27 GB/s | .53 GB/s | 1.03 GB/s | 1.09 GB/s | .28 GB/s |
 | sparse_quoted | .69 GB/s | 2.44 GB/s | <img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **1.09 GB/s** | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **3.28 GB/s** | .58 GB/s | <img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **1.41 GB/s** | .28 GB/s | .51 GB/s | 1.09 GB/s | 1.74 GB/s | .56 GB/s |

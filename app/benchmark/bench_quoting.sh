@@ -5,7 +5,7 @@
 # Usage: bench_quoting.sh <zsv_cli_binary> [output_file]
 #
 # The zsv binary should be built from the current repo. The script will
-# test it in legacy mode and fast mode.
+# test it in compat mode and fast mode.
 # External tools (xsv, xan, polars, duckdb) are used if found in PATH.
 #
 # Works on Linux (x86_64) and macOS (arm64/NEON).
@@ -183,7 +183,7 @@ echo "Running benchmarks ($ITERS iterations each, best-of-$ITERS)..." >&2
 
 for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
   FILE="$BENCH_TMPDIR/${DATA}.csv"
-  REF=$("$ZSV" count --parser legacy "$FILE")
+  REF=$("$ZSV" count --parser compat "$FILE")
 
   for CMD in count select; do
     KEY="${DATA}:${CMD}"
@@ -192,16 +192,16 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
     ZSV_SELECT_OPTS=""
     if [ "$CMD" = "select" ]; then ZSV_SELECT_OPTS="--no-trim"; fi
 
-    # zsv legacy
-    kv_set "time_${KEY}:zsv-legacy" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser legacy \"$FILE\"")"
-    kv_set "correct_${KEY}:zsv-legacy" "correct"
+    # zsv compat
+    kv_set "time_${KEY}:zsv-compat" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser compat \"$FILE\"")"
+    kv_set "correct_${KEY}:zsv-compat" "correct"
 
     # zsv fast (prefix-XOR SIMD)
     kv_set "time_${KEY}:zsv-fast" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast \"$FILE\"")"
     if [ "$CMD" = "count" ]; then
       kv_set "correct_${KEY}:zsv-fast" "$(check_correct "\"$ZSV\" count --parser fast \"$FILE\"" "$REF")"
     else
-      "$ZSV" $CMD $ZSV_SELECT_OPTS --parser legacy "$FILE" | md5tool > "$BENCH_TMPDIR/ref.md5"
+      "$ZSV" $CMD $ZSV_SELECT_OPTS --parser compat "$FILE" | md5tool > "$BENCH_TMPDIR/ref.md5"
       "$ZSV" $CMD $ZSV_SELECT_OPTS --parser fast "$FILE" | md5tool > "$BENCH_TMPDIR/test.md5"
       if diff "$BENCH_TMPDIR/ref.md5" "$BENCH_TMPDIR/test.md5" > /dev/null 2>&1; then
         kv_set "correct_${KEY}:zsv-fast" "correct"
@@ -319,11 +319,11 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
       fi
     fi
 
-    # zsv legacy --parallel
-    kv_set "time_${KEY}:zsv-legacy-par" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser legacy --parallel \"$FILE\"")"
+    # zsv compat --parallel
+    kv_set "time_${KEY}:zsv-compat-par" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser compat --parallel \"$FILE\"")"
     # Parallel correctness: use count (order-independent). For select, parallel output
     # may reorder rows across chunks, so we check count match only.
-    kv_set "correct_${KEY}:zsv-legacy-par" "$(check_correct "\"$ZSV\" count --parser legacy --parallel \"$FILE\"" "$REF")"
+    kv_set "correct_${KEY}:zsv-compat-par" "$(check_correct "\"$ZSV\" count --parser compat --parallel \"$FILE\"" "$REF")"
 
     # zsv fast --parallel
     kv_set "time_${KEY}:zsv-fast-par" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser fast --parallel \"$FILE\"")"
@@ -363,7 +363,7 @@ fmt_gbs() {
 }
 
 # --- Enumerate tools in order ---
-TOOLS="zsv-legacy zsv-legacy-par zsv-fast zsv-fast-par"
+TOOLS="zsv-compat zsv-compat-par zsv-fast zsv-fast-par"
 [ "$HAVE_XSV" = "1" ] && TOOLS="$TOOLS xsv"
 [ "$HAVE_XAN" = "1" ] && TOOLS="$TOOLS xan"
 [ "$HAVE_POLARS" = "1" ] && TOOLS="$TOOLS polars"
@@ -388,8 +388,8 @@ highlight2() { printf '<img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" w
 
 tool_label() {
   case "$1" in
-    zsv-legacy)     echo "zsv legacy" ;;
-    zsv-legacy-par) echo "zsv legacy --parallel" ;;
+    zsv-compat)     echo "zsv compat" ;;
+    zsv-compat-par) echo "zsv compat --parallel" ;;
     zsv-fast)       echo "zsv fast" ;;
     zsv-fast-par)   echo "zsv fast --parallel" ;;
     xsv)            echo "xsv" ;;
@@ -424,8 +424,8 @@ Data: $ROWS rows x $COLS columns, best-of-$ITERS iterations
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| zsv legacy | (this repo) | Standard character-by-character parser |
-| zsv legacy --parallel | (this repo) | Legacy parser, multi-threaded |
+| zsv compat | (this repo) | Standard character-by-character parser |
+| zsv compat --parallel | (this repo) | Compat parser, multi-threaded |
 | zsv fast | (this repo) | SIMD parser, prefix-XOR for quoted blocks |
 | zsv fast --parallel | (this repo) | SIMD parser, multi-threaded |
 HEADER
