@@ -6,7 +6,7 @@
 #
 # The zsv binary should be built from the current repo. The script will
 # test it in legacy mode and fast mode.
-# External tools (xsv, xan, polars) are used if found in PATH.
+# External tools (xsv, xan, polars, duckdb) are used if found in PATH.
 #
 # Works on Linux (x86_64) and macOS (arm64/NEON).
 
@@ -129,6 +129,7 @@ for qbin in qsvlite qsv; do
     HAVE_QSV=1; QSV_BIN="$qbin"; break
   fi
 done
+HAVE_DUCKDB=0; detect duckdb && HAVE_DUCKDB=1
 
 # --- polars helper: run python3 with polars venv ---
 run_polars() {
@@ -274,6 +275,50 @@ for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
       fi
     fi
 
+    # duckdb (default, multi-threaded)
+    if [ "$HAVE_DUCKDB" = "1" ]; then
+      if [ "$CMD" = "count" ]; then
+        kv_set "time_${KEY}:duckdb" "$(best_of "duckdb -noheader -csv -c \"SELECT count(*) FROM '$FILE'\"")"
+        kv_set "correct_${KEY}:duckdb" "$(check_correct "duckdb -noheader -csv -c \"SELECT count(*) FROM '$FILE'\"" "$REF")"
+      else
+        kv_set "time_${KEY}:duckdb" "$(best_of "duckdb -noheader -csv -c \"COPY (FROM read_csv('$FILE', all_varchar=true)) TO '/dev/null'\"")"
+        if duckdb -noheader -csv -c "COPY (FROM read_csv('$FILE', all_varchar=true)) TO '/dev/stdout'" 2>/dev/null | md5tool > "$BENCH_TMPDIR/test.md5" && \
+           diff "$BENCH_TMPDIR/ref.md5" "$BENCH_TMPDIR/test.md5" > /dev/null 2>&1; then
+          kv_set "correct_${KEY}:duckdb" "correct"
+        else
+          kv_set "correct_${KEY}:duckdb" "incorrect"
+        fi
+      fi
+
+      # duckdb QUOTE='' (multi-threaded, no quote recognition)
+      if [ "$CMD" = "count" ]; then
+        kv_set "time_${KEY}:duckdb-noq" "$(best_of "duckdb -noheader -csv -c \"SELECT count(*) FROM read_csv('$FILE',all_varchar=true,quote='')\"")"
+        kv_set "correct_${KEY}:duckdb-noq" "$(check_correct "duckdb -noheader -csv -c \"SELECT count(*) FROM read_csv('$FILE',all_varchar=true,quote='')\"" "$REF")"
+      else
+        kv_set "time_${KEY}:duckdb-noq" "$(best_of "duckdb -noheader -csv -c \"COPY (FROM read_csv('$FILE',all_varchar=true,quote='')) TO '/dev/null' (quote '')\"")"
+        if duckdb -noheader -csv -c "COPY (FROM read_csv('$FILE',all_varchar=true,quote='')) TO '/dev/stdout' (quote '')" 2>/dev/null | md5tool > "$BENCH_TMPDIR/test.md5" && \
+           diff "$BENCH_TMPDIR/ref.md5" "$BENCH_TMPDIR/test.md5" > /dev/null 2>&1; then
+          kv_set "correct_${KEY}:duckdb-noq" "correct"
+        else
+          kv_set "correct_${KEY}:duckdb-noq" "incorrect"
+        fi
+      fi
+
+      # duckdb QUOTE='', single-threaded
+      if [ "$CMD" = "count" ]; then
+        kv_set "time_${KEY}:duckdb-noq-1t" "$(best_of "duckdb -noheader -csv -c \"SET threads=1; SELECT count(*) FROM read_csv('$FILE',all_varchar=true,quote='')\"")"
+        kv_set "correct_${KEY}:duckdb-noq-1t" "$(check_correct "duckdb -noheader -csv -c \"SET threads=1; SELECT count(*) FROM read_csv('$FILE',all_varchar=true,quote='')\"" "$REF")"
+      else
+        kv_set "time_${KEY}:duckdb-noq-1t" "$(best_of "duckdb -noheader -csv -c \"SET threads=1; COPY (FROM read_csv('$FILE',all_varchar=true,quote='')) TO '/dev/null' (quote '')\"")"
+        if duckdb -noheader -csv -c "SET threads=1; COPY (FROM read_csv('$FILE',all_varchar=true,quote='')) TO '/dev/stdout' (quote '')" 2>/dev/null | md5tool > "$BENCH_TMPDIR/test.md5" && \
+           diff "$BENCH_TMPDIR/ref.md5" "$BENCH_TMPDIR/test.md5" > /dev/null 2>&1; then
+          kv_set "correct_${KEY}:duckdb-noq-1t" "correct"
+        else
+          kv_set "correct_${KEY}:duckdb-noq-1t" "incorrect"
+        fi
+      fi
+    fi
+
     # zsv legacy --parallel
     kv_set "time_${KEY}:zsv-legacy-par" "$(best_of "\"$ZSV\" $CMD $ZSV_SELECT_OPTS --parser legacy --parallel \"$FILE\"")"
     # Parallel correctness: use count (order-independent). For select, parallel output
@@ -323,13 +368,14 @@ TOOLS="zsv-legacy zsv-legacy-par zsv-fast zsv-fast-par"
 [ "$HAVE_XAN" = "1" ] && TOOLS="$TOOLS xan"
 [ "$HAVE_POLARS" = "1" ] && TOOLS="$TOOLS polars"
 [ "$HAVE_QSV" = "1" ] && TOOLS="$TOOLS qsv"
+[ "$HAVE_DUCKDB" = "1" ] && TOOLS="$TOOLS duckdb duckdb-noq duckdb-noq-1t"
 
 # Is this tool a multi-threaded run?
 is_multithread() {
   case "$1" in
     *-par|*-parallel|*--parallel) return 0 ;;
-    duckdb-1-thread|polars-1-thread) return 1 ;;
-    duckdb|polars) return 0 ;;
+    duckdb-noq-1t|duckdb-1-thread|polars-1-thread) return 1 ;;
+    duckdb|duckdb-noq|polars) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -350,16 +396,20 @@ tool_label() {
     xan)            echo "xan" ;;
     polars)         echo "polars" ;;
     qsv)            echo "qsv" ;;
+    duckdb)         echo "duckdb" ;;
+    duckdb-noq)     echo "duckdb (QUOTE='')" ;;
+    duckdb-noq-1t)  echo "duckdb 1-thread (QUOTE='')" ;;
     *)              echo "$1" ;;
   esac
 }
 
 # --- Generate markdown report ---
 report() {
-  local XSV_VER XAN_VER POLARS_VER
+  local XSV_VER XAN_VER POLARS_VER DUCKDB_VER
   XSV_VER=$(xsv --version 2>&1 || true)
   XAN_VER=$(xan --version 2>&1 | head -1 || true)
   POLARS_VER=$(run_polars -c "import polars as pl; print(pl.__version__)" 2>/dev/null || true)
+  DUCKDB_VER=$(duckdb -version 2>&1 | head -1 || true)
 
   cat << HEADER
 # CSV Parser Benchmark: Fast Parser Quoting Modes
@@ -383,6 +433,11 @@ HEADER
   [ "$HAVE_XAN" = "1" ] && echo "| xan | $XAN_VER | medialab/xan |"
   [ "$HAVE_POLARS" = "1" ] && echo "| polars | $POLARS_VER | Python polars library (single-threaded, via venv) |"
   [ "$HAVE_QSV" = "1" ] && echo "| qsv | $($QSV_BIN --version 2>&1 | head -1 | cut -d' ' -f1-2) | jqnatividad/qsv (${QSV_BIN}) |"
+  if [ "$HAVE_DUCKDB" = "1" ]; then
+    echo "| duckdb | $DUCKDB_VER | Default (multi-threaded, with quote handling) |"
+    echo "| duckdb (QUOTE='') | $DUCKDB_VER | Multi-threaded, no quote recognition |"
+    echo "| duckdb 1-thread (QUOTE='') | $DUCKDB_VER | Single-threaded, no quote recognition |"
+  fi
 
   cat << 'DATASETS'
 

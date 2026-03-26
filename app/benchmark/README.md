@@ -21,7 +21,7 @@ Important notes!
 ## Benchmark result summaries
 
 <!-- benchmark-results-start -->
-- [darwin-arm64: benchmark-fast-parser-quoting-darwin-arm64-2026-03-25-1544.md](results/benchmark-fast-parser-quoting-darwin-arm64-2026-03-25-1544.md)
+- [darwin-arm64: benchmark-fast-parser-quoting-darwin-arm64-2026-03-26-1124.md](results/benchmark-fast-parser-quoting-darwin-arm64-2026-03-26-1124.md)
 - [linux-x86_64: benchmark-fast-parser-quoting-linux-x86_64-2026-03-26-1713.md](results/benchmark-fast-parser-quoting-linux-x86_64-2026-03-26-1713.md)
 <!-- benchmark-results-end -->
 

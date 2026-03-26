@@ -102,6 +102,7 @@ please open an issue!
 zsv includes a SIMD-accelerated fast parser (`--parser fast`) that uses
 branchless prefix-XOR carry propagation for quote state tracking, available on
 aarch64 (NEON), x86-64 (AVX2), and x86-64 (SSE2), including Windows (mingw64).
+wasm (compiled via emscripten) support will be added next.
 
 The fast parser is only designed for input that uses quoting as defined in RFC 4180
 (but does not require other limitations of RFC 4180 such as CRLF line ends).
