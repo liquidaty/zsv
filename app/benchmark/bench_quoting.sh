@@ -324,6 +324,22 @@ TOOLS="zsv-legacy zsv-legacy-par zsv-fast zsv-fast-par"
 [ "$HAVE_POLARS" = "1" ] && TOOLS="$TOOLS polars"
 [ "$HAVE_QSV" = "1" ] && TOOLS="$TOOLS qsv"
 
+# Is this tool a multi-threaded run?
+is_multithread() {
+  case "$1" in
+    *-par|*-parallel|*--parallel) return 0 ;;
+    duckdb-1-thread|polars-1-thread) return 1 ;;
+    duckdb|polars) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Highlight a cell value: green dot + bold
+highlight() { printf '<img src="https://placehold.co/15x15/28a745/28a745.png" width="15" height="15"> **%s**' "$1"; }
+
+# Second-best highlight: yellow dot + bold
+highlight2() { printf '<img src="https://placehold.co/15x15/f0ad4e/f0ad4e.png" width="15" height="15"> **%s**' "$1"; }
+
 tool_label() {
   case "$1" in
     zsv-legacy)     echo "zsv legacy" ;;
@@ -436,9 +452,47 @@ NOTE
     echo "$sep"
     for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
       local key="${DATA}:${CMD}"
+
+      # Find overall min, best single-threaded, and 2nd-best single-threaded times
+      local best_time="" best_st_time="" second_st_time=""
+      for tool in $TOOLS; do
+        local t; t=$(kv_get "time_${key}:${tool}")
+        local c; c=$(kv_get "correct_${key}:${tool}")
+        [ -z "$t" ] && continue
+        [ "$c" = "incorrect" ] && continue
+        if [ -z "$best_time" ] || [ "$(echo "$t < $best_time" | bc)" = "1" ]; then
+          best_time="$t"
+        fi
+        if ! is_multithread "$tool"; then
+          if [ -z "$best_st_time" ] || [ "$(echo "$t < $best_st_time" | bc)" = "1" ]; then
+            second_st_time="$best_st_time"
+            best_st_time="$t"
+          elif [ -z "$second_st_time" ] || [ "$(echo "$t < $second_st_time" | bc)" = "1" ]; then
+            if [ "$t" != "$best_st_time" ]; then
+              second_st_time="$t"
+            fi
+          fi
+        fi
+      done
+      # Determine if the best is multi-threaded (need to also highlight best single-threaded)
+      local best_is_mt=0
+      if [ -n "$best_time" ] && [ -n "$best_st_time" ] && [ "$best_time" != "$best_st_time" ]; then
+        best_is_mt=1
+      fi
+
       local row="| $DATA |"
       for tool in $TOOLS; do
-        row="$row $(fmt_time "$key" "$tool") |"
+        local val; val=$(fmt_time "$key" "$tool")
+        local t; t=$(kv_get "time_${key}:${tool}")
+        if [ -n "$best_time" ] && [ "$t" = "$best_time" ] && [ "$val" != "N/A" ] && [ "$val" != "-" ]; then
+          row="$row $(highlight "$val") |"
+        elif [ "$best_is_mt" = "1" ] && [ -n "$best_st_time" ] && [ "$t" = "$best_st_time" ] && [ "$val" != "N/A" ] && [ "$val" != "-" ]; then
+          row="$row $(highlight "$val") |"
+        elif [ -n "$second_st_time" ] && [ "$t" = "$second_st_time" ] && [ "$val" != "N/A" ] && [ "$val" != "-" ] && ! is_multithread "$tool"; then
+          row="$row $(highlight2 "$val") |"
+        else
+          row="$row $val |"
+        fi
       done
       echo "$row"
     done
@@ -458,11 +512,42 @@ NOTE
     echo "$sep"
     for DATA in unquoted sparse_quoted standard_quoted nonstandard_quoted; do
       local key="${DATA}:${CMD}"
+
+      # Find overall max, best single-threaded, and 2nd-best single-threaded throughput
+      local best_gbs="" best_st_gbs="" second_st_gbs=""
+      for tool in $TOOLS; do
+        local gbs; gbs=$(fmt_gbs "$key" "$tool" "$DATA")
+        [ "$gbs" = "N/A" ] || [ "$gbs" = "-" ] && continue
+        if [ -z "$best_gbs" ] || [ "$(echo "$gbs > $best_gbs" | bc)" = "1" ]; then
+          best_gbs="$gbs"
+        fi
+        if ! is_multithread "$tool"; then
+          if [ -z "$best_st_gbs" ] || [ "$(echo "$gbs > $best_st_gbs" | bc)" = "1" ]; then
+            second_st_gbs="$best_st_gbs"
+            best_st_gbs="$gbs"
+          elif [ -z "$second_st_gbs" ] || [ "$(echo "$gbs > $second_st_gbs" | bc)" = "1" ]; then
+            if [ "$gbs" != "$best_st_gbs" ]; then
+              second_st_gbs="$gbs"
+            fi
+          fi
+        fi
+      done
+      local best_is_mt=0
+      if [ -n "$best_gbs" ] && [ -n "$best_st_gbs" ] && [ "$best_gbs" != "$best_st_gbs" ]; then
+        best_is_mt=1
+      fi
+
       local row="| $DATA |"
       for tool in $TOOLS; do
-        local gbs=$(fmt_gbs "$key" "$tool" "$DATA")
+        local gbs; gbs=$(fmt_gbs "$key" "$tool" "$DATA")
         if [ "$gbs" = "N/A" ] || [ "$gbs" = "-" ]; then
           row="$row $gbs |"
+        elif [ "$gbs" = "$best_gbs" ]; then
+          row="$row $(highlight "${gbs} GB/s") |"
+        elif [ "$best_is_mt" = "1" ] && [ "$gbs" = "$best_st_gbs" ]; then
+          row="$row $(highlight "${gbs} GB/s") |"
+        elif [ -n "$second_st_gbs" ] && [ "$gbs" = "$second_st_gbs" ] && ! is_multithread "$tool"; then
+          row="$row $(highlight2 "${gbs} GB/s") |"
         else
           row="$row ${gbs} GB/s |"
         fi
