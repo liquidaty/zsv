@@ -123,5 +123,8 @@ static int main_help(int argc, const char *argv[]) {
     fprintf(f, "\n(No extended commands)\n");
 #endif
 
+  fprintf(f, "\nTo learn more, see README at https://github.com/liquidaty/zsv.\n");
+  fprintf(f, "Report any issues at https://github.com/liquidaty/zsv/issues.\n");
+
   return 0;
 }

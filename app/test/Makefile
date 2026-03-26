@@ -45,7 +45,6 @@ BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 export TMP_DIR=${THIS_LIB_BASE}/tmp
 TEST_DATA_DIR=${THIS_LIB_BASE}/data
 
-IS_WSL=$(shell grep -qi microsoft /proc/version 2>/dev/null && echo 1 || echo 0)
 ifeq ($(IS_WSL),1)
   TEST_DATA_DIR=./../../data
   TMP_DIR=./../../tmp
@@ -178,12 +177,16 @@ test-check-2: ${BUILD_DIR}/bin/zsv_check${EXE}
 	@$< --display-row ${TEST_DATA_DIR}/test/latin1.csv -o ${TMP_DIR}/$@.out && (echo "should have failed!") || [ 1 = 1 ]
 	@cmp ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE}
+test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE} ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 ifeq ($(IS_WSL),1)
 	@${TEST_SKIP}
 else
-	@EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} ECHO_EXE=${BUILD_DIR}/bin/zsv_echo${EXE} CMP="${CMP}" ${MAKE} -C overwrite test
+	@EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} \
+	ECHO_EXE=${BUILD_DIR}/bin/zsv_echo${EXE} \
+	SQL_EXE=${BUILD_DIR}/bin/zsv_sql${EXE} \
+	CMP="${CMP}" \
+	${MAKE} -C overwrite test
 endif
 
 test-echo: \
