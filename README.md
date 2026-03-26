@@ -77,6 +77,28 @@ Performance results compare favorably vs other CSV utilities (`xsv`,
 
 See [benchmarks](./app/benchmark/README.md)
 
+### Fast parser
+
+zsv includes a SIMD-accelerated fast parser (`--parser fast`) that uses
+branchless prefix-XOR carry propagation for quote state tracking, available on
+aarch64 (NEON), x86-64 (AVX2), and x86-64 (SSE2).
+
+The fast parser assumes RFC 4180 compliant quoting. Like `polars` and `xan`, it
+does not correctly handle non-standard quoting such as unescaped quotes in
+unquoted fields (e.g. `12" monitor` or `say "hello" world`). For such data, use
+the default legacy parser which handles all real-world CSV the same way
+spreadsheet programs do.
+
+The fast parser can be combined with `--parallel` for multi-threaded parsing:
+
+```bash
+# Single-threaded fast parser
+zsv count --parser fast data.csv
+
+# Multi-threaded fast parser (uses all available cores)
+zsv select --parser fast --parallel data.csv -- 1 2 3
+```
+
 ## Which "CSV"
 
 "CSV" is an ambiguous term. This library uses, *by default*, the same definition
