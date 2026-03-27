@@ -895,7 +895,13 @@ jobs:
         chmod +x wingetcreate
         ./wingetcreate info
 
-    - name: Update
+    - name: Sync fork
+      env:
+        GH_TOKEN: ${{ secrets.WINGET_PAT }}
+      run: |
+        gh repo sync liquidaty/winget-pkgs --branch master
+
+    - name: Update (create PR)
       env:
         PAT: ${{ secrets.WINGET_PAT }}
         PKG_ID: "liquidaty.zsv"
