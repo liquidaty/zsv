@@ -69,6 +69,14 @@ ifeq ($(NO_THREADING),1)
   CFLAGS+= -DNO_THREADING
 endif
 
+ifeq ($(HAVE_NEON),1)
+  CFLAGS+= -DZSV_HAVE_NEON
+endif
+
+ifeq ($(DEFAULT_PARSER_FAST),1)
+  CFLAGS+= -DZSV_DEFAULT_PARSER_FAST
+endif
+
 ifeq ($(ZSV_NO_ONLY_CRLF),1)
   CFLAGS+= -DZSV_NO_ONLY_CRLF
 endif
@@ -173,7 +181,7 @@ ${LIBZSV_SHARED_BUILD}: zsv.c zsv_internal.c
 	${CC} ${CFLAGS} ${CFLAGS_VISIBILITY_HIDDEN} -DZSV_BUILD_SHARED -DZSV_VERSION=\"${VERSION}\" -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -shared -fPIC ${LDFLAGS} -o $@ $< -I../app/external/sqlite3
 	@echo Built $@
 
-../include/zsv.h:
+../include/zsv.h: ../include/zsv.h.in
 ifeq ($(ZSV_EXTRAS),1)
 	@sed 's/__ZSV_EXTRAS__DEFINE__/#ifndef ZSV_EXTRAS\n#define ZSV_EXTRAS\n#endif/' < ../include/zsv.h.in > $@
 else

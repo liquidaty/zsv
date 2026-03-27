@@ -50,6 +50,12 @@ Optional features:
   --disable-stdin         disable stdin from CLI commands
   --enable-simdutf        use simdutf for 'check --utf8'. Faster, but adds ~300k to binary
   --disable-only-crlf     disable the --only-crlf parsing option
+  --default-parser=fast|compat
+                          set the default parsing engine when --parser is
+                          not specified on the command line [compat]
+  --parallel-tempfile     use temp files + sendfile for parallel select
+                          output merge instead of in-memory buffers.
+                          May be faster on systems with fast local storage [no]
 
 Some influential environment variables:
   CC                      C compiler command [detected]
@@ -338,6 +344,7 @@ usepic=auto
 usetermcap=auto
 
 ZSV_NO_PARALLEL=
+ZSV_PARALLEL_TEMPFILE=
 NCURSES_DYNAMIC=
 for arg ; do
     case "$arg" in
@@ -363,6 +370,8 @@ for arg ; do
         --minimal|--minimal=yes) MINIMAL=yes;;
 
         --no-parallel) ZSV_NO_PARALLEL=1;;
+        --parallel-tempfile|--parallel-tempfile=yes) ZSV_PARALLEL_TEMPFILE=1;;
+        --parallel-tempfile=no) ZSV_PARALLEL_TEMPFILE=;;
 
         --try-avx512|--try-avx512=yes) TRY_AVX512=yes;;
         --try-avx512=no) TRY_AVX512=no;;
@@ -375,6 +384,9 @@ for arg ; do
 
         --force-sse2|--force-sse2=yes) FORCE_SSE2=yes;;
         --force-sse2=no) FORCE_SSE2=no;;
+
+        --default-parser=fast) DEFAULT_PARSER_FAST=1;;
+        --default-parser=compat) DEFAULT_PARSER_FAST=;;
 
         --ncurses-dynamic) NCURSES_DYNAMIC=1;;
 
@@ -665,6 +677,27 @@ elif [ "$FORCE_SSE2" = "auto" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     fi
 fi
 
+# Detect aarch64 NEON support (enables fast branchless parser engine)
+HAVE_NEON=
+if [ "$CROSS_COMPILING" = "no" ] ; then
+    rm -f "$tmpc"
+    printf "checking for aarch64 NEON support... "
+    cat > "$tmpc" <<EOF
+#if defined(__aarch64__)
+#include <arm_neon.h>
+int main() { uint8x16_t v = vdupq_n_u8(0); (void)v; return 0; }
+#else
+#error "not aarch64"
+#endif
+EOF
+    if $CC $CFLAGS -o "$tmpe" "$tmpc" >/dev/null 2>&1 ; then
+        echo "yes"
+        HAVE_NEON=1
+    else
+        echo "no"
+    fi
+fi
+
 HAVE_LTO=0
 if [ "$TRY_LTO" = "yes" ]; then
     HAVE_LTO=1
@@ -868,6 +901,10 @@ CFLAGS_AVX_512 = $CFLAGS_AVX_512
 CFLAGS_AVX = $CFLAGS_AVX
 CFLAGS_SSE = $CFLAGS_SSE
 
+HAVE_NEON = $HAVE_NEON
+
+DEFAULT_PARSER_FAST = $DEFAULT_PARSER_FAST
+
 CFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g -Wall -Wextra -Wno-missing-field-initializers -Wunused # -g3 -ggdb
 LDFLAGS_DEBUG = -U_FORTIFY_SOURCE -UNDEBUG -O0 -g # -g3 -ggdb
 CFLAGS_PIC = $CFLAGS_PIC
@@ -892,6 +929,8 @@ BUILD_SHAREDLIB = $BUILD_SHAREDLIB
 ZSVSHEET_BUILD = $ZSVSHEET_BUILD
 
 ZSV_NO_PARALLEL = $ZSV_NO_PARALLEL
+
+ZSV_PARALLEL_TEMPFILE = $ZSV_PARALLEL_TEMPFILE
 
 NO_STDIN = $NO_STDIN
 

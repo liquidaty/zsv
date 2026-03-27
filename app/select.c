@@ -109,6 +109,10 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
   opts.errf = cdata->opts->errf;
   opts.errclose = cdata->opts->errclose;
   opts.progress = cdata->opts->progress;
+  opts.scan_engine = cdata->opts->scan_engine;
+#ifndef ZSV_NO_ONLY_CRLF
+  opts.only_crlf_rowend = cdata->opts->only_crlf_rowend;
+#endif
 
   // set up input
   FILE *stream = fopen(data.input_path, "rb");
@@ -121,7 +125,7 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
   // set up output
   struct zsv_csv_writer_options writer_opts = {0};
 
-#ifdef __linux__
+#ifdef ZSV_PARALLEL_TEMPFILE
   cdata->tmp_output_filename = zsv_get_temp_filename("zsl");
   writer_opts.stream = fopen(cdata->tmp_output_filename, "wb");
 #else
@@ -168,7 +172,7 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
   fflush(stream);
   fclose(stream);
   zsv_writer_delete(data.csv_writer);
-#ifdef __linux__
+#ifdef ZSV_PARALLEL_TEMPFILE
   fclose(writer_opts.stream);
 #endif
   cdata->actual_next_row_start = data.next_row_start + cdata->start_offset;
@@ -185,6 +189,25 @@ static void *zsv_select_process_chunk(void *arg) {
 // zsv_select_output_data_row(): output row data (No change needed)
 static void zsv_select_output_data_row(struct zsv_select_data *data) {
   unsigned int cnt = data->output_cols_count;
+
+  /* Fast path: when no per-cell transforms are needed and cells don't
+   * require quoting checks, write the entire row in one call. */
+  if (LIKELY(!data->prepend_line_number && !data->any_clean && data->distinct != ZSV_SELECT_DISTINCT_MERGE)) {
+    struct zsv_cell row_cells[256]; /* stack-allocated; 256 cols max */
+    unsigned int n = cnt < 256 ? cnt : 256;
+    int all_raw = 1;
+    for (unsigned int i = 0; i < n; i++) {
+      row_cells[i] = zsv_get_cell(data->parser, data->out2in[i].ix);
+      if (row_cells[i].quoted)
+        all_raw = 0;
+    }
+    if (LIKELY(all_raw)) {
+      zsv_writer_row_raw(data->csv_writer, row_cells, n);
+      return;
+    }
+  }
+
+  /* Slow path: per-cell processing with cleaning, merging, etc. */
   char first = 1;
   if (data->prepend_line_number) {
     zsv_writer_cell_zu(data->csv_writer, first, data->data_row_count);
@@ -315,6 +338,22 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
     data->cancelled = 1;
     return;
   }
+
+  /* Set column filter for fast engine: only process columns we need */
+  if (data->output_cols_count > 0 && !data->search_strings
+#ifdef HAVE_PCRE2_8
+      && !data->search_regexs
+#endif
+  ) {
+    unsigned int *needed = malloc(data->output_cols_count * sizeof(*needed));
+    if (needed) {
+      for (unsigned int i = 0; i < data->output_cols_count; i++)
+        needed[i] = data->out2in[i].ix;
+      zsv_set_column_filter(data->parser, needed, data->output_cols_count);
+      free(needed);
+    }
+  }
+
 #ifndef ZSV_NO_PARALLEL
   // set up parallelization; on error, fall back to serial
   // TO DO: option to exit on error (instead of fall back)
@@ -430,7 +469,7 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
     return 0;
 
   fflush(dest_stream);
-#ifdef __linux__
+#ifdef ZSV_PARALLEL_TEMPFILE
   int out_fd = fileno(dest_stream);
 #endif
   int status = 0;
@@ -462,19 +501,18 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
     }
   }
 
-  // join all of the output files into a single output file
+  // merge worker outputs into the destination stream
   for (unsigned int i = 1; i < data->num_chunks && status == 0; i++) {
     struct zsv_chunk_data *c = &data->parallel_data->chunk_data[i];
     if (c->skip)
       continue;
-#ifdef __linux__
+#ifdef ZSV_PARALLEL_TEMPFILE
     int in_fd = open(c->tmp_output_filename, O_RDONLY);
     if (in_fd < 0) {
       zsv_printerr(1, "Error opening chunk %s: %s", c->tmp_output_filename, strerror(errno));
       status = zsv_status_error;
       break;
     }
-
     struct stat st;
     if (fstat(in_fd, &st) == 0) {
       long copied = zsv_concatenate_copy(out_fd, in_fd, st.st_size);

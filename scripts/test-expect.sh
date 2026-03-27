@@ -14,6 +14,14 @@ fi
 export TARGET
 export STAGE
 
+# Use per-test tmux socket if TMUX_SOCKET is set, otherwise default
+if [ -n "${TMUX_SOCKET:-}" ]; then
+  TMUX_CMD="tmux -L $TMUX_SOCKET"
+else
+  TMUX_CMD="tmux"
+fi
+export TMUX_CMD
+
 export CAPTURED_OUTPUT="$TMP_DIR/$TARGET$STAGE.out"
 export EXPECTED_OUTPUT="$EXPECTED_PATH/$TARGET$STAGE.out"
 
@@ -22,12 +30,12 @@ MATCHED=false
 cleanup() {
   if $MATCHED; then
     if [ -z "$STAGE" ]; then
-      tmux send-keys -t "$TARGET" "q"
+      $TMUX_CMD send-keys -t "$TARGET" "q"
     fi
     exit 0
   fi
 
-  tmux send-keys -t "$TARGET" "q"
+  $TMUX_CMD send-keys -t "$TARGET" "q"
   echo 'Incorrect output:'
   cat "$CAPTURED_OUTPUT"
   echo 'Expected output:'

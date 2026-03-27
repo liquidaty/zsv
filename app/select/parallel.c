@@ -17,7 +17,7 @@ static struct zsv_parallel_data *zsv_parallel_data_new(unsigned num_chunks) {
 
 static void zsv_chunk_data_clear_output(struct zsv_chunk_data *c) {
   if (c) {
-#ifdef __linux__
+#ifdef ZSV_PARALLEL_TEMPFILE
     if (c->tmp_output_filename) {
       unlink(c->tmp_output_filename);
       free(c->tmp_output_filename);

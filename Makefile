@@ -74,4 +74,31 @@ clean:
 	@${MAKE} -C app clean-all CONFIGFILE=${CONFIGFILEPATH}
 	@rm -rf ${THIS_MAKEFILE_DIR}/build
 
-.PHONY: help build install uninstall clean check test
+# Run tests under AddressSanitizer. Uses a separate config file and build
+# directory so the normal build is not disturbed.  Not part of the default
+# test target -- invoke explicitly with: make test-asan
+#
+# By default, uses the same CC as the normal build. On macOS with Homebrew
+# gcc, the sanitizer runtime may not be available; in that case, override
+# with: ASAN_CC=clang make test-asan
+ASAN_CONFIGFILE=${THIS_MAKEFILE_DIR}/config-asan.mk
+ASAN_CC ?= ${CC}
+
+test-asan:
+	CC=${ASAN_CC} \
+	CFLAGS="-fsanitize=address -fno-omit-frame-pointer -g" \
+	LDFLAGS="-fsanitize=address -Wl,-z,now" \
+	./configure --config-file=${ASAN_CONFIGFILE} --prefix=/tmp/zsv-build-asan
+	@# Strip -fwhole-program from LDFLAGS_OPT -- it is incompatible with ASAN
+	@sed -i 's/-fwhole-program//' ${ASAN_CONFIGFILE}
+	@rm -rf build /tmp/zsv-build-asan
+	ASAN_OPTIONS="halt_on_error=1:detect_leaks=0" \
+	${MAKE} -C src install CONFIGFILE=${ASAN_CONFIGFILE}
+	LD_BIND_NOW=1 ASAN_OPTIONS="halt_on_error=1:detect_leaks=0" \
+	${MAKE} -C app/test test CONFIGFILE=${ASAN_CONFIGFILE}
+
+clean-asan:
+	@rm -f ${ASAN_CONFIGFILE}
+	@rm -rf /tmp/zsv-build-asan
+
+.PHONY: help build install uninstall clean check test test-asan clean-asan

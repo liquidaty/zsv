@@ -54,6 +54,14 @@ ifneq ($(ZSV_IS_PROP_FILE_DEPTH),)
 	CFLAGS+=-DZSV_IS_PROP_FILE_DEPTH=${ZSV_IS_PROP_FILE_DEPTH}
 endif
 
+ifeq ($(HAVE_NEON),1)
+  CFLAGS+= -DZSV_HAVE_NEON
+endif
+
+ifeq ($(DEFAULT_PARSER_FAST),1)
+  CFLAGS+= -DZSV_DEFAULT_PARSER_FAST
+endif
+
 ifeq ($(ZSV_NO_ONLY_CRLF),1)
   CFLAGS+= -DZSV_NO_ONLY_CRLF
 endif
@@ -198,6 +206,9 @@ ifeq ($(ZSV_NO_PARALLEL),1)
   CFLAGS+=-DZSV_NO_PARALLEL
 endif
 
+ifeq ($(ZSV_PARALLEL_TEMPFILE),1)
+  CFLAGS+=-DZSV_PARALLEL_TEMPFILE
+endif
 
 ifeq ($(ZSV_EXTRAS),1)
   CFLAGS+= -DZSV_EXTRAS
@@ -478,7 +489,7 @@ ${JQ_BUNDLE_LIB}: ${JQ_SRC} # -D_REENTRANT needed for clang to not break
 	# copy the directory because its timestamp gets updated after libjq is built
 	@cp -a ${JQ_SRC} ${JQ_SRC}-conf
 	cd ${JQ_SRC}-conf \
-	&& CC="${CC}" CFLAGS="${CFLAGS} -w -D_REENTRANT" ./configure \
+	&& CC="${CC}" CFLAGS="$$(echo '${CFLAGS}' | sed 's/-fsanitize=[^ ]*//g; s/-fno-omit-frame-pointer//g') -w -D_REENTRANT" ./configure \
 	    --prefix="${JQ_PREFIX}" \
 	    --disable-maintainer-mode \
 	    --without-oniguruma \
