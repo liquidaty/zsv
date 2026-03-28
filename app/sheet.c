@@ -1006,7 +1006,20 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
   else
     zsvsheet_priv_set_status(ddims, 0, "? for help");
 
-  if (cursor_value)
+  if (cursor_value) {
+#if defined(WIN32) || defined(_WIN32)
+    const size_t nbytes = strlen(cursor_value);
+    wchar_t wsubstring[256] = {0};
+    char *p = (char *)cursor_value;
+    char tmp_ch = p[nbytes];
+    p[nbytes] = '\0';
+    const size_t wlen = MultiByteToWideChar(CP_UTF8, 0, p, -1, wsubstring, sizeof(wsubstring) / sizeof(wchar_t));
+    p[nbytes] = tmp_ch;
+    mvaddnwstr(ddims->rows - ddims->footer_span, strlen(zsvsheet_status_text), wsubstring, wlen);
+#else
     mvprintw(ddims->rows - ddims->footer_span, strlen(zsvsheet_status_text), "%s", cursor_value);
+#endif
+  }
+
   refresh();
 }
