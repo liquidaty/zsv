@@ -1,3 +1,8 @@
+#ifdef WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h> // For MultiByteToWideChar
+#endif
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -912,7 +917,7 @@ const char *display_cell(struct zsvsheet_screen_buffer *buff, size_t data_row, s
     char *p = (char *)str;
     char tmp_ch = p[nbytes];
     p[nbytes] = '\0';
-    size_t wlen = mbstowcs(wsubstring, p, sizeof(wsubstring) / sizeof(wchar_t));
+    size_t wlen = MultiByteToWideChar(CP_UTF8, 0, p, -1, wsubstring, sizeof(wsubstring) / sizeof(wchar_t));
     p[nbytes] = tmp_ch;
 #else
     const char *p = str;
