@@ -93,68 +93,45 @@ static int zsv_column_range_compute(unsigned a1, unsigned a2, int a_type,
   return 0;
 }
 
-// Parse a column-range spec into two 0-based ranges.
-// Two sides separated by 'v' or 'vs' (case-insensitive, optional whitespace).
-// Each side: A-B, A:B, or just A (1-based columns).
-// When both sides are single, width = distance between them.
-// Mismatched widths expand to the larger. Overlap is trimmed.
-static int zsv_column_range_parse(const char *spec, struct zsv_column_range *r1, struct zsv_column_range *r2) {
-  // Find 'v' or 'vs' separator
-  const char *sep = NULL;
-  size_t sep_len = 0;
-  for (const char *p = spec; *p; p++) {
-    if (*p == 'v' || *p == 'V') {
-      sep = p;
-      sep_len = (p[1] == 's' || p[1] == 'S') ? 2 : 1;
-      break;
-    }
-  }
-  if (!sep)
-    return -1;
-
-  // Extract and trim left side
-  size_t left_len = sep - spec;
+// Extract and trim left/right sides around a separator position.
+// left and right must be at least max_side bytes. Returns 0 on success.
+static int zsv_column_range_split(const char *spec, const char *sep, size_t sep_len, size_t max_side,
+                                   char *left, char *right) {
+  size_t left_len = (size_t)(sep - spec);
   while (left_len > 0 && spec[left_len - 1] == ' ')
     left_len--;
-  if (left_len == 0 || left_len >= 64)
+  if (left_len == 0 || left_len >= max_side)
     return -1;
-  char left[64];
-  memcpy(left, spec, left_len);
-  left[left_len] = '\0';
 
-  // Extract and trim right side
   const char *rstart = sep + sep_len;
   while (*rstart == ' ')
     rstart++;
   size_t right_len = strlen(rstart);
   while (right_len > 0 && rstart[right_len - 1] == ' ')
     right_len--;
-  if (right_len == 0 || right_len >= 64)
+  if (right_len == 0 || right_len >= max_side)
     return -1;
-  char right[64];
+
+  memcpy(left, spec, left_len);
+  left[left_len] = '\0';
   memcpy(right, rstart, right_len);
   right[right_len] = '\0';
-
-  // Parse each side
-  unsigned a1, a2, b1, b2;
-  int a_type = zsv_column_range_parse_side(left, &a1, &a2);
-  int b_type = zsv_column_range_parse_side(right, &b1, &b2);
-  if (a_type < 0 || b_type < 0)
-    return -1;
-
-  return zsv_column_range_compute(a1, a2, a_type, b1, b2, b_type, r1, r2);
+  return 0;
 }
 
-// Extended parse that supports column names via a lookup callback.
-// Tries all possible 'v'/'vs' split positions to handle column names containing 'v'.
+// Parse a column-range spec into two 0-based ranges.
+// Supports column names via optional lookup/name_at callbacks.
+// Two sides separated by 'v' or 'vs' (case-insensitive, optional whitespace).
+// Each side: A-B, A:B, just A (1-based columns), or a column name (when lookup != NULL).
+// When both sides are single, width = distance between them.
+// Mismatched widths expand to the larger. Overlap is trimmed.
 // If name_at is provided, also supports single-column specs when the column name appears
 // more than once (e.g. "ABC" or "3" when column 3's name has a duplicate).
 static int zsv_column_range_parse_ex(const char *spec, struct zsv_column_range *r1, struct zsv_column_range *r2,
                                       zsv_column_name_lookup lookup, void *ctx,
                                       zsv_column_name_at name_at, void *name_at_ctx) {
-  if (!lookup)
-    return zsv_column_range_parse(spec, r1, r2);
-
+  // When lookup is available, try all 'v'/'vs' positions (column names may contain 'v').
+  // Without lookup, stop at the first 'v'/'vs' found.
   for (const char *p = spec; *p; p++) {
     if (*p != 'v' && *p != 'V')
       continue;
@@ -163,53 +140,42 @@ static int zsv_column_range_parse_ex(const char *spec, struct zsv_column_range *
     int max_tries = (p[1] == 's' || p[1] == 'S') ? 2 : 1;
     for (int try_i = 0; try_i < max_tries; try_i++) {
       size_t sl = (try_i == 0 && max_tries == 2) ? 2 : 1;
-
-      // Extract and trim left side
-      size_t left_len = (size_t)(p - spec);
-      while (left_len > 0 && spec[left_len - 1] == ' ')
-        left_len--;
-      if (left_len == 0 || left_len >= 256)
-        continue;
-
-      // Extract and trim right side
-      const char *rstart = p + sl;
-      while (*rstart == ' ')
-        rstart++;
-      size_t right_len = strlen(rstart);
-      while (right_len > 0 && rstart[right_len - 1] == ' ')
-        right_len--;
-      if (right_len == 0 || right_len >= 256)
-        continue;
-
       char left[256], right[256];
-      memcpy(left, spec, left_len);
-      left[left_len] = '\0';
-      memcpy(right, rstart, right_len);
-      right[right_len] = '\0';
+      if (zsv_column_range_split(spec, p, sl, sizeof(left), left, right) != 0)
+        continue;
 
       unsigned a1, a2, b1, b2;
       int a_type = zsv_column_range_parse_side_ex(left, &a1, &a2, lookup, ctx, 0);
-      if (a_type < 0)
+      if (a_type < 0) {
+        if (!lookup)
+          return -1; // no name fallback; this is the only split point
         continue;
-      // For the right side, if same name as left, skip past the left match
+      }
+      // For the right side, if same text as left, skip past the left match
       unsigned b_start_after = (strcmp(left, right) == 0) ? a1 : 0;
       int b_type = zsv_column_range_parse_side_ex(right, &b1, &b2, lookup, ctx, b_start_after);
-      if (b_type < 0)
+      if (b_type < 0) {
+        if (!lookup)
+          return -1;
         continue;
+      }
 
       if (zsv_column_range_compute(a1, a2, a_type, b1, b2, b_type, r1, r2) == 0)
         return 0;
     }
+
+    if (!lookup)
+      break; // without lookup, only the first 'v'/'vs' is considered
   }
 
-  // No v/vs separator found. Try single-column mode: if the column name has a
-  // duplicate, treat it as "first occurrence vs second occurrence".
+  // No v/vs separator found (or none produced a valid parse).
+  // Try single-column mode: if the column name has a duplicate,
+  // treat it as "first occurrence vs second occurrence".
   if (lookup) {
     unsigned a1 = 0;
     const char *col_name = NULL;
     size_t col_name_len = 0;
 
-    // Try numeric parse first
     unsigned dummy_end;
     int rc = zsv_column_range_parse_side(spec, &a1, &dummy_end);
     if (rc == 0 && name_at) {
