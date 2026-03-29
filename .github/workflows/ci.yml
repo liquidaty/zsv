@@ -500,9 +500,17 @@ jobs:
     steps:
     - name: Install apt dependencies
       run: |
+        sudo dpkg --add-architecture i386
         sudo apt update
-        sudo apt install -y mingw-w64 nuget
+        sudo apt install -y mingw-w64 wine32 wine64 wine-binfmt nuget
         sudo apt remove -y jq
+        sudo update-binfmts --disable cli
+        sudo update-binfmts --enable wine
+        update-binfmts --display wine
+        {
+          echo 'WINEARCH=win64'
+          echo 'WINEDEBUG=-all'
+        } >>"$GITHUB_ENV"
 
     - name: Checkout
       uses: actions/checkout@v6
