@@ -1,3 +1,8 @@
+#ifdef WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h> // For MultiByteToWideChar
+#endif
+
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -1060,7 +1065,7 @@ const char *display_cell(struct zsvsheet_screen_buffer *buff, size_t data_row, s
     char *p = (char *)str;
     char tmp_ch = p[nbytes];
     p[nbytes] = '\0';
-    size_t wlen = mbstowcs(wsubstring, p, sizeof(wsubstring) / sizeof(wchar_t));
+    size_t wlen = MultiByteToWideChar(CP_UTF8, 0, p, -1, wsubstring, sizeof(wsubstring) / sizeof(wchar_t));
     p[nbytes] = tmp_ch;
 #else
     const char *p = str;
@@ -1095,6 +1100,19 @@ static size_t zsvsheet_compare_paired_col(const struct zsvsheet_compare_opts *cm
   if (data_col >= cmp->r2.start && data_col < cmp->r2.start + cmp->r2.count)
     return cmp->r1.start + (data_col - cmp->r2.start);
   return (size_t)-1;
+}
+
+// Print a UTF-8 string at the given position, handling Win32 encoding
+static void zsvsheet_footer_print(int row, int col, const char *text) {
+#if defined(WIN32) || defined(_WIN32)
+  size_t nbytes = strlen(text);
+  wchar_t wbuf[512] = {0};
+  int wlen = MultiByteToWideChar(CP_UTF8, 0, text, (int)nbytes, wbuf, sizeof(wbuf) / sizeof(wbuf[0]));
+  if (wlen > 0)
+    mvaddnwstr(row, col, wbuf, wlen);
+#else
+  mvprintw(row, col, "%s", text);
+#endif
 }
 
 static size_t zsvsheet_max_buffer_cols(struct zsvsheet_ui_buffer *ui_buffer) {
@@ -1168,6 +1186,8 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
     zsvsheet_priv_set_status(ddims, 0, "? for help");
 
   if (cursor_value) {
+    int footer_row = ddims->rows - ddims->footer_span;
+    int footer_col = strlen(zsvsheet_status_text);
     size_t col_offset = ui_buffer->rownum_col_offset ? 1 : 0;
     size_t data_col = cursor_buf_col >= col_offset ? cursor_buf_col - col_offset : 0;
     size_t paired_data_col = cmp ? zsvsheet_compare_paired_col(cmp, data_col) : (size_t)-1;
@@ -1177,10 +1197,13 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
       const unsigned char *paired_val =
         zsvsheet_screen_buffer_cell_display(buffer, cursor_data_row, paired_buf_col);
       const char *pv = paired_val ? (const char *)paired_val : "";
-      mvprintw(ddims->rows - ddims->footer_span, strlen(zsvsheet_status_text), "%s vs %s", cursor_value, pv);
+      char footer_buf[512];
+      snprintf(footer_buf, sizeof(footer_buf), "%s vs %s", cursor_value, pv);
+      zsvsheet_footer_print(footer_row, footer_col, footer_buf);
     } else {
-      mvprintw(ddims->rows - ddims->footer_span, strlen(zsvsheet_status_text), "%s", cursor_value);
+      zsvsheet_footer_print(footer_row, footer_col, cursor_value);
     }
   }
+
   refresh();
 }
