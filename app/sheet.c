@@ -123,8 +123,7 @@ static size_t zsvsheet_cell_display_width(struct zsvsheet_ui_buffer *ui_buffer,
 }
 
 static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t input_header_span,
-                                    struct zsvsheet_display_dimensions *ddims,
-                                    const struct zsvsheet_compare_opts *cmp);
+                                    struct zsvsheet_display_dimensions *ddims, const struct zsvsheet_compare_opts *cmp);
 
 static void zsvsheet_priv_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt,
                                      ...);
@@ -939,7 +938,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   if (filename_arg) {
-    if ((err = zsvsheet_ui_buffer_open_file(filename_arg, optsp, custom_prop_handler, &ui_buffers, &current_ui_buffer))) {
+    if ((err =
+           zsvsheet_ui_buffer_open_file(filename_arg, optsp, custom_prop_handler, &ui_buffers, &current_ui_buffer))) {
       if (err > 0)
         perror(filename_arg);
       else
@@ -1194,8 +1194,7 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
 
     if (paired_data_col != (size_t)-1 && cursor_row > 0) {
       size_t paired_buf_col = paired_data_col + col_offset;
-      const unsigned char *paired_val =
-        zsvsheet_screen_buffer_cell_display(buffer, cursor_data_row, paired_buf_col);
+      const unsigned char *paired_val = zsvsheet_screen_buffer_cell_display(buffer, cursor_data_row, paired_buf_col);
       const char *pv = paired_val ? (const char *)paired_val : "";
       char footer_buf[512];
       snprintf(footer_buf, sizeof(footer_buf), "%s vs %s", cursor_value, pv);

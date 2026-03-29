@@ -431,7 +431,6 @@ static unsigned zsv_compare_get_colrange_colcount(struct zsv_compare_input *inpu
   return input->col_range_count;
 }
 
-
 zsv_compare_handle zsv_compare_new(void) {
   zsv_compare_handle z = calloc(1, sizeof(*z));
 #if defined(ZSV_COMPARE_CMP_FUNC) && defined(ZSV_COMPARE_CMP_CTX)
@@ -822,75 +821,75 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   if (data->status == zsv_compare_status_ok) {
-      // find keys
-      for (unsigned i = 0; data->status == zsv_compare_status_ok && i < data->input_count; i++) {
-        struct zsv_compare_input *input = &data->inputs[i];
-        if ((input->col_count = data->get_column_count(input))) {
-          if (!(input->output_colnames = calloc(input->col_count, sizeof(*input->output_colnames)))) {
-            data->status = zsv_compare_status_memory;
-            break;
-          }
-        }
-
-        unsigned found_keys = 0;
-        for (unsigned j = 0; j < input->col_count && !input->done && data->status == zsv_compare_status_ok; j++) {
-          struct zsv_cell colname = data->get_column_name(input, j);
-          const unsigned char *colname_s = colname.str;
-          unsigned colname_len = colname.len;
-          zsv_compare_unique_colname *input_col;
-          data->status = zsv_compare_unique_colname_add(&input->colnames, colname_s, colname_len, &input_col);
-          if (data->status != zsv_compare_status_ok)
-            break;
-
-          if (input_col) {
-            // now that we know this colname+instance_num is unique to this input
-            // check if it is a key
-            for (unsigned key_ix = 0; found_keys < input->key_count && key_ix < input->key_count; key_ix++) {
-              struct zsv_compare_input_key *k = &input->keys[key_ix];
-              if (!k->found &&
-                  !zsv_strincmp(colname_s, colname_len, (const unsigned char *)k->key->name, strlen(k->key->name))) {
-                k->found = 1;
-                found_keys++;
-                k->col_ix = j;
-                input_col->is_key = 1;
-                break;
-              }
-            }
-
-            // add it to the output
-            int added = 0;
-            zsv_compare_unique_colname *output_col = zsv_compare_unique_colname_add_if_not_found(
-              &data->output_colnames, colname_s, colname_len, input_col->instance_num, &added);
-            if (!output_col) // error
-              data->status = zsv_compare_status_error;
-            else {
-              if (added) {
-                if (*data->output_colnames_next)
-                  (*data->output_colnames_next)->next = output_col;
-                if (!data->output_colnames_first)
-                  data->output_colnames_first = output_col;
-
-                *data->output_colnames_next = output_col;
-                output_col->is_key = input_col->is_key;
-                data->output_colnames_next = &output_col->next;
-                output_col->output_ix = data->output_colcount++;
-              }
-              input->output_colnames[j] = output_col;
-            }
-          }
-        }
-
-        if (found_keys != data->key_count) {
-          fprintf(stderr, "Unable to find the following keys in %s: ", input->path);
-          for (unsigned int j = 0; j < input->key_count; j++) {
-            struct zsv_compare_input_key *k = &input->keys[j];
-            if (!k->found)
-              fprintf(stderr, "\n  %s", k->key->name);
-          }
-          fprintf(stderr, "\n");
-          data->status = zsv_compare_status_error;
+    // find keys
+    for (unsigned i = 0; data->status == zsv_compare_status_ok && i < data->input_count; i++) {
+      struct zsv_compare_input *input = &data->inputs[i];
+      if ((input->col_count = data->get_column_count(input))) {
+        if (!(input->output_colnames = calloc(input->col_count, sizeof(*input->output_colnames)))) {
+          data->status = zsv_compare_status_memory;
+          break;
         }
       }
+
+      unsigned found_keys = 0;
+      for (unsigned j = 0; j < input->col_count && !input->done && data->status == zsv_compare_status_ok; j++) {
+        struct zsv_cell colname = data->get_column_name(input, j);
+        const unsigned char *colname_s = colname.str;
+        unsigned colname_len = colname.len;
+        zsv_compare_unique_colname *input_col;
+        data->status = zsv_compare_unique_colname_add(&input->colnames, colname_s, colname_len, &input_col);
+        if (data->status != zsv_compare_status_ok)
+          break;
+
+        if (input_col) {
+          // now that we know this colname+instance_num is unique to this input
+          // check if it is a key
+          for (unsigned key_ix = 0; found_keys < input->key_count && key_ix < input->key_count; key_ix++) {
+            struct zsv_compare_input_key *k = &input->keys[key_ix];
+            if (!k->found &&
+                !zsv_strincmp(colname_s, colname_len, (const unsigned char *)k->key->name, strlen(k->key->name))) {
+              k->found = 1;
+              found_keys++;
+              k->col_ix = j;
+              input_col->is_key = 1;
+              break;
+            }
+          }
+
+          // add it to the output
+          int added = 0;
+          zsv_compare_unique_colname *output_col = zsv_compare_unique_colname_add_if_not_found(
+            &data->output_colnames, colname_s, colname_len, input_col->instance_num, &added);
+          if (!output_col) // error
+            data->status = zsv_compare_status_error;
+          else {
+            if (added) {
+              if (*data->output_colnames_next)
+                (*data->output_colnames_next)->next = output_col;
+              if (!data->output_colnames_first)
+                data->output_colnames_first = output_col;
+
+              *data->output_colnames_next = output_col;
+              output_col->is_key = input_col->is_key;
+              data->output_colnames_next = &output_col->next;
+              output_col->output_ix = data->output_colcount++;
+            }
+            input->output_colnames[j] = output_col;
+          }
+        }
+      }
+
+      if (found_keys != data->key_count) {
+        fprintf(stderr, "Unable to find the following keys in %s: ", input->path);
+        for (unsigned int j = 0; j < input->key_count; j++) {
+          struct zsv_compare_input_key *k = &input->keys[j];
+          if (!k->found)
+            fprintf(stderr, "\n  %s", k->key->name);
+        }
+        fprintf(stderr, "\n");
+        data->status = zsv_compare_status_error;
+      }
+    }
 
     if (data->status == zsv_compare_status_ok) {
       if (data->output_colcount == 0)
