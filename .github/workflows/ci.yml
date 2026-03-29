@@ -505,7 +505,6 @@ jobs:
         sudo apt remove -y jq
         sudo update-binfmts --enable wine
         update-binfmts --display wine
-        sudo sysctl dev.i915.perf_stream_paranoid=0
 
     - name: Checkout
       uses: actions/checkout@v6
