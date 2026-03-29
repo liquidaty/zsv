@@ -29,6 +29,7 @@ extern sqlite3_module CsvModule;
 #include "compare_unique_colname.c"
 #include "compare_added_column.c"
 #include "compare_sort.c"
+#include "utils/column_range.h"
 
 #define ZSV_COMPARE_OUTPUT_TYPE_JSON 'j'
 
@@ -430,107 +431,6 @@ static unsigned zsv_compare_get_colrange_colcount(struct zsv_compare_input *inpu
   return input->col_range_count;
 }
 
-// Parse one side of a column-range spec: "A-B", "A:B", or "A"
-// Returns 1 if range, 0 if single, -1 on error
-static int zsv_compare_parse_range_side(const char *s, unsigned *start, unsigned *end) {
-  if (sscanf(s, "%u-%u", start, end) == 2)
-    return (*start > 0 && *end > 0 && *start <= *end) ? 1 : -1;
-  if (sscanf(s, "%u:%u", start, end) == 2)
-    return (*start > 0 && *end > 0 && *start <= *end) ? 1 : -1;
-  if (sscanf(s, "%u", start) == 1) {
-    *end = *start;
-    return (*start > 0) ? 0 : -1;
-  }
-  return -1;
-}
-
-struct zsv_compare_column_range {
-  unsigned start; // 0-based
-  unsigned count;
-};
-
-// Parse a column-range spec like "2-14v15-27" or "2 v 15" into two ranges.
-// Uses 'v' or 'vs' as separator, '-' or ':' as range delimiters.
-static int zsv_compare_parse_column_ranges(const char *spec, struct zsv_compare_column_range *r1,
-                                           struct zsv_compare_column_range *r2) {
-  const char *sep = NULL;
-  size_t sep_len = 0;
-  for (const char *p = spec; *p; p++) {
-    if (*p == 'v' || *p == 'V') {
-      sep = p;
-      sep_len = (p[1] == 's' || p[1] == 'S') ? 2 : 1;
-      break;
-    }
-  }
-  if (!sep)
-    return -1;
-
-  // Extract left side
-  size_t left_len = sep - spec;
-  while (left_len > 0 && spec[left_len - 1] == ' ')
-    left_len--;
-  if (left_len == 0 || left_len >= 64)
-    return -1;
-  char left[64];
-  memcpy(left, spec, left_len);
-  left[left_len] = '\0';
-
-  // Extract right side
-  const char *rstart = sep + sep_len;
-  while (*rstart == ' ')
-    rstart++;
-  size_t right_len = strlen(rstart);
-  while (right_len > 0 && rstart[right_len - 1] == ' ')
-    right_len--;
-  if (right_len == 0 || right_len >= 64)
-    return -1;
-  char right[64];
-  memcpy(right, rstart, right_len);
-  right[right_len] = '\0';
-
-  unsigned a1, a2, b1, b2;
-  int a_type = zsv_compare_parse_range_side(left, &a1, &a2);
-  int b_type = zsv_compare_parse_range_side(right, &b1, &b2);
-  if (a_type < 0 || b_type < 0)
-    return -1;
-
-  if (a_type == 0 && b_type == 0) {
-    if (a1 == b1)
-      return -1;
-    unsigned lo = a1 < b1 ? a1 : b1;
-    unsigned hi = a1 < b1 ? b1 : a1;
-    unsigned span = hi - lo;
-    a2 = a1 + span - 1;
-    b2 = b1 + span - 1;
-  } else if (a_type == 0) {
-    a2 = a1 + (b2 - b1);
-  } else if (b_type == 0) {
-    b2 = b1 + (a2 - a1);
-  }
-
-  // Use larger range size
-  size_t a_count = a2 - a1 + 1;
-  size_t b_count = b2 - b1 + 1;
-  size_t count = a_count > b_count ? a_count : b_count;
-  a2 = a1 + (unsigned)count - 1;
-  b2 = b1 + (unsigned)count - 1;
-
-  // Reduce if ranges overlap
-  unsigned lo_start = a1 < b1 ? a1 : b1;
-  unsigned hi_start = a1 < b1 ? b1 : a1;
-  size_t gap = hi_start - lo_start;
-  if (count > gap)
-    count = gap;
-  if (count == 0)
-    return -1;
-
-  // Convert to 0-based
-  r1->start = a1 - 1;
-  r1->count = (unsigned)count;
-  r2->start = b1 - 1;
-  r2->count = (unsigned)count;
-  return 0;
-}
 
 zsv_compare_handle zsv_compare_new(void) {
   zsv_compare_handle z = calloc(1, sizeof(*z));
@@ -868,8 +768,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       fprintf(stderr, "Error: --sort is not supported with --columns\n");
       err = 1;
     } else {
-      struct zsv_compare_column_range cr1, cr2;
-      if (zsv_compare_parse_column_ranges(column_ranges_spec, &cr1, &cr2) != 0) {
+      struct zsv_column_range cr1, cr2;
+      if (zsv_column_range_parse(column_ranges_spec, &cr1, &cr2) != 0) {
         fprintf(stderr, "Invalid --columns spec. Use e.g. 2v15 or \"2-14 vs 15-27\" (1-based columns)\n");
         err = 1;
       } else {
@@ -880,7 +780,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         if ((data->status = zsv_compare_set_inputs(data, 2)) == zsv_compare_status_ok) {
           for (unsigned ix = 0; ix < 2 && data->status == zsv_compare_status_ok; ix++) {
             struct zsv_compare_input *input = &data->inputs[ix];
-            struct zsv_compare_column_range *cr = (ix == 0) ? &cr1 : &cr2;
+            struct zsv_column_range *cr = (ix == 0) ? &cr1 : &cr2;
             input->path = filename;
             input->col_range_start = cr->start;
             input->col_range_count = cr->count;

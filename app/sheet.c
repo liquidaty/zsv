@@ -31,6 +31,7 @@
 #include "sheet/screen_buffer.c"
 #include "sheet/lexer.c"
 #include "sheet/procedure.c"
+#include "utils/column_range.h"
 
 /* TODO: move this somewhere else like common or utils */
 #define UNUSED(X) ((void)X)
@@ -48,115 +49,14 @@ struct zsvsheet_opts {
 #define ZSVSHEET_COMPARE_MATCH_COLOR_PAIR 2
 
 struct zsvsheet_compare_opts {
-  size_t col1_start; // 0-based column index
-  size_t col1_end;   // 0-based column index, inclusive
-  size_t col2_start; // 0-based column index
-  size_t col2_end;   // 0-based column index, inclusive
+  struct zsv_column_range r1, r2;
   char active;
 };
 
-// Parse one side of a compare spec: "A-B", "A:B", or "A"
-// Returns 1 if range (start and end), 0 if single, -1 on error
-static int zsvsheet_parse_compare_range(const char *s, unsigned *start, unsigned *end) {
-  if (sscanf(s, "%u-%u", start, end) == 2)
-    return (*start > 0 && *end > 0 && *start <= *end) ? 1 : -1;
-  if (sscanf(s, "%u:%u", start, end) == 2)
-    return (*start > 0 && *end > 0 && *start <= *end) ? 1 : -1;
-  if (sscanf(s, "%u", start) == 1) {
-    *end = *start;
-    return (*start > 0) ? 0 : -1;
-  }
-  return -1;
-}
-
-// Parse a compare spec into 0-based indices.
-// Two ranges are separated by 'v' or 'vs' (with optional surrounding whitespace).
-// Each range can be A-B, A:B, or just A (1-based columns).
-// Formats: "A-B v C-D", "A-B v C", "A v C-D", "A v C"
+// Wrapper: parse compare spec and populate zsvsheet_compare_opts
 static int zsvsheet_parse_compare(const char *spec, struct zsvsheet_compare_opts *cmp) {
-  // Find 'v' or 'vs' separator
-  const char *sep = NULL;
-  size_t sep_len = 0;
-  for (const char *p = spec; *p; p++) {
-    if (*p == 'v' || *p == 'V') {
-      sep = p;
-      sep_len = (p[1] == 's' || p[1] == 'S') ? 2 : 1;
-      break;
-    }
-  }
-  if (!sep)
+  if (zsv_column_range_parse(spec, &cmp->r1, &cmp->r2) != 0)
     return -1;
-
-  // Extract left side (trim whitespace)
-  size_t left_len = sep - spec;
-  while (left_len > 0 && spec[left_len - 1] == ' ')
-    left_len--;
-  if (left_len == 0 || left_len >= 64)
-    return -1;
-  char left[64];
-  memcpy(left, spec, left_len);
-  left[left_len] = '\0';
-
-  // Extract right side (trim whitespace)
-  const char *rstart = sep + sep_len;
-  while (*rstart == ' ')
-    rstart++;
-  size_t right_len = strlen(rstart);
-  while (right_len > 0 && rstart[right_len - 1] == ' ')
-    right_len--;
-  if (right_len == 0 || right_len >= 64)
-    return -1;
-  char right[64];
-  memcpy(right, rstart, right_len);
-  right[right_len] = '\0';
-
-  // Parse each side
-  unsigned a1, a2, b1, b2;
-  int a_type = zsvsheet_parse_compare_range(left, &a1, &a2);
-  int b_type = zsvsheet_parse_compare_range(right, &b1, &b2);
-  if (a_type < 0 || b_type < 0)
-    return -1;
-
-  if (a_type == 0 && b_type == 0) {
-    // Both single: width = distance between them
-    if (a1 == b1)
-      return -1;
-    unsigned lo = a1 < b1 ? a1 : b1;
-    unsigned hi = a1 < b1 ? b1 : a1;
-    unsigned span = hi - lo;
-    a2 = a1 + span - 1;
-    b2 = b1 + span - 1;
-  } else if (a_type == 0) {
-    // Left single, right is range: expand left to match right width
-    a2 = a1 + (b2 - b1);
-  } else if (b_type == 0) {
-    // Right single, left is range: expand right to match left width
-    b2 = b1 + (a2 - a1);
-  }
-
-  // Use the larger of the two range sizes
-  size_t a_count = a2 - a1 + 1;
-  size_t b_count = b2 - b1 + 1;
-  size_t count = a_count > b_count ? a_count : b_count;
-  a2 = a1 + (unsigned)count - 1;
-  b2 = b1 + (unsigned)count - 1;
-
-  // Reduce count if the ranges would overlap
-  unsigned lo_start = a1 < b1 ? a1 : b1;
-  unsigned hi_start = a1 < b1 ? b1 : a1;
-  size_t gap = hi_start - lo_start;
-  if (count > gap)
-    count = gap;
-  if (count == 0)
-    return -1;
-
-  a2 = a1 + (unsigned)count - 1;
-  b2 = b1 + (unsigned)count - 1;
-
-  cmp->col1_start = a1 - 1;
-  cmp->col1_end = a2 - 1;
-  cmp->col2_start = b1 - 1;
-  cmp->col2_end = b2 - 1;
   cmp->active = 1;
   return 0;
 }
@@ -193,9 +93,9 @@ static void zsvsheet_apply_compare_attrs(struct zsvsheet_ui_buffer *uib, const s
 
   // Start from row 1 (skip header row 0)
   for (size_t r = 1; r < rows; r++) {
-    for (size_t k = 0; k <= cmp->col1_end - cmp->col1_start; k++) {
-      size_t c1 = cmp->col1_start + k + col_offset;
-      size_t c2 = cmp->col2_start + k + col_offset;
+    for (size_t k = 0; k < cmp->r1.count; k++) {
+      size_t c1 = cmp->r1.start + k + col_offset;
+      size_t c2 = cmp->r2.start + k + col_offset;
       if (c1 >= cols || c2 >= cols)
         continue;
       const unsigned char *v1 = zsvsheet_screen_buffer_cell_display(buff, r, c1);
@@ -827,7 +727,7 @@ static zsvsheet_status zsvsheet_compare_handler(struct zsvsheet_proc_context *ct
   if (zsvsheet_parse_compare(spec_buffer, &cmp) != 0) {
     // Check if it's a valid single range; if so, prompt for the second range
     unsigned dummy1, dummy2;
-    if (ctx->invocation.interactive && zsvsheet_parse_compare_range(spec_buffer, &dummy1, &dummy2) >= 0) {
+    if (ctx->invocation.interactive && zsv_column_range_parse_side(spec_buffer, &dummy1, &dummy2) >= 0) {
       char second[256] = {0};
       int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
       get_subcommand("Compare against", second, sizeof(second), prompt_footer_row, NULL);
@@ -1190,10 +1090,10 @@ out:
 static size_t zsvsheet_compare_paired_col(const struct zsvsheet_compare_opts *cmp, size_t data_col) {
   if (!cmp->active)
     return (size_t)-1;
-  if (data_col >= cmp->col1_start && data_col <= cmp->col1_end)
-    return cmp->col2_start + (data_col - cmp->col1_start);
-  if (data_col >= cmp->col2_start && data_col <= cmp->col2_end)
-    return cmp->col1_start + (data_col - cmp->col2_start);
+  if (data_col >= cmp->r1.start && data_col < cmp->r1.start + cmp->r1.count)
+    return cmp->r2.start + (data_col - cmp->r1.start);
+  if (data_col >= cmp->r2.start && data_col < cmp->r2.start + cmp->r2.count)
+    return cmp->r1.start + (data_col - cmp->r2.start);
   return (size_t)-1;
 }
 
