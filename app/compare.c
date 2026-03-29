@@ -51,6 +51,17 @@ static unsigned zsv_compare_colname_lookup(const char *name, size_t len, unsigne
   return 0;
 }
 
+static const char *zsv_compare_colname_at(unsigned col_1based, size_t *len, void *ctx) {
+  struct zsv_compare_colname_lookup_ctx *c = ctx;
+  if (col_1based == 0 || col_1based > c->col_count)
+    return NULL;
+  struct zsv_cell cell = zsv_get_cell_trimmed(c->parser, col_1based - 1);
+  if (cell.len == 0)
+    return NULL;
+  *len = cell.len;
+  return (const char *)cell.str;
+}
+
 static struct zsv_compare_key **zsv_compare_key_add(struct zsv_compare_key **next, const char *s, int *err) {
   struct zsv_compare_key *k = calloc(1, sizeof(*k));
   if (!k)
@@ -798,7 +809,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           if (zsv_next_row(temp_parser) == zsv_status_row) {
             struct zsv_compare_colname_lookup_ctx lookup_ctx = {temp_parser, zsv_cell_count(temp_parser)};
             parsed = (zsv_column_range_parse_ex(column_ranges_spec, &cr1, &cr2,
-                                                zsv_compare_colname_lookup, &lookup_ctx) == 0);
+                                                zsv_compare_colname_lookup, &lookup_ctx,
+                                                zsv_compare_colname_at, &lookup_ctx) == 0);
           }
           zsv_delete(temp_parser);
         }

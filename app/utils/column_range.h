@@ -13,6 +13,10 @@ struct zsv_column_range {
 // start_after: skip columns with index <= this value (0 = search from beginning).
 typedef unsigned (*zsv_column_name_lookup)(const char *name, size_t len, unsigned start_after, void *ctx);
 
+// Callback to retrieve a column name given its 1-based index. Returns NULL if not found.
+// Sets *len to the name length.
+typedef const char *(*zsv_column_name_at)(unsigned col_1based, size_t *len, void *ctx);
+
 // Parse one side of a column-range spec: "A-B", "A:B", or "A" (1-based).
 // Returns 1 if range, 0 if single, -1 on error.
 static int zsv_column_range_parse_side(const char *s, unsigned *start, unsigned *end) {
@@ -143,8 +147,11 @@ static int zsv_column_range_parse(const char *spec, struct zsv_column_range *r1,
 
 // Extended parse that supports column names via a lookup callback.
 // Tries all possible 'v'/'vs' split positions to handle column names containing 'v'.
+// If name_at is provided, also supports single-column specs when the column name appears
+// more than once (e.g. "ABC" or "3" when column 3's name has a duplicate).
 static int zsv_column_range_parse_ex(const char *spec, struct zsv_column_range *r1, struct zsv_column_range *r2,
-                                      zsv_column_name_lookup lookup, void *ctx) {
+                                      zsv_column_name_lookup lookup, void *ctx,
+                                      zsv_column_name_at name_at, void *name_at_ctx) {
   if (!lookup)
     return zsv_column_range_parse(spec, r1, r2);
 
@@ -194,6 +201,37 @@ static int zsv_column_range_parse_ex(const char *spec, struct zsv_column_range *
         return 0;
     }
   }
+
+  // No v/vs separator found. Try single-column mode: if the column name has a
+  // duplicate, treat it as "first occurrence vs second occurrence".
+  if (lookup) {
+    unsigned a1 = 0;
+    const char *col_name = NULL;
+    size_t col_name_len = 0;
+
+    // Try numeric parse first
+    unsigned dummy_end;
+    int rc = zsv_column_range_parse_side(spec, &a1, &dummy_end);
+    if (rc == 0 && name_at) {
+      // Single number: look up its column name to find a duplicate
+      col_name = name_at(a1, &col_name_len, name_at_ctx ? name_at_ctx : ctx);
+    } else if (rc < 0) {
+      // Not a number: try as a column name
+      unsigned col = lookup(spec, strlen(spec), 0, ctx);
+      if (col > 0) {
+        a1 = col;
+        col_name = spec;
+        col_name_len = strlen(spec);
+      }
+    }
+
+    if (col_name && col_name_len > 0) {
+      unsigned b1 = lookup(col_name, col_name_len, a1, ctx);
+      if (b1 > 0)
+        return zsv_column_range_compute(a1, a1, 0, b1, b1, 0, r1, r2);
+    }
+  }
+
   return -1;
 }
 

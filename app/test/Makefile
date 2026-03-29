@@ -788,6 +788,13 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@(${PREFIX} $< --columns "ABC vs ABC" compare/colrange3.csv ${REDIRECT1} ${TMP_DIR}/$@-colrange.out4 && \
 	${CMP} ${TMP_DIR}/$@-colrange.out4 expected/$@-colrange.out4 && ${TEST_PASS} || ${TEST_FAIL})
 
+	@# --columns: single column name with duplicate (equivalent to "ABC vs ABC")
+	@(${PREFIX} $< --columns "ABC" compare/colrange3.csv ${REDIRECT1} ${TMP_DIR}/$@-colrange.out5 && \
+	${CMP} ${TMP_DIR}/$@-colrange.out5 expected/$@-colrange.out5 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --columns: error - single column with no duplicate
+	@($< --columns "B" compare/colrange3.csv >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
+
 	@# --columns: error - requires exactly one file
 	@($< --columns 1v4 compare/colrange1.csv compare/colrange1.csv >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
 
