@@ -58,9 +58,33 @@ struct zsvsheet_compare_opts {
   char active;
 };
 
+// Column name lookup for :compare: searches screen buffer header row (row 0)
+struct zsvsheet_colname_lookup_ctx {
+  zsvsheet_screen_buffer_t buffer;
+  size_t col_offset; // 1 if rownum column present, else 0
+};
+
+static unsigned zsvsheet_colname_lookup(const char *name, size_t len, unsigned start_after, void *ctx) {
+  struct zsvsheet_colname_lookup_ctx *c = ctx;
+  size_t colcount = zsvsheet_screen_buffer_cols(c->buffer);
+  for (size_t i = c->col_offset; i < colcount; i++) {
+    unsigned data_col = (unsigned)(i - c->col_offset + 1); // 1-based data column
+    if (data_col <= start_after)
+      continue;
+    const unsigned char *colname = zsvsheet_screen_buffer_cell_display(c->buffer, 0, i);
+    if (colname) {
+      size_t clen = strlen((const char *)colname);
+      if (clen == len && zsv_strincmp_ascii(colname, clen, (const unsigned char *)name, len) == 0)
+        return data_col;
+    }
+  }
+  return 0;
+}
+
 // Wrapper: parse compare spec and populate zsvsheet_compare_opts
-static int zsvsheet_parse_compare(const char *spec, struct zsvsheet_compare_opts *cmp) {
-  if (zsv_column_range_parse(spec, &cmp->r1, &cmp->r2) != 0)
+static int zsvsheet_parse_compare(const char *spec, struct zsvsheet_compare_opts *cmp,
+                                   zsv_column_name_lookup lookup, void *ctx) {
+  if (zsv_column_range_parse_ex(spec, &cmp->r1, &cmp->r2, lookup, ctx) != 0)
     return -1;
   cmp->active = 1;
   return 0;
@@ -704,7 +728,12 @@ out:
 static zsvsheet_status zsvsheet_compare_handler(struct zsvsheet_proc_context *ctx) {
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_display_info *di = &state->display_info;
+  struct zsvsheet_ui_buffer *uib = *di->ui_buffers.current;
   char spec_buffer[256] = {0};
+
+  // Set up column name lookup from screen buffer headers
+  struct zsvsheet_colname_lookup_ctx lookup_ctx = {
+    .buffer = uib->buffer, .col_offset = uib->rownum_col_offset ? 1 : 0};
 
   if (ctx->num_params > 0) {
     // Join all params (handles ":compare 2-14 v 15-27" split into multiple tokens)
@@ -722,40 +751,42 @@ static zsvsheet_status zsvsheet_compare_handler(struct zsvsheet_proc_context *ct
     if (!ctx->invocation.interactive)
       return zsvsheet_status_error;
     int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
-    get_subcommand("Compare (e.g. 2-14 v 15-27 or 2 v 15)", spec_buffer, sizeof(spec_buffer), prompt_footer_row, NULL);
+    get_subcommand("Compare (e.g. 2-14 v 15-27, 2 v 15, or ColA vs ColB)", spec_buffer, sizeof(spec_buffer),
+                   prompt_footer_row, NULL);
     if (*spec_buffer == '\0')
       return zsvsheet_status_ok;
   }
 
   struct zsvsheet_compare_opts cmp = {0};
-  if (zsvsheet_parse_compare(spec_buffer, &cmp) != 0) {
-    // Check if it's a valid single range; if so, prompt for the second range
+  if (zsvsheet_parse_compare(spec_buffer, &cmp, zsvsheet_colname_lookup, &lookup_ctx) != 0) {
+    // Check if it's a valid single value (number or column name); if so, prompt for the second
     unsigned dummy1, dummy2;
-    if (ctx->invocation.interactive && zsv_column_range_parse_side(spec_buffer, &dummy1, &dummy2) >= 0) {
+    if (ctx->invocation.interactive &&
+        zsv_column_range_parse_side_ex(spec_buffer, &dummy1, &dummy2, zsvsheet_colname_lookup, &lookup_ctx, 0) >= 0) {
       char second[256] = {0};
       int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
       get_subcommand("Compare against", second, sizeof(second), prompt_footer_row, NULL);
       if (*second == '\0')
         return zsvsheet_status_ok;
-      // Combine: "first_range v second_range"
+      // Combine: "first_range vs second_range"
       size_t first_len = strlen(spec_buffer);
-      if (first_len + 1 + strlen(second) < sizeof(spec_buffer)) {
-        spec_buffer[first_len] = 'v';
-        strcpy(spec_buffer + first_len + 1, second);
+      if (first_len + 3 + strlen(second) < sizeof(spec_buffer)) {
+        memcpy(spec_buffer + first_len, "vs", 2);
+        strcpy(spec_buffer + first_len + 2, second);
       }
-      if (zsvsheet_parse_compare(spec_buffer, &cmp) != 0) {
+      if (zsvsheet_parse_compare(spec_buffer, &cmp, zsvsheet_colname_lookup, &lookup_ctx) != 0) {
         zsvsheet_priv_set_status(di->dimensions, 1, "Invalid compare ranges");
         return zsvsheet_status_ok;
       }
     } else {
-      zsvsheet_priv_set_status(di->dimensions, 1, "Invalid spec. Use A-B v C-D, A-B v C, A v C-D, or A v C (1-based)");
+      zsvsheet_priv_set_status(di->dimensions, 1,
+                               "Invalid spec. Use A-B v C-D, A v C (1-based), or column names");
       return zsvsheet_status_ok;
     }
   }
 
   state->compare = cmp;
 
-  struct zsvsheet_ui_buffer *uib = *di->ui_buffers.current;
   zsvsheet_apply_compare_attrs(uib, &state->compare);
   return zsvsheet_status_ok;
 }
@@ -889,14 +920,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   struct zsvsheet_compare_opts compare_opts = {0};
+  const char *compare_spec = NULL;
   const char *filename_arg = NULL;
 
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--compare") && i + 1 < argc) {
-      if (zsvsheet_parse_compare(argv[++i], &compare_opts) != 0) {
-        fprintf(stderr, "Invalid --compare spec. Use e.g. 2-14v15-27 or 2v15 (1-based columns)\n");
-        return 1;
-      }
+      compare_spec = argv[++i];
     } else if (argv[i][0] != '-' && !filename_arg) {
       filename_arg = argv[i];
     }
@@ -947,6 +976,26 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
       err = -1;
       goto zsvsheet_exit;
+    }
+  }
+
+  // Parse --compare spec now that the buffer is populated (enables column name lookup)
+  if (compare_spec) {
+    if (current_ui_buffer && current_ui_buffer->buffer) {
+      struct zsvsheet_colname_lookup_ctx lookup_ctx = {
+        .buffer = current_ui_buffer->buffer, .col_offset = current_ui_buffer->rownum_col_offset ? 1 : 0};
+      if (zsvsheet_parse_compare(compare_spec, &compare_opts, zsvsheet_colname_lookup, &lookup_ctx) != 0) {
+        fprintf(stderr, "Invalid --compare spec. Use e.g. 2-14v15-27, 2v15 (1-based columns), or column names\n");
+        err = -1;
+        goto zsvsheet_exit;
+      }
+    } else {
+      // No buffer available — fall back to numeric-only parsing
+      if (zsvsheet_parse_compare(compare_spec, &compare_opts, NULL, NULL) != 0) {
+        fprintf(stderr, "Invalid --compare spec. Use e.g. 2-14v15-27 or 2v15 (1-based columns)\n");
+        err = -1;
+        goto zsvsheet_exit;
+      }
     }
   }
 

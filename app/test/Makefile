@@ -780,6 +780,14 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@(${PREFIX} $< --columns 1v4 compare/colrange1.csv ${REDIRECT1} ${TMP_DIR}/$@-colrange.out2 && \
 	${CMP} ${TMP_DIR}/$@-colrange.out2 expected/$@-colrange.out2 && ${TEST_PASS} || ${TEST_FAIL})
 
+	@# --columns: column name lookup
+	@(${PREFIX} $< --columns "Old_A vs New_A" compare/colrange2.csv ${REDIRECT1} ${TMP_DIR}/$@-colrange.out3 && \
+	${CMP} ${TMP_DIR}/$@-colrange.out3 expected/$@-colrange.out3 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --columns: duplicate column names (second match used for right side)
+	@(${PREFIX} $< --columns "ABC vs ABC" compare/colrange3.csv ${REDIRECT1} ${TMP_DIR}/$@-colrange.out4 && \
+	${CMP} ${TMP_DIR}/$@-colrange.out4 expected/$@-colrange.out4 && ${TEST_PASS} || ${TEST_FAIL})
+
 	@# --columns: error - requires exactly one file
 	@($< --columns 1v4 compare/colrange1.csv compare/colrange1.csv >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
 

@@ -33,6 +33,24 @@ extern sqlite3_module CsvModule;
 
 #define ZSV_COMPARE_OUTPUT_TYPE_JSON 'j'
 
+// Column name lookup for --columns: searches parser header row
+struct zsv_compare_colname_lookup_ctx {
+  zsv_parser parser;
+  unsigned col_count;
+};
+
+static unsigned zsv_compare_colname_lookup(const char *name, size_t len, unsigned start_after, void *ctx) {
+  struct zsv_compare_colname_lookup_ctx *c = ctx;
+  for (unsigned i = 0; i < c->col_count; i++) {
+    if (i + 1 <= start_after)
+      continue;
+    struct zsv_cell cell = zsv_get_cell_trimmed(c->parser, i);
+    if (cell.len == len && zsv_strincmp(cell.str, cell.len, (const unsigned char *)name, len) == 0)
+      return i + 1; // 1-based
+  }
+  return 0;
+}
+
 static struct zsv_compare_key **zsv_compare_key_add(struct zsv_compare_key **next, const char *s, int *err) {
   struct zsv_compare_key *k = calloc(1, sizeof(*k));
   if (!k)
@@ -768,12 +786,30 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       err = 1;
     } else {
       struct zsv_column_range cr1, cr2;
-      if (zsv_column_range_parse(column_ranges_spec, &cr1, &cr2) != 0) {
-        fprintf(stderr, "Invalid --columns spec. Use e.g. 2v15 or \"2-14 vs 15-27\" (1-based columns)\n");
+      // Open the file to read headers for column name resolution
+      const char *filename = input_filenames[0];
+      int parsed = 0;
+      FILE *temp_stream = fopen(filename, "rb");
+      if (temp_stream) {
+        struct zsv_opts temp_opts = *opts;
+        temp_opts.stream = temp_stream;
+        zsv_parser temp_parser = NULL;
+        if (zsv_new_with_properties(&temp_opts, custom_prop_handler, filename, &temp_parser) == zsv_status_ok) {
+          if (zsv_next_row(temp_parser) == zsv_status_row) {
+            struct zsv_compare_colname_lookup_ctx lookup_ctx = {temp_parser, zsv_cell_count(temp_parser)};
+            parsed = (zsv_column_range_parse_ex(column_ranges_spec, &cr1, &cr2,
+                                                zsv_compare_colname_lookup, &lookup_ctx) == 0);
+          }
+          zsv_delete(temp_parser);
+        }
+        fclose(temp_stream);
+      }
+      if (!parsed) {
+        fprintf(stderr,
+                "Invalid --columns spec. Use e.g. 2v15, \"2-14 vs 15-27\" (1-based columns), or column names\n");
         err = 1;
       } else {
         // Set up two virtual inputs from the single file
-        const char *filename = input_filenames[0];
         input_count = 2;
 
         if ((data->status = zsv_compare_set_inputs(data, 2)) == zsv_compare_status_ok) {
