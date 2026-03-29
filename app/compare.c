@@ -29,6 +29,7 @@ extern sqlite3_module CsvModule;
 #include "compare_unique_colname.c"
 #include "compare_added_column.c"
 #include "compare_sort.c"
+#include "utils/column_range.h"
 
 #define ZSV_COMPARE_OUTPUT_TYPE_JSON 'j'
 
@@ -421,6 +422,15 @@ static enum zsv_compare_status input_init_unsorted(struct zsv_compare_data *data
   return zsv_compare_status_ok;
 }
 
+// Column-range mode: wraps the unsorted callbacks to present only a subset of columns
+static struct zsv_cell zsv_compare_get_colrange_cell(struct zsv_compare_input *input, unsigned ix) {
+  return zsv_get_cell_trimmed(input->parser, input->col_range_start + ix);
+}
+
+static unsigned zsv_compare_get_colrange_colcount(struct zsv_compare_input *input) {
+  return input->col_range_count;
+}
+
 zsv_compare_handle zsv_compare_new(void) {
   zsv_compare_handle z = calloc(1, sizeof(*z));
 #if defined(ZSV_COMPARE_CMP_FUNC) && defined(ZSV_COMPARE_CMP_CTX)
@@ -612,6 +622,10 @@ static int compare_usage(void) {
     "  --json             : output as JSON",
     "  --json-compact     : output as compact JSON",
     "  --json-object      : output as an array of objects",
+    "  --columns <spec>   : compare column ranges within a single file",
+    "                       spec uses 'v' or 'vs' to separate ranges, '-' or ':'",
+    "                       as range delimiters. 1-based columns.",
+    "                       e.g. --columns 2v15 or --columns \"2-14 vs 15-27\"",
     "  --print-key-colname: when outputting key column diffs,",
     "                       print column name instead of <key>",
     "  -e,--exit-code     : return < 0 on error, else the number of differences found",
@@ -664,6 +678,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   int err = 0;
+  const char *column_ranges_spec = NULL;
   // initialization starts here. to do: make this a separate function
   unsigned input_count = 0;
   struct zsv_compare_key **next_key = &data->keys;
@@ -671,7 +686,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   for (int arg_i = 1; data->status == zsv_compare_status_ok && !err && arg_i < argc; arg_i++) {
     const char *arg = argv[arg_i];
 #include <zsv/utils/arg.h>
-    if (!strcmp(arg, "-k") || !strcmp(arg, "--key")) {
+    if (!strcmp(arg, "--columns")) {
+      const char *next_arg = zsv_next_arg(++arg_i, argc, argv, &err);
+      if (next_arg)
+        column_ranges_spec = next_arg;
+    } else if (!strcmp(arg, "-k") || !strcmp(arg, "--key")) {
       const char *next_arg = zsv_next_arg(++arg_i, argc, argv, &err);
       if (next_arg) {
         next_key = zsv_compare_key_add(next_key, next_arg, &err);
@@ -737,11 +756,60 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
   }
 
+  char *colrange_label1 = NULL;
+  char *colrange_label2 = NULL;
+
+  if (column_ranges_spec && data->status == zsv_compare_status_ok && !err) {
+    if (input_count != 1) {
+      fprintf(stderr, "Error: --columns requires exactly one input file\n");
+      err = 1;
+    } else if (data->sort) {
+      fprintf(stderr, "Error: --sort is not supported with --columns\n");
+      err = 1;
+    } else {
+      struct zsv_column_range cr1, cr2;
+      if (zsv_column_range_parse(column_ranges_spec, &cr1, &cr2) != 0) {
+        fprintf(stderr, "Invalid --columns spec. Use e.g. 2v15 or \"2-14 vs 15-27\" (1-based columns)\n");
+        err = 1;
+      } else {
+        // Set up two virtual inputs from the single file
+        const char *filename = input_filenames[0];
+        input_count = 2;
+
+        if ((data->status = zsv_compare_set_inputs(data, 2)) == zsv_compare_status_ok) {
+          for (unsigned ix = 0; ix < 2 && data->status == zsv_compare_status_ok; ix++) {
+            struct zsv_compare_input *input = &data->inputs[ix];
+            struct zsv_column_range *cr = (ix == 0) ? &cr1 : &cr2;
+            input->path = filename;
+            input->col_range_start = cr->start;
+            input->col_range_count = cr->count;
+            data->status = input_init_unsorted(data, input, opts, custom_prop_handler);
+          }
+
+          // Switch to column-range callbacks for cell access and column count
+          data->get_cell = zsv_compare_get_colrange_cell;
+          data->get_column_name = zsv_compare_get_colrange_cell;
+          data->get_column_count = zsv_compare_get_colrange_colcount;
+
+          // Set descriptive labels for output headers
+          asprintf(&colrange_label1, "columns %u-%u", cr1.start + 1, cr1.start + cr1.count);
+          asprintf(&colrange_label2, "columns %u-%u", cr2.start + 1, cr2.start + cr2.count);
+          if (colrange_label1)
+            data->inputs[0].path = colrange_label1;
+          if (colrange_label2)
+            data->inputs[1].path = colrange_label2;
+        }
+      }
+    }
+  }
+
   if (err && data->status == zsv_compare_status_ok)
     data->status = zsv_compare_status_error;
   else if (!input_count)
     data->status = zsv_compare_status_error;
-  else if (data->status == zsv_compare_status_ok) {
+  else if (column_ranges_spec) {
+    // Column-range inputs already initialized above
+  } else if (data->status == zsv_compare_status_ok) {
     if ((data->status = zsv_compare_set_inputs(data, input_count)) == zsv_compare_status_ok) {
       // initialize parsers
       for (unsigned ix = 0; data->status == zsv_compare_status_ok && ix < input_count; ix++) {
@@ -750,76 +818,76 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         data->status = data->input_init(data, input, opts, custom_prop_handler);
       }
     }
+  }
 
-    if (data->status == zsv_compare_status_ok) {
-      // find keys
-      for (unsigned i = 0; data->status == zsv_compare_status_ok && i < data->input_count; i++) {
-        struct zsv_compare_input *input = &data->inputs[i];
-        if ((input->col_count = data->get_column_count(input))) {
-          if (!(input->output_colnames = calloc(input->col_count, sizeof(*input->output_colnames)))) {
-            data->status = zsv_compare_status_memory;
-            break;
-          }
+  if (data->status == zsv_compare_status_ok) {
+    // find keys
+    for (unsigned i = 0; data->status == zsv_compare_status_ok && i < data->input_count; i++) {
+      struct zsv_compare_input *input = &data->inputs[i];
+      if ((input->col_count = data->get_column_count(input))) {
+        if (!(input->output_colnames = calloc(input->col_count, sizeof(*input->output_colnames)))) {
+          data->status = zsv_compare_status_memory;
+          break;
         }
+      }
 
-        unsigned found_keys = 0;
-        for (unsigned j = 0; j < input->col_count && !input->done && data->status == zsv_compare_status_ok; j++) {
-          struct zsv_cell colname = data->get_column_name(input, j);
-          const unsigned char *colname_s = colname.str;
-          unsigned colname_len = colname.len;
-          zsv_compare_unique_colname *input_col;
-          data->status = zsv_compare_unique_colname_add(&input->colnames, colname_s, colname_len, &input_col);
-          if (data->status != zsv_compare_status_ok)
-            break;
+      unsigned found_keys = 0;
+      for (unsigned j = 0; j < input->col_count && !input->done && data->status == zsv_compare_status_ok; j++) {
+        struct zsv_cell colname = data->get_column_name(input, j);
+        const unsigned char *colname_s = colname.str;
+        unsigned colname_len = colname.len;
+        zsv_compare_unique_colname *input_col;
+        data->status = zsv_compare_unique_colname_add(&input->colnames, colname_s, colname_len, &input_col);
+        if (data->status != zsv_compare_status_ok)
+          break;
 
-          if (input_col) {
-            // now that we know this colname+instance_num is unique to this input
-            // check if it is a key
-            for (unsigned key_ix = 0; found_keys < input->key_count && key_ix < input->key_count; key_ix++) {
-              struct zsv_compare_input_key *k = &input->keys[key_ix];
-              if (!k->found &&
-                  !zsv_strincmp(colname_s, colname_len, (const unsigned char *)k->key->name, strlen(k->key->name))) {
-                k->found = 1;
-                found_keys++;
-                k->col_ix = j;
-                input_col->is_key = 1;
-                break;
-              }
-            }
-
-            // add it to the output
-            int added = 0;
-            zsv_compare_unique_colname *output_col = zsv_compare_unique_colname_add_if_not_found(
-              &data->output_colnames, colname_s, colname_len, input_col->instance_num, &added);
-            if (!output_col) // error
-              data->status = zsv_compare_status_error;
-            else {
-              if (added) {
-                if (*data->output_colnames_next)
-                  (*data->output_colnames_next)->next = output_col;
-                if (!data->output_colnames_first)
-                  data->output_colnames_first = output_col;
-
-                *data->output_colnames_next = output_col;
-                output_col->is_key = input_col->is_key;
-                data->output_colnames_next = &output_col->next;
-                output_col->output_ix = data->output_colcount++;
-              }
-              input->output_colnames[j] = output_col;
+        if (input_col) {
+          // now that we know this colname+instance_num is unique to this input
+          // check if it is a key
+          for (unsigned key_ix = 0; found_keys < input->key_count && key_ix < input->key_count; key_ix++) {
+            struct zsv_compare_input_key *k = &input->keys[key_ix];
+            if (!k->found &&
+                !zsv_strincmp(colname_s, colname_len, (const unsigned char *)k->key->name, strlen(k->key->name))) {
+              k->found = 1;
+              found_keys++;
+              k->col_ix = j;
+              input_col->is_key = 1;
+              break;
             }
           }
-        }
 
-        if (found_keys != data->key_count) {
-          fprintf(stderr, "Unable to find the following keys in %s: ", input->path);
-          for (unsigned int j = 0; j < input->key_count; j++) {
-            struct zsv_compare_input_key *k = &input->keys[j];
-            if (!k->found)
-              fprintf(stderr, "\n  %s", k->key->name);
+          // add it to the output
+          int added = 0;
+          zsv_compare_unique_colname *output_col = zsv_compare_unique_colname_add_if_not_found(
+            &data->output_colnames, colname_s, colname_len, input_col->instance_num, &added);
+          if (!output_col) // error
+            data->status = zsv_compare_status_error;
+          else {
+            if (added) {
+              if (*data->output_colnames_next)
+                (*data->output_colnames_next)->next = output_col;
+              if (!data->output_colnames_first)
+                data->output_colnames_first = output_col;
+
+              *data->output_colnames_next = output_col;
+              output_col->is_key = input_col->is_key;
+              data->output_colnames_next = &output_col->next;
+              output_col->output_ix = data->output_colcount++;
+            }
+            input->output_colnames[j] = output_col;
           }
-          fprintf(stderr, "\n");
-          data->status = zsv_compare_status_error;
         }
+      }
+
+      if (found_keys != data->key_count) {
+        fprintf(stderr, "Unable to find the following keys in %s: ", input->path);
+        for (unsigned int j = 0; j < input->key_count; j++) {
+          struct zsv_compare_input_key *k = &input->keys[j];
+          if (!k->found)
+            fprintf(stderr, "\n  %s", k->key->name);
+        }
+        fprintf(stderr, "\n");
+        data->status = zsv_compare_status_error;
       }
     }
 
@@ -908,6 +976,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     else
       err = data->diff_count;
   }
+  // Restore original path pointers before delete (labels were allocated separately)
+  if (column_ranges_spec && data->input_count >= 2) {
+    data->inputs[0].path = input_filenames[0];
+    data->inputs[1].path = input_filenames[0];
+  }
+  free(colrange_label1);
+  free(colrange_label2);
+
   zsv_compare_delete(data);
   return err;
 }

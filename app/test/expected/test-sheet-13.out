@@ -34,7 +34,7 @@ V                         pivotexpr                 Group rows with group-by
                           where                     Filter by sql expression
                           errors                    Show errors (if any)
                           errors-clear              Clear any/all errors
-
+                          compare                   Highlight differences bet
 
 
 <esc> to exit help Key(s)

@@ -36,6 +36,7 @@
 #include "sheet/screen_buffer.c"
 #include "sheet/lexer.c"
 #include "sheet/procedure.c"
+#include "utils/column_range.h"
 
 /* TODO: move this somewhere else like common or utils */
 #define UNUSED(X) ((void)X)
@@ -49,11 +50,69 @@ struct zsvsheet_opts {
   size_t found_colnum;
 };
 
+#define ZSVSHEET_COMPARE_DIFF_COLOR_PAIR 1
+#define ZSVSHEET_COMPARE_MATCH_COLOR_PAIR 2
+
+struct zsvsheet_compare_opts {
+  struct zsv_column_range r1, r2;
+  char active;
+};
+
+// Wrapper: parse compare spec and populate zsvsheet_compare_opts
+static int zsvsheet_parse_compare(const char *spec, struct zsvsheet_compare_opts *cmp) {
+  if (zsv_column_range_parse(spec, &cmp->r1, &cmp->r2) != 0)
+    return -1;
+  cmp->active = 1;
+  return 0;
+}
+
 #include "sheet/utf8-width.c"
 #include "sheet/ui_buffer.c"
 #include "sheet/index.c"
 #include "sheet/read-data.c"
 #include "sheet/key-bindings.c"
+
+// Compare columns and set cell_attrs for cells that differ
+static void zsvsheet_apply_compare_attrs(struct zsvsheet_ui_buffer *uib, const struct zsvsheet_compare_opts *cmp) {
+  if (!cmp->active || !uib || !uib->buffer)
+    return;
+  struct zsvsheet_screen_buffer *buff = uib->buffer;
+  size_t rows = uib->buff_used_rows;
+  size_t cols = zsvsheet_screen_buffer_cols(buff);
+  size_t total = zsvsheet_screen_buffer_rows(buff);
+
+  // Allocate cell_attrs if needed
+  if (!buff->cell_attrs) {
+    buff->cell_attrs = calloc(total, cols * sizeof(*buff->cell_attrs));
+    if (!buff->cell_attrs)
+      return;
+  } else {
+    memset(buff->cell_attrs, 0, total * cols * sizeof(*buff->cell_attrs));
+  }
+
+  // Account for rownum column offset
+  size_t col_offset = uib->rownum_col_offset ? 1 : 0;
+
+  int diff_attr = COLOR_PAIR(ZSVSHEET_COMPARE_DIFF_COLOR_PAIR);
+  int match_attr = COLOR_PAIR(ZSVSHEET_COMPARE_MATCH_COLOR_PAIR);
+
+  // Start from row 1 (skip header row 0)
+  for (size_t r = 1; r < rows; r++) {
+    for (size_t k = 0; k < cmp->r1.count; k++) {
+      size_t c1 = cmp->r1.start + k + col_offset;
+      size_t c2 = cmp->r2.start + k + col_offset;
+      if (c1 >= cols || c2 >= cols)
+        continue;
+      const unsigned char *v1 = zsvsheet_screen_buffer_cell_display(buff, r, c1);
+      const unsigned char *v2 = zsvsheet_screen_buffer_cell_display(buff, r, c2);
+      const char *s1 = v1 ? (const char *)v1 : "";
+      const char *s2 = v2 ? (const char *)v2 : "";
+      int attr = (strcmp(s1, s2) != 0) ? diff_attr : match_attr;
+      buff->cell_attrs[r * cols + c1] = attr;
+      buff->cell_attrs[r * cols + c2] = attr;
+    }
+  }
+}
 
 #define ZSVSHEET_CELL_DISPLAY_MIN_WIDTH 10
 static size_t zsvsheet_cell_display_width(struct zsvsheet_ui_buffer *ui_buffer,
@@ -64,7 +123,7 @@ static size_t zsvsheet_cell_display_width(struct zsvsheet_ui_buffer *ui_buffer,
 }
 
 static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t input_header_span,
-                                    struct zsvsheet_display_dimensions *ddims);
+                                    struct zsvsheet_display_dimensions *ddims, const struct zsvsheet_compare_opts *cmp);
 
 static void zsvsheet_priv_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt,
                                      ...);
@@ -84,6 +143,7 @@ struct zsvsheet_sheet_context {
   char *find;
   char *goto_column;
   struct zsv_prop_handler *custom_prop_handler;
+  struct zsvsheet_compare_opts compare;
 };
 
 static void get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row, const char *default_value) {
@@ -641,6 +701,65 @@ out:
 #include "sheet/sqlfilter.c"
 #include "sheet/newline_handler.c"
 
+static zsvsheet_status zsvsheet_compare_handler(struct zsvsheet_proc_context *ctx) {
+  struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
+  struct zsvsheet_display_info *di = &state->display_info;
+  char spec_buffer[256] = {0};
+
+  if (ctx->num_params > 0) {
+    // Join all params (handles ":compare 2-14 v 15-27" split into multiple tokens)
+    size_t pos = 0;
+    for (int i = 0; i < ctx->num_params && pos < sizeof(spec_buffer) - 1; i++) {
+      const char *p = ctx->params[i].u.string;
+      size_t len = strlen(p);
+      if (pos + len >= sizeof(spec_buffer) - 1)
+        break;
+      memcpy(spec_buffer + pos, p, len);
+      pos += len;
+    }
+    spec_buffer[pos] = '\0';
+  } else {
+    if (!ctx->invocation.interactive)
+      return zsvsheet_status_error;
+    int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
+    get_subcommand("Compare (e.g. 2-14 v 15-27 or 2 v 15)", spec_buffer, sizeof(spec_buffer), prompt_footer_row, NULL);
+    if (*spec_buffer == '\0')
+      return zsvsheet_status_ok;
+  }
+
+  struct zsvsheet_compare_opts cmp = {0};
+  if (zsvsheet_parse_compare(spec_buffer, &cmp) != 0) {
+    // Check if it's a valid single range; if so, prompt for the second range
+    unsigned dummy1, dummy2;
+    if (ctx->invocation.interactive && zsv_column_range_parse_side(spec_buffer, &dummy1, &dummy2) >= 0) {
+      char second[256] = {0};
+      int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
+      get_subcommand("Compare against", second, sizeof(second), prompt_footer_row, NULL);
+      if (*second == '\0')
+        return zsvsheet_status_ok;
+      // Combine: "first_range v second_range"
+      size_t first_len = strlen(spec_buffer);
+      if (first_len + 1 + strlen(second) < sizeof(spec_buffer)) {
+        spec_buffer[first_len] = 'v';
+        strcpy(spec_buffer + first_len + 1, second);
+      }
+      if (zsvsheet_parse_compare(spec_buffer, &cmp) != 0) {
+        zsvsheet_priv_set_status(di->dimensions, 1, "Invalid compare ranges");
+        return zsvsheet_status_ok;
+      }
+    } else {
+      zsvsheet_priv_set_status(di->dimensions, 1, "Invalid spec. Use A-B v C-D, A-B v C, A v C-D, or A v C (1-based)");
+      return zsvsheet_status_ok;
+    }
+  }
+
+  state->compare = cmp;
+
+  struct zsvsheet_ui_buffer *uib = *di->ui_buffers.current;
+  zsvsheet_apply_compare_attrs(uib, &state->compare);
+  return zsvsheet_status_ok;
+}
+
 /* We do most procedures in one handler. More complex procedures can be
  * separated into their own handlers.
  */
@@ -733,6 +852,7 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_pivot_expr,     "pivotexpr",   "Group rows with group-by SQL expression",                         zsvsheet_pivot_handler        },
   { zsvsheet_builtin_proc_errors,         "errors",      "Show errors (if any)",                                            zsvsheet_errors_handler       },
   { zsvsheet_builtin_proc_errors_clear,   "errors-clear","Clear any/all errors",                                            zsvsheet_errors_handler       },
+  { zsvsheet_builtin_proc_compare,       "compare",     "Highlight differences between two column ranges",                  zsvsheet_compare_handler      },
   { -1, NULL, NULL, NULL }
 };
 /* clang-format on */
@@ -766,6 +886,20 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   if (argc > 1 && (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))) {
     zsvsheet_usage();
     return zsv_status_ok;
+  }
+
+  struct zsvsheet_compare_opts compare_opts = {0};
+  const char *filename_arg = NULL;
+
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "--compare") && i + 1 < argc) {
+      if (zsvsheet_parse_compare(argv[++i], &compare_opts) != 0) {
+        fprintf(stderr, "Invalid --compare spec. Use e.g. 2-14v15-27 or 2v15 (1-based columns)\n");
+        return 1;
+      }
+    } else if (argv[i][0] != '-' && !filename_arg) {
+      filename_arg = argv[i];
+    }
   }
 
 #if defined(WIN32) || defined(_WIN32)
@@ -803,13 +937,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     zsvsheet_ui_buffer_push(&ui_buffers, &current_ui_buffer, tmp_ui_buffer);
   }
 
-  if (argc > 1) {
-    const char *filename = argv[1];
-    if ((err = zsvsheet_ui_buffer_open_file(filename, optsp, custom_prop_handler, &ui_buffers, &current_ui_buffer))) {
+  if (filename_arg) {
+    if ((err =
+           zsvsheet_ui_buffer_open_file(filename_arg, optsp, custom_prop_handler, &ui_buffers, &current_ui_buffer))) {
       if (err > 0)
-        perror(filename);
+        perror(filename_arg);
       else
-        fprintf(stderr, "%s: no data found", filename); // to do: change this to a base-buff status msg
+        fprintf(stderr, "%s: no data found", filename_arg); // to do: change this to a base-buff status msg
 
       err = -1;
       goto zsvsheet_exit;
@@ -823,6 +957,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   keypad(stdscr, TRUE);
   cbreak();
   set_escdelay(30);
+
+  if (has_colors()) {
+    start_color();
+    use_default_colors();
+    init_pair(ZSVSHEET_COMPARE_DIFF_COLOR_PAIR, COLOR_RED, -1);
+    init_pair(ZSVSHEET_COMPARE_MATCH_COLOR_PAIR, COLOR_GREEN, -1);
+  }
+
   struct zsvsheet_display_dimensions display_dims = get_display_dimensions(1, 1);
 
   zsvsheet_register_builtin_procedures();
@@ -841,7 +983,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     .display_info.header_span = header_span,
     .find = NULL,
     .custom_prop_handler = custom_prop_handler,
+    .compare = compare_opts,
   };
+
+  if (handler_state.compare.active)
+    zsvsheet_apply_compare_attrs(current_ui_buffer, &handler_state.compare);
 
   zsvsheet_status status;
 
@@ -852,7 +998,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #endif
 
   zsvsheet_check_buffer_worker_updates(current_ui_buffer, &display_dims, &handler_state);
-  display_buffer_subtable(current_ui_buffer, header_span, &display_dims);
+  display_buffer_subtable(current_ui_buffer, header_span, &display_dims, &handler_state.compare);
 
   // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
   halfdelay(2);
@@ -881,9 +1027,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         zsvsheet_priv_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
         continue;
       }
+      if (handler_state.compare.active)
+        zsvsheet_apply_compare_attrs(ub, &handler_state.compare);
     }
 
-    display_buffer_subtable(ub, header_span, &display_dims);
+    display_buffer_subtable(ub, header_span, &display_dims, &handler_state.compare);
   }
 
   endwin();
@@ -942,6 +1090,31 @@ out:
   return str;
 }
 
+// Given a 0-based data column (excluding rownum offset), return the paired column
+// index if it falls within a compare range, or (size_t)-1 if not.
+static size_t zsvsheet_compare_paired_col(const struct zsvsheet_compare_opts *cmp, size_t data_col) {
+  if (!cmp->active)
+    return (size_t)-1;
+  if (data_col >= cmp->r1.start && data_col < cmp->r1.start + cmp->r1.count)
+    return cmp->r2.start + (data_col - cmp->r1.start);
+  if (data_col >= cmp->r2.start && data_col < cmp->r2.start + cmp->r2.count)
+    return cmp->r1.start + (data_col - cmp->r2.start);
+  return (size_t)-1;
+}
+
+// Print a UTF-8 string at the given position, handling Win32 encoding
+static void zsvsheet_footer_print(int row, int col, const char *text) {
+#if defined(WIN32) || defined(_WIN32)
+  size_t nbytes = strlen(text);
+  wchar_t wbuf[512] = {0};
+  int wlen = MultiByteToWideChar(CP_UTF8, 0, text, (int)nbytes, wbuf, sizeof(wbuf) / sizeof(wbuf[0]));
+  if (wlen > 0)
+    mvaddnwstr(row, col, wbuf, wlen);
+#else
+  mvprintw(row, col, "%s", text);
+#endif
+}
+
 static size_t zsvsheet_max_buffer_cols(struct zsvsheet_ui_buffer *ui_buffer) {
   size_t col_count = ui_buffer->dimensions.col_count + (ui_buffer->rownum_col_offset ? 1 : 0);
   return col_count > zsvsheet_screen_buffer_cols(ui_buffer->buffer) ? zsvsheet_screen_buffer_cols(ui_buffer->buffer)
@@ -949,7 +1122,8 @@ static size_t zsvsheet_max_buffer_cols(struct zsvsheet_ui_buffer *ui_buffer) {
 }
 
 static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t input_header_span,
-                                    struct zsvsheet_display_dimensions *ddims) {
+                                    struct zsvsheet_display_dimensions *ddims,
+                                    const struct zsvsheet_compare_opts *cmp) {
   struct zsvsheet_screen_buffer *buffer = ui_buffer->buffer;
   size_t start_row = ui_buffer->buff_offset.row;
   size_t buffer_used_row_count = ui_buffer->buff_used_rows;
@@ -975,6 +1149,9 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
     end_col = max_col_count;
 
   const char *cursor_value = NULL;
+  size_t cursor_data_row = 0; // buffer row of cursor cell (set when cursor is on data)
+  size_t cursor_buf_col = 0;  // buffer column of cursor cell
+
   // First, display header row (buffer[0]) at screen row 0
   attron(A_REVERSE);
   for (size_t j = start_col; j < end_col; j++) {
@@ -995,6 +1172,8 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
         attron(A_REVERSE);
         cursor_value = display_cell(buffer, i, j, screen_row, j - start_col, cell_display_width);
         attroff(A_REVERSE);
+        cursor_data_row = i;
+        cursor_buf_col = j;
       } else {
         display_cell(buffer, i, j, screen_row, j - start_col, cell_display_width);
       }
@@ -1007,18 +1186,22 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
     zsvsheet_priv_set_status(ddims, 0, "? for help");
 
   if (cursor_value) {
-#if defined(WIN32) || defined(_WIN32)
-    const size_t nbytes = strlen(cursor_value);
-    wchar_t wsubstring[256] = {0};
-    char *p = (char *)cursor_value;
-    char tmp_ch = p[nbytes];
-    p[nbytes] = '\0';
-    const size_t wlen = MultiByteToWideChar(CP_UTF8, 0, p, -1, wsubstring, sizeof(wsubstring) / sizeof(wchar_t));
-    p[nbytes] = tmp_ch;
-    mvaddnwstr(ddims->rows - ddims->footer_span, strlen(zsvsheet_status_text), wsubstring, wlen);
-#else
-    mvprintw(ddims->rows - ddims->footer_span, strlen(zsvsheet_status_text), "%s", cursor_value);
-#endif
+    int footer_row = ddims->rows - ddims->footer_span;
+    int footer_col = strlen(zsvsheet_status_text);
+    size_t col_offset = ui_buffer->rownum_col_offset ? 1 : 0;
+    size_t data_col = cursor_buf_col >= col_offset ? cursor_buf_col - col_offset : 0;
+    size_t paired_data_col = cmp ? zsvsheet_compare_paired_col(cmp, data_col) : (size_t)-1;
+
+    if (paired_data_col != (size_t)-1 && cursor_row > 0) {
+      size_t paired_buf_col = paired_data_col + col_offset;
+      const unsigned char *paired_val = zsvsheet_screen_buffer_cell_display(buffer, cursor_data_row, paired_buf_col);
+      const char *pv = paired_val ? (const char *)paired_val : "";
+      char footer_buf[512];
+      snprintf(footer_buf, sizeof(footer_buf), "%s vs %s", cursor_value, pv);
+      zsvsheet_footer_print(footer_row, footer_col, footer_buf);
+    } else {
+      zsvsheet_footer_print(footer_row, footer_col, cursor_value);
+    }
   }
 
   refresh();
