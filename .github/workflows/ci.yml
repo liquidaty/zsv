@@ -478,17 +478,7 @@ jobs:
         } >>"$GITHUB_ENV"
 
     - name: Set up PDCurses
-      run: |
-        cd "$RUNNER_TEMP"
-        wget https://github.com/wmcbrine/PDCurses/archive/refs/tags/3.9.tar.gz
-        tar -xvzf 3.9.tar.gz
-        cd PDCurses-3.9/wincon
-        make CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-ar WIDE=Y UTF8=Y
-        mv pdcurses.a libpdcurses.a
-        {
-          echo "CFLAGS=-I$RUNNER_TEMP/PDCurses-3.9"
-          echo "LDFLAGS=-L$RUNNER_TEMP/PDCurses-3.9/wincon"
-        } >>"$GITHUB_ENV"
+      run: ./scripts/ci-build-pdcurses-with-mingw.sh
 
     - name: Checkout
       uses: actions/checkout@v6
@@ -583,19 +573,6 @@ jobs:
           wget
           tmux
 
-    - name: Set up PDCurses
-      run: |
-        cd "$RUNNER_TEMP"
-        wget https://github.com/wmcbrine/PDCurses/archive/refs/tags/3.9.tar.gz
-        tar -xvzf 3.9.tar.gz
-        cd PDCurses-3.9/wincon
-        make CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-ar WIDE=Y UTF8=Y
-        mv pdcurses.a libpdcurses.a
-        {
-          echo "CFLAGS=-I$RUNNER_TEMP/PDCurses-3.9"
-          echo "LDFLAGS=-L$RUNNER_TEMP/PDCurses-3.9/wincon"
-        } >>"$GITHUB_ENV"
-
     - name: Checkout
       uses: actions/checkout@v6
 
@@ -608,9 +585,10 @@ jobs:
         SKIP_BUILD: true
         SKIP_ZIP_ARCHIVE: true
         SKIP_TAR_ARCHIVE: true
-        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:CFLAGS:LDFLAGS:MAKE:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
+        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
       shell: wsl-bash {0}
       run: |
+        ./scripts/ci-build-pdcurses-with-mingw.sh
         ./scripts/ci-build.sh
 
   # ci-musl:
