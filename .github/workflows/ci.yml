@@ -580,6 +580,7 @@ jobs:
           tree
           zip
           tar
+          wget
           tmux
 
     - name: Set up PDCurses
