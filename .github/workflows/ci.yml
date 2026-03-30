@@ -450,44 +450,8 @@ jobs:
   #     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
   #     run: ./scripts/ci-upload-release-artifacts.sh
 
-  # mingw-ncurses:
-  #   runs-on: ubuntu-22.04
-
-  #   steps:
-  #   - name: Cache
-  #     uses: actions/cache@v5
-  #     id: cache
-  #     with:
-  #       key: mingw-ncurses.zip
-  #       path: ${{ github.workspace }}/mingw-ncurses.zip
-
-  #   - name: Install MinGW
-  #     if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-  #     run: |
-  #       sudo apt update
-  #       sudo apt install -y mingw-w64
-
-  #   - name: Checkout
-  #     uses: actions/checkout@v6
-  #     if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-  #     with:
-  #       sparse-checkout: |
-  #         scripts/ci-build-ncurses-with-mingw.sh
-
-  #   - name: Build ncurses with MinGW
-  #     if: ${{ steps.cache.outputs.cache-hit != 'true' }}
-  #     run: ./scripts/ci-build-ncurses-with-mingw.sh
-
-  #   - name: Upload mingw-ncurses.zip
-  #     uses: actions/upload-artifact@v7
-  #     with:
-  #       name: mingw-ncurses.zip
-  #       path: ${{ github.workspace }}/mingw-ncurses.zip
-  #       retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-  #       if-no-files-found: error
-
   ci-linux-mingw:
-    # needs: [tag, clang-format, cppcheck, shellcheck, mingw-ncurses]
+    # needs: [tag, clang-format, cppcheck, shellcheck]
     needs: [tag]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
@@ -529,17 +493,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    # - name: Download mingw-ncurses.zip
-    #   uses: actions/download-artifact@v8
-    #   with:
-    #     name: mingw-ncurses.zip
-    #     path: ${{ github.workspace }}/app/external
-
-    # - name: Unzip mingw-ncurses.zip in app/external
-    #   run: |
-    #     cd app/external
-    #     unzip mingw-ncurses.zip
-
     - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
       env:
         PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
@@ -547,8 +500,6 @@ jobs:
         MAKE: make
         RUN_TESTS: false
       run: |
-        # export CFLAGS="-I$PWD/app/external/mingw-ncurses/include"
-        # export LDFLAGS="-L$PWD/app/external/mingw-ncurses/lib"
         ./scripts/ci-build.sh
         ./scripts/ci-create-nuget-package.sh
 
@@ -599,66 +550,67 @@ jobs:
       if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: ./scripts/ci-upload-release-artifacts.sh
 
-  # ci-wsl-mingw:
-  #   if: ${{ github.event_name == 'workflow_dispatch' && inputs.wsl == true }}
-  #   needs: [tag, clang-format, cppcheck, shellcheck, mingw-ncurses]
-  #   runs-on: windows-2025
-  #   timeout-minutes: 30
+  ci-wsl-mingw:
+    # if: ${{ github.event_name == 'workflow_dispatch' && inputs.wsl == true }}
+    # needs: [tag, clang-format, cppcheck, shellcheck]
+    needs: [tag]
+    runs-on: windows-2025
+    timeout-minutes: 30
 
-  #   env:
-  #     TAG: ${{ needs.tag.outputs.TAG }}
+    env:
+      TAG: ${{ needs.tag.outputs.TAG }}
 
-  #   defaults:
-  #     run:
-  #       shell: bash
+    defaults:
+      run:
+        shell: bash
 
-  #   steps:
-  #   - name: Set up WSL 2
-  #     uses: Vampire/setup-wsl@v6
-  #     with:
-  #       wsl-version: 2
-  #       wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
-  #       set-as-default: true
-  #       distribution: Ubuntu-22.04
-  #       use-cache: true
-  #       additional-packages: |
-  #         build-essential
-  #         mingw-w64
-  #         sqlite3
-  #         tree
-  #         zip
-  #         tar
-  #         tmux
+    steps:
+    - name: Set up WSL 2
+      uses: Vampire/setup-wsl@v6
+      with:
+        wsl-version: 2
+        wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
+        set-as-default: true
+        distribution: Ubuntu-22.04
+        use-cache: true
+        additional-packages: |
+          build-essential
+          mingw-w64
+          sqlite3
+          tree
+          zip
+          tar
+          tmux
 
-  #   - name: Checkout
-  #     uses: actions/checkout@v6
+    - name: Set up PDCurses
+      run: |
+        cd "$RUNNER_TEMP"
+        wget https://github.com/wmcbrine/PDCurses/archive/refs/tags/3.9.tar.gz
+        tar -xvzf 3.9.tar.gz
+        cd PDCurses-3.9/wincon
+        make CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-ar WIDE=Y UTF8=Y
+        mv pdcurses.a libpdcurses.a
+        {
+          echo "CFLAGS=-I$RUNNER_TEMP/PDCurses-3.9"
+          echo "LDFLAGS=-L$RUNNER_TEMP/PDCurses-3.9/wincon"
+        } >>"$GITHUB_ENV"
 
-  #   - name: Download mingw-ncurses.zip
-  #     uses: actions/download-artifact@v8
-  #     with:
-  #       name: mingw-ncurses.zip
-  #       path: ${{ github.workspace }}/app/external
+    - name: Checkout
+      uses: actions/checkout@v6
 
-  #   - name: Unzip mingw-ncurses.zip in app/external
-  #     run: |
-  #       cd app/external
-  #       unzip mingw-ncurses.zip
-
-  #   - name: Build (${{ env.AMD64_WSL_MINGW }})
-  #     env:
-  #       PREFIX: ${{ env.AMD64_WSL_MINGW }}
-  #       CC: x86_64-w64-mingw32-gcc
-  #       MAKE: make
-  #       RUN_TESTS: true
-  #       SKIP_BUILD: true
-  #       SKIP_ZIP_ARCHIVE: true
-  #       SKIP_TAR_ARCHIVE: true
-  #       WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
-  #     shell: wsl-bash {0}
-  #     run: |
-  #       export CFLAGS="-I$PWD/app/external/mingw-ncurses/include"
-  #       export LDFLAGS="-L$PWD/app/external/mingw-ncurses/lib"
-  #       ./scripts/ci-build.sh
+    - name: Build (${{ env.AMD64_WSL_MINGW }})
+      env:
+        PREFIX: ${{ env.AMD64_WSL_MINGW }}
+        CC: x86_64-w64-mingw32-gcc
+        MAKE: make
+        RUN_TESTS: true
+        SKIP_BUILD: true
+        SKIP_ZIP_ARCHIVE: true
+        SKIP_TAR_ARCHIVE: true
+        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:CFLAGS:LDFLAGS:MAKE:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
+      shell: wsl-bash {0}
+      run: |
+        ./scripts/ci-build.sh
 
   # ci-musl:
   #   needs: [tag, clang-format, cppcheck, shellcheck]
