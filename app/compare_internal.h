@@ -50,6 +50,9 @@ struct zsv_compare_input {
 
   sqlite3_stmt *sort_stmt;
 
+  unsigned col_range_start; // 0-based starting column for column-range mode
+  unsigned col_range_count; // number of columns in range (0 = use all)
+
   unsigned char row_loaded : 1;
   unsigned char missing : 1;
   unsigned char done : 1;

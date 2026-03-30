@@ -772,6 +772,35 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@(${PREFIX} $< ../../data/compare/t1.csv ../../data/compare/t2.csv --add AccentCity --sort -k country -k city ${REDIRECT1} ${TMP_DIR}/$@.out10 && \
 	${CMP} ${TMP_DIR}/$@.out10 expected/$@.out10 && ${TEST_PASS} || ${TEST_FAIL})
 
+	@# --columns: explicit ranges
+	@(${PREFIX} $< --columns 1-3v4-6 compare/colrange1.csv ${REDIRECT1} ${TMP_DIR}/$@-colrange.out1 && \
+	${CMP} ${TMP_DIR}/$@-colrange.out1 expected/$@-colrange.out1 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --columns: shorthand single-column spec
+	@(${PREFIX} $< --columns 1v4 compare/colrange1.csv ${REDIRECT1} ${TMP_DIR}/$@-colrange.out2 && \
+	${CMP} ${TMP_DIR}/$@-colrange.out2 expected/$@-colrange.out2 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --columns: column name lookup
+	@(${PREFIX} $< --columns "Old_A vs New_A" compare/colrange2.csv ${REDIRECT1} ${TMP_DIR}/$@-colrange.out3 && \
+	${CMP} ${TMP_DIR}/$@-colrange.out3 expected/$@-colrange.out3 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --columns: duplicate column names (second match used for right side)
+	@(${PREFIX} $< --columns "ABC vs ABC" compare/colrange3.csv ${REDIRECT1} ${TMP_DIR}/$@-colrange.out4 && \
+	${CMP} ${TMP_DIR}/$@-colrange.out4 expected/$@-colrange.out4 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --columns: single column name with duplicate (equivalent to "ABC vs ABC")
+	@(${PREFIX} $< --columns "ABC" compare/colrange3.csv ${REDIRECT1} ${TMP_DIR}/$@-colrange.out5 && \
+	${CMP} ${TMP_DIR}/$@-colrange.out5 expected/$@-colrange.out5 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --columns: error - single column with no duplicate
+	@($< --columns "B" compare/colrange3.csv >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
+
+	@# --columns: error - requires exactly one file
+	@($< --columns 1v4 compare/colrange1.csv compare/colrange1.csv >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
+
+	@# --columns: error - invalid spec
+	@($< --columns bad compare/colrange1.csv >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
+
 test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-sheet-cleanup test-sheet-all
 
 test-sheet-cleanup:
