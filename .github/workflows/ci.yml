@@ -882,7 +882,7 @@ jobs:
     steps:
     - name: Deploy to GitHub Pages
       id: deployment
-      uses: actions/deploy-pages@v4
+      uses: actions/deploy-pages@v5
 
   publish-winget-package:
     if: ${{ github.event_name == 'release' && github.event.action == 'published' }}
