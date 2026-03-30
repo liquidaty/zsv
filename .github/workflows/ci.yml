@@ -463,6 +463,9 @@ jobs:
       TAG: ${{ needs.tag.outputs.TAG }}
 
     steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+
     - name: Install apt dependencies
       run: |
         sudo dpkg --add-architecture i386
@@ -479,9 +482,6 @@ jobs:
 
     - name: Set up PDCurses
       run: ./scripts/ci-build-pdcurses-with-mingw.sh
-
-    - name: Checkout
-      uses: actions/checkout@v6
 
     - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
       env:
@@ -589,6 +589,8 @@ jobs:
       shell: wsl-bash {0}
       run: |
         ./scripts/ci-build-pdcurses-with-mingw.sh
+        export CFLAGS="-I$PWD/PDCurses-3.9"
+        export LDFLAGS="-L$PWD/PDCurses-3.9/wincon"
         ./scripts/ci-build.sh
 
   # ci-musl:
