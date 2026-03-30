@@ -98,8 +98,8 @@ static const char *zsvsheet_colname_at(unsigned col_1based, size_t *len, void *c
 
 // Wrapper: parse compare spec and populate zsvsheet_compare_opts.
 // lookup and name_at share the same ctx.
-static int zsvsheet_parse_compare(const char *spec, struct zsvsheet_compare_opts *cmp,
-                                   zsv_column_name_lookup lookup, zsv_column_name_at name_at, void *ctx) {
+static int zsvsheet_parse_compare(const char *spec, struct zsvsheet_compare_opts *cmp, zsv_column_name_lookup lookup,
+                                  zsv_column_name_at name_at, void *ctx) {
   if (zsv_column_range_parse_ex(spec, &cmp->r1, &cmp->r2, lookup, ctx, name_at, ctx) != 0)
     return -1;
   cmp->active = 1;
@@ -900,8 +900,7 @@ static zsvsheet_status zsvsheet_compare_handler(struct zsvsheet_proc_context *ct
         goto compare_done;
       }
     } else {
-      zsvsheet_priv_set_status(di->dimensions, 1,
-                               "Invalid spec. Use A-B v C-D, A v C (1-based), or column names");
+      zsvsheet_priv_set_status(di->dimensions, 1, "Invalid spec. Use A-B v C-D, A v C (1-based), or column names");
       goto compare_done;
     }
   }
@@ -1105,8 +1104,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   // Parse --compare spec now that the buffer is populated (enables column name lookup)
   if (compare_spec) {
     if (current_ui_buffer && current_ui_buffer->buffer) {
-      struct zsvsheet_colname_lookup_ctx lookup_ctx = {
-        .buffer = current_ui_buffer->buffer, .col_offset = current_ui_buffer->rownum_col_offset ? 1 : 0};
+      struct zsvsheet_colname_lookup_ctx lookup_ctx = {.buffer = current_ui_buffer->buffer,
+                                                       .col_offset = current_ui_buffer->rownum_col_offset ? 1 : 0};
       if (zsvsheet_parse_compare(compare_spec, &compare_opts, zsvsheet_colname_lookup, zsvsheet_colname_at,
                                  &lookup_ctx) != 0) {
         fprintf(stderr, "Invalid --compare spec. Use e.g. 2-14v15-27, 2v15 (1-based columns), or column names\n");

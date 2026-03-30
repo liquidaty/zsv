@@ -808,8 +808,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         if (zsv_new_with_properties(&temp_opts, custom_prop_handler, filename, &temp_parser) == zsv_status_ok) {
           if (zsv_next_row(temp_parser) == zsv_status_row) {
             struct zsv_compare_colname_lookup_ctx lookup_ctx = {temp_parser, zsv_cell_count(temp_parser)};
-            parsed = (zsv_column_range_parse_ex(column_ranges_spec, &cr1, &cr2,
-                                                zsv_compare_colname_lookup, &lookup_ctx,
+            parsed = (zsv_column_range_parse_ex(column_ranges_spec, &cr1, &cr2, zsv_compare_colname_lookup, &lookup_ctx,
                                                 zsv_compare_colname_at, &lookup_ctx) == 0);
           }
           zsv_delete(temp_parser);
