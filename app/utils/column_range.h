@@ -33,9 +33,8 @@ static int zsv_column_range_parse_side(const char *s, unsigned *start, unsigned 
 
 // Extended: also try column name lookup when numeric parse fails.
 // start_after: for name lookup, skip columns with 1-based index <= this value.
-static int zsv_column_range_parse_side_ex(const char *s, unsigned *start, unsigned *end,
-                                           zsv_column_name_lookup lookup, void *ctx,
-                                           unsigned start_after) {
+static int zsv_column_range_parse_side_ex(const char *s, unsigned *start, unsigned *end, zsv_column_name_lookup lookup,
+                                          void *ctx, unsigned start_after) {
   int result = zsv_column_range_parse_side(s, start, end);
   if (result >= 0)
     return result;
@@ -52,9 +51,8 @@ static int zsv_column_range_parse_side_ex(const char *s, unsigned *start, unsign
 
 // Compute output ranges from parsed 1-based endpoints.
 // Returns 0 on success, -1 on error.
-static int zsv_column_range_compute(unsigned a1, unsigned a2, int a_type,
-                                     unsigned b1, unsigned b2, int b_type,
-                                     struct zsv_column_range *r1, struct zsv_column_range *r2) {
+static int zsv_column_range_compute(unsigned a1, unsigned a2, int a_type, unsigned b1, unsigned b2, int b_type,
+                                    struct zsv_column_range *r1, struct zsv_column_range *r2) {
   if (a_type == 0 && b_type == 0) {
     // Both single: width = distance between them
     if (a1 == b1)
@@ -95,8 +93,8 @@ static int zsv_column_range_compute(unsigned a1, unsigned a2, int a_type,
 
 // Extract and trim left/right sides around a separator position.
 // left and right must be at least max_side bytes. Returns 0 on success.
-static int zsv_column_range_split(const char *spec, const char *sep, size_t sep_len, size_t max_side,
-                                   char *left, char *right) {
+static int zsv_column_range_split(const char *spec, const char *sep, size_t sep_len, size_t max_side, char *left,
+                                  char *right) {
   size_t left_len = (size_t)(sep - spec);
   while (left_len > 0 && spec[left_len - 1] == ' ')
     left_len--;
@@ -128,8 +126,8 @@ static int zsv_column_range_split(const char *spec, const char *sep, size_t sep_
 // If name_at is provided, also supports single-column specs when the column name appears
 // more than once (e.g. "ABC" or "3" when column 3's name has a duplicate).
 static int zsv_column_range_parse_ex(const char *spec, struct zsv_column_range *r1, struct zsv_column_range *r2,
-                                      zsv_column_name_lookup lookup, void *ctx,
-                                      zsv_column_name_at name_at, void *name_at_ctx) {
+                                     zsv_column_name_lookup lookup, void *ctx, zsv_column_name_at name_at,
+                                     void *name_at_ctx) {
   // When lookup is available, try all 'v'/'vs' positions (column names may contain 'v').
   // Without lookup, stop at the first 'v'/'vs' found.
   for (const char *p = spec; *p; p++) {
