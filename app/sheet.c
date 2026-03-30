@@ -58,9 +58,49 @@ struct zsvsheet_compare_opts {
   char active;
 };
 
-// Wrapper: parse compare spec and populate zsvsheet_compare_opts
-static int zsvsheet_parse_compare(const char *spec, struct zsvsheet_compare_opts *cmp) {
-  if (zsv_column_range_parse(spec, &cmp->r1, &cmp->r2) != 0)
+// Column name lookup for :compare: searches screen buffer header row (row 0)
+struct zsvsheet_colname_lookup_ctx {
+  zsvsheet_screen_buffer_t buffer;
+  size_t col_offset; // 1 if rownum column present, else 0
+};
+
+static unsigned zsvsheet_colname_lookup(const char *name, size_t len, unsigned start_after, void *ctx) {
+  struct zsvsheet_colname_lookup_ctx *c = ctx;
+  size_t colcount = zsvsheet_screen_buffer_cols(c->buffer);
+  for (size_t i = c->col_offset; i < colcount; i++) {
+    unsigned data_col = (unsigned)(i - c->col_offset + 1); // 1-based data column
+    if (data_col <= start_after)
+      continue;
+    const unsigned char *colname = zsvsheet_screen_buffer_cell_display(c->buffer, 0, i);
+    if (colname) {
+      size_t clen = strlen((const char *)colname);
+      if (clen == len && zsv_strincmp(colname, clen, (const unsigned char *)name, len) == 0)
+        return data_col;
+    }
+  }
+  return 0;
+}
+
+static const char *zsvsheet_colname_at(unsigned col_1based, size_t *len, void *ctx) {
+  struct zsvsheet_colname_lookup_ctx *c = ctx;
+  if (col_1based == 0)
+    return NULL;
+  size_t buf_col = (col_1based - 1) + c->col_offset;
+  size_t colcount = zsvsheet_screen_buffer_cols(c->buffer);
+  if (buf_col >= colcount)
+    return NULL;
+  const unsigned char *name = zsvsheet_screen_buffer_cell_display(c->buffer, 0, buf_col);
+  if (!name)
+    return NULL;
+  *len = strlen((const char *)name);
+  return (const char *)name;
+}
+
+// Wrapper: parse compare spec and populate zsvsheet_compare_opts.
+// lookup and name_at share the same ctx.
+static int zsvsheet_parse_compare(const char *spec, struct zsvsheet_compare_opts *cmp, zsv_column_name_lookup lookup,
+                                  zsv_column_name_at name_at, void *ctx) {
+  if (zsv_column_range_parse_ex(spec, &cmp->r1, &cmp->r2, lookup, ctx, name_at, ctx) != 0)
     return -1;
   cmp->active = 1;
   return 0;
@@ -197,6 +237,85 @@ static void get_subcommand(const char *prompt, char *buff, size_t buffsize, int 
       }
     }
     // Ignore other keys
+  }
+}
+
+// Column picker: like get_subcommand, but up/down arrows cycle through column names.
+// col_names: array of column name strings (NULL-terminated)
+// col_count: number of entries in col_names
+static void get_subcommand_with_columns(const char *prompt, char *buff, size_t buffsize, int footer_row,
+                                        const char **col_names, size_t col_count) {
+  *buff = '\0';
+
+  int max_screen_width = 256;
+  for (int i = 0; i < max_screen_width; i++)
+    mvprintw(footer_row, i, "%c", ' ');
+
+  char full_prompt[256];
+  if (col_count > 0)
+    snprintf(full_prompt, sizeof(full_prompt), "%s (up/down to browse)", prompt);
+  else
+    snprintf(full_prompt, sizeof(full_prompt), "%s", prompt);
+
+  mvprintw(footer_row, 0, "%s: ", full_prompt);
+
+  int ch;
+  int y, x;
+  getyx(stdscr, y, x);
+  size_t idx = 0;
+  int sel = -1; // -1 = no column selected (free typing mode)
+
+  while (1) {
+    ch = getch();
+    if (ch == 27) {
+      buff[0] = '\0';
+      break;
+    } else if (ch == '\n' || ch == '\r') {
+      buff[idx] = '\0';
+      break;
+    } else if ((ch == KEY_DOWN || ch == KEY_UP) && col_count > 0) {
+      if (ch == KEY_DOWN)
+        sel = (sel + 1) % (int)col_count;
+      else
+        sel = (sel - 1 + (int)col_count) % (int)col_count;
+
+      // Clear current input on screen
+      for (size_t i = 0; i < idx; i++)
+        mvwdelch(stdscr, y, x + (int)i);
+      move(y, x);
+      clrtoeol();
+
+      // Fill buffer with selected column name
+      const char *name = col_names[sel];
+      size_t nlen = strlen(name);
+      if (nlen >= buffsize)
+        nlen = buffsize - 1;
+      memcpy(buff, name, nlen);
+      buff[nlen] = '\0';
+      idx = nlen;
+      mvprintw(y, x, "%s", buff);
+    } else if (ch == ZSVSHEET_CTRL('A')) {
+      while (idx > 0) {
+        idx--;
+        buff[idx] = '\0';
+        mvwdelch(stdscr, y, x + (int)idx);
+      }
+      sel = -1;
+    } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
+      if (idx > 0) {
+        idx--;
+        buff[idx] = '\0';
+        mvwdelch(stdscr, y, x + (int)idx);
+      }
+      sel = -1;
+    } else if (isprint(ch)) {
+      if (idx < buffsize - 1) {
+        buff[idx++] = ch;
+        buff[idx] = '\0';
+        addch(ch);
+      }
+      sel = -1;
+    }
   }
 }
 
@@ -704,7 +823,27 @@ out:
 static zsvsheet_status zsvsheet_compare_handler(struct zsvsheet_proc_context *ctx) {
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_display_info *di = &state->display_info;
+  struct zsvsheet_ui_buffer *uib = *di->ui_buffers.current;
+  zsvsheet_status result = zsvsheet_status_ok;
   char spec_buffer[256] = {0};
+
+  // Set up column name lookup from screen buffer headers
+  size_t col_offset = uib->rownum_col_offset ? 1 : 0;
+  struct zsvsheet_colname_lookup_ctx lookup_ctx = {.buffer = uib->buffer, .col_offset = col_offset};
+
+  // Build column name list for interactive picker
+  size_t total_cols = zsvsheet_screen_buffer_cols(uib->buffer);
+  size_t data_col_count = total_cols > col_offset ? total_cols - col_offset : 0;
+  const char **all_col_names = NULL;
+  if (data_col_count > 0) {
+    all_col_names = calloc(data_col_count, sizeof(const char *));
+    if (all_col_names) {
+      for (size_t i = 0; i < data_col_count; i++) {
+        const unsigned char *name = zsvsheet_screen_buffer_cell_display(uib->buffer, 0, i + col_offset);
+        all_col_names[i] = name ? (const char *)name : "";
+      }
+    }
+  }
 
   if (ctx->num_params > 0) {
     // Join all params (handles ":compare 2-14 v 15-27" split into multiple tokens)
@@ -719,45 +858,59 @@ static zsvsheet_status zsvsheet_compare_handler(struct zsvsheet_proc_context *ct
     }
     spec_buffer[pos] = '\0';
   } else {
-    if (!ctx->invocation.interactive)
-      return zsvsheet_status_error;
+    if (!ctx->invocation.interactive) {
+      result = zsvsheet_status_error;
+      goto compare_done;
+    }
     int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
-    get_subcommand("Compare (e.g. 2-14 v 15-27 or 2 v 15)", spec_buffer, sizeof(spec_buffer), prompt_footer_row, NULL);
+    get_subcommand_with_columns("Compare column/range", spec_buffer, sizeof(spec_buffer), prompt_footer_row,
+                                all_col_names, all_col_names ? data_col_count : 0);
     if (*spec_buffer == '\0')
-      return zsvsheet_status_ok;
+      goto compare_done;
   }
 
   struct zsvsheet_compare_opts cmp = {0};
-  if (zsvsheet_parse_compare(spec_buffer, &cmp) != 0) {
-    // Check if it's a valid single range; if so, prompt for the second range
+  if (zsvsheet_parse_compare(spec_buffer, &cmp, zsvsheet_colname_lookup, zsvsheet_colname_at, &lookup_ctx) != 0) {
+    // Check if it's a valid single value (number or column name); if so, prompt for the second
     unsigned dummy1, dummy2;
-    if (ctx->invocation.interactive && zsv_column_range_parse_side(spec_buffer, &dummy1, &dummy2) >= 0) {
+    if (ctx->invocation.interactive &&
+        zsv_column_range_parse_side_ex(spec_buffer, &dummy1, &dummy2, zsvsheet_colname_lookup, &lookup_ctx, 0) >= 0) {
+      // Filter second prompt to only columns after the first selection
+      size_t right_start = 0;
+      if (dummy2 > 0 && dummy2 < data_col_count)
+        right_start = dummy2;
+
       char second[256] = {0};
       int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
-      get_subcommand("Compare against", second, sizeof(second), prompt_footer_row, NULL);
+      const char **right_cols = all_col_names ? all_col_names + right_start : NULL;
+      size_t right_count = all_col_names ? data_col_count - right_start : 0;
+      get_subcommand_with_columns("Compare against", second, sizeof(second), prompt_footer_row, right_cols,
+                                  right_count);
       if (*second == '\0')
-        return zsvsheet_status_ok;
-      // Combine: "first_range v second_range"
+        goto compare_done;
+
+      // Combine: "first_range vs second_range"
       size_t first_len = strlen(spec_buffer);
-      if (first_len + 1 + strlen(second) < sizeof(spec_buffer)) {
-        spec_buffer[first_len] = 'v';
-        strcpy(spec_buffer + first_len + 1, second);
+      if (first_len + 3 + strlen(second) < sizeof(spec_buffer)) {
+        memcpy(spec_buffer + first_len, "vs", 2);
+        strcpy(spec_buffer + first_len + 2, second);
       }
-      if (zsvsheet_parse_compare(spec_buffer, &cmp) != 0) {
+      if (zsvsheet_parse_compare(spec_buffer, &cmp, zsvsheet_colname_lookup, zsvsheet_colname_at, &lookup_ctx) != 0) {
         zsvsheet_priv_set_status(di->dimensions, 1, "Invalid compare ranges");
-        return zsvsheet_status_ok;
+        goto compare_done;
       }
     } else {
-      zsvsheet_priv_set_status(di->dimensions, 1, "Invalid spec. Use A-B v C-D, A-B v C, A v C-D, or A v C (1-based)");
-      return zsvsheet_status_ok;
+      zsvsheet_priv_set_status(di->dimensions, 1, "Invalid spec. Use A-B v C-D, A v C (1-based), or column names");
+      goto compare_done;
     }
   }
 
   state->compare = cmp;
-
-  struct zsvsheet_ui_buffer *uib = *di->ui_buffers.current;
   zsvsheet_apply_compare_attrs(uib, &state->compare);
-  return zsvsheet_status_ok;
+
+compare_done:
+  free(all_col_names);
+  return result;
 }
 
 /* We do most procedures in one handler. More complex procedures can be
@@ -889,14 +1042,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   struct zsvsheet_compare_opts compare_opts = {0};
+  const char *compare_spec = NULL;
   const char *filename_arg = NULL;
 
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--compare") && i + 1 < argc) {
-      if (zsvsheet_parse_compare(argv[++i], &compare_opts) != 0) {
-        fprintf(stderr, "Invalid --compare spec. Use e.g. 2-14v15-27 or 2v15 (1-based columns)\n");
-        return 1;
-      }
+      compare_spec = argv[++i];
     } else if (argv[i][0] != '-' && !filename_arg) {
       filename_arg = argv[i];
     }
@@ -947,6 +1098,27 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
       err = -1;
       goto zsvsheet_exit;
+    }
+  }
+
+  // Parse --compare spec now that the buffer is populated (enables column name lookup)
+  if (compare_spec) {
+    if (current_ui_buffer && current_ui_buffer->buffer) {
+      struct zsvsheet_colname_lookup_ctx lookup_ctx = {.buffer = current_ui_buffer->buffer,
+                                                       .col_offset = current_ui_buffer->rownum_col_offset ? 1 : 0};
+      if (zsvsheet_parse_compare(compare_spec, &compare_opts, zsvsheet_colname_lookup, zsvsheet_colname_at,
+                                 &lookup_ctx) != 0) {
+        fprintf(stderr, "Invalid --compare spec. Use e.g. 2-14v15-27, 2v15 (1-based columns), or column names\n");
+        err = -1;
+        goto zsvsheet_exit;
+      }
+    } else {
+      // No buffer available — fall back to numeric-only parsing
+      if (zsvsheet_parse_compare(compare_spec, &compare_opts, NULL, NULL, NULL) != 0) {
+        fprintf(stderr, "Invalid --compare spec. Use e.g. 2-14v15-27 or 2v15 (1-based columns)\n");
+        err = -1;
+        goto zsvsheet_exit;
+      }
     }
   }
 
