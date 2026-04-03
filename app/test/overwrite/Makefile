@@ -49,8 +49,8 @@ test: \
 test-1:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear
-	@${EXE} dummy.csv list > ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${EXE} dummy.csv list > ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 TIMESTAMP=$(shell date +"%s")
 
@@ -58,17 +58,17 @@ test-2:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear
 	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC --no-timestamp
-	@${EXE} dummy.csv list > ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${EXE} dummy.csv list > ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-excel-cells:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear
 	@${PREFIX} ${EXE} dummy.csv add C2 EXCEL --no-timestamp
-	@${EXE} dummy.csv list > ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${EXE} dummy.csv list --A1 > ${TMP_DIR}/$@-a1.out
-	@${CMP} ${TMP_DIR}/$@-a1.out expected/$@-a1.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${EXE} dummy.csv list > ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+	@(${EXE} dummy.csv list --A1 > ${TMP_DIR}/$@-a1.out && \
+	${CMP} ${TMP_DIR}/$@-a1.out expected/$@-a1.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-add:
 	@${TEST_INIT}
@@ -77,10 +77,10 @@ test-add:
 	@${PREFIX} ${EXE} dummy2.csv add 2-2 VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 2-3 VAL3 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 2-4 VAL4 --no-timestamp
-	@${EXE} dummy2.csv list > ${TMP_DIR}/$@-list.out
-	@${CMP} ${TMP_DIR}/$@-list.out expected/$@-list.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} ${ECHO_EXE} --apply-overwrites dummy2.csv > ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-list.out && \
+	${CMP} ${TMP_DIR}/$@-list.out expected/$@-list.out && ${TEST_PASS} || ${TEST_FAIL})
+	@(${PREFIX} ${ECHO_EXE} --apply-overwrites dummy2.csv > ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-remove:
 	@${TEST_INIT}
@@ -90,13 +90,13 @@ test-remove:
 	@${PREFIX} ${EXE} dummy2.csv add 3-1 V3 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 4-1 V4 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv remove 2-1
-	@${EXE} dummy2.csv list > ${TMP_DIR}/$@-1.out
-	@${CMP} ${TMP_DIR}/$@-1.out expected/$@-1.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-1.out && \
+	${CMP} ${TMP_DIR}/$@-1.out expected/$@-1.out && ${TEST_PASS} || ${TEST_FAIL})
 	@${PREFIX} ${EXE} dummy2.csv remove 4-1
-	@${EXE} dummy2.csv list > ${TMP_DIR}/$@-2.out
-	@${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} ${EXE} dummy2.csv remove --all
-	@${CHECK} [ ! -f ".zsv/overwrite/dummy2.csv/overwrite.sqlite3" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-2.out && \
+	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
+	@(${PREFIX} ${EXE} dummy2.csv remove --all && \
+	[ ! -f ".zsv/overwrite/dummy2.csv/overwrite.sqlite3" ] && ${TEST_PASS} || ${TEST_FAIL})
 
 test-old-value:
 	@${TEST_INIT}
@@ -105,17 +105,17 @@ test-old-value:
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 V2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 3-1 V3 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 4-1 V4 --no-timestamp
-	@${EXE} dummy2.csv add 3-1 NEW_V4 --no-timestamp 2> ${TMP_DIR}/$@-fail.out || true
-	@${CMP} ${TMP_DIR}/$@-fail.out expected/$@-fail.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${EXE} dummy2.csv add 3-1 NEW_V4 --no-timestamp 2> ${TMP_DIR}/$@-fail.out || \
+	${CMP} ${TMP_DIR}/$@-fail.out expected/$@-fail.out && ${TEST_PASS} || ${TEST_FAIL})
 	@${PREFIX} ${EXE} dummy2.csv remove 2-1 --old-value V3
-	@${EXE} dummy2.csv list > ${TMP_DIR}/$@-1.out
-	@${CMP} ${TMP_DIR}/$@-1.out expected/$@-1.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-1.out && \
+	${CMP} ${TMP_DIR}/$@-1.out expected/$@-1.out && ${TEST_PASS} || ${TEST_FAIL})
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 NEW_V2 --old-value V2 --no-timestamp
-	@${EXE} dummy2.csv list > ${TMP_DIR}/$@-2.out
-	@${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-2.out && \
+	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
 	@${PREFIX} ${EXE} dummy2.csv remove 3-1 --old-value V3
-	@${EXE} dummy2.csv list > ${TMP_DIR}/$@-3.out
-	@${CMP} ${TMP_DIR}/$@-3.out expected/$@-3.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-3.out && \
+	${CMP} ${TMP_DIR}/$@-3.out expected/$@-3.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-force:
 	@${TEST_INIT}
@@ -124,13 +124,13 @@ test-force:
 	@${PREFIX} ${EXE} dummy2.csv add 2-2 VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 2-3 VAL3 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 2-4 VAL4 --no-timestamp
-	@${EXE} dummy2.csv add 2-4 NEW_VAL4 --no-timestamp 2> ${TMP_DIR}/$@-fail.out || true
-	@${CMP} ${TMP_DIR}/$@-fail.out expected/$@-fail.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${EXE} dummy2.csv list > ${TMP_DIR}/$@-1.out
-	@${CMP} ${TMP_DIR}/$@-1.out expected/$@-1.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} ${EXE} dummy2.csv add 2-4 NEW_VAL4 --no-timestamp --force
-	@${EXE} dummy2.csv list > ${TMP_DIR}/$@-2.out
-	@${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${EXE} dummy2.csv add 2-4 NEW_VAL4 --no-timestamp 2> ${TMP_DIR}/$@-fail.out || \
+	${CMP} ${TMP_DIR}/$@-fail.out expected/$@-fail.out && ${TEST_PASS} || ${TEST_FAIL})
+	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-1.out && \
+	${CMP} ${TMP_DIR}/$@-1.out expected/$@-1.out && ${TEST_PASS} || ${TEST_FAIL})
+	@(${PREFIX} ${EXE} dummy2.csv add 2-4 NEW_VAL4 --no-timestamp --force && \
+	${EXE} dummy2.csv list > ${TMP_DIR}/$@-2.out && \
+	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-bulk-add:
 	@${TEST_INIT}
@@ -138,8 +138,8 @@ test-bulk-add:
 	@${PREFIX} ${EXE} dummy2.csv add 1-1 OLD_V1 --no-timestamp # for old value test
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 OLD_VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv bulk-add overwrite.csv
-	@${EXE} dummy2.csv list > ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-bulk-remove:
 	@${TEST_INIT}
@@ -148,8 +148,8 @@ test-bulk-remove:
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 OLD_VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv bulk-add overwrite.csv
 	@${PREFIX} ${EXE} dummy2.csv bulk-remove remove.csv
-	@${EXE} dummy2.csv list > ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 STAT_MOD_TS=$(shell if stat -c %Y Makefile >/dev/null 2>/dev/null; then echo 'stat -c %Y' ; else echo 'stat -f %m' ; fi)
 # MOD_TS_OFFSET is to prevent false negative test results due to minor time differences due to second boundary updates,
@@ -181,8 +181,8 @@ test-echo-overwrite-auto:
 	@${PREFIX} ${EXE} dummy.csv clear
 	@${PREFIX} ${EXE} dummy.csv add 1-0 ABC
 	@${PREFIX} ${EXE} dummy.csv add 2-2 123
-	@${ECHO_EXE} --apply-overwrites dummy.csv > ${TMP_DIR}/$@.out
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${ECHO_EXE} --apply-overwrites dummy.csv > ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 clean:
 	@rm -rf ${TMP_DIR}
