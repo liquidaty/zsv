@@ -187,9 +187,6 @@ export TIMINGS_CSV:=${TMP_DIR}/timings-${DATE_TIME}.csv
 TMUX_TERM=xterm-256color
 test-sheet-extension-1: ${CLI} ${TARGET} ../test/worldcitiespop_mil.csv
 	@${TEST_INIT}
-ifeq ($(IS_WSL),1)
-	@${TEST_SKIP}
-else
 	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
 	@tmux kill-session -t $@ || echo 'No tmux session to kill'
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
@@ -199,7 +196,6 @@ else
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ "t" "hello" Enter Up Down && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
-endif
 
 test-sheet-extension-2: ${CLI} ${TARGET}
 	@${TEST_INIT}

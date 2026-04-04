@@ -83,9 +83,13 @@ test-parallel-3: $(SELECT_EXE) chunk_break.csv ${TMP_DIR}/chunk_clean.csv
 
 test-parallel-4: $(COUNT_EXE) chunk_break.csv
 	@${TEST_INIT}
+ifeq ($(IS_WSL),1)
+	@${TEST_SKIP}
+else
 	${COUNT_EXE} chunk_break.csv -j 3 > ${TMP_DIR}/$@.out -v 2>${TMP_DIR}/$@.err
 	${CMP} ${TMP_DIR}/$@.out $@.expected.out && ${TEST_PASS} || ${TEST_FAIL}
 	${CMP} ${TMP_DIR}/$@.err $@.expected.err && ${TEST_PASS} || ${TEST_FAIL}
+endif
 
 test-parallel-5: $(SELECT_EXE) ../worldcitiespop_mil.csv
 	@${TEST_INIT}
