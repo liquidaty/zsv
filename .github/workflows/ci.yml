@@ -490,6 +490,7 @@ jobs:
         CMP: diff -Z
         MAKE: make
         RUN_TESTS: true
+        IS_WSL: 1
       run: |
         ./scripts/ci-build.sh
         ./scripts/ci-create-nuget-package.sh
