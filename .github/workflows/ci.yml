@@ -450,154 +450,155 @@ jobs:
   #     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
   #     run: ./scripts/ci-upload-release-artifacts.sh
 
-  ci-linux-mingw:
-    # needs: [tag, clang-format, cppcheck, shellcheck]
-    needs: [tag]
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
-
-    env:
-      TAG: ${{ needs.tag.outputs.TAG }}
-
-    outputs:
-      TAG: ${{ needs.tag.outputs.TAG }}
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v6
-
-    - name: Set up apt
-      run: |
-        sudo dpkg --add-architecture i386
-        sudo apt update
-        sudo apt remove -y jq
-
-    - name: Install apt dependencies
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: mingw-w64 wine32 wine64 wine-binfmt nuget tmux
-
-    - name: Set up wine
-      run: |
-        sudo update-binfmts --disable cli
-        sudo update-binfmts --enable wine
-        update-binfmts --display wine
-        {
-          echo 'WINEARCH=win64'
-          echo 'WINEDEBUG=-all'
-        } >>"$GITHUB_ENV"
-
-    - name: Set up PDCurses
-      run: ./scripts/ci-build-pdcurses-with-mingw.sh
-
-    - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
-      env:
-        PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
-        CC: x86_64-w64-mingw32-gcc
-        MAKE: make
-        RUN_TESTS: true
-      run: |
-        ./scripts/ci-build.sh
-        ./scripts/ci-create-nuget-package.sh
-
-    - name: Prepare build artifacts for upload
-      run: ./scripts/ci-prepare-artifacts-for-upload.sh
-
-    - name: Attest build artifacts for release
-      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      uses: actions/attest-build-provenance@v4
-      with:
-        subject-path: ${{ env.ARTIFACT_DIR }}/*
-
-    - name: Verify attestations of release artifacts
-      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      run: ./scripts/ci-verify-attestations.sh
-
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
-      uses: actions/upload-artifact@v7
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz)
-      uses: actions/upload-artifact@v7
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
-    - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg)
-      uses: actions/upload-artifact@v7
-      env:
-        ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
-      with:
-        name: ${{ env.ARTIFACT_NAME }}
-        path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
-        retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
-        if-no-files-found: error
-
-    - name: Upload release artifacts
-      if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-      run: ./scripts/ci-upload-release-artifacts.sh
-
-  # ci-wsl-mingw:
-  #   if: ${{ github.event_name == 'workflow_dispatch' && inputs.wsl == true }}
-  #   needs: [tag, clang-format, cppcheck, shellcheck]
-  #   runs-on: windows-2025
-  #   timeout-minutes: 30
+  # ci-linux-mingw:
+  #   # needs: [tag, clang-format, cppcheck, shellcheck]
+  #   needs: [tag]
+  #   runs-on: ubuntu-22.04
+  #   timeout-minutes: 15
 
   #   env:
   #     TAG: ${{ needs.tag.outputs.TAG }}
 
-  #   defaults:
-  #     run:
-  #       shell: bash
+  #   outputs:
+  #     TAG: ${{ needs.tag.outputs.TAG }}
 
   #   steps:
-  #   - name: Set up WSL 2
-  #     uses: Vampire/setup-wsl@v6
-  #     with:
-  #       wsl-version: 2
-  #       wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
-  #       set-as-default: true
-  #       distribution: Ubuntu-22.04
-  #       use-cache: true
-  #       additional-packages: |
-  #         build-essential
-  #         mingw-w64
-  #         sqlite3
-  #         tree
-  #         zip
-  #         tar
-  #         wget
-  #         tmux
-
   #   - name: Checkout
   #     uses: actions/checkout@v6
 
-  #   - name: Build (${{ env.AMD64_WSL_MINGW }})
+  #   - name: Set up apt
+  #     run: |
+  #       sudo dpkg --add-architecture i386
+  #       sudo apt update
+  #       sudo apt remove -y jq
+
+  #   - name: Install apt dependencies
+  #     uses: awalsh128/cache-apt-pkgs-action@latest
+  #     with:
+  #       packages: mingw-w64 wine32 wine64 wine-binfmt nuget tmux
+
+  #   - name: Set up wine
+  #     run: |
+  #       sudo update-binfmts --disable cli
+  #       sudo update-binfmts --enable wine
+  #       update-binfmts --display wine
+  #       {
+  #         echo 'WINEARCH=win64'
+  #         echo 'WINEDEBUG=-all'
+  #       } >>"$GITHUB_ENV"
+
+  #   - name: Set up PDCurses
+  #     run: ./scripts/ci-build-pdcurses-with-mingw.sh
+
+  #   - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
   #     env:
-  #       PREFIX: ${{ env.AMD64_WSL_MINGW }}
+  #       PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
   #       CC: x86_64-w64-mingw32-gcc
   #       MAKE: make
   #       RUN_TESTS: true
-  #       SKIP_BUILD: true
-  #       SKIP_ZIP_ARCHIVE: true
-  #       SKIP_TAR_ARCHIVE: true
-  #       WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
-  #     shell: wsl-bash {0}
   #     run: |
-  #       ./scripts/ci-build-pdcurses-with-mingw.sh
-  #       export CFLAGS="-I$PWD/PDCurses-3.9"
-  #       export LDFLAGS="-L$PWD/PDCurses-3.9/wincon"
   #       ./scripts/ci-build.sh
+  #       ./scripts/ci-create-nuget-package.sh
+
+  #   - name: Prepare build artifacts for upload
+  #     run: ./scripts/ci-prepare-artifacts-for-upload.sh
+
+  #   - name: Attest build artifacts for release
+  #     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+  #     uses: actions/attest-build-provenance@v4
+  #     with:
+  #       subject-path: ${{ env.ARTIFACT_DIR }}/*
+
+  #   - name: Verify attestations of release artifacts
+  #     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+  #     run: ./scripts/ci-verify-attestations.sh
+
+  #   - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip)
+  #     uses: actions/upload-artifact@v7
+  #     env:
+  #       ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.zip
+  #     with:
+  #       name: ${{ env.ARTIFACT_NAME }}
+  #       path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+  #       retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+  #       if-no-files-found: error
+
+  #   - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz)
+  #     uses: actions/upload-artifact@v7
+  #     env:
+  #       ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.tar.gz
+  #     with:
+  #       name: ${{ env.ARTIFACT_NAME }}
+  #       path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+  #       retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+  #       if-no-files-found: error
+
+  #   - name: Upload (zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg)
+  #     uses: actions/upload-artifact@v7
+  #     env:
+  #       ARTIFACT_NAME: zsv-${{ env.TAG }}-${{ env.AMD64_WINDOWS_MINGW }}.nupkg
+  #     with:
+  #       name: ${{ env.ARTIFACT_NAME }}
+  #       path: ${{ env.ARTIFACT_DIR }}/${{ env.ARTIFACT_NAME }}
+  #       retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
+  #       if-no-files-found: error
+
+  #   - name: Upload release artifacts
+  #     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+  #     run: ./scripts/ci-upload-release-artifacts.sh
+
+  ci-wsl-mingw:
+    # if: ${{ github.event_name == 'workflow_dispatch' && inputs.wsl == true }}
+    # needs: [tag, clang-format, cppcheck, shellcheck]
+    needs: [tag]
+    runs-on: windows-2025
+    timeout-minutes: 30
+
+    env:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Set up WSL 2
+      uses: Vampire/setup-wsl@v6
+      with:
+        wsl-version: 2
+        wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
+        set-as-default: true
+        distribution: Ubuntu-22.04
+        use-cache: true
+        additional-packages: |
+          build-essential
+          mingw-w64
+          sqlite3
+          tree
+          zip
+          tar
+          wget
+          tmux
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Build (${{ env.AMD64_WSL_MINGW }})
+      env:
+        PREFIX: ${{ env.AMD64_WSL_MINGW }}
+        CC: x86_64-w64-mingw32-gcc
+        MAKE: make
+        RUN_TESTS: true
+        SKIP_BUILD: true
+        SKIP_ZIP_ARCHIVE: true
+        SKIP_TAR_ARCHIVE: true
+        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
+      shell: wsl-bash {0}
+      run: |
+        ./scripts/ci-build-pdcurses-with-mingw.sh
+        export CFLAGS="-I$PWD/PDCurses-3.9"
+        export LDFLAGS="-L$PWD/PDCurses-3.9/wincon"
+        ./scripts/ci-build.sh
 
   # ci-musl:
   #   needs: [tag, clang-format, cppcheck, shellcheck]
