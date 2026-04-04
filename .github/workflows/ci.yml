@@ -487,10 +487,8 @@ jobs:
       env:
         PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
         CC: x86_64-w64-mingw32-gcc
-        CMP: diff -Z
-        MAKE: make
+        MAKE: make CMP="diff -Z" IS_WSL=1
         RUN_TESTS: true
-        IS_WSL: 1
       run: |
         ./scripts/ci-build.sh
         ./scripts/ci-create-nuget-package.sh
