@@ -161,7 +161,10 @@ test-prop:
 ifneq ($(ZSV_NO_PARALLEL),1)
 test-parallel: ${BUILD_DIR}/bin/zsv_select${EXE} ${BUILD_DIR}/bin/zsv_count${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
-	@SELECT_EXE=${BUILD_DIR}/bin/zsv_select${EXE} COUNT_EXE=${BUILD_DIR}/bin/zsv_count${EXE} ${MAKE} -C parallel test
+	@CMP="${CMP}" \
+	SELECT_EXE=${BUILD_DIR}/bin/zsv_select${EXE} \
+	COUNT_EXE=${BUILD_DIR}/bin/zsv_count${EXE} \
+	${MAKE} -C parallel test
 endif
 
 test-check: test-check-1 test-check-2
@@ -169,24 +172,24 @@ test-check: test-check-1 test-check-2
 test-check-1: ${BUILD_DIR}/bin/zsv_check${EXE}
 	@${TEST_INIT}
 	@$< ${TEST_DATA_DIR}/test/check.csv -o ${TMP_DIR}/$@.out1 && (echo "should have failed!") || [ 1 = 1 ]
-	@cmp ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
+	@{CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
 	@$< ${TEST_DATA_DIR}/test/check.csv --display-row -o ${TMP_DIR}/$@.out2 && (echo "should have failed!" && exit 1) || [ 1 = 1 ]
-	@cmp ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
+	@{CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
 
 test-check-2: ${BUILD_DIR}/bin/zsv_check${EXE}
 	@${TEST_INIT}
 	@$< --display-row ${TEST_DATA_DIR}/test/latin1.csv -o ${TMP_DIR}/$@.out && (echo "should have failed!") || [ 1 = 1 ]
-	@cmp ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@{CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE} ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 ifeq ($(IS_WSL),1)
 	@${TEST_SKIP}
 else
-	@EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} \
+	@CMP="${CMP}" \
+	EXE=${BUILD_DIR}/bin/zsv_overwrite${EXE} \
 	ECHO_EXE=${BUILD_DIR}/bin/zsv_echo${EXE} \
 	SQL_EXE=${BUILD_DIR}/bin/zsv_sql${EXE} \
-	CMP="${CMP}" \
 	${MAKE} -C overwrite test
 endif
 

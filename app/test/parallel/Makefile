@@ -55,7 +55,7 @@ test-parallel-1: $(SELECT_EXE) ../worldcitiespop_mil.csv
 	@mv ${TMP_DIR}/$@.serial.tmp ${TMP_DIR}/$@.serial
 	@${SELECT_EXE} ../worldcitiespop_mil.csv -j 4 > ${TMP_DIR}/$@.parallel.tmp
 	@mv ${TMP_DIR}/$@.parallel.tmp ${TMP_DIR}/$@.parallel
-	@cmp ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel && ${TEST_PASS} || ${TEST_FAIL}
 	@rm -f ${TMP_DIR}/$@.serial.tmp ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel.tmp ${TMP_DIR}/$@.parallel
 
 test-parallel-2: $(COUNT_EXE) ../worldcitiespop_mil.csv
@@ -64,7 +64,7 @@ test-parallel-2: $(COUNT_EXE) ../worldcitiespop_mil.csv
 	@mv ${TMP_DIR}/$@.serial.tmp ${TMP_DIR}/$@.serial
 	@${COUNT_EXE} ../worldcitiespop_mil.csv -j 4 > ${TMP_DIR}/$@.parallel.tmp
 	@mv ${TMP_DIR}/$@.parallel.tmp ${TMP_DIR}/$@.parallel
-	@cmp ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel && ${TEST_PASS} || ${TEST_FAIL}
 	@rm -f ${TMP_DIR}/$@.serial.tmp ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel.tmp ${TMP_DIR}/$@.parallel
 
 chunk_break.csv: ../worldcitiespop_mil.csv
@@ -78,20 +78,20 @@ ${TMP_DIR}/chunk_clean.csv: chunk_break.csv
 test-parallel-3: $(SELECT_EXE) chunk_break.csv ${TMP_DIR}/chunk_clean.csv
 	@${TEST_INIT}
 	@${SELECT_EXE} chunk_break.csv -j 3 --whitespace-clean-no-newline > ${TMP_DIR}/$@.out -v 2>${TMP_DIR}/$@.err
-	@cmp ${TMP_DIR}/$@.out ${TMP_DIR}/chunk_clean.csv && ${TEST_PASS} || ${TEST_FAIL}
-	@cmp ${TMP_DIR}/$@.err $@.expected.err && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out ${TMP_DIR}/chunk_clean.csv && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.err $@.expected.err && ${TEST_PASS} || ${TEST_FAIL}
 
 test-parallel-4: $(COUNT_EXE) chunk_break.csv
 	@${TEST_INIT}
-	@${COUNT_EXE} chunk_break.csv -j 3 > ${TMP_DIR}/$@.out -v 2>${TMP_DIR}/$@.err
-	@cmp ${TMP_DIR}/$@.out $@.expected.out && ${TEST_PASS} || ${TEST_FAIL}
-	@cmp ${TMP_DIR}/$@.err $@.expected.err && ${TEST_PASS} || ${TEST_FAIL}
+	${COUNT_EXE} chunk_break.csv -j 3 > ${TMP_DIR}/$@.out -v 2>${TMP_DIR}/$@.err
+	${CMP} ${TMP_DIR}/$@.out $@.expected.out && ${TEST_PASS} || ${TEST_FAIL}
+	${CMP} ${TMP_DIR}/$@.err $@.expected.err && ${TEST_PASS} || ${TEST_FAIL}
 
 test-parallel-5: $(SELECT_EXE) ../worldcitiespop_mil.csv
 	@${TEST_INIT}
 	@${SELECT_EXE} --regex-search '^[BSZ]an Tala[qt]' ../worldcitiespop_mil.csv > ${TMP_DIR}/$@.out
 	@${SELECT_EXE} -j 10 --regex-search '^[BSZ]an Tala[qt]' ../worldcitiespop_mil.csv > ${TMP_DIR}/$@.parallel.out
-	@cmp ${TMP_DIR}/$@.out ${TMP_DIR}/$@.parallel.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.out ${TMP_DIR}/$@.parallel.out && ${TEST_PASS} || ${TEST_FAIL}
 	@[ `wc -l < ${TMP_DIR}/$@.out` = 49 ] && ${TEST_PASS} || ${TEST_FAIL}
 
 clean:
