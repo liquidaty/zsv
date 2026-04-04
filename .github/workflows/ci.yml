@@ -466,12 +466,19 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Install apt dependencies
+    - name: Set up apt
       run: |
         sudo dpkg --add-architecture i386
         sudo apt update
-        sudo apt install -y mingw-w64 wine32 wine64 wine-binfmt nuget tmux
         sudo apt remove -y jq
+
+    - name: Install apt dependencies
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: mingw-w64 wine32 wine64 wine-binfmt nuget tmux
+
+    - name: Set up wine
+      run: |
         sudo update-binfmts --disable cli
         sudo update-binfmts --enable wine
         update-binfmts --display wine
@@ -487,7 +494,7 @@ jobs:
       env:
         PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
         CC: x86_64-w64-mingw32-gcc
-        MAKE: make CMP="diff -Z" IS_WSL=1
+        MAKE: make
         RUN_TESTS: true
       run: |
         ./scripts/ci-build.sh
