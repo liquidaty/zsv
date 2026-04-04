@@ -1239,6 +1239,15 @@ const char *display_cell(struct zsvsheet_screen_buffer *buff, size_t data_row, s
     p[nbytes] = '\0';
     size_t wlen = MultiByteToWideChar(CP_UTF8, 0, p, -1, wsubstring, sizeof(wsubstring) / sizeof(wchar_t));
     p[nbytes] = tmp_ch;
+#elif defined(__linux__) && !defined(__GLIBC__) // musl
+    // https://github.com/liquidaty/zsv/issues/525
+    char *p = (char *)str;
+    char tmp_ch = p[nbytes];
+    p[nbytes] = '\0';
+    const char *p_convert = str;
+    mbstate_t st = {0};
+    size_t wlen = mbsrtowcs(wsubstring, &p_convert, sizeof(wsubstring) / sizeof(wchar_t), &st);
+    p[nbytes] = tmp_ch;
 #else
     const char *p = str;
     size_t wlen = mbsnrtowcs(wsubstring, &p, nbytes, sizeof(wsubstring) / sizeof(wchar_t), NULL);
