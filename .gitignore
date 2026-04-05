@@ -84,4 +84,4 @@ app/test/zSE*
 !**/expected/*.out
 pkg
 PDCurses-3.9
-
+app/test/parallel/chunk_break.csv
