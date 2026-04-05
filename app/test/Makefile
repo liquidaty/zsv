@@ -131,6 +131,7 @@ help:
 
 clean:
 	rm -rf ${TMP_DIR}
+	@${MAKE} -C parallel clean
 
 CLI:
 	@echo "Testing CLI..."

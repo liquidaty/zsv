@@ -236,7 +236,7 @@ static void header_handler(void *ctx) {
         data->run_in_parallel = 1;
         if (data->opts->verbose) {
           for (unsigned int i = 0; i < data->num_chunks; i++) {
-            fprintf(stderr, "Chunk %i: %zu - %zu\n", i + 1, offsets[i].start, offsets[i].end);
+            fprintf(stderr, "Chunk %i: %lld - %lld\n", i + 1, (long long)offsets[i].start, (long long)offsets[i].end);
           }
         }
 
