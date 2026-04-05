@@ -60,7 +60,7 @@ size_t zsv_memfile_write(const void *data, size_t sz, size_t n, zsv_memfile *zfm
     // If memory is now full, transition to disk if data remains
     if (zfm->used == zfm->size && remaining_bytes > 0) {
       // Allocate the temporary disk file. We use tmpfile() for simplicity and security.
-      zfm->tmp_f = zsv_tmpfile("zfm_", &zfm->tmp_fn, "wb+");
+      zfm->tmp_f = zsv_tmpfile("zfm", &zfm->tmp_fn, "wb+");
       if (!zfm->tmp_f) {
         perror("Failed to create temporary file");
         return written_total; // Return what was successfully written to memory

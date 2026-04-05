@@ -84,4 +84,3 @@ app/test/zSE*
 !**/expected/*.out
 pkg
 PDCurses-3.9
-
