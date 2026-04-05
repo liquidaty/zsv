@@ -85,7 +85,7 @@ fi
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
   rm -rf build "$PREFIX"
-  "$MAKE" test
+  $MAKE test
   echo "[INF] Tests completed successfully!"
 
   if [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ] || [ "$STATIC_BUILD" = "1" ]; then
@@ -93,7 +93,7 @@ if [ "$RUN_TESTS" = true ]; then
   else
     echo "[INF] Configuring example extension and running example extension tests"
     echo "[INF] (cd app/ext_example && $MAKE CONFIGFILE=../../config.mk test)"
-    (cd app/ext_example && "$MAKE" CONFIGFILE=../../config.mk test)
+    (cd app/ext_example && $MAKE CONFIGFILE=../../config.mk test)
     echo "[INF] Tests completed successfully!"
   fi
 fi
@@ -101,7 +101,7 @@ fi
 if [ "$SKIP_BUILD" = false ]; then
   echo "[INF] Building"
   rm -rf build "$PREFIX" /usr/local/etc/zsv.ini
-  "$MAKE" install
+  $MAKE install
   tree "$PREFIX"
   echo "[INF] Built successfully!"
 
