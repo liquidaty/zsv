@@ -30,7 +30,7 @@ for tabular data, specifically intended to be useful in situations including:
 
 For more about the parser in general, visit the [README.md](../README.md)
 
-## Application features
+## Application
 
 `sheet` features are in an early stage and still have significant room
 for improvement (of existing features) and expansion (of new features).
@@ -64,6 +64,11 @@ Other features under current consideration or plan:
 - Tighter integration with [overwrite](overwrite.md) capabilities
 - Comparison
 - Write-related features (edit, find/replace etc)
+
+### Comparison
+Within sheet, side-by-side columns can be compared and color-coded by typing `:compare` and then entering column ranges to compare
+e.g. `1 v 8` or `1-3 v 8-10` or `City1 v City 2` or `Name vs Name`. Compared cells will be color coded green if equal or red if different.
+<img width="881" height="192" alt="image" src="https://github.com/user-attachments/assets/6a5c185f-ef2e-4782-a658-dca553b2adb9" />
 
 ## Can't find what you're looking for?
 

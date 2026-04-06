@@ -35,6 +35,11 @@ Options common to all commands except `prop`, `rm` and `jq`:
   --only-crlf              : only treat CRLF as row delimiter
                              CR or LF alone are treated as normal chars that do not require quotes
   -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command
+  --parser <default|fast|compat>
+                           : select parser engine. 'fast' uses branchless SIMD
+                             (aarch64 NEON or x86-64 AVX2/SSE2).
+                             'compat' uses the scalar engine that works with
+                             all CSV including non-4180-compliant quoting
   -v,--verbose             : verbose output
 
 Commands that parse CSV or other tabular data:
@@ -64,6 +69,9 @@ Other commands:
   jq       : run a jq filter on json input
 
 (No extended commands)
+
+To learn more, see README at https://github.com/liquidaty/zsv.
+Report any issues at https://github.com/liquidaty/zsv/issues.
 Extension my registered
 Exiting extension example!
 Exiting extension example!
@@ -99,6 +107,11 @@ Options common to all commands except `prop`, `rm` and `jq`:
   --only-crlf              : only treat CRLF as row delimiter
                              CR or LF alone are treated as normal chars that do not require quotes
   -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command
+  --parser <default|fast|compat>
+                           : select parser engine. 'fast' uses branchless SIMD
+                             (aarch64 NEON or x86-64 AVX2/SSE2).
+                             'compat' uses the scalar engine that works with
+                             all CSV including non-4180-compliant quoting
   -v,--verbose             : verbose output
 
 Commands that parse CSV or other tabular data:
@@ -131,3 +144,6 @@ Extended commands:
   Extension 'my': Sample zsv extension
     my-count: print the number of rows
     my-echo: print the input data back to stdout
+
+To learn more, see README at https://github.com/liquidaty/zsv.
+Report any issues at https://github.com/liquidaty/zsv/issues.

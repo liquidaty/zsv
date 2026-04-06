@@ -125,6 +125,7 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx) {
  * blank rows -0,--header-row <header> : insert the provided CSV as the first row (in position 0) e.g. --header-row
  * 'col1,col2,\"my col 3\"'", -v,--verbose
  *     -1,--apply-overwrites: automatically apply cached overwrites
+ *     --parser <default|fast|compat>: select parser engine
  *
  * @param  argc      count of args to process
  * @param  argv      args to process
@@ -188,6 +189,18 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, co
       opts_out->only_crlf_rowend = 1;
       continue;
 #endif
+    } else if (!strcmp(argv[i] + 2, "parser")) {
+      if (++i >= argc)
+        err = fprintf(stderr, "Error: --parser requires a value (default, fast, or compat)\n");
+      else if (!strcmp(argv[i], "default"))
+        opts_out->scan_engine = 0; /* use compiled default */
+      else if (!strcmp(argv[i], "fast"))
+        opts_out->scan_engine = 3; /* ZSV_MODE_DELIM_FAST */
+      else if (!strcmp(argv[i], "compat"))
+        opts_out->scan_engine = 255; /* force compat/standard engine */
+      else
+        err = fprintf(stderr, "Error: --parser value must be 'default', 'fast', or 'compat' (got '%s')\n", argv[i]);
+      continue;
     } else {
       found_ix = str_array_index_of(long_args, argv[i] + 2);
       arg = short_args[found_ix];

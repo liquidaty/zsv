@@ -84,3 +84,5 @@ app/test/zSE*
 app/ext_example/zEE*
 app/test/parallel/chunk_break.csv
 !**/expected/*.out
+pkg
+PDCurses-3.9

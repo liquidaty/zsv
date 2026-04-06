@@ -69,6 +69,14 @@ ifeq ($(NO_THREADING),1)
   CFLAGS+= -DNO_THREADING
 endif
 
+ifeq ($(HAVE_NEON),1)
+  CFLAGS+= -DZSV_HAVE_NEON
+endif
+
+ifeq ($(DEFAULT_PARSER_FAST),1)
+  CFLAGS+= -DZSV_DEFAULT_PARSER_FAST
+endif
+
 ifeq ($(ZSV_NO_ONLY_CRLF),1)
   CFLAGS+= -DZSV_NO_ONLY_CRLF
 endif
@@ -173,17 +181,19 @@ ${LIBZSV_SHARED_BUILD}: zsv.c zsv_internal.c
 	${CC} ${CFLAGS} ${CFLAGS_VISIBILITY_HIDDEN} -DZSV_BUILD_SHARED -DZSV_VERSION=\"${VERSION}\" -I${INCLUDE_DIR} ${ZSV_OBJ_OPTS} -shared -fPIC ${LDFLAGS} -o $@ $< -I../app/external/sqlite3
 	@echo Built $@
 
-../include/zsv.h:
+../include/zsv.h: ../include/zsv.h.in
 ifeq ($(ZSV_EXTRAS),1)
 	@sed 's/__ZSV_EXTRAS__DEFINE__/#ifndef ZSV_EXTRAS\n#define ZSV_EXTRAS\n#endif/' < ../include/zsv.h.in > $@
 else
 	@sed 's/__ZSV_EXTRAS__DEFINE__//' < ../include/zsv.h.in > $@
 endif
 
+DESTDIR ?=
+
 install: ../include/zsv.h ${LIBZSV_INSTALL}
-	@mkdir -p $(INCLUDEDIR)
-	@cp -p ../include/*.h $(INCLUDEDIR)
-	@cp -pR ../include/zsv $(INCLUDEDIR)/
+	mkdir -p $(INCLUDEDIR)
+	cp -p ../include/*.h $(INCLUDEDIR)
+	cp -pR ../include/zsv $(INCLUDEDIR)/
 	@echo "Header files copied to $(INCLUDEDIR)"
 ifeq ($(BUILD_SHAREDLIB),1)
 ifeq ($(UNAME_S),Linux)
@@ -192,15 +202,26 @@ ifeq ($(UNAME_S),Linux)
 	ln -srf $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_SO_NAME) $(LIBDIR)/libzsv.$(SHAREDLIB_EXT_LINK_NAME)
 endif
 endif
+ifneq ($(DESTDIR),)
+	mkdir -p $(DESTDIR)/include $(DESTDIR)/lib
+	cp -pR $(INCLUDEDIR)/* $(DESTDIR)/include
+	cp -p $(LIBDIR)/* $(DESTDIR)/lib
+	@echo "Headers and library files installed to DESTDIR=${DESTDIR}"
+endif
 
 ${LIBZSV_INSTALL}: ${LIBDIR}/% : ${BUILD_DIR}/lib/%
-	@mkdir -p `dirname "$@"`
+	mkdir -p `dirname "$@"`
 	cp -p "$<" "$@"
 	@echo "$* installed to $@"
 
 uninstall:
+ifneq ($(DESTDIR),)
+	rm -rf $(DESTDIR)/include/zsv*
+	rm -rf $(DESTDIR)/lib/libzsv*
+else
 	@rm -rf ${INCLUDEDIR}/zsv*
 	 rm  -f ${LIBDIR}/libzsv*
+endif
 
 clean:
 	rm -rf ${BUILD_DIR}/objs ${LIBZSV_BUILD}

@@ -306,6 +306,52 @@ enum zsv_writer_status zsv_writer_cell(zsv_csv_writer w, char new_row, const uns
   return zsv_writer_cell_aux(w, s, len, check_if_needs_quoting);
 }
 
+/*
+ * Write an entire row of raw (pre-formatted) cells in a tight loop.
+ * Skips per-cell quoting scans, NULL checks, and cell_prepend handling.
+ * Cells are written as-is with comma delimiters and a trailing newline.
+ * Only valid when cells don't need quoting checks (e.g., raw passthrough
+ * from the fast parser where cell.quoted == 0).
+ */
+enum zsv_writer_status zsv_writer_row_raw(zsv_csv_writer w, const struct zsv_cell *cells, unsigned int count) {
+  struct zsv_output_buff *b = &w->out;
+  if (!w->started) {
+    if (w->table_init)
+      w->table_init(w->table_init_ctx);
+    if (w->with_bom)
+      zsv_output_buff_write(b, (const unsigned char *)"\xef\xbb\xbf", 3);
+    w->started = 1;
+  } else {
+    if (VERY_UNLIKELY(w->on_row != NULL))
+      w->on_row(w->on_row_ctx);
+    /* Write newline to end the previous row */
+    if (LIKELY(1 + b->used <= ZSV_OUTPUT_BUFF_SIZE)) {
+      b->buff[b->used++] = '\n';
+    } else {
+      zsv_output_buff_write(b, (const unsigned char *)"\n", 1);
+    }
+  }
+
+  for (unsigned int i = 0; i < count; i++) {
+    size_t len = cells[i].len;
+    size_t need = len + (i > 0 ? 1 : 0); /* +1 for comma delimiter */
+    if (LIKELY(need + b->used <= ZSV_OUTPUT_BUFF_SIZE)) {
+      /* Fast inline: write comma + cell directly into buffer */
+      char *dst = b->buff + b->used;
+      if (i > 0)
+        *dst++ = ',';
+      memcpy(dst, cells[i].str, len);
+      b->used += need;
+    } else {
+      /* Slow path: flush and retry */
+      if (i > 0)
+        zsv_output_buff_write(b, (const unsigned char *)",", 1);
+      zsv_output_buff_write(b, cells[i].str, len);
+    }
+  }
+  return zsv_writer_status_ok;
+}
+
 void zsv_writer_cell_prepend(zsv_csv_writer w, const unsigned char *s) {
   w->cell_prepend = (const char *)s;
 }
