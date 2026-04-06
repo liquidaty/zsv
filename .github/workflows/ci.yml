@@ -756,7 +756,7 @@ jobs:
 
     steps:
     - name: Set up emsdk
-      uses: mymindstorm/setup-emsdk@v14
+      uses: mymindstorm/setup-emsdk@v15
 
     - name: Checkout
       uses: actions/checkout@v6
