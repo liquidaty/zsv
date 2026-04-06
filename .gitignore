@@ -81,6 +81,7 @@ playground/*
 !playground/index.html
 playground/favicon.ico
 app/test/zSE*
+app/ext_example/zEE*
 !**/expected/*.out
 pkg
 PDCurses-3.9

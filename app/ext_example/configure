@@ -708,8 +708,6 @@ echo "****************************************************************"
 if ! [ "$MAKE" = "" ]; then
     echo ""
     echo "To build and install, run"
-    echo "$MAKE install" > `pwd`/install.sh 2>/dev/null && chmod 755 `pwd`/install.sh 2>/dev/null &&
-        printf "  ./install.sh\nor\n"
     echo "  $MAKE install"
     echo ""
     echo "Other common commands:"

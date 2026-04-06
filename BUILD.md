@@ -8,12 +8,6 @@ To build from source, you'll need a basic unix toolchain with `sh` and
 `make`/`gmake`:
 
 ```shell
-./configure && sudo ./install.sh
-```
-
-or:
-
-```shell
 ./configure && sudo make install
 ```
 
