@@ -588,6 +588,7 @@ jobs:
         PREFIX: ${{ env.AMD64_WSL_MINGW }}
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
+        CMP: diff
         RUN_TESTS: true
         SKIP_BUILD: true
         SKIP_ZIP_ARCHIVE: true
