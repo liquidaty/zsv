@@ -1028,13 +1028,6 @@ echo "*****************************************************************"
 if ! [ "$MAKE" = "" ]; then
     echo
     echo "To build and install, run"
-    {
-        echo "#!/bin/sh"
-        echo "$MAKE install"
-    } >"$PWD"/install.sh 2>/dev/null
-    chmod 755 "$PWD"/install.sh 2>/dev/null
-    echo "  ./install.sh"
-    echo "or"
     echo "  $MAKE install"
     echo
     echo "Other common commands:"
