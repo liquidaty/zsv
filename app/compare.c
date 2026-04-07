@@ -572,25 +572,37 @@ static enum zsv_compare_status zsv_compare_advance(struct zsv_compare_data *data
   return got ? zsv_compare_status_ok : zsv_compare_status_no_more_input;
 }
 
-static int zsv_compare_inputp_cmp(const void *inputpx, const void *inputpy) {
-  struct zsv_compare_input *const *xp = inputpx;
-  struct zsv_compare_input *const *yp = inputpy;
-  const struct zsv_compare_input *x = *xp;
-  const struct zsv_compare_input *y = *yp;
-
-  if (!x->row_loaded && !y->row_loaded)
-    return 0;
+static int zsv_compare_keys_only(const struct zsv_compare_input *x, const struct zsv_compare_input *y) {
+  if (x->row_loaded != y->row_loaded)
+    return x->row_loaded ? -1 : 1;
   if (!x->row_loaded)
-    return 1;
-  if (!y->row_loaded)
-    return -1;
+    return 0;
 
   int cmp = 0;
-  for (unsigned i = 0; !cmp && i < x->key_count && i < y->key_count; i++)
+  for (unsigned i = 0; !cmp && i < x->key_count && i < y->key_count; i++) {
     // for multibyte input, the input must be also sorted lexicographically
     // to avoid potential mismatches
     // see e.g. https://stackoverflow.com/questions/4611302/sorting-utf-8-strings
     cmp = zsv_strincmp(x->keys[i].value.str, x->keys[i].value.len, y->keys[i].value.str, y->keys[i].value.len);
+  }
+
+  if (cmp == 0 && x->key_count != y->key_count)
+    return (x->key_count < y->key_count) ? -1 : 1;
+
+  return cmp;
+}
+
+static int zsv_compare_inputp_cmp(const void *inputpx, const void *inputpy) {
+  const struct zsv_compare_input *x = *(const struct zsv_compare_input **)inputpx;
+  const struct zsv_compare_input *y = *(const struct zsv_compare_input **)inputpy;
+
+  const int cmp = zsv_compare_keys_only(x, y);
+  if (cmp == 0) {
+    if (x->index < y->index)
+      return -1;
+    if (x->index > y->index)
+      return 1;
+  }
   return cmp;
 }
 
@@ -602,7 +614,7 @@ static enum zsv_compare_status zsv_compare_next(struct zsv_compare_data *data) {
   data->row_count++;
   // sort the inputs by ID value first, and input position second
   // for as many inputs have the same smallest ID values, output them as a group
-  //   and set input->row_loaded to 0
+  // and set input->row_loaded to 0
   qsort(data->inputs_to_sort, data->input_count, sizeof(*data->inputs_to_sort), zsv_compare_inputp_cmp);
 
   // find the next subset of inputs with identical id values and process those inputs
@@ -612,7 +624,7 @@ static enum zsv_compare_status zsv_compare_next(struct zsv_compare_data *data) {
     struct zsv_compare_input *tmp = data->inputs_to_sort[tmp_i];
     if (!tmp->row_loaded)
       continue;
-    if (!zsv_compare_inputp_cmp(&min_input, &tmp)) { // keys are the same
+    if (!zsv_compare_keys_only(min_input, tmp)) { // keys are the same
       last = tmp_i;
       continue;
     }
