@@ -72,7 +72,7 @@ test-parallel-2: $(COUNT_EXE) ../worldcitiespop_mil.csv
 
 ${TMP_DIR}/chunk_break.csv: ../worldcitiespop_mil.csv
 	@head -100000 ../worldcitiespop_mil.csv > ${TMP_DIR}/chunk_break.csv.tmp
-	@git apply chunk_break.diff
+	@git apply --whitespace=fix chunk_break.diff
 	@mv ${TMP_DIR}/chunk_break.csv.tmp ${TMP_DIR}/chunk_break.csv
 
 ${TMP_DIR}/chunk_clean.csv: ${TMP_DIR}/chunk_break.csv
