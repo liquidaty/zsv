@@ -1044,17 +1044,17 @@ test-sheet-sqlfilter-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 
 test-sheet-errors: test-sheet-errors-1
 
-/tmp/test-sheet-errors-1.txt: worldcitiespop_mil.csv
-	head -1000 worldcitiespop_mil.csv | tr '\n' '|' > $@.tmp
-	echo 'x' >> $@.tmp
-	echo 'x' >> $@.tmp
-	echo 'x' >> $@.tmp
-	mv $@.tmp $@
+${TMP_DIR}/test-sheet-errors-1.txt: worldcitiespop_mil.csv
+	@head -1000 worldcitiespop_mil.csv | tr '\n' '|' > $@.tmp
+	@echo 'x' >> $@.tmp
+	@echo 'x' >> $@.tmp
+	@echo 'x' >> $@.tmp
+	@mv $@.tmp $@
 
-test-sheet-errors-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} /tmp/test-sheet-errors-1.txt
+test-sheet-errors-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TMP_DIR}/test-sheet-errors-1.txt
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< /tmp/test-sheet-errors-1.txt" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< ${TMP_DIR}/test-sheet-errors-1.txt" && \
 	${EXPECT} $@ indexed-errors && \
 	tmux -L $@ send-keys -t $@ ":errors" ENTER && \
 	${EXPECT} $@ errors && \
