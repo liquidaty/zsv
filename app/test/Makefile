@@ -99,7 +99,8 @@ else
   REDIRECT=>
   REDIRECT1=>
   REDIRECT2=-o
-  export CMP=cmp
+  CMP ?= cmp
+  export CMP
 endif
 
 BIG_FILE ?= none

@@ -36,7 +36,9 @@ else
   EXT=.win
 endif
 
-export CMP=cmp
+CMP ?= cmp
+export CMP
+
 export TMP_DIR=./../../tmp
 
 ifeq ($(DEBUG),1)

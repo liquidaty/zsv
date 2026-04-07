@@ -48,7 +48,8 @@ ifeq ($(WIN),1)
   EXE=.exe
 endif
 
-export CMP=cmp
+CMP ?= cmp
+export CMP
 
 CFLAGS+=-g -O0
 

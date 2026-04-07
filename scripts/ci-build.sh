@@ -32,6 +32,7 @@ if [ "$SKIP_TAR_ARCHIVE" != true ]; then
 fi
 
 WITHOUT_SIMD=${WITHOUT_SIMD:-false}
+CMP=${CMP:-cmp}
 
 #JQ_DIR="$PWD/jq"
 #JQ_PREFIX="$JQ_DIR/build"
@@ -46,6 +47,7 @@ echo "[INF] CC:               $CC"
 echo "[INF] CFLAGS:           $CFLAGS"
 echo "[INF] LDFLAGS:          $LDFLAGS"
 echo "[INF] MAKE:             $MAKE"
+echo "[INF] CMP:              $CMP"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
 echo "[INF] STATIC_BUILD:     $STATIC_BUILD"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
