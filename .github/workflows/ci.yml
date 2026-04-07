@@ -593,7 +593,7 @@ jobs:
         SKIP_BUILD: true
         SKIP_ZIP_ARCHIVE: true
         SKIP_TAR_ARCHIVE: true
-        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
+        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:CMP:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
       shell: wsl-bash {0}
       run: |
         ./scripts/ci-build-pdcurses-with-mingw.sh
