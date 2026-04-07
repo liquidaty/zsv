@@ -813,10 +813,11 @@ TMUX_TERM=xterm-256color
 test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@echo 'set-option -sg escape-time 10' >> ~/.tmux.conf
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ -v new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ Down Up && \
-	${EXPECT} $@ && ${TEST_PASS} || (for x in `ls tmux-*.log 2>/dev/null` ; do echo "Log $$x:" && cat $$x ; done && ${TEST_FAIL}))
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-2: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
@@ -1054,7 +1055,7 @@ test-sheet-errors: test-sheet-errors-1
 test-sheet-errors-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} /tmp/test-sheet-errors-1.txt
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< /tmp/test-sheet-errors-1.txt" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< /tmp/test-sheet-errors-1.txt" && \
 	${EXPECT} $@ indexed-errors && \
 	tmux -L $@ send-keys -t $@ ":errors" ENTER && \
 	${EXPECT} $@ errors && \
