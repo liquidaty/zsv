@@ -813,28 +813,28 @@ TMUX_TERM=xterm-256color
 test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ -v new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ -v new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ Down Up && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-2: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "C-d" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-3: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "f" "sarmaj" ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-4: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "C-d" "C-d" "C-u" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
@@ -842,13 +842,13 @@ test-sheet-4: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 test-sheet-5: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 160 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 160 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-6: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 50 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 50 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "G" "C-u" "C-u" "C-u" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
@@ -856,7 +856,7 @@ test-sheet-6: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 test-sheet-7: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "G" "g" "g" "C-u" "/" "1234" ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
@@ -867,7 +867,7 @@ ifeq ($(IS_WSL),1)
 	@${TEST_SKIP}
 else
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 160 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 160 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	export EXPECT_TIMEOUT=10 && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "f" "e" ENTER && \
@@ -879,7 +879,7 @@ endif
 test-sheet-9: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "G" && \
 	${EXPECT} $@ bottom && \
@@ -892,7 +892,7 @@ ifeq ($(IS_WSL),1)
 	@${TEST_SKIP}
 else
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< -t worldcitiespop_mil.tsv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< -t worldcitiespop_mil.tsv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "f" "e" ENTER && \
 	${EXPECT} $@ filtered && \
@@ -903,7 +903,7 @@ endif
 test-sheet-11: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 50 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 50 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ -N 11 "C-d" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
@@ -911,7 +911,7 @@ test-sheet-11: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS
 test-sheet-12: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "f" "el" ENTER && \
 	${EXPECT} $@ filtered-el && \
@@ -921,14 +921,14 @@ test-sheet-12: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS
 test-sheet-13: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 40 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 40 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux -L $@ send-keys -t $@ "?" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-14: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 40 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 40 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	tmux -L $@ send-keys -t $@ "?" && \
 	${EXPECT} $@ help && \
 	tmux -L $@ send-keys -t $@ ESCAPE && \
@@ -937,7 +937,7 @@ test-sheet-14: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS
 test-sheet-15: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/crlf-line-ending.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< -d 3 ${TEST_DATA_DIR}/test/crlf-line-ending.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "G" && \
 	${EXPECT} $@ bottom && \
@@ -951,7 +951,7 @@ test-sheet-subcommand: \
 test-sheet-subcommand-open-file-prompt: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $<" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $<" && \
 	${EXPECT} $@ blank && \
 	tmux -L $@ send-keys -t $@ ":open" ENTER && \
 	${EXPECT} $@ open && \
@@ -961,7 +961,7 @@ test-sheet-subcommand-open-file-prompt: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 test-sheet-subcommand-open-file-argument: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $<" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $<" && \
 	export EXPECT_TIMEOUT=20 && \
 	${EXPECT} $@ blank && \
 	tmux -L $@ send-keys -t $@ ":open worldcitiespop_mil.csv" ENTER && \
@@ -970,7 +970,7 @@ test-sheet-subcommand-open-file-argument: ${BUILD_DIR}/bin/zsv_sheet${EXE} world
 test-sheet-subcommand-filter-file-prompt: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ blank && \
 	tmux -L $@ send-keys -t $@ ":filter" ENTER && \
 	${EXPECT} $@ filter && \
@@ -980,7 +980,7 @@ test-sheet-subcommand-filter-file-prompt: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 test-sheet-subcommand-filter-file-argument: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ blank && \
 	tmux -L $@ send-keys -t $@ ":filter \"ireland\"" ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
@@ -1006,7 +1006,7 @@ test-sheet-pivot: test-sheet-pivot-1 test-sheet-pivot-V
 test-sheet-pivot-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ l v && \
 	${EXPECT} $@ groups && \
@@ -1019,7 +1019,7 @@ test-sheet-pivot-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 test-sheet-pivot-V: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "V" "Country||'hi'" ENTER && \
 	${EXPECT} $@ groups && \
@@ -1032,7 +1032,7 @@ test-sheet-sqlfilter: test-sheet-sqlfilter-1
 test-sheet-sqlfilter-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ ":where" ENTER "city like 'ber%'" ENTER && \
 	${EXPECT} $@ filter && \
@@ -1054,7 +1054,7 @@ ${TMP_DIR}/test-sheet-errors-1.txt: worldcitiespop_mil.csv
 test-sheet-errors-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TMP_DIR}/test-sheet-errors-1.txt
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< ${TMP_DIR}/test-sheet-errors-1.txt" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< ${TMP_DIR}/test-sheet-errors-1.txt" && \
 	${EXPECT} $@ indexed-errors && \
 	tmux -L $@ send-keys -t $@ ":errors" ENTER && \
 	${EXPECT} $@ errors && \
@@ -1073,7 +1073,7 @@ endif
 test-sheet-filter-this-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "l" "F" "casas" ENTER && \
 	${EXPECT} $@ nodata && \
@@ -1086,7 +1086,7 @@ test-sheet-filter-this-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 test-sheet-filter-this-regex: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "l" "F" "/casas" ENTER && \
 	${EXPECT} $@ nodata && \
@@ -1102,7 +1102,7 @@ benchmark-sheet-index: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 		echo "Need to set BIG_FILE to a CSV file; ideally 10GB+"; \
 	fi
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 50 -d -s "$@" "${PREFIX} $< ${BIG_FILE}" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ new-session -x 80 -y 50 -d -s "$@" "${PREFIX} $< ${BIG_FILE}" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "G" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
