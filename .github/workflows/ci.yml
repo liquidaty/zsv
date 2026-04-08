@@ -468,10 +468,9 @@ jobs:
 
     - name: Set up apt dependencies
       run: |
-        # sudo dpkg --add-architecture i386
-        # sudo apt update
-        # sudo apt install -y mingw-w64 wine32 wine64 wine-binfmt nuget tmux
-        sudo apt install -y mingw-w64 wine64 wine-binfmt nuget tmux
+        sudo dpkg --add-architecture i386
+        sudo apt update
+        sudo apt install -y mingw-w64 wine32 wine64 wine-binfmt nuget tmux
         sudo update-binfmts --disable cli
         sudo update-binfmts --enable wine
         update-binfmts --display wine
@@ -549,59 +548,60 @@ jobs:
       if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: ./scripts/ci-upload-release-artifacts.sh
 
-  # ci-wsl-mingw:
-  #   # if: ${{ github.event_name == 'workflow_dispatch' && inputs.wsl == true }}
-  #   # needs: [tag, clang-format, cppcheck, shellcheck]
-  #   needs: [tag]
-  #   runs-on: windows-2025
-  #   timeout-minutes: 30
+  ci-wsl-mingw:
+    # if: ${{ github.event_name == 'workflow_dispatch' && inputs.wsl == true }}
+    # needs: [tag, clang-format, cppcheck, shellcheck]
+    needs: [tag]
+    runs-on: windows-2025
+    timeout-minutes: 30
 
-  #   env:
-  #     TAG: ${{ needs.tag.outputs.TAG }}
+    env:
+      TAG: ${{ needs.tag.outputs.TAG }}
 
-  #   defaults:
-  #     run:
-  #       shell: bash
+    defaults:
+      run:
+        shell: bash
 
-  #   steps:
-  #   - name: Set up WSL 2
-  #     uses: Vampire/setup-wsl@v6
-  #     with:
-  #       wsl-version: 2
-  #       wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
-  #       set-as-default: true
-  #       distribution: Ubuntu-22.04
-  #       use-cache: true
-  #       additional-packages: |
-  #         build-essential
-  #         mingw-w64
-  #         sqlite3
-  #         tree
-  #         zip
-  #         tar
-  #         wget
-  #         tmux
+    steps:
+    - name: Set up WSL 2
+      uses: Vampire/setup-wsl@v6
+      with:
+        wsl-version: 2
+        wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
+        set-as-default: true
+        distribution: Ubuntu-22.04
+        use-cache: true
+        additional-packages: |
+          build-essential
+          mingw-w64
+          sqlite3
+          tree
+          zip
+          tar
+          wget
+          tmux
 
-  #   - name: Checkout
-  #     uses: actions/checkout@v6
+    - name: Checkout
+      uses: actions/checkout@v6
 
-  #   - name: Build (${{ env.AMD64_WSL_MINGW }})
-  #     env:
-  #       PREFIX: ${{ env.AMD64_WSL_MINGW }}
-  #       CC: x86_64-w64-mingw32-gcc
-  #       MAKE: make
-  #       CMP: diff --strip-trailing-cr
-  #       RUN_TESTS: true
-  #       SKIP_BUILD: true
-  #       SKIP_ZIP_ARCHIVE: true
-  #       SKIP_TAR_ARCHIVE: true
-  #       WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:CMP:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
-  #     shell: wsl-bash {0}
-  #     run: |
-  #       ./scripts/ci-build-pdcurses-with-mingw.sh
-  #       export CFLAGS="-I$PWD/PDCurses-3.9"
-  #       export LDFLAGS="-L$PWD/PDCurses-3.9/wincon"
-  #       ./scripts/ci-build.sh
+    - name: Build (${{ env.AMD64_WSL_MINGW }})
+      env:
+        PREFIX: ${{ env.AMD64_WSL_MINGW }}
+        CC: x86_64-w64-mingw32-gcc
+        MAKE: make
+        CMP: diff --strip-trailing-cr
+        RUN_TESTS: true
+        SKIP_BUILD: true
+        SKIP_ZIP_ARCHIVE: true
+        SKIP_TAR_ARCHIVE: true
+        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:CMP:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
+      shell: wsl-bash {0}
+      run: |
+        cp -r zsv ~/ && cd ~/zsv
+        ./scripts/ci-build-pdcurses-with-mingw.sh
+        export CFLAGS="-I$PWD/PDCurses-3.9"
+        export LDFLAGS="-L$PWD/PDCurses-3.9/wincon"
+        ./scripts/ci-build.sh
 
   # ci-musl:
   #   needs: [tag, clang-format, cppcheck, shellcheck]
