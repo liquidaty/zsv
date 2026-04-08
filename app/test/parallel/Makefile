@@ -80,9 +80,9 @@ ${TMP_DIR}/chunk_clean.csv: ${TMP_DIR}/chunk_break.csv
 
 test-parallel-3: $(SELECT_EXE) ${TMP_DIR}/chunk_break.csv ${TMP_DIR}/chunk_clean.csv
 	@${TEST_INIT}
-	@${SELECT_EXE} ${TMP_DIR}/chunk_break.csv -j 3 --whitespace-clean-no-newline > ${TMP_DIR}/$@.out -v 2>${TMP_DIR}/$@.err
-	@${CMP} ${TMP_DIR}/$@.out ${TMP_DIR}/chunk_clean.csv && ${TEST_PASS} || ${TEST_FAIL}
-	@${CMP} ${TMP_DIR}/$@.err expected/$@.err && ${TEST_PASS} || ${TEST_FAIL}
+	${SELECT_EXE} ${TMP_DIR}/chunk_break.csv -j 3 --whitespace-clean-no-newline > ${TMP_DIR}/$@.out -v 2>${TMP_DIR}/$@.err
+	${CMP} ${TMP_DIR}/$@.out ${TMP_DIR}/chunk_clean.csv && ${TEST_PASS} || ${TEST_FAIL}
+	${CMP} ${TMP_DIR}/$@.err expected/$@.err && ${TEST_PASS} || ${TEST_FAIL}
 
 test-parallel-4: $(COUNT_EXE) ${TMP_DIR}/chunk_break.csv
 	@${TEST_INIT}
