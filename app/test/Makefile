@@ -809,18 +809,16 @@ test-sheet-all: \
 	test-sheet-pivot \
 	test-sheet-sqlfilter \
 	test-sheet-errors
-	echo "TERM=$$TERM"
+	echo "TERM=$${TERM}"
 	@(for SESSION in $^; do ! tmux -L "$$SESSION" kill-server 2>/dev/null || echo ''; done && ${TEST_PASS} || ${TEST_FAIL})
 
 TMUX_TERM=xterm-256color
 test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	echo "${TMP_DIR}/tmux-$$(id -u)/$@"
-	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ -v new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f /tmp/tmux-$$(id -u)/$@ 2>/dev/null; tmux -L $@ -v new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ Down Up && \
-	sleep 1 && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-2: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
