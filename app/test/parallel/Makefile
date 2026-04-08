@@ -76,12 +76,12 @@ test-parallel-2: $(COUNT_EXE) ../worldcitiespop_mil.csv
 	@rm -f ${TMP_DIR}/$@.serial.tmp ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel.tmp ${TMP_DIR}/$@.parallel
 
 ${TMP_DIR}/chunk_break.csv: ../worldcitiespop_mil.csv
-	@head -100000 ../worldcitiespop_mil.csv > ${TMP_DIR}/chunk_break.csv.tmp
-	@git apply --ignore-whitespace chunk_break.diff
-	@mv ${TMP_DIR}/chunk_break.csv.tmp ${TMP_DIR}/chunk_break.csv
+	head -100000 ../worldcitiespop_mil.csv > ${TMP_DIR}/chunk_break.csv.tmp
+	git apply --ignore-whitespace chunk_break.diff
+	mv ${TMP_DIR}/chunk_break.csv.tmp ${TMP_DIR}/chunk_break.csv
 
 ${TMP_DIR}/chunk_clean.csv: ${TMP_DIR}/chunk_break.csv
-	@${SELECT_EXE} --whitespace-clean-no-newline < ${TMP_DIR}/chunk_break.csv > $@
+	${SELECT_EXE} --whitespace-clean-no-newline < ${TMP_DIR}/chunk_break.csv > $@
 
 test-parallel-3: $(SELECT_EXE) ${TMP_DIR}/chunk_break.csv ${TMP_DIR}/chunk_clean.csv
 	@${TEST_INIT}

@@ -560,7 +560,7 @@ jobs:
 
     defaults:
       run:
-        shell: bash
+        shell: wsl-bash {0}
 
     steps:
     - name: Set up WSL 2
@@ -584,6 +584,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
+    - name: Set up PDCurses
+      run: ./scripts/ci-build-pdcurses-with-mingw.sh
+
     - name: Build (${{ env.AMD64_WSL_MINGW }})
       env:
         PREFIX: ${{ env.AMD64_WSL_MINGW }}
@@ -594,14 +597,9 @@ jobs:
         SKIP_BUILD: true
         SKIP_ZIP_ARCHIVE: true
         SKIP_TAR_ARCHIVE: true
-        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:CMP:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
+        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:CFLAGS:LDFLAGS:MAKE:CMP:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
       shell: wsl-bash {0}
-      run: |
-        cp -r zsv ~/ && cd ~/zsv
-        ./scripts/ci-build-pdcurses-with-mingw.sh
-        export CFLAGS="-I$PWD/PDCurses-3.9"
-        export LDFLAGS="-L$PWD/PDCurses-3.9/wincon"
-        ./scripts/ci-build.sh
+      run: ./scripts/ci-build.sh
 
   # ci-musl:
   #   needs: [tag, clang-format, cppcheck, shellcheck]
