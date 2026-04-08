@@ -813,8 +813,8 @@ TMUX_TERM=xterm-256color
 test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	tmux -L $@ kill-server 2>/dev/null
-	rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null
+	tmux -L $@ kill-server 2>/dev/null || true
+	rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null || true
 	(tmux -L $@ -v new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ Down Up && \
