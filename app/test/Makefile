@@ -57,7 +57,7 @@ ifneq ($(ZSV_EXTRAS),)
 endif
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
-# TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help test-paste test-flatten-2
+TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help test-paste test-flatten-2
 
 ifeq ($(ZSVSHEET_BUILD),1)
   SOURCES+=sheet
@@ -70,8 +70,8 @@ endif
 ifneq ($(ZSV_NO_PARALLEL),1)
   TESTS+=test-parallel
 endif
-# TESTS+=test-check
-# TESTS+=test-quoted-nonstandard
+TESTS+=test-check
+TESTS+=test-quoted-nonstandard
 
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
@@ -817,7 +817,7 @@ test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ -v new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ Down Up && \
-	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+	${EXPECT} $@ && ${TEST_PASS} || (for x in `ls tmux-*.log 2>/dev/null`; do echo "Log $$x:" && cat $$x; done && ${TEST_FAIL}))
 
 test-sheet-2: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
