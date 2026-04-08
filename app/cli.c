@@ -534,6 +534,8 @@ static struct builtin_cmd *find_builtin(const char *cmd_name) {
   int builtin_cmd_count = sizeof(builtin_cmds) / sizeof(*builtin_cmds);
   if (!strcmp(cmd_name, "-h") || !strcmp(cmd_name, "--help"))
     cmd_name = "help";
+  else if (!strcmp(cmd_name, "-v") || !strcmp(cmd_name, "--version"))
+    cmd_name = "version";
   for (int i = 0; i < builtin_cmd_count; i++)
     if (havearg(cmd_name, builtin_cmds[i].name, 0, 0, 0))
       return &builtin_cmds[i];
