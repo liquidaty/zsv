@@ -14,7 +14,12 @@ COLOR_BLUE=\033[1;34m
 COLOR_PINK=\033[1;35m
 COLOR_YELLOW=\033[1;33m
 
-TMP_DIR=${THIS_MAKEFILE_DIR}/tmp
+IS_WSL=$(shell grep -qi microsoft /proc/version 2>/dev/null && echo 1 || echo 0)
+ifeq ($(IS_WSL),1)
+  TMP_DIR=./tmp
+else
+  TMP_DIR=${THIS_MAKEFILE_DIR}/tmp
+endif
 
 TEST_INIT=mkdir -p ${TMP_DIR} && rm -rf ${TMP_DIR}/test* && printf "${COLOR_PINK}$@: ${COLOR_NONE}\n"
 TEST_SKIP=printf "${COLOR_BLUE}$@: ${COLOR_YELLOW}Skipped${COLOR_NONE}\n"
