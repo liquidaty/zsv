@@ -451,8 +451,7 @@ jobs:
   #     run: ./scripts/ci-upload-release-artifacts.sh
 
   # ci-linux-mingw:
-  #   # needs: [tag, clang-format, cppcheck, shellcheck]
-  #   needs: [tag]
+  #   needs: [tag, clang-format, cppcheck, shellcheck]
   #   runs-on: ubuntu-22.04
   #   timeout-minutes: 15
 
@@ -468,26 +467,10 @@ jobs:
 
   #   - name: Set up apt dependencies
   #     run: |
-  #       sudo dpkg --add-architecture i386
   #       sudo apt update
-  #       sudo apt install -y mingw-w64 wine32 wine64 wine-binfmt nuget tmux
-  #       sudo update-binfmts --disable cli
-  #       sudo update-binfmts --enable wine
-  #       update-binfmts --display wine
-  #       {
-  #         echo 'WINEARCH=win64'
-  #         echo 'WINEDEBUG=-all'
-  #       } >>"$GITHUB_ENV"
-
-  #   - name: Cache PDCurses
-  #     id: pdcurses
-  #     uses: actions/cache@v5
-  #     with:
-  #       path: PDCurses-3.9
-  #       key: mingw-pdcurses-3.9
+  #       sudo apt install -y mingw-w64 nuget
 
   #   - name: Set up PDCurses
-  #     if: ${{ steps.pdcurses.outputs.cache-hit != 'true' }}
   #     run: ./scripts/ci-build-pdcurses-with-mingw.sh
 
   #   - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
@@ -495,8 +478,7 @@ jobs:
   #       PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
   #       CC: x86_64-w64-mingw32-gcc
   #       MAKE: make
-  #       CMP: diff --strip-trailing-cr
-  #       RUN_TESTS: true
+  #       RUN_TESTS: false
   #     run: |
   #       ./scripts/ci-build.sh
   #       ./scripts/ci-create-nuget-package.sh
@@ -592,13 +574,12 @@ jobs:
         PREFIX: ${{ env.AMD64_WSL_MINGW }}
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
-        CMP: diff --strip-trailing-cr
+        # CMP: diff --strip-trailing-cr
         RUN_TESTS: true
         SKIP_BUILD: true
         SKIP_ZIP_ARCHIVE: true
         SKIP_TAR_ARCHIVE: true
         WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:CFLAGS:LDFLAGS:MAKE:CMP:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
-      shell: wsl-bash {0}
       run: ./scripts/ci-build.sh
 
   # ci-musl:
