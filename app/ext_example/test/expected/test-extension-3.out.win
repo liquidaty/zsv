@@ -1,8 +1,3 @@
-Extension my registered
-Exiting extension example!
-Exiting extension example!
-Extension my unregistered
-Extension my was not already registered
 zsv: streaming csv processor
 
 Usage:
@@ -73,8 +68,6 @@ Other commands:
 
 To learn more, see README at https://github.com/liquidaty/zsv.
 Report any issues at https://github.com/liquidaty/zsv/issues.
-Extension my registered
-Exiting extension example!
 zsv: streaming csv processor
 
 Usage:
@@ -148,4 +141,3 @@ Extended commands:
 
 To learn more, see README at https://github.com/liquidaty/zsv.
 Report any issues at https://github.com/liquidaty/zsv/issues.
-Exiting extension example!

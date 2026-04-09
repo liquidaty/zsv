@@ -154,15 +154,17 @@ test-extension-2: test-%: ${CLI} ${TARGET}
 
 test-extension-3: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
-	@rm -f ${TMP_DIR}/$@.out
+	@rm -f ${TMP_DIR}/$@.out ${TMP_DIR}/$@.err
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || true
-	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/$@.out || true
-	@${RUN_CLI} unregister my 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/$@.out || true
-	@${RUN_CLI} unregister my 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/$@.out || true
-	@${RUN_CLI} help 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/$@.out || true
-	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/$@.out || true
-	@${RUN_CLI} help 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/$@.out || true
+	@${RUN_CLI} register my >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
+	@${RUN_CLI} unregister my >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
+	@${RUN_CLI} unregister my >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
+	@${RUN_CLI} help >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
+	@${RUN_CLI} register my >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
+	@${RUN_CLI} help >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
+	@grep -v [.]${SO} ${TMP_DIR}/$@.err >${TMP_DIR}/$@.err.filtered && mv ${TMP_DIR}/$@.err.filtered ${TMP_DIR}/$@.err
 	@${CMP} ${TMP_DIR}/$@.out 2>&1 test/expected/$@.out${EXT} && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.err 2>&1 test/expected/$@.err${EXT} && ${TEST_PASS} || ${TEST_FAIL}
 
 test-extension-4: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
