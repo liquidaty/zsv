@@ -144,8 +144,8 @@ test: ${TESTS}
 
 test-extension-1: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
-	${RUN_CLI} my-echo < ${TEST_DATA_DIR}/quoted.csv > ${TMP_DIR}/$@.out
-	${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${RUN_CLI} my-echo < ${TEST_DATA_DIR}/quoted.csv > ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-extension-2: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
