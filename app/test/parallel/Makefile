@@ -81,7 +81,7 @@ ${TMP_DIR}/chunk_break.csv: ../worldcitiespop_mil.csv
 	mv ${TMP_DIR}/chunk_break.csv.tmp ${TMP_DIR}/chunk_break.csv
 
 ${TMP_DIR}/chunk_clean.csv: ${TMP_DIR}/chunk_break.csv
-	${SELECT_EXE} --whitespace-clean-no-newline < ${TMP_DIR}/chunk_break.csv > $@
+	${SELECT_EXE} --whitespace-clean-no-newline ${TMP_DIR}/chunk_break.csv > $@
 
 test-parallel-3: $(SELECT_EXE) ${TMP_DIR}/chunk_break.csv ${TMP_DIR}/chunk_clean.csv
 	@${TEST_INIT}

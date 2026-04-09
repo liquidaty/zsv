@@ -1020,8 +1020,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       zsv_compare_output_end(data);
   }
 
-  free(input_filenames);
-
   err = data->status == zsv_compare_status_ok ? 0 : 1;
 
   if (data->sort) {
@@ -1041,6 +1039,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     data->inputs[0].path = input_filenames[0];
     data->inputs[1].path = input_filenames[0];
   }
+
+  free(input_filenames);
   free(colrange_label1);
   free(colrange_label2);
 
