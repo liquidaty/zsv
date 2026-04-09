@@ -442,7 +442,7 @@ static char print_properties(FILE *f, int64_t values[2], char keep[2], const cha
 
 static int merge_and_save_properties(const unsigned char *filepath, char save, char overwrite, int64_t d, int64_t R) {
   int err = 0;
-  const char *props_fn = zsv_cache_filepath(filepath, zsv_cache_type_property, 0, 0);
+  char *props_fn = zsv_cache_filepath(filepath, zsv_cache_type_property, 0, 0);
   if (!props_fn)
     err = 1;
   else {
@@ -460,7 +460,7 @@ static int merge_and_save_properties(const unsigned char *filepath, char save, c
     }
 
     if (!err) {
-      const char *props_fn_tmp = save ? zsv_cache_filepath(filepath, zsv_cache_type_property, 1, 1) : NULL;
+      char *props_fn_tmp = save ? zsv_cache_filepath(filepath, zsv_cache_type_property, 1, 1) : NULL;
       if (save && !props_fn_tmp)
         err = 1;
       else {
