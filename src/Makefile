@@ -120,11 +120,16 @@ else
   CFLAGS+= -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -Wl,--strip-all
 endif
 
-CFLAGS+= -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -D_GNU_SOURCE
+CCBN=$(shell basename ${CC})
+
+CFLAGS+= -std=gnu11 -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -D_GNU_SOURCE
+
+ifeq (${CCBN},clang)
+  CFLAGS+= -Wno-gnu-statement-expression
+endif
 
 CFLAGS+= ${ZSV_OPTIONAL_CFLAGS}
 
-CCBN=$(shell basename ${CC})
 THIS_LIB_BASE=$(shell cd .. && pwd)
 INCLUDE_DIR=${THIS_LIB_BASE}/include
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}

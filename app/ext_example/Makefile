@@ -69,15 +69,19 @@ ifeq ($(ZSV_EXTRAS),1)
   CFLAGS+= -DZSV_EXTRAS
 endif
 
+CCBN=$(shell basename ${CC})
+
 DEBUG=0
 ifeq ($(DEBUG),0)
-  CFLAGS+= -O3 -DNDEBUG -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -lm -ftree-vectorize -flto
+  CFLAGS+= -O3 -DNDEBUG -std=gnu11 -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -lm -ftree-vectorize -flto
+  ifeq (${CCBN},clang)
+    CFLAGS+= -Wno-gnu-statement-expression
+  endif
 else
   CFLAGS += -g
 endif
 
 export THIS_LIB_BASE=$(shell cd ../.. && pwd)
-CCBN=$(shell basename ${CC})
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 TARGET=${BUILD_DIR}/bin/zsvextmy.${SO}
 TARGET_SHEET=${BUILD_DIR}/bin/zsvextmysheet.${SO}
