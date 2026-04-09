@@ -89,15 +89,6 @@ if [ "$RUN_TESTS" = true ]; then
   rm -rf build "$PREFIX"
   $MAKE test
   echo "[INF] Tests completed successfully!"
-
-  if [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ] || [ "$STATIC_BUILD" = "1" ]; then
-    echo "[WRN] Dynamic extensions are not supported with static builds! Skipping tests..."
-  else
-    echo "[INF] Configuring example extension and running example extension tests"
-    echo "[INF] (cd app/ext_example && $MAKE CONFIGFILE=../../config.mk test)"
-    (cd app/ext_example && $MAKE CONFIGFILE=../../config.mk test)
-    echo "[INF] Tests completed successfully!"
-  fi
 fi
 
 if [ "$SKIP_BUILD" = false ]; then

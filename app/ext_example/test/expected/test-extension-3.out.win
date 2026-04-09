@@ -145,7 +145,7 @@ Extended commands:
   Extension 'my': Sample zsv extension
     my-count: print the number of rows
     my-echo: print the input data back to stdout
-Exiting extension example!
 
 To learn more, see README at https://github.com/liquidaty/zsv.
 Report any issues at https://github.com/liquidaty/zsv/issues.
+Exiting extension example!

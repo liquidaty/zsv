@@ -63,6 +63,9 @@ check test:
 	@${MAKE} -C app test CONFIGFILE=${CONFIGFILEPATH}
 	@${MAKE} -C src install CONFIGFILE=${CONFIGFILEPATH}
 	@${MAKE} -C examples/lib test CONFIGFILE=${CONFIGFILEPATH}
+	@if [ "$(echo "${LDFLAGS}" | grep -- "-static")" = "" ] || [ "${STATIC_BUILD}" != "1" ]; then \
+		${MAKE} -C app/ext_example test CONFIGFILE=${CONFIGFILEPATH}; \
+	fi
 
 DESTDIR ?=
 

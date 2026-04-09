@@ -188,7 +188,7 @@ test-extension-thirdparty: test-%: ${CLI} ${TARGET}
 	@${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 ../test/worldcitiespop_mil.csv:
-	make -C ../test worldcitiespop_mil.csv
+	${MAKE} -C ../test worldcitiespop_mil.csv
 
 DATE_TIME:=$(shell date +%F-%H-%M-%S)
 export TIMINGS_CSV:=${TMP_DIR}/timings-${DATE_TIME}.csv
@@ -211,11 +211,11 @@ ifeq ($(IS_WSL),1)
 	@${TEST_SKIP}
 else
 	@rm -f ${TMP_DIR}/$@.out tmux-*.log
-	@tmux kill-session -t $@ || echo 'No tmux session to kill'
+	@tmux kill-session -t $@ 2>/dev/null || true
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || true
 	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} || true
-	@(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 120 -y 5 -d -s $@ "$< sheet -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
+	(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 120 -y 5 -d -s $@ "$< sheet -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ "T" && \
 	${EXPECT} $@ transformed && \
