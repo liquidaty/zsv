@@ -591,14 +591,6 @@ jobs:
       if: ${{ steps.pdcurses.outputs.cache-hit != 'true' }}
       run: ./scripts/ci-build-pdcurses-with-mingw.sh
 
-    - name: Set PDCurses env vars (CFLAGS and LDFLAGS)
-      shell: bash
-      run: |
-        {
-          echo "CFLAGS=-I$PWD/PDCurses-3.9"
-          echo "LDFLAGS=-L$PWD/PDCurses-3.9/wincon"
-        } >>"$GITHUB_ENV"
-
     - name: Build
       env:
         PREFIX: ${{ env.AMD64_WSL_MINGW }}
@@ -609,8 +601,11 @@ jobs:
         SKIP_BUILD: true
         SKIP_ZIP_ARCHIVE: true
         SKIP_TAR_ARCHIVE: true
-        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:CFLAGS:LDFLAGS:MAKE:CMP:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
-      run: ./scripts/ci-build.sh
+        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:CMP:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
+      run: |
+        export CFLAGS="-I$PWD/PDCurses-3.9"
+        export LDFLAGS="-L$PWD/PDCurses-3.9/wincon"
+        ./scripts/ci-build.sh
 
   ci-musl:
     needs: [tag, clang-format, cppcheck, shellcheck]
