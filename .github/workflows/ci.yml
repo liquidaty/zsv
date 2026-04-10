@@ -477,9 +477,16 @@ jobs:
         path: PDCurses-3.9
         key: linux-mingw-pdcurses
 
-    - name: Set up PDCurses
+    - name: Install PDCurses
       if: ${{ steps.pdcurses.outputs.cache-hit != 'true' }}
       run: ./scripts/ci-build-pdcurses-with-mingw.sh
+
+    - name: Set PDCurses env vars (CFLAGS and LDFLAGS)
+      run: |
+        {
+          echo "CFLAGS=-I$PWD/PDCurses-3.9"
+          echo "LDFLAGS=-L$PWD/PDCurses-3.9/wincon"
+        } >>"$GITHUB_ENV"
 
     - name: Build
       env:
@@ -580,9 +587,16 @@ jobs:
         path: PDCurses-3.9
         key: wsl-mingw-pdcurses
 
-    - name: Set up PDCurses
+    - name: Install PDCurses
       if: ${{ steps.pdcurses.outputs.cache-hit != 'true' }}
       run: ./scripts/ci-build-pdcurses-with-mingw.sh
+
+    - name: Set PDCurses env vars (CFLAGS and LDFLAGS)
+      run: |
+        {
+          echo "CFLAGS=-I$PWD/PDCurses-3.9"
+          echo "LDFLAGS=-L$PWD/PDCurses-3.9/wincon"
+        } >>"$GITHUB_ENV"
 
     - name: Build
       env:
