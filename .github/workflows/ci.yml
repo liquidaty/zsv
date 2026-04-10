@@ -546,7 +546,7 @@ jobs:
       run: ./scripts/ci-upload-release-artifacts.sh
 
   ci-wsl-mingw:
-    # if: ${{ github.event_name == 'workflow_dispatch' && inputs.wsl == true }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.wsl == true }}
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: windows-2025
     timeout-minutes: 30
