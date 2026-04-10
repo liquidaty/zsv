@@ -592,6 +592,7 @@ jobs:
       run: ./scripts/ci-build-pdcurses-with-mingw.sh
 
     - name: Set PDCurses env vars (CFLAGS and LDFLAGS)
+      shell: bash
       run: |
         {
           echo "CFLAGS=-I$PWD/PDCurses-3.9"
