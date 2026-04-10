@@ -32,6 +32,7 @@ if [ "$SKIP_TAR_ARCHIVE" != true ]; then
 fi
 
 WITHOUT_SIMD=${WITHOUT_SIMD:-false}
+CMP=${CMP:-cmp}
 
 #JQ_DIR="$PWD/jq"
 #JQ_PREFIX="$JQ_DIR/build"
@@ -46,6 +47,7 @@ echo "[INF] CC:               $CC"
 echo "[INF] CFLAGS:           $CFLAGS"
 echo "[INF] LDFLAGS:          $LDFLAGS"
 echo "[INF] MAKE:             $MAKE"
+echo "[INF] CMP:              $CMP"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
 echo "[INF] STATIC_BUILD:     $STATIC_BUILD"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
@@ -85,17 +87,8 @@ fi
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
   rm -rf build "$PREFIX"
-  "$MAKE" test
+  $MAKE test
   echo "[INF] Tests completed successfully!"
-
-  if [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ] || [ "$STATIC_BUILD" = "1" ]; then
-    echo "[WRN] Dynamic extensions are not supported with static builds! Skipping tests..."
-  else
-    echo "[INF] Configuring example extension and running example extension tests"
-    echo "[INF] (cd app/ext_example && $MAKE CONFIGFILE=../../config.mk test)"
-    (cd app/ext_example && "$MAKE" CONFIGFILE=../../config.mk test)
-    echo "[INF] Tests completed successfully!"
-  fi
 fi
 
 if [ "$SKIP_BUILD" = false ]; then

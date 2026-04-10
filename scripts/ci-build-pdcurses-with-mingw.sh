@@ -12,10 +12,3 @@ rm ./*.o
 
 cd ../..
 rm 3.9.tar.gz
-
-if [ "$CI" = true ]; then
-  {
-    echo "CFLAGS=-I$PWD/PDCurses-3.9"
-    echo "LDFLAGS=-L$PWD/PDCurses-3.9/wincon"
-  } >>"$GITHUB_ENV"
-fi

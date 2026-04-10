@@ -63,6 +63,11 @@ check test:
 	@${MAKE} -C app test CONFIGFILE=${CONFIGFILEPATH}
 	@${MAKE} -C src install CONFIGFILE=${CONFIGFILEPATH}
 	@${MAKE} -C examples/lib test CONFIGFILE=${CONFIGFILEPATH}
+	@if echo "${LDFLAGS}" | grep -q -- "-static" || [ "${STATIC_BUILD}" = "1" ]; then \
+		echo "Dynamic extensions are not supported with static builds! Skipping extension tests..."; \
+	else \
+		${MAKE} -C app/ext_example test CONFIGFILE=${CONFIGFILEPATH}; \
+	fi
 
 DESTDIR ?=
 

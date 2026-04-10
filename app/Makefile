@@ -152,11 +152,16 @@ ifeq ($(CFLAGS_O),)
   endif
 endif
 
-CFLAGS+=${CFLAGS_O}
+CCBN=$(shell basename ${CC})
 
+CFLAGS+=${CFLAGS_O}
 CFLAGS+=-Wshadow -Wall -Wextra
 ifeq ($(DEBUG),0)
-  CFLAGS+=-DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE ${CFLAGS_OPT} #-ftree-vectorize
+  CFLAGS+=-DNDEBUG -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE ${CFLAGS_OPT} #-ftree-vectorize
+
+  ifeq (${CCBN},clang)
+    CFLAGS+= -Wno-gnu-statement-expression
+  endif
 
   ifeq ($(PGO),1)
     CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4
@@ -171,7 +176,6 @@ else
   CFLAGS += ${CFLAGS_DEBUG}
 endif
 
-CCBN=$(shell basename ${CC})
 CFLAGS+= -I${PREFIX}/include
 THIS_LIB_BASE:=$(shell cd .. && pwd)
 INCLUDE_DIR:=${THIS_LIB_BASE}/include

@@ -465,24 +465,30 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Install apt dependencies
+    - name: Set up apt dependencies
       run: |
-        sudo dpkg --add-architecture i386
         sudo apt update
-        sudo apt install -y mingw-w64 wine32 wine64 wine-binfmt nuget
-        sudo apt remove -y jq
-        sudo update-binfmts --disable cli
-        sudo update-binfmts --enable wine
-        update-binfmts --display wine
-        {
-          echo 'WINEARCH=win64'
-          echo 'WINEDEBUG=-all'
-        } >>"$GITHUB_ENV"
+        sudo apt install -y mingw-w64 nuget
 
-    - name: Set up PDCurses
+    - name: Cache PDCurses build
+      id: pdcurses
+      uses: actions/cache@v3
+      with:
+        path: PDCurses-3.9
+        key: linux-mingw-pdcurses
+
+    - name: Install PDCurses
+      if: ${{ steps.pdcurses.outputs.cache-hit != 'true' }}
       run: ./scripts/ci-build-pdcurses-with-mingw.sh
 
-    - name: Build (${{ env.AMD64_WINDOWS_MINGW }})
+    - name: Set PDCurses env vars (CFLAGS and LDFLAGS)
+      run: |
+        {
+          echo "CFLAGS=-I$PWD/PDCurses-3.9"
+          echo "LDFLAGS=-L$PWD/PDCurses-3.9/wincon"
+        } >>"$GITHUB_ENV"
+
+    - name: Build
       env:
         PREFIX: ${{ env.AMD64_WINDOWS_MINGW }}
         CC: x86_64-w64-mingw32-gcc
@@ -550,7 +556,7 @@ jobs:
 
     defaults:
       run:
-        shell: bash
+        shell: wsl-bash {0}
 
     steps:
     - name: Set up WSL 2
@@ -574,19 +580,29 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Build (${{ env.AMD64_WSL_MINGW }})
+    - name: Cache PDCurses build
+      id: pdcurses
+      uses: actions/cache@v3
+      with:
+        path: PDCurses-3.9
+        key: wsl-mingw-pdcurses
+
+    - name: Install PDCurses
+      if: ${{ steps.pdcurses.outputs.cache-hit != 'true' }}
+      run: ./scripts/ci-build-pdcurses-with-mingw.sh
+
+    - name: Build
       env:
         PREFIX: ${{ env.AMD64_WSL_MINGW }}
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
+        CMP: diff --strip-trailing-cr
         RUN_TESTS: true
         SKIP_BUILD: true
         SKIP_ZIP_ARCHIVE: true
         SKIP_TAR_ARCHIVE: true
-        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
-      shell: wsl-bash {0}
+        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:CMP:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
       run: |
-        ./scripts/ci-build-pdcurses-with-mingw.sh
         export CFLAGS="-I$PWD/PDCurses-3.9"
         export LDFLAGS="-L$PWD/PDCurses-3.9/wincon"
         ./scripts/ci-build.sh
