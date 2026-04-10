@@ -808,7 +808,7 @@ test-sheet-all: \
 	test-sheet-pivot-V \
 	test-sheet-sqlfilter-1 \
 	test-sheet-errors-1
-	@(for SESSION in $^; do ! tmux -L "$$SESSION" kill-server 2>/dev/null || echo ''; done && ${TEST_PASS} || ${TEST_FAIL})
+	@(for SESSION in $^; do ! tmux -L "$$SESSION" kill-server 2>/dev/null || true; done && ${TEST_PASS} || ${TEST_FAIL})
 
 TMUX_TERM=xterm-256color
 test-sheet-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
