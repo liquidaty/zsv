@@ -72,10 +72,57 @@ If you like zsv+lib, do not forget to give it a star! 🌟
 
 ## Performance
 
-Performance results compare favorably vs other CSV utilities (`xsv`,
-`tsv-utils`, `csvkit`, `mlr` (miller) etc).
+### Summary
+
+We compared a number of CSV parsers on speed; memory was also tracked for informational purposes.
+The top finalists were: `zsv`, `xan`, `polars`, `xsv`/`qsv` and `duckdb`
+
+Benchmarks use three input profiles: unquoted, sparsely quoted, standard quoted,
+and non-4180-compliant quoted.
+
+Overall, `zsv` and `xan` were the clear top performers in both speed and memory:
+- count: `zsv` is fastest across all input types
+- select: `zsv` and `zan` are the fastest, where `xan` is faster on unquoted and sparsely
+  quoted, and `zsv` is faster on standard quoted or non-4180-compliant
+- non-4180-compliant data: `zsv` is fastest across the board (`xan` and `polars` are N/A for
+  this input category)
+
+### Benchmarks
 
 See [benchmarks](./app/benchmark/README.md)
+
+Detailed benchmark tests have been run on MacOS (arm64) and Linux (x86-64).
+We would expect similar performance on Windows and other Linux flavors.
+
+Contributions of benchmark results for other os/architecture combinations are welcome--
+please open an issue!
+
+### Fast parser
+
+zsv includes a SIMD-accelerated fast parser (`--parser fast`) that uses
+branchless prefix-XOR carry propagation for quote state tracking, available on
+aarch64 (NEON), x86-64 (AVX2), and x86-64 (SSE2), including Windows (mingw64).
+wasm (compiled via emscripten) support will be added next.
+
+The fast parser is only designed for input that uses quoting as defined in RFC 4180
+(but does not require other limitations of RFC 4180 such as CRLF line ends).
+Like `polars` and `xan`, it does not correctly handle non-standard quoting
+such as unescaped quotes in unquoted fields (e.g. `12" monitor` or `say "hello" world`).
+For such data, use the default compat parser which handles all real-world CSV the same way
+spreadsheet programs do.
+
+## Parallel parsing
+Either the fast or compat parser can be combined with `--parallel` for multi-threaded parsing:
+
+```bash
+# Single-threaded
+zsv count data.csv               # any CSV input
+zsv count --parser fast data.csv # only for CSV input using standard quoting
+
+# Multi-threaded parser (uses all available cores)
+zsv select --parallel data.csv -- 1 2 3               # any CSV input
+zsv select --parser fast --parallel data.csv -- 1 2 3 # only for CSV input using standard quoting
+```
 
 ## Which "CSV"
 

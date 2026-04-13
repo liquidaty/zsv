@@ -442,7 +442,7 @@ static char print_properties(FILE *f, int64_t values[2], char keep[2], const cha
 
 static int merge_and_save_properties(const unsigned char *filepath, char save, char overwrite, int64_t d, int64_t R) {
   int err = 0;
-  unsigned char *props_fn = zsv_cache_filepath(filepath, zsv_cache_type_property, 0, 0);
+  char *props_fn = zsv_cache_filepath(filepath, zsv_cache_type_property, 0, 0);
   if (!props_fn)
     err = 1;
   else {
@@ -460,14 +460,14 @@ static int merge_and_save_properties(const unsigned char *filepath, char save, c
     }
 
     if (!err) {
-      unsigned char *props_fn_tmp = save ? zsv_cache_filepath(filepath, zsv_cache_type_property, 1, 1) : NULL;
+      char *props_fn_tmp = save ? zsv_cache_filepath(filepath, zsv_cache_type_property, 1, 1) : NULL;
       if (save && !props_fn_tmp)
         err = 1;
       else {
         // open a temp file, then write, then replace the orig file
-        FILE *f = props_fn_tmp ? fopen((char *)props_fn_tmp, "wb") : NULL;
+        FILE *f = props_fn_tmp ? fopen(props_fn_tmp, "wb") : NULL;
         if (props_fn_tmp && !f) {
-          perror((char *)props_fn_tmp);
+          perror(props_fn_tmp);
           err = 1;
         } else {
           int64_t final_values[2] = {d, R};

@@ -28,8 +28,8 @@ CFLAGS_EXE ?=
 LIB_SUFFIX=
 LIBZSV_L=-lzsv${LIB_SUFFIX}
 LIBZSV_A=libzsv${LIB_SUFFIX}.a
-LIBZSV=${BUILD_DIR}/lib/${LIBZSV_A}
-LIBZSV_INSTALL=${LIBDIR}/${LIBZSV_A}
+LIBZSV_BUILD=${BUILD_DIR}/lib/${LIBZSV_A}
+LIBZSV_BUILD_DIR=${BUILD_DIR}/lib
 
 # if we are incorporating these commands into another project, we might
 # want to use different values for ZSV_TEMPFILE_SUFFIX and ZSV_CACHE_PREFIX
@@ -52,6 +52,14 @@ ifneq ($(ZSV_IS_PROP_FILE_HANDLER),)
 endif
 ifneq ($(ZSV_IS_PROP_FILE_DEPTH),)
 	CFLAGS+=-DZSV_IS_PROP_FILE_DEPTH=${ZSV_IS_PROP_FILE_DEPTH}
+endif
+
+ifeq ($(HAVE_NEON),1)
+  CFLAGS+= -DZSV_HAVE_NEON
+endif
+
+ifeq ($(DEFAULT_PARSER_FAST),1)
+  CFLAGS+= -DZSV_DEFAULT_PARSER_FAST
 endif
 
 ifeq ($(ZSV_NO_ONLY_CRLF),1)
@@ -144,11 +152,16 @@ ifeq ($(CFLAGS_O),)
   endif
 endif
 
-CFLAGS+=${CFLAGS_O}
+CCBN=$(shell basename ${CC})
 
+CFLAGS+=${CFLAGS_O}
 CFLAGS+=-Wshadow -Wall -Wextra
 ifeq ($(DEBUG),0)
-  CFLAGS+=-DNDEBUG -Wno-gnu-statement-expression -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE ${CFLAGS_OPT} #-ftree-vectorize
+  CFLAGS+=-DNDEBUG -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE ${CFLAGS_OPT} #-ftree-vectorize
+
+  ifeq (${CCBN},clang)
+    CFLAGS+= -Wno-gnu-statement-expression
+  endif
 
   ifeq ($(PGO),1)
     CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4
@@ -163,7 +176,6 @@ else
   CFLAGS += ${CFLAGS_DEBUG}
 endif
 
-CCBN=$(shell basename ${CC})
 CFLAGS+= -I${PREFIX}/include
 THIS_LIB_BASE:=$(shell cd .. && pwd)
 INCLUDE_DIR:=${THIS_LIB_BASE}/include
@@ -198,6 +210,9 @@ ifeq ($(ZSV_NO_PARALLEL),1)
   CFLAGS+=-DZSV_NO_PARALLEL
 endif
 
+ifeq ($(ZSV_PARALLEL_TEMPFILE),1)
+  CFLAGS+=-DZSV_PARALLEL_TEMPFILE
+endif
 
 ifeq ($(ZSV_EXTRAS),1)
   CFLAGS+= -DZSV_EXTRAS
@@ -338,7 +353,13 @@ help:
 	@echo "  ${MAKE} benchmark"
 	@echo ""
 
+DESTDIR ?=
+
 install: ${ZSV}
+ifneq ($(DESTDIR),)
+	mkdir -p $(DESTDIR)/bin
+	cp -p `dirname $<`/* $(DESTDIR)/bin/
+endif
 
 benchmark: ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}count${EXE} ${STANDALONE_PFX}2tsv${EXE}
 	make -C benchmark all
@@ -346,7 +367,11 @@ benchmark: ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}count${EXE} ${STANDALO
 uninstall-all: uninstall uninstall-util-lib
 
 uninstall:
+ifneq ($(DESTDIR),)
+	rm -rf $(DESTDIR)/bin/zsv
+else
 	rm -rf ${ZSV}
+endif
 
 ZSV_UTIL_A=${LIBDIR}/libzsvutil.a
 ${ZSV_UTIL_A}:SQLITE_EXT=
@@ -361,7 +386,7 @@ UTIL_A_OBJ:=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTIL_A_OBJ}))
 ${BUILD_DIR}/objs/utils/util.a: ${UTIL_A_OBJ}
 	$(AR) rcv $@ $^ # $?
 	$(RANLIB) $@
-	$(AR) -t $@ # check it is there
+	$(AR) -t $@
 	@echo Built $@
 
 uninstall-util-lib:
@@ -373,11 +398,11 @@ build: ${CLI}
 
 all: ${TARGETS}
 
-${LIBZSV_INSTALL}:
-	${MAKE} -C ../src CONFIGFILE=${CONFIGFILEPATH} install DEBUG=${DEBUG}
+${LIBZSV_BUILD}:
+	${MAKE} -C ../src CONFIGFILE=${CONFIGFILEPATH} build DEBUG=${DEBUG}
 
 ${ZSV}: ${CLI}
-	@mkdir -p `dirname "$@"`
+	mkdir -p `dirname "$@"`
 ifneq ($(findstring emcc,$(CC)),) # emcc
 	cp -p $< `dirname "$@"`/
 	cp -p ${CLI_ADDITIONAL} `dirname "$@"`/
@@ -436,16 +461,22 @@ ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8pro
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} ${MEMFILE_INCLUDE} -I${THIS_MAKEFILE_DIR}/external/sglib -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -c $< -o $@ ${MORE_SOURCE}
 
-${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${LIBZSV_INSTALL} ${MORE_OBJECTS} ${SQL_INTERNAL_OBJECT}
+${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${LIBZSV_BUILD} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${MORE_OBJECTS} ${SQL_INTERNAL_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBDIR} ${LIBZSV_L} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
+	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBZSV_BUILD_DIR} ${LIBZSV_L} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
 	@echo Built $@
 
 cli_internal.h.in: ${THIS_MAKEFILE_DIR}/../include/zsv/ext/implementation_private.h
-	cat $< | awk '/ZSV_EXT_EXPORT/,/;/' | sed 's/ZSV_EXT_EXPORT *//g' | sed $$'s/ *;.*/;\\\n/' | sed 's/(/)(/' | sed 's/zsv_ext_\([a-z]*\))/(*\1)/' | grep -v '^$$' > $@
+	@( \
+		OUTPUT=`cat $< | awk '/ZSV_EXT_EXPORT/,/;/' | sed 's/ZSV_EXT_EXPORT *//g' | sed $$'s/ *;.*/;\\\n/' | sed 's/(/)(/' | sed 's/zsv_ext_\([a-z]*\))/(*\1)/' | grep -v '^$$'`; \
+		echo "$$OUTPUT" | cmp -s - $@ || echo "$$OUTPUT" > $@; \
+	)
 
 cli_internal.c.in: cli_internal.h.in
-	cat cli_internal.h.in | sed 's/\(.*(\*\)\([^)]*\)\(.*\);/zsv_ext_func_assign((\1\3), \2);/' > $@
+	@( \
+		OUTPUT=`cat $< | sed 's/\(.*(\*\)\([^)]*\)\(.*\);/zsv_ext_func_assign((\1\3), \2);/'`; \
+		echo "$$OUTPUT" | cmp -s - $@ || echo "$$OUTPUT" > $@; \
+	)
 
 ${SQLITE_EXT}: ${SQLITE_SRC}
 
@@ -468,7 +499,7 @@ ${JQ_BUNDLE_LIB}: ${JQ_SRC} # -D_REENTRANT needed for clang to not break
 	# copy the directory because its timestamp gets updated after libjq is built
 	@cp -a ${JQ_SRC} ${JQ_SRC}-conf
 	cd ${JQ_SRC}-conf \
-	&& CC="${CC}" CFLAGS="${CFLAGS} -w -D_REENTRANT" ./configure \
+	&& CC="${CC}" CFLAGS="$$(echo '${CFLAGS}' | sed 's/-fsanitize=[^ ]*//g; s/-fno-omit-frame-pointer//g') -w -D_REENTRANT" ./configure \
 	    --prefix="${JQ_PREFIX}" \
 	    --disable-maintainer-mode \
 	    --without-oniguruma \
@@ -477,7 +508,7 @@ ${JQ_BUNDLE_LIB}: ${JQ_SRC} # -D_REENTRANT needed for clang to not break
 	    --disable-shared \
 	    --enable-static \
 	    ${JQ_CONFIGURE_HOST} \
-	&& (${MAKE} install -k)
+	&& (${MAKE} install -k DESTDIR=)
 
 ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 	@mkdir -p `dirname "$@"`
@@ -530,7 +561,6 @@ ifeq ($(HAVE_PCRE2_8),1)
       PCRE2_8_PREFIX=${BULITIN_PCRE2_PREFIX}
       # add dependency
       ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: ${PCRE2_8_PREFIX}/lib/libpcre2-8.a
-
     endif
     PCRE2_LIB=${PCRE2_8_PREFIX}/lib/libpcre2-8.a
   endif
@@ -571,7 +601,7 @@ ${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o: ${BUILD_DIR}/objs/utils/%.o : utils/%
 	${CC} ${CFLAGS} -I${INCLUDE_PCRE2_8} -o $@ -c utils/$*.c
 
 ${BULITIN_PCRE2_PREFIX}/lib/libpcre2-8.a:
-	${MAKE} -C external -f ${CONFIGFILEPATH} -f build.mk $@ BUILD_DIR=${BUILD_DIR} CONFIGURE_HOST=${CONFIGURE_HOST}
+	${MAKE} -C external -f ${CONFIGFILEPATH} -f build.mk $@ BUILD_DIR=${BUILD_DIR} CONFIGURE_HOST=${CONFIGURE_HOST} DESTDIR=
 
 # utils/db uses jsonwriter
 ${BUILD_DIR}/objs/utils/db.o : MORE_SOURCE+= ${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
@@ -591,9 +621,9 @@ ${CLI} ${STANDALONE_PFX}pretty${EXE}: MORE_LIBS+=${LDFLAGS_TERMCAP}
 ${CLI} ${STANDALONE_PFX}sheet${EXE} ${STANDALONE_PFX}sql${EXE}: ${SQL_INTERNAL_OBJECT}
 ${CLI} ${STANDALONE_PFX}sheet${EXE} ${STANDALONE_PFX}sql${EXE}: MORE_OBJECTS+=${SQL_INTERNAL_OBJECT}
 
-${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_INSTALL} ${UTF8PROC_OBJECT}
+${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_BUILD} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${LIBDIR} ${LIBZSV_L} ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${BUILD_DIR}/lib ${LIBZSV_L} ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
 
 ${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}-external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`

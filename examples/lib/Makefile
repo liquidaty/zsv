@@ -48,6 +48,9 @@ ifeq ($(WIN),1)
   EXE=.exe
 endif
 
+CMP ?= cmp
+export CMP
+
 CFLAGS+=-g -O0
 
 BUILD_DIR=build
@@ -85,11 +88,11 @@ test-eol: test-eol-1 test-eol-2 test-eol-3 test-eol-4
 
 test-eol-%: ${BUILD_DIR}/simple${EXE} ${BUILD_DIR}/pull${EXE}
 	@${TEST_INIT}
-	@${BUILD_DIR}/simple${EXE} ${TEST_DATA_DIR}/test/no-eol-$*.csv > ${TMP_DIR}/$@.out
-	@cmp ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${BUILD_DIR}/simple${EXE} ${TEST_DATA_DIR}/test/no-eol-$*.csv > ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
-	@${BUILD_DIR}/pull${EXE} ${TEST_DATA_DIR}/test/no-eol-$*.csv > ${TMP_DIR}/$@.out
-	@cmp ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${BUILD_DIR}/pull${EXE} ${TEST_DATA_DIR}/test/no-eol-$*.csv > ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 simple print_my_column parse_by_chunk pull: % : ${BUILD_DIR}/%${EXE}
 	@echo Built $<

@@ -9,10 +9,10 @@
  * Uses in-memory output buffer to avoid I/O lock contention.
  */
 struct zsv_chunk_data {
-#ifdef __linux__
-  char *tmp_output_filename; // use temp file because we can use zero-copy file concatenation
+#ifdef ZSV_PARALLEL_TEMPFILE
+  char *tmp_output_filename; // temp file + zero-copy sendfile for merge
 #else
-  void *tmp_f; // use zsv_memfile * because we cannot do zero-copy file concatenation
+  void *tmp_f; // zsv_memfile * for in-memory worker output (default)
 #endif
   off_t start_offset;
   off_t end_offset; // Stop processing when current offset exceeds this

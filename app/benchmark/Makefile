@@ -46,6 +46,9 @@ HAVE_XSV=$(shell command -v xsv >/dev/null && echo 1 || echo 0)
 HAVE_C2TSV=$(shell command -v c2tsv >/dev/null && echo 1 || echo 0)
 HAVE_TSVUTILS=$(shell [ -f $(TSV_UTILS)/tsv-select ] && echo 1 || echo 0)
 HAVE_POLARS=$(shell [ -f venv/bin/activate ] && echo 1 || echo 0)
+HAVE_XAN=$(shell command -v xan >/dev/null && echo 1 || echo 0)
+HAVE_QSV=$(shell command -v qsv >/dev/null && qsv --version >/dev/null 2>&1 && echo 1 || echo 0)
+QSV_BIN=$(shell command -v qsv 2>/dev/null)
 
 HAVE_TIME_ALL=$(shell command -v /usr/bin/time >/dev/null && echo 1 || echo 0)
 
@@ -72,32 +75,52 @@ DATA_TARGETS=worldcitiespop_big # select-worldcitiespop_mil
 
 help:
 	@echo "========================================================================"
-	@echo "Running benchmarks"
-	@echo "------------------------------------------------------------------------"
-	@echo "Generating graphs requires gnuplot, gawk and zsv"
-	@echo "    ${MAKE_BIN} graph  : run benchmarks and generate graphs"
-	@echo "    ${MAKE_BIN} reset  : reset saved e.g. results e.g. csv"
-	@echo "------------------------------------------------------------------------"
-	@echo "If /usr/bin/time is available, it will be used with -l to get full metrics"
-	@echo "To only run timing metrics, set TIME_ALL=0 e.g. \`${MAKE_BIN} graph TIME_ALL=0\`"
-	@echo ""
-	@echo "========================================================================"
-	@echo "Other targets:"
-	@echo "------------------------------------------------------------------------"
-	@echo "    ${MAKE_BIN} clean  : remove all data, intermediate and result files"
-	@echo "    ${MAKE_BIN} all [TIME_ALL=0] [PULL=1] [TSV_UTILS=~/install/tsv-utils/bin]"
-	@echo "    ${MAKE_BIN} csv    : same as all but saves to benchmark.csv"
-	@echo "    ${MAKE_BIN} CLI    : use CLI instead of standalone command binaries"
+	@echo "Benchmark targets"
 	@echo "========================================================================"
 	@echo ""
-	@echo "------------------------------------------------------------------------"
-	@echo "Tool-specific targets"
-	@echo "------------------------------------------------------------------------"
-	@echo "    ${MAKE_BIN} $(addprefix count-,zsv xsv polars duckdb)"
-	@echo "    ${MAKE_BIN} $(addprefix select-,zsv xsv polars duckdb)"
+	@echo "  Main targets:"
+	@echo "    ${MAKE_BIN} bench-quoting   Compare fast parser quoting modes across tools"
+	@echo "                            (zsv compat/fast, xsv, xan, polars, qsv)"
+	@echo "                            Results saved to results/ as markdown"
+	@echo "    ${MAKE_BIN} all             Run worldcitiespop count + select benchmarks"
+	@echo "    ${MAKE_BIN} graph           Run benchmarks and generate gnuplot graphs"
+	@echo "                            (requires gnuplot, gawk, zsv)"
+	@echo "    ${MAKE_BIN} csv             Same as all, but save results to benchmark.csv"
+	@echo "    ${MAKE_BIN} CLI             Same as all, using the zsv CLI binary"
 	@echo ""
-	@echo "make all does not actually run everything; you can also run:"
-	@echo "    ${MAKE_BIN} tsv"
+	@echo "  Tool-specific targets (worldcitiespop benchmarks):"
+	@echo "    ${MAKE_BIN} count           Run all count benchmarks"
+	@echo "    ${MAKE_BIN} select          Run all select benchmarks"
+	@echo "    ${MAKE_BIN} $(addprefix count-,zsv xsv xan qsv polars duckdb)"
+	@echo "    ${MAKE_BIN} $(addprefix select-,zsv xsv xan qsv polars duckdb)"
+	@echo "    ${MAKE_BIN} tsv             Run 2tsv / csv2tsv / c2tsv benchmarks"
+	@echo ""
+	@echo "  Setup:"
+	@echo "    ${MAKE_BIN} polars-setup    Create Python venv and install polars"
+	@echo ""
+	@echo "  Publishing:"
+	@echo "    ${MAKE_BIN} update-benchmark-readme"
+	@echo "                            Update README.md with links to latest results"
+	@echo "                            (one per OS+arch)"
+	@echo "    ${MAKE_BIN} stage-benchmark-results"
+	@echo "                            Stage result files + graphs for git commit"
+	@echo ""
+	@echo "  Cleanup:"
+	@echo "    ${MAKE_BIN} reset           Remove saved results (csv, txt, png)"
+	@echo "    ${MAKE_BIN} clean           Remove results and downloaded data files"
+	@echo ""
+	@echo "  Options:"
+	@echo "    TIME_ALL=0    Only collect timing (skip /usr/bin/time -l metrics)"
+	@echo "    PULL=1        Use pull-parser variants (count-pull, select-pull)"
+	@echo "    TSV_UTILS=... Path to tsv-utils/bin"
+	@echo "    ZSVBIN=/path/to/zsv [zsv]"
+	@echo ""
+	@echo "  After a code change, to regenerate and publish benchmarks:"
+	@echo "    1. Build zsv:        (cd ../.. && make install)"
+	@echo "    2. Run benchmarks:   ${MAKE_BIN} bench-quoting"
+	@echo "    3. Generate graphs:  ${MAKE_BIN} reset && ${MAKE_BIN} graph"
+	@echo "    4. Update README:    ${MAKE_BIN} update-benchmark-readme"
+	@echo "    5. Stage for commit: ${MAKE_BIN} stage-benchmark-results"
 	@echo ""
 
 CLI: ZSVBIN="zsv "
@@ -186,11 +209,13 @@ worldcitiespop_big.tsv worldcitiespop_mil.tsv: %.tsv : %.csv
 
 count: $(addprefix count-,$(DATA_TARGETS))
 
-count-worldcitiespop_mil count-worldcitiespop_big: count-% : count-intro-% count-zsv-% count-xsv-% count-polars-% count-duckdb-%
+count-worldcitiespop_mil count-worldcitiespop_big: count-% : count-intro-% count-zsv-% count-xsv-% count-xan-% count-qsv-% count-polars-% count-duckdb-%
 
 ### additional convenience targets
 count-zsv: $(addprefix count-zsv-,$(DATA_TARGETS))
 count-xsv: $(addprefix count-xsv-,$(DATA_TARGETS))
+count-xan: $(addprefix count-xan-,$(DATA_TARGETS))
+count-qsv: $(addprefix count-qsv-,$(DATA_TARGETS))
 count-polars: $(addprefix count-polars-,$(DATA_TARGETS))
 count-duckdb: $(addprefix count-duckdb-,$(DATA_TARGETS))
 ###
@@ -219,6 +244,22 @@ count-zsv-worldcitiespop_mil count-zsv-worldcitiespop_big: count-zsv-%: %.csv %.
 	@(${TIMER} ${ZSVBIN}${COUNT} --parallel $< >>/tmp/zsv-parallel-$@.count) 2>&1 | xargs
 	@echo ""
 
+	@printf "zsv-fast             : "
+	@(${TIMER} ${ZSVBIN}${COUNT} --parser fast $< > /tmp/zsv-fast-$@.count) 2>&1 | xargs
+	@printf "zsv-fast             : "
+	@(${TIMER} ${ZSVBIN}${COUNT} --parser fast $< >> /tmp/zsv-fast-$@.count) 2>&1 | xargs
+	@printf "zsv-fast             : "
+	@(${TIMER} ${ZSVBIN}${COUNT} --parser fast $< >> /tmp/zsv-fast-$@.count) 2>&1 | xargs
+	@echo ""
+
+	@printf "zsv-fast --parallel  : "
+	@(${TIMER} ${ZSVBIN}${COUNT} --parser fast --parallel $< > /tmp/zsv-fast-parallel-$@.count) 2>&1 | xargs
+	@printf "zsv-fast --parallel  : "
+	@(${TIMER} ${ZSVBIN}${COUNT} --parser fast --parallel $< >> /tmp/zsv-fast-parallel-$@.count) 2>&1 | xargs
+	@printf "zsv-fast --parallel  : "
+	@(${TIMER} ${ZSVBIN}${COUNT} --parser fast --parallel $< >> /tmp/zsv-fast-parallel-$@.count) 2>&1 | xargs
+	@echo ""
+
 count-xsv-worldcitiespop_mil count-xsv-worldcitiespop_big: count-xsv-%: %.csv %.tsv
 ifneq ($(HAVE_XSV),1)
 	@echo "xsv not found: skipping (run \'brew install xsv\' to install)"
@@ -229,6 +270,32 @@ else
 	@(${TIMER} xsv count < $< >> /tmp/xsv-$@.count) 2>&1 | xargs
 	@printf "xsv                  : "
 	@(${TIMER} xsv count < $< >> /tmp/xsv-$@.count) 2>&1 | xargs
+	@echo ""
+endif
+
+count-xan-worldcitiespop_mil count-xan-worldcitiespop_big: count-xan-%: %.csv %.tsv
+ifneq ($(HAVE_XAN),1)
+	@echo "xan not found: skipping (run 'cargo install xan' to install)"
+else
+	@printf "xan                  : "
+	@(${TIMER} xan count $< > /tmp/xan-$@.count) 2>&1 | xargs
+	@printf "xan                  : "
+	@(${TIMER} xan count $< >> /tmp/xan-$@.count) 2>&1 | xargs
+	@printf "xan                  : "
+	@(${TIMER} xan count $< >> /tmp/xan-$@.count) 2>&1 | xargs
+	@echo ""
+endif
+
+count-qsv-worldcitiespop_mil count-qsv-worldcitiespop_big: count-qsv-%: %.csv %.tsv
+ifneq ($(HAVE_QSV),1)
+	@echo "qsv not found: skipping (run 'cargo install qsv' to install)"
+else
+	@printf "qsv                  : "
+	@(${TIMER} ${QSV_BIN} count $< > /tmp/qsv-$@.count) 2>&1 | xargs
+	@printf "qsv                  : "
+	@(${TIMER} ${QSV_BIN} count $< >> /tmp/qsv-$@.count) 2>&1 | xargs
+	@printf "qsv                  : "
+	@(${TIMER} ${QSV_BIN} count $< >> /tmp/qsv-$@.count) 2>&1 | xargs
 	@echo ""
 endif
 
@@ -316,11 +383,13 @@ endif
 
 select: $(addprefix select-,$(DATA_TARGETS))
 
-select-worldcitiespop_big select-select-worldcitiespop_mil: select-% : select-intro-% $(addsuffix -%,select-zsv select-xsv select-polars select-duckdb)
+select-worldcitiespop_big select-select-worldcitiespop_mil: select-% : select-intro-% $(addsuffix -%,select-zsv select-xsv select-xan select-qsv select-polars select-duckdb)
 
 ### additional convenience targets
 select-zsv: $(addprefix select-zsv-,$(DATA_TARGETS))
 select-xsv: $(addprefix select-xsv-,$(DATA_TARGETS))
+select-xan: $(addprefix select-xan-,$(DATA_TARGETS))
+select-qsv: $(addprefix select-qsv-,$(DATA_TARGETS))
 select-polars: $(addprefix select-polars-,$(DATA_TARGETS))
 select-duckdb: $(addprefix select-duckdb-,$(DATA_TARGETS))
 ###
@@ -347,6 +416,22 @@ select-zsv-worldcitiespop_mil select-zsv-worldcitiespop_big: select-zsv-%: %.csv
 	@(${TIMER} ${ZSVBIN}${SELECT} --parallel -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
 	@echo ""
 
+	@printf "zsv-fast             : "
+	@(${TIMER} ${ZSVBIN}${SELECT} --parser fast -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
+	@printf "zsv-fast             : "
+	@(${TIMER} ${ZSVBIN}${SELECT} --parser fast -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
+	@printf "zsv-fast             : "
+	@(${TIMER} ${ZSVBIN}${SELECT} --parser fast -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
+	@echo ""
+
+	@printf "zsv-fast --parallel  : "
+	@(${TIMER} ${ZSVBIN}${SELECT} --parser fast --parallel -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
+	@printf "zsv-fast --parallel  : "
+	@(${TIMER} ${ZSVBIN}${SELECT} --parser fast --parallel -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
+	@printf "zsv-fast --parallel  : "
+	@(${TIMER} ${ZSVBIN}${SELECT} --parser fast --parallel -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
+	@echo ""
+
 select-xsv-worldcitiespop_mil select-xsv-worldcitiespop_big: select-xsv-%: %.csv %.tsv
 ifneq ($(HAVE_XSV),1)
 	@echo "xsv not found: skipping (run \'brew install xsv\' to install)"
@@ -357,6 +442,32 @@ else
 	@(${TIMER} xsv select 2,1,3-7 < $< > /dev/null) 2>&1 | xargs
 	@printf "xsv                  : "
 	@(${TIMER} xsv select 2,1,3-7 < $< > /dev/null) 2>&1 | xargs
+	@echo ""
+endif
+
+select-xan-worldcitiespop_mil select-xan-worldcitiespop_big: select-xan-%: %.csv %.tsv
+ifneq ($(HAVE_XAN),1)
+	@echo "xan not found: skipping (run 'cargo install xan' to install)"
+else
+	@printf "xan                  : "
+	@(${TIMER} xan select Country,City,AccentCity,Region,Population,Latitude,Longitude $< > /dev/null) 2>&1 | xargs
+	@printf "xan                  : "
+	@(${TIMER} xan select Country,City,AccentCity,Region,Population,Latitude,Longitude $< > /dev/null) 2>&1 | xargs
+	@printf "xan                  : "
+	@(${TIMER} xan select Country,City,AccentCity,Region,Population,Latitude,Longitude $< > /dev/null) 2>&1 | xargs
+	@echo ""
+endif
+
+select-qsv-worldcitiespop_mil select-qsv-worldcitiespop_big: select-qsv-%: %.csv %.tsv
+ifneq ($(HAVE_QSV),1)
+	@echo "qsv not found: skipping (run 'cargo install qsv' to install)"
+else
+	@printf "qsv                  : "
+	@(${TIMER} ${QSV_BIN} select 2,1,3-7 $< > /dev/null) 2>&1 | xargs
+	@printf "qsv                  : "
+	@(${TIMER} ${QSV_BIN} select 2,1,3-7 $< > /dev/null) 2>&1 | xargs
+	@printf "qsv                  : "
+	@(${TIMER} ${QSV_BIN} select 2,1,3-7 $< > /dev/null) 2>&1 | xargs
 	@echo ""
 endif
 
@@ -450,7 +561,29 @@ reset:
 clean: reset
 	rm -f worldcitiespop_big.csv worldcitiespop_big.tsv worldcitiespop_mil.csv worldcitiespop_mil.tsv worldcitiespop.csv
 
-.PHONY: help all count select select-% clean polars-setup csv% tsv% graph%
+BENCH_DIR:=$(dir $(abspath $(firstword $(MAKEFILE_LIST))))
+RESULTS_DIR=$(BENCH_DIR)results
+
+CLI_BIN=$(dir ${ZSVBIN})cli${EXE}
+
+bench-quoting: ${CLI_BIN}
+	@mkdir -p $(RESULTS_DIR)
+	@bash $(BENCH_DIR)bench_quoting.sh ${CLI_BIN} \
+		$(RESULTS_DIR)/benchmark-fast-parser-quoting-$$(uname -s | tr A-Z a-z)-$$(uname -m)-$$(date +%F-%H%M).md
+
+BENCH_README=$(BENCH_DIR)README.md
+
+BENCH_PNGS=$(BENCH_DIR)bench_combined-count.png $(BENCH_DIR)bench_combined-select.png
+
+update-benchmark-readme:
+	@bash $(BENCH_DIR)update_benchmark_readme.sh $(RESULTS_DIR) $(BENCH_README)
+
+stage-benchmark-results:
+	@for png in $(BENCH_PNGS); do \
+		if [ -f "$$png" ]; then git add "$$png"; fi; \
+	done
+
+.PHONY: help all count select select-% clean polars-setup csv% tsv% graph% bench-quoting update-benchmark-readme stage-benchmark-results
 
 
 ##### python / polars

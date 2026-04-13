@@ -1,8 +1,3 @@
-Extension my registered
-Exiting extension example!
-Exiting extension example!
-Extension my unregistered
-Extension my was not already registered
 zsv: streaming csv processor
 
 Usage:
@@ -10,8 +5,7 @@ Usage:
   zsv (un)register [<extension_id>]    : (un)register an extension
       Registration info is saved in zsv.ini located in a directory determined as:
         ZSV_CONFIG_DIR environment variable value, if set
-        LOCALAPPDATA environment variable value, if set
-        otherwise, C:\temp
+        otherwise, /usr/local/etc
   zsv help [<command>]
   zsv <command> <options> <arguments>  : run a command on data (see below for details)
   zsv <id>-<cmd> <options> <arguments> : invoke command 'cmd' of extension 'id'
@@ -33,24 +27,33 @@ Options common to all commands except `prop`, `rm` and `jq`:
   -S,--keep-blank-headers  : disable default behavior of ignoring leading blank rows
   -0,--header-row <header> : insert the provided CSV as the first row (in position 0)
                              e.g. --header-row 'col1,col2,"my col 3"'
+  --only-crlf              : only treat CRLF as row delimiter
+                             CR or LF alone are treated as normal chars that do not require quotes
   -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command
+  --parser <default|fast|compat>
+                           : select parser engine. 'fast' uses branchless SIMD
+                             (aarch64 NEON or x86-64 AVX2/SSE2).
+                             'compat' uses the scalar engine that works with
+                             all CSV including non-4180-compliant quoting
   -v,--verbose             : verbose output
 
 Commands that parse CSV or other tabular data:
-  select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations
   echo     : write tabular input to stdout with optional cell overwrites
-  overwrite: save, modify or apply overwrites
-  sql      : run ad-hoc SQL
+  check    : check for anolomolies (column counts, utf8 encoding etc)
   count    : print the number of rows
+  select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations
   desc     : describe each column
+  sql      : run ad-hoc SQL on one or more CSV files
   pretty   : pretty print for console display
+  serialize: convert into 3-column format (id, column name, cell value)
   flatten  : flatten a table consisting of N groups of data, each with 1 or
              more rows in the table, into a table of N rows
   2json    : convert CSV or sqlite3 db table to json
   2tsv     : convert to tab-delimited text
-  serialize: convert into 3-column format (id, column name, cell value)
   stack    : stack tables vertically, aligning columns with common names
+  paste    : horizontally paste two tables together: given inputs X, Y, ... of N rows
   compare  : compare two or more tables and output differences
+  overwrite: save, modify or apply overwrites
 
 Other commands:
   2db      : convert json to sqlite3 db
@@ -61,8 +64,9 @@ Other commands:
   jq       : run a jq filter on json input
 
 (No extended commands)
-Extension my registered
-Exiting extension example!
+
+To learn more, see README at https://github.com/liquidaty/zsv.
+Report any issues at https://github.com/liquidaty/zsv/issues.
 zsv: streaming csv processor
 
 Usage:
@@ -70,8 +74,7 @@ Usage:
   zsv (un)register [<extension_id>]    : (un)register an extension
       Registration info is saved in zsv.ini located in a directory determined as:
         ZSV_CONFIG_DIR environment variable value, if set
-        LOCALAPPDATA environment variable value, if set
-        otherwise, C:\temp
+        otherwise, /usr/local/etc
   zsv help [<command>]
   zsv <command> <options> <arguments>  : run a command on data (see below for details)
   zsv <id>-<cmd> <options> <arguments> : invoke command 'cmd' of extension 'id'
@@ -93,24 +96,33 @@ Options common to all commands except `prop`, `rm` and `jq`:
   -S,--keep-blank-headers  : disable default behavior of ignoring leading blank rows
   -0,--header-row <header> : insert the provided CSV as the first row (in position 0)
                              e.g. --header-row 'col1,col2,"my col 3"'
+  --only-crlf              : only treat CRLF as row delimiter
+                             CR or LF alone are treated as normal chars that do not require quotes
   -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command
+  --parser <default|fast|compat>
+                           : select parser engine. 'fast' uses branchless SIMD
+                             (aarch64 NEON or x86-64 AVX2/SSE2).
+                             'compat' uses the scalar engine that works with
+                             all CSV including non-4180-compliant quoting
   -v,--verbose             : verbose output
 
 Commands that parse CSV or other tabular data:
-  select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations
   echo     : write tabular input to stdout with optional cell overwrites
-  overwrite: save, modify or apply overwrites
-  sql      : run ad-hoc SQL
+  check    : check for anolomolies (column counts, utf8 encoding etc)
   count    : print the number of rows
+  select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations
   desc     : describe each column
+  sql      : run ad-hoc SQL on one or more CSV files
   pretty   : pretty print for console display
+  serialize: convert into 3-column format (id, column name, cell value)
   flatten  : flatten a table consisting of N groups of data, each with 1 or
              more rows in the table, into a table of N rows
   2json    : convert CSV or sqlite3 db table to json
   2tsv     : convert to tab-delimited text
-  serialize: convert into 3-column format (id, column name, cell value)
   stack    : stack tables vertically, aligning columns with common names
+  paste    : horizontally paste two tables together: given inputs X, Y, ... of N rows
   compare  : compare two or more tables and output differences
+  overwrite: save, modify or apply overwrites
 
 Other commands:
   2db      : convert json to sqlite3 db
@@ -124,4 +136,6 @@ Extended commands:
   Extension 'my': Sample zsv extension
     my-count: print the number of rows
     my-echo: print the input data back to stdout
-Exiting extension example!
+
+To learn more, see README at https://github.com/liquidaty/zsv.
+Report any issues at https://github.com/liquidaty/zsv/issues.

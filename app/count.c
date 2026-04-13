@@ -114,8 +114,11 @@ static void row_parallel(void *ctx) {
   data->rows++;
 
   if (UNLIKELY((off_t)zsv_cum_scanned_length(data->parser) >= data->end_offset_limit)) {
-    // We crossed the boundary. We must finish this row, then stop.
-    // Switch handler to 'done' to catch the exact end of this row.
+    // We crossed the boundary. Clear skip_cells so the parser exits
+    // the SIMD bulk loop and switches to the per-row path, which tracks
+    // row_start accurately. Then row_parallel_done can compute
+    // next_row_start correctly from scanned_length and row_start.
+    zsv_set_skip_cells(data->parser, 0);
     zsv_set_row_handler(data->parser, row_parallel_done);
   }
 }
@@ -141,6 +144,7 @@ static void worker_row(void *ctx) {
   wctx->cdata->row_count++;
 
   if (UNLIKELY((off_t)zsv_cum_scanned_length(wctx->parser) >= wctx->limit_len)) {
+    zsv_set_skip_cells(wctx->parser, 0);
     zsv_set_row_handler(wctx->parser, worker_row_done);
   }
 }
@@ -180,6 +184,10 @@ static void *process_chunk_internal(struct zsv_chunk_count_data *cdata) {
   opts.stream = f;
   opts.ctx = &wctx;
   opts.row_handler = worker_row;
+  /* Workers start mid-file, not at a CSV header. Set keep_empty_header_rows
+   * to bypass skip_to_first_row_w_data which checks cell contents — that
+   * check always sees blank rows in skip_cells mode (no cells populated). */
+  opts.keep_empty_header_rows = 1;
 
   wctx.parser = zsv_new(&opts);
   if (wctx.parser == NULL) {
@@ -187,6 +195,7 @@ static void *process_chunk_internal(struct zsv_chunk_count_data *cdata) {
     cdata->status = zsv_status_error;
     return NULL;
   }
+  zsv_set_skip_cells(wctx.parser, 1);
 
   enum zsv_status status = zsv_status_ok;
   while (status == zsv_status_ok && !wctx.cancelled) {
@@ -227,7 +236,7 @@ static void header_handler(void *ctx) {
         data->run_in_parallel = 1;
         if (data->opts->verbose) {
           for (unsigned int i = 0; i < data->num_chunks; i++) {
-            fprintf(stderr, "Chunk %i: %zu - %zu\n", i + 1, offsets[i].start, offsets[i].end);
+            fprintf(stderr, "Chunk %i: %lld - %lld\n", i + 1, (long long)offsets[i].start, (long long)offsets[i].end);
           }
         }
 
@@ -262,6 +271,7 @@ static void header_handler(void *ctx) {
     data->run_in_parallel = 0;
     zsv_set_row_handler(data->parser, data->opts->verbose ? row_verbose : row_simple);
   }
+  zsv_set_skip_cells(data->parser, 1);
 }
 
 static int count_usage(void) {

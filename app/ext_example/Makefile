@@ -36,7 +36,10 @@ else
   EXT=.win
 endif
 
-export CMP=cmp
+CMP ?= cmp
+export CMP
+
+export TEST_DATA_DIR=./../../data
 export TMP_DIR=./../../tmp
 
 ifeq ($(DEBUG),1)
@@ -67,15 +70,19 @@ ifeq ($(ZSV_EXTRAS),1)
   CFLAGS+= -DZSV_EXTRAS
 endif
 
+CCBN=$(shell basename ${CC})
+
 DEBUG=0
 ifeq ($(DEBUG),0)
-  CFLAGS+= -O3 -DNDEBUG -std=gnu11 -Wno-gnu-statement-expression -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -lm -ftree-vectorize -flto
+  CFLAGS+= -O3 -DNDEBUG -std=gnu11 -Wshadow -Wall -Wextra -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE -lm -ftree-vectorize -flto
+  ifeq (${CCBN},clang)
+    CFLAGS+= -Wno-gnu-statement-expression
+  endif
 else
   CFLAGS += -g
 endif
 
 export THIS_LIB_BASE=$(shell cd ../.. && pwd)
-CCBN=$(shell basename ${CC})
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 TARGET=${BUILD_DIR}/bin/zsvextmy.${SO}
 TARGET_SHEET=${BUILD_DIR}/bin/zsvextmysheet.${SO}
@@ -127,91 +134,90 @@ ${BUILD_DIR}/bin/cli:
 ${BUILD_DIR}/objs/utils/%.o:
 	(cd .. && ${MAKE} CONFIGFILE=${CONFIGFILEPATH} CC=${CC} DEBUG=${DEBUG} $@ )
 
-TESTS=test-1 test-2 test-3 test-4 test-5 test-thirdparty
+TESTS=test-extension-1 test-extension-2 test-extension-3 test-extension-4 test-extension-5 test-extension-thirdparty
+
 ifeq ($(ZSVSHEET_BUILD),1)
   TESTS+=test-sheet-extension-1 test-sheet-extension-2
 endif
 
 test: ${TESTS}
 
-test-1: test-%: ${CLI} ${TARGET}
+test-extension-1: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
-	@${RUN_CLI} my-echo < ${THIS_LIB_BASE}/data/quoted.csv > ${TMP_DIR}/zsvext-$@.out
-	@${CMP} ${TMP_DIR}/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${RUN_CLI} my-echo < ${TEST_DATA_DIR}/quoted.csv > ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-2: test-%: ${CLI} ${TARGET}
+test-extension-2: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
-	@${RUN_CLI} my-echo -t < ${THIS_LIB_BASE}/data/hi.txt > ${TMP_DIR}/zsvext-$@.out
-	@${CMP} ${TMP_DIR}/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${RUN_CLI} my-echo -t < ${TEST_DATA_DIR}/hi.txt > ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-3: test-%: ${CLI} ${TARGET}
+test-extension-3: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
-	@rm -f ${TMP_DIR}/zsvext-$@.out
-	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/zsvext-$@.out || [ 1==1 ]
-	@${RUN_CLI} unregister my 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/zsvext-$@.out || [ 1==1 ]
-	@${RUN_CLI} unregister my 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/zsvext-$@.out || [ 1==1 ]
-	@${RUN_CLI} help 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/zsvext-$@.out || [ 1==1 ]
-	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/zsvext-$@.out || [ 1==1 ]
-	@${RUN_CLI} help 2>&1 | grep -v [.]${SO} >> ${TMP_DIR}/zsvext-$@.out || [ 1==1 ]
-	@${CMP} ${TMP_DIR}/zsvext-$@.out 2>&1 test/expected/zsvext-$@.out${EXT} && ${TEST_PASS} || ${TEST_FAIL}
+	@rm -f ${TMP_DIR}/$@.out ${TMP_DIR}/$@.err
+	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || true
+	@${RUN_CLI} register my >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
+	@${RUN_CLI} unregister my >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
+	@${RUN_CLI} unregister my >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
+	@${RUN_CLI} help >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
+	@${RUN_CLI} register my >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
+	@${RUN_CLI} help >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
+	@grep -v [.]${SO} ${TMP_DIR}/$@.err >${TMP_DIR}/$@.err.filtered && mv ${TMP_DIR}/$@.err.filtered ${TMP_DIR}/$@.err
+	@${CMP} ${TMP_DIR}/$@.out 2>&1 test/expected/$@.out${EXT} && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.err 2>&1 test/expected/$@.err${EXT} && ${TEST_PASS} || ${TEST_FAIL}
 
-test-4: test-%: ${CLI} ${TARGET}
+test-extension-4: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
-	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${RUN_CLI} license > ${TMP_DIR}/zsvext-$@.out 2>> ${TMP_DIR}/zsvext-$@.err
+	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || true
+	@${RUN_CLI} license > ${TMP_DIR}/$@.out 2>> ${TMP_DIR}/$@.err
 	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
-	@${RUN_CLI} license >> ${TMP_DIR}/zsvext-$@.out 2> ${TMP_DIR}/zsvext-$@.err
-	@${CMP} ${TMP_DIR}/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
-	@${CMP} ${TMP_DIR}/zsvext-$@.err test/expected/zsvext-$@.err && ${TEST_PASS} || ${TEST_FAIL}
+	@${RUN_CLI} license >> ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
+	@${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@.err test/expected/$@.err && ${TEST_PASS} || ${TEST_FAIL}
 
-test-5: test-%:${TARGET}
+test-extension-5: test-%:${TARGET}
 	@${TEST_INIT}
-	@${RUN_CLI} my-count newline.csv 2>/dev/null > ${TMP_DIR}/zsvext-$@.out
-	@${RUN_CLI} my-count -q newline.csv 2>/dev/null >> ${TMP_DIR}/zsvext-$@.out
-	@${CMP} ${TMP_DIR}/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${RUN_CLI} my-count newline.csv 2>/dev/null > ${TMP_DIR}/$@.out
+	@${RUN_CLI} my-count -q newline.csv 2>/dev/null >> ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-thirdparty: test-%: ${CLI} ${TARGET}
+test-extension-thirdparty: test-%: ${CLI} ${TARGET}
 	@${TEST_INIT}
-	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${RUN_CLI} thirdparty > ${TMP_DIR}/zsvext-$@.out
+	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || true
+	@${RUN_CLI} thirdparty > ${TMP_DIR}/$@.out
 	@${RUN_CLI} register my 2>/dev/null 1>/dev/null
-	@${RUN_CLI} thirdparty >> ${TMP_DIR}/zsvext-$@.out
-	@${CMP} ${TMP_DIR}/zsvext-$@.out test/expected/zsvext-$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${RUN_CLI} thirdparty >> ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 ../test/worldcitiespop_mil.csv:
-	make -C ../test worldcitiespop_mil.csv
+	${MAKE} -C ../test worldcitiespop_mil.csv
 
 DATE_TIME:=$(shell date +%F-%H-%M-%S)
 export TIMINGS_CSV:=${TMP_DIR}/timings-${DATE_TIME}.csv
 TMUX_TERM=xterm-256color
 test-sheet-extension-1: ${CLI} ${TARGET} ../test/worldcitiespop_mil.csv
 	@${TEST_INIT}
-ifeq ($(IS_WSL),1)
-	@${TEST_SKIP}
-else
-	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
+	@rm -f ${TMP_DIR}/$@.out tmux-*.log
 	@tmux kill-session -t $@ || echo 'No tmux session to kill'
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} || [ 1==1 ]
+	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || true
+	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} || true
 	@(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 80 -y 5 -d -s $@ "$< sheet ../test/worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ "t" "hello" Enter Up Down && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
-endif
 
 test-sheet-extension-2: ${CLI} ${TARGET}
 	@${TEST_INIT}
 ifeq ($(IS_WSL),1)
 	@${TEST_SKIP}
 else
-	@rm -f ${TMP_DIR}/zsvext-$@.out tmux-*.log
-	@tmux kill-session -t $@ || echo 'No tmux session to kill'
+	@rm -f ${TMP_DIR}/$@.out tmux-*.log
+	@tmux kill-session -t $@ 2>/dev/null || true
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || [ 1==1 ]
-	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} || [ 1==1 ]
-	@(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 120 -y 5 -d -s $@ "$< sheet -d 3 ../../data/test/mixed-line-endings.csv" && \
+	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || true
+	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} || true
+	(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 120 -y 5 -d -s $@ "$< sheet -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ "T" && \
 	${EXPECT} $@ transformed && \
@@ -220,7 +226,7 @@ else
 endif
 
 clean:
-	@rm -f ${TARGET} ${TARGET_SHEET} ${TMP_DIR}/zsvext-test*.out
+	@rm -f ${TARGET} ${TARGET_SHEET} ${TMP_DIR}/test*.out
 
 ${BUILD_DIR}/objs/%.o : ${THIS_LIB_BASE}/src/%.c ${PARSER_DEPS}
 	${MAKE} -C ${THIS_LIB_BASE}/src CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} WIN=${WIN} $@

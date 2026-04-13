@@ -237,6 +237,32 @@ ZSV_EXPORT
 const unsigned char *zsv_parse_status_desc(enum zsv_status status);
 
 /**
+ * Set a column filter for the fast scanner engine. When set, only the
+ * specified columns receive full processing (quote normalization, UTF-8
+ * encoding). Other columns are stored as raw pointers into the input
+ * buffer without normalization. Has no effect on the standard engine.
+ *
+ * @param parser
+ * @param col_indices  array of 0-based column indices to fully process
+ * @param count        number of elements in col_indices
+ * @return             zsv_status_ok on success
+ */
+ZSV_EXPORT
+enum zsv_status zsv_set_column_filter(zsv_parser parser, const unsigned int *col_indices, unsigned int count);
+
+/**
+ * Hint to the parser that cell data is not needed. When set, the fast
+ * scanner engine skips per-cell storage and uses popcount-only row
+ * counting. The row_handler callback is still invoked for each row.
+ * Has no effect on the standard scanner engine.
+ *
+ * @param parser
+ * @param skip   non-zero to skip cell storage, 0 to resume normal parsing
+ */
+ZSV_EXPORT
+void zsv_set_skip_cells(zsv_parser parser, int skip);
+
+/**
  * Abort parsing. After this function is called, no further
  * `row_handler()` or `cell_handler()` calls will be made, and parse functions
  * will return zsv_status_cancelled

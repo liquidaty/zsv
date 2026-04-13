@@ -26,18 +26,20 @@ void *zsv_overwrite_context_new(struct zsv_overwrite_opts *opts) {
 
 enum zsv_status zsv_overwrite_context_delete(void *h) {
   struct zsv_overwrite_ctx *ctx = h;
-  if (ctx->sqlite3.filename)
-    free(ctx->sqlite3.filename);
-  if (ctx->sqlite3.stmt)
-    sqlite3_finalize(ctx->sqlite3.stmt);
-  if (ctx->sqlite3.db)
-    sqlite3_close(ctx->sqlite3.db);
-  if (ctx->csv.f)
-    fclose(ctx->csv.f);
-  if (ctx->csv.parser)
-    zsv_delete(ctx->csv.parser);
-  free(ctx->src);
-  free(ctx);
+  if (ctx) {
+    if (ctx->sqlite3.filename)
+      free(ctx->sqlite3.filename);
+    if (ctx->sqlite3.stmt)
+      sqlite3_finalize(ctx->sqlite3.stmt);
+    if (ctx->sqlite3.db)
+      sqlite3_close(ctx->sqlite3.db);
+    if (ctx->csv.f)
+      fclose(ctx->csv.f);
+    if (ctx->csv.parser)
+      zsv_delete(ctx->csv.parser);
+    free(ctx->src);
+    free(ctx);
+  }
   return zsv_status_ok;
 }
 

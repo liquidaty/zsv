@@ -234,6 +234,13 @@ struct zsv_opts {
   char only_crlf_rowend;
 #endif
   /**
+   * scan engine: 0 = default, 3 = fast (branchless SIMD)
+   *
+   * cli option: --parser <default|fast|compat>
+   */
+  unsigned char scan_engine;
+
+  /**
    * flag to print more verbose messages to the console
    * cli option: -v,--verbose
    */
