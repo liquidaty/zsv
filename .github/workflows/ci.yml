@@ -472,7 +472,7 @@ jobs:
 
     - name: Cache PDCurses build
       id: pdcurses
-      uses: actions/cache@v3
+      uses: actions/cache@v5
       with:
         path: PDCurses-3.9
         key: linux-mingw-pdcurses
@@ -582,7 +582,7 @@ jobs:
 
     - name: Cache PDCurses build
       id: pdcurses
-      uses: actions/cache@v3
+      uses: actions/cache@v5
       with:
         path: PDCurses-3.9
         key: wsl-mingw-pdcurses
