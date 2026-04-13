@@ -34,11 +34,6 @@ fi
 WITHOUT_SIMD=${WITHOUT_SIMD:-false}
 CMP=${CMP:-cmp}
 
-#JQ_DIR="$PWD/jq"
-#JQ_PREFIX="$JQ_DIR/build"
-#JQ_INCLUDE_DIR="$JQ_PREFIX/include"
-#JQ_LIB_DIR="$JQ_PREFIX/lib"
-
 echo "[INF] Building and generating artifacts"
 
 echo "[INF] PWD:              $PWD"
@@ -55,18 +50,11 @@ echo "[INF] WITHOUT_SIMD:     $WITHOUT_SIMD"
 echo "[INF] SKIP_BUILD:       $SKIP_BUILD"
 echo "[INF] SKIP_ZIP_ARCHIVE: $SKIP_ZIP_ARCHIVE"
 echo "[INF] SKIP_TAR_ARCHIVE: $SKIP_TAR_ARCHIVE"
-#echo "[INF] JQ_DIR:           $JQ_DIR"
-#echo "[INF] JQ_PREFIX:        $JQ_PREFIX"
-#echo "[INF] JQ_INCLUDE_DIR:   $JQ_INCLUDE_DIR"
-#echo "[INF] JQ_LIB_DIR:       $JQ_LIB_DIR"
 
 echo "[INF] Listing compiler version [$CC]"
 "$CC" --version
 
-# ./scripts/ci-install-libjq.sh
-
 echo "[INF] Configuring zsv"
-# CFLAGS="-I$JQ_INCLUDE_DIR" LDFLAGS="-L$JQ_LIB_DIR"
 
 if [ "$WITHOUT_SIMD" = true ]; then
   ./configure \
