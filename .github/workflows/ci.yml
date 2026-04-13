@@ -560,7 +560,7 @@ jobs:
 
     steps:
     - name: Set up WSL 2
-      uses: Vampire/setup-wsl@v6
+      uses: Vampire/setup-wsl@v7
       with:
         wsl-version: 2
         wsl-shell-command: bash --noprofile --norc -eo pipefail {0}
