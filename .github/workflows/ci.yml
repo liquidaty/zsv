@@ -772,7 +772,7 @@ jobs:
 
     steps:
     - name: Set up emsdk
-      uses: mymindstorm/setup-emsdk@v15
+      uses: mymindstorm/setup-emsdk@v16
 
     - name: Checkout
       uses: actions/checkout@v6
