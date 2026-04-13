@@ -424,17 +424,16 @@ jobs:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc13
         MAKE: gmake
-        RUN_TESTS: true
       with:
         operating_system: freebsd
         version: '13.2'
-        environment_variables: 'PREFIX CC CFLAGS MAKE RUN_TESTS ARTIFACT_DIR'
+        environment_variables: 'PREFIX CC MAKE ARTIFACT_DIR'
         shell: sh
         run: |
           ./scripts/ci-freebsd-setup.sh
           export HOST=
           RUN_TESTS=true SKIP_BUILD=true ./scripts/ci-build.sh
-          CFLAGS='-DPREFIX=\"\"' ./scripts/ci-build.sh
+          RUN_TESTS=false SKIP_BUILD=false CFLAGS='-DPREFIX=\"\"' ./scripts/ci-build.sh
 
     - name: Prepare build artifacts for upload
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
