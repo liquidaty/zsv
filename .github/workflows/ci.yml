@@ -41,9 +41,6 @@ defaults:
 env:
   AMD64_LINUX_MUSL: amd64-linux-musl
   AMD64_WINDOWS_MINGW: amd64-windows-mingw
-  AMD64_WSL_MINGW: amd64-wsl-mingw
-  AMD64_MACOSX_GCC: amd64-macosx-gcc
-  ARM64_MACOSX_GCC: arm64-macosx-gcc
   AMD64_FREEBSD_GCC: amd64-freebsd-gcc
   ARTIFACT_DIR: .artifacts
   ARTIFACT_RETENTION_DAYS: 5
@@ -124,17 +121,20 @@ jobs:
 
   ci-linux:
     needs: [tag, clang-format, cppcheck, shellcheck]
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
 
     strategy:
       fail-fast: false
       matrix:
         include:
-          - prefix: amd64-linux-gcc
+          - os: ubuntu-22.04
+            prefix: amd64-linux-gcc
             cc: gcc
-          - prefix: amd64-linux-clang
+          - os: ubuntu-22.04
+            prefix: amd64-linux-clang
             cc: clang
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -151,12 +151,24 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Build (${{ matrix.prefix }})
+    - name: Test
       env:
         PREFIX: ${{ matrix.prefix }}
         CC: ${{ matrix.cc }}
         MAKE: make
         RUN_TESTS: true
+        SKIP_BUILD: true
+      run: |
+        ./scripts/ci-build.sh
+
+    - name: Build
+      env:
+        PREFIX: ${{ matrix.prefix }}
+        CC: ${{ matrix.cc }}
+        CFLAGS: -DPREFIX=\"\"
+        MAKE: make
+        RUN_TESTS: false
+        SKIP_BUILD: false
       run: |
         ./scripts/ci-build.sh
         ./scripts/ci-create-debian-package.sh
@@ -265,7 +277,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15-intel, macos-latest]
+        include:
+          - os: macos-15-intel
+            prefix: amd64-macosx-gcc
+            gcc: gcc-13
+          - os: macos-latest
+            prefix: arm64-macosx-gcc
+            gcc: gcc-13
 
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -275,6 +293,8 @@ jobs:
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
+      ZIP: zsv-${{ needs.tag.outputs.TAG }}-${{ matrix.prefix }}.zip
+      TAR: zsv-${{ needs.tag.outputs.TAG }}-${{ matrix.prefix }}.tar.gz
 
     steps:
     - name: Checkout
@@ -283,21 +303,23 @@ jobs:
     - name: Set up homebrew dependencies
       run: brew install --quiet coreutils tree tmux sqlite3
 
-    - name: Set PREFIX and ZIP env var
+    - name: Test
       env:
-        PREFIX: ${{ runner.arch == 'X64' && env.AMD64_MACOSX_GCC || env.ARM64_MACOSX_GCC }}
-      run: |
-        {
-          echo "PREFIX=$PREFIX"
-          echo "ZIP=zsv-$TAG-$PREFIX.zip"
-          echo "TAR=zsv-$TAG-$PREFIX.tar.gz"
-        } | tee -a "$GITHUB_ENV"
-
-    - name: Build (${{ env.AMD64_MACOSX_GCC }})
-      env:
-        CC: gcc-13
+        PREFIX: ${{ matrix.prefix }}
+        CC: ${{ matrix.gcc }}
         MAKE: make
         RUN_TESTS: true
+        SKIP_BUILD: true
+      run: ./scripts/ci-build.sh
+
+    - name: Build
+      env:
+        PREFIX: ${{ matrix.prefix }}
+        CC: ${{ matrix.gcc }}
+        CFLAGS: -DPREFIX=\"\"
+        MAKE: make
+        RUN_TESTS: false
+        SKIP_BUILD: false
       run: ./scripts/ci-build.sh
 
     - name: Prepare build artifacts for upload
@@ -396,22 +418,22 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Build (${{ env.AMD64_FREEBSD_GCC }})
+    - name: Test and Build
       uses: cross-platform-actions/action@v1.0.0
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc13
         MAKE: gmake
-        RUN_TESTS: true
       with:
         operating_system: freebsd
         version: '13.2'
-        environment_variables: 'PREFIX CC MAKE RUN_TESTS ARTIFACT_DIR'
+        environment_variables: 'PREFIX CC MAKE ARTIFACT_DIR'
         shell: sh
         run: |
           ./scripts/ci-freebsd-setup.sh
           export HOST=
-          ./scripts/ci-build.sh
+          RUN_TESTS=true SKIP_BUILD=true ./scripts/ci-build.sh
+          RUN_TESTS=false SKIP_BUILD=false CFLAGS='-DPREFIX=\"\"' ./scripts/ci-build.sh
 
     - name: Prepare build artifacts for upload
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
@@ -591,17 +613,15 @@ jobs:
       if: ${{ steps.pdcurses.outputs.cache-hit != 'true' }}
       run: ./scripts/ci-build-pdcurses-with-mingw.sh
 
-    - name: Build
+    - name: Test
       env:
-        PREFIX: ${{ env.AMD64_WSL_MINGW }}
+        PREFIX: amd64-wsl-mingw
         CC: x86_64-w64-mingw32-gcc
         MAKE: make
         CMP: diff --strip-trailing-cr
         RUN_TESTS: true
         SKIP_BUILD: true
-        SKIP_ZIP_ARCHIVE: true
-        SKIP_TAR_ARCHIVE: true
-        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:CMP:RUN_TESTS:SKIP_BUILD:SKIP_ZIP_ARCHIVE:SKIP_TAR_ARCHIVE
+        WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:CMP:RUN_TESTS:SKIP_BUILD
       run: |
         export CFLAGS="-I$PWD/PDCurses-3.9"
         export LDFLAGS="-L$PWD/PDCurses-3.9/wincon"
@@ -630,12 +650,23 @@ jobs:
     - name: Configure git in container
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-    - name: Build (${{ env.AMD64_LINUX_MUSL }})
+    - name: Test
       env:
         PREFIX: ${{ env.AMD64_LINUX_MUSL }}
         CC: gcc
         MAKE: make
         RUN_TESTS: true
+        SKIP_BUILD: true
+        STATIC_BUILD: "1"
+      run: ./scripts/ci-build.sh
+
+    - name: Build
+      env:
+        PREFIX: ${{ env.AMD64_LINUX_MUSL }}
+        CC: gcc
+        CFLAGS: -DPREFIX=\"\"
+        MAKE: make
+        RUN_TESTS: false
         STATIC_BUILD: "1"
       run: ./scripts/ci-build.sh
 
