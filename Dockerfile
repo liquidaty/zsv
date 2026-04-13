@@ -14,6 +14,7 @@ RUN mkdir /usr/local/etc
 RUN \
     PREFIX=amd64-linux-musl \
     CC=gcc \
+    CFLAGS='-DPREFIX=\"\"' \
     MAKE=make \
     ARTIFACT_DIR=artifacts \
     RUN_TESTS=true \

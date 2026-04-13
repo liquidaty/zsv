@@ -86,15 +86,15 @@ fi
 
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
-  rm -rf build "$PREFIX"
-  $MAKE test
+  rm -rf "$PREFIX"
+  $MAKE clean test
   echo "[INF] Tests completed successfully!"
 fi
 
 if [ "$SKIP_BUILD" = false ]; then
   echo "[INF] Building"
   rm -rf "$PREFIX" /usr/local/etc/zsv.ini
-  "$MAKE" install
+  "$MAKE" clean install
   tree "$PREFIX"
   echo "[INF] Built successfully!"
 
