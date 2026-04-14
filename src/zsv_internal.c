@@ -121,6 +121,15 @@ struct zsv_scanner {
   unsigned char have_cell : 1;
   unsigned char started : 1;
 
+  unsigned char skip_cells : 1; // fast engine: skip cell storage, just count rows
+
+  /* Column filter for the fast engine. When non-NULL, only columns
+   * with needed_cols[col_ix] != 0 get full processing (quote normalization,
+   * UTF-8 encoding, cell_handler). Other columns get a raw placeholder.
+   * Array length must be >= max_columns. */
+  unsigned char *needed_cols;
+  unsigned int needed_cols_count; // length of needed_cols array
+
   size_t quote_close_position;
   struct zsv_opts opts;
 
@@ -149,6 +158,7 @@ struct zsv_scanner {
 #define ZSV_MODE_DELIM 0
 #define ZSV_MODE_FIXED 1
 #define ZSV_MODE_DELIM_PULL 2
+#define ZSV_MODE_DELIM_FAST 3
   unsigned char mode;
   struct {
     unsigned *offsets; // 0-based position of each cell end. offset[0] = end of first cell
@@ -465,6 +475,7 @@ static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
 #include "zsv_scan_delim.c"
 
 #include "zsv_scan_fixed.c"
+#include "zsv_scan_delim_fast.c"
 
 static enum zsv_status zsv_scan(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   switch (scanner->mode) {
@@ -473,6 +484,8 @@ static enum zsv_status zsv_scan(struct zsv_scanner *scanner, unsigned char *buff
   case ZSV_MODE_DELIM_PULL:
     // return zsv_status_row or zsv_status_ok (next call to parse_more)
     return zsv_scan_delim_pull(scanner, buff, bytes_read);
+  case ZSV_MODE_DELIM_FAST:
+    return zsv_scan_delim_fast(scanner, buff, bytes_read);
   default:
     return zsv_scan_delim(scanner, buff, bytes_read);
   }
@@ -601,6 +614,7 @@ static void set_callbacks(struct zsv_scanner *scanner) {
 #endif
       scanner->get_cell = zsv_get_cell_1;
     scanner->data_row_count = 0;
+    scanner->skip_cells = 0;
     scanner->opts.row_handler = scanner->opts_orig.row_handler;
     scanner->opts.cell_handler = scanner->opts_orig.cell_handler;
     scanner->opts.ctx = scanner->opts_orig.ctx;
@@ -679,6 +693,15 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
     opts->buffsize = ZSV_DEFAULT_SCANNER_BUFFSIZE;
   else if (opts->buffsize < ZSV_MIN_SCANNER_BUFFSIZE)
     opts->buffsize = ZSV_MIN_SCANNER_BUFFSIZE;
+
+  if (opts->scan_engine == 255)
+    scanner->mode = ZSV_MODE_DELIM; /* force compat/standard engine */
+  else if (opts->scan_engine)
+    scanner->mode = opts->scan_engine;
+#if defined(ZSV_FAST_PARSER_AVAILABLE) && defined(ZSV_DEFAULT_PARSER_FAST)
+  else
+    scanner->mode = ZSV_MODE_DELIM_FAST;
+#endif
 
   scanner->in = opts->stream;
   if (!opts->read) {

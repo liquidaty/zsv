@@ -40,7 +40,8 @@ enum {
   zsvsheet_builtin_proc_pivot_expr,
   zsvsheet_builtin_proc_pivot_cur_col,
   zsvsheet_builtin_proc_errors,
-  zsvsheet_builtin_proc_errors_clear
+  zsvsheet_builtin_proc_errors_clear,
+  zsvsheet_builtin_proc_compare
 };
 
 #define ZSVSHEET_PROC_INVALID 0

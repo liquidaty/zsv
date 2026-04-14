@@ -6,7 +6,11 @@
 #include <stdint.h>     // For uint64_t
 #include <sys/types.h>  // For off_t
 
+#if defined(_WIN32) || defined(__MINGW32__)
+typedef off64_t zsv_file_pos;
+#else
 typedef off_t zsv_file_pos;
+#endif
 
 // Define a struct to hold the (start, end) pair using the standard zsv_file_pos type
 struct zsv_chunk_position {

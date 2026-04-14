@@ -194,6 +194,11 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
     .ch_name = "",
     .proc_id = zsvsheet_builtin_proc_errors_clear,
   },
+  {
+    .ch = '\0',
+    .ch_name = "",
+    .proc_id = zsvsheet_builtin_proc_compare,
+  },
   { .ch = -1                                                                   }
 };
 /* clang-format on */
@@ -274,6 +279,11 @@ struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
     .ch = '\0',
     .ch_name = "",
     .proc_id = zsvsheet_builtin_proc_errors_clear,
+  },
+  {
+    .ch = '\0',
+    .ch_name = "",
+    .proc_id = zsvsheet_builtin_proc_compare,
   },
 
   { .ch = -1                                                          }

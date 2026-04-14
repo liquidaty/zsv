@@ -32,11 +32,7 @@ if [ "$SKIP_TAR_ARCHIVE" != true ]; then
 fi
 
 WITHOUT_SIMD=${WITHOUT_SIMD:-false}
-
-#JQ_DIR="$PWD/jq"
-#JQ_PREFIX="$JQ_DIR/build"
-#JQ_INCLUDE_DIR="$JQ_PREFIX/include"
-#JQ_LIB_DIR="$JQ_PREFIX/lib"
+CMP=${CMP:-cmp}
 
 echo "[INF] Building and generating artifacts"
 
@@ -46,6 +42,7 @@ echo "[INF] CC:               $CC"
 echo "[INF] CFLAGS:           $CFLAGS"
 echo "[INF] LDFLAGS:          $LDFLAGS"
 echo "[INF] MAKE:             $MAKE"
+echo "[INF] CMP:              $CMP"
 echo "[INF] RUN_TESTS:        $RUN_TESTS"
 echo "[INF] STATIC_BUILD:     $STATIC_BUILD"
 echo "[INF] ARTIFACT_DIR:     $ARTIFACT_DIR"
@@ -53,18 +50,11 @@ echo "[INF] WITHOUT_SIMD:     $WITHOUT_SIMD"
 echo "[INF] SKIP_BUILD:       $SKIP_BUILD"
 echo "[INF] SKIP_ZIP_ARCHIVE: $SKIP_ZIP_ARCHIVE"
 echo "[INF] SKIP_TAR_ARCHIVE: $SKIP_TAR_ARCHIVE"
-#echo "[INF] JQ_DIR:           $JQ_DIR"
-#echo "[INF] JQ_PREFIX:        $JQ_PREFIX"
-#echo "[INF] JQ_INCLUDE_DIR:   $JQ_INCLUDE_DIR"
-#echo "[INF] JQ_LIB_DIR:       $JQ_LIB_DIR"
 
 echo "[INF] Listing compiler version [$CC]"
 "$CC" --version
 
-# ./scripts/ci-install-libjq.sh
-
 echo "[INF] Configuring zsv"
-# CFLAGS="-I$JQ_INCLUDE_DIR" LDFLAGS="-L$JQ_LIB_DIR"
 
 if [ "$WITHOUT_SIMD" = true ]; then
   ./configure \
@@ -84,24 +74,15 @@ fi
 
 if [ "$RUN_TESTS" = true ]; then
   echo "[INF] Running tests"
-  rm -rf build "$PREFIX"
-  "$MAKE" test
+  rm -rf "$PREFIX"
+  $MAKE clean test
   echo "[INF] Tests completed successfully!"
-
-  if [ "$(echo "$LDFLAGS" | grep -- "-static")" != "" ] || [ "$STATIC_BUILD" = "1" ]; then
-    echo "[WRN] Dynamic extensions are not supported with static builds! Skipping tests..."
-  else
-    echo "[INF] Configuring example extension and running example extension tests"
-    echo "[INF] (cd app/ext_example && $MAKE CONFIGFILE=../../config.mk test)"
-    (cd app/ext_example && "$MAKE" CONFIGFILE=../../config.mk test)
-    echo "[INF] Tests completed successfully!"
-  fi
 fi
 
 if [ "$SKIP_BUILD" = false ]; then
   echo "[INF] Building"
-  rm -rf build "$PREFIX" /usr/local/etc/zsv.ini
-  "$MAKE" install
+  rm -rf "$PREFIX" /usr/local/etc/zsv.ini
+  "$MAKE" clean install
   tree "$PREFIX"
   echo "[INF] Built successfully!"
 

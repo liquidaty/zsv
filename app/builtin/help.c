@@ -61,6 +61,11 @@ static int main_help(int argc, const char *argv[]) {
 #ifdef ZSV_EXTRAS
     "  -1,--apply-overwrites    : automatically apply overwrites saved via `overwrite` command",
 #endif
+    "  --parser <default|fast|compat>",
+    "                           : select parser engine. 'fast' uses branchless SIMD",
+    "                             (aarch64 NEON or x86-64 AVX2/SSE2).",
+    "                             'compat' uses the scalar engine that works with",
+    "                             all CSV including non-4180-compliant quoting",
     "  -v,--verbose             : verbose output",
     "",
     "Commands that parse CSV or other tabular data:",
@@ -118,6 +123,9 @@ static int main_help(int argc, const char *argv[]) {
   if (!printed_init)
     fprintf(f, "\n(No extended commands)\n");
 #endif
+
+  fprintf(f, "\nTo learn more, see README at https://github.com/liquidaty/zsv.\n");
+  fprintf(f, "Report any issues at https://github.com/liquidaty/zsv/issues.\n");
 
   return 0;
 }
