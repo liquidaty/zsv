@@ -73,7 +73,7 @@ enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts 
     goto free;
   trn->output_filename = temp_filename;
 
-  if (!(temp_f = fopen(temp_filename, "w+")))
+  if (!(temp_f = fopen(temp_filename, "wb+")))
     goto free;
   if (setvbuf(temp_f, NULL, _IONBF, 0))
     goto free;
