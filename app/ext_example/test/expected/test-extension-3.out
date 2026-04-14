@@ -1,7 +1,7 @@
 zsv: streaming csv processor
 
 Usage:
-  zsv version: display version info (and if applicable, extension info)
+  zsv version                          : display version info (and if applicable, extension info)
   zsv (un)register [<extension_id>]    : (un)register an extension
       Registration info is saved in zsv.ini located in a directory determined as:
         ZSV_CONFIG_DIR environment variable value, if set
@@ -39,7 +39,7 @@ Options common to all commands except `prop`, `rm` and `jq`:
 
 Commands that parse CSV or other tabular data:
   echo     : write tabular input to stdout with optional cell overwrites
-  check    : check for anolomolies (column counts, utf8 encoding etc)
+  check    : check for anomalies (column counts, utf8 encoding etc)
   count    : print the number of rows
   select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations
   desc     : describe each column
@@ -70,7 +70,7 @@ Report any issues at https://github.com/liquidaty/zsv/issues.
 zsv: streaming csv processor
 
 Usage:
-  zsv version: display version info (and if applicable, extension info)
+  zsv version                          : display version info (and if applicable, extension info)
   zsv (un)register [<extension_id>]    : (un)register an extension
       Registration info is saved in zsv.ini located in a directory determined as:
         ZSV_CONFIG_DIR environment variable value, if set
@@ -108,7 +108,7 @@ Options common to all commands except `prop`, `rm` and `jq`:
 
 Commands that parse CSV or other tabular data:
   echo     : write tabular input to stdout with optional cell overwrites
-  check    : check for anolomolies (column counts, utf8 encoding etc)
+  check    : check for anomalies (column counts, utf8 encoding etc)
   count    : print the number of rows
   select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations
   desc     : describe each column
