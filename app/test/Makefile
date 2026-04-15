@@ -802,11 +802,14 @@ test-sheet-cleanup:
 
 test-sheet-all: \
 	test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 \
-	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand test-sheet-prop-cmd-opt \
+	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-15 test-sheet-16 \
+	test-sheet-subcommand \
+	test-sheet-prop-cmd-opt \
 	test-sheet-pivot-1 \
 	test-sheet-pivot-V \
 	test-sheet-sqlfilter-1 \
 	test-sheet-errors-1
+	@rm -f tmux-*.log zSE*
 	@(for SESSION in $^; do ! tmux -L "$$SESSION" kill-server 2>/dev/null || true; done && ${TEST_PASS} || ${TEST_FAIL})
 
 TMUX_TERM=xterm-256color
@@ -949,6 +952,14 @@ test-sheet-15: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ send-keys -t $@ "G" && \
 	${EXPECT} $@ bottom && \
 	tmux -L $@ send-keys -t $@ -N 4096 "k" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-16: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< ${TEST_DATA_DIR}/test/header-only.csv" && \
+	${EXPECT} $@ indexed && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-subcommand: \
