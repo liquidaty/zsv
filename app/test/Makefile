@@ -45,8 +45,7 @@ BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 export TMP_DIR=${THIS_LIB_BASE}/tmp
 TEST_DATA_DIR=${THIS_LIB_BASE}/data
 
-IS_WSL=$(shell grep -qi microsoft /proc/version 2>/dev/null && echo 1 || echo 0)
-ifeq ($(IS_WSL),1)
+ifeq ($(WIN),1)
   TEST_DATA_DIR=./../../data
   TMP_DIR=./../../tmp
 endif
@@ -871,9 +870,6 @@ test-sheet-7: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 
 test-sheet-8: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
-ifeq ($(IS_WSL),1)
-	@${TEST_SKIP}
-else
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
 	tmux -L $@ new-session -x 160 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
@@ -883,7 +879,6 @@ else
 	${EXPECT} $@ filtered && \
 	tmux -L $@ send-keys -t $@ "G" "C-u" "k" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
-endif
 
 test-sheet-9: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
@@ -898,9 +893,6 @@ test-sheet-9: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 
 test-sheet-10: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.tsv ${TIMINGS_CSV}
 	@${TEST_INIT}
-ifeq ($(IS_WSL),1)
-	@${TEST_SKIP}
-else
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
 	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< -t worldcitiespop_mil.tsv" && \
@@ -909,7 +901,6 @@ else
 	${EXPECT} $@ filtered && \
 	tmux -L $@ send-keys -t $@ "G" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
-endif
 
 test-sheet-11: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
 	@${TEST_INIT}
