@@ -219,11 +219,11 @@ static sqlite3_str *build_create_table_statement(sqlite3 *db, const char *tname,
     if (!err) {
       const char *collate = collates ? collates[i] : NULL;
       if (collate && *collate) {
-        if (collate && !(!strcmp("binary", collate) || !strcmp("rtrim", collate) || !strcmp("nocase", collate))) {
+        if (!(!strcmp("binary", collate) || !strcmp("rtrim", collate) || !strcmp("nocase", collate))) {
           fprintf(stderr, "Unrecognized collate: expected binary, rtrim or nocase, got %s", collate);
           err = 1;
         } else
-          sqlite3_str_appendf(pStr, " %s%s%s", datatype, collate ? " collate " : "", collate ? collate : "");
+          sqlite3_str_appendf(pStr, " %s collate %s", datatype, collate);
       }
     }
   }
