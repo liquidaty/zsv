@@ -1094,7 +1094,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       if (err > 0)
         perror(filename_arg);
       else
-        fprintf(stderr, "%s: no data found", filename_arg); // to do: change this to a base-buff status msg
+        fprintf(stderr, "%s: no data found\n", filename_arg); // to do: change this to a base-buff status msg
 
       err = -1;
       goto zsvsheet_exit;
