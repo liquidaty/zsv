@@ -182,6 +182,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
         zsvsheet_opts->hide_row_nums = 1;
         if (uibuff)
           uibuff->has_row_num = 1;
+        if (buffer && !buffer->opts.no_rownum_column) {
+          buffer->cols = col_count;
+          buffer->opts.no_rownum_column = 1;
+        }
       }
     }
 
