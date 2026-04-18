@@ -182,9 +182,18 @@ struct zsvsheet_sheet_context {
   struct zsvsheet_display_info display_info;
   char *find;
   char *goto_column;
+  size_t numeric_input;
   struct zsv_prop_handler *custom_prop_handler;
   struct zsvsheet_compare_opts compare;
 };
+
+static void update_numeric_input(const int ch, struct zsvsheet_sheet_context *state) {
+  state->numeric_input = state->numeric_input * 10 + (ch - '0');
+}
+
+static void reset_numeric_input(struct zsvsheet_sheet_context *state) {
+  state->numeric_input = 0;
+}
 
 static void get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row, const char *default_value) {
   *buff = '\0';
@@ -487,13 +496,7 @@ static zsvsheet_status zsvsheet_move_hor(struct zsvsheet_display_info *di, bool 
 
 /* Common vertical movement between extremes */
 static zsvsheet_status zsvsheet_move_ver_end(struct zsvsheet_display_info *di, bool top) {
-  size_t current;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
-
-  current = zsvsheet_get_input_raw_row(&current_ui_buffer->input_offset, &current_ui_buffer->buff_offset,
-                                       current_ui_buffer->cursor_row);
-  UNUSED(current);
-
   if (top) {
     di->update_buffer =
       zsvsheet_goto_input_raw_row(current_ui_buffer, 1, di->header_span, di->dimensions, di->dimensions->header_span);
@@ -508,6 +511,28 @@ static zsvsheet_status zsvsheet_move_ver_end(struct zsvsheet_display_info *di, b
                                     di->dimensions, di->dimensions->rows - di->dimensions->header_span - 1);
     }
   }
+  return zsvsheet_status_ok;
+}
+
+static zsvsheet_status zsvsheet_move_ver_to_row(struct zsvsheet_display_info *di, const size_t target_row) {
+  struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
+
+  // If target row is the current row, do nothing
+  if (target_row == current_ui_buffer->cursor_row)
+    return zsvsheet_status_ok;
+
+  // If target row is visible on the current screen, just move the cursor
+  const size_t visible_start = current_ui_buffer->buff_offset.row + di->header_span + 1;
+  const size_t visible_height = di->dimensions->rows - di->dimensions->header_span - di->dimensions->footer_span;
+  const size_t visible_end = visible_start + visible_height;
+  if (target_row >= visible_start && target_row < visible_end) {
+    current_ui_buffer->cursor_row = target_row;
+    return zsvsheet_status_ok;
+  }
+
+  // Otherwise, move the buffer to bring the target row into view
+  di->update_buffer = zsvsheet_goto_input_raw_row(current_ui_buffer, target_row, di->header_span, di->dimensions,
+                                                  di->dimensions->header_span);
   return zsvsheet_status_ok;
 }
 
@@ -920,6 +945,8 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(state->display_info.ui_buffers.current);
 
+  const size_t numeric_input = state->numeric_input;
+
   switch (ctx->proc_id) {
   case zsvsheet_builtin_proc_quit:
     return zsvsheet_status_exit;
@@ -944,11 +971,14 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
   case zsvsheet_builtin_proc_move_top:
     return zsvsheet_move_ver_end(&state->display_info, true);
   case zsvsheet_builtin_proc_move_bottom:
-    return zsvsheet_move_ver_end(&state->display_info, false);
+    if (numeric_input == 0)
+      return zsvsheet_move_ver_end(&state->display_info, false);
+    else
+      return zsvsheet_move_ver_to_row(&state->display_info, numeric_input);
 
-  case zsvsheet_key_move_last_col:
+  case zsvsheet_builtin_proc_move_last_col:
     return zsvsheet_move_hor_end(&state->display_info, true);
-  case zsvsheet_key_move_first_col:
+  case zsvsheet_builtin_proc_move_first_col:
     return zsvsheet_move_hor_end(&state->display_info, false);
 
   case zsvsheet_builtin_proc_escape:
@@ -980,7 +1010,7 @@ struct builtin_proc_desc {
 } builtin_procedures[] = {
   { zsvsheet_builtin_proc_quit,           "quit",        "Exit the application",                                            zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_escape,         "escape",      "Leave the current view or cancel a subcommand",                   zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_move_bottom,    "bottom",      "Jump to the last row",                                            zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_move_bottom,    "bottom",      "Jump to the last row (nG for specific row e.g. 10G)",             zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_move_top,       "top",         "Jump to the first row",                                           zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_move_first_col, "first",       "Jump to the first column",                                        zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_pg_down,        "pagedown",    "Move down one page",                                              zsvsheet_builtin_proc_handler },
@@ -1147,13 +1177,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   //...
   //
 
-  int ch;
   struct zsvsheet_sheet_context handler_state = {
     .display_info.ui_buffers.base = &ui_buffers,
     .display_info.ui_buffers.current = &current_ui_buffer,
     .display_info.dimensions = &display_dims,
     .display_info.header_span = header_span,
     .find = NULL,
+    .goto_column = NULL,
     .custom_prop_handler = custom_prop_handler,
     .compare = compare_opts,
   };
@@ -1175,6 +1205,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
   halfdelay(2);
 
+  int ch;
   while (true) {
     ch = getch();
 
@@ -1182,7 +1213,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     zsvsheet_priv_set_status(&display_dims, 1, "");
 
     if (ch != ERR) {
+      if (isdigit(ch)) {
+        update_numeric_input(ch, &handler_state);
+        continue;
+      }
+
       status = zsvsheet_key_press(ch, &handler_state);
+      reset_numeric_input(&handler_state);
+
       if (status == zsvsheet_status_exit)
         break;
       if (status != zsvsheet_status_ok)
