@@ -802,7 +802,7 @@ test-sheet-cleanup:
 
 test-sheet-all: \
 	test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 \
-	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-15 test-sheet-16 \
+	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-15 test-sheet-16 test-sheet-17 \
 	test-sheet-subcommand \
 	test-sheet-prop-cmd-opt \
 	test-sheet-pivot-1 \
@@ -960,6 +960,19 @@ test-sheet-16: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
 	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< ${TEST_DATA_DIR}/test/header-only.csv" && \
 	${EXPECT} $@ indexed && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-17: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 50 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ "500G" && \
+	${EXPECT} $@ 500g && \
+	tmux -L $@ send-keys -t $@ "0G" && \
+	${EXPECT} $@ 0g && \
+	tmux -L $@ send-keys -t $@ "1G" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-subcommand: \
