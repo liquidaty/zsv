@@ -494,45 +494,64 @@ static zsvsheet_status zsvsheet_move_hor(struct zsvsheet_display_info *di, bool 
   return zsvsheet_status_ok;
 }
 
-/* Common vertical movement between extremes */
-static zsvsheet_status zsvsheet_move_ver_end(struct zsvsheet_display_info *di, bool top) {
-  struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
-  if (top) {
-    di->update_buffer =
-      zsvsheet_goto_input_raw_row(current_ui_buffer, 1, di->header_span, di->dimensions, di->dimensions->header_span);
-  } else {
-    if (current_ui_buffer->dimensions.row_count == 0)
-      return zsvsheet_status_ok;
-    if (current_ui_buffer->dimensions.row_count <= di->dimensions->rows - di->dimensions->footer_span) {
-      current_ui_buffer->cursor_row = current_ui_buffer->dimensions.row_count - 1;
-    } else {
-      di->update_buffer =
-        zsvsheet_goto_input_raw_row(current_ui_buffer, current_ui_buffer->dimensions.row_count - 1, di->header_span,
-                                    di->dimensions, di->dimensions->rows - di->dimensions->header_span - 1);
-    }
-  }
-  return zsvsheet_status_ok;
-}
-
-static zsvsheet_status zsvsheet_move_ver_to_row(struct zsvsheet_display_info *di, const size_t target_row) {
+// Common vertical movement
+static zsvsheet_status zsvsheet_move_ver_to_row(struct zsvsheet_display_info *di, size_t target_row) {
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
 
-  // If target row is the current row, do nothing
-  if (target_row == current_ui_buffer->cursor_row)
+  const size_t row_count = current_ui_buffer->dimensions.row_count;
+  if (row_count <= 1) {
     return zsvsheet_status_ok;
+  }
+
+  const size_t current_row = zsvsheet_get_input_raw_row(&current_ui_buffer->input_offset,
+                                                        &current_ui_buffer->buff_offset, current_ui_buffer->cursor_row);
+  if (target_row == current_row) {
+    return zsvsheet_status_ok;
+  }
+
+  if (target_row >= row_count) {
+    target_row = row_count - 1;
+  }
 
   // If target row is visible on the current screen, just move the cursor
-  const size_t visible_start = current_ui_buffer->buff_offset.row + di->header_span + 1;
-  const size_t visible_height = di->dimensions->rows - di->dimensions->header_span - di->dimensions->footer_span;
-  const size_t visible_end = visible_start + visible_height;
-  if (target_row >= visible_start && target_row < visible_end) {
-    current_ui_buffer->cursor_row = target_row;
+  const size_t visible_rows = di->dimensions->rows - di->dimensions->header_span - di->dimensions->footer_span;
+  const size_t row_start =
+    zsvsheet_get_input_raw_row(&current_ui_buffer->input_offset, &current_ui_buffer->buff_offset, 1);
+  const size_t row_end =
+    zsvsheet_get_input_raw_row(&current_ui_buffer->input_offset, &current_ui_buffer->buff_offset, visible_rows);
+  if (target_row >= row_start && target_row <= row_end) {
+    current_ui_buffer->cursor_row =
+      target_row - current_ui_buffer->input_offset.row - current_ui_buffer->buff_offset.row;
     return zsvsheet_status_ok;
   }
 
-  // Otherwise, move the buffer to bring the target row into view
-  di->update_buffer = zsvsheet_goto_input_raw_row(current_ui_buffer, target_row, di->header_span, di->dimensions,
-                                                  di->dimensions->header_span);
+  // Move the buffer to bring the target row into view
+
+  // Calculate target cursor position (center by default)
+  // If the target row is right above, move one row up
+  // If the target row is right below, move one row down
+  // If target row is near the start, pin to top
+  // If target row is near the end, pin to bottom
+  size_t final_cursor_position;
+  if (target_row == row_start - 1) {
+    final_cursor_position = di->header_span;
+  } else if (target_row == row_end + 1) {
+    final_cursor_position = di->dimensions->rows - di->dimensions->footer_span - 1;
+  } else if (target_row < (visible_rows / 2)) {
+    final_cursor_position = di->header_span + (target_row - 1);
+  } else if ((row_count - target_row) <= (visible_rows / 2)) {
+    const size_t rows_from_end = (row_count - 1) - target_row;
+    final_cursor_position = (di->dimensions->rows - di->dimensions->footer_span - 1) - rows_from_end;
+  } else {
+    final_cursor_position = di->header_span + (visible_rows / 2);
+  }
+
+  // Ensure final_cursor_position is not above header_span
+  if (final_cursor_position < di->header_span)
+    final_cursor_position = di->header_span;
+
+  di->update_buffer =
+    zsvsheet_goto_input_raw_row(current_ui_buffer, target_row, di->header_span, di->dimensions, final_cursor_position);
   return zsvsheet_status_ok;
 }
 
@@ -968,13 +987,14 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
   case zsvsheet_builtin_proc_pg_down:
     return zsvsheet_move_page(&state->display_info, false);
 
-  case zsvsheet_builtin_proc_move_top:
-    return zsvsheet_move_ver_end(&state->display_info, true);
-  case zsvsheet_builtin_proc_move_bottom:
-    if (numeric_input == 0)
-      return zsvsheet_move_ver_end(&state->display_info, false);
-    else
-      return zsvsheet_move_ver_to_row(&state->display_info, numeric_input);
+  case zsvsheet_builtin_proc_move_top: {
+    const size_t target_row = 1;
+    return zsvsheet_move_ver_to_row(&state->display_info, target_row);
+  }
+  case zsvsheet_builtin_proc_move_bottom: {
+    const size_t target_row = numeric_input ? numeric_input : current_ui_buffer->dimensions.row_count;
+    return zsvsheet_move_ver_to_row(&state->display_info, target_row);
+  }
 
   case zsvsheet_builtin_proc_move_last_col:
     return zsvsheet_move_hor_end(&state->display_info, true);

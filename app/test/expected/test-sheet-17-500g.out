@@ -1,4 +1,28 @@
 Row #     Country   City      AccentCit Region    Populatio Latitude  Longitude
+476       ae        rul dibba Rul Dibba 04                  25.601056 56.322797
+477       pk        adam waha Adam Waha 04                  29.468142 71.649456
+478       ir        kuy-e bim Kuy-e Bim 26                  35.7041   51.3197
+479       ae        sabakha   Sabakha   01                  23.3      53.85
+480       pk        karai     Karai     03                  32.939208 70.482338
+481       mw        tantwe    Tantwe    20                  -13.28333 34.133333
+482       lv        skrundeni Skrundeni 15                  56.9      22.066666
+483       in        tail      Tail      39                  29.908889 78.507778
+484       tr        kirin     Kirin     93                  40.995063 30.985019
+485       pe        langla    Langla    15                  -12.98333 -76.15
+486       mm        hpanu     Hpanu     05                  16.2      98.266666
+487       tr        uskumruko Uskumruk  34                  41.221944 29.033333
+488       ae        sharga    Sharga    06                  25.35731  55.403304
+489       ae        sharijah  Sharijah  06                  25.35731  55.403304
+490       id        pantebaro Pantebaro 01                  5.1776    96.8156
+491       vn        long khan Long Khá  09                  10.783333 105.28333
+492       ae        sharja    Sharja    06                  25.35731  55.403304
+493       ae        shauka    Shauka    05                  25.1      56.033333
+494       se        lagbo     Lagbo     25                  60.05     16.983333
+495       sl        jagbwema  Jagbwema  01                  7.6       -11.31666
+496       ae        shokah    Shokah    05                  25.1      56.033333
+497       it        avigliano Avigliano 18                  42.65     12.433333
+498       ae        sram      Sram      04                  25.498176 56.057156
+499       ae        sufad     Sufad     04                  25.221646 56.323896
 500       pk        qiu quldi Qiu Quldi 03                  36.8411   73.5656
 501       ae        sulaymat  Sulaymat  01                  24.221944 55.603056
 502       us        burt      Burt      TN                  35.769166 -86.12944
@@ -23,28 +47,4 @@ Row #     Country   City      AccentCit Region    Populatio Latitude  Longitude
 521       ru        yagodno-l Yagodno-L 51                  56.824444 43.783333
 522       ae        umm grain Umm Grain 01                  23.1      53.716667
 523       ae        `umm qrei `Umm Qrei 01                  23.1      53.716667
-524       tz        mwangwi   Mwangwi   13                  -5.15     39.7
-525       jp        wakehama- Wakehama- 13                  34.7      135.21666
-526       ph        tiboco    Tiboco    F4                  10.4911   123.4216
-527       us        halleytow Halleytow SC                  33.658333 -80.26694
-528       zr        bodurungb Bodurungb 02                  3.8       19.533333
-529       jp        nanseien  Nanseien  47                  24.857794 125.30431
-530       ir        nameq     Nameq     42                  35.412662 58.762751
-531       ae        western m Western M 01                  23.102651 53.581849
-532       pk        nari kade Nari Kade 01                  33.656111 71.133611
-533       us        harryhoga Harryhoga VA                  38.006944 -76.54444
-534       mm        tongyi    Tongyi    17                  16.826111 96.635
-535       td        tarik     Tarik     11                  10.083333 17.466666
-536       kr        sojongni  Sojongni  16                  34.364722 126.52722
-537       id        krandon   Krandon   10                  -7.714167 110.34
-538       id        remeng ki Remeng Ki 07                  -7.601667 110.49722
-539       pg        kamondo   Kamondo   04                  -8.9      147.8
-540       id        hutarau   Hutarau   26                  2.6714    99.3223
-541       mz        mavia     Mavia     01                  -13.33388 39.3725
-542       my        kampung j Kampung J 09                  5.206933  100.49987
-543       lt        balniai i Balniai I 62                  55.2      22.733333
-544       mg        andengind Andengind 03                  -14.75    48.233333
-545       ng        oke-igi   Oke-Igi   54                  7.951724  5.053791
-546       af        abakeh    Abakeh    24                  36.67363  69.078194
-547       ir        kapurabad Kapurabad 04                  26.2213   61.1204
 ? for help 500
