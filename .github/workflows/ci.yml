@@ -38,13 +38,13 @@ defaults:
   run:
     shell: bash
 
-# env:
-#   AMD64_LINUX_MUSL: amd64-linux-musl
-#   AMD64_WINDOWS_MINGW: amd64-windows-mingw
-#   AMD64_FREEBSD_GCC: amd64-freebsd-gcc
-#   ARTIFACT_DIR: .artifacts
-#   ARTIFACT_RETENTION_DAYS: 5
-#   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+env:
+  AMD64_LINUX_MUSL: amd64-linux-musl
+  AMD64_WINDOWS_MINGW: amd64-windows-mingw
+  AMD64_FREEBSD_GCC: amd64-freebsd-gcc
+  ARTIFACT_DIR: .artifacts
+  ARTIFACT_RETENTION_DAYS: 5
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   tag:
