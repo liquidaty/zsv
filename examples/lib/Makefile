@@ -38,6 +38,7 @@ endif
 
 CCBN=$(shell basename ${CC})
 
+PREFIX=
 ifeq ($(CCBN),emcc)
 ifeq ($(RUN_WASM_TESTS),1)
   PREFIX="node"

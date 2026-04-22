@@ -813,8 +813,8 @@ jobs:
         emconfigure ./configure --enable-pic --disable-pie --no-parallel
         emmake make test CONFIGFILE=config.emcc RUN_WASM_TESTS=1
 
-  ci-wasm-playground:
-    needs: [tag, clang-format, cppcheck, shellcheck]
+  wasm-playground:
+    needs: [tag, clang-format, cppcheck, shellcheck, ci-wasm]
     runs-on: ubuntu-22.04-arm
     timeout-minutes: 15
 
@@ -829,7 +829,7 @@ jobs:
             cflags: ""
             plgdir: playground/non-simd
 
-    name: ci-wasm-playground (${{ matrix.name }})
+    name: wasm-playground (${{ matrix.name }})
 
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
@@ -869,7 +869,7 @@ jobs:
 
   upload-github-pages-artifact:
     if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
-    needs: [prepare-linux-packages, ci-wasm-playground]
+    needs: [prepare-linux-packages, wasm-playground]
     runs-on: ubuntu-latest
 
     steps:
