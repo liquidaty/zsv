@@ -40,7 +40,7 @@ CCBN=$(shell basename ${CC})
 
 ifeq ($(CCBN),emcc)
 ifeq ($(RUN_WASM_TESTS),1)
-  PREFIX=node
+  PREFIX="node"
   EXE=.em.js
   LDFLAGS += -s NODERAWFS=1 -s EXIT_RUNTIME=1 -s INVOKE_RUN=1
 endif

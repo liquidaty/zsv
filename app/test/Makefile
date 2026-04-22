@@ -104,7 +104,7 @@ endif
 
 ifeq ($(CCBN),emcc)
 ifeq ($(RUN_WASM_TESTS),1)
-  PREFIX=node
+  PREFIX="node"
   EXE=.em.js
 endif
 endif
