@@ -40,7 +40,11 @@ CCBN=$(shell basename ${CC})
 
 PREFIX=
 ifeq ($(CCBN),emcc)
-ifeq ($(RUN_TESTS),true)
+ifneq (,$(filter check test%,$(MAKECMDGOALS)))
+  NODE_EXISTS := $(shell command -v node 2> /dev/null)
+  ifndef NODE_EXISTS
+    $(error "NodeJS not found. Install NodeJS to run wasm tests.")
+  endif
   PREFIX="node"
   EXE=.em.js
   LDFLAGS += -s NODERAWFS=1 -s EXIT_RUNTIME=1 -s INVOKE_RUN=1

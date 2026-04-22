@@ -103,7 +103,11 @@ else
 endif
 
 ifeq ($(CCBN),emcc)
-ifeq ($(RUN_TESTS),true)
+ifneq (,$(filter check test%,$(MAKECMDGOALS)))
+  NODE_EXISTS := $(shell command -v node 2> /dev/null)
+  ifndef NODE_EXISTS
+    $(error "NodeJS not found. Install NodeJS to run wasm tests.")
+  endif
   PREFIX="node"
   EXE=.em.js
 endif

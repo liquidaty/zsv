@@ -806,7 +806,6 @@ jobs:
         PREFIX: amd64-linux-wasm
         CC: emcc
         MAKE: make
-        RUN_TESTS: true
         CONFIGFILE: config.emcc
         CFLAGS: -msse2 -msimd128
         CROSS_COMPILING: "yes"
@@ -852,7 +851,6 @@ jobs:
         PREFIX: amd64-linux-wasm
         CC: emcc
         MAKE: make
-        RUN_TESTS: false
         CONFIGFILE: config.emcc
         CFLAGS: ${{ matrix.cflags }}
         CROSS_COMPILING: "yes"
