@@ -785,6 +785,9 @@ jobs:
     runs-on: ubuntu-22.04-arm
     timeout-minutes: 15
 
+    outputs:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
     env:
       TAG: ${{ needs.tag.outputs.TAG }}
 
@@ -803,7 +806,7 @@ jobs:
         PREFIX: amd64-linux-wasm
         CC: emcc
         MAKE: make
-        RUN_TESTS: false
+        RUN_TESTS: true
         CONFIGFILE: config.emcc
         CFLAGS: -msse2 -msimd128
         CROSS_COMPILING: "yes"
@@ -811,10 +814,10 @@ jobs:
         STATIC_BUILD: "1"
       run: |
         emconfigure ./configure --enable-pic --disable-pie --no-parallel
-        emmake make test CONFIGFILE=config.emcc RUN_WASM_TESTS=1
+        emmake make test CONFIGFILE=config.emcc
 
   wasm-playground:
-    needs: [tag, clang-format, cppcheck, shellcheck, ci-wasm]
+    needs: [ci-wasm]
     runs-on: ubuntu-22.04-arm
     timeout-minutes: 15
 
@@ -832,7 +835,7 @@ jobs:
     name: wasm-playground (${{ matrix.name }})
 
     env:
-      TAG: ${{ needs.tag.outputs.TAG }}
+      TAG: ${{ needs.ci-wasm.outputs.TAG }}
 
     steps:
     - name: Set up emsdk

@@ -103,7 +103,7 @@ else
 endif
 
 ifeq ($(CCBN),emcc)
-ifeq ($(RUN_WASM_TESTS),1)
+ifeq ($(RUN_TESTS),true)
   PREFIX="node"
   EXE=.em.js
 endif

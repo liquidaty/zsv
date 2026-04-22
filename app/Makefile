@@ -112,10 +112,10 @@ ifeq ($(WIN),0)
   ifneq ($(findstring emcc,$(CC)),) # emcc
     NO_THREADING ?= 1
     NO_PLAYGROUND ?= 1
-    RUN_WASM_TESTS ?= 0
+    RUN_TESTS ?= false
     EXE=.em.js
     LDFLAGS += -s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -s MAIN_MODULE -lidbfs.js
-    ifeq ($(RUN_WASM_TESTS),1)
+    ifeq ($(RUN_TESTS),true)
       LDFLAGS += -s NODERAWFS=1 -s EXIT_RUNTIME=1 -s INVOKE_RUN=1
     else ifeq ($(NO_PLAYGROUND),0) # wasm playground
       LDFLAGS += -s EXPORTED_RUNTIME_METHODS="['callMain']" -s INVOKE_RUN=0
