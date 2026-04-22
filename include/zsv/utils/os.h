@@ -50,5 +50,5 @@ void zsv_win_to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len);
 /**
  * get number of cores
  */
-unsigned int zsv_get_number_of_cores();
+unsigned int zsv_get_number_of_cores(void);
 #endif // ZSV_OS_H

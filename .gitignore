@@ -85,3 +85,4 @@ app/ext_example/zEE*
 !**/expected/*.out
 pkg
 PDCurses-3.9
+default.profraw

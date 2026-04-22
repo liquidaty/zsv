@@ -78,6 +78,7 @@ build install uninstall: % :
 clean:
 	@${MAKE} -C src clean CONFIGFILE=${CONFIGFILEPATH}
 	@${MAKE} -C app clean-all CONFIGFILE=${CONFIGFILEPATH}
+	@${MAKE} -C examples/lib clean CONFIGFILE=${CONFIGFILEPATH}
 	@rm -rf ${THIS_MAKEFILE_DIR}/build
 
 # Run tests under AddressSanitizer. Uses a separate config file and build

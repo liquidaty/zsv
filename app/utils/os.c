@@ -155,7 +155,7 @@ void zsv_perror(const char *s) {
 
 #endif
 
-unsigned int zsv_get_number_of_cores() {
+unsigned int zsv_get_number_of_cores(void) {
   long ncores = 1; // Default to 1 in case of failure
 
 #ifdef _WIN32

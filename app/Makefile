@@ -112,18 +112,21 @@ ifeq ($(WIN),0)
   ifneq ($(findstring emcc,$(CC)),) # emcc
     NO_THREADING ?= 1
     NO_PLAYGROUND ?= 1
+    RUN_WASM_TESTS ?= 0
     EXE=.em.js
-    ifeq ($(NO_PLAYGROUND),0) # wasm playground
-      LDFLAGS += -sEXPORTED_RUNTIME_METHODS="['callMain']" -sINVOKE_RUN=0 -sALLOW_MEMORY_GROWTH=1
+    LDFLAGS += -s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -s MAIN_MODULE -lidbfs.js
+    ifeq ($(RUN_WASM_TESTS),1)
+      LDFLAGS += -s NODERAWFS=1 -s EXIT_RUNTIME=1 -s INVOKE_RUN=1
+    else ifeq ($(NO_PLAYGROUND),0) # wasm playground
+      LDFLAGS += -s EXPORTED_RUNTIME_METHODS="['callMain']" -s INVOKE_RUN=0
     else
       CFLAGS += -DNO_PLAYGROUND
-      LDFLAGS += -sEXPORTED_FUNCTIONS="['_free','_malloc']"
-      LDFLAGS += -sEXPORTED_RUNTIME_METHODS="['setValue','allocateUTF8','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory']"
-      LDFLAGS += -sRESERVED_FUNCTION_POINTERS=4 -sALLOW_MEMORY_GROWTH=1
+      LDFLAGS += -s EXPORTED_FUNCTIONS="['_free','_malloc']"
+      LDFLAGS += -s EXPORTED_RUNTIME_METHODS="['setValue','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory']"
+      LDFLAGS += -s RESERVED_FUNCTION_POINTERS=4
     endif
-    LDFLAGS += -sFORCE_FILESYSTEM=1 -lidbfs.js -sMAIN_MODULE
     ifneq ($(NO_THREADING),1)
-      CFLAGS+=-pthread
+      CFLAGS += -pthread
       LDFLAGS += -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=2
     endif
   endif

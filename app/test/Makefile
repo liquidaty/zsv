@@ -102,6 +102,13 @@ else
   export CMP
 endif
 
+ifeq ($(CCBN),emcc)
+ifeq ($(RUN_WASM_TESTS),1)
+  PREFIX=node
+  EXE=.em.js
+endif
+endif
+
 BIG_FILE ?= none
 EXPECT_TIMEOUT ?= 5
 EXPECT=TMUX_SOCKET=$@ ../../scripts/test-expect.sh
@@ -172,14 +179,14 @@ test-check: test-check-1 test-check-2
 
 test-check-1: ${BUILD_DIR}/bin/zsv_check${EXE}
 	@${TEST_INIT}
-	@$< ${TEST_DATA_DIR}/test/check.csv -o ${TMP_DIR}/$@.out1 && (echo "should have failed!") || true
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/check.csv -o ${TMP_DIR}/$@.out1 && (echo "should have failed!") || true
 	@${CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
-	@$< ${TEST_DATA_DIR}/test/check.csv --display-row -o ${TMP_DIR}/$@.out2 && (echo "should have failed!" && exit 1) || true
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/check.csv --display-row -o ${TMP_DIR}/$@.out2 && (echo "should have failed!" && exit 1) || true
 	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
 
 test-check-2: ${BUILD_DIR}/bin/zsv_check${EXE}
 	@${TEST_INIT}
-	@$< --display-row ${TEST_DATA_DIR}/test/latin1.csv -o ${TMP_DIR}/$@.out && (echo "should have failed!") || true
+	@${PREFIX} $< --display-row ${TEST_DATA_DIR}/test/latin1.csv -o ${TMP_DIR}/$@.out && (echo "should have failed!") || true
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE} ${BUILD_DIR}/bin/zsv_sql${EXE}
@@ -255,7 +262,7 @@ test-echo-buffsize: ${BUILD_DIR}/bin/zsv_echo${EXE} ${TEST_DATA_DIR}/bigger-than
 
 test-echo-chars: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
-	@${PREFIX} echo '東京都' | $< -u '?' ${REDIRECT} ${TMP_DIR}/$@.out
+	@echo '東京都' | ${PREFIX} $< -u '?' ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-echo-overwrite: ${BUILD_DIR}/bin/zsv_echo${EXE}
@@ -296,28 +303,28 @@ worldcitiespop_mil.tsv: worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2tsv${EXE}
 test-count test-count-pull: test-% : test-1-% test-2-%
 
 ifeq ($(ZSV_NO_PARALLEL),1)
-ifeq ($(HAVE_PCRE2_8),1)
-  HELP_SELECT_LINES=40
-  HELP_COUNT_LINES=6
+  ifeq ($(HAVE_PCRE2_8),1)
+    HELP_SELECT_LINES=41
+    HELP_COUNT_LINES=6
+  else
+    HELP_SELECT_LINES=39
+    HELP_COUNT_LINES=6
+  endif
 else
-  HELP_SELECT_LINES=39
-  HELP_COUNT_LINES=6
-endif
-else
-ifeq ($(HAVE_PCRE2_8),1)
-  HELP_SELECT_LINES=43
-  HELP_COUNT_LINES=8
-else
-  HELP_SELECT_LINES=42
-  HELP_COUNT_LINES=8
-endif
+  ifeq ($(HAVE_PCRE2_8),1)
+    HELP_SELECT_LINES=43
+    HELP_COUNT_LINES=8
+  else
+    HELP_SELECT_LINES=42
+    HELP_COUNT_LINES=8
+  endif
 endif
 test-cli: ${CLI}
 	@${TEST_INIT}
 	@[ "${CLI}" = "" ] && echo 1>&2 'test-cli: missing CLI env var' && exit 1 || exit 0
-	@$< help select 2>&1 > ${TMP_DIR}/$@.out
+	@${PREFIX} $< help select 2>&1 > ${TMP_DIR}/$@.out
 	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "select: extracts and outputs specified columns" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_SELECT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@$< help count 2>&1 > ${TMP_DIR}/$@.out
+	@${PREFIX} $< help count 2>&1 > ${TMP_DIR}/$@.out
 	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_COUNT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-1-count test-1-count-pull: test-1-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
@@ -328,7 +335,7 @@ test-1-count test-1-count-pull: test-1-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcit
 test-2-count test-2-count-pull: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR}/test/buffsplit_quote.csv
 	@${TEST_INIT}
 	@for x in 5000 5002 5004 5006 5008 5010 5013 5015 5017 5019 5021 5101 5105 5111 5113 5115 5117 5119 5121 5123 5125 5127 5129 5131 5211 5213 5215 5217 5311 5313 5315 5317 5413 5431 5433 5455 6133; do \
-	$< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv; \
+	${PREFIX} $< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv; \
 	done > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/test-2-count.out && ${TEST_PASS} || ${TEST_FAIL}
 
@@ -431,7 +438,7 @@ test-10-select-pull test-search-select-pull test-regex-select-pull test-onlycrlf
 
 test-11-select test-11-select-pull: test-11-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@${PREFIX} (echo "A1,B1" | $< --header-row "column1,column2") > ${TMP_DIR}/$@.out
+	@echo "A1,B1" | ${PREFIX} $< --header-row "column1,column2" > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/test-11-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-12-select test-12-select-pull: test-12-% : ${BUILD_DIR}/bin/zsv_%${EXE}
@@ -441,7 +448,7 @@ test-12-select test-12-select-pull: test-12-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 
 test-13-select test-13-select-pull: test-13-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@(${PREFIx} $< --header-row-span 2 ${TEST_DATA_DIR}/test/select-13.csv | head -1 > ${TMP_DIR}/$@.out && \
+	@(${PREFIX} $< --header-row-span 2 ${TEST_DATA_DIR}/test/select-13.csv | head -1 > ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/test-13-select.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-search-select: test-search-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
@@ -527,7 +534,7 @@ test-stack: test-stack1 test-stack2 test-stack3 test-stack4 test-stack-filename
 
 test-stack-filename: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${TEST_INIT}
-	@${PREFIX} (cd ${TEST_DATA_DIR} && $< --prepend-filename stack[12].csv ) ${REDIRECT} ${TMP_DIR}/$@.out
+	@cd ${TEST_DATA_DIR} && ${PREFIX} $< --prepend-filename stack[12].csv ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-stack1: ${BUILD_DIR}/bin/zsv_stack${EXE}
@@ -655,8 +662,8 @@ ${BUILD_DIR}/bin/zsv_%${EXE}:
 
 test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
-	@${BUILD_DIR}/bin/zsv_select${EXE} -H 24999 -N worldcitiespop_mil.csv > ${TMP_DIR}/$@.csv
-	@${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@.json
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} -H 24999 -N worldcitiespop_mil.csv > ${TMP_DIR}/$@.csv
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@.json
 	@(${PREFIX} $< ${ARGS-$*} -o ${TMP_DIR}/$@.db --table data --overwrite < ${TMP_DIR}/test-2db.json ${REDIRECT1} ${TMP_DIR}/$@.out)
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 	@sqlite3 ${TMP_DIR}/$@.db .schema | sed 's/ IF NOT EXISTS//' | sed 's/"data"/data/g' > ${TMP_DIR}/$@.out2
@@ -698,13 +705,17 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} 
 	@(${PREFIX} $< --object --no-empty < ${TEST_DATA_DIR}/quoted4.csv ${REDIRECT1} ${TMP_DIR}/$@.out6 && \
 	${CMP} ${TMP_DIR}/$@.out6 expected/$@.out6 && ${TEST_PASS} || ${TEST_FAIL})
 
-	@${BUILD_DIR}/bin/zsv_select${EXE} -H 1999 -N worldcitiespop_mil.csv | ${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" | ${BUILD_DIR}/bin/zsv_2db${EXE} -o ${TMP_DIR}/$@.db --table data --overwrite && (${PREFIX} $< --from-db ${TMP_DIR}/$@.db ${REDIRECT1} ${TMP_DIR}/$@.out7 && ${CMP} ${TMP_DIR}/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} -H 1999 -N worldcitiespop_mil.csv | \
+	${PREFIX} ${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" | \
+	${PREFIX} ${BUILD_DIR}/bin/zsv_2db${EXE} -o ${TMP_DIR}/$@.db --table data --overwrite
+	@(${PREFIX} $< --from-db ${TMP_DIR}/$@.db ${REDIRECT1} ${TMP_DIR}/$@.out7 && \
+	${CMP} ${TMP_DIR}/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
 #	ajv validate --strict-tuples=false -s ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json -d expected/$@.out7.json [suffix must be json]
 
 test-2json-help: test-%-help: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@[ "`$< -h | wc -l`" -gt 15 ] && ${TEST_PASS} || ${TEST_FAIL} # check output nonempty
-	@$< -h >/dev/null && ${TEST_PASS} || ${TEST_FAIL} # check exit code
+	@[ "`${PREFIX} $< -h | wc -l`" -gt 15 ] && ${TEST_PASS} || ${TEST_FAIL} # check output nonempty
+	@${PREFIX} $< -h >/dev/null && ${TEST_PASS} || ${TEST_FAIL} # check exit code
 
 test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
