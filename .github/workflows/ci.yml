@@ -888,7 +888,7 @@ jobs:
         merge-multiple: true
 
     - name: Upload GitHub Pages artifacts
-      uses: actions/upload-pages-artifact@v4
+      uses: actions/upload-pages-artifact@v5
       with:
         path: ${{ env.ARTIFACT_DIR }}
 
