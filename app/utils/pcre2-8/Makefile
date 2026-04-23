@@ -21,7 +21,7 @@ else
 endif
 
 CCBN=$(shell basename ${CC})
-CFLAGS+= -I${PREFIX}/include
+CFLAGS+= -I${INCLUDEDIR}
 ifeq ($(DEBUG),1)
   DBG_SUBDIR+=dbg
 else

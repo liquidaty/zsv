@@ -51,8 +51,9 @@ ifeq ($(TESTING),1)
 endif
 endif
 
-TEST_DATA_DIR=./../../data
+TEST_DATA_DIR=./../../data/test
 TMP_DIR=/tmp
+
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
 COLOR_RED=\033[1;31m
@@ -105,10 +106,10 @@ test-eol: test-eol-1 test-eol-2 test-eol-3 test-eol-4
 
 test-eol-%: ${BUILD_DIR}/simple${EXE} ${BUILD_DIR}/pull${EXE}
 	@${TEST_INIT}
-	@(${PREFIX} ${BUILD_DIR}/simple${EXE} ${TEST_DATA_DIR}/test/no-eol-$*.csv > ${TMP_DIR}/$@.out && \
+	@(${PREFIX} ${BUILD_DIR}/simple${EXE} ${TEST_DATA_DIR}/no-eol-$*.csv > ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(${PREFIX} ${BUILD_DIR}/pull${EXE} ${TEST_DATA_DIR}/test/no-eol-$*.csv > ${TMP_DIR}/$@.out && \
+	@(${PREFIX} ${BUILD_DIR}/pull${EXE} ${TEST_DATA_DIR}/no-eol-$*.csv > ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 simple print_my_column parse_by_chunk pull: % : ${BUILD_DIR}/%${EXE}
