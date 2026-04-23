@@ -23,8 +23,6 @@ endif
 
 CC ?= cc
 
-CFLAGS_EXE ?=
-
 LIB_SUFFIX=
 LIBZSV_L=-lzsv${LIB_SUFFIX}
 LIBZSV_A=libzsv${LIB_SUFFIX}.a
@@ -106,17 +104,17 @@ ifneq ($(HOST),)
 endif
 endif
 
+EXE=
 ifeq ($(WIN),0)
   BUILD_SUBDIR=$(shell uname)/${DBG_SUBDIR}
-  EXE=
   ifneq ($(findstring emcc,$(CC)),) # emcc
     NO_THREADING ?= 1
     NO_PLAYGROUND ?= 1
     EXE=.em.js
     LDFLAGS += -s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -s MAIN_MODULE -lidbfs.js
-    ifneq (,$(filter check test%,$(MAKECMDGOALS)))
-      NODE_EXISTS := $(shell command -v node 2> /dev/null)
-      ifndef NODE_EXISTS
+    ifeq ($(TESTING),1)
+      NODE_EXISTS := $(shell command -v node 2>/dev/null)
+      ifeq ($(NODE_EXISTS),)
         $(error "NodeJS not found. Install NodeJS to run wasm tests.")
       endif
       LDFLAGS += -s NODERAWFS=1 -s EXIT_RUNTIME=1 -s INVOKE_RUN=1
@@ -130,7 +128,7 @@ ifeq ($(WIN),0)
     endif
     ifneq ($(NO_THREADING),1)
       CFLAGS += -pthread
-      LDFLAGS += -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=2
+      LDFLAGS += -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2
     endif
   endif
 else
@@ -182,7 +180,7 @@ else
   CFLAGS += ${CFLAGS_DEBUG}
 endif
 
-CFLAGS+= -I${PREFIX}/include
+CFLAGS+= -I${INCLUDEDIR}
 THIS_LIB_BASE:=$(shell cd .. && pwd)
 INCLUDE_DIR:=${THIS_LIB_BASE}/include
 BUILD_DIR:=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
@@ -469,7 +467,7 @@ ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8pro
 
 ${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${LIBZSV_BUILD} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${MORE_OBJECTS} ${SQL_INTERNAL_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBZSV_BUILD_DIR} ${LIBZSV_L} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBZSV_BUILD_DIR} ${LIBZSV_L} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
 	@echo Built $@
 
 cli_internal.h.in: ${THIS_MAKEFILE_DIR}/../include/zsv/ext/implementation_private.h
@@ -583,7 +581,7 @@ ifeq ($(HAVE_PCRE2_8),1)
   endif
 
   LDFLAGS_PCRE2_8=
-  INCLUDE_PCRE2_8=${PREFIX}/include
+  INCLUDE_PCRE2_8=${INCLUDEDIR}
   ifneq ($(PCRE2_8_PREFIX),$(PREFIX))
     ifneq ($(PCRE2_STATIC),1)
       LDFLAGS_PCRE2_8=-L${PCRE2_8_PREFIX}/lib
@@ -652,7 +650,7 @@ test-standalone:
 	@${MAKE} -C test test QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 test-cli: ${CLI}
-	@${MAKE} -C test $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} CLI=${CLI}
+	@${MAKE} -C test $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} CLI=${CLI} TESTING=${TESTING}
 
 clean-all: clean clean-external clean-obj clean-lib clean-util-lib
 

@@ -1033,9 +1033,9 @@ else
 fi
 
 if [ "$ZSV_NO_PARALLEL" = "1" ] && [ "$NO_THREADING" = "1" ]; then
-    printf '%-64s*\n' "*  - parallel/threading: DISABLED"
+    printf '%-64s*\n' "*  - parallelism/threading: DISABLED"
 else
-    printf '%-64s*\n' "*  - parallel/threading: enabled"
+    printf '%-64s*\n' "*  - parallelism/threading: enabled"
 fi
 
 echo "*****************************************************************"

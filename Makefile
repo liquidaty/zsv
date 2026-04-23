@@ -59,6 +59,12 @@ help:
 	@echo
 	@echo "For more information, see README.md"
 
+TESTING=
+ifneq (,$(filter check test,$(MAKECMDGOALS)))
+  TESTING=1
+  export TESTING
+endif
+
 check test:
 	@${MAKE} -C app test CONFIGFILE=${CONFIGFILEPATH}
 	@${MAKE} -C src install CONFIGFILE=${CONFIGFILEPATH}
