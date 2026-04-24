@@ -338,6 +338,10 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *sc
     scanner->opts.cell_handler(scanner->opts.ctx, s, n);
   if (VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
     struct zsv_row *row = &scanner->row;
+    /* Prevent integer underflow: if n is suspiciously large, likely from underflow */
+    if (UNLIKELY(n > scanner->buffer_end)) {
+      n = 0;
+    }
     struct zsv_cell c = {s, n, scanner->opts.no_quotes ? 1 : scanner->quoted, 0};
     row->cells[row->used++] = c;
   } else
