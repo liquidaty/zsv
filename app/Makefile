@@ -111,20 +111,20 @@ ifeq ($(WIN),0)
     NO_THREADING ?= 1
     NO_PLAYGROUND ?= 1
     EXE=.em.js
-    LDFLAGS += -s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -s MAIN_MODULE -lidbfs.js
+    LDFLAGS += -s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -lidbfs.js
     ifeq ($(TESTING),1)
       NODE_EXISTS := $(shell command -v node 2>/dev/null)
       ifeq ($(NODE_EXISTS),)
         $(error "NodeJS not found. Install NodeJS to run wasm tests.")
       endif
-      LDFLAGS += -s NODERAWFS=1 -s EXIT_RUNTIME=1 -s INVOKE_RUN=1
+      LDFLAGS += -s NODERAWFS=1 -s EXIT_RUNTIME=1 -s INVOKE_RUN=1 -s MAIN_MODULE=1
     else ifeq ($(NO_PLAYGROUND),0) # wasm playground
-      LDFLAGS += -s EXPORTED_RUNTIME_METHODS="['callMain']" -s INVOKE_RUN=0
+      LDFLAGS += -s EXPORTED_RUNTIME_METHODS="['callMain']" -s INVOKE_RUN=0 -s MAIN_MODULE=2
     else
       CFLAGS += -DNO_PLAYGROUND
       LDFLAGS += -s EXPORTED_FUNCTIONS="['_free','_malloc']"
       LDFLAGS += -s EXPORTED_RUNTIME_METHODS="['setValue','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory']"
-      LDFLAGS += -s RESERVED_FUNCTION_POINTERS=4
+      LDFLAGS += -s RESERVED_FUNCTION_POINTERS=4 -s MAIN_MODULE=2
     endif
     ifneq ($(NO_THREADING),1)
       CFLAGS += -pthread
