@@ -211,7 +211,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
 #define FAST_ROWEND_NOQUOTE(scanner, buff, idx, is_cr, need_slow_, no_quotes_)                                         \
   do {                                                                                                                 \
     if (!(is_cr)) {                                                                                                    \
-      char prev = (idx) > 0 ? (buff)[(idx)-1] : (scanner)->last;                                                       \
+      char prev = (idx) > 0 ? (buff)[(idx) - 1] : (scanner)->last;                                                     \
       if (prev == '\r') {                                                                                              \
         (scanner)->cell_start = (idx) + 1;                                                                             \
         (scanner)->row_start = (idx) + 1;                                                                              \
@@ -220,7 +220,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
     }                                                                                                                  \
     (scanner)->scanned_length = (idx);                                                                                 \
     enum zsv_status stat_ = fast_store_cell_and_row((scanner), (buff) + (scanner)->cell_start,                         \
-                                                    (idx) - (scanner)->cell_start, (need_slow_), (no_quotes_));                             \
+                                                    (idx) - (scanner)->cell_start, (need_slow_), (no_quotes_));        \
     if (VERY_UNLIKELY(stat_))                                                                                          \
       return stat_;                                                                                                    \
     (scanner)->cell_start = (idx) + 1;                                                                                 \
@@ -235,7 +235,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
 #define FAST_ROWEND_QUOTED(scanner, buff, idx, is_cr, quote_char)                                                      \
   do {                                                                                                                 \
     if (!(is_cr)) {                                                                                                    \
-      char prev = (idx) > 0 ? (buff)[(idx)-1] : (scanner)->last;                                                       \
+      char prev = (idx) > 0 ? (buff)[(idx) - 1] : (scanner)->last;                                                     \
       if (prev == '\r') {                                                                                              \
         (scanner)->cell_start = (idx) + 1;                                                                             \
         (scanner)->row_start = (idx) + 1;                                                                              \
@@ -245,7 +245,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
     (scanner)->scanned_length = (idx);                                                                                 \
     if ((quote_char) > 0)                                                                                              \
       fast_set_quote_flags((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start);                  \
-    enum zsv_status stat_ = cell_and_row_dl((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start);                     \
+    enum zsv_status stat_ = cell_and_row_dl((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start); \
     if (VERY_UNLIKELY(stat_))                                                                                          \
       return stat_;                                                                                                    \
     (scanner)->cell_start = (idx) + 1;                                                                                 \
@@ -265,8 +265,8 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
     static const size_t PADDED_SIZE = 64;
     unsigned char padded_buffer[PADDED_SIZE];
     memcpy(padded_buffer, buff, bytes_read);
-    memset(padded_buffer + bytes_read, 0, PADDED_SIZE - bytes_read);  // Null padding
-    return zsv_scan_delim_fast_impl(scanner, padded_buffer, bytes_read);  // Use impl directly
+    memset(padded_buffer + bytes_read, 0, PADDED_SIZE - bytes_read);     // Null padding
+    return zsv_scan_delim_fast_impl(scanner, padded_buffer, bytes_read); // Use impl directly
   }
 
   return zsv_scan_delim_fast_impl(scanner, buff, bytes_read);
