@@ -812,7 +812,7 @@ jobs:
         NO_THREADING: "1"
         STATIC_BUILD: "1"
       run: |
-        emconfigure ./configure --enable-pic --disable-pie --no-parallel
+        emconfigure ./configure --enable-pic --disable-pie
         emmake make test CONFIGFILE=config.emcc
 
   wasm-playground:

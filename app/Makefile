@@ -207,7 +207,6 @@ UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
 
 ifeq ($(NO_THREADING),1)
   CFLAGS+= -DNO_THREADING
-  ZSV_NO_PARALLEL=1
 endif
 
 ifeq ($(ZSV_NO_PARALLEL),1)
