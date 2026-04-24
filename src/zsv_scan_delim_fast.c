@@ -220,7 +220,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
     }                                                                                                                  \
     (scanner)->scanned_length = (idx);                                                                                 \
     enum zsv_status stat_ = fast_store_cell_and_row((scanner), (buff) + (scanner)->cell_start,                         \
-                                                    (idx) - (scanner)->cell_start, (need_slow_), (no_quotes_));        \
+                                                    (idx) - (scanner)->cell_start, (need_slow_), (no_quotes_));                             \
     if (VERY_UNLIKELY(stat_))                                                                                          \
       return stat_;                                                                                                    \
     (scanner)->cell_start = (idx) + 1;                                                                                 \
@@ -245,7 +245,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
     (scanner)->scanned_length = (idx);                                                                                 \
     if ((quote_char) > 0)                                                                                              \
       fast_set_quote_flags((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start);                  \
-    enum zsv_status stat_ = cell_and_row_dl((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start); \
+    enum zsv_status stat_ = cell_and_row_dl((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start);                     \
     if (VERY_UNLIKELY(stat_))                                                                                          \
       return stat_;                                                                                                    \
     (scanner)->cell_start = (idx) + 1;                                                                                 \
@@ -253,7 +253,26 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
     (scanner)->data_row_count++;                                                                                       \
   } while (0)
 
+// Forward declaration of implementation function
+static enum zsv_status zsv_scan_delim_fast_impl(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read);
+
 static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
+  /* Guard: pad small inputs to avoid edge cases in scalar tail processing.
+   * Small inputs (<64 bytes) can trigger quote state confusion and buffer
+   * boundary issues. Padding ensures SIMD processing is used instead of
+   * potentially buggy scalar tail paths. */
+  if (bytes_read > 0 && bytes_read < 64) {
+    static const size_t PADDED_SIZE = 64;
+    unsigned char padded_buffer[PADDED_SIZE];
+    memcpy(padded_buffer, buff, bytes_read);
+    memset(padded_buffer + bytes_read, 0, PADDED_SIZE - bytes_read);  // Null padding
+    return zsv_scan_delim_fast_impl(scanner, padded_buffer, bytes_read);  // Use impl directly
+  }
+
+  return zsv_scan_delim_fast_impl(scanner, buff, bytes_read);
+}
+
+static enum zsv_status zsv_scan_delim_fast_impl(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   /* Guard: fall back for unsupported configurations */
   if (0
 #ifndef ZSV_NO_ONLY_CRLF
