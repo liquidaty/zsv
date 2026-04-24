@@ -801,7 +801,7 @@ if [ "$JQ_PREFIX" != "" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     if ! tryldflag LDFLAGS_JQ -ljq -L"$JQ_PREFIX"/lib ; then
         echo "Error: Failed to compile with -ljq and -L$JQ_PREFIX/lib"
         exit 1
-    elif [ "$JQ_PREFIX" != "$PREFIX" ]; then
+    else # elif [ "$JQ_PREFIX" != "$PREFIX" ]; then
         LDFLAGS_JQ="$LDFLAGS_JQ -L$JQ_PREFIX/lib"
     fi
 fi
