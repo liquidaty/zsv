@@ -312,18 +312,18 @@ test-count test-count-pull: test-% : test-1-% test-2-%
 ifeq ($(ZSV_NO_PARALLEL),1)
 ifeq ($(HAVE_PCRE2_8),1)
   HELP_SELECT_LINES=40
-  HELP_COUNT_LINES=6
+  HELP_COUNT_LINES=7
 else
   HELP_SELECT_LINES=39
-  HELP_COUNT_LINES=6
+  HELP_COUNT_LINES=7
 endif
 else
 ifeq ($(HAVE_PCRE2_8),1)
   HELP_SELECT_LINES=43
-  HELP_COUNT_LINES=8
+  HELP_COUNT_LINES=9
 else
   HELP_SELECT_LINES=42
-  HELP_COUNT_LINES=8
+  HELP_COUNT_LINES=9
 endif
 endif
 test-cli: ${CLI}
