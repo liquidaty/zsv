@@ -807,7 +807,7 @@ jobs:
         CC: emcc
         MAKE: make
         CONFIGFILE: config.emcc
-        CFLAGS: -msse2 -msimd128
+        CFLAGS: -msse2 -msimd128 -DWASM_SIMD_COMPAT_SLOW
         CROSS_COMPILING: "yes"
         NO_THREADING: "1"
         STATIC_BUILD: "1"
