@@ -72,6 +72,11 @@ endif
 TESTS+=test-check
 TESTS+=test-quoted-nonstandard
 
+# Security regression test - only run when not cross-compiling
+ifneq ($(CROSS_COMPILING),1)
+  TESTS+=test-vuln-cve-underflow
+endif
+
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
 COLOR_RED=\033[1;31m
@@ -181,6 +186,15 @@ test-check-2: ${BUILD_DIR}/bin/zsv_check${EXE}
 	@${TEST_INIT}
 	@$< --display-row ${TEST_DATA_DIR}/test/latin1.csv -o ${TMP_DIR}/$@.out && (echo "should have failed!") || true
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+# Security regression test for integer underflow vulnerability
+test-vuln-cve-underflow: ${TMP_DIR}/test_vuln_cve_underflow
+	@${TEST_INIT}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
+
+${TMP_DIR}/test_vuln_cve_underflow: test_vuln_cve_underflow.c ${BUILD_DIR}/lib/libzsv.a
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} -I../../include test_vuln_cve_underflow.c -L${BUILD_DIR}/lib -lzsv -o $@
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE} ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
