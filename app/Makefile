@@ -365,7 +365,7 @@ ifneq ($(DESTDIR),)
 endif
 
 benchmark: ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}count${EXE} ${STANDALONE_PFX}2tsv${EXE}
-	make -C benchmark all
+	${MAKE} -C benchmark all TESTING=1
 
 uninstall-all: uninstall uninstall-util-lib
 
@@ -427,7 +427,7 @@ ${CLEANS}: clean-%:
 	rm -f ${STANDALONE_PFX}$*${EXE}
 	rm -f ${BUILD_DIR}/*/*$*.o
 
-.PHONY: all install cli build build-% clean clean-% test test-% lib-% check install-util-lib uninstall-util-lib clean-util-lib
+.PHONY: all install cli build build-% clean clean-% test test-% lib-% check install-util-lib uninstall-util-lib clean-util-lib benchmark
 
 .SECONDARY: ${OBJECTS}
 
