@@ -59,12 +59,20 @@ help:
 	@echo
 	@echo "For more information, see README.md"
 
+TESTING=
+ifneq (,$(filter check test,$(MAKECMDGOALS)))
+  TESTING=1
+  export TESTING
+endif
+
 check test:
 	@${MAKE} -C app test CONFIGFILE=${CONFIGFILEPATH}
 	@${MAKE} -C src install CONFIGFILE=${CONFIGFILEPATH}
 	@${MAKE} -C examples/lib test CONFIGFILE=${CONFIGFILEPATH}
 	@if echo "${LDFLAGS}" | grep -q -- "-static" || [ "${STATIC_BUILD}" = "1" ]; then \
 		echo "Dynamic extensions are not supported with static builds! Skipping extension tests..."; \
+	elif [ "`basename ${CC}`" = "emcc" ]; then \
+		echo "Skipping extension tests for emscripten builds"; \
 	else \
 		${MAKE} -C app/ext_example test CONFIGFILE=${CONFIGFILEPATH}; \
 	fi
@@ -78,6 +86,7 @@ build install uninstall: % :
 clean:
 	@${MAKE} -C src clean CONFIGFILE=${CONFIGFILEPATH}
 	@${MAKE} -C app clean-all CONFIGFILE=${CONFIGFILEPATH}
+	@${MAKE} -C examples/lib clean CONFIGFILE=${CONFIGFILEPATH}
 	@rm -rf ${THIS_MAKEFILE_DIR}/build
 
 # Run tests under AddressSanitizer. Uses a separate config file and build

@@ -780,8 +780,43 @@ jobs:
           ghcr.io/liquidaty/zsv:${{ env.TAG }}
           ghcr.io/liquidaty/zsv:latest
 
-  ci-wasm-playground:
+  ci-wasm:
     needs: [tag, clang-format, cppcheck, shellcheck]
+    runs-on: ubuntu-22.04-arm
+    timeout-minutes: 15
+
+    outputs:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
+    env:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Set up emsdk
+      uses: mymindstorm/setup-emsdk@v16
+
+    - name: Set up NodeJS
+      uses: actions/setup-node@v6
+
+    - name: Test
+      env:
+        PREFIX: amd64-linux-wasm
+        CC: emcc
+        MAKE: make
+        CONFIGFILE: config.emcc
+        CFLAGS: -msse2 -msimd128 -DWASM_SIMD_COMPAT_SLOW
+        CROSS_COMPILING: "yes"
+        NO_THREADING: "1"
+        STATIC_BUILD: "1"
+      run: |
+        emconfigure ./configure --enable-pic --disable-pie
+        emmake make test CONFIGFILE=config.emcc
+
+  wasm-playground:
+    needs: [ci-wasm]
     runs-on: ubuntu-22.04-arm
     timeout-minutes: 15
 
@@ -790,16 +825,16 @@ jobs:
       matrix:
         include:
           - name: simd
-            cflags: -msse2 -msimd128
+            cflags: "-msse2 -msimd128"
             plgdir: playground
           - name: non-simd
-            cflags:
+            cflags: ""
             plgdir: playground/non-simd
 
-    name: ci-wasm-playground (${{ matrix.name }})
+    name: wasm-playground (${{ matrix.name }})
 
     env:
-      TAG: ${{ needs.tag.outputs.TAG }}
+      TAG: ${{ needs.ci-wasm.outputs.TAG }}
 
     steps:
     - name: Set up emsdk
@@ -816,7 +851,6 @@ jobs:
         PREFIX: amd64-linux-wasm
         CC: emcc
         MAKE: make
-        RUN_TESTS: false
         CONFIGFILE: config.emcc
         CFLAGS: ${{ matrix.cflags }}
         CROSS_COMPILING: "yes"
@@ -836,7 +870,7 @@ jobs:
 
   upload-github-pages-artifact:
     if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
-    needs: [prepare-linux-packages, ci-wasm-playground]
+    needs: [prepare-linux-packages, wasm-playground]
     runs-on: ubuntu-latest
 
     steps:

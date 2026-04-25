@@ -16,10 +16,12 @@ ifeq ($(MAKE),)
   MAKE=make
 endif
 
-CFLAGS+= -I${PREFIX}/include
+CFLAGS+= -I${INCLUDEDIR}
 ifeq ($(ZSV_EXTRAS),1)
   CFLAGS+= -DZSV_EXTRAS
 endif
+
+LDFLAGS = -L${LIBDIR} -lzsv
 
 WIN=
 ifeq ($(WIN),)
@@ -29,8 +31,29 @@ ifeq ($(WIN),)
   endif
 endif
 
-TEST_DATA_DIR=./../../data
+EXE=
+ifeq ($(WIN),1)
+  EXE=.exe
+endif
+
+CCBN=$(shell basename ${CC})
+
+PREFIX=
+ifeq ($(CCBN),emcc)
+ifeq ($(TESTING),1)
+  NODE_EXISTS := $(shell command -v node 2>/dev/null)
+  ifeq ($(NODE_EXISTS),)
+    $(error "NodeJS not found. Install NodeJS to run wasm tests.")
+  endif
+  PREFIX="node"
+  EXE=.em.js
+  LDFLAGS += -s NODERAWFS=1 -s EXIT_RUNTIME=1 -s INVOKE_RUN=1
+endif
+endif
+
+TEST_DATA_DIR=./../../data/test
 TMP_DIR=/tmp
+
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
 COLOR_RED=\033[1;31m
@@ -42,11 +65,6 @@ TEST_INIT=printf "${COLOR_PINK}$@: ${COLOR_NONE}\n"
 TEST_SKIP=printf "${COLOR_BLUE}$@: ${COLOR_YELLOW}Skipped${COLOR_NONE}\n"
 TEST_PASS=printf "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}\n"
 TEST_FAIL=(printf "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}\n" && exit 1)
-
-EXE=
-ifeq ($(WIN),1)
-  EXE=.exe
-endif
 
 CMP ?= cmp
 export CMP
@@ -82,16 +100,16 @@ test: test-eol test-tiny
 
 test-tiny: build/simple${EXE}
 	@${TEST_INIT}
-	@[ "`echo '' | $< - 2>&1`" = "" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@[ "`echo '' | ${PREFIX} $< - 2>&1`" = "" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-eol: test-eol-1 test-eol-2 test-eol-3 test-eol-4
 
 test-eol-%: ${BUILD_DIR}/simple${EXE} ${BUILD_DIR}/pull${EXE}
 	@${TEST_INIT}
-	@(${BUILD_DIR}/simple${EXE} ${TEST_DATA_DIR}/test/no-eol-$*.csv > ${TMP_DIR}/$@.out && \
+	@(${PREFIX} ${BUILD_DIR}/simple${EXE} ${TEST_DATA_DIR}/no-eol-$*.csv > ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(${BUILD_DIR}/pull${EXE} ${TEST_DATA_DIR}/test/no-eol-$*.csv > ${TMP_DIR}/$@.out && \
+	@(${PREFIX} ${BUILD_DIR}/pull${EXE} ${TEST_DATA_DIR}/no-eol-$*.csv > ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out test/expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 simple print_my_column parse_by_chunk pull: % : ${BUILD_DIR}/%${EXE}
@@ -99,7 +117,7 @@ simple print_my_column parse_by_chunk pull: % : ${BUILD_DIR}/%${EXE}
 
 ${BUILD_DIR}/print_my_column${EXE} ${BUILD_DIR}/simple${EXE} ${BUILD_DIR}/parse_by_chunk${EXE} ${BUILD_DIR}/pull${EXE}: ${BUILD_DIR}/%${EXE} : %.c
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -o $@ $< ${LIBS} -L${LIBDIR}
+	@${CC} ${CFLAGS} -o $@ $< ${LDFLAGS}
 
 clean:
 	@rm -rf ${BUILD_DIR}
