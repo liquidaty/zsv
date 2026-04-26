@@ -112,15 +112,13 @@ ifeq ($(WIN),0)
     NO_PLAYGROUND ?= 1
     EXE=.em.js
     LDFLAGS += -s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -lidbfs.js -s WASM_BIGINT=1
-    ifeq ($(DEBUG),0)
-      LDFLAGS += -s ASSERTIONS -s SAFE_HEAP=1
-    endif
-    ifeq ($(TESTING),1)
+    ifeq ($(TESTING),1) # make test
       NODE_EXISTS := $(shell command -v node 2>/dev/null)
       ifeq ($(NODE_EXISTS),)
         $(error "NodeJS not found. Install NodeJS to run wasm tests.")
       endif
       LDFLAGS += -s NODERAWFS=1 -s EXIT_RUNTIME=1 -s INVOKE_RUN=1 -s MAIN_MODULE=1
+      LDFLAGS += -s ASSERTIONS -s STACK_OVERFLOW_CHECK=1 -s SAFE_HEAP=1 -s STACK_SIZE=1MB
     else ifeq ($(NO_PLAYGROUND),0) # wasm playground
       LDFLAGS += -s EXPORTED_RUNTIME_METHODS="['callMain']" -s INVOKE_RUN=0 -s MAIN_MODULE=2
     else

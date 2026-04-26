@@ -50,13 +50,13 @@ ifeq ($(WIN),1)
   TMP_DIR=./../../tmp
 endif
 
-SOURCES=echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare
+SOURCES=count echo count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare
 ifneq ($(ZSV_EXTRAS),)
   SOURCES+=overwrite
 endif
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
-TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help test-paste test-flatten-2
+TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-paste test-flatten-2
 
 ifeq ($(ZSVSHEET_BUILD),1)
   SOURCES+=sheet
