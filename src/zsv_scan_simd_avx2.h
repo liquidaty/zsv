@@ -16,6 +16,7 @@
 #define ZSV_SCAN_SIMD_AVX2_H
 
 #include <immintrin.h>
+#include <stdint.h>
 
 #ifdef __PCLMUL__
 #include <wmmintrin.h> /* PCLMULQDQ */
@@ -43,16 +44,10 @@ __attribute__((always_inline)) static inline uint64_t fast_cmpeq_64(const unsign
 __attribute__((always_inline)) static inline void fast_scan_block(const unsigned char *p, fast_vec_t v0, fast_vec_t v1,
                                                                   fast_vec_t v2, fast_vec_t v3, uint64_t *m0,
                                                                   uint64_t *m1, uint64_t *m2, uint64_t *m3) {
-  __m256i lo = _mm256_loadu_si256((const __m256i *)p);
-  __m256i hi = _mm256_loadu_si256((const __m256i *)(p + 32));
-  *m0 = (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(lo, v0)) |
-        ((uint64_t)(uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(hi, v0)) << 32);
-  *m1 = (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(lo, v1)) |
-        ((uint64_t)(uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(hi, v1)) << 32);
-  *m2 = (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(lo, v2)) |
-        ((uint64_t)(uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(hi, v2)) << 32);
-  *m3 = (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(lo, v3)) |
-        ((uint64_t)(uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(hi, v3)) << 32);
+  *m0 = fast_cmpeq_64(p, v0);
+  *m1 = fast_cmpeq_64(p, v1);
+  *m2 = fast_cmpeq_64(p, v2);
+  *m3 = fast_cmpeq_64(p, v3);
 }
 
 /*

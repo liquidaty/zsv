@@ -1,5 +1,5 @@
 /*
- * SIMD abstraction for the fast CSV scanner — aarch64 NEON.
+ * SIMD abstraction for the fast CSV scanner — WebAssembly SIMD128.
  *
  * Provides the platform-specific primitives used by zsv_scan_delim_fast.c:
  *   fast_vec_t            — broadcast vector type
@@ -8,41 +8,37 @@
  *   fast_scan_block()     — load 64 bytes once, compare against 4 values
  *   fast_prefix_xor()     — cumulative XOR (quote state propagation)
  *   fast_clear_lowest()   — clear lowest set bit
+ *
+ * This implementation uses WebAssembly SIMD (128-bit) via <wasm_simd128.h>.
+ * WebAssembly SIMD currently supports 128-bit vectors maximum.
+ * Requires the -msimd128 compiler flag.
  */
 
-#ifndef ZSV_SCAN_SIMD_NEON_H
-#define ZSV_SCAN_SIMD_NEON_H
+#ifndef ZSV_SCAN_SIMD_WASM_H
+#define ZSV_SCAN_SIMD_WASM_H
 
-#include <arm_neon.h>
+#include <wasm_simd128.h>
 #include <stdint.h>
 
-typedef uint8x16_t fast_vec_t;
+typedef v128_t fast_vec_t;
 
 static inline fast_vec_t fast_vec_set1(unsigned char c) {
-  return vdupq_n_u8(c);
-}
-
-/* NEON has no native movemask — emulate with weighted horizontal add. */
-__attribute__((always_inline)) static inline uint16_t fast_neon_movemask(uint8x16_t input) {
-  static const uint8_t weights[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
-  const uint8x16_t bit_weights = vld1q_u8(weights);
-  uint8x16_t masked = vandq_u8(input, bit_weights);
-  return (uint16_t)vaddv_u8(vget_low_u8(masked)) | ((uint16_t)vaddv_u8(vget_high_u8(masked)) << 8);
+  return wasm_i8x16_splat((char)c);
 }
 
 /* Compare 64 bytes against broadcast vector, return 64-bit bitmask. */
 __attribute__((always_inline)) static inline uint64_t fast_cmpeq_64(const unsigned char *p, fast_vec_t v) {
   uint64_t mask = 0;
   for (int i = 0; i < 4; i++) {
-    uint8x16_t b = vld1q_u8(p + i * 16);
-    mask |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v)) << (i * 16);
+    v128_t b = wasm_v128_load((const v128_t *)(p + i * 16));
+    mask |= ((uint64_t)(uint16_t)wasm_i8x16_bitmask(wasm_i8x16_eq(b, v))) << (i * 16);
   }
   return mask;
 }
 
 /*
  * Load 64 bytes once, compare against 4 broadcast vectors, produce 4 masks.
- * Avoids redundant loads vs calling fast_cmpeq_64 four times.
+ * Minimizes loads by reusing the 128-bit registers for multiple comparisons.
  */
 __attribute__((always_inline)) static inline void fast_scan_block(const unsigned char *p, fast_vec_t v0, fast_vec_t v1,
                                                                   fast_vec_t v2, fast_vec_t v3, uint64_t *m0,
@@ -53,7 +49,11 @@ __attribute__((always_inline)) static inline void fast_scan_block(const unsigned
   *m3 = fast_cmpeq_64(p, v3);
 }
 
-/* Cumulative XOR (prefix XOR) — portable 6-round shift-XOR cascade. */
+/*
+ * Cumulative XOR (prefix XOR) — propagates quote toggle state across 64 bits.
+ * WebAssembly lacks a native carry-less multiply (PCLMULQDQ);
+ * using the 6-round shift-XOR cascade.
+ */
 __attribute__((always_inline)) static inline uint64_t fast_prefix_xor(uint64_t x) {
   x ^= x << 1;
   x ^= x << 2;
@@ -64,9 +64,9 @@ __attribute__((always_inline)) static inline uint64_t fast_prefix_xor(uint64_t x
   return x;
 }
 
-/* Clear lowest set bit — portable fallback. */
+/* Clear lowest set bit. */
 __attribute__((always_inline)) static inline uint64_t fast_clear_lowest(uint64_t x) {
   return x & (x - 1);
 }
 
-#endif /* ZSV_SCAN_SIMD_NEON_H */
+#endif /* ZSV_SCAN_SIMD_WASM_H */

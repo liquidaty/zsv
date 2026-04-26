@@ -111,7 +111,10 @@ ifeq ($(WIN),0)
     NO_THREADING ?= 1
     NO_PLAYGROUND ?= 1
     EXE=.em.js
-    LDFLAGS += -s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -lidbfs.js
+    LDFLAGS += -s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -lidbfs.js -s WASM_BIGINT=1
+    ifeq ($(DEBUG),0)
+      LDFLAGS += -s ASSERTIONS -s SAFE_HEAP=1
+    endif
     ifeq ($(TESTING),1)
       NODE_EXISTS := $(shell command -v node 2>/dev/null)
       ifeq ($(NODE_EXISTS),)

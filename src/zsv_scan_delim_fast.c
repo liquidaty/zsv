@@ -17,7 +17,12 @@
  * Falls back to the compat/scalar engine on unsupported platforms.
  */
 
-#if defined(__aarch64__)
+#if defined(__wasm_simd128__)
+#include "zsv_scan_simd_wasm.h"
+// #include "zsv_scan_simd_sse2.h"
+#define ZSV_FAST_PARSER_AVAILABLE 1
+#pragma message "Using WebAssembly SIMD for fast CSV parsing"
+#elif defined(__aarch64__)
 #include "zsv_scan_simd_neon.h"
 #define ZSV_FAST_PARSER_AVAILABLE 1
 #elif defined(__AVX2__)
@@ -660,6 +665,7 @@ normal_parse:
 
 #else /* !ZSV_FAST_PARSER_AVAILABLE */
 /* Unsupported platform: fall back to compat/scalar engine */
+#pragma message "Fast parser not available on this platform, falling back to compat/scalar engine"
 static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   return zsv_scan_delim(scanner, buff, bytes_read);
 }

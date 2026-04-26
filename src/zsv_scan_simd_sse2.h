@@ -17,6 +17,7 @@
 #define ZSV_SCAN_SIMD_SSE2_H
 
 #include <emmintrin.h>
+#include <stdint.h>
 
 #ifdef __PCLMUL__
 #include <wmmintrin.h> /* PCLMULQDQ */
@@ -45,18 +46,10 @@ __attribute__((always_inline)) static inline uint64_t fast_cmpeq_64(const unsign
 __attribute__((always_inline)) static inline void fast_scan_block(const unsigned char *p, fast_vec_t v0, fast_vec_t v1,
                                                                   fast_vec_t v2, fast_vec_t v3, uint64_t *m0,
                                                                   uint64_t *m1, uint64_t *m2, uint64_t *m3) {
-  *m0 = 0;
-  *m1 = 0;
-  *m2 = 0;
-  *m3 = 0;
-  for (int i = 0; i < 4; i++) {
-    __m128i b = _mm_loadu_si128((const __m128i *)(p + i * 16));
-    unsigned shift = i * 16;
-    *m0 |= (uint64_t)(uint16_t)_mm_movemask_epi8(_mm_cmpeq_epi8(b, v0)) << shift;
-    *m1 |= (uint64_t)(uint16_t)_mm_movemask_epi8(_mm_cmpeq_epi8(b, v1)) << shift;
-    *m2 |= (uint64_t)(uint16_t)_mm_movemask_epi8(_mm_cmpeq_epi8(b, v2)) << shift;
-    *m3 |= (uint64_t)(uint16_t)_mm_movemask_epi8(_mm_cmpeq_epi8(b, v3)) << shift;
-  }
+  *m0 = fast_cmpeq_64(p, v0);
+  *m1 = fast_cmpeq_64(p, v1);
+  *m2 = fast_cmpeq_64(p, v2);
+  *m3 = fast_cmpeq_64(p, v3);
 }
 
 /*

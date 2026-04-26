@@ -86,7 +86,7 @@ ifeq ($(ZSV_EXTRAS),1)
 endif
 
 ifeq ($(DEBUG),0)
-  CFLAGS+= -DNDEBUG -O3  ${CFLAGS_LTO}
+  CFLAGS+= -DNDEBUG -O3 ${CFLAGS_LTO}
 
   ifeq ($(PGO),1)
     CFLAGS+= -fprofile-generate -fprofile-dir=/tmp/p4
