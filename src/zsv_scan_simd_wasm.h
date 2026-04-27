@@ -43,10 +43,17 @@ __attribute__((always_inline)) static inline uint64_t fast_cmpeq_64(const unsign
 __attribute__((always_inline)) static inline void fast_scan_block(const unsigned char *p, fast_vec_t v0, fast_vec_t v1,
                                                                   fast_vec_t v2, fast_vec_t v3, uint64_t *m0,
                                                                   uint64_t *m1, uint64_t *m2, uint64_t *m3) {
-  *m0 = fast_cmpeq_64(p, v0);
-  *m1 = fast_cmpeq_64(p, v1);
-  *m2 = fast_cmpeq_64(p, v2);
-  *m3 = fast_cmpeq_64(p, v3);
+  *m0 = 0;
+  *m1 = 0;
+  *m2 = 0;
+  *m3 = 0;
+  for (int i = 0; i < 4; i++) {
+    v128_t b = wasm_v128_load((const v128_t *)(p + i * 16));
+    *m0 |= ((uint64_t)(uint16_t)wasm_i8x16_bitmask(wasm_i8x16_eq(b, v0))) << (i * 16);
+    *m1 |= ((uint64_t)(uint16_t)wasm_i8x16_bitmask(wasm_i8x16_eq(b, v1))) << (i * 16);
+    *m2 |= ((uint64_t)(uint16_t)wasm_i8x16_bitmask(wasm_i8x16_eq(b, v2))) << (i * 16);
+    *m3 |= ((uint64_t)(uint16_t)wasm_i8x16_bitmask(wasm_i8x16_eq(b, v3))) << (i * 16);
+  }
 }
 
 /*

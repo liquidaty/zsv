@@ -47,10 +47,18 @@ __attribute__((always_inline)) static inline uint64_t fast_cmpeq_64(const unsign
 __attribute__((always_inline)) static inline void fast_scan_block(const unsigned char *p, fast_vec_t v0, fast_vec_t v1,
                                                                   fast_vec_t v2, fast_vec_t v3, uint64_t *m0,
                                                                   uint64_t *m1, uint64_t *m2, uint64_t *m3) {
-  *m0 = fast_cmpeq_64(p, v0);
-  *m1 = fast_cmpeq_64(p, v1);
-  *m2 = fast_cmpeq_64(p, v2);
-  *m3 = fast_cmpeq_64(p, v3);
+  *m0 = 0;
+  *m1 = 0;
+  *m2 = 0;
+  *m3 = 0;
+  for (int i = 0; i < 4; i++) {
+    uint8x16_t b = vld1q_u8(p + i * 16);
+    unsigned shift = i * 16;
+    *m0 |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v0)) << shift;
+    *m1 |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v1)) << shift;
+    *m2 |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v2)) << shift;
+    *m3 |= (uint64_t)fast_neon_movemask(vceqq_u8(b, v3)) << shift;
+  }
 }
 
 /* Cumulative XOR (prefix XOR) — portable 6-round shift-XOR cascade. */
