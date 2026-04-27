@@ -193,6 +193,10 @@ struct zsv_scanner {
   } progress;
   struct zsv_overwrite overwrite;
 #endif
+
+  // Buffer for padding small inputs in fast parser to avoid dangling pointers
+  unsigned char *padded_input_buffer;
+  size_t padded_input_size;
 };
 
 void collate_header_destroy(struct collate_header **chp) {
