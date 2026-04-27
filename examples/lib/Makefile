@@ -47,7 +47,7 @@ ifeq ($(TESTING),1)
   endif
   PREFIX="node"
   EXE=.em.js
-  LDFLAGS += -s NODERAWFS=1 -s EXIT_RUNTIME=1 -s INVOKE_RUN=1
+  LDFLAGS += -s ENVIRONMENT=node -s NODERAWFS=1 -s EXIT_RUNTIME=1 -s INVOKE_RUN=1
 endif
 endif
 
