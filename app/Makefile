@@ -113,6 +113,7 @@ ifeq ($(WIN),0)
     EXE=.em.js
     LDFLAGS += -s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -s WASM_BIGINT=1
     ifeq ($(DEBUG),1)
+      CFLAGS += -DWASM_SIMD_COMPAT_SLOW
       LDFLAGS += -s ASSERTIONS=1 -s STACK_OVERFLOW_CHECK=1 -s SAFE_HEAP=1
     endif
     ifeq ($(TESTING),1) # make test
@@ -121,7 +122,7 @@ ifeq ($(WIN),0)
         $(error "NodeJS not found. Install NodeJS to run wasm tests.")
       endif
       LDFLAGS += -s ENVIRONMENT=node
-      LDFLAGS += -s EXPORTED_RUNTIME_METHODS="['_main']" -s INVOKE_RUN=1 -s MAIN_MODULE=1
+      LDFLAGS += -s INVOKE_RUN=1 -s MAIN_MODULE=1
       LDFLAGS += -s EXIT_RUNTIME=1 -s NODERAWFS=1
       LDFLAGS += -s STACK_SIZE=1MB # required for 2tsv
     else ifeq ($(NO_PLAYGROUND),0) # wasm playground
