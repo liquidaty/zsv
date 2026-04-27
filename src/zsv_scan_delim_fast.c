@@ -18,8 +18,7 @@
  */
 
 #if defined(__wasm_simd128__)
-// #include "zsv_scan_simd_wasm.h"
-#include "zsv_scan_simd_sse2.h"
+#include "zsv_scan_simd_wasm.h"
 #define ZSV_FAST_PARSER_AVAILABLE 1
 #pragma message "Using WebAssembly SIMD for fast CSV parsing"
 #elif defined(__aarch64__)
