@@ -18,7 +18,7 @@ l                         right                     Move right one column
 <page up>                 pagedown                  Move down one page
 <page down>               pageup                    Move up one page
 g g                       top                       Jump to the first row
-G                         bottom                    Jump to the last row
+G                         bottom                    Jump to the last row (nG
 /                         find                      Set a search term and jum
 n                         next                      Jump to the next search r
 |                         gotocolumn                Go to column

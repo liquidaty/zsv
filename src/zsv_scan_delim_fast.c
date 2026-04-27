@@ -258,7 +258,38 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
     (scanner)->data_row_count++;                                                                                       \
   } while (0)
 
+// Forward declaration of implementation function
+static enum zsv_status zsv_scan_delim_fast_impl(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read);
+
 static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
+  /* Guard: pad small inputs to avoid edge cases in scalar tail processing.
+   * Small inputs (<64 bytes) can trigger quote state confusion and buffer
+   * boundary issues. Padding ensures SIMD processing is used instead of
+   * potentially buggy scalar tail paths.
+   *
+   * Use a persistent heap-allocated buffer to avoid dangling pointers when
+   * cell data is accessed later in zsv_finish(). */
+  if (bytes_read > 0 && bytes_read < 64) {
+    static const size_t PADDED_SIZE = 64;
+
+    // Ensure we have a persistent padded buffer
+    if (!scanner->padded_input_buffer) {
+      scanner->padded_input_buffer = malloc(PADDED_SIZE);
+      if (!scanner->padded_input_buffer) {
+        return zsv_status_memory;
+      }
+      scanner->padded_input_size = PADDED_SIZE;
+    }
+
+    memcpy(scanner->padded_input_buffer, buff, bytes_read);
+    memset(scanner->padded_input_buffer + bytes_read, 0, PADDED_SIZE - bytes_read);
+    return zsv_scan_delim_fast_impl(scanner, scanner->padded_input_buffer, bytes_read);
+  }
+
+  return zsv_scan_delim_fast_impl(scanner, buff, bytes_read);
+}
+
+static enum zsv_status zsv_scan_delim_fast_impl(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   /* Guard: fall back for unsupported configurations */
   if (0
 #ifndef ZSV_NO_ONLY_CRLF

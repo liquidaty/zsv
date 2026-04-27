@@ -47,6 +47,8 @@ struct data {
 
   struct zsv_opts *opts;
   const char *input_path;
+  const char *output_path;
+  FILE *output_stream;
   unsigned int num_chunks;
 
   int run_in_parallel;
@@ -280,6 +282,7 @@ static int count_usage(void) {
                              "Options:\n"
                              "  -h,--help             : show usage\n"
                              "  -i,--input <filename> : use specified file input\n"
+                             "  -o,--output <filename>: write output to specified file\n"
 #ifndef ZSV_NO_PARALLEL
                              "  -j,--jobs <n>         : number of jobs (parallel threads)\n"
                              "  --parallel            : use all available cores\n"
@@ -316,6 +319,18 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           err = 0;
         }
       }
+    } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
+      if (++i >= argc) {
+        fprintf(stderr, "%s option requires a filename\n", arg);
+        err = 1;
+      } else {
+        if (data.output_path) {
+          fprintf(stderr, "Output may not be specified more than once\n");
+          err = 1;
+        } else {
+          data.output_path = argv[i];
+        }
+      }
 #ifndef ZSV_NO_PARALLEL
     } else if (!strcmp(arg, "-j") || !strcmp(arg, "--jobs")) {
       if (++i >= argc)
@@ -350,6 +365,19 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
   }
 #endif
+  if (!err) {
+    // Initialize output stream
+    if (data.output_path) {
+      data.output_stream = fopen(data.output_path, "w");
+      if (!data.output_stream) {
+        fprintf(stderr, "Unable to open for writing: %s\n", data.output_path);
+        err = 1;
+      }
+    } else {
+      data.output_stream = stdout;
+    }
+  }
+
   if (!err) {
     opts.row_handler = header_handler;
     opts.ctx = &data;
@@ -395,13 +423,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           total_rows += curr_chunk->row_count;
         }
 
-        printf("%zu\n", total_rows);
+        fprintf(data.output_stream, "%zu\n", total_rows);
         parallel_data_delete(data.pdata);
 
       } else
 #endif
         // result from running serially
-        printf("%zu\n", data.rows);
+        fprintf(data.output_stream, "%zu\n", data.rows);
       zsv_delete(data.parser);
     }
   }
@@ -409,6 +437,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 count_done:
   if (opts.stream && opts.stream != stdin)
     fclose(opts.stream);
+
+  if (data.output_stream && data.output_stream != stdout)
+    fclose(data.output_stream);
 
   return err;
 }

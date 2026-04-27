@@ -436,6 +436,9 @@ enum zsv_status zsv_delete(zsv_parser parser) {
     collate_header_destroy(&parser->collate_header);
     free(parser->pull.regs);
 
+    // Clean up padded input buffer used by fast parser
+    free(parser->padded_input_buffer);
+
 #ifdef ZSV_EXTRAS
     if (parser->overwrite.close) {
       parser->overwrite.close(parser->overwrite.ctx);
