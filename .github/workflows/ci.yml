@@ -8,8 +8,6 @@ on:
     - 'setup-action/**'
     - '.github/workflows/setup-action.yml'
     - '.github/workflows/codeql.yml'
-    - '.github/workflows/benchmarks.yml'
-    - 'scripts/ci-run-benchmarks.sh'
   pull_request:
     branches: [main]
     paths-ignore:
@@ -17,8 +15,6 @@ on:
     - 'setup-action/**'
     - '.github/workflows/setup-action.yml'
     - '.github/workflows/codeql.yml'
-    - '.github/workflows/benchmarks.yml'
-    - 'scripts/ci-run-benchmarks.sh'
   release:
     types: [published]
   workflow_dispatch:
