@@ -263,8 +263,13 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
    * potentially buggy scalar tail paths.
    *
    * Use a persistent heap-allocated buffer to avoid dangling pointers when
-   * cell data is accessed later in zsv_finish(). */
-  if (bytes_read > 0 && bytes_read < 64) {
+   * cell data is accessed later in zsv_finish().
+   *
+   * zsv_scan_delim_fast_impl() receives bytes_read as the number of newly-read
+   * bytes, then adds scanner->partial_row_length internally. Copy that full
+   * logical buffer here so partial rows keep seeing appended bytes. */
+  size_t logical_bytes_read = scanner->partial_row_length + bytes_read;
+  if (bytes_read > 0 && logical_bytes_read < 64) {
     static const size_t PADDED_SIZE = 64;
 
     // Ensure we have a persistent padded buffer
@@ -276,8 +281,8 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
       scanner->padded_input_size = PADDED_SIZE;
     }
 
-    memcpy(scanner->padded_input_buffer, buff, bytes_read);
-    memset(scanner->padded_input_buffer + bytes_read, 0, PADDED_SIZE - bytes_read);
+    memcpy(scanner->padded_input_buffer, buff, logical_bytes_read);
+    memset(scanner->padded_input_buffer + logical_bytes_read, 0, PADDED_SIZE - logical_bytes_read);
     return zsv_scan_delim_fast_impl(scanner, scanner->padded_input_buffer, bytes_read);
   }
 
