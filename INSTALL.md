@@ -33,22 +33,6 @@ brew install zsv
 brew uninstall zsv
 ```
 
-### macOS: Homebrew Custom Tap
-
-```shell
-# Tap
-brew tap liquidaty/zsv
-
-# Update
-brew update
-
-# Install
-brew install zsv
-
-# Uninstall
-brew uninstall zsv
-```
-
 ### macOS: MacPorts
 
 ```shell
