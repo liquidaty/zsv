@@ -17,7 +17,7 @@ static int main_help(int argc, const char *argv[]) {
     "zsv: streaming csv processor",
     "",
     "Usage:",
-    "  zsv version: display version info (and if applicable, extension info)",
+    "  zsv version                          : display version info (and if applicable, extension info)",
 #ifndef __EMSCRIPTEN__
     "  zsv (un)register [<extension_id>]    : (un)register an extension",
     "      Registration info is saved in zsv.ini located in a directory determined as:",
