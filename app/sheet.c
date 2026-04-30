@@ -1100,8 +1100,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       compare_spec = argv[++i];
     } else if (argv[i][0] != '-' && !filename_arg) {
       filename_arg = argv[i];
-    }
-    else {
+    } else {
       fprintf(stderr, "Unrecognized option: %s\n", argv[i]);
       return 1;
     }
