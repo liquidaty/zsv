@@ -12,7 +12,7 @@
  */
 static enum zsv_status auto_detect_fixed_column_sizes(struct fixed *fixed, struct zsv_opts *opts, unsigned char *buff,
                                                       size_t buffsize, size_t *buff_used, char verbose) {
-  size_t max_lines = fixed->max_lines ? fixed->max_lines : (size_t)-1;
+  size_t max_lines = fixed->max_lines ? fixed->max_lines : SIZE_MAX;
   enum zsv_status stat = zsv_status_ok;
 
   fixed->count = 0;
