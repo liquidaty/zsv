@@ -12,11 +12,11 @@
 #ifdef HAVE___BUILTIN_EXPECT
 
 #ifndef LIKELY
-#define LIKELY(x) __builtin_expect(x, 1)
+#define LIKELY(x) __builtin_expect(!!(x), 1)
 #endif
 
 #ifndef UNLIKELY
-#define UNLIKELY(x) __builtin_expect(x, 0)
+#define UNLIKELY(x) __builtin_expect(!!(x), 0)
 #endif
 
 #ifndef VERY_LIKELY

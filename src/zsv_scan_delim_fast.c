@@ -528,7 +528,7 @@ normal_parse:
             FAST_ROWEND_NOQUOTE(scanner, buff, idx, 1, need_slow, no_quotes);
             row_used = scanner->row.used;
             cell_start_local = scanner->cell_start;
-          } else if (bitmask & newlines) {
+          } else {
             scanner->row.used = row_used;
             scanner->cell_start = cell_start_local;
             FAST_ROWEND_NOQUOTE(scanner, buff, idx, 0, need_slow, no_quotes);
@@ -555,7 +555,7 @@ normal_parse:
             scanner->cell_start = cell_start_local;
             FAST_ROWEND_QUOTED(scanner, buff, idx, 1, quote_char);
             cell_start_local = scanner->cell_start;
-          } else if (bitmask & newlines) {
+          } else {
             scanner->cell_start = cell_start_local;
             FAST_ROWEND_QUOTED(scanner, buff, idx, 0, quote_char);
             cell_start_local = scanner->cell_start;
@@ -611,7 +611,7 @@ normal_parse:
             FAST_ROWEND_NOQUOTE(scanner, buff, idx, 1, need_slow, no_quotes);
             row_used = scanner->row.used;
             cell_start_q = scanner->cell_start;
-          } else if (bitmask & newlines) {
+          } else {
             scanner->row.used = row_used;
             scanner->cell_start = cell_start_q;
             FAST_ROWEND_NOQUOTE(scanner, buff, idx, 0, need_slow, no_quotes);
@@ -637,7 +637,7 @@ normal_parse:
             scanner->cell_start = cell_start_q;
             FAST_ROWEND_QUOTED(scanner, buff, idx, 1, quote_char);
             cell_start_q = scanner->cell_start;
-          } else if (bitmask & newlines) {
+          } else {
             scanner->cell_start = cell_start_q;
             FAST_ROWEND_QUOTED(scanner, buff, idx, 0, quote_char);
             cell_start_q = scanner->cell_start;
