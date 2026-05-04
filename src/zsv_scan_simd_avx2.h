@@ -16,6 +16,7 @@
 #define ZSV_SCAN_SIMD_AVX2_H
 
 #include <immintrin.h>
+#include <stdint.h>
 
 #ifdef __PCLMUL__
 #include <wmmintrin.h> /* PCLMULQDQ */

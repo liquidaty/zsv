@@ -14,6 +14,7 @@
 #define ZSV_SCAN_SIMD_NEON_H
 
 #include <arm_neon.h>
+#include <stdint.h>
 
 typedef uint8x16_t fast_vec_t;
 

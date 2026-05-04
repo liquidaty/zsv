@@ -1,27 +1,28 @@
 # Makefile for use with GNU make
 
+THIS_MAKEFILE_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+
 CONFIGFILE ?= ../../config.mk
 $(info # Using config file ${CONFIGFILE})
 include ${CONFIGFILE}
-
-PULL=
-
-COUNT=count
-SELECT=select
-ifeq ($(PULL),1)
-  COUNT=count-pull
-  SELECT=select-pull
-endif
+CONFIGFILEPATH:=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
 
 CC ?= cc
 
 WIN=
+EXE=
+PREFIX=
 ifeq ($(WIN),)
   WIN=0
   ifneq ($(findstring w64,$(CC)),) # e.g. mingw64
     WIN=1
+    EXE=.exe
+  else ifneq ($(findstring emcc,$(CC)),) # emcc
+    EXE=.em.js
+	PREFIX="node"
   endif
 endif
+
 ifeq ($(DEBUG),1)
   REL=dbg
 else
@@ -34,8 +35,18 @@ else
   BUILD_SUBDIR=win/${REL}
 endif
 
+PULL=
+
+COUNT=count${EXE}
+SELECT=select${EXE}
+ifeq ($(PULL),1)
+  COUNT=count-pull${EXE}
+  SELECT=select-pull${EXE}
+endif
+
 CCBN=$(shell basename ${CC})
-ZSVBIN=../../build/${BUILD_SUBDIR}/${CCBN}/bin/zsv_
+BUILD_DIR=${THIS_MAKEFILE_DIR}/../../build/${BUILD_SUBDIR}/${CCBN}
+ZSVBIN=${PREFIX} ${BUILD_DIR}/bin/zsv_
 
 MAKE_BIN=$(notdir ${MAKE})
 
@@ -60,12 +71,17 @@ endif
 ifeq ($(TIME_ALL),1)
   ALL_SUFFIX=_all
   ifeq ($(HAVE_TIME_ALL),1)
-    TIMER=/usr/bin/time -l
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Darwin)
+      TIMER = /usr/bin/time -l
+    else
+      TIMER = /usr/bin/time -f "%e real %U user %S sys\n%M maximum resident set size"
+    endif
   else
     $(error /usr/bin/time not found)
   endif
 else
-  TIMER=time
+  TIMER=time -p
   ALL_SUFFIX=
 endif
 AWK_SCRIPT=./benchmark${ALL_SUFFIX}.awk
@@ -123,7 +139,7 @@ help:
 	@echo "    5. Stage for commit: ${MAKE_BIN} stage-benchmark-results"
 	@echo ""
 
-CLI: ZSVBIN="zsv "
+CLI: ZSVBIN="${PREFIX} zsv "
 
 CLI:
 	${MAKE} all ZSVBIN=${ZSVBIN} -n | sed 's/[.]*\/.*\/bin\/zsv_/zsv /g' | sh
@@ -227,15 +243,15 @@ $(addprefix count-intro-,$(DATA_TARGETS)): count-intro-% :
 	@echo "-----------------------------------------------"
 
 count-zsv-worldcitiespop_mil count-zsv-worldcitiespop_big: count-zsv-%: %.csv %.tsv
-	@echo "${ZSVBIN}"${COUNT}
 	@printf "zsv                  : "
-	@(${TIMER} ${ZSVBIN}${COUNT} < $< > /tmp/zsv-$@.count) 2>&1 | xargs
+	@(${TIMER} ${ZSVBIN}${COUNT} $< > /tmp/zsv-$@.count) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(${TIMER} ${ZSVBIN}${COUNT} < $< >> /tmp/zsv-$@.count) 2>&1 | xargs
+	@(${TIMER} ${ZSVBIN}${COUNT} $< >> /tmp/zsv-$@.count) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(${TIMER} ${ZSVBIN}${COUNT} < $< >> /tmp/zsv-$@.count) 2>&1 | xargs
+	@(${TIMER} ${ZSVBIN}${COUNT} $< >> /tmp/zsv-$@.count) 2>&1 | xargs
 	@echo ""
 
+ifneq ($(ZSV_NO_PARALLEL),1)
 	@printf "zsv --parallel       : "
 	@(${TIMER} ${ZSVBIN}${COUNT} --parallel $< >/tmp/zsv-parallel-$@.count) 2>&1 | xargs
 	@printf "zsv --parallel       : "
@@ -243,6 +259,7 @@ count-zsv-worldcitiespop_mil count-zsv-worldcitiespop_big: count-zsv-%: %.csv %.
 	@printf "zsv --parallel       : "
 	@(${TIMER} ${ZSVBIN}${COUNT} --parallel $< >>/tmp/zsv-parallel-$@.count) 2>&1 | xargs
 	@echo ""
+endif
 
 	@printf "zsv-fast             : "
 	@(${TIMER} ${ZSVBIN}${COUNT} --parser fast $< > /tmp/zsv-fast-$@.count) 2>&1 | xargs
@@ -252,6 +269,7 @@ count-zsv-worldcitiespop_mil count-zsv-worldcitiespop_big: count-zsv-%: %.csv %.
 	@(${TIMER} ${ZSVBIN}${COUNT} --parser fast $< >> /tmp/zsv-fast-$@.count) 2>&1 | xargs
 	@echo ""
 
+ifneq ($(ZSV_NO_PARALLEL),1)
 	@printf "zsv-fast --parallel  : "
 	@(${TIMER} ${ZSVBIN}${COUNT} --parser fast --parallel $< > /tmp/zsv-fast-parallel-$@.count) 2>&1 | xargs
 	@printf "zsv-fast --parallel  : "
@@ -259,6 +277,7 @@ count-zsv-worldcitiespop_mil count-zsv-worldcitiespop_big: count-zsv-%: %.csv %.
 	@printf "zsv-fast --parallel  : "
 	@(${TIMER} ${ZSVBIN}${COUNT} --parser fast --parallel $< >> /tmp/zsv-fast-parallel-$@.count) 2>&1 | xargs
 	@echo ""
+endif
 
 count-xsv-worldcitiespop_mil count-xsv-worldcitiespop_big: count-xsv-%: %.csv %.tsv
 ifneq ($(HAVE_XSV),1)
@@ -401,13 +420,14 @@ select-intro-worldcitiespop_big select-intro-worldcitiespop_mil: select-intro-% 
 
 select-zsv-worldcitiespop_mil select-zsv-worldcitiespop_big: select-zsv-%: %.csv %.tsv
 	@printf "zsv                  : "
-	@(${TIMER} ${ZSVBIN}${SELECT} -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
+	@(${TIMER} ${ZSVBIN}${SELECT} -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(${TIMER} ${ZSVBIN}${SELECT} -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
+	@(${TIMER} ${ZSVBIN}${SELECT} -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
 	@printf "zsv                  : "
-	@(${TIMER} ${ZSVBIN}${SELECT} -W -n -- 2 1 3-7 < $< > /dev/null) 2>&1 | xargs
+	@(${TIMER} ${ZSVBIN}${SELECT} -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
 	@echo ""
 
+ifneq ($(ZSV_NO_PARALLEL),1)
 	@printf "zsv --parallel       : "
 	@(${TIMER} ${ZSVBIN}${SELECT} --parallel -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
 	@printf "zsv --parallel       : "
@@ -415,6 +435,7 @@ select-zsv-worldcitiespop_mil select-zsv-worldcitiespop_big: select-zsv-%: %.csv
 	@printf "zsv --parallel       : "
 	@(${TIMER} ${ZSVBIN}${SELECT} --parallel -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
 	@echo ""
+endif
 
 	@printf "zsv-fast             : "
 	@(${TIMER} ${ZSVBIN}${SELECT} --parser fast -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
@@ -424,6 +445,7 @@ select-zsv-worldcitiespop_mil select-zsv-worldcitiespop_big: select-zsv-%: %.csv
 	@(${TIMER} ${ZSVBIN}${SELECT} --parser fast -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
 	@echo ""
 
+ifneq ($(ZSV_NO_PARALLEL),1)
 	@printf "zsv-fast --parallel  : "
 	@(${TIMER} ${ZSVBIN}${SELECT} --parser fast --parallel -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
 	@printf "zsv-fast --parallel  : "
@@ -431,6 +453,7 @@ select-zsv-worldcitiespop_mil select-zsv-worldcitiespop_big: select-zsv-%: %.csv
 	@printf "zsv-fast --parallel  : "
 	@(${TIMER} ${ZSVBIN}${SELECT} --parser fast --parallel -W -n $< -- 2 1 3-7 > /dev/null) 2>&1 | xargs
 	@echo ""
+endif
 
 select-xsv-worldcitiespop_mil select-xsv-worldcitiespop_big: select-xsv-%: %.csv %.tsv
 ifneq ($(HAVE_XSV),1)

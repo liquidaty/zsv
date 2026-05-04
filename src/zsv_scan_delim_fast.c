@@ -17,7 +17,11 @@
  * Falls back to the compat/scalar engine on unsupported platforms.
  */
 
-#if defined(__aarch64__)
+#if defined(__wasm_simd128__)
+#include "zsv_scan_simd_wasm.h"
+#define ZSV_FAST_PARSER_AVAILABLE 1
+#pragma message "Using WebAssembly SIMD for fast CSV parsing"
+#elif defined(__aarch64__)
 #include "zsv_scan_simd_neon.h"
 #define ZSV_FAST_PARSER_AVAILABLE 1
 #elif defined(__AVX2__)
@@ -349,8 +353,8 @@ static enum zsv_status zsv_scan_delim_fast_impl(struct zsv_scanner *scanner, uns
    */
   if (scanner->skip_cells) {
     while (i + 64 <= bytes_read) {
-      uint64_t commas_sc, newlines, crs, quotes;
-      fast_scan_block(buff + i, v_comma, v_nl, v_cr, v_qt, &commas_sc, &newlines, &crs, &quotes);
+      uint64_t commas, newlines, crs, quotes;
+      fast_scan_block(buff + i, v_comma, v_nl, v_cr, v_qt, &commas, &newlines, &crs, &quotes);
       if (quote_char <= 0)
         quotes = 0;
 
@@ -524,7 +528,7 @@ normal_parse:
             FAST_ROWEND_NOQUOTE(scanner, buff, idx, 1, need_slow, no_quotes);
             row_used = scanner->row.used;
             cell_start_local = scanner->cell_start;
-          } else {
+          } else if (bitmask & newlines) {
             scanner->row.used = row_used;
             scanner->cell_start = cell_start_local;
             FAST_ROWEND_NOQUOTE(scanner, buff, idx, 0, need_slow, no_quotes);
@@ -551,7 +555,7 @@ normal_parse:
             scanner->cell_start = cell_start_local;
             FAST_ROWEND_QUOTED(scanner, buff, idx, 1, quote_char);
             cell_start_local = scanner->cell_start;
-          } else {
+          } else if (bitmask & newlines) {
             scanner->cell_start = cell_start_local;
             FAST_ROWEND_QUOTED(scanner, buff, idx, 0, quote_char);
             cell_start_local = scanner->cell_start;
@@ -607,7 +611,7 @@ normal_parse:
             FAST_ROWEND_NOQUOTE(scanner, buff, idx, 1, need_slow, no_quotes);
             row_used = scanner->row.used;
             cell_start_q = scanner->cell_start;
-          } else {
+          } else if (bitmask & newlines) {
             scanner->row.used = row_used;
             scanner->cell_start = cell_start_q;
             FAST_ROWEND_NOQUOTE(scanner, buff, idx, 0, need_slow, no_quotes);
@@ -633,7 +637,7 @@ normal_parse:
             scanner->cell_start = cell_start_q;
             FAST_ROWEND_QUOTED(scanner, buff, idx, 1, quote_char);
             cell_start_q = scanner->cell_start;
-          } else {
+          } else if (bitmask & newlines) {
             scanner->cell_start = cell_start_q;
             FAST_ROWEND_QUOTED(scanner, buff, idx, 0, quote_char);
             cell_start_q = scanner->cell_start;
@@ -691,6 +695,7 @@ normal_parse:
 
 #else /* !ZSV_FAST_PARSER_AVAILABLE */
 /* Unsupported platform: fall back to compat/scalar engine */
+#pragma message "Fast parser not available on this platform, falling back to compat/scalar engine"
 static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   return zsv_scan_delim(scanner, buff, bytes_read);
 }
