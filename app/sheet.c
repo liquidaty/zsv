@@ -336,10 +336,10 @@ zsvsheet_status zsvsheet_ext_prompt(struct zsvsheet_proc_context *ctx, char *buf
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
   char prompt_buffer[256] = {0};
 
-  va_list argv;
-  va_start(argv, fmt);
-  int n = vsnprintf(prompt_buffer, sizeof(prompt_buffer), fmt, argv);
-  va_end(argv);
+  va_list args;
+  va_start(args, fmt);
+  int n = vsnprintf(prompt_buffer, sizeof(prompt_buffer), fmt, args);
+  va_end(args);
 
   if (!(n > 0 && (size_t)n < sizeof(prompt_buffer)))
     return zsvsheet_status_ok;
@@ -394,14 +394,14 @@ static void zsvsheet_display_status_text(const struct zsvsheet_display_dimension
 static void zsvsheet_priv_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt,
                                      ...) {
   if (overwrite || !*zsvsheet_status_text) {
-    va_list argv;
-    va_start(argv, fmt);
-    int n = vsnprintf(zsvsheet_status_text, sizeof(zsvsheet_status_text), fmt, argv);
+    va_list args;
+    va_start(args, fmt);
+    int n = vsnprintf(zsvsheet_status_text, sizeof(zsvsheet_status_text), fmt, args);
     if (n > 0 && (size_t)(n + 2) < sizeof(zsvsheet_status_text) && zsvsheet_status_text[n - 1] != ' ') {
       zsvsheet_status_text[n] = ' ';
       zsvsheet_status_text[n + 1] = '\0';
     }
-    va_end(argv);
+    va_end(args);
     // note: if (n < (int)sizeof(zsvsheet_status_text)), then we just ignore
   }
   zsvsheet_display_status_text(ddims);
@@ -1100,6 +1100,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       compare_spec = argv[++i];
     } else if (argv[i][0] != '-' && !filename_arg) {
       filename_arg = argv[i];
+    } else {
+      fprintf(stderr, "Unrecognized option: %s\n", argv[i]);
+      return 1;
     }
   }
 
