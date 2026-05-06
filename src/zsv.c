@@ -404,9 +404,8 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
     if (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) {
       size_t pending = scanner->partial_row_length > scanner->cell_start
                          ? scanner->partial_row_length - scanner->cell_start
-                       : scanner->scanned_length > scanner->cell_start
-                         ? scanner->scanned_length - scanner->cell_start
-                         : 0;
+                       : scanner->scanned_length > scanner->cell_start ? scanner->scanned_length - scanner->cell_start
+                                                                       : 0;
       if (pending > 0) {
         if (pending < 2) {
           scanner->quoted = 0;
