@@ -43,6 +43,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Generate include/zsv.h from include/zsv.h.in
+        # `include/zsv.h` is .gitignored — `make -C src build` normally
+        # generates it from `include/zsv.h.in` via a sed substitution. We
+        # don't want to run the full library build here (drags in jq /
+        # ncurses); the sed below is the no-ZSV_EXTRAS branch of the rule
+        # at src/Makefile, which matches our build flags (we don't set
+        # -DZSV_EXTRAS).
+        run: |
+          set -eux
+          sed 's/__ZSV_EXTRAS__DEFINE__//' < include/zsv.h.in > include/zsv.h
+
       - name: Build libFuzzer harness
         run: |
           set -eux
