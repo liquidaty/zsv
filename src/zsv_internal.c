@@ -281,16 +281,12 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *sc
   // handle quoting
   if (VERY_LIKELY(!scanner->buffer_exceeded)) {
     if (UNLIKELY(scanner->quoted > 0)) {
-      // Precondition: a quoted cell must contain at least the surrounding
-      // quote pair. If n < 2 the input is malformed (e.g. a stray `"`); skip
-      // quote-stripping and emit raw bytes. Without this guard the n-=2 below
-      // would underflow.
-      if (UNLIKELY(n < 2)) {
-        scanner->quoted = 0;
-      } else if (LIKELY(scanner->quote_close_position + 1 == n)) {
+      if (LIKELY(scanner->quote_close_position + 1 == n)) {
         if (LIKELY((scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) == 0)) {
           // easy and usual case: no embedded double-quotes
-          // just remove surrounding quotes from content (n >= 2 enforced above)
+          // just remove surrounding quotes from content (n >= 2 enforced
+          // by EOF fix-up in zsv_finish, and by the parser state machine
+          // in scan-loop call sites)
           s++;
           n -= 2;
         } else { // embedded dbl-quotes to remove

@@ -392,15 +392,32 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
       return zsv_status_ok;
     }
 
-    if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) && scanner->partial_row_length > scanner->cell_start) {
-      int quote = '"';
-      scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
-      scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
-      if (scanner->last == quote)
-        scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start;
-      else {
-        scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start;
-        scanner->scanned_length++;
+    /* EOF fix-up: if we ran out of input while still inside an unclosed
+     * quoted cell, virtually close it so cell_dl sees a consistent state.
+     * `pending` is the cell length signaled by whichever counter is set:
+     * partial_row_length (multi-chunk parses carrying data forward) or
+     * scanned_length (single-chunk parses where partial_row_length is 0).
+     * When the pending cell is shorter than a quote pair (e.g. a stray
+     * `"` byte), the input is malformed; drop the quoted flag so the
+     * bytes are emitted as plain content rather than triggering an
+     * underflow in cell_dl's quote-strip arithmetic. */
+    if (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) {
+      size_t pending = scanner->partial_row_length > scanner->cell_start
+                         ? scanner->partial_row_length - scanner->cell_start
+                       : scanner->scanned_length > scanner->cell_start
+                         ? scanner->scanned_length - scanner->cell_start
+                         : 0;
+      if (pending > 0) {
+        if (pending < 2) {
+          scanner->quoted = 0;
+        } else {
+          int quote = '"';
+          scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
+          scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
+          scanner->quote_close_position = pending;
+          if (scanner->last != quote)
+            scanner->scanned_length++;
+        }
       }
     }
   }
