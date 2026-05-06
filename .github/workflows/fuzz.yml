@@ -1,0 +1,87 @@
+name: fuzz
+
+# Short libFuzzer smoke run against the fast CSV scan engine. Compiles the
+# parser unity TU together with the libFuzzer harness from app/test/sec/
+# under ASan+UBSan and runs for a fixed wall-clock budget on each PR /
+# push to main. Linux only — libFuzzer's runtime ships with clang on Linux
+# but is not part of Apple Clang. Skipped when cross-compiling.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+    inputs:
+      max_total_time:
+        description: 'libFuzzer wall-clock budget, seconds'
+        required: false
+        default: '60'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  libfuzzer:
+    # Linux x86_64 only — Apple Clang ships without libFuzzer; cross-builds
+    # use a different toolchain and would not produce a runnable binary.
+    runs-on: ubuntu-latest
+
+    env:
+      MAX_TOTAL_TIME: ${{ inputs.max_total_time || '60' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build libFuzzer harness
+        run: |
+          set -eux
+          mkdir -p build/fuzz
+          # Compile parser unity TU + libFuzzer harness in one invocation.
+          # No ./configure needed — the parser is dependency-free.
+          clang \
+            -fsanitize=fuzzer,address,undefined \
+            -fno-omit-frame-pointer \
+            -O1 -g -std=gnu11 -fsigned-char \
+            -DZSV_VERSION=\"ci-fuzz\" \
+            -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT \
+            -I include -I src -I app/external/sqlite3 \
+            src/zsv.c app/test/sec/libfuzzer.c \
+            -o build/fuzz/zsv_parse_bytes_fuzzer
+
+      - name: Run libFuzzer
+        run: |
+          set -eux
+          mkdir -p fuzz-corpus
+          cp app/test/sec/poc/*.bin fuzz-corpus/ || true
+          # -max_total_time bounds wall-clock; -timeout aborts hung iterations;
+          # -error_exitcode=77 lets the workflow distinguish a corpus-found
+          # crash (77) from libFuzzer's own internal failures (non-zero, non-77).
+          ./build/fuzz/zsv_parse_bytes_fuzzer \
+            -max_total_time="${MAX_TOTAL_TIME}" \
+            -timeout=30 \
+            -error_exitcode=77 \
+            -print_final_stats=1 \
+            fuzz-corpus
+
+      - name: Upload crash artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: libfuzzer-findings
+          path: |
+            crash-*
+            leak-*
+            timeout-*
+          if-no-files-found: ignore
+          retention-days: 14
