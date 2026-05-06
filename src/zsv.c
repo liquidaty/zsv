@@ -409,7 +409,7 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
     scanner->finished = 1;
     if (!scanner->abort) {
       if (scanner->scanned_length > 0 && scanner->scanned_length >= scanner->cell_start)
-        cell_dl(scanner, scanner->buff.buff + scanner->cell_start, safe_cell_length(scanner->scanned_length, scanner->cell_start));
+        cell_dl(scanner, scanner->buff.buff + scanner->cell_start, scanner->scanned_length - scanner->cell_start);
       if (scanner->have_cell) {
         if (row_dl(scanner))
           stat = zsv_status_cancelled;
@@ -435,9 +435,6 @@ enum zsv_status zsv_delete(zsv_parser parser) {
     free(parser->needed_cols);
     collate_header_destroy(&parser->collate_header);
     free(parser->pull.regs);
-
-    // Clean up padded input buffer used by fast parser
-    free(parser->padded_input_buffer);
 
 #ifdef ZSV_EXTRAS
     if (parser->overwrite.close) {

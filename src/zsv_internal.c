@@ -193,10 +193,6 @@ struct zsv_scanner {
   } progress;
   struct zsv_overwrite overwrite;
 #endif
-
-  // Buffer for padding small inputs in fast parser to avoid dangling pointers
-  unsigned char *padded_input_buffer;
-  size_t padded_input_size;
 };
 
 void collate_header_destroy(struct collate_header **chp) {
@@ -280,37 +276,35 @@ __attribute__((always_inline)) static inline void zsv_clear_cell(struct zsv_scan
   scanner->quoted = 0;
 }
 
-/* Safe subtraction helper to prevent integer underflow */
-__attribute__((always_inline)) static inline size_t safe_sub(size_t a, size_t b) {
-  if (UNLIKELY(b > a)) {
-    return 0;  /* Prevent underflow that could lead to SIZE_MAX */
-  }
-  return a - b;
-}
-
 // always_inline has a noticeable impact. do not remove without benchmarking!
 __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
   // handle quoting
   if (VERY_LIKELY(!scanner->buffer_exceeded)) {
     if (UNLIKELY(scanner->quoted > 0)) {
-      if (LIKELY(scanner->quote_close_position + 1 == n)) {
+      // Precondition: a quoted cell must contain at least the surrounding
+      // quote pair. If n < 2 the input is malformed (e.g. a stray `"`); skip
+      // quote-stripping and emit raw bytes. Without this guard the n-=2 below
+      // would underflow.
+      if (UNLIKELY(n < 2)) {
+        scanner->quoted = 0;
+      } else if (LIKELY(scanner->quote_close_position + 1 == n)) {
         if (LIKELY((scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) == 0)) {
-          // this is the easy and usual case: no embedded double-quotes
-          // just remove surrounding quotes from content
+          // easy and usual case: no embedded double-quotes
+          // just remove surrounding quotes from content (n >= 2 enforced above)
           s++;
-          n = safe_sub(n, 2);
+          n -= 2;
         } else { // embedded dbl-quotes to remove
           s++;
-          n = safe_sub(n, 1);
+          n--;
           // remove dbl-quotes. TO DO: consider adding option to skip this
           for (size_t i = 0; i + 1 < n; i++) {
             if (s[i] == '"' && s[i + 1] == '"') {
               if (n > i + 2)
                 memmove(s + i + 1, s + i + 2, n - i - 2);
-              n = safe_sub(n, 1);
+              n--;
             }
           }
-          n = safe_sub(n, 1);
+          n--;
         }
       } else {
         if (scanner->quote_close_position) {
@@ -320,7 +314,7 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *sc
           // we avoid the memmove in the easy / usual case
           memmove(s + 1, s, scanner->quote_close_position);
           s += 2;
-          n = safe_sub(n, 2);
+          n -= 2;
           if (UNLIKELY((scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) != 0)) {
             // remove dbl-quotes
             for (size_t i = 0; i + 1 < n; i++) {
@@ -477,13 +471,6 @@ static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
 #ifdef ZSV_SUPPORT_PULL_PARSER
 #undef ZSV_SUPPORT_PULL_PARSER
 #endif
-/* Safe subtraction helper to prevent integer underflow in cell length calculations */
-__attribute__((always_inline)) static inline size_t safe_cell_length(size_t end_pos, size_t start_pos) {
-  if (UNLIKELY(start_pos > end_pos)) {
-    return 0;  /* Prevent underflow that could lead to SIZE_MAX */
-  }
-  return end_pos - start_pos;
-}
 
 #define ZSV_SCAN_DELIM zsv_scan_delim
 #include "zsv_scan_delim.c"

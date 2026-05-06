@@ -92,7 +92,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
     if (buff[i] != quote) {
       scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
       scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED; // scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
-      scanner->quote_close_position = safe_cell_length(i, scanner->cell_start + 1);
+      scanner->quote_close_position = i - scanner->cell_start - 1;
     } else {
       scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
       scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
@@ -136,7 +136,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
     if (LIKELY(c == delimiter)) { // case ',':
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
-        cell_dl(scanner, buff + scanner->cell_start, safe_cell_length(i, scanner->cell_start));
+        cell_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
         scanner->cell_start = i + 1;
         c = 0;
         continue; // this char is not part of the cell content
@@ -160,7 +160,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
 #endif
       if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) == 0) {
         scanner->scanned_length = i;
-        enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, safe_cell_length(i, scanner->cell_start));
+        enum zsv_status stat = cell_and_row_dl(scanner, buff + scanner->cell_start, i - scanner->cell_start);
         if (VERY_UNLIKELY(stat))
           return stat;
 #ifdef ZSV_SUPPORT_PULL_PARSER
@@ -209,7 +209,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
         scanner->scanned_length = i;
 
         // Calculate cell length. In only-crlf mode, we must exclude the preceding \r
-        size_t cell_len = safe_cell_length(i, scanner->cell_start);
+        size_t cell_len = i - scanner->cell_start;
 #ifndef ZSV_NO_ONLY_CRLF
         if (VERY_UNLIKELY(scanner->opts.only_crlf_rowend))
           cell_len--;
@@ -252,7 +252,7 @@ static enum zsv_status ZSV_SCAN_DELIM(struct zsv_scanner *scanner, unsigned char
             // where content follows the closing quote e.g. cell content is:
             //   "this-cell"-did-not-need-quotes
             if (LIKELY(scanner->quote_close_position == 0))
-              scanner->quote_close_position = safe_cell_length(i, scanner->cell_start);
+              scanner->quote_close_position = i - scanner->cell_start;
           } else {
             // next char is also '"'
             // e.g. cell content is: "this "" is a dbl quote"

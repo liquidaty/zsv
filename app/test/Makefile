@@ -196,6 +196,53 @@ ${TMP_DIR}/test_vuln_cve_underflow: test_vuln_cve_underflow.c ${BUILD_DIR}/lib/l
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} -I../../include test_vuln_cve_underflow.c -L${BUILD_DIR}/lib -lzsv -o $@
 
+# -----------------------------------------------------------------------------
+# Sanitizer-driven reproduction of the integer-underflow investigation.
+#
+#   make test-vuln-asan-repro
+#     Builds sec/repro.c with the parser unity TU under
+#     -fsanitize=address,undefined and runs it against every payload in
+#     sec/poc/. Any sanitizer report aborts the process and fails the target.
+#
+#   make test-vuln-asan-fuzz [FUZZ_ITERS=N]
+#     Builds sec/fuzz.c (a portable in-process random-mutation fuzzer that
+#     does not require libFuzzer or AFL toolchains), seeds it from sec/poc/,
+#     and runs FUZZ_ITERS iterations under ASan+UBSan. Default 1,000,000.
+#
+# Neither target is part of the default `make test`. Both require a clang
+# with sanitizer runtimes (override via `make ... SAN_CC=/path/to/clang`).
+# -----------------------------------------------------------------------------
+SAN_CC ?= clang
+SAN_BUILD_FLAGS = -fsanitize=address,undefined -fno-omit-frame-pointer \
+                  -fno-sanitize-recover=all -O1 -g -std=gnu11 -fsigned-char \
+                  -DZSV_VERSION=\"sec-review\" -DZSV_HAVE_NEON \
+                  -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT \
+                  -I${THIS_LIB_BASE}/include -I${THIS_LIB_BASE}/src \
+                  -I${THIS_LIB_BASE}/app/external/sqlite3
+FUZZ_ITERS ?= 1000000
+
+${TMP_DIR}/sec_repro: sec/repro.c ${THIS_LIB_BASE}/src/zsv.c
+	@mkdir -p ${TMP_DIR}
+	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/repro.c -o $@
+
+${TMP_DIR}/sec_fuzz: sec/fuzz.c ${THIS_LIB_BASE}/src/zsv.c
+	@mkdir -p ${TMP_DIR}
+	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/fuzz.c -o $@
+
+test-vuln-asan-repro: ${TMP_DIR}/sec_repro
+	@${TEST_INIT}
+	@for f in sec/poc/*.bin; do \
+	  printf "  -- %s --\n" "$$f"; \
+	  ${TMP_DIR}/sec_repro "$$f" || ${TEST_FAIL}; \
+	done
+	@${TEST_PASS}
+
+test-vuln-asan-fuzz: ${TMP_DIR}/sec_fuzz
+	@${TEST_INIT}
+	@printf "  fuzzing parser for ${FUZZ_ITERS} iterations under ASan+UBSan\n"
+	@${TMP_DIR}/sec_fuzz sec/poc ${FUZZ_ITERS} || ${TEST_FAIL}
+	@${TEST_PASS}
+
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE} ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@CMP="${CMP}" \
