@@ -277,18 +277,22 @@ static void header_handler(void *ctx) {
 }
 
 static int count_usage(void) {
-  static const char *usage = "Usage: count [options]\n"
-                             "\n"
-                             "Options:\n"
-                             "  -h,--help             : show usage\n"
-                             "  -i,--input <filename> : use specified file input\n"
-                             "  -o,--output <filename>: write output to specified file\n"
+  static const char *usage[] = {
+    "Usage: count [options]",
+    "",
+    "Options:",
+    "  -h,--help             : show usage",
+    "  -i,--input <filename> : use specified file input",
+    "  -o,--output <filename>: write output to specified file",
 #ifndef ZSV_NO_PARALLEL
-                             "  -j,--jobs <n>         : number of jobs (parallel threads)\n"
-                             "  --parallel            : use all available cores\n"
+    "  -j,--jobs <n>         : number of jobs (parallel threads)",
+    "  --parallel            : use all available cores",
 #endif
-    ;
-  printf("%s\n", usage);
+    NULL,
+  };
+  for (size_t i = 0; usage[i]; i++) {
+    printf("%s\n", usage[i]);
+  }
   return 0;
 }
 
