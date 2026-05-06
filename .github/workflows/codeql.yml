@@ -23,6 +23,8 @@ jobs:
               paths-ignore:
                 - app/external
 
+    name: CodeQL Analysis (${{ matrix.language }})
+
     permissions:
       security-events: write
 
