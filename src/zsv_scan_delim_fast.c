@@ -220,7 +220,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
     }                                                                                                                  \
     (scanner)->scanned_length = (idx);                                                                                 \
     enum zsv_status stat_ = fast_store_cell_and_row((scanner), (buff) + (scanner)->cell_start,                         \
-                                                    (idx) - (scanner)->cell_start, (need_slow_), (no_quotes_));        \
+                                                    safe_cell_length((idx), (scanner)->cell_start), (need_slow_), (no_quotes_));        \
     if (VERY_UNLIKELY(stat_))                                                                                          \
       return stat_;                                                                                                    \
     (scanner)->cell_start = (idx) + 1;                                                                                 \
@@ -244,8 +244,8 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
     }                                                                                                                  \
     (scanner)->scanned_length = (idx);                                                                                 \
     if ((quote_char) > 0)                                                                                              \
-      fast_set_quote_flags((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start);                  \
-    enum zsv_status stat_ = cell_and_row_dl((scanner), (buff) + (scanner)->cell_start, (idx) - (scanner)->cell_start); \
+      fast_set_quote_flags((scanner), (buff) + (scanner)->cell_start, safe_cell_length((idx), (scanner)->cell_start));                  \
+    enum zsv_status stat_ = cell_and_row_dl((scanner), (buff) + (scanner)->cell_start, safe_cell_length((idx), (scanner)->cell_start)); \
     if (VERY_UNLIKELY(stat_))                                                                                          \
       return stat_;                                                                                                    \
     (scanner)->cell_start = (idx) + 1;                                                                                 \
@@ -323,7 +323,7 @@ static enum zsv_status zsv_scan_delim_fast_impl(struct zsv_scanner *scanner, uns
     if (buff[i] != '"') {
       scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
       scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
-      scanner->quote_close_position = i - scanner->cell_start - 1;
+      scanner->quote_close_position = safe_cell_length(i, scanner->cell_start + 1);
     } else {
       scanner->quoted |= ZSV_PARSER_QUOTE_NEEDED;
       scanner->quoted |= ZSV_PARSER_QUOTE_EMBEDDED;
@@ -515,7 +515,7 @@ normal_parse:
           all_delims = fast_clear_lowest(all_delims);
 
           if (LIKELY(bitmask & commas)) {
-            fast_store_cell_cached(cells, &row_used, row_allocated, buff + cell_start_local, idx - cell_start_local,
+            fast_store_cell_cached(cells, &row_used, row_allocated, buff + cell_start_local, safe_cell_length(idx, cell_start_local),
                                    no_quotes);
             cell_start_local = idx + 1;
           } else if (bitmask & crs) {
@@ -545,7 +545,7 @@ normal_parse:
           if (LIKELY(bitmask & commas)) {
             scanner->scanned_length = idx;
             scanner->cell_start = cell_start_local;
-            fast_store_cell_slow(scanner, buff + cell_start_local, idx - cell_start_local);
+            fast_store_cell_slow(scanner, buff + cell_start_local, safe_cell_length(idx, cell_start_local));
             cell_start_local = idx + 1;
           } else if (bitmask & crs) {
             scanner->cell_start = cell_start_local;
@@ -599,7 +599,7 @@ normal_parse:
           valid_delims = fast_clear_lowest(valid_delims);
 
           if (LIKELY(bitmask & commas)) {
-            fast_store_cell_cached(cells, &row_used, row_allocated, buff + cell_start_q, idx - cell_start_q, no_quotes);
+            fast_store_cell_cached(cells, &row_used, row_allocated, buff + cell_start_q, safe_cell_length(idx, cell_start_q), no_quotes);
             cell_start_q = idx + 1;
           } else if (bitmask & crs) {
             scanner->row.used = row_used;
@@ -627,7 +627,7 @@ normal_parse:
           if (LIKELY(bitmask & commas)) {
             scanner->scanned_length = idx;
             scanner->cell_start = cell_start_q;
-            fast_store_cell_slow(scanner, buff + cell_start_q, idx - cell_start_q);
+            fast_store_cell_slow(scanner, buff + cell_start_q, safe_cell_length(idx, cell_start_q));
             cell_start_q = idx + 1;
           } else if (bitmask & crs) {
             scanner->cell_start = cell_start_q;
@@ -666,7 +666,7 @@ normal_parse:
 
     if (c == delimiter) {
       scanner->scanned_length = i;
-      fast_store_cell(scanner, buff + scanner->cell_start, i - scanner->cell_start, need_slow, no_quotes);
+      fast_store_cell(scanner, buff + scanner->cell_start, safe_cell_length(i, scanner->cell_start), need_slow, no_quotes);
       scanner->cell_start = i + 1;
     } else if (c == '\r') {
       FAST_ROWEND_NOQUOTE(scanner, buff, i, 1, need_slow, no_quotes);
