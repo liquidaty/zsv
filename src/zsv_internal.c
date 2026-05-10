@@ -715,18 +715,12 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
     scanner->read = opts->read;
     scanner->in = opts->stream;
   }
+  scanner->buff.buff = opts->buff;
   scanner->buff.size = opts->buffsize;
+
   if (opts->buffsize && !opts->buff) {
-    /* +1: reserved guard byte for zsv_finish's EOF fix-up.
-     * Never counted in buff.size; never exposed to callers. */
-    scanner->buff.buff = malloc(opts->buffsize + 1);
+    scanner->buff.buff = malloc(opts->buffsize);
     scanner->free_buff = 1;
-  } else if (opts->buff) {
-    scanner->buff.buff = opts->buff;
-    /* Caller-supplied buffer: clamp the usable size by one so the
-     * guard byte falls inside what the caller allocated. */
-    if (scanner->buff.size > 0)
-      scanner->buff.size -= 1;
   }
 
 #ifdef ZSV_EXTRAS
