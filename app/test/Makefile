@@ -75,6 +75,7 @@ TESTS+=test-quoted-nonstandard
 # Security regression test - only run when not cross-compiling
 ifneq ($(CROSS_COMPILING),1)
   TESTS+=test-vuln-cve-underflow
+  TESTS+=test-buffsize-determinism
 endif
 
 COLOR_NONE=\033[0m
@@ -1209,3 +1210,21 @@ benchmark-sheet-index: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "G" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# Buffer-size determinism test
+test-buffsize-determinism: ${TMP_DIR}/test_buffsize_determinism
+	@${TEST_INIT}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
+
+${TMP_DIR}/test_buffsize_determinism: sec/test_buffsize_determinism.c ${BUILD_DIR}/lib/libzsv.a
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} -I../../include sec/test_buffsize_determinism.c -L${BUILD_DIR}/lib -lzsv -o $@
+
+# Sanitizer variant for determinism test
+test-buffsize-determinism-asan: ${TMP_DIR}/test_buffsize_determinism_asan
+	@${TEST_INIT}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
+
+${TMP_DIR}/test_buffsize_determinism_asan: sec/test_buffsize_determinism.c ${THIS_LIB_BASE}/src/zsv.c
+	@mkdir -p ${TMP_DIR}
+	@${SAN_CC} ${SAN_BUILD_FLAGS} -I../../include ${THIS_LIB_BASE}/src/zsv.c sec/test_buffsize_determinism.c -o $@
