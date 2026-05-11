@@ -73,7 +73,7 @@ int main(void) {
   opts.max_row_size = (unsigned)(N / 2); /* so 2*max_row_size == buffsize */
   opts.buffsize = N;
   opts.buff = user_buff;
-  opts.scan_engine = 255;             /* force compat engine: propagates EMBEDDED */
+  opts.scan_engine = 255; /* force compat engine: propagates EMBEDDED */
   opts.keep_empty_header_rows = 1;
 
   zsv_parser p = zsv_new(&opts);
