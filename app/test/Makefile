@@ -75,6 +75,12 @@ TESTS+=test-quoted-nonstandard
 # Security regression test - only run when not cross-compiling
 ifneq ($(CROSS_COMPILING),1)
   TESTS+=test-vuln-cve-underflow
+  # ASan-instrumented regression for the zsv_finish->cell_dl OOB. Skipped
+  # if SAN_CC (clang+sanitizers) is unavailable; build target itself runs
+  # the sanitizer.
+  ifneq ($(shell command -v clang 2>/dev/null),)
+    TESTS+=test-vuln-finish-cell-dl-oob
+  endif
 endif
 
 COLOR_NONE=\033[0m
@@ -229,6 +235,10 @@ ${TMP_DIR}/sec_fuzz: sec/fuzz.c ${THIS_LIB_BASE}/src/zsv.c
 	@mkdir -p ${TMP_DIR}
 	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/fuzz.c -o $@
 
+${TMP_DIR}/sec_repro_finish_oob: sec/repro_finish_cell_dl_OOB.c ${THIS_LIB_BASE}/src/zsv.c
+	@mkdir -p ${TMP_DIR}
+	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/repro_finish_cell_dl_OOB.c -o $@
+
 test-vuln-asan-repro: ${TMP_DIR}/sec_repro
 	@${TEST_INIT}
 	@for f in sec/poc/*.bin; do \
@@ -236,6 +246,13 @@ test-vuln-asan-repro: ${TMP_DIR}/sec_repro
 	  ${TMP_DIR}/sec_repro "$$f" || ${TEST_FAIL}; \
 	done
 	@${TEST_PASS}
+
+# Tight-buffer regression for the zsv_finish->cell_dl heap-buffer-overflow.
+# The PoC payload is generated programmatically inside the binary so the
+# repro is self-contained.
+test-vuln-finish-cell-dl-oob: ${TMP_DIR}/sec_repro_finish_oob
+	@${TEST_INIT}
+	@${TMP_DIR}/sec_repro_finish_oob && ${TEST_PASS} || ${TEST_FAIL}
 
 test-vuln-asan-fuzz: ${TMP_DIR}/sec_fuzz
 	@${TEST_INIT}

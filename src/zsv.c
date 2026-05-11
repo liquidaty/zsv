@@ -397,10 +397,26 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
      * `pending` is the cell length signaled by whichever counter is set:
      * partial_row_length (multi-chunk parses carrying data forward) or
      * scanned_length (single-chunk parses where partial_row_length is 0).
-     * When the pending cell is shorter than a quote pair (e.g. a stray
-     * `"` byte), the input is malformed; drop the quoted flag so the
-     * bytes are emitted as plain content rather than triggering an
-     * underflow in cell_dl's quote-strip arithmetic. */
+     *
+     * For a stray single `"` (pending < 2) the input is malformed; drop
+     * the quoted flag so the byte is emitted as plain content.
+     *
+     * Otherwise we synthesize a virtual closing quote and let cell_dl
+     * strip the surrounding quotes via its easy fast-path. cell_dl's
+     * easy path only adjusts pointer/length (no reads past the cell),
+     * so the synthesized closing quote at offset `pending` is never
+     * actually accessed.
+     *
+     * For the EMBEDDED case, however, cell_dl's `""`-collapse loop
+     * reads up to s[n-1] — i.e. one byte past the original valid input
+     * — which causes a heap-buffer-overflow on a tightly-sized scanner
+     * buffer. To produce the same cell content the easy path would
+     * produce when the over-read happened to land on a zero byte (no
+     * spurious extra `""` match), we do the de-escape ourselves in
+     * place, then have cell_dl run the easy fast-path on a synthetic
+     * envelope sized to the de-escaped content. The cell's quoted flags
+     * are preserved (CLOSED|NEEDED) so downstream writers re-quote on
+     * output. */
     if (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) {
       size_t pending = scanner->partial_row_length > scanner->cell_start
                          ? scanner->partial_row_length - scanner->cell_start
@@ -409,10 +425,31 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
       if (pending > 0) {
         if (pending < 2) {
           scanner->quoted = 0;
+        } else if (scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) {
+          /* In-place de-escape of `""` pairs in the cell interior
+           * (everything after the leading `"`). After this, cell_dl's
+           * easy fast-path sees a `"<de-escaped>"`-shaped envelope of
+           * length 2+out and strips both surrounding quotes via
+           * `s++; n -= 2`, yielding a cell view of exactly <de-escaped>
+           * bytes. The synthetic trailing `"` is never read. */
+          unsigned char *inner = scanner->buff.buff + scanner->cell_start + 1;
+          size_t inner_len = pending - 1;
+          size_t out = 0;
+          for (size_t i = 0; i < inner_len; i++) {
+            inner[out++] = inner[i];
+            if (i + 1 < inner_len && inner[i] == '"' && inner[i + 1] == '"')
+              i++;
+          }
+          scanner->scanned_length = scanner->cell_start + 2 + out;
+          scanner->quote_close_position = 1 + out;
+          /* Drop EMBEDDED so cell_dl picks the easy path; keep CLOSED
+           * and NEEDED so writers see the cell as needing re-quoting. */
+          scanner->quoted = (scanner->quoted | ZSV_PARSER_QUOTE_CLOSED | ZSV_PARSER_QUOTE_NEEDED) &
+                            ~(ZSV_PARSER_QUOTE_UNCLOSED | ZSV_PARSER_QUOTE_PENDING | ZSV_PARSER_QUOTE_EMBEDDED);
         } else {
           int quote = '"';
           scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
-          scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
+          scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
           scanner->quote_close_position = pending;
           if (scanner->last != quote)
             scanner->scanned_length++;
