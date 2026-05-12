@@ -60,10 +60,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install clang
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends clang
 
       - name: Generate include/zsv.h from include/zsv.h.in
         # `include/zsv.h` is .gitignored — `make -C src build` normally
