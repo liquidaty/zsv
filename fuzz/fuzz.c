@@ -97,10 +97,11 @@ static void fuzz_pull(const unsigned char *data, size_t size, char no_quotes)
 
     zsv_parser parser = zsv_new(&opts);
     if (parser) {
-        zsv_set_row_handler(parser, row_handler);
-        zsv_set_context(parser, parser);
+        /* zsv_next_row() installs its own internal row handler, so we must NOT
+         * use zsv_set_row_handler() here — it would be silently overwritten.
+         * Instead, call row_handler() manually after each successful pull. */
         while (zsv_next_row(parser) == zsv_status_row)
-            ;
+            row_handler(parser);
         zsv_finish(parser);
         zsv_delete(parser);
     }

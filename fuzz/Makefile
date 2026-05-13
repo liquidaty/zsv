@@ -38,10 +38,17 @@ help:
 	@echo "Requirements (test-build/test-run): clang with ASan support"
 	@echo "PREFIX must point to the zsv repo root (default: ..)"
 
+# ── Generate zsv.h (gitignored, must be built from zsv.h.in) ────────────────
+ZSV_H     = $(PREFIX)/include/zsv.h
+ZSV_H_IN  = $(PREFIX)/include/zsv.h.in
+
+$(ZSV_H): $(ZSV_H_IN)
+	sed 's/__ZSV_EXTRAS__DEFINE__//' < $(ZSV_H_IN) > $(ZSV_H)
+
 # ── AFL++ build ───────────────────────────────────────────────────────────────
 build: $(FUZZBIN)
 
-$(FUZZBIN): fuzz.c
+$(FUZZBIN): fuzz.c $(ZSV_H)
 	afl-clang-fast $(CFLAGS) fuzz.c -o $(FUZZBIN)
 
 # ── AFL++ run ─────────────────────────────────────────────────────────────────
@@ -50,11 +57,12 @@ run: $(FUZZBIN)
 	afl-fuzz -i $(CORPUS_DIR) $(DICT_ARG) -o $(FUZZOUT) -- $(FUZZBIN)
 
 run-parallel: $(FUZZBIN)
-	@mkdir -p $(FUZZOUT)
-	afl-fuzz -M master -i $(CORPUS_DIR) $(DICT_ARG) -o $(FUZZOUT) -- $(FUZZBIN) &
-	@for i in $$(seq 1 $$(($(JOBS) - 1))); do \
-		afl-fuzz -S s$$i -i $(CORPUS_DIR) $(DICT_ARG) -o $(FUZZOUT) -- $(FUZZBIN) &; \
-	done
+	@mkdir -p $(FUZZOUT); \
+	afl-fuzz -M master -i $(CORPUS_DIR) $(DICT_ARG) -o $(FUZZOUT) -- $(FUZZBIN) & \
+	for i in $$(seq 1 $$(($(JOBS) - 1))); do \
+		afl-fuzz -S s$$i -i $(CORPUS_DIR) $(DICT_ARG) -o $(FUZZOUT) -- $(FUZZBIN) & \
+	done; \
+	wait
 
 # ── Smoke-test (no AFL++ needed) ─────────────────────────────────────────────
 test-build: fuzz.c
@@ -65,7 +73,7 @@ test-run: test-build
 	@ok=0; ko=0; \
 	for f in $(CORPUS_DIR)/*; do \
 		[ -f "$$f" ] || continue; \
-		if $(TESTBIN) < "$$f" 2>/dev/null; then ok=$$((ok+1)); \
+		if $(TESTBIN) < "$$f"; then ok=$$((ok+1)); \
 		else ko=$$((ko+1)); echo "  CRASH: $$f"; fi; \
 	done; \
 	echo "Passed: $$ok / Failed: $$ko"
