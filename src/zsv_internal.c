@@ -159,6 +159,7 @@ struct zsv_scanner {
 #define ZSV_MODE_FIXED 1
 #define ZSV_MODE_DELIM_PULL 2
 #define ZSV_MODE_DELIM_FAST 3
+#define ZSV_MODE_COMPAT 255
   unsigned char mode;
   struct {
     unsigned *offsets; // 0-based position of each cell end. offset[0] = end of first cell
@@ -697,7 +698,7 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
   else if (opts->buffsize < ZSV_MIN_SCANNER_BUFFSIZE)
     opts->buffsize = ZSV_MIN_SCANNER_BUFFSIZE;
 
-  if (opts->scan_engine == 255)
+  if (opts->scan_engine == ZSV_MODE_COMPAT)
     scanner->mode = ZSV_MODE_DELIM; /* force compat/standard engine */
   else if (opts->scan_engine)
     scanner->mode = opts->scan_engine;
