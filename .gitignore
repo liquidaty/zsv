@@ -88,8 +88,7 @@ app/benchmark/worldcitiespop_big.tsv
 !**/expected/*.out
 pkg
 PDCurses-3.9
-fuzz/corpus-optimized*
-fuzz/corpus-minimized*
+fuzz/corpus-generated
 fuzz/.afl-*
 fuzz/zsvfuzz*
 crash*
