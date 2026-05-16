@@ -96,3 +96,4 @@ fuzz/.afl-*
 fuzz/zsvfuzz*
 crash*
 default.profraw
+fuzz/zsv-fuzzer
