@@ -68,7 +68,7 @@ Some influential environment variables:
   LDFLAGS                 Linker flags
 
   CROSS_COMPILING=no      Set to yes to disable auto-detect compilation flags
-  NO_THREADING            Set to 1 to disable threading
+  NO_THREADING=0          Set to 1 to disable threading
 
 Use these variables to override the choices made by configure.
 
@@ -278,6 +278,10 @@ trysharedldflag () {
 # Beginning of actual script
 if [ "$CROSS_COMPILING" = "" ]; then
     CROSS_COMPILING=no
+fi
+
+if [ "$NO_THREADING" = "" ]; then
+    NO_THREADING="0"
 fi
 
 CFLAGS_AUTO=
@@ -857,6 +861,10 @@ if test "$MINIMAL" = "no" ; then
     ZSV_EXTRAS=1
 fi
 
+if [ "$NO_THREADING" = "1" ]; then
+    ZSV_NO_PARALLEL=1
+fi
+
 printf "creating %s... " "$CONFIGFILE"
 
 cmdline=$(quote "$0")
@@ -935,8 +943,8 @@ BUILD_SHAREDLIB = $BUILD_SHAREDLIB
 
 ZSVSHEET_BUILD = $ZSVSHEET_BUILD
 
+NO_THREADING = $NO_THREADING
 ZSV_NO_PARALLEL = $ZSV_NO_PARALLEL
-
 ZSV_PARALLEL_TEMPFILE = $ZSV_PARALLEL_TEMPFILE
 
 NO_STDIN = $NO_STDIN
@@ -1021,7 +1029,6 @@ if [ "$ZSV_NO_ONLY_CRLF" = "1" ]; then
 else
     printf '%-64s*\n' "*  - only-crlf mode: enabled"
 fi
-
 
 echo "*****************************************************************"
 

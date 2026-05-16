@@ -108,7 +108,7 @@ else
   INSTALLED_EXTENSION=
 endif
 
-CFLAGS+= -I${THIS_LIB_BASE}/include -I${PREFIX}/include
+CFLAGS+= -I${THIS_LIB_BASE}/include -I${INCLUDEDIR}
 
 all: ${TARGET} ${TARGET_SHEET}
 	@echo Built ${TARGET}
@@ -225,21 +225,21 @@ clean:
 ${BUILD_DIR}/objs/%.o : ${THIS_LIB_BASE}/src/%.c ${PARSER_DEPS}
 	${MAKE} -C ${THIS_LIB_BASE}/src CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} WIN=${WIN} $@
 
-LIBZSV=${PREFIX}/lib/libzsv.a
+LIBZSV=${LIBDIR}/libzsv.a
 ${LIBZSV}:
 	${MAKE} -C ${THIS_LIB_BASE}/src CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} WIN=${WIN} install
 
-LIBZSVUTIL=${PREFIX}/lib/libzsvutil.a
+LIBZSVUTIL=${LIBDIR}/libzsvutil.a
 ${LIBZSVUTIL}:
 	${MAKE} -C ${THIS_LIB_BASE}/app CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} WIN=${WIN} install-util-lib
 
 YAJL_SRC_DIR=${THIS_MAKEFILE_DIR}/../external/yajl
 YAJL_INCLUDE=-I${YAJL_SRC_DIR}/build/yajl-2.1.1/include
 YAJL_HELPER_INCLUDE=-I${THIS_MAKEFILE_DIR}/../external/yajl_helper
-${TARGET_SHEET}: LIBS="../external/sqlite3/sqlite3.c" -lzsvutil -lzsv -L${PREFIX}/lib -ljq -lutf8proc
-${TARGET}: LIBS=-lzsvutil -lzsv -L${PREFIX}/lib
+${TARGET_SHEET}: LIBS="../external/sqlite3/sqlite3.c" -lzsvutil -lzsv -L${LIBDIR} -ljq -lutf8proc
+${TARGET}: LIBS=-lzsvutil -lzsv -L${LIBDIR}
 ${TARGET} ${TARGET_SHEET}: ${BUILD_DIR}/bin/zsvext%.${SO} : %_extension.c ${LIBZSV} ${LIBZSVUTIL}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${CFLAGS_SHARED} $< -o $@ ${LIBS} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
 
-.PHONY: all test test-% clean install ${PREFIX}/lib/libzsvutil.a
+.PHONY: all test test-% clean install ${LIBDIR}/libzsvutil.a
