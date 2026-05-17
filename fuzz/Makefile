@@ -16,7 +16,12 @@ export AFL_SKIP_CPUFREQ=1
 # export AFL_PRINT_FILENAMES=1
 # export AFL_NO_UI=1
 # export AFL_QUIET=1
-# export AFL_DEBUG=1
+export AFL_DEBUG=1
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+  export AFL_NO_FORKSRV=1
+endif
 
 JOBS ?= $(shell nproc --ignore=1 2>/dev/null || echo 2)
 
