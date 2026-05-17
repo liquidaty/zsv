@@ -18,6 +18,10 @@ export AFL_SKIP_CPUFREQ=1
 # export AFL_QUIET=1
 # export AFL_DEBUG=1
 
+# For CI or slower targets
+# export AFL_NO_STARTUP_CALIBRATION=1
+# export AFL_FAST_CAL=1
+
 UNAME_S := $(shell uname -s)
 # https://aflplus.plus/docs/install/#macos-on-x86_64-and-arm64
 ifeq ($(UNAME_S),Darwin)
@@ -79,6 +83,8 @@ help:
 	@echo "  make afl-clean-all                          # clean everything including generated corpus"
 	@echo ""
 	@echo "Notes:"
+	@echo "  For optimal performance, you must run 'sudo afl-system-config' once to configure your system."
+	@echo ""
 	@echo "  JOBS is the number of parallel fuzzing jobs to run (default: 2)"
 	@echo ""
 	@echo "  The corpus is generated automatically only if it does not exist"
