@@ -91,9 +91,7 @@ app/benchmark/worldcitiespop_big.tsv
 !**/expected/*.out
 pkg
 PDCurses-3.9
-fuzz/corpus-generated
-fuzz/.afl-*
-fuzz/zsvfuzz*
-crash*
 default.profraw
-fuzz/zsv-fuzzer
+fuzz/afl
+fuzz/df
+crash*
