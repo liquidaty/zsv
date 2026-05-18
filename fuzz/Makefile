@@ -24,18 +24,18 @@ export AFL_NO_CRASH_README=1
 # export AFL_NO_STARTUP_CALIBRATION=1
 # export AFL_FAST_CAL=1
 
-UNAME_S := $(shell uname -s)
+UNAME_S = $(shell uname -s)
 # https://aflplus.plus/docs/install/#macos-on-x86_64-and-arm64
 ifeq ($(UNAME_S),Darwin)
   export AFL_NO_FORKSRV=1
 endif
 
-JOBS ?= 2
+JOBS = 2
 ifeq ($(shell command -v nproc 2>/dev/null),)
   $(error 'nproc' command is not available on this system. Please install 'coreutils'.)
 endif
-NPROC := $(shell nproc --ignore=1 2>/dev/null)
-IS_JOBS_VALID := $(shell [ "$(JOBS)" -eq "$(JOBS)" ] 2>/dev/null && [ "$(JOBS)" -ge 2 ] && [ "$(JOBS)" -le "$(NPROC)" ] && echo 1 || echo 0)
+NPROC = $(shell nproc --ignore=1 2>/dev/null)
+IS_JOBS_VALID = $(shell [ "$(JOBS)" -eq "$(JOBS)" ] 2>/dev/null && [ "$(JOBS)" -ge 2 ] && [ "$(JOBS)" -le "$(NPROC)" ] && echo 1 || echo 0)
 ifneq ($(IS_JOBS_VALID),1)
   $(error Invalid JOBS value [$(JOBS)] for parallel fuzzing. Valid range: [min=2, max=$(NPROC)])
 endif
@@ -90,6 +90,8 @@ help:
 	@echo "  make afl-watch-progress [ALL=0]             # watch fuzzing progress"
 	@echo "  make afl-watch-progress-summary [ALL=0]     # watch fuzzing progress (summary only)"
 	@echo "  make afl-list-crashes                       # list crash files"
+	@echo "  make afl-repro-crash [CRASH_FILE=<file>]    # reproduce specific crash"
+	@echo "  make afl-repro-crash-all                    # reproduce all crashes"
 	@echo "  make afl-clean                              # stop fuzzing and clean binaries and output"
 	@echo "  make afl-clean-all                          # stop fuzzing and clean everything including corpus"
 	@echo ""
@@ -105,13 +107,6 @@ help:
 	@echo "  The corpus is generated automatically only if it does not exist"
 	@echo "  or if the raw test data changes. Otherwise, it is safely skipped."
 	@echo "  Based on raw corpus size, the corpus generation may take a while."
-	@echo ""
-	@echo "  To reproduce a specific crash, run:"
-	@echo "    $(AFL_FUZZ_BIN) < crash-file"
-	@echo "  or, with test binary with stderr logs, run:"
-	@echo "    make afl-test-build"
-	@echo "  and, run:"
-	@echo "    $(AFL_TEST_BIN) < crash-file"
 	@echo ""
 	@echo "  Be mindful of running 'afl-clean' or 'afl-clean-all' while fuzzing is in progress."
 	@echo "  The fuzzing job(s) will be stopped first before clean to prevent any side effects."
@@ -147,7 +142,7 @@ $(ZSV_H): $(ZSV_H_IN)
 
 $(AFL_FUZZ_BIN): $(SOURCES) $(ZSV_H)
 	@mkdir -p $(AFL_DIR)
-	afl-clang-fast $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN)
+	afl-clang-lto $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN)
 
 afl-build: $(AFL_FUZZ_BIN)
 
@@ -186,11 +181,11 @@ $(AFL_CORPUS_DIR_MINIMIZED): $(wildcard $(AFL_CORPUS_DIR_RAW)/*)
 afl-corpus: $(AFL_FUZZ_BIN) $(AFL_CORPUS_DIR_MINIMIZED)
 
 AFL_RUN_FLAGS = -u -x $(AFL_DICT_FILE) -i $(AFL_CORPUS_DIR_MINIMIZED) -o $(AFL_OUTPUT_DIR)
-STOP_ON_CRASH ?= 0
+STOP_ON_CRASH = 0
 ifneq ($(STOP_ON_CRASH),0)
-  AFL_RUN_FLAGS += -I 'make afl-stop'
+  AFL_RUN_FLAGS += -I "make afl-stop"
 endif
-TIMEOUT_SECONDS ?= 0
+TIMEOUT_SECONDS = 0
 ifneq ($(TIMEOUT_SECONDS),0)
   AFL_RUN_FLAGS += -V $(TIMEOUT_SECONDS)
 endif
@@ -242,6 +237,24 @@ afl-watch-progress-summary: afl-validate-output-dir
 afl-list-crashes: afl-validate-output-dir
 	@find $(AFL_OUTPUT_DIR) -type f -path "*/crashes/id:*"
 
+afl-repro-crash: afl-validate-output-dir
+	@if [ -z "$$CRASH_FILE" ]; then \
+		echo "usage: 'make $@ CRASH_FILE=<file>'"; \
+		exit 1; \
+	elif [ ! -f "$$CRASH_FILE" ]; then \
+		echo "CRASH_FILE='$$CRASH_FILE' does not exist or is not a file."; \
+		exit 1; \
+	fi; \
+	echo "Reproducing crash: $$CRASH_FILE"; \
+	$(AFL_FUZZ_BIN) < "$$CRASH_FILE" || true
+
+afl-repro-crash-all: afl-validate-output-dir
+	@CRASHES=$(shell make afl-list-crashes); \
+	for crash in $$CRASHES; do \
+		echo "Reproducing crash: $$crash"; \
+		$(AFL_FUZZ_BIN) < "$$crash" || true; \
+	done
+
 # Smoke-test (no AFL++ needed)
 afl-test-build: $(SOURCES)
 	clang $(TEST_CFLAGS) $(SOURCES) -o $(AFL_TEST_BIN)
@@ -266,8 +279,8 @@ afl-clean-all: afl-clean
 
 .PHONY: afl-build afl-run afl-run-parallel \
 		afl-validate-output-dir afl-show-progress afl-show-progress-summary \
-		afl-list-crashes afl-test-build afl-test-run \
-		afl-clean afl-clean-all
+		afl-list-crashes afl-repro-crash afl-repro-crash-all \
+		afl-test-build afl-test-run afl-clean afl-clean-all
 
 # ======================
 # dockerized fuzzer (df)
