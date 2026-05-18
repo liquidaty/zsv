@@ -13,6 +13,8 @@ export AFL_UBSAN_VERBOSE=1
 # export AFL_USE_LSAN=1
 # export AFL_USE_MSAN=1
 export AFL_SKIP_CPUFREQ=1
+export AFL_NO_FASTRESUME=1
+export AFL_NO_CRASH_README=1
 # export AFL_PRINT_FILENAMES=1
 # export AFL_NO_UI=1
 # export AFL_QUIET=1
@@ -28,7 +30,15 @@ ifeq ($(UNAME_S),Darwin)
   export AFL_NO_FORKSRV=1
 endif
 
-JOBS ?= $(shell nproc --ignore=1 2>/dev/null || echo 2)
+JOBS ?= 2
+ifeq ($(shell command -v nproc 2>/dev/null),)
+  $(error 'nproc' command is not available on this system. Please install 'coreutils'.)
+endif
+NPROC := $(shell nproc --ignore=1 2>/dev/null)
+IS_JOBS_VALID := $(shell [ "$(JOBS)" -eq "$(JOBS)" ] 2>/dev/null && [ "$(JOBS)" -ge 2 ] && [ "$(JOBS)" -le "$(NPROC)" ] && echo 1 || echo 0)
+ifneq ($(IS_JOBS_VALID),1)
+  $(error Invalid JOBS value [$(JOBS)] for parallel fuzzing. Valid range: [min=2, max=$(NPROC)])
+endif
 
 PREFIX ?= ..
 INCLUDE_DIR = $(PREFIX)/include
@@ -71,24 +81,26 @@ help:
 	@echo ""
 	@echo "Usage (run from inside the zsv repo fuzz/ directory):"
 	@echo "  make afl-run          [PREFIX=..]           # single AFL++ instance"
-	@echo "  make afl-run-parallel [PREFIX=..] [JOBS=N]  # 1 master + N secondary"
+	@echo "  make afl-run-parallel [PREFIX=..] [JOBS=N]  # 1 main + N secondary"
 	@echo "  make afl-test-build   [PREFIX=..]           # clang+ASan build (no AFL++ needed)"
 	@echo "  make afl-test-run     [PREFIX=..]           # clang+ASan build + corpus run"
 	@echo "  make afl-stop                               # stop AFL++ fuzzing"
-	@echo "  make afl-show-progress [DEAD=0]             # show fuzzing progress"
-	@echo "  make afl-show-progress-summary [DEAD=0]     # show fuzzing progress (summary only)"
-	@echo "  make afl-watch-progress [DEAD=0]            # watch fuzzing progress"
-	@echo "  make afl-watch-progress-summary [DEAD=0]    # watch fuzzing progress (summary only)"
+	@echo "  make afl-show-progress [ALL=0]              # show fuzzing progress"
+	@echo "  make afl-show-progress-summary [ALL=0]      # show fuzzing progress (summary only)"
+	@echo "  make afl-watch-progress [ALL=0]             # watch fuzzing progress"
+	@echo "  make afl-watch-progress-summary [ALL=0]     # watch fuzzing progress (summary only)"
 	@echo "  make afl-list-crashes                       # list crash files"
-	@echo "  make afl-clean                              # clean fuzzing binaries and output"
-	@echo "  make afl-clean-all                          # clean everything including generated corpus"
+	@echo "  make afl-clean                              # stop fuzzing and clean binaries and output"
+	@echo "  make afl-clean-all                          # stop fuzzing and clean everything including corpus"
 	@echo ""
 	@echo "Notes:"
 	@echo "  Run 'sudo afl-system-config' once to configure your system for optimal performance."
 	@echo ""
 	@echo "  PREFIX must point to the zsv repo root (default: ..)"
 	@echo "  JOBS is the number of parallel fuzzing jobs to run (default: 2)"
-	@echo "  DEAD for progress commands controls whether to include dead stats too. (default: 0)"
+	@echo "  ALL for show/watch commands controls whether to show all sessions. (default: 0 = current session only)"
+	@echo "  TIMEOUT_SECONDS for run commands controls when to stop. (default: 0 = run indefinitely)"
+	@echo "  STOP_ON_CRASH for run commands controls whether to stop on the first crash. (default: 0)"
 	@echo ""
 	@echo "  The corpus is generated automatically only if it does not exist"
 	@echo "  or if the raw test data changes. Otherwise, it is safely skipped."
@@ -100,6 +112,9 @@ help:
 	@echo "    make afl-test-build"
 	@echo "  and, run:"
 	@echo "    $(AFL_TEST_BIN) < crash-file"
+	@echo ""
+	@echo "  Be mindful of running 'afl-clean' or 'afl-clean-all' while fuzzing is in progress."
+	@echo "  The fuzzing job(s) will be stopped first before clean to prevent any side effects."
 	@echo ""
 	@echo "Requirements:"
 	@echo "  afl-run/afl-run-parallel: afl-clang-fast, afl-fuzz"
@@ -170,15 +185,23 @@ $(AFL_CORPUS_DIR_MINIMIZED): $(wildcard $(AFL_CORPUS_DIR_RAW)/*)
 
 afl-corpus: $(AFL_FUZZ_BIN) $(AFL_CORPUS_DIR_MINIMIZED)
 
+AFL_RUN_FLAGS = -u -x $(AFL_DICT_FILE) -i $(AFL_CORPUS_DIR_MINIMIZED) -o $(AFL_OUTPUT_DIR)
+STOP_ON_CRASH ?= 0
+ifneq ($(STOP_ON_CRASH),0)
+  AFL_RUN_FLAGS += -I 'make afl-stop'
+endif
+TIMEOUT_SECONDS ?= 0
+ifneq ($(TIMEOUT_SECONDS),0)
+  AFL_RUN_FLAGS += -V $(TIMEOUT_SECONDS)
+endif
+
 afl-run: afl-corpus
-	@afl-fuzz -u -i $(AFL_CORPUS_DIR_MINIMIZED) -x $(AFL_DICT_FILE) -o $(AFL_OUTPUT_DIR) -- $(AFL_FUZZ_BIN)
+	@afl-fuzz $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN)
 
 afl-run-parallel: afl-corpus
-	@echo "Launching AFL++ with $(JOBS) parallel jobs (1 master + $$(($(JOBS) - 1)) secondary)"
-	@mkdir -p $(AFL_OUTPUT_DIR)
-	@afl-fuzz -M master -u -i $(AFL_CORPUS_DIR_MINIMIZED) -x $(AFL_DICT_FILE) -o $(AFL_OUTPUT_DIR) -- $(AFL_FUZZ_BIN) &
+	@afl-fuzz -M main $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) &
 	@for i in $$(seq 1 $$(($(JOBS) - 1))); do \
-		afl-fuzz -S s$$i -u -i $(AFL_CORPUS_DIR_MINIMIZED) -x $(AFL_DICT_FILE) -o $(AFL_OUTPUT_DIR) -- $(AFL_FUZZ_BIN) >/dev/null 2>&1 & \
+		afl-fuzz -S s$$i $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) >/dev/null 2>&1 & \
 	done; \
 	wait
 
@@ -200,8 +223,8 @@ afl-validate-output-dir:
 	fi
 
 AFL_PROGRESS_FLAGS = -m
-ifeq ($(DEAD),1)
-	AFL_PROGRESS_FLAGS += -d
+ifeq ($(ALL),1)
+  AFL_PROGRESS_FLAGS += -d
 endif
 
 afl-show-progress: afl-validate-output-dir
@@ -233,7 +256,7 @@ afl-test-run: afl-test-build
 	done; \
 	echo "Passed: $$ok / Failed: $$ko"
 
-afl-clean:
+afl-clean: afl-stop
 	rm -f $(AFL_FUZZ_BIN) $(AFL_TEST_BIN) .afl-tmin-temp-*
 	rm -rf $(AFL_OUTPUT_DIR)
 
