@@ -75,10 +75,10 @@ help:
 	@echo "  make afl-test-build   [PREFIX=..]           # clang+ASan build (no AFL++ needed)"
 	@echo "  make afl-test-run     [PREFIX=..]           # clang+ASan build + corpus run"
 	@echo "  make afl-stop                               # stop AFL++ fuzzing"
-	@echo "  make afl-show-progress                      # show fuzzing progress"
-	@echo "  make afl-show-progress-summary              # show fuzzing progress (summary only)"
-	@echo "  make afl-watch-progress                     # watch fuzzing progress"
-	@echo "  make afl-watch-progress-summary             # watch fuzzing progress (summary only)"
+	@echo "  make afl-show-progress [DEAD=0]             # show fuzzing progress"
+	@echo "  make afl-show-progress-summary [DEAD=0]     # show fuzzing progress (summary only)"
+	@echo "  make afl-watch-progress [DEAD=0]            # watch fuzzing progress"
+	@echo "  make afl-watch-progress-summary [DEAD=0]    # watch fuzzing progress (summary only)"
 	@echo "  make afl-list-crashes                       # list crash files"
 	@echo "  make afl-clean                              # clean fuzzing binaries and output"
 	@echo "  make afl-clean-all                          # clean everything including generated corpus"
@@ -86,13 +86,13 @@ help:
 	@echo "Notes:"
 	@echo "  Run 'sudo afl-system-config' once to configure your system for optimal performance."
 	@echo ""
+	@echo "  PREFIX must point to the zsv repo root (default: ..)"
 	@echo "  JOBS is the number of parallel fuzzing jobs to run (default: 2)"
+	@echo "  DEAD for progress commands controls whether to include dead stats too. (default: 0)"
 	@echo ""
 	@echo "  The corpus is generated automatically only if it does not exist"
 	@echo "  or if the raw test data changes. Otherwise, it is safely skipped."
 	@echo "  Based on raw corpus size, the corpus generation may take a while."
-	@echo ""
-	@echo "  PREFIX must point to the zsv repo root (default: ..)"
 	@echo ""
 	@echo "  To reproduce a specific crash, run:"
 	@echo "    $(AFL_FUZZ_BIN) < crash-file"
@@ -199,17 +199,22 @@ afl-validate-output-dir:
 		exit 1; \
 	fi
 
+AFL_PROGRESS_FLAGS = -m
+ifeq ($(DEAD),1)
+	AFL_PROGRESS_FLAGS += -d
+endif
+
 afl-show-progress: afl-validate-output-dir
-	@afl-whatsup $(AFL_OUTPUT_DIR)
+	@afl-whatsup $(AFL_PROGRESS_FLAGS) $(AFL_OUTPUT_DIR)
 
 afl-show-progress-summary: afl-validate-output-dir
-	@afl-whatsup -s $(AFL_OUTPUT_DIR)
+	@afl-whatsup -s $(AFL_PROGRESS_FLAGS) $(AFL_OUTPUT_DIR)
 
 afl-watch-progress: afl-validate-output-dir
-	@watch -c afl-whatsup $(AFL_OUTPUT_DIR)
+	@watch -c afl-whatsup $(AFL_PROGRESS_FLAGS) $(AFL_OUTPUT_DIR)
 
 afl-watch-progress-summary: afl-validate-output-dir
-	@watch -c afl-whatsup -s $(AFL_OUTPUT_DIR)
+	@watch -c afl-whatsup -s $(AFL_PROGRESS_FLAGS) $(AFL_OUTPUT_DIR)
 
 afl-list-crashes: afl-validate-output-dir
 	@find $(AFL_OUTPUT_DIR) -type f -path "*/crashes/id:*"
