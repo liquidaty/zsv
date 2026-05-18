@@ -142,7 +142,7 @@ $(ZSV_H): $(ZSV_H_IN)
 
 $(AFL_FUZZ_BIN): $(SOURCES) $(ZSV_H)
 	@mkdir -p $(AFL_DIR)
-	afl-clang-lto $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN)
+	afl-clang-fast $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN)
 
 afl-build: $(AFL_FUZZ_BIN)
 
