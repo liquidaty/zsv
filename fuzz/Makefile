@@ -74,7 +74,7 @@ AFL_DICT_FILE  = csv.dict
 
 AFL_DIR = ./afl
 AFL_FUZZ_BIN = $(AFL_DIR)/fuzz
-AFL_TEST_BIN = $(AFL_FUZZ_BIN)_test
+AFL_REPRO_BIN = $(AFL_DIR)/repro
 AFL_OUTPUT_DIR = $(AFL_DIR)/out
 
 # Corpus generation stages:
@@ -254,33 +254,33 @@ afl-repro-crash: afl-test-build
 		exit 1; \
 	fi; \
 	echo "Reproducing crash: $$CRASH_FILE"; \
-	$(AFL_TEST_BIN) < "$$CRASH_FILE" || true
+	$(AFL_REPRO_BIN) < "$$CRASH_FILE" || true
 
-afl-repro-crash-all: afl-validate-output-dir
-	@CRASHES=$(shell make afl-list-crashes); \
+afl-repro-crash-all: afl-test-build afl-validate-output-dir
+	@CRASHES="$(shell make afl-list-crashes)"; \
 	for crash in $$CRASHES; do \
 		echo "Reproducing crash: $$crash"; \
-		$(AFL_TEST_BIN) < "$$crash" || true; \
+		$(AFL_REPRO_BIN) < "$$crash" || true; \
 	done
 
 # Smoke-test (no AFL++ needed)
-$(AFL_TEST_BIN): $(SOURCES)
-	$(CC) $(TEST_CFLAGS) $(SOURCES) -o $(AFL_TEST_BIN)
+$(AFL_REPRO_BIN): $(SOURCES)
+	$(CC) $(TEST_CFLAGS) $(SOURCES) -o $(AFL_REPRO_BIN)
 
-afl-test-build: $(AFL_TEST_BIN)
+afl-test-build: $(AFL_REPRO_BIN)
 
 afl-test-run: afl-test-build
 	@echo "Testing corpus (raw): $(AFL_CORPUS_DIR_RAW)"
 	@ok=0; ko=0; \
 	for f in $(AFL_CORPUS_DIR_RAW)/*; do \
 		[ -f "$$f" ] || continue; \
-		if $(AFL_TEST_BIN) < "$$f" 2>/dev/null; then ok=$$((ok+1)); \
+		if $(AFL_REPRO_BIN) < "$$f" 2>/dev/null; then ok=$$((ok+1)); \
 		else ko=$$((ko+1)); echo "  CRASH: $$f"; fi; \
 	done; \
 	echo "Passed: $$ok / Failed: $$ko"
 
 afl-clean: afl-stop
-	rm -f $(AFL_FUZZ_BIN) $(AFL_TEST_BIN) .afl-tmin-temp-*
+	rm -f $(AFL_FUZZ_BIN) $(AFL_REPRO_BIN) .afl-tmin-temp-*
 	rm -rf $(AFL_OUTPUT_DIR)
 
 afl-clean-all: afl-clean
