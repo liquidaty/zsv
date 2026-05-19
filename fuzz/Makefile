@@ -44,6 +44,12 @@ ifneq ($(IS_JOBS_VALID),1)
   $(error Invalid JOBS value [$(JOBS)] for parallel fuzzing. Valid range: [min=2, max=$(NPROC)])
 endif
 
+CC = clang
+AFL_CC = afl-clang-fast
+ifeq ($(UNAME_S),Linux)
+AFL_CC = afl-clang-lto
+endif
+
 PREFIX ?= ..
 INCLUDE_DIR = $(PREFIX)/include
 
@@ -115,10 +121,6 @@ help:
 	@echo "  Be mindful of running 'afl-clean' or 'afl-clean-all' while fuzzing is in progress."
 	@echo "  The fuzzing job(s) will be stopped first before clean to prevent any side effects."
 	@echo ""
-	@echo "Requirements:"
-	@echo "  afl-run/afl-run-parallel: afl-clang-fast, afl-fuzz"
-	@echo "  afl-test-build/afl-test-run: clang with ASan support"
-	@echo ""
 	@echo ""
 	@echo "Dockerized Fuzzing (df) based on libFuzzer"
 	@echo ""
@@ -135,9 +137,6 @@ help:
 	@echo "  ZSV_BRANCH is the git branch to fuzz (default: main)"
 	@echo "  JOBS is the number of parallel fuzzing jobs to run (default: 2)"
 	@echo ""
-	@echo "Requirements:"
-	@echo "  'docker', 'docker compose' and 'yq' must be installed and available in PATH."
-	@echo ""
 
 ZSV_H = $(INCLUDE_DIR)/zsv.h
 ZSV_H_IN = $(INCLUDE_DIR)/zsv.h.in
@@ -146,7 +145,7 @@ $(ZSV_H): $(ZSV_H_IN)
 
 $(AFL_FUZZ_BIN): $(SOURCES) $(ZSV_H)
 	@mkdir -p $(AFL_DIR)
-	afl-clang-fast $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN)
+	$(AFL_CC) $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN)
 
 afl-build: afl-clean-all $(AFL_FUZZ_BIN)
 
@@ -261,7 +260,7 @@ afl-repro-crash-all: afl-validate-output-dir
 
 # Smoke-test (no AFL++ needed)
 $(AFL_TEST_BIN): $(SOURCES)
-	clang $(TEST_CFLAGS) $(SOURCES) -o $(AFL_TEST_BIN)
+	$(CC) $(TEST_CFLAGS) $(SOURCES) -o $(AFL_TEST_BIN)
 
 afl-test-build: $(AFL_TEST_BIN)
 
