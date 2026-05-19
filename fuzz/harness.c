@@ -12,7 +12,7 @@
 #ifndef __AFL_COMPILER
 // #define __AFL_HAVE_MANUAL_CONTROL
 static unsigned char __afl_buf[1 << 20];
-static ssize_t __afl_len;
+static size_t __afl_len;
 #define __AFL_FUZZ_TESTCASE_BUF __afl_buf
 #define __AFL_FUZZ_TESTCASE_LEN __afl_len
 #define __AFL_FUZZ_INIT()
@@ -116,58 +116,66 @@ static void fuzz_pull(const unsigned char *data, size_t size, char no_quotes) {
   }
 }
 
+void run_payload(const unsigned char *data, const size_t size) {
+  if (size < 2)
+    return;
+
+  const unsigned char mode = data[0] & 0x7;
+  const unsigned char *payload = data + 1;
+  const size_t payload_size = size - 1;
+  const char delim = payload_size > 0 ? (char)payload[0] : (char)';';
+
+#ifndef __AFL_COMPILER
+  fprintf(stderr, "MODE: 0x%02x\n", mode);
+  if (isprint(delim)) {
+    fprintf(stderr, "DELIM: '%c' (0x%02x)\n", delim, (unsigned char)delim);
+  } else {
+    fprintf(stderr, "DELIM: [NON-PRINTABLE] (0x%02x)\n", (unsigned char)delim);
+  }
+  fprintf(stderr, "PAYLOAD SIZE: %zu\n", payload_size);
+#endif
+
+  switch (mode) {
+  case 0:
+    fuzz_push(payload, payload_size, ZSV_MODE_DELIM, 0, 0);
+    break;
+  case 1: /* fast SIMD */
+    fuzz_push(payload, payload_size, ZSV_MODE_DELIM_FAST, 0, 0);
+    break;
+  case 2: /* compat */
+    fuzz_push(payload, payload_size, ZSV_MODE_COMPAT, 0, 0);
+    break;
+  case 3: /* alternate delimiter */
+    fuzz_push(payload, payload_size, ZSV_MODE_DELIM, 0, delim);
+    break;
+  case 4: /* no-quotes */
+    fuzz_push(payload, payload_size, ZSV_MODE_DELIM, 1, 0);
+    break;
+  case 5: /* pull */
+    fuzz_pull(payload, payload_size, 0);
+    break;
+  case 6: /* pull, no-quotes */
+    fuzz_pull(payload, payload_size, 1);
+    break;
+  case 7: /* compat + alternate delimiter */
+    fuzz_push(payload, payload_size, ZSV_MODE_COMPAT, 0, delim);
+    break;
+  }
+}
+
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+  run_payload(data, size);
+  return 0;
+}
+
 int main(void) {
 #ifdef __AFL_HAVE_MANUAL_CONTROL
   __AFL_INIT();
 #endif
   const unsigned char *buf = __AFL_FUZZ_TESTCASE_BUF;
   while (__AFL_LOOP(10000)) {
-    const int len = __AFL_FUZZ_TESTCASE_LEN;
-    if (len < 2)
-      continue;
-
-    const unsigned char mode = buf[0] & 0x7;
-    const unsigned char *payload = buf + 1;
-    const size_t payload_size = (size_t)(len - 1);
-    const char delim = payload_size > 0 ? (char)payload[0] : (char)';';
-
-#ifndef __AFL_COMPILER
-    // Log the test case details for debugging purposes (only when not compiling with AFL)
-    fprintf(stderr, "MODE: 0x%02x\n", mode);
-    if (isprint(delim)) {
-      fprintf(stderr, "DELIM: '%c' (0x%02x)\n", delim, (unsigned char)delim);
-    } else {
-      fprintf(stderr, "DELIM: [NON-PRINTABLE] (0x%02x)\n", (unsigned char)delim);
-    }
-    fprintf(stderr, "PAYLOAD SIZE: %zu\n", payload_size);
-#endif
-
-    switch (mode) {
-    case 0:
-      fuzz_push(payload, payload_size, ZSV_MODE_DELIM, 0, 0);
-      break;
-    case 1: /* fast SIMD */
-      fuzz_push(payload, payload_size, ZSV_MODE_DELIM_FAST, 0, 0);
-      break;
-    case 2: /* compat */
-      fuzz_push(payload, payload_size, ZSV_MODE_COMPAT, 0, 0);
-      break;
-    case 3: /* alternate delimiter */
-      fuzz_push(payload, payload_size, ZSV_MODE_DELIM, 0, delim);
-      break;
-    case 4: /* no-quotes */
-      fuzz_push(payload, payload_size, ZSV_MODE_DELIM, 1, 0);
-      break;
-    case 5: /* pull */
-      fuzz_pull(payload, payload_size, 0);
-      break;
-    case 6: /* pull, no-quotes */
-      fuzz_pull(payload, payload_size, 1);
-      break;
-    case 7: /* compat + alternate delimiter */
-      fuzz_push(payload, payload_size, ZSV_MODE_COMPAT, 0, delim);
-      break;
-    }
+    const size_t len = __AFL_FUZZ_TESTCASE_LEN;
+    run_payload(buf, len);
   }
   return 0;
 }

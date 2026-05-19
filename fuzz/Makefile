@@ -56,7 +56,7 @@ endif
 PREFIX ?= ..
 INCLUDE_DIR = $(PREFIX)/include
 
-CFLAGS = -g3 -O2 -march=native -fsigned-char \
+CFLAGS = -g3 -O2 -march=native -fsigned-char -fsanitize=fuzzer \
          -DZSV_VERSION=\"fuzz\" -DNDEBUG -DNO_UTF8_CHECK \
          -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT \
          -I $(INCLUDE_DIR)
@@ -68,7 +68,7 @@ TEST_CFLAGS = -g3 -O2 -march=native -fsigned-char \
               -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT \
               -I $(INCLUDE_DIR)
 
-SOURCES = fuzz.c
+SOURCES = harness.c
 
 AFL_DICT_FILE  = csv.dict
 
