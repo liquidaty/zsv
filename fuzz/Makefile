@@ -61,7 +61,7 @@ CFLAGS = -g3 -O2 -march=native -fsigned-char -fsanitize=fuzzer \
          -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT \
          -I $(INCLUDE_DIR)
 
-TEST_CFLAGS = -g3 -O2 -march=native -fsigned-char \
+REPRO_CFLAGS = -g3 -O2 -march=native -fsigned-char \
               -fsanitize=address,undefined -fno-sanitize-recover=undefined \
               -fno-omit-frame-pointer \
               -DZSV_VERSION=\"fuzz\" -DNDEBUG -DNO_UTF8_CHECK \
@@ -95,14 +95,13 @@ help:
 	@echo "Usage (run from inside the zsv repo fuzz/ directory):"
 	@echo "  make afl-run          [PREFIX=..]           # single AFL++ instance"
 	@echo "  make afl-run-parallel [PREFIX=..] [JOBS=N]  # 1 main + N secondary"
-	@echo "  make afl-test-build   [PREFIX=..]           # clang+ASan build (no AFL++ needed)"
-	@echo "  make afl-test-run     [PREFIX=..]           # clang+ASan build + corpus run"
 	@echo "  make afl-stop                               # stop AFL++ fuzzing"
 	@echo "  make afl-show-progress [ALL=0]              # show fuzzing progress"
 	@echo "  make afl-show-progress-summary [ALL=0]      # show fuzzing progress (summary only)"
 	@echo "  make afl-watch-progress [ALL=0]             # watch fuzzing progress"
 	@echo "  make afl-watch-progress-summary [ALL=0]     # watch fuzzing progress (summary only)"
 	@echo "  make afl-list-crashes                       # list crash files"
+	@echo "  make afl-repro-run [PREFIX=..]              # clang+ASan build + corpus run"
 	@echo "  make afl-repro-crash [CRASH_FILE=<file>]    # reproduce specific crash"
 	@echo "  make afl-repro-crash-all                    # reproduce all crashes"
 	@echo "  make afl-clean                              # stop fuzzing and clean binaries and output"
@@ -245,7 +244,12 @@ afl-watch-progress-summary: afl-validate-output-dir
 afl-list-crashes: afl-validate-output-dir
 	@find $(AFL_OUTPUT_DIR) -type f -path "*/crashes/id:*"
 
-afl-repro-crash: afl-test-build
+$(AFL_REPRO_BIN): $(SOURCES) $(ZSV_H)
+	$(CC) $(REPRO_CFLAGS) $(SOURCES) -o $(AFL_REPRO_BIN)
+
+afl-repro-build: $(AFL_REPRO_BIN)
+
+afl-repro-crash: afl-repro-build
 	@if [ -z "$$CRASH_FILE" ]; then \
 		echo "usage: 'make $@ CRASH_FILE=<file>'"; \
 		exit 1; \
@@ -256,20 +260,14 @@ afl-repro-crash: afl-test-build
 	echo "Reproducing crash: $$CRASH_FILE"; \
 	$(AFL_REPRO_BIN) < "$$CRASH_FILE" || true
 
-afl-repro-crash-all: afl-test-build afl-validate-output-dir
+afl-repro-crash-all: afl-repro-build afl-validate-output-dir
 	@CRASHES="$(shell make afl-list-crashes)"; \
 	for crash in $$CRASHES; do \
 		echo "Reproducing crash: $$crash"; \
 		$(AFL_REPRO_BIN) < "$$crash" || true; \
 	done
 
-# Smoke-test (no AFL++ needed)
-$(AFL_REPRO_BIN): $(SOURCES)
-	$(CC) $(TEST_CFLAGS) $(SOURCES) -o $(AFL_REPRO_BIN)
-
-afl-test-build: $(AFL_REPRO_BIN)
-
-afl-test-run: afl-test-build
+afl-repro-run: afl-repro-build
 	@echo "Testing corpus (raw): $(AFL_CORPUS_DIR_RAW)"
 	@ok=0; ko=0; \
 	for f in $(AFL_CORPUS_DIR_RAW)/*; do \
@@ -290,7 +288,7 @@ afl-clean-all: afl-clean
 .PHONY: afl-build afl-run afl-run-parallel \
 		afl-validate-output-dir afl-show-progress afl-show-progress-summary \
 		afl-list-crashes afl-repro-crash afl-repro-crash-all \
-		afl-test-build afl-test-run afl-clean afl-clean-all
+		afl-repro-build afl-repro-run afl-clean afl-clean-all
 
 # ======================
 # dockerized fuzzer (df)
