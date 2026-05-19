@@ -260,8 +260,10 @@ afl-repro-crash-all: afl-validate-output-dir
 	done
 
 # Smoke-test (no AFL++ needed)
-afl-test-build: $(SOURCES)
+$(AFL_TEST_BIN): $(SOURCES)
 	clang $(TEST_CFLAGS) $(SOURCES) -o $(AFL_TEST_BIN)
+
+afl-test-build: $(AFL_TEST_BIN)
 
 afl-test-run: afl-test-build
 	@echo "Testing corpus (raw): $(AFL_CORPUS_DIR_RAW)"
