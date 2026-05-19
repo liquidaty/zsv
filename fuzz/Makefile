@@ -25,8 +25,9 @@ UNAME_S = $(shell uname -s)
 
 ifeq ($(CI),true)
   export AFL_NO_FORKSRV=1
-#   export AFL_NO_STARTUP_CALIBRATION=1
+  export AFL_NO_STARTUP_CALIBRATION=1
   export AFL_FAST_CAL=1
+  export AFL_PIZZA_MODE=-1
 else
 # https://aflplus.plus/docs/install/#macos-on-x86_64-and-arm64
   ifeq ($(UNAME_S),Darwin)

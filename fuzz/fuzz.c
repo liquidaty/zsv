@@ -1,17 +1,3 @@
-/* AFL stubs (used when compiling without afl-clang-fast) */
-#ifndef __AFL_COMPILER
-#define __AFL_HAVE_MANUAL_CONTROL
-#define __AFL_INIT()                                                                                                   \
-  do {                                                                                                                 \
-  } while (0)
-static unsigned char __afl_buf[1 << 20];
-static int __afl_len;
-#define __AFL_FUZZ_INIT()
-#define __AFL_LOOP(n) ((__afl_len = (int)fread(__afl_buf, 1, sizeof(__afl_buf), stdin)) > 0)
-#define __AFL_FUZZ_TESTCASE_BUF __afl_buf
-#define __AFL_FUZZ_TESTCASE_LEN __afl_len
-#endif /* __AFL_COMPILER */
-
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +5,22 @@ static int __afl_len;
 #include <ctype.h>
 #include <unistd.h>
 #include "../src/zsv.c"
+
+// AFL++ Persistent Mode
+// https://github.com/AFLplusplus/AFLplusplus/blob/stable/instrumentation/README.persistent_mode.md
+/* AFL stubs (used when compiling without afl-clang-fast/lto) */
+#ifndef __AFL_COMPILER
+// #define __AFL_HAVE_MANUAL_CONTROL
+static unsigned char __afl_buf[1 << 20];
+static ssize_t __afl_len;
+#define __AFL_FUZZ_TESTCASE_BUF __afl_buf
+#define __AFL_FUZZ_TESTCASE_LEN __afl_len
+#define __AFL_FUZZ_INIT()
+#define __AFL_INIT()                                                                                                   \
+  do {                                                                                                                 \
+  } while (0)
+#define __AFL_LOOP(n) ((__afl_len = read(0, __afl_buf, sizeof(__afl_buf))) > 0 ? 1 : 0)
+#endif /* __AFL_COMPILER */
 
 __AFL_FUZZ_INIT();
 
