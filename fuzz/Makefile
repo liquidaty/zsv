@@ -13,6 +13,7 @@ export AFL_UBSAN_VERBOSE=1
 # export AFL_USE_LSAN=1
 # export AFL_USE_MSAN=1
 export AFL_SKIP_CPUFREQ=1
+export AFL_AUTORESUME=1
 export AFL_NO_FASTRESUME=1
 export AFL_NO_CRASH_README=1
 # export AFL_PRINT_FILENAMES=1
@@ -20,14 +21,17 @@ export AFL_NO_CRASH_README=1
 # export AFL_QUIET=1
 # export AFL_DEBUG=1
 
-# For CI or slower targets
-# export AFL_NO_STARTUP_CALIBRATION=1
-# export AFL_FAST_CAL=1
-
 UNAME_S = $(shell uname -s)
-# https://aflplus.plus/docs/install/#macos-on-x86_64-and-arm64
-ifeq ($(UNAME_S),Darwin)
+
+ifeq ($(CI),true)
   export AFL_NO_FORKSRV=1
+#   export AFL_NO_STARTUP_CALIBRATION=1
+  export AFL_FAST_CAL=1
+else
+# https://aflplus.plus/docs/install/#macos-on-x86_64-and-arm64
+  ifeq ($(UNAME_S),Darwin)
+    export AFL_NO_FORKSRV=1
+  endif
 endif
 
 JOBS = 2
@@ -144,7 +148,7 @@ $(AFL_FUZZ_BIN): $(SOURCES) $(ZSV_H)
 	@mkdir -p $(AFL_DIR)
 	afl-clang-fast $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN)
 
-afl-build: $(AFL_FUZZ_BIN)
+afl-build: afl-clean-all $(AFL_FUZZ_BIN)
 
 $(AFL_CORPUS_DIR_MINIMIZED): $(wildcard $(AFL_CORPUS_DIR_RAW)/*)
 	@echo "========================================================="
@@ -183,7 +187,7 @@ afl-corpus: $(AFL_FUZZ_BIN) $(AFL_CORPUS_DIR_MINIMIZED)
 AFL_RUN_FLAGS = -u -x $(AFL_DICT_FILE) -i $(AFL_CORPUS_DIR_MINIMIZED) -o $(AFL_OUTPUT_DIR)
 STOP_ON_CRASH = 0
 ifneq ($(STOP_ON_CRASH),0)
-  AFL_RUN_FLAGS += -I "make afl-stop"
+  AFL_RUN_FLAGS += -I "pkill -INT afl-fuzz"
 endif
 TIMEOUT_SECONDS = 0
 ifneq ($(TIMEOUT_SECONDS),0)
@@ -191,12 +195,12 @@ ifneq ($(TIMEOUT_SECONDS),0)
 endif
 
 afl-run: afl-corpus
-	@afl-fuzz $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN)
+	@afl-fuzz -P explore $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN)
 
 afl-run-parallel: afl-corpus
-	@afl-fuzz -M main $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) &
+	@afl-fuzz -M main -P explore $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) &
 	@for i in $$(seq 1 $$(($(JOBS) - 1))); do \
-		afl-fuzz -S s$$i $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) >/dev/null 2>&1 & \
+		afl-fuzz -S s$$i -P exploit $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) >/dev/null 2>&1 & \
 	done; \
 	wait
 
