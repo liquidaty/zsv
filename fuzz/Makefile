@@ -241,7 +241,7 @@ afl-watch-progress-summary: afl-validate-output-dir
 afl-list-crashes: afl-validate-output-dir
 	@find $(AFL_OUTPUT_DIR) -type f -path "*/crashes/id:*"
 
-afl-repro-crash: afl-build
+afl-repro-crash: afl-test-build
 	@if [ -z "$$CRASH_FILE" ]; then \
 		echo "usage: 'make $@ CRASH_FILE=<file>'"; \
 		exit 1; \
@@ -250,13 +250,13 @@ afl-repro-crash: afl-build
 		exit 1; \
 	fi; \
 	echo "Reproducing crash: $$CRASH_FILE"; \
-	$(AFL_FUZZ_BIN) < "$$CRASH_FILE" || true
+	$(AFL_TEST_BIN) < "$$CRASH_FILE" || true
 
 afl-repro-crash-all: afl-validate-output-dir
 	@CRASHES=$(shell make afl-list-crashes); \
 	for crash in $$CRASHES; do \
 		echo "Reproducing crash: $$crash"; \
-		$(AFL_FUZZ_BIN) < "$$crash" || true; \
+		$(AFL_TEST_BIN) < "$$crash" || true; \
 	done
 
 # Smoke-test (no AFL++ needed)
