@@ -245,6 +245,7 @@ afl-list-crashes: afl-validate-output-dir
 	@find $(AFL_OUTPUT_DIR) -type f -path "*/crashes/id:*"
 
 $(AFL_REPRO_BIN): $(SOURCES) $(ZSV_H)
+	@mkdir -p $(AFL_DIR)
 	$(CC) $(REPRO_CFLAGS) $(SOURCES) -o $(AFL_REPRO_BIN)
 
 afl-repro-build: $(AFL_REPRO_BIN)
