@@ -237,7 +237,7 @@ afl-watch-progress-summary: afl-validate-output-dir
 afl-list-crashes: afl-validate-output-dir
 	@find $(AFL_OUTPUT_DIR) -type f -path "*/crashes/id:*"
 
-afl-repro-crash: afl-validate-output-dir
+afl-repro-crash: afl-build
 	@if [ -z "$$CRASH_FILE" ]; then \
 		echo "usage: 'make $@ CRASH_FILE=<file>'"; \
 		exit 1; \
