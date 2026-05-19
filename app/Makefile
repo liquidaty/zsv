@@ -188,7 +188,9 @@ else
   CFLAGS += ${CFLAGS_DEBUG}
 endif
 
-CFLAGS+= -I${INCLUDEDIR}
+ifneq ($(INCLUDEDIR),)
+  CFLAGS+= -I${INCLUDEDIR}
+endif
 THIS_LIB_BASE:=$(shell cd .. && pwd)
 INCLUDE_DIR:=${THIS_LIB_BASE}/include
 BUILD_DIR:=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
