@@ -16,9 +16,11 @@ export AFL_SKIP_CPUFREQ=1
 export AFL_AUTORESUME=1
 export AFL_NO_FASTRESUME=1
 export AFL_NO_CRASH_README=1
+export AFL_IGNORE_UNKNOWN_ENVS=1
+export AFL_IGNORE_SEED_PROBLEMS=1
 # export AFL_PRINT_FILENAMES=1
 # export AFL_NO_UI=1
-# export AFL_QUIET=1
+export AFL_QUIET=1
 # export AFL_DEBUG=1
 
 UNAME_S = $(shell uname -s)
@@ -198,9 +200,11 @@ afl-run: afl-corpus
 	@afl-fuzz -P explore $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN)
 
 afl-run-parallel: afl-corpus
-	@afl-fuzz -M main -P explore $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) &
+ifneq ($(CI),true) # do not run main in CI (secondaries only)
+	@afl-fuzz -M main -P explore -p explore $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) &
+endif
 	@for i in $$(seq 1 $$(($(JOBS) - 1))); do \
-		afl-fuzz -S s$$i -P exploit $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) >/dev/null 2>&1 & \
+		afl-fuzz -S s$$i -P exploit -p explore $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) >/dev/null 2>&1 & \
 	done; \
 	wait
 
