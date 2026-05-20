@@ -54,10 +54,6 @@ CFLAGS = -g3 -O2 -march=native -fsigned-char \
          -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT \
          -I $(INCLUDE_DIR)
 
-ifndef HARNESS
-  HARNESS = afl++
-endif
-
 SAN_ENV_VARS =
 ifndef SAN
   SAN = asan
@@ -74,6 +70,9 @@ else
   $(error Invalid SAN [$(SAN)]. Supported values are 'asan' and 'msan')
 endif
 
+ifndef HARNESS
+  HARNESS = afl++
+endif
 ifeq ($(HARNESS),afl++)
   CFLAGS += -DZSV_VERSION=\"fuzz_$(HARNESS)_$(SAN)\" -DAFL_HARNESS
 else ifeq ($(HARNESS),libfuzzer)
@@ -122,9 +121,9 @@ help:
 	@echo "  make afl-watch-progress [ALL=0]             # watch fuzzing progress"
 	@echo "  make afl-watch-progress-summary [ALL=0]     # watch fuzzing progress (summary only)"
 	@echo "  make afl-list-crashes                       # list crash files"
-	@echo "  make afl-repro-run [PREFIX=..]              # clang+ASan build + corpus run"
 	@echo "  make afl-repro-crash [CRASH_FILE=<file>]    # reproduce specific crash"
 	@echo "  make afl-repro-crash-all                    # reproduce all crashes"
+	@echo "  make afl-repro-test-raw-corpus [PREFIX=..]  # clang build + raw corpus run"
 	@echo "  make afl-clean                              # stop fuzzing and clean binaries and output"
 	@echo "  make afl-clean-all                          # stop fuzzing and clean everything including corpus"
 	@echo ""
@@ -303,12 +302,12 @@ afl-repro-crash-all: afl-repro-build afl-validate-output-dir
 		$(AFL_REPRO_BIN) "$$crash" || true; \
 	done
 
-afl-repro-run: afl-repro-build
+afl-repro-test-raw-corpus: afl-repro-build
 	@echo "Testing corpus (raw): $(AFL_CORPUS_DIR_RAW)"
 	@ok=0; ko=0; \
 	for f in $(AFL_CORPUS_DIR_RAW)/*; do \
 		[ -f "$$f" ] || continue; \
-		if $(AFL_REPRO_BIN) < "$$f" 2>/dev/null; then ok=$$((ok+1)); \
+		if $(AFL_REPRO_BIN) "$$f" 2>/dev/null; then ok=$$((ok+1)); \
 		else ko=$$((ko+1)); echo "  CRASH: $$f"; fi; \
 	done; \
 	echo "Passed: $$ok / Failed: $$ko"
@@ -325,7 +324,7 @@ afl-clean-all: afl-clean
 .PHONY: afl-build afl-run afl-run-parallel \
 		afl-validate-output-dir afl-show-progress afl-show-progress-summary \
 		afl-list-crashes afl-repro-crash afl-repro-crash-all \
-		afl-repro-build afl-repro-run afl-clean afl-clean-all
+		afl-repro-build afl-repro-test-raw-corpus afl-clean afl-clean-all
 
 # ======================
 # dockerized fuzzer (df)
