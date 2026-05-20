@@ -215,7 +215,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
 #define FAST_ROWEND_NOQUOTE(scanner, buff, idx, is_cr, need_slow_, no_quotes_)                                         \
   do {                                                                                                                 \
     if (!(is_cr)) {                                                                                                    \
-      char prev = (idx) > 0 ? (buff)[(idx)-1] : (scanner)->last;                                                       \
+      char prev = (idx) > 0 ? (buff)[(idx) - 1] : (scanner)->last;                                                     \
       if (prev == '\r') {                                                                                              \
         (scanner)->cell_start = (idx) + 1;                                                                             \
         (scanner)->row_start = (idx) + 1;                                                                              \
@@ -239,7 +239,7 @@ __attribute__((always_inline)) static inline enum zsv_status fast_store_cell_and
 #define FAST_ROWEND_QUOTED(scanner, buff, idx, is_cr, quote_char)                                                      \
   do {                                                                                                                 \
     if (!(is_cr)) {                                                                                                    \
-      char prev = (idx) > 0 ? (buff)[(idx)-1] : (scanner)->last;                                                       \
+      char prev = (idx) > 0 ? (buff)[(idx) - 1] : (scanner)->last;                                                     \
       if (prev == '\r') {                                                                                              \
         (scanner)->cell_start = (idx) + 1;                                                                             \
         (scanner)->row_start = (idx) + 1;                                                                              \
@@ -571,8 +571,7 @@ normal_parse:
         uint64_t opening_quotes = quotes & state_mask;
         uint64_t valid_prev = (all_delims | quotes) << 1;
         unsigned char prev_byte = i > 0 ? buff[i - 1] : (unsigned char)scanner->last;
-        if (prev_byte == (unsigned char)delimiter || prev_byte == '\r' || prev_byte == '\n' ||
-            prev_byte == '"')
+        if (prev_byte == (unsigned char)delimiter || prev_byte == '\r' || prev_byte == '\n' || prev_byte == '"')
           valid_prev |= 1ULL;
         if (scanner->cell_start >= i && scanner->cell_start < i + 64)
           valid_prev |= 1ULL << (scanner->cell_start - i);
@@ -721,8 +720,7 @@ normal_parse:
    * Gate the carry on COMPAT's invariant: UNCLOSED is only valid when the
    * current cell actually begins with the quote char. This runs once per
    * scan call (cold path); the hot SIMD loop is untouched. */
-  if (inside_quote && scanner->cell_start < bytes_read &&
-      buff[scanner->cell_start] == (unsigned char)quote_char)
+  if (inside_quote && scanner->cell_start < bytes_read && buff[scanner->cell_start] == (unsigned char)quote_char)
     scanner->quoted |= ZSV_PARSER_QUOTE_UNCLOSED;
   else
     scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;

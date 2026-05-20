@@ -127,8 +127,9 @@ int main(void) {
   }
 #else
   if (st_fast != zsv_status_nonstandard_csv) {
-    fprintf(stderr, "FAIL: fast engine should detect non-standard CSV and return "
-                    "zsv_status_nonstandard_csv (%d); got %d\n",
+    fprintf(stderr,
+            "FAIL: fast engine should detect non-standard CSV and return "
+            "zsv_status_nonstandard_csv (%d); got %d\n",
             (int)zsv_status_nonstandard_csv, (int)st_fast);
     free(input);
     free(user_buff);

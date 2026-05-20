@@ -121,7 +121,7 @@ struct zsv_scanner {
   unsigned char have_cell : 1;
   unsigned char started : 1;
 
-  unsigned char skip_cells : 1; // fast engine: skip cell storage, just count rows
+  unsigned char skip_cells : 1;  // fast engine: skip cell storage, just count rows
   unsigned char nonstandard : 1; // fast engine: set when input violates RFC 4180
                                  // (e.g. quote mid-unquoted-cell). Cold-path falls back
                                  // to COMPAT to match its byte-for-byte interpretation.
