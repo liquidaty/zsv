@@ -139,7 +139,7 @@ help:
 	@echo ""
 	@echo "  HARNESS is for selecting the AFL++ (afl++) or LibFuzzer (libfuzzer) harness (default: afl++)"
 	@echo "  LibFuzzer has been observed to be faster and may be the default in future."
-	@echo "  To run fuzzing with LibFuzzer harness, invoke run targets with AFL=libfuzzer e.g.:"
+	@echo "  To fuzz with LibFuzzer harness, run:"
 	@echo "    make afl-run HARNESS=libfuzzer"
 	@echo ""
 	@echo "  The corpus is generated automatically only if it does not exist"
