@@ -522,6 +522,8 @@ const unsigned char *zsv_parse_status_desc(enum zsv_status status) {
     return (unsigned char *)"Row successfully pulled";
   case zsv_status_error:
     return (unsigned char *)"Unexpected error";
+  case zsv_status_nonstandard_csv:
+    return (unsigned char *)"Non-standard CSV detected by fast SIMD engine; retry with ZSV_MODE_COMPAT";
 #ifdef ZSV_EXTRAS
   case zsv_status_max_rows_read:
     return (unsigned char *)"Maximum specified rows have been parsed";

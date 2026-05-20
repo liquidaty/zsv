@@ -122,6 +122,9 @@ struct zsv_scanner {
   unsigned char started : 1;
 
   unsigned char skip_cells : 1; // fast engine: skip cell storage, just count rows
+  unsigned char nonstandard : 1; // fast engine: set when input violates RFC 4180
+                                 // (e.g. quote mid-unquoted-cell). Cold-path falls back
+                                 // to COMPAT to match its byte-for-byte interpretation.
 
   /* Column filter for the fast engine. When non-NULL, only columns
    * with needed_cols[col_ix] != 0 get full processing (quote normalization,

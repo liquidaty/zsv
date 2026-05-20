@@ -80,6 +80,7 @@ ifneq ($(CROSS_COMPILING),1)
   # the sanitizer.
   ifneq ($(shell command -v clang 2>/dev/null),)
     TESTS+=test-vuln-finish-cell-dl-oob
+    TESTS+=test-vuln-fast-nonstandard-oob
   endif
 endif
 
@@ -250,6 +251,10 @@ ${TMP_DIR}/sec_repro_finish_oob: sec/repro_finish_cell_dl_OOB.c ${THIS_LIB_BASE}
 	@mkdir -p ${TMP_DIR}
 	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/repro_finish_cell_dl_OOB.c -o $@
 
+${TMP_DIR}/sec_repro_fast_nonstandard_oob: sec/repro_fast_nonstandard_OOB.c ${THIS_LIB_BASE}/src/zsv.c
+	@mkdir -p ${TMP_DIR}
+	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/repro_fast_nonstandard_OOB.c -o $@
+
 test-vuln-asan-repro: ${TMP_DIR}/sec_repro
 	@${TEST_INIT}
 	@for f in sec/poc/*.bin; do \
@@ -264,6 +269,14 @@ test-vuln-asan-repro: ${TMP_DIR}/sec_repro
 test-vuln-finish-cell-dl-oob: ${TMP_DIR}/sec_repro_finish_oob
 	@${TEST_INIT}
 	@${TMP_DIR}/sec_repro_finish_oob && ${TEST_PASS} || ${TEST_FAIL}
+
+# Regression for the FAST SIMD scanner OOB on non-standard CSV (mid-cell
+# quote that fills the buffer with no row terminator). Verifies that:
+#   (a) ASan does not report heap-buffer-overflow in zsv_finish, AND
+#   (b) the fast engine returns zsv_status_nonstandard_csv (detection on).
+test-vuln-fast-nonstandard-oob: ${TMP_DIR}/sec_repro_fast_nonstandard_oob
+	@${TEST_INIT}
+	@${TMP_DIR}/sec_repro_fast_nonstandard_oob && ${TEST_PASS} || ${TEST_FAIL}
 
 test-vuln-asan-fuzz: ${TMP_DIR}/sec_fuzz
 	@${TEST_INIT}
