@@ -348,6 +348,7 @@ afl-clean: afl-stop
 	rm -rf $(AFL_OUTPUT_DIR)
 
 afl-clean-all: afl-clean
+	rm -rf $(AFL_DIR)/fuzz*dSYM $(AFL_DIR)/repro*dSYM
 	rm -f $(AFL_DIR)/fuzz* $(AFL_DIR)/repro*
 	rm -rf $(AFL_CORPUS_DIR_GENERATED)
 	rm -rf $(AFL_DIR)
