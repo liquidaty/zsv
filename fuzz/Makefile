@@ -6,12 +6,6 @@
 
 # https://aflplus.plus/docs/env_variables/
 unexport ASAN_OPTIONS
-export AFL_USE_ASAN=1
-export AFL_USE_UBSAN=1
-export AFL_UBSAN_VERBOSE=1
-# export AFL_HARDEN=1
-# export AFL_USE_LSAN=1
-# export AFL_USE_MSAN=1
 export AFL_SKIP_CPUFREQ=1
 export AFL_AUTORESUME=1
 export AFL_NO_FASTRESUME=1
@@ -73,6 +67,18 @@ else
   $(error Invalid HARNESS [$(HARNESS)]. Supported harnesses are 'afl++' and 'libfuzzer')
 endif
 
+SAN_ENV_VARS =
+ifndef SAN
+  SAN = asan
+endif
+ifeq ($(SAN),asan)
+  SAN_ENV_VARS = AFL_USE_ASAN=1 AFL_USE_UBSAN=1 AFL_UBSAN_VERBOSE=1
+else ifeq ($(SAN),msan)
+  SAN_ENV_VARS = AFL_USE_MSAN=1 AFL_USE_UBSAN=1 AFL_UBSAN_VERBOSE=1
+else
+  $(error Invalid SAN [$(SAN)]. Supported values are 'asan' and 'msan')
+endif
+
 REPRO_CFLAGS = -g3 -O2 -march=native -fsigned-char \
               -fsanitize=address,undefined -fno-sanitize-recover=undefined \
               -fno-omit-frame-pointer \
@@ -128,6 +134,9 @@ help:
 	@echo "  TIMEOUT_SECONDS for run commands controls when to stop. (default: 0 = run indefinitely)"
 	@echo "  STOP_ON_CRASH for run commands controls whether to stop on the first crash. (default: 0)"
 	@echo ""
+	@echo "  SAN is to select Address Sanitizer (asan) or Memory Sanitizer (msan) (default: asan)"
+	@echo "  By default, Undefined Behavior Sanitizer is automatically included for both."
+	@echo ""
 	@echo "  HARNESS is for selecting the AFL++ (afl++) or LibFuzzer (libfuzzer) harness (default: afl++)"
 	@echo "  LibFuzzer has been observed to be faster and may be the default in future."
 	@echo "  To run fuzzing with LibFuzzer harness, invoke run targets with AFL=libfuzzer e.g.:"
@@ -164,7 +173,7 @@ $(ZSV_H): $(ZSV_H_IN)
 
 $(AFL_FUZZ_BIN): $(SOURCES) $(ZSV_H) afl-clean-all
 	@mkdir -p $(AFL_DIR)
-	$(AFL_CC) $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN)
+	$(SAN_ENV_VARS) $(AFL_CC) $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN)
 
 afl-build: afl-clean-all $(AFL_FUZZ_BIN)
 
