@@ -6,28 +6,8 @@
 #include <unistd.h>
 #include "../src/zsv.c"
 
-// AFL++ Persistent Mode
-// https://github.com/AFLplusplus/AFLplusplus/blob/stable/instrumentation/README.persistent_mode.md
-/* AFL stubs (used when compiling without afl-clang-fast/lto) */
-#ifndef __AFL_COMPILER
-// #define __AFL_HAVE_MANUAL_CONTROL
-static unsigned char __afl_buf[1 << 20];
-static size_t __afl_len;
-#define __AFL_FUZZ_TESTCASE_BUF __afl_buf
-#define __AFL_FUZZ_TESTCASE_LEN __afl_len
-#define __AFL_FUZZ_INIT()
-FILE *f_in = NULL;
-#define __AFL_INIT()                                                                                                   \
-  do {                                                                                                                 \
-  } while (0)
-#define __AFL_LOOP(n) ((__afl_len = fread(__afl_buf, 1, sizeof(__afl_buf), f_in)) > 0 ? 1 : 0)
-#endif /* __AFL_COMPILER */
-
-__AFL_FUZZ_INIT();
-
 /* Volatile sink — prevents the compiler from eliding cell reads. */
 static volatile size_t g_sink;
-
 
 static void row_handler(void *ctx) {
   zsv_parser parser = (zsv_parser)ctx;
@@ -165,20 +145,16 @@ void run_payload(const unsigned char *data, const size_t size) {
   }
 }
 
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
-  run_payload(data, size);
-  return 0;
-}
+// AFL++ | LibFuzzer | repro
 
-int main(int argc, const char *argv[]) {
-  f_in = stdin;
-  if(argc > 1 && argv[1]) {
-    f_in = fopen(argv[1], "rb");
-    if(!f_in) {
-      perror(argv[1]);
-      return 1;
-    }
-  }
+#ifdef AFL_HARNESS
+
+// AFL++ Persistent Mode
+// https://github.com/AFLplusplus/AFLplusplus/blob/stable/instrumentation/README.persistent_mode.md
+
+__AFL_FUZZ_INIT();
+
+int main(void) {
 #ifdef __AFL_HAVE_MANUAL_CONTROL
   __AFL_INIT();
 #endif
@@ -189,3 +165,69 @@ int main(int argc, const char *argv[]) {
   }
   return 0;
 }
+
+#elif defined(LIBFUZZER_HARNESS)
+
+// AFL++ driver for LibFuzzer harness
+// https://github.com/AFLplusplus/AFLplusplus/blob/stable/utils/aflpp_driver/README.md#aflpp_driver
+
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
+  run_payload(data, size);
+  return 0;
+}
+
+#else /* repro */
+
+int main(int argc, char *argv[]) {
+  if (argc != 2) {
+    fprintf(stderr, "usage: %s <input_file>\n", argv[0]);
+    return 1;
+  }
+
+  FILE *f = fopen(argv[1], "rb");
+  if (!f) {
+    perror("fopen");
+    return 1;
+  }
+
+  if (fseek(f, 0, SEEK_END) != 0) {
+    perror("fseek");
+    fclose(f);
+    return 1;
+  }
+
+  const long size = ftell(f);
+  if (size == -1L) {
+    perror("ftell");
+    fclose(f);
+    return 1;
+  }
+
+  if (size < 3) {
+    fprintf(stderr, "file too short\n");
+    fclose(f);
+    return 1;
+  }
+
+  unsigned char *buf = malloc(size);
+  if (!buf) {
+    perror("malloc");
+    fclose(f);
+    return 1;
+  }
+
+  rewind(f);
+  const size_t bytes_read = fread(buf, 1, (size_t)size, f);
+  fclose(f);
+
+  if (bytes_read < (size_t)size) {
+    fprintf(stderr, "warning: short read (%zu/%ld bytes)\n", bytes_read, size);
+  }
+
+  run_payload(buf, bytes_read);
+
+  free(buf);
+  return 0;
+}
+
+#endif /* LIBFUZZER_HARNESS */

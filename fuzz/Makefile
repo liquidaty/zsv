@@ -50,21 +50,33 @@ endif
 CC = clang
 AFL_CC = afl-clang-fast
 ifeq ($(UNAME_S),Linux)
-AFL_CC = afl-clang-lto
+  AFL_CC = afl-clang-lto
 endif
 
 PREFIX ?= ..
 INCLUDE_DIR = $(PREFIX)/include
 
-CFLAGS = -g3 -O2 -march=native -fsigned-char -fsanitize=fuzzer \
-         -DZSV_VERSION=\"fuzz\" -DNDEBUG -DNO_UTF8_CHECK \
+CFLAGS = -g3 -O2 -march=native -fsigned-char \
+         -DNDEBUG -DNO_UTF8_CHECK \
          -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT \
          -I $(INCLUDE_DIR)
+
+ifndef HARNESS
+  HARNESS = afl++
+endif
+
+ifeq ($(HARNESS),afl++)
+  CFLAGS += -DZSV_VERSION=\"$(HARNESS)\" -DAFL_HARNESS
+else ifeq ($(HARNESS),libfuzzer)
+  CFLAGS += -DZSV_VERSION=\"$(HARNESS)\" -DLIBFUZZER_HARNESS -fsanitize=fuzzer
+else
+  $(error Invalid HARNESS [$(HARNESS)]. Supported harnesses are 'afl++' and 'libfuzzer')
+endif
 
 REPRO_CFLAGS = -g3 -O2 -march=native -fsigned-char \
               -fsanitize=address,undefined -fno-sanitize-recover=undefined \
               -fno-omit-frame-pointer \
-              -DZSV_VERSION=\"fuzz\" -DNDEBUG -DNO_UTF8_CHECK \
+              -DZSV_VERSION=\"repro\" -DNDEBUG -DNO_UTF8_CHECK \
               -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT \
               -I $(INCLUDE_DIR)
 
@@ -116,6 +128,11 @@ help:
 	@echo "  TIMEOUT_SECONDS for run commands controls when to stop. (default: 0 = run indefinitely)"
 	@echo "  STOP_ON_CRASH for run commands controls whether to stop on the first crash. (default: 0)"
 	@echo ""
+	@echo "  HARNESS is for selecting the AFL++ (afl++) or LibFuzzer (libfuzzer) harness (default: afl++)"
+	@echo "  LibFuzzer has been observed to be faster and may be the default in future."
+	@echo "  To run fuzzing with LibFuzzer harness, invoke run targets with AFL=libfuzzer e.g.:"
+	@echo "    make afl-run HARNESS=libfuzzer"
+	@echo ""
 	@echo "  The corpus is generated automatically only if it does not exist"
 	@echo "  or if the raw test data changes. Otherwise, it is safely skipped."
 	@echo "  Based on raw corpus size, the corpus generation may take a while."
@@ -145,7 +162,7 @@ ZSV_H_IN = $(INCLUDE_DIR)/zsv.h.in
 $(ZSV_H): $(ZSV_H_IN)
 	sed 's/__ZSV_EXTRAS__DEFINE__//' < $(ZSV_H_IN) > $(ZSV_H)
 
-$(AFL_FUZZ_BIN): $(SOURCES) $(ZSV_H)
+$(AFL_FUZZ_BIN): $(SOURCES) $(ZSV_H) afl-clean-all
 	@mkdir -p $(AFL_DIR)
 	$(AFL_CC) $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN)
 
@@ -168,7 +185,7 @@ $(AFL_CORPUS_DIR_MINIMIZED): $(wildcard $(AFL_CORPUS_DIR_RAW)/*)
 	@echo "========================================================="
 	@rm -rf $(AFL_CORPUS_DIR_OPTIMIZED)
 	@mkdir -p $(AFL_CORPUS_DIR_OPTIMIZED)
-	afl-cmin.bash -e -i $(AFL_CORPUS_DIR_FILTERED) -o $(AFL_CORPUS_DIR_OPTIMIZED) -T "all" -- $(AFL_FUZZ_BIN)
+	afl-cmin -e -i $(AFL_CORPUS_DIR_FILTERED) -o $(AFL_CORPUS_DIR_OPTIMIZED) -T "all" -- $(AFL_FUZZ_BIN) -
 	@FILTERED_COUNT=$$(find $(AFL_CORPUS_DIR_FILTERED) -type f | wc -l); \
 	OPTIMIZED_COUNT=$$(find $(AFL_CORPUS_DIR_OPTIMIZED) -type f | wc -l); \
 	echo "Optimized to $$OPTIMIZED_COUNT files from filtered corpus of $$FILTERED_COUNT files."
@@ -180,7 +197,7 @@ $(AFL_CORPUS_DIR_MINIMIZED): $(wildcard $(AFL_CORPUS_DIR_RAW)/*)
 	@rm -rf $(AFL_CORPUS_DIR_MINIMIZED)
 	@mkdir -p $(AFL_CORPUS_DIR_MINIMIZED)
 	@find $(AFL_CORPUS_DIR_OPTIMIZED) -type f | xargs -P $(shell nproc) -I {} \
-		sh -c 'afl-tmin -e -i "$$1" -o "$(AFL_CORPUS_DIR_MINIMIZED)/$$(basename "$$1")" -- $(AFL_FUZZ_BIN)' _ {}
+		sh -c 'afl-tmin -e -i "$$1" -o "$(AFL_CORPUS_DIR_MINIMIZED)/$$(basename "$$1")" -- $(AFL_FUZZ_BIN) -' _ {}
 	@echo "Minimized corpus saved to: $(AFL_CORPUS_DIR_MINIMIZED)"
 
 afl-corpus: $(AFL_FUZZ_BIN) $(AFL_CORPUS_DIR_MINIMIZED)
@@ -259,13 +276,13 @@ afl-repro-crash: afl-repro-build
 		exit 1; \
 	fi; \
 	echo "Reproducing crash: $$CRASH_FILE"; \
-	$(AFL_REPRO_BIN) < "$$CRASH_FILE" || true
+	$(AFL_REPRO_BIN) "$$CRASH_FILE" || true
 
 afl-repro-crash-all: afl-repro-build afl-validate-output-dir
 	@CRASHES="$(shell make afl-list-crashes)"; \
 	for crash in $$CRASHES; do \
 		echo "Reproducing crash: $$crash"; \
-		$(AFL_REPRO_BIN) < "$$crash" || true; \
+		$(AFL_REPRO_BIN) "$$crash" || true; \
 	done
 
 afl-repro-run: afl-repro-build
