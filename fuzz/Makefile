@@ -54,17 +54,21 @@ CFLAGS = -g3 -O2 -march=native -fsigned-char \
          -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT \
          -I $(INCLUDE_DIR)
 
+unexport ASAN_OPTIONS
+unexport MSAN_OPTIONS
+
+AFL_ASAN_ENV_VARS = AFL_USE_ASAN=1 AFL_USE_UBSAN=1 AFL_UBSAN_VERBOSE=1
+AFL_MSAN_ENV_VARS = AFL_USE_MSAN=1 AFL_USE_UBSAN=1 AFL_UBSAN_VERBOSE=1
+
 SAN_ENV_VARS =
 ifndef SAN
   SAN = asan
 endif
 ifeq ($(SAN),asan)
-  unexport ASAN_OPTIONS
-  SAN_ENV_VARS = AFL_USE_ASAN=1 AFL_USE_UBSAN=1 AFL_UBSAN_VERBOSE=1
+  SAN_ENV_VARS = $(AFL_ASAN_ENV_VARS)
   REPRO_SAN_FLAGS = -fsanitize=address,undefined -fno-sanitize-recover=undefined
 else ifeq ($(SAN),msan)
-  unexport MSAN_OPTIONS
-  SAN_ENV_VARS = AFL_USE_MSAN=1 AFL_USE_UBSAN=1 AFL_UBSAN_VERBOSE=1
+  SAN_ENV_VARS = $(AFL_MSAN_ENV_VARS)
   REPRO_SAN_FLAGS = -fsanitize=memory -fsanitize-memory-track-origins=2 -fno-sanitize-recover=all
 else
   $(error Invalid SAN [$(SAN)]. Supported values are 'asan' and 'msan')
@@ -108,6 +112,19 @@ AFL_CORPUS_DIR_FILTERED = $(AFL_CORPUS_DIR_GENERATED)/filtered
 AFL_CORPUS_DIR_OPTIMIZED = $(AFL_CORPUS_DIR_GENERATED)/optimized
 AFL_CORPUS_DIR_MINIMIZED = $(AFL_CORPUS_DIR_GENERATED)/minimized
 
+# SAND: Decoupling Sanitization from Fuzzing for Low Overhead
+# https://github.com/AFLplusplus/AFLplusplus/blob/stable/docs/SAND.md
+ifndef SAND_MODE
+  SAND_MODE = 0
+endif
+ifeq ($(SAND_MODE),1)
+  AFL_FUZZ_BIN_ASAN = $(AFL_FUZZ_BIN)_asan
+  AFL_FUZZ_BIN_MSAN = $(AFL_FUZZ_BIN)_msan
+  AFL_SAND_MODE_ASAN_ENV_VARS = AFL_LLVM_ONLY_FSRV=1 $(AFL_ASAN_ENV_VARS)
+  AFL_SAND_MODE_MSAN_ENV_VARS = AFL_LLVM_ONLY_FSRV=1 $(AFL_MSAN_ENV_VARS)
+  AFL_SAND_MODE_RUN_FLAGS = -w $(AFL_FUZZ_BIN_ASAN) -w $(AFL_FUZZ_BIN_MSAN)
+endif
+
 .PHONY: help
 help:
 	@echo "AFL++ Fuzzing"
@@ -134,7 +151,7 @@ help:
 	@echo "  JOBS is the number of parallel fuzzing jobs to run (default: 2)"
 	@echo "  ALL for show/watch commands controls whether to show all sessions. (default: 0 = current session only)"
 	@echo "  TIMEOUT_SECONDS for run commands controls when to stop. (default: 0 = run indefinitely)"
-	@echo "  STOP_ON_CRASH for run commands controls whether to stop on the first crash. (default: 0)"
+	@echo "  STOP_ON_CRASH for run commands controls whether to stop on the first crash. (default: 0 = disabled)"
 	@echo ""
 	@echo "  SAN is to select Address Sanitizer (asan) or Memory Sanitizer (msan) (default: asan)"
 	@echo "  By default, Undefined Behavior Sanitizer is automatically included for both."
@@ -143,6 +160,10 @@ help:
 	@echo "  LibFuzzer has been observed to be faster and may be the default in future."
 	@echo "  To fuzz with LibFuzzer harness, run:"
 	@echo "    make afl-run HARNESS=libfuzzer"
+	@echo ""
+	@echo "  SAND_MODE enables the decoupled sanitization using multiple sanitizers. (default: 0 = disabled)"
+	@echo "  With SAND approach, multiple sanitizers such as ASAN and MSAN can work together."
+	@echo "  See https://github.com/AFLplusplus/AFLplusplus/blob/stable/docs/SAND.md for more details."
 	@echo ""
 	@echo "  The corpus is generated automatically only if it does not exist"
 	@echo "  or if the raw test data changes. Otherwise, it is safely skipped."
@@ -175,7 +196,13 @@ $(ZSV_H): $(ZSV_H_IN)
 
 $(AFL_FUZZ_BIN): $(SOURCES) $(ZSV_H) afl-clean-all
 	@mkdir -p $(AFL_DIR)
+ifeq ($(SAND_MODE),0)
 	$(SAN_ENV_VARS) $(AFL_CC) $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN)
+else
+	$(AFL_CC) $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN)
+	$(AFL_SAND_MODE_ASAN_ENV_VARS) $(AFL_CC) $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN_ASAN)
+	$(AFL_SAND_MODE_ASAN_ENV_VARS) $(AFL_CC) $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN_MSAN)
+endif
 
 afl-build: afl-clean-all $(AFL_FUZZ_BIN) afl-repro-build
 
@@ -213,7 +240,7 @@ $(AFL_CORPUS_DIR_MINIMIZED): $(wildcard $(AFL_CORPUS_DIR_RAW)/*)
 
 afl-corpus: $(AFL_FUZZ_BIN) $(AFL_CORPUS_DIR_MINIMIZED)
 
-AFL_RUN_FLAGS = -u -x $(AFL_DICT_FILE) -i $(AFL_CORPUS_DIR_MINIMIZED) -o $(AFL_OUTPUT_DIR)
+AFL_RUN_FLAGS = -u -x $(AFL_DICT_FILE) -i $(AFL_CORPUS_DIR_MINIMIZED) -o $(AFL_OUTPUT_DIR) $(AFL_SAND_MODE_RUN_FLAGS)
 STOP_ON_CRASH = 0
 ifneq ($(STOP_ON_CRASH),0)
   AFL_RUN_FLAGS += -I "pkill -INT afl-fuzz"
@@ -314,6 +341,7 @@ afl-repro-test-raw-corpus: afl-repro-build
 
 afl-clean: afl-stop
 	rm -f $(AFL_FUZZ_BIN) $(AFL_REPRO_BIN) .afl-tmin-temp-*
+	rm -f $(AFL_FUZZ_BIN_ASAN) $(AFL_FUZZ_BIN_MSAN)
 	rm -rf $(AFL_OUTPUT_DIR)
 
 afl-clean-all: afl-clean
