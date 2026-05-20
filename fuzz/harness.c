@@ -107,7 +107,7 @@ void run_payload(const unsigned char *data, const size_t size) {
   const size_t payload_size = size - 1;
   const char delim = payload_size > 0 ? (char)payload[0] : (char)';';
 
-#ifndef __AFL_COMPILER
+#ifdef REPRO
   fprintf(stderr, "MODE: 0x%02x\n", mode);
   if (isprint(delim)) {
     fprintf(stderr, "DELIM: '%c' (0x%02x)\n", delim, (unsigned char)delim);
@@ -180,45 +180,46 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 
 int main(int argc, char *argv[]) {
   if (argc != 2) {
-    fprintf(stderr, "usage: %s <input_file>\n", argv[0]);
+    fprintf(stderr, "usage: %s <crash_file>\n", argv[0]);
     return 1;
   }
 
-  FILE *f = fopen(argv[1], "rb");
-  if (!f) {
-    perror("fopen");
+  const char *filename = argv[1];
+  FILE *fp = fopen(filename, "rb");
+  if (!fp) {
+    perror(filename);
     return 1;
   }
 
-  if (fseek(f, 0, SEEK_END) != 0) {
-    perror("fseek");
-    fclose(f);
+  if (fseek(fp, 0, SEEK_END) != 0) {
+    perror(filename);
+    fclose(fp);
     return 1;
   }
 
-  const long size = ftell(f);
+  const long size = ftell(fp);
   if (size == -1L) {
-    perror("ftell");
-    fclose(f);
+    perror(filename);
+    fclose(fp);
     return 1;
   }
 
   if (size < 3) {
     fprintf(stderr, "file too short\n");
-    fclose(f);
+    fclose(fp);
     return 1;
   }
 
   unsigned char *buf = malloc(size);
   if (!buf) {
     perror("malloc");
-    fclose(f);
+    fclose(fp);
     return 1;
   }
 
-  rewind(f);
-  const size_t bytes_read = fread(buf, 1, (size_t)size, f);
-  fclose(f);
+  rewind(fp);
+  const size_t bytes_read = fread(buf, 1, (size_t)size, fp);
+  fclose(fp);
 
   if (bytes_read < (size_t)size) {
     fprintf(stderr, "warning: short read (%zu/%ld bytes)\n", bytes_read, size);

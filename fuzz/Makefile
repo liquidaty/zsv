@@ -78,7 +78,7 @@ REPRO_CFLAGS = -g3 -O2 -march=native -fsigned-char \
               -fno-omit-frame-pointer \
               -DZSV_VERSION=\"repro\" -DNDEBUG -DNO_UTF8_CHECK \
               -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT \
-              -I $(INCLUDE_DIR)
+              -I $(INCLUDE_DIR) -DREPRO
 
 SOURCES = harness.c
 
@@ -219,8 +219,15 @@ afl-run-parallel: afl-corpus
 ifneq ($(CI),true) # do not run main in CI (secondaries only)
 	@afl-fuzz -M main -P explore -p explore $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) &
 endif
-	@for i in $$(seq 1 $$(($(JOBS) - 1))); do \
-		afl-fuzz -S s$$i -P exploit -p explore $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) >/dev/null 2>&1 & \
+	@trap 'echo "Stopping all fuzzers..."; kill 0' INT TERM; \
+	for i in $$(seq 1 $$(($(JOBS) - 1))); do \
+		case $$(($$i % 4)) in \
+			0) STRATEGY="explore"; SCHEDULE="explore" ;; \
+			1) STRATEGY="explore"; SCHEDULE="fast" ;; \
+			2) STRATEGY="exploit"; SCHEDULE="explore" ;; \
+			3) STRATEGY="exploit"; SCHEDULE="fast" ;; \
+		esac; \
+		afl-fuzz -S s$$i -P $$STRATEGY -p $$SCHEDULE $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) >/dev/null 2>&1 & \
 	done; \
 	wait
 
