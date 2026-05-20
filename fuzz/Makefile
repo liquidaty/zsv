@@ -5,7 +5,6 @@
 # =============
 
 # https://aflplus.plus/docs/env_variables/
-unexport ASAN_OPTIONS
 export AFL_SKIP_CPUFREQ=1
 export AFL_AUTORESUME=1
 export AFL_NO_FASTRESUME=1
@@ -59,30 +58,34 @@ ifndef HARNESS
   HARNESS = afl++
 endif
 
-ifeq ($(HARNESS),afl++)
-  CFLAGS += -DZSV_VERSION=\"$(HARNESS)\" -DAFL_HARNESS
-else ifeq ($(HARNESS),libfuzzer)
-  CFLAGS += -DZSV_VERSION=\"$(HARNESS)\" -DLIBFUZZER_HARNESS -fsanitize=fuzzer
-else
-  $(error Invalid HARNESS [$(HARNESS)]. Supported harnesses are 'afl++' and 'libfuzzer')
-endif
-
 SAN_ENV_VARS =
 ifndef SAN
   SAN = asan
 endif
 ifeq ($(SAN),asan)
+  unexport ASAN_OPTIONS
   SAN_ENV_VARS = AFL_USE_ASAN=1 AFL_USE_UBSAN=1 AFL_UBSAN_VERBOSE=1
+  REPRO_SAN_FLAGS = -fsanitize=address,undefined -fno-sanitize-recover=undefined
 else ifeq ($(SAN),msan)
+  unexport MSAN_OPTIONS
   SAN_ENV_VARS = AFL_USE_MSAN=1 AFL_USE_UBSAN=1 AFL_UBSAN_VERBOSE=1
+  REPRO_SAN_FLAGS = -fsanitize=memory -fsanitize-memory-track-origins=2 -fno-sanitize-recover=all
 else
   $(error Invalid SAN [$(SAN)]. Supported values are 'asan' and 'msan')
 endif
 
+ifeq ($(HARNESS),afl++)
+  CFLAGS += -DZSV_VERSION=\"fuzz_$(HARNESS)_$(SAN)\" -DAFL_HARNESS
+else ifeq ($(HARNESS),libfuzzer)
+  CFLAGS += -DZSV_VERSION=\"fuzz_$(HARNESS)_$(SAN)\" -DLIBFUZZER_HARNESS -fsanitize=fuzzer
+else
+  $(error Invalid HARNESS [$(HARNESS)]. Supported harnesses are 'afl++' and 'libfuzzer')
+endif
+
 REPRO_CFLAGS = -g3 -O2 -march=native -fsigned-char \
-              -fsanitize=address,undefined -fno-sanitize-recover=undefined \
+              $(REPRO_SAN_FLAGS) \
               -fno-omit-frame-pointer \
-              -DZSV_VERSION=\"repro\" -DNDEBUG -DNO_UTF8_CHECK \
+              -DZSV_VERSION=\"repro_$(SAN)\" -DNDEBUG -DNO_UTF8_CHECK \
               -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT \
               -I $(INCLUDE_DIR) -DREPRO
 
@@ -92,7 +95,7 @@ AFL_DICT_FILE  = csv.dict
 
 AFL_DIR = ./afl
 AFL_FUZZ_BIN = $(AFL_DIR)/fuzz
-AFL_REPRO_BIN = $(AFL_DIR)/repro
+AFL_REPRO_BIN = $(AFL_DIR)/repro_$(SAN)
 AFL_OUTPUT_DIR = $(AFL_DIR)/out
 
 # Corpus generation stages:
@@ -175,7 +178,7 @@ $(AFL_FUZZ_BIN): $(SOURCES) $(ZSV_H) afl-clean-all
 	@mkdir -p $(AFL_DIR)
 	$(SAN_ENV_VARS) $(AFL_CC) $(CFLAGS) $(SOURCES) -o $(AFL_FUZZ_BIN)
 
-afl-build: afl-clean-all $(AFL_FUZZ_BIN)
+afl-build: afl-clean-all $(AFL_FUZZ_BIN) afl-repro-build
 
 $(AFL_CORPUS_DIR_MINIMIZED): $(wildcard $(AFL_CORPUS_DIR_RAW)/*)
 	@echo "========================================================="
@@ -315,6 +318,7 @@ afl-clean: afl-stop
 	rm -rf $(AFL_OUTPUT_DIR)
 
 afl-clean-all: afl-clean
+	rm -f $(AFL_DIR)/fuzz* $(AFL_DIR)/repro*
 	rm -rf $(AFL_CORPUS_DIR_GENERATED)
 	rm -rf $(AFL_DIR)
 
