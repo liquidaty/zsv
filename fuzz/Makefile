@@ -31,6 +31,9 @@ else
 endif
 
 JOBS = 2
+ifeq ($(shell command -v yq 2>/dev/null),)
+  $(error 'yq' command is not available on this system. Please install)
+endif
 ifeq ($(shell command -v nproc 2>/dev/null),)
   $(error 'nproc' command is not available on this system. Please install 'coreutils'.)
 endif
@@ -367,6 +370,13 @@ DF_CRASHES_DIR = $(DF_LOGS_DIR)/crashes
 ZSV_BRANCH = main
 DF_IMAGE = $(DF_DIR)
 DF_IMAGE_WITH_TAG = $(DF_IMAGE):$(ZSV_BRANCH)
+
+ifeq ($(shell uname),Darwin)
+  SED_I=-i.bak
+else
+  SED_I=-i
+endif
+
 df-run:
 	@echo "Running dockerized fuzzer '$(DF_IMAGE_WITH_TAG)' with $(JOBS) jobs..."
 	@if [ ! -d "$(DF_DIR)" ]; then \
@@ -374,8 +384,8 @@ df-run:
 	fi
 
 	@echo "Updating $(DF_ENV_FILE)..."
-	@sed -i "s|^TARGET_VERSION=.*|TARGET_VERSION=$(ZSV_BRANCH)|" $(DF_ENV_FILE)
-	@sed -i "s|^FUZZER_JOBS=.*|FUZZER_JOBS=$(JOBS)|" $(DF_ENV_FILE)
+	@sed $(SED_I) "s|^TARGET_VERSION=.*|TARGET_VERSION=$(ZSV_BRANCH)|" $(DF_ENV_FILE)
+	@sed $(SED_I) "s|^FUZZER_JOBS=.*|FUZZER_JOBS=$(JOBS)|" $(DF_ENV_FILE)
 	@echo "=== $(DF_ENV_FILE) STARTS ==="
 	@cat "$(DF_ENV_FILE)"
 	@echo "==== $(DF_ENV_FILE) ENDS ===="
