@@ -16,16 +16,18 @@ static size_t __afl_len;
 #define __AFL_FUZZ_TESTCASE_BUF __afl_buf
 #define __AFL_FUZZ_TESTCASE_LEN __afl_len
 #define __AFL_FUZZ_INIT()
+FILE *f_in = NULL;
 #define __AFL_INIT()                                                                                                   \
   do {                                                                                                                 \
   } while (0)
-#define __AFL_LOOP(n) ((__afl_len = read(0, __afl_buf, sizeof(__afl_buf))) > 0 ? 1 : 0)
+#define __AFL_LOOP(n) ((__afl_len = fread(__afl_buf, 1, sizeof(__afl_buf), f_in)) > 0 ? 1 : 0)
 #endif /* __AFL_COMPILER */
 
 __AFL_FUZZ_INIT();
 
 /* Volatile sink — prevents the compiler from eliding cell reads. */
 static volatile size_t g_sink;
+
 
 static void row_handler(void *ctx) {
   zsv_parser parser = (zsv_parser)ctx;
@@ -168,7 +170,15 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
   return 0;
 }
 
-int main(void) {
+int main(int argc, const char *argv[]) {
+  f_in = stdin;
+  if(argc > 1 && argv[1]) {
+    f_in = fopen(argv[1], "rb");
+    if(!f_in) {
+      perror(argv[1]);
+      return 1;
+    }
+  }
 #ifdef __AFL_HAVE_MANUAL_CONTROL
   __AFL_INIT();
 #endif
