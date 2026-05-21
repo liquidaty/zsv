@@ -264,7 +264,7 @@ afl-run-parallel: afl-corpus
 ifneq ($(CI),true) # do not run main in CI (secondaries only)
 	@afl-fuzz -M main -P explore -p explore $(AFL_RUN_FLAGS) -- $(AFL_FUZZ_BIN) &
 endif
-	for i in $$(seq 1 $$(($(JOBS) - 1))); do \
+	@for i in $$(seq 1 $$(($(JOBS) - 1))); do \
 		case $$(($$i % 4)) in \
 			0) STRATEGY="explore"; SCHEDULE="explore" ;; \
 			1) STRATEGY="explore"; SCHEDULE="fast" ;; \
