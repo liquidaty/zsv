@@ -416,14 +416,9 @@ jobs:
 
     - name: Set up FreeBSD VM
       uses: cross-platform-actions/action@v1.1.0
-      env:
-        PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
-        CC: gcc13
-        MAKE: gmake
       with:
         operating_system: freebsd
         version: '13.2'
-        environment_variables: 'PREFIX CC MAKE ARTIFACT_DIR'
         shell: sh
 
     - name: Install FreeBSD dependencies
@@ -432,6 +427,10 @@ jobs:
 
     - name: Build and Test
       shell: cpa.sh {0}
+      env:
+        PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
+        CC: gcc13
+        MAKE: gmake
       run: |
         export HOST=
         RUN_TESTS=true SKIP_BUILD=true ./scripts/ci-build.sh
