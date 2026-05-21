@@ -31,9 +31,6 @@ else
 endif
 
 JOBS = 2
-ifeq ($(shell command -v yq 2>/dev/null),)
-  $(error 'yq' command is not available on this system. Please install)
-endif
 ifeq ($(shell command -v nproc 2>/dev/null),)
   $(error 'nproc' command is not available on this system. Please install 'coreutils'.)
 endif
@@ -226,7 +223,7 @@ $(AFL_CORPUS_DIR_MINIMIZED): $(wildcard $(AFL_CORPUS_DIR_RAW)/*)
 	@echo "========================================================="
 	@rm -rf $(AFL_CORPUS_DIR_OPTIMIZED)
 	@mkdir -p $(AFL_CORPUS_DIR_OPTIMIZED)
-	afl-cmin -e -i $(AFL_CORPUS_DIR_FILTERED) -o $(AFL_CORPUS_DIR_OPTIMIZED) -T "all" -- $(AFL_FUZZ_BIN) -
+	afl-cmin.bash -e -i $(AFL_CORPUS_DIR_FILTERED) -o $(AFL_CORPUS_DIR_OPTIMIZED) -T "all" -- $(AFL_FUZZ_BIN) -
 	@FILTERED_COUNT=$$(find $(AFL_CORPUS_DIR_FILTERED) -type f | wc -l); \
 	OPTIMIZED_COUNT=$$(find $(AFL_CORPUS_DIR_OPTIMIZED) -type f | wc -l); \
 	echo "Optimized to $$OPTIMIZED_COUNT files from filtered corpus of $$FILTERED_COUNT files."
@@ -361,6 +358,10 @@ afl-clean-all: afl-clean
 # ======================
 # dockerized fuzzer (df)
 # ======================
+
+ifeq ($(shell command -v yq 2>/dev/null),)
+  $(error 'yq' command is not available on this system. Please install)
+endif
 
 DF_REPO_URL = https://github.com/matteoalba/fuzz-zsv
 DF_DIR = df
