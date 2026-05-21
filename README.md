@@ -410,6 +410,16 @@ wrapper for Python, Rust, Go, or Java or any of your other favorite languages
   A binding brings this speed to higher-level languages that often struggle
   with CSV parsing performance.
 
+### Report security vulnerabilities
+
+To report security vulnerabilities:
+
+- Go to [Security and quality](https://github.com/liquidaty/zsv/security) tab
+- Select [Advisories](https://github.com/liquidaty/zsv/security/advisories) from
+  the left panel
+- Click on [Report a vulnerability](https://github.com/liquidaty/zsv/security/advisories/new)
+  button to report with all the relevant details.
+
 ## License
 
 [MIT](https://github.com/liquidaty/zsv/blob/master/LICENSE)
