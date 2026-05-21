@@ -158,8 +158,6 @@ help:
 	@echo ""
 	@echo "  HARNESS is for selecting the AFL++ (afl++) or LibFuzzer (libfuzzer) harness (default: afl++)"
 	@echo "  LibFuzzer has been observed to be faster and may be the default in future."
-	@echo "  To fuzz with LibFuzzer harness, run:"
-	@echo "    make afl-run HARNESS=libfuzzer"
 	@echo ""
 	@echo "  SAND_MODE enables the decoupled sanitization using multiple sanitizers. (default: 0 = disabled)"
 	@echo "  With SAND approach, multiple sanitizers such as ASAN and MSAN can work together."
@@ -172,21 +170,30 @@ help:
 	@echo "  Be mindful of running 'afl-clean' or 'afl-clean-all' while fuzzing is in progress."
 	@echo "  The fuzzing job(s) will be stopped first before clean to prevent any side effects."
 	@echo ""
+	@echo "  AFL++ fuzzing runs using the source of the current branch only."
+	@echo "  Using a different branch is not supported with AFL++ at the moment."
+	@echo "  Check Dockerized Fuzzing (df) that supports fuzzing for different branches."
+	@echo "  It is recommended not to mix commands between these two fuzzing setups."
+	@echo "  The mixed commands such as 'repro' may or may not work based on the branch differences."
 	@echo ""
-	@echo "Dockerized Fuzzing (df) based on libFuzzer"
+	@echo "Examples:"
+	@echo "  # Run, check progress, list crashes, reproduce and stop"
+	@echo "  make afl-run"
+	@echo "  make afl-show-progress"
+	@echo "  make afl-list-crashes"
+	@echo "  make afl-repro-crash CRASH_FILE=<file>"
+	@echo "  make afl-stop"
 	@echo ""
-	@echo "Usage (run from inside the zsv repo fuzz/ directory):"
-	@echo "  make df-run [ZSV_BRANCH=<branch>] [JOBS=N]  # clone/build/run dockerized fuzzer"
-	@echo "  make df-stop                                # stop all fuzzing containers"
-	@echo "  make df-show-logs                           # show logs for all containers"
-	@echo "  make df-watch-logs                          # tail logs for all containers"
-	@echo "  make df-list-crashes                        # list crash files from dockerized fuzzing"
-	@echo "  make df-clean                               # stop containers and remove logs"
-	@echo "  make df-clean-all [ZSV_BRANCH=<branch>]     # stop containers and remove fuzzer repo, logs, and image"
+	@echo "  # Run with a timeout and automatic stopping on crash (whichever happens first)"
+	@echo "  make afl-run TIMEOUT_SECONDS=60 STOP_ON_CRASH=1"
 	@echo ""
-	@echo "Notes:"
-	@echo "  ZSV_BRANCH is the git branch to fuzz (default: main)"
-	@echo "  JOBS is the number of parallel fuzzing jobs to run (default: 2)"
+	@echo "  # Run with Memory Sanitizer and libFuzzer harness"
+	@echo "  make afl-run SAN=msan HARNESS=libfuzzer"
+	@echo ""
+	@echo "  # Run in SAND mode with ASAN+UBSAN and MSAN+UBSAN together"
+	@echo "  make afl-run SAND_MODE=1"
+	@echo ""
+	@echo "For Dockerized Fuzzing (df) setup, run: 'make df-help'"
 	@echo ""
 
 ZSV_H = $(INCLUDE_DIR)/zsv.h
@@ -379,6 +386,38 @@ else
   SED_I=-i
 endif
 
+.PHONY: help
+df-help:
+	@echo "Dockerized Fuzzing (df) [libFuzzer]"
+	@echo ""
+	@echo "Usage (run from inside the zsv repo fuzz/ directory):"
+	@echo "  make df-run [ZSV_BRANCH=<branch>] [JOBS=N]  # clone/build/run dockerized fuzzer"
+	@echo "  make df-stop                                # stop all fuzzing containers"
+	@echo "  make df-show-logs                           # show logs for all containers"
+	@echo "  make df-watch-logs                          # tail logs for all containers"
+	@echo "  make df-list-crashes                        # list crash files"
+	@echo "  make df-repro-crash [CRASH_FILE=<file>]     # reproduce specific crash"
+	@echo "  make df-repro-crash-all                     # reproduce all crashes"
+	@echo "  make df-clean                               # stop containers and remove logs"
+	@echo "  make df-clean-all [ZSV_BRANCH=<branch>]     # stop containers and remove fuzzer repo, logs, and image"
+	@echo ""
+	@echo "Notes:"
+	@echo "  ZSV_BRANCH is the git branch to fuzz (default: main)"
+	@echo "  JOBS is the number of parallel fuzzing jobs to run (default: 2)"
+	@echo ""
+	@echo "  Specify ZSV_BRANCH for repro and clean commands running for a non-default branch."
+	@echo ""
+	@echo "  By default, the fuzzing containers automatically stop when a crash occurs."
+	@echo "  The manual 'make df-stop' is not required in this case."
+	@echo ""
+	@echo "Examples:"
+	@echo "  # Run, check logs, list crashes and reproduce "
+	@echo "  make df-run ZSV_BRANCH=main JOBS=4"
+	@echo "  make df-watch-logs"
+	@echo "  make df-repro-crash ZSV_BRANCH=main CRASH_FILE=<file>"
+	@echo "  make df-stop"
+	@echo ""
+
 df-run:
 	@echo "Running dockerized fuzzer '$(DF_IMAGE_WITH_TAG)' with $(JOBS) jobs..."
 	@if [ ! -d "$(DF_DIR)" ]; then \
@@ -477,7 +516,7 @@ df-clean-all: df-clean
 		echo "Alternatively, remove them manually with 'docker rmi -f <IMAGE_ID>' if needed."; \
 	fi
 
-.PHONY: df-run df-stop \
+.PHONY: df-help df-run df-stop \
 		df-show-logs df-watch-logs \
 		df-list-crashes \
 		df-validate-image \
