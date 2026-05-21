@@ -324,9 +324,9 @@ afl-repro-crash: afl-repro-build
 
 afl-repro-crash-all: afl-repro-build afl-validate-output-dir
 	@CRASHES="$(shell make afl-list-crashes)"; \
-	for crash in $$CRASHES; do \
-		echo "Reproducing crash: $$crash"; \
-		$(AFL_REPRO_BIN) "$$crash" || true; \
+	for CRASH in $$CRASHES; do \
+		echo "Reproducing crash: $$CRASH"; \
+		$(AFL_REPRO_BIN) "$$CRASH" || true; \
 	done
 
 afl-repro-test-raw-corpus: afl-repro-build
@@ -411,20 +411,56 @@ df-run:
 
 df-stop:
 	@echo "Stopping all fuzzing containers..."
-	@(cd $(DF_DIR) && docker compose down 2>/dev/null || true)
+	@(cd $(DF_DIR) && docker compose ps && docker compose down 2>/dev/null || true)
 
 df-show-logs:
 	@echo "Showing logs for all fuzzing containers..."
-	@(cd $(DF_DIR) && docker compose logs)
+	@(cd $(DF_DIR) && docker compose ps && docker compose logs)
 
 df-watch-logs:
 	@echo "Watching logs for all fuzzing containers..."
 	@echo "Press Ctrl+C to stop watching logs."
-	@(cd $(DF_DIR) && docker compose logs -f)
+	@(cd $(DF_DIR) && docker compose ps && docker compose logs -f)
 
 df-list-crashes:
-	@echo "Listing crash files from dockerized fuzzing containers..."
 	@find $(DF_CRASHES_DIR) -type f -path '*/crash-*' 2>/dev/null
+
+df-validate-image:
+	@if [ $$(docker images $(DF_IMAGE_WITH_TAG) 2>/dev/null | wc -l) -ne 2 ] ; then \
+		echo "Docker image '$(DF_IMAGE_WITH_TAG)' does not exit."; \
+		echo "Run: 'make df-run ZSV_BRANCH=$(ZSV_BRANCH)'"; \
+		echo ""; \
+		echo "Current available images are:"; \
+		docker images $(DF_IMAGE); \
+		echo ""; \
+		exit 1; \
+	fi
+
+df-repro-crash: df-validate-image
+	@if [ -z "$$CRASH_FILE" ]; then \
+		echo "usage: 'make $@ CRASH_FILE=<file>'"; \
+		exit 1; \
+	elif [ ! -f "$$CRASH_FILE" ]; then \
+		echo "CRASH_FILE='$$CRASH_FILE' does not exist or is not a file."; \
+		exit 1; \
+	fi;
+	@echo "Reproducing crash [$(DF_IMAGE_WITH_TAG)]: $$CRASH_FILE"; \
+	docker run --rm \
+		--entrypoint /home/fuzzer/fuzzer_bin \
+		-v "$$(pwd)/$(DF_CRASHES_DIR):/crashes:ro" \
+		$(DF_IMAGE_WITH_TAG) \
+		"/crashes/$$(basename $$CRASH_FILE)"
+
+df-repro-crash-all: df-validate-image
+	@CRASHES="$(shell make df-list-crashes)"; \
+	for CRASH in $$CRASHES; do \
+		echo "Reproducing crash [$(DF_IMAGE_WITH_TAG)]: $$CRASH"; \
+		docker run --rm \
+			--entrypoint /home/fuzzer/fuzzer_bin \
+			-v "$$(pwd)/$(DF_CRASHES_DIR):/crashes:ro" \
+			$(DF_IMAGE_WITH_TAG) \
+			"/crashes/$$(basename $$CRASH_FILE)"; \
+	done
 
 df-clean: df-stop
 	rm -rf $(DF_LOGS_DIR)
@@ -432,13 +468,18 @@ df-clean: df-stop
 df-clean-all: df-clean
 	rm -rf $(DF_DIR)
 	docker rmi -f $(DF_IMAGE_WITH_TAG) 2>/dev/null
-	@if docker images --format '{{.Repository}}' $(DF_DIR) >/dev/null 2>&1; then \
+	@if [ $$(docker images $(DF_IMAGE) 2>/dev/null | wc -l) -gt 1 ] ; then \
 		echo ""; \
-		echo "Looks like the images for '$(DF_IMAGE)' still exist:"; \
+		echo "Looks like the '$(DF_IMAGE)' images for other branches (tags) still exist:"; \
 		docker images $(DF_IMAGE); \
 		echo ""; \
 		echo "Run 'make df-clean-all ZSV_BRANCH=<YOUR-BRANCH-HERE>' to clean them up."; \
 		echo "Alternatively, remove them manually with 'docker rmi -f <IMAGE_ID>' if needed."; \
 	fi
 
-.PHONY: df-run df-stop df-show-logs df-watch-logs df-list-crashes df-clean
+.PHONY: df-run df-stop \
+		df-show-logs df-watch-logs \
+		df-list-crashes \
+		df-validate-image \
+		df-repro-crash df-repro-crash-all \
+		df-clean df-clean-all
