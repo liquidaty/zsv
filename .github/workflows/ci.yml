@@ -414,27 +414,22 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Set up FreeBSD VM
+    - name: Test and Build
       uses: cross-platform-actions/action@v1.1.0
-      with:
-        operating_system: freebsd
-        version: '13.2'
-        shell: sh
-
-    - name: Install FreeBSD dependencies
-      shell: cpa.sh {0}
-      run: ./scripts/ci-freebsd-setup.sh
-
-    - name: Build and Test
-      shell: cpa.sh {0}
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
         CC: gcc13
         MAKE: gmake
-      run: |
-        export HOST=
-        RUN_TESTS=true SKIP_BUILD=true ./scripts/ci-build.sh
-        RUN_TESTS=false SKIP_BUILD=false CFLAGS='-DPREFIX=\"\"' ./scripts/ci-build.sh
+      with:
+        operating_system: freebsd
+        version: '13.2'
+        environment_variables: 'PREFIX CC MAKE ARTIFACT_DIR'
+        shell: sh
+        run: |
+          ./scripts/ci-freebsd-setup.sh
+          export HOST=
+          RUN_TESTS=true SKIP_BUILD=true ./scripts/ci-build.sh
+          RUN_TESTS=false SKIP_BUILD=false CFLAGS='-DPREFIX=\"\"' ./scripts/ci-build.sh
 
     - name: Prepare build artifacts for upload
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
