@@ -427,6 +427,7 @@ jobs:
         shell: sh
 
     - name: Build and Test
+      shell: cpa.sh {0}
       run: |
         ./scripts/ci-freebsd-setup.sh
         export HOST=
