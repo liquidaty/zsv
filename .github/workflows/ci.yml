@@ -414,7 +414,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Test and Build
+    - name: Set up FreeBSD
       uses: cross-platform-actions/action@v1.1.0
       env:
         PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
@@ -423,13 +423,15 @@ jobs:
       with:
         operating_system: freebsd
         version: '13.2'
-        environment_variables: 'PREFIX CC MAKE ARTIFACT_DIR'
+        environment_variables: PREFIX CC MAKE ARTIFACT_DIR
         shell: sh
-        run: |
-          ./scripts/ci-freebsd-setup.sh
-          export HOST=
-          RUN_TESTS=true SKIP_BUILD=true ./scripts/ci-build.sh
-          RUN_TESTS=false SKIP_BUILD=false CFLAGS='-DPREFIX=\"\"' ./scripts/ci-build.sh
+
+    - name: Build and Test
+      run: |
+        ./scripts/ci-freebsd-setup.sh
+        export HOST=
+        RUN_TESTS=true SKIP_BUILD=true ./scripts/ci-build.sh
+        RUN_TESTS=false SKIP_BUILD=false CFLAGS='-DPREFIX=\"\"' ./scripts/ci-build.sh
 
     - name: Prepare build artifacts for upload
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
