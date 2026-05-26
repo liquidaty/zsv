@@ -25,6 +25,10 @@ enum zsv_status {
   zsv_status_memory,
   zsv_status_error,
   zsv_status_row,
+  /* Fast SIMD engine only: input violates RFC 4180 (e.g. a quote in the
+   * middle of an unquoted cell). The fast engine requires standard CSV;
+   * use ZSV_MODE_COMPAT (the scalar/legacy engine) for non-standard input. */
+  zsv_status_nonstandard_csv,
   zsv_status_done = 100
 #ifdef ZSV_EXTRAS
     ,

@@ -121,7 +121,10 @@ struct zsv_scanner {
   unsigned char have_cell : 1;
   unsigned char started : 1;
 
-  unsigned char skip_cells : 1; // fast engine: skip cell storage, just count rows
+  unsigned char skip_cells : 1;  // fast engine: skip cell storage, just count rows
+  unsigned char nonstandard : 1; // fast engine: set when input violates RFC 4180
+                                 // (e.g. quote mid-unquoted-cell). Cold-path falls back
+                                 // to COMPAT to match its byte-for-byte interpretation.
 
   /* Column filter for the fast engine. When non-NULL, only columns
    * with needed_cols[col_ix] != 0 get full processing (quote normalization,
@@ -159,6 +162,7 @@ struct zsv_scanner {
 #define ZSV_MODE_FIXED 1
 #define ZSV_MODE_DELIM_PULL 2
 #define ZSV_MODE_DELIM_FAST 3
+#define ZSV_MODE_COMPAT 255
   unsigned char mode;
   struct {
     unsigned *offsets; // 0-based position of each cell end. offset[0] = end of first cell
@@ -193,10 +197,6 @@ struct zsv_scanner {
   } progress;
   struct zsv_overwrite overwrite;
 #endif
-
-  // Buffer for padding small inputs in fast parser to avoid dangling pointers
-  unsigned char *padded_input_buffer;
-  size_t padded_input_size;
 };
 
 void collate_header_destroy(struct collate_header **chp) {
@@ -287,8 +287,10 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *sc
     if (UNLIKELY(scanner->quoted > 0)) {
       if (LIKELY(scanner->quote_close_position + 1 == n)) {
         if (LIKELY((scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) == 0)) {
-          // this is the easy and usual case: no embedded double-quotes
-          // just remove surrounding quotes from content
+          // easy and usual case: no embedded double-quotes
+          // just remove surrounding quotes from content (n >= 2 enforced
+          // by EOF fix-up in zsv_finish, and by the parser state machine
+          // in scan-loop call sites)
           s++;
           n -= 2;
         } else { // embedded dbl-quotes to remove
@@ -342,10 +344,6 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *sc
     scanner->opts.cell_handler(scanner->opts.ctx, s, n);
   if (VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
     struct zsv_row *row = &scanner->row;
-    /* Prevent integer underflow: if n is suspiciously large, likely from underflow */
-    if (UNLIKELY(n > scanner->buffer_end)) {
-      n = 0;
-    }
     struct zsv_cell c = {s, n, scanner->opts.no_quotes ? 1 : scanner->quoted, 0};
     row->cells[row->used++] = c;
   } else
@@ -473,6 +471,7 @@ static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
 #ifdef ZSV_SUPPORT_PULL_PARSER
 #undef ZSV_SUPPORT_PULL_PARSER
 #endif
+
 #define ZSV_SCAN_DELIM zsv_scan_delim
 #include "zsv_scan_delim.c"
 #undef ZSV_SCAN_DELIM
@@ -702,7 +701,7 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
   else if (opts->buffsize < ZSV_MIN_SCANNER_BUFFSIZE)
     opts->buffsize = ZSV_MIN_SCANNER_BUFFSIZE;
 
-  if (opts->scan_engine == 255)
+  if (opts->scan_engine == ZSV_MODE_COMPAT)
     scanner->mode = ZSV_MODE_DELIM; /* force compat/standard engine */
   else if (opts->scan_engine)
     scanner->mode = opts->scan_engine;

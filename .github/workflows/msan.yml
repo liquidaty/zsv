@@ -1,0 +1,110 @@
+name: msan
+
+# MemorySanitizer build. MSan reports reads of uninitialized memory — a class
+# the AddressSanitizer build does not catch. The integer-underflow fix history
+# included a regression where the parser handed cells with valid-looking
+# pointers but uninitialized bytes; this job exists so any future recurrence
+# of that class fails CI.
+#
+# Constraints:
+#   - Linux x86_64 only. MSan is not available with Apple Clang and is not
+#     supported on Windows / MinGW. The job runner gates this naturally; the
+#     `if:` clause makes the gate explicit so a future matrix expansion does
+#     not silently run a broken job.
+#   - No cross-compiling. The workflow does not cross-build by design (it
+#     does not invoke any of the cross-toolchain scripts under scripts/), so
+#     this is a configuration-by-omission, but the explicit `if:` adds a
+#     belt-and-braces guard against accidental matrix additions.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  msan:
+    # Linux x86_64 native is the only platform with a working clang+MSan
+    # toolchain for this codebase. `ubuntu-latest` pins us there. The
+    # workflow does no cross-compilation; every build step below runs
+    # natively on the runner.
+    runs-on: ubuntu-latest
+
+    env:
+      CC: clang
+      MSAN_OPTIONS: 'halt_on_error=1:abort_on_error=1:print_stacktrace=1'
+      UBSAN_OPTIONS: 'halt_on_error=1:abort_on_error=1:print_stacktrace=1'
+      MSAN_FLAGS: >-
+        -fsanitize=memory
+        -fsanitize-memory-track-origins=2
+        -fno-omit-frame-pointer
+        -fno-sanitize-recover=all
+        -O1 -g -std=gnu11 -fsigned-char
+        -DZSV_VERSION="ci-msan"
+        -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+
+      - name: Generate include/zsv.h from include/zsv.h.in
+        # `include/zsv.h` is .gitignored — `make -C src build` normally
+        # generates it from `include/zsv.h.in` via a sed substitution. We
+        # don't want to run the full library build here (drags in jq /
+        # ncurses); the sed below is the no-ZSV_EXTRAS branch of the rule
+        # at src/Makefile, which matches our build flags (we don't set
+        # -DZSV_EXTRAS).
+        run: |
+          set -eux
+          sed 's/__ZSV_EXTRAS__DEFINE__//' < include/zsv.h.in > include/zsv.h
+
+      - name: Build vuln regression test under MSan
+        run: |
+          set -eux
+          mkdir -p build/msan
+          # Compile the parser unity TU + the regression test together so
+          # every byte they share is MSan-instrumented. No external libs
+          # are linked (the regression test uses only libc + the parser),
+          # so we avoid the usual MSan-with-uninstrumented-libs problem.
+          # MSAN_FLAGS is intentionally unquoted because it expands to a
+          # multi-token list of compiler flags.
+          # shellcheck disable=SC2086
+          "$CC" $MSAN_FLAGS \
+            -I include -I src -I app/external/sqlite3 \
+            src/zsv.c app/test/test_vuln_cve_underflow.c \
+            -o build/msan/test_vuln_cve_underflow
+
+      - name: Run vuln regression test under MSan
+        run: |
+          set -eux
+          ./build/msan/test_vuln_cve_underflow
+
+      - name: Build short fuzz run under MSan
+        run: |
+          set -eux
+          # shellcheck disable=SC2086
+          "$CC" $MSAN_FLAGS \
+            -I include -I src -I app/external/sqlite3 \
+            src/zsv.c app/test/sec/fuzz.c \
+            -o build/msan/fuzz
+
+      - name: Run 30-second fuzz under MSan
+        run: |
+          set -eux
+          # The standalone fuzzer runs N iterations; pick a small count
+          # because MSan with origin tracking is slow.
+          ./build/msan/fuzz app/test/sec/poc 200000
