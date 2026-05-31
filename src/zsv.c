@@ -456,6 +456,15 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
         }
       }
     }
+    if (scanner->quote_close_position > 0 &&
+        scanner->cell_start + scanner->quote_close_position >= scanner->buff.size) {
+      size_t new_size = scanner->cell_start + scanner->quote_close_position + 1;
+      void *mem = realloc(scanner->buff.buff, new_size);
+      if (!mem)
+        return zsv_status_memory;
+      scanner->buff.buff = mem;
+      scanner->buff.size = new_size;
+    }
   }
 
   if (!scanner->finished) {
