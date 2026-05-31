@@ -235,43 +235,44 @@ static int collate_header_append(struct zsv_scanner *scanner, struct collate_hea
       scanner->errprintf(scanner->errf, "Out of memory!\n");
       return -1;
     }
-  }
 
-  // now: splice the new row into the old row, starting with the last cell
-  // e.g. prior row = A1.B1.C1.
-  //      this row =  A2.B2.C2.
-  //      new_row =   A1.B1.C1..........
-  // starting with last cell in this row, move the old data, then splice new:
-  //      new_row =   A1.B1.C1.......C2.
-  //      new_row =   A1.B1.C1....C1 C2.
-  //      new_row =   A1.B1.C1.B2.C1 C2.
-  //      new_row =   A1.B1.B1 B2.C1 C2.
-  //      new_row =   A1.A2.B1 B2.C1 C2.
-  //      new_row =   A1 A2.B1 B2.C1 C2.
+    // now: splice the new row into the old row, starting with the last cell
+    // e.g. prior row = A1.B1.C1.
+    //      this row =  A2.B2.C2.
+    //      new_row =   A1.B1.C1..........
+    // starting with last cell in this row, move the old data, then splice new:
+    //      new_row =   A1.B1.C1.......C2.
+    //      new_row =   A1.B1.C1....C1 C2.
+    //      new_row =   A1.B1.C1.B2.C1 C2.
+    //      new_row =   A1.B1.B1 B2.C1 C2.
+    //      new_row =   A1.A2.B1 B2.C1 C2.
+    //      new_row =   A1 A2.B1 B2.C1 C2.
 
-  size_t new_row_end = ch->buff.used + this_row_size;
-  size_t old_row_end = ch->buff.used;
-  ch->buff.used += this_row_size;
-  ch->buff.buff = new_row;
-  for (size_t i = column_count; i > 0; i--) {
-    struct zsv_cell c = zsv_get_cell_1(scanner, i - 1);
-    // copy new row's cell value to end
-    if (c.len) {
-      memcpy(new_row + new_row_end - c.len - 1, c.str, c.len);
-      new_row[new_row_end - 1] = ' ';
-      new_row_end = new_row_end - c.len - 1;
+    size_t new_row_end = ch->buff.used + this_row_size;
+    size_t old_row_end = ch->buff.used;
+    ch->buff.used += this_row_size;
+    ch->buff.buff = new_row;
+
+    for (size_t i = column_count; i > 0; i--) {
+      struct zsv_cell c = zsv_get_cell_1(scanner, i - 1);
+      // copy new row's cell value to end
+      if (c.len) {
+        memcpy(new_row + new_row_end - c.len - 1, c.str, c.len);
+        new_row[new_row_end - 1] = ' ';
+        new_row_end = new_row_end - c.len - 1;
+      }
+
+      // move prior cell value
+      size_t old_cell_len = ch->lengths[i - 1]; // old_cell_len includes delim
+      if (old_cell_len) {
+        // need memmove, not memcpy
+        memmove(new_row + new_row_end - old_cell_len, new_row + old_row_end - old_cell_len, old_cell_len);
+        old_row_end -= old_cell_len;
+        new_row_end -= old_cell_len;
+      }
+      if (c.len)
+        ch->lengths[i - 1] += c.len + 1;
     }
-
-    // move prior cell value
-    size_t old_cell_len = ch->lengths[i - 1]; // old_cell_len includes delim
-    if (old_cell_len) {
-      // need memmove, not memcpy
-      memmove(new_row + new_row_end - old_cell_len, new_row + old_row_end - old_cell_len, old_cell_len);
-      old_row_end -= old_cell_len;
-      new_row_end -= old_cell_len;
-    }
-    if (c.len)
-      ch->lengths[i - 1] += c.len + 1;
   }
   if (column_count > ch->column_count)
     ch->column_count = column_count;
