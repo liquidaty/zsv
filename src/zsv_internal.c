@@ -229,10 +229,12 @@ static int collate_header_append(struct zsv_scanner *scanner, struct collate_hea
       this_row_size += c.len + 1; // +1: terminating null or delim
   }
   size_t new_row_size = ch->buff.used + this_row_size;
-  unsigned char *new_row = realloc(ch->buff.buff, new_row_size);
-  if (!new_row) {
-    scanner->errprintf(scanner->errf, "Out of memory!\n");
-    return -1;
+  if (new_row_size > 0) {
+    unsigned char *new_row = realloc(ch->buff.buff, new_row_size);
+    if (!new_row) {
+      scanner->errprintf(scanner->errf, "Out of memory!\n");
+      return -1;
+    }
   }
 
   // now: splice the new row into the old row, starting with the last cell
