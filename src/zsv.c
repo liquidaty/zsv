@@ -564,6 +564,9 @@ size_t zsv_row_length_raw_bytes(zsv_parser parser) {
  * @param len    length of the input to parse
  */
 enum zsv_status zsv_parse_bytes(struct zsv_scanner *scanner, const unsigned char *bytes, size_t len) {
+  if (VERY_UNLIKELY(scanner->abort || scanner->finished))
+    // e.g. from nonstandard-CSV detection, etc
+    return zsv_status_cancelled;
   enum zsv_status stat = zsv_status_ok;
   const unsigned char *cursor = bytes;
   while (len && stat == zsv_status_ok) {
