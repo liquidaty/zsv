@@ -498,7 +498,7 @@ df-repro-crash-all: df-validate-image
 			--entrypoint /home/fuzzer/fuzzer_bin \
 			-v "$$(pwd)/$(DF_CRASHES_DIR):/crashes:ro" \
 			$(DF_IMAGE_WITH_TAG) \
-			"/crashes/$$(basename $$CRASH_FILE)"; \
+			"/crashes/$$(basename $$CRASH)"; \
 	done
 
 df-clean: df-stop
