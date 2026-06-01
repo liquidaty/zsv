@@ -318,6 +318,7 @@ $(AFL_REPRO_BIN): $(SOURCES) $(ZSV_H)
 
 afl-repro-build: $(AFL_REPRO_BIN)
 
+AFL_REPRO_STRIP_PREFIX := $(word 1, $(subst zsv/, ,$(CURDIR)))
 afl-repro-crash: afl-repro-build
 	@if [ -z "$$CRASH_FILE" ]; then \
 		echo "usage: 'make $@ CRASH_FILE=<file>'"; \
@@ -327,12 +328,14 @@ afl-repro-crash: afl-repro-build
 		exit 1; \
 	fi; \
 	echo "Reproducing crash: $$CRASH_FILE"; \
+	ASAN_OPTIONS="strip_path_prefix=$(AFL_REPRO_STRIP_PREFIX)" \
 	$(AFL_REPRO_BIN) "$$CRASH_FILE" || true
 
 afl-repro-crash-all: afl-repro-build afl-validate-output-dir
 	@CRASHES="$(shell make afl-list-crashes)"; \
 	for CRASH in $$CRASHES; do \
 		echo "Reproducing crash: $$CRASH"; \
+		ASAN_OPTIONS="strip_path_prefix=$(AFL_REPRO_STRIP_PREFIX)" \
 		$(AFL_REPRO_BIN) "$$CRASH" || true; \
 	done
 
