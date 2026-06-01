@@ -1,0 +1,143 @@
+// zsv compare — enriched JSON output schema (v1)
+//
+// Emitted by a new `zsv compare` output mode (proposed CLI flag: `--json-enriched`,
+// final name TBD by implementer). The existing `--json` / `--json-object` /
+// `--json-compact` outputs are unchanged.
+//
+// This file is a JSON-with-comments illustration of the schema. The actual wire
+// format is plain JSON (no comments). Comments here document conventions; a
+// formal JSON Schema (Draft 2020-12) may follow once the design is locked.
+//
+// Design goals:
+//   - Self-contained: a consumer can render a complete redline from this
+//     document alone, without re-reading the source CSVs.
+//   - Compact: column names appear once; matched cells are bare scalars.
+//   - Generalized: parallel-array convention scales to N inputs, not just 2.
+//   - Extensible: object forms reserved at cell and row level for future fields
+//     (e.g., composer-attached annotations) without schema breaks.
+//   - CLI-consistent: tolerated cells suppressed by default, matching the
+//     existing `--tolerance` semantics. Opt-in via `--include-tolerated`.
+
+{
+  // ---- Schema identity --------------------------------------------------
+  "schema": "zsv.compare",
+  "version": "1",                              // bump on breaking changes only
+  "generated_at": "2026-05-31T14:23:11Z",      // ISO 8601 UTC
+
+  // ---- Inputs -----------------------------------------------------------
+  // Order is significant. All parallel arrays in this document are indexed
+  // by input position. Input 0 is the canonical "first" input — its values
+  // are used as the rendered scalar when tolerated-cell suppression collapses
+  // a diff to a single value.
+  "inputs": [
+    {
+      "label": "a.csv",                        // short name (defaults to basename of `path`)
+      "path": "/abs/path/to/a.csv",            // absolute, resolved
+      "row_count": 4441                        // data rows, excluding header
+    },
+    {
+      "label": "b.csv",
+      "path": "/abs/path/to/b.csv",
+      "row_count": 4442
+    }
+  ],
+
+  // ---- Comparison parameters (echoed back) ------------------------------
+  "keys": ["loan_id"],                         // columns used to match rows
+  "options": {
+    "tolerance": 0.01,                         // null when not set
+    "sort": false,                             // whether --sort was used
+    "include_unchanged_rows": false,           // when true, matched rows also appear in rows[]
+    "include_tolerated": false                 // when true, tolerated cells render as diff arrays
+                                               // (instead of being collapsed to input[0]'s scalar)
+  },
+
+  // ---- Merged column model ----------------------------------------------
+  // Canonical render order: input[0]'s columns first, then columns unique to
+  // later inputs in their first-seen order. Every row's `data` array is
+  // positionally aligned to this list.
+  "columns": [
+    {"name": "loan_id", "is_key": true,  "in_inputs": [0, 1]},
+    {"name": "balance", "is_key": false, "in_inputs": [0, 1]},
+    {"name": "rate",    "is_key": false, "in_inputs": [0, 1]},
+    {"name": "state",   "is_key": false, "in_inputs": [0]}    // schema diff: only in input 0
+  ],
+
+  // ---- Aggregate counts -------------------------------------------------
+  // Pre-computed by the compare engine. Renderers may verify by walking
+  // rows[], but the pre-computation avoids an N-cell pass for every consumer.
+  "summary": {
+    "rows": {
+      "in_all_inputs": 4440,                   // keys present in every input
+      "only_in_input_count": [1, 2],           // parallel to inputs[]; rows unique to each input
+      "with_any_diff": 5                       // rows with at least one cell-level or row-level diff
+    },
+    "cells": {
+      "compared": 17760,                       // cells where row+column exists in all inputs
+      "matched": 17750,                        // exactly equal
+      "within_tolerance": 5,                   // numeric, |delta| < tolerance — suppressed in rows[] unless include_tolerated
+      "differing": 5                           // surfaced as diff arrays in rows[]
+    },
+    "by_column": [                             // per-column counts, in `columns` order
+      {"name": "loan_id", "compared": 4440, "matched": 4440, "within_tolerance": 0, "differing": 0},
+      {"name": "balance", "compared": 4440, "matched": 4435, "within_tolerance": 3, "differing": 2},
+      {"name": "rate",    "compared": 4440, "matched": 4440, "within_tolerance": 0, "differing": 0},
+      {"name": "state",   "compared": 0,    "matched": 0,    "within_tolerance": 0, "differing": 0}
+    ],
+    "schema": {                                // column-level mismatches between inputs
+      "common": ["loan_id", "balance", "rate"],
+      "only_in_input": [["state"], []]         // parallel to inputs[]
+    }
+  },
+
+  // ---- Rows -------------------------------------------------------------
+  //
+  // A row is either:
+  //
+  //   (a) ARRAY form (default for rows present in every input):
+  //       [cell_0, cell_1, ..., cell_N]   positionally aligned to `columns`.
+  //
+  //   (b) OBJECT form (used when the row is missing in some inputs):
+  //       { "data": [cell_0, ..., cell_N], "missing_in": [<input indices>] }
+  //
+  // The object form is also a forward-compatibility hook: future fields
+  // (e.g., source-row position `ix`, composer annotations) attach here
+  // without a schema break. Bare arrays remain valid.
+  //
+  // A cell is either:
+  //
+  //   (i)  SCALAR (string | number | null) — every input that has this
+  //        row+column agrees on this value, OR the cell is collapsed
+  //        (tolerated diff suppressed → input[0]'s value).
+  //
+  //   (ii) ARRAY [v_0, v_1, ..., v_N] parallel to inputs[] — values differ.
+  //        `null` in a slot means that input lacks this cell (because either
+  //        the column is absent from that input, or — in the row-object case
+  //        with >2 inputs — the row is absent from that input).
+  //
+  // Row emission rules:
+  //   - By default, only rows with at least one non-tolerated diff are emitted.
+  //   - With `include_unchanged_rows: true`, every row from the input(s)
+  //     appears (matched rows render as all-scalar arrays).
+  //   - Row order: zsv's processing order — key-sorted if --sort, else
+  //     input order. The position in rows[] IS the row's canonical ordinal.
+
+  "rows": [
+    // Cell-level diff at column 1 (balance). Other cells match → bare scalars.
+    ["2", ["2500.50", "2500.51"], "4.75", "TX"],
+
+    // Tolerated diff suppressed: balance cell renders as input[0]'s scalar.
+    // (With include_tolerated: true, this row would instead show
+    //  ["3", ["750.25", "750.26"], "6.10", "FL"].)
+    // This row appears here only because some OTHER cell differs — but in
+    // this illustrative dataset there isn't one, so under default options
+    // this row would actually be omitted entirely. Shown for documentation.
+    ["3", "750.25", "6.10", "FL"],
+
+    // Row exists only in input 0 (b.csv lacks loan_id=4).
+    {"data": ["4", "3200.00", "5.00", "NY"], "missing_in": [1]},
+
+    // Row exists only in input 1. The "state" column isn't in input 1, so null.
+    {"data": ["5", "1500.00", "5.50", null], "missing_in": [0]}
+  ]
+}

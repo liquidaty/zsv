@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <limits.h>
+#include <time.h>
 
 #include <jsonwriter.h>
 
@@ -32,6 +33,9 @@ extern sqlite3_module CsvModule;
 #include "utils/column_range.h"
 
 #define ZSV_COMPARE_OUTPUT_TYPE_JSON 'j'
+#define ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED 'e'
+
+#include "compare_enriched.h"
 
 // Column name lookup for --columns: searches parser header row
 struct zsv_compare_colname_lookup_ctx {
@@ -228,9 +232,15 @@ static const unsigned char *zsv_compare_combined_key_names(struct zsv_compare_da
   return data->combined_key_names;
 }
 
+static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last_ix);
+
 static void zsv_compare_print_row(struct zsv_compare_data *data,
                                   const unsigned last_ix // last input ix in inputs_to_sort
 ) {
+  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED) {
+    zsv_compare_collect_row(data, last_ix);
+    return;
+  }
   struct zsv_compare_input *key_input = data->inputs_to_sort[0];
 
   // for now, output format is simple: for each value,
@@ -356,7 +366,488 @@ static enum zsv_compare_status zsv_compare_set_inputs(struct zsv_compare_data *d
 
 static int zsv_compare_cell(void *ctx, struct zsv_cell c1, struct zsv_cell c2, void *data, unsigned col_ix);
 
+/* ---- Enriched-mode helpers -------------------------------------------- */
+
+static unsigned char *zsv_compare_enrich_strndup(const unsigned char *s, size_t len) {
+  if (!s || len == 0)
+    return NULL;
+  unsigned char *p = malloc(len + 1);
+  if (p) {
+    memcpy(p, s, len);
+    p[len] = '\0';
+  }
+  return p;
+}
+
+static struct zsv_compare_enriched *zsv_compare_enriched_new(unsigned input_count, unsigned output_colcount) {
+  struct zsv_compare_enriched *e = calloc(1, sizeof(*e));
+  if (!e)
+    return NULL;
+  e->rows_tail = &e->rows_head;
+  if (input_count > 0) {
+    if (!(e->input_row_counts = calloc(input_count, sizeof(*e->input_row_counts))))
+      goto err;
+    if (!(e->rows_only_in_input = calloc(input_count, sizeof(*e->rows_only_in_input))))
+      goto err;
+  }
+  if (output_colcount > 0) {
+    if (!(e->col_stats = calloc(output_colcount, sizeof(*e->col_stats))))
+      goto err;
+  }
+  return e;
+err:
+  free(e->input_row_counts);
+  free(e->rows_only_in_input);
+  free(e->col_stats);
+  free(e);
+  return NULL;
+}
+
+static void zsv_compare_enriched_cell_free(struct zsv_compare_enriched_cell *cell, unsigned input_count) {
+  free(cell->scalar_s);
+  if (cell->diff_s) {
+    for (unsigned i = 0; i < input_count; i++)
+      free(cell->diff_s[i]);
+    free(cell->diff_s);
+  }
+  free(cell->diff_len);
+}
+
+static void zsv_compare_enriched_row_free(struct zsv_compare_enriched_row *row, unsigned input_count,
+                                          unsigned output_colcount) {
+  if (!row)
+    return;
+  free(row->missing_in);
+  if (row->cells) {
+    for (unsigned j = 0; j < output_colcount; j++)
+      zsv_compare_enriched_cell_free(&row->cells[j], input_count);
+    free(row->cells);
+  }
+  free(row);
+}
+
+static void zsv_compare_enriched_free(struct zsv_compare_enriched *e, unsigned input_count, unsigned output_colcount) {
+  if (!e)
+    return;
+  struct zsv_compare_enriched_row *row = e->rows_head;
+  while (row) {
+    struct zsv_compare_enriched_row *next = row->next;
+    zsv_compare_enriched_row_free(row, input_count, output_colcount);
+    row = next;
+  }
+  free(e->input_row_counts);
+  free(e->rows_only_in_input);
+  free(e->col_stats);
+  free(e);
+}
+
+static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last_ix) {
+  struct zsv_compare_enriched *e = data->enriched;
+  if (!e)
+    return;
+  unsigned input_count = data->input_count;
+  unsigned output_colcount = data->output_colcount;
+  char row_in_all = (last_ix + 1 == input_count);
+  unsigned missing_count = input_count - (last_ix + 1);
+
+  /* Track per-input row counts */
+  for (unsigned i = 0; i <= last_ix; i++)
+    e->input_row_counts[data->inputs_to_sort[i]->index]++;
+
+  if (row_in_all)
+    e->rows_in_all++;
+  else
+    for (unsigned i = last_ix + 1; i < input_count; i++)
+      e->rows_only_in_input[data->inputs_to_sort[i]->index]++;
+
+  /* Allocate row */
+  struct zsv_compare_enriched_row *row = calloc(1, sizeof(*row));
+  if (!row) {
+    data->status = zsv_compare_status_memory;
+    return;
+  }
+  row->cells = calloc(output_colcount, sizeof(*row->cells));
+  if (!row->cells) {
+    free(row);
+    data->status = zsv_compare_status_memory;
+    return;
+  }
+
+  char has_diff = 0;
+
+  if (!row_in_all) {
+    /* Object form */
+    row->is_object = 1;
+    row->missing_in_count = missing_count;
+    row->missing_in = malloc(missing_count * sizeof(*row->missing_in));
+    if (!row->missing_in) {
+      free(row->cells);
+      free(row);
+      data->status = zsv_compare_status_memory;
+      return;
+    }
+    for (unsigned i = 0; i < missing_count; i++)
+      row->missing_in[i] = data->inputs_to_sort[last_ix + 1 + i]->index;
+    has_diff = 1;
+
+    /* Per-column: use value from first present input that has this column */
+    zsv_compare_unique_colname *oc = data->output_colnames_first;
+    for (unsigned j = 0; j < output_colcount && oc; j++, oc = oc->next) {
+      for (unsigned pi = 0; pi <= last_ix; pi++) {
+        struct zsv_compare_input *inp = data->inputs_to_sort[pi];
+        if (inp->out2in[j] != 0) {
+          struct zsv_cell v = data->get_cell(inp, inp->out2in[j] - 1);
+          row->cells[j].scalar_s = zsv_compare_enrich_strndup(v.str, v.len);
+          row->cells[j].scalar_len = v.len;
+          break;
+        }
+      }
+    }
+  } else {
+    /* Array form: all inputs present — compare cells */
+    struct zsv_compare_input *inp0 = data->inputs_to_sort[0];
+
+    zsv_compare_unique_colname *oc = data->output_colnames_first;
+    for (unsigned j = 0; j < output_colcount && oc; j++, oc = oc->next) {
+      /* Determine if column is in all inputs */
+      char col_in_all = 1;
+      for (unsigned i = 0; i < input_count && col_in_all; i++)
+        if (data->inputs[i].out2in[j] == 0)
+          col_in_all = 0;
+
+      if (!col_in_all) {
+        /* Schema-diff column: scalar from first input that has it */
+        for (unsigned pi = 0; pi <= last_ix; pi++) {
+          struct zsv_compare_input *inp = data->inputs_to_sort[pi];
+          if (inp->out2in[j] != 0) {
+            struct zsv_cell v = data->get_cell(inp, inp->out2in[j] - 1);
+            row->cells[j].scalar_s = zsv_compare_enrich_strndup(v.str, v.len);
+            row->cells[j].scalar_len = v.len;
+            break;
+          }
+        }
+        continue; /* not counted in cells.compared */
+      }
+
+      /* Column is in all inputs — update stats */
+      e->col_stats[j].compared++;
+      e->cells_compared++;
+
+      /* Get reference value from inputs_to_sort[0] */
+      struct zsv_cell v0 = {0};
+      if (inp0->out2in[j] != 0)
+        v0 = data->get_cell(inp0, inp0->out2in[j] - 1);
+
+      /* For key columns: always matched */
+      if (oc->is_key) {
+        e->col_stats[j].matched++;
+        e->cells_matched++;
+        row->cells[j].scalar_s = zsv_compare_enrich_strndup(v0.str, v0.len);
+        row->cells[j].scalar_len = v0.len;
+        continue;
+      }
+
+      /* Compare against all other present inputs */
+      char different = 0;
+      for (unsigned pi = 1; pi <= last_ix && !different; pi++) {
+        struct zsv_compare_input *inp = data->inputs_to_sort[pi];
+        unsigned ci = inp->out2in[j];
+        if (ci == 0)
+          continue;
+        struct zsv_cell vi = data->get_cell(inp, ci - 1);
+        if (data->cmp(data->cmp_ctx, v0, vi, data, ci - 1))
+          different = 1;
+      }
+
+      if (!different) {
+        e->col_stats[j].matched++;
+        e->cells_matched++;
+        row->cells[j].scalar_s = zsv_compare_enrich_strndup(v0.str, v0.len);
+        row->cells[j].scalar_len = v0.len;
+        continue;
+      }
+
+      /* Check tolerance: all pairs (0 vs i) must be within tolerance */
+      char tolerated = 0;
+      if (data->tolerance.value > 0) {
+        tolerated = 1;
+        for (unsigned pi = 1; pi <= last_ix && tolerated; pi++) {
+          struct zsv_compare_input *inp = data->inputs_to_sort[pi];
+          unsigned ci = inp->out2in[j];
+          if (ci == 0)
+            continue;
+          struct zsv_cell vi = data->get_cell(inp, ci - 1);
+          if (v0.len >= ZSV_COMPARE_MAX_NUMBER_BUFF_LEN || vi.len >= ZSV_COMPARE_MAX_NUMBER_BUFF_LEN) {
+            tolerated = 0;
+          } else {
+            double d0, di;
+            char s0[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN], si[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
+            memcpy(s0, v0.str ? v0.str : (const unsigned char *)"", v0.len);
+            s0[v0.len] = '\0';
+            memcpy(si, vi.str ? vi.str : (const unsigned char *)"", vi.len);
+            si[vi.len] = '\0';
+            if (zsv_strtod_exact(s0, &d0) || zsv_strtod_exact(si, &di) || fabs(d0 - di) >= data->tolerance.value)
+              tolerated = 0;
+          }
+        }
+      }
+
+      if (tolerated) {
+        e->col_stats[j].within_tolerance++;
+        e->cells_within_tolerance++;
+        row->cells[j].is_tolerated = 1;
+        if (!data->writer.include_tolerated) {
+          /* Collapse to input[0]'s scalar */
+          row->cells[j].scalar_s = zsv_compare_enrich_strndup(v0.str, v0.len);
+          row->cells[j].scalar_len = v0.len;
+          continue;
+        }
+        /* With include_tolerated: render as diff array — counts as a diff for row inclusion */
+        has_diff = 1;
+        /* Fall through to build diff array */
+      } else {
+        e->col_stats[j].differing++;
+        e->cells_differing++;
+        has_diff = 1;
+      }
+
+      /* Build diff array */
+      row->cells[j].is_diff = 1;
+      row->cells[j].diff_s = calloc(input_count, sizeof(*row->cells[j].diff_s));
+      row->cells[j].diff_len = calloc(input_count, sizeof(*row->cells[j].diff_len));
+      if (!row->cells[j].diff_s || !row->cells[j].diff_len) {
+        data->status = zsv_compare_status_memory;
+        zsv_compare_enriched_row_free(row, input_count, output_colcount);
+        return;
+      }
+      for (unsigned pi = 0; pi <= last_ix; pi++) {
+        struct zsv_compare_input *inp = data->inputs_to_sort[pi];
+        unsigned ci = inp->out2in[j];
+        unsigned inp_ix = inp->index;
+        if (ci != 0) {
+          struct zsv_cell vi = data->get_cell(inp, ci - 1);
+          row->cells[j].diff_s[inp_ix] = zsv_compare_enrich_strndup(vi.str, vi.len);
+          row->cells[j].diff_len[inp_ix] = vi.len;
+        }
+        /* Missing inputs stay NULL → emitted as JSON null */
+      }
+    }
+  }
+
+  /* Store row only if it has a diff or include_unchanged_rows is set */
+  if (!has_diff && !data->writer.include_unchanged_rows) {
+    zsv_compare_enriched_row_free(row, input_count, output_colcount);
+    return;
+  }
+
+  if (has_diff)
+    e->rows_with_diff++;
+
+  row->next = NULL;
+  *e->rows_tail = row;
+  e->rows_tail = &row->next;
+}
+
+static void zsv_compare_emit_enriched(struct zsv_compare_data *data) {
+  struct zsv_compare_enriched *e = data->enriched;
+  jsonwriter_handle jsw = data->writer.handle.jsw;
+  unsigned input_count = data->input_count;
+  unsigned output_colcount = data->output_colcount;
+
+  jsonwriter_start_object(jsw);
+
+  /* Identity */
+  jsonwriter_object_str(jsw, "schema", (const unsigned char *)"zsv.compare");
+  jsonwriter_object_str(jsw, "version", (const unsigned char *)"1");
+
+  {
+    time_t now = time(NULL);
+    struct tm *utc = gmtime(&now);
+    char buf[32];
+    strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", utc);
+    jsonwriter_object_key(jsw, "generated_at");
+    jsonwriter_cstr(jsw, buf);
+  }
+
+  /* inputs[] */
+  jsonwriter_object_array(jsw, "inputs");
+  for (unsigned i = 0; i < input_count; i++) {
+    struct zsv_compare_input *inp = &data->inputs[i];
+    jsonwriter_start_object(jsw);
+    const char *slash = strrchr(inp->path, '/');
+    const char *label = slash ? slash + 1 : inp->path;
+    jsonwriter_object_key(jsw, "label");
+    jsonwriter_cstr(jsw, label);
+    jsonwriter_object_key(jsw, "path");
+    jsonwriter_cstr(jsw, inp->path);
+    jsonwriter_object_size_t(jsw, "row_count", e->input_row_counts[i]);
+    jsonwriter_end_object(jsw);
+  }
+  jsonwriter_end_array(jsw);
+
+  /* keys[] */
+  jsonwriter_object_array(jsw, "keys");
+  for (struct zsv_compare_key *k = data->keys; k; k = k->next)
+    jsonwriter_cstr(jsw, k->name);
+  jsonwriter_end_array(jsw);
+
+  /* options */
+  jsonwriter_object_object(jsw, "options");
+  if (data->tolerance.original > 0) {
+    jsonwriter_object_key(jsw, "tolerance");
+    jsonwriter_dbl(jsw, (long double)data->tolerance.original);
+  } else {
+    jsonwriter_object_null(jsw, "tolerance");
+  }
+  jsonwriter_object_bool(jsw, "sort", data->sort);
+  jsonwriter_object_bool(jsw, "include_unchanged_rows", data->writer.include_unchanged_rows);
+  jsonwriter_object_bool(jsw, "include_tolerated", data->writer.include_tolerated);
+  jsonwriter_end_object(jsw);
+
+  /* columns[] */
+  jsonwriter_object_array(jsw, "columns");
+  {
+    zsv_compare_unique_colname *oc = data->output_colnames_first;
+    for (unsigned j = 0; j < output_colcount && oc; j++, oc = oc->next) {
+      jsonwriter_start_object(jsw);
+      jsonwriter_object_key(jsw, "name");
+      jsonwriter_strn(jsw, oc->name, oc->name_len);
+      jsonwriter_object_bool(jsw, "is_key", oc->is_key);
+      jsonwriter_object_array(jsw, "in_inputs");
+      for (unsigned i = 0; i < input_count; i++)
+        if (data->inputs[i].out2in[j] != 0)
+          jsonwriter_int(jsw, (jsw_int64)i);
+      jsonwriter_end_array(jsw);
+      jsonwriter_end_object(jsw);
+    }
+  }
+  jsonwriter_end_array(jsw);
+
+  /* summary */
+  jsonwriter_object_object(jsw, "summary");
+
+  jsonwriter_object_object(jsw, "rows");
+  jsonwriter_object_size_t(jsw, "in_all_inputs", e->rows_in_all);
+  jsonwriter_object_array(jsw, "only_in_input_count");
+  for (unsigned i = 0; i < input_count; i++)
+    jsonwriter_size_t(jsw, e->rows_only_in_input[i]);
+  jsonwriter_end_array(jsw);
+  jsonwriter_object_size_t(jsw, "with_any_diff", e->rows_with_diff);
+  jsonwriter_end_object(jsw); /* rows */
+
+  jsonwriter_object_object(jsw, "cells");
+  jsonwriter_object_size_t(jsw, "compared", e->cells_compared);
+  jsonwriter_object_size_t(jsw, "matched", e->cells_matched);
+  jsonwriter_object_size_t(jsw, "within_tolerance", e->cells_within_tolerance);
+  jsonwriter_object_size_t(jsw, "differing", e->cells_differing);
+  jsonwriter_end_object(jsw); /* cells */
+
+  jsonwriter_object_array(jsw, "by_column");
+  {
+    zsv_compare_unique_colname *oc = data->output_colnames_first;
+    for (unsigned j = 0; j < output_colcount && oc; j++, oc = oc->next) {
+      jsonwriter_start_object(jsw);
+      jsonwriter_object_key(jsw, "name");
+      jsonwriter_strn(jsw, oc->name, oc->name_len);
+      jsonwriter_object_size_t(jsw, "compared", e->col_stats[j].compared);
+      jsonwriter_object_size_t(jsw, "matched", e->col_stats[j].matched);
+      jsonwriter_object_size_t(jsw, "within_tolerance", e->col_stats[j].within_tolerance);
+      jsonwriter_object_size_t(jsw, "differing", e->col_stats[j].differing);
+      jsonwriter_end_object(jsw);
+    }
+  }
+  jsonwriter_end_array(jsw);
+
+  jsonwriter_object_object(jsw, "schema");
+  jsonwriter_object_array(jsw, "common");
+  {
+    zsv_compare_unique_colname *oc = data->output_colnames_first;
+    for (unsigned j = 0; j < output_colcount && oc; j++, oc = oc->next) {
+      char in_all = 1;
+      for (unsigned i = 0; i < input_count && in_all; i++)
+        if (data->inputs[i].out2in[j] == 0)
+          in_all = 0;
+      if (in_all)
+        jsonwriter_strn(jsw, oc->name, oc->name_len);
+    }
+  }
+  jsonwriter_end_array(jsw);
+  jsonwriter_object_array(jsw, "only_in_input");
+  for (unsigned i = 0; i < input_count; i++) {
+    jsonwriter_start_array(jsw);
+    zsv_compare_unique_colname *oc = data->output_colnames_first;
+    for (unsigned j = 0; j < output_colcount && oc; j++, oc = oc->next) {
+      if (data->inputs[i].out2in[j] == 0)
+        continue;
+      char only_here = 1;
+      for (unsigned k = 0; k < input_count && only_here; k++)
+        if (k != i && data->inputs[k].out2in[j] != 0)
+          only_here = 0;
+      if (only_here)
+        jsonwriter_strn(jsw, oc->name, oc->name_len);
+    }
+    jsonwriter_end_array(jsw);
+  }
+  jsonwriter_end_array(jsw);
+  jsonwriter_end_object(jsw); /* schema */
+
+  jsonwriter_end_object(jsw); /* summary */
+
+  /* rows[] */
+  jsonwriter_object_array(jsw, "rows");
+  for (struct zsv_compare_enriched_row *row = e->rows_head; row; row = row->next) {
+    if (row->is_object) {
+      jsonwriter_start_object(jsw);
+      jsonwriter_object_array(jsw, "data");
+      for (unsigned j = 0; j < output_colcount; j++) {
+        struct zsv_compare_enriched_cell *cell = &row->cells[j];
+        if (cell->scalar_s)
+          jsonwriter_strn(jsw, cell->scalar_s, cell->scalar_len);
+        else
+          jsonwriter_null(jsw);
+      }
+      jsonwriter_end_array(jsw);
+      jsonwriter_object_array(jsw, "missing_in");
+      for (unsigned m = 0; m < row->missing_in_count; m++)
+        jsonwriter_int(jsw, (jsw_int64)row->missing_in[m]);
+      jsonwriter_end_array(jsw);
+      jsonwriter_end_object(jsw);
+    } else {
+      jsonwriter_start_array(jsw);
+      for (unsigned j = 0; j < output_colcount; j++) {
+        struct zsv_compare_enriched_cell *cell = &row->cells[j];
+        if (cell->is_diff) {
+          jsonwriter_start_array(jsw);
+          for (unsigned i = 0; i < input_count; i++) {
+            if (cell->diff_s && cell->diff_s[i])
+              jsonwriter_strn(jsw, cell->diff_s[i], cell->diff_len[i]);
+            else
+              jsonwriter_null(jsw);
+          }
+          jsonwriter_end_array(jsw);
+        } else if (cell->scalar_s) {
+          jsonwriter_strn(jsw, cell->scalar_s, cell->scalar_len);
+        } else {
+          jsonwriter_null(jsw);
+        }
+      }
+      jsonwriter_end_array(jsw);
+    }
+  }
+  jsonwriter_end_array(jsw); /* rows */
+
+  jsonwriter_end_object(jsw); /* top level */
+}
+
+/* ---- End enriched-mode helpers ---------------------------------------- */
+
 static void zsv_compare_output_begin(struct zsv_compare_data *data) {
+  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED) {
+    if (!(data->writer.handle.jsw = jsonwriter_new(stdout)))
+      data->status = zsv_compare_status_memory;
+    /* Emit nothing yet — all output deferred to zsv_compare_emit_enriched */
+    return;
+  }
   if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
     if (!(data->writer.handle.jsw = jsonwriter_new(stdout))) // to do: data->out
       data->status = zsv_compare_status_memory;
@@ -410,6 +901,13 @@ static void zsv_compare_output_begin(struct zsv_compare_data *data) {
 }
 
 static void zsv_compare_output_end(struct zsv_compare_data *data) {
+  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED) {
+    if (data->writer.handle.jsw)
+      zsv_compare_emit_enriched(data);
+    if (data->status == zsv_compare_status_no_more_input)
+      data->status = zsv_compare_status_ok;
+    return;
+  }
   if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
     if (data->writer.handle.jsw)
       jsonwriter_end(data->writer.handle.jsw);
@@ -498,7 +996,9 @@ static enum zsv_compare_status zsv_compare_init_sorted(struct zsv_compare_data *
 }
 
 static void zsv_compare_data_free(struct zsv_compare_data *data) {
-  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
+  zsv_compare_enriched_free(data->enriched, data->input_count, data->output_colcount);
+  data->enriched = NULL;
+  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON || data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED) {
     if (data->writer.handle.jsw)
       jsonwriter_delete(data->writer.handle.jsw);
   } else
@@ -664,6 +1164,9 @@ static int compare_usage(void) {
     "  --json             : output as JSON",
     "  --json-compact     : output as compact JSON",
     "  --json-object      : output as an array of objects",
+    "  --json-enriched    : output enriched JSON (schema.jsonc format)",
+    "  --include-unchanged-rows: (with --json-enriched) emit matched rows",
+    "  --include-tolerated: (with --json-enriched) emit tolerated diffs as arrays",
     "  --columns <spec>   : compare column ranges within a single file",
     "                       spec uses 'v' or 'vs' to separate ranges, '-' or ':'",
     "                       as range delimiters. 1-based columns.",
@@ -757,8 +1260,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           fprintf(stderr, "Invalid numeric value: %s\n", next_arg), err = 1;
         else if (data->tolerance.value < 0)
           fprintf(stderr, "Tolerance must be greater than zero (got %s)\n", next_arg), err = 1;
-        else
+        else {
+          data->tolerance.original = data->tolerance.value;
           data->tolerance.value = nextafterf(data->tolerance.value, INFINITY);
+        }
       }
     } else if (!strcmp(arg, "--sort")) {
       data->sort = 1;
@@ -772,6 +1277,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if (!strcmp(arg, "--json-compact")) {
       data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
       data->writer.compact = 1;
+    } else if (!strcmp(arg, "--json-enriched")) {
+      data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED;
+    } else if (!strcmp(arg, "--include-unchanged-rows")) {
+      data->writer.include_unchanged_rows = 1;
+    } else if (!strcmp(arg, "--include-tolerated")) {
+      data->writer.include_tolerated = 1;
     } else if (!strcmp(arg, "--print-key-colname")) {
       data->print_key_col_names = 1;
     } else
@@ -998,6 +1509,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           }
         }
       }
+    }
+
+    // allocate enriched-mode state (after out2in is populated)
+    if (data->status == zsv_compare_status_ok && data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED) {
+      data->enriched = zsv_compare_enriched_new(data->input_count, data->output_colcount);
+      if (!data->enriched)
+        data->status = zsv_compare_status_memory;
     }
 
     // assertions

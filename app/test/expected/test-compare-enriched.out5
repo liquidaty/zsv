@@ -1,0 +1,104 @@
+{
+  "schema": "zsv.compare",
+  "version": "1",
+  "inputs": [
+    {
+      "label": "jenrich5a.csv",
+      "path": "compare/jenrich5a.csv",
+      "row_count": 3
+    },
+    {
+      "label": "jenrich5b.csv",
+      "path": "compare/jenrich5b.csv",
+      "row_count": 3
+    }
+  ],
+  "keys": [
+    "id"
+  ],
+  "options": {
+    "tolerance": null,
+    "sort": false,
+    "include_unchanged_rows": true,
+    "include_tolerated": false
+  },
+  "columns": [
+    {
+      "name": "id",
+      "is_key": true,
+      "in_inputs": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "name",
+      "is_key": false,
+      "in_inputs": [
+        0,
+        1
+      ]
+    }
+  ],
+  "summary": {
+    "rows": {
+      "in_all_inputs": 3,
+      "only_in_input_count": [
+        0,
+        0
+      ],
+      "with_any_diff": 1
+    },
+    "cells": {
+      "compared": 6,
+      "matched": 5,
+      "within_tolerance": 0,
+      "differing": 1
+    },
+    "by_column": [
+      {
+        "name": "id",
+        "compared": 3,
+        "matched": 3,
+        "within_tolerance": 0,
+        "differing": 0
+      },
+      {
+        "name": "name",
+        "compared": 3,
+        "matched": 2,
+        "within_tolerance": 0,
+        "differing": 1
+      }
+    ],
+    "schema": {
+      "common": [
+        "id",
+        "name"
+      ],
+      "only_in_input": [
+        [
+        ],
+        [
+        ]
+      ]
+    }
+  },
+  "rows": [
+    [
+      "1",
+      "Alice"
+    ],
+    [
+      "2",
+      [
+        "Bob",
+        "Robert"
+      ]
+    ],
+    [
+      "3",
+      "Carol"
+    ]
+  ]
+}

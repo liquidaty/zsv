@@ -71,6 +71,7 @@ ifneq ($(ZSV_NO_PARALLEL),1)
 endif
 TESTS+=test-check
 TESTS+=test-quoted-nonstandard
+TESTS+=test-compare-enriched
 
 # Security regression test - only run when not cross-compiling
 ifneq ($(CROSS_COMPILING),1)
@@ -825,6 +826,43 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 
 	@# --columns: error - invalid spec
 	@($< --columns bad compare/colrange1.csv >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
+
+# TC1: two identical inputs → empty rows[]
+# TC2: mix diff/tolerated (--tolerance 1.0)
+# TC3: schema mismatch (extra column in input 0)
+# TC4: missing rows on each side → object form
+# TC5: --include-unchanged-rows
+# TC6: --include-tolerated
+# TC7: three inputs → length-3 diff arrays
+test-compare-enriched: ${BUILD_DIR}/bin/zsv_compare${EXE}
+	@${TEST_INIT}
+	@(${PREFIX} $< --json-enriched -k id compare/jenrich1a.csv compare/jenrich1b.csv ${REDIRECT1} ${TMP_DIR}/$@.out1raw && \
+	sed '/"generated_at"/d' ${TMP_DIR}/$@.out1raw > ${TMP_DIR}/$@.out1 && \
+	${CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< --json-enriched -k id --tolerance 1.0 compare/jenrich2a.csv compare/jenrich2b.csv ${REDIRECT1} ${TMP_DIR}/$@.out2raw && \
+	sed '/"generated_at"/d' ${TMP_DIR}/$@.out2raw > ${TMP_DIR}/$@.out2 && \
+	${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< --json-enriched -k id compare/jenrich3a.csv compare/jenrich3b.csv ${REDIRECT1} ${TMP_DIR}/$@.out3raw && \
+	sed '/"generated_at"/d' ${TMP_DIR}/$@.out3raw > ${TMP_DIR}/$@.out3 && \
+	${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< --json-enriched -k id compare/jenrich4a.csv compare/jenrich4b.csv ${REDIRECT1} ${TMP_DIR}/$@.out4raw && \
+	sed '/"generated_at"/d' ${TMP_DIR}/$@.out4raw > ${TMP_DIR}/$@.out4 && \
+	${CMP} ${TMP_DIR}/$@.out4 expected/$@.out4 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< --json-enriched -k id --include-unchanged-rows compare/jenrich5a.csv compare/jenrich5b.csv ${REDIRECT1} ${TMP_DIR}/$@.out5raw && \
+	sed '/"generated_at"/d' ${TMP_DIR}/$@.out5raw > ${TMP_DIR}/$@.out5 && \
+	${CMP} ${TMP_DIR}/$@.out5 expected/$@.out5 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< --json-enriched -k id --tolerance 1.0 --include-tolerated compare/jenrich2a.csv compare/jenrich2b.csv ${REDIRECT1} ${TMP_DIR}/$@.out6raw && \
+	sed '/"generated_at"/d' ${TMP_DIR}/$@.out6raw > ${TMP_DIR}/$@.out6 && \
+	${CMP} ${TMP_DIR}/$@.out6 expected/$@.out6 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< --json-enriched -k id compare/jenrich7a.csv compare/jenrich7b.csv compare/jenrich7c.csv ${REDIRECT1} ${TMP_DIR}/$@.out7raw && \
+	sed '/"generated_at"/d' ${TMP_DIR}/$@.out7raw > ${TMP_DIR}/$@.out7 && \
+	${CMP} ${TMP_DIR}/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-sheet-cleanup test-sheet-all
 
