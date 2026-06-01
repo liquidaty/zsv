@@ -1,4 +1,4 @@
-# `zsv compare --json-enriched` — Technical Guide
+# `zsv compare --json-redline` — Technical Guide
 
 ## Wire format
 
@@ -57,7 +57,7 @@ Every new allocation introduced by the enriched mode and its corresponding free 
 
 | Decision | Resolution |
 |----------|-----------|
-| Final flag name | `--json-enriched` (consistent with `--json`, `--json-object`, `--json-compact` prefix) |
+| Final flag name | `--json-redline` (consistent with `--json`, `--json-object`, `--json-compact` prefix) |
 | Float formatting | Cell values are raw CSV strings — no float formatting. `options.tolerance` emits the user-specified value via `data->tolerance.original`. No floats are computed or emitted in `rows[]`. |
 | Row order without `--sort` | Input[0]'s processing order; rows unique to later inputs appear at their natural key position in the output stream. |
 | `only_in_input` shape for >2 inputs | Parallel array `[["cols_only_in_0"], ["cols_only_in_1"], ...]` indexed by input position — consistent with all other parallel arrays in the schema. |
@@ -69,7 +69,7 @@ New files:
 
 Modified files:
 - `app/compare_internal.h` — added `data->enriched` pointer, `writer.include_unchanged_rows`, `writer.include_tolerated` bits, `tolerance.original` field.
-- `app/compare.c` — added `#include <time.h>`, `ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED 'e'`, and the following static functions:
+- `app/compare.c` — added `#include <time.h>`, `ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE 'e'`, and the following static functions:
   - `zsv_compare_enrich_strndup` — safe strdup for cell values.
   - `zsv_compare_enriched_new` / `_free` / `_cell_free` / `_row_free` — lifecycle.
   - `zsv_compare_collect_row` — called from `zsv_compare_print_row` in enriched mode; builds the in-memory row representation and updates stats.
@@ -78,4 +78,4 @@ Modified files:
   - Hook in `zsv_compare_output_end`: call `zsv_compare_emit_enriched`.
   - Hook in `zsv_compare_data_free`: call `zsv_compare_enriched_free`.
 
-All hooks guard on `writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED` and are no-ops for all other modes.
+All hooks guard on `writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE` and are no-ops for all other modes.

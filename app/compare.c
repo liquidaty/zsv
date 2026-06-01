@@ -33,7 +33,7 @@ extern sqlite3_module CsvModule;
 #include "utils/column_range.h"
 
 #define ZSV_COMPARE_OUTPUT_TYPE_JSON 'j'
-#define ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED 'e'
+#define ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE 'e'
 
 #include "compare_enriched.h"
 
@@ -237,7 +237,7 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
 static void zsv_compare_print_row(struct zsv_compare_data *data,
                                   const unsigned last_ix // last input ix in inputs_to_sort
 ) {
-  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED) {
+  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
     zsv_compare_collect_row(data, last_ix);
     return;
   }
@@ -842,7 +842,7 @@ static void zsv_compare_emit_enriched(struct zsv_compare_data *data) {
 /* ---- End enriched-mode helpers ---------------------------------------- */
 
 static void zsv_compare_output_begin(struct zsv_compare_data *data) {
-  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED) {
+  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
     if (!(data->writer.handle.jsw = jsonwriter_new(stdout)))
       data->status = zsv_compare_status_memory;
     /* Emit nothing yet — all output deferred to zsv_compare_emit_enriched */
@@ -901,7 +901,7 @@ static void zsv_compare_output_begin(struct zsv_compare_data *data) {
 }
 
 static void zsv_compare_output_end(struct zsv_compare_data *data) {
-  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED) {
+  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
     if (data->writer.handle.jsw)
       zsv_compare_emit_enriched(data);
     if (data->status == zsv_compare_status_no_more_input)
@@ -998,7 +998,7 @@ static enum zsv_compare_status zsv_compare_init_sorted(struct zsv_compare_data *
 static void zsv_compare_data_free(struct zsv_compare_data *data) {
   zsv_compare_enriched_free(data->enriched, data->input_count, data->output_colcount);
   data->enriched = NULL;
-  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON || data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED) {
+  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON || data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
     if (data->writer.handle.jsw)
       jsonwriter_delete(data->writer.handle.jsw);
   } else
@@ -1164,9 +1164,9 @@ static int compare_usage(void) {
     "  --json             : output as JSON",
     "  --json-compact     : output as compact JSON",
     "  --json-object      : output as an array of objects",
-    "  --json-enriched    : output enriched JSON (schema.jsonc format)",
-    "  --include-unchanged-rows: (with --json-enriched) emit matched rows",
-    "  --include-tolerated: (with --json-enriched) emit tolerated diffs as arrays",
+    "  --json-redline    : output enriched JSON (schema.jsonc format)",
+    "  --include-unchanged-rows: (with --json-redline) emit matched rows",
+    "  --include-tolerated: (with --json-redline) emit tolerated diffs as arrays",
     "  --columns <spec>   : compare column ranges within a single file",
     "                       spec uses 'v' or 'vs' to separate ranges, '-' or ':'",
     "                       as range delimiters. 1-based columns.",
@@ -1277,8 +1277,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if (!strcmp(arg, "--json-compact")) {
       data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
       data->writer.compact = 1;
-    } else if (!strcmp(arg, "--json-enriched")) {
-      data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED;
+    } else if (!strcmp(arg, "--json-redline")) {
+      data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE;
     } else if (!strcmp(arg, "--include-unchanged-rows")) {
       data->writer.include_unchanged_rows = 1;
     } else if (!strcmp(arg, "--include-tolerated")) {
@@ -1512,7 +1512,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
 
     // allocate enriched-mode state (after out2in is populated)
-    if (data->status == zsv_compare_status_ok && data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_ENRICHED) {
+    if (data->status == zsv_compare_status_ok && data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
       data->enriched = zsv_compare_enriched_new(data->input_count, data->output_colcount);
       if (!data->enriched)
         data->status = zsv_compare_status_memory;

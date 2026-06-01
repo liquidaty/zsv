@@ -1,12 +1,12 @@
-# `zsv compare --json-enriched` — Admin / Integration Guide
+# `zsv compare --json-redline` — Admin / Integration Guide
 
 ## Integration with the strat-replication redline composer
 
-The redline composer runs one `zsv compare --json-enriched` per stratification table and receives one JSON document per comparison.  Integration steps:
+The redline composer runs one `zsv compare --json-redline` per stratification table and receives one JSON document per comparison.  Integration steps:
 
 1. **Run compare** for each table pair:
    ```sh
-   zsv compare --json-enriched -k <key_col> actual.csv expected.csv > table_N.json
+   zsv compare --json-redline -k <key_col> actual.csv expected.csv > table_N.json
    ```
 
 2. **Check `summary.rows.with_any_diff`** to decide whether a table has any differences.  If zero, the table is clean; skip rendering.
@@ -24,7 +24,7 @@ The redline composer runs one `zsv compare --json-enriched` per stratification t
 
 ## Integration with future `doc-to-html` / `doc-to-xlsx` renderers
 
-The enriched JSON output is **not** the document-model format that `doc-to-html`/`doc-to-xlsx` will consume.  The composer translates `compare --json-enriched` output into a table block within a higher-level document model:
+The enriched JSON output is **not** the document-model format that `doc-to-html`/`doc-to-xlsx` will consume.  The composer translates `compare --json-redline` output into a table block within a higher-level document model:
 
 ```
 compare JSON → composer → document model (headings + table blocks) → doc-to-html / doc-to-xlsx
@@ -37,7 +37,7 @@ The compare JSON is a peer document, not the renderer's input format.  This keep
 The `generated_at` field is an ISO 8601 UTC timestamp (`"%Y-%m-%dT%H:%M:%SZ"`).  It changes on every run and should be excluded from byte-for-byte regression tests.  Strip it before comparison:
 
 ```sh
-zsv compare --json-enriched ... | sed '/"generated_at"/d' > actual.json
+zsv compare --json-redline ... | sed '/"generated_at"/d' > actual.json
 cmp actual.json expected.json
 ```
 
@@ -53,7 +53,7 @@ New test cases live in `app/test/Makefile` under the `test-compare-enriched` tar
 
 To add a new test case, follow the pattern:
 ```makefile
-@(${PREFIX} $< --json-enriched ... ${REDIRECT1} ${TMP_DIR}/$@.outNraw && \
+@(${PREFIX} $< --json-redline ... ${REDIRECT1} ${TMP_DIR}/$@.outNraw && \
 sed '/"generated_at"/d' ${TMP_DIR}/$@.outNraw > ${TMP_DIR}/$@.outN && \
 ${CMP} ${TMP_DIR}/$@.outN expected/$@.outN && ${TEST_PASS} || ${TEST_FAIL})
 ```

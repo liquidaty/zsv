@@ -136,7 +136,7 @@ struct zsv_compare_data {
     unsigned char _ : 4;
   } writer;
 
-  struct zsv_compare_enriched *enriched; // allocated only for --json-enriched mode
+  struct zsv_compare_enriched *enriched; // allocated only for --json-redline mode
 
   unsigned char sort : 1;
   unsigned char sort_in_memory : 1;

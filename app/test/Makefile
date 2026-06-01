@@ -836,31 +836,31 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 # TC7: three inputs → length-3 diff arrays
 test-compare-enriched: ${BUILD_DIR}/bin/zsv_compare${EXE}
 	@${TEST_INIT}
-	@(${PREFIX} $< --json-enriched -k id compare/jenrich1a.csv compare/jenrich1b.csv ${REDIRECT1} ${TMP_DIR}/$@.out1raw && \
+	@(${PREFIX} $< --json-redline -k id compare/jenrich1a.csv compare/jenrich1b.csv ${REDIRECT1} ${TMP_DIR}/$@.out1raw && \
 	sed '/"generated_at"/d' ${TMP_DIR}/$@.out1raw > ${TMP_DIR}/$@.out1 && \
 	${CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(${PREFIX} $< --json-enriched -k id --tolerance 1.0 compare/jenrich2a.csv compare/jenrich2b.csv ${REDIRECT1} ${TMP_DIR}/$@.out2raw && \
+	@(${PREFIX} $< --json-redline -k id --tolerance 1.0 compare/jenrich2a.csv compare/jenrich2b.csv ${REDIRECT1} ${TMP_DIR}/$@.out2raw && \
 	sed '/"generated_at"/d' ${TMP_DIR}/$@.out2raw > ${TMP_DIR}/$@.out2 && \
 	${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(${PREFIX} $< --json-enriched -k id compare/jenrich3a.csv compare/jenrich3b.csv ${REDIRECT1} ${TMP_DIR}/$@.out3raw && \
+	@(${PREFIX} $< --json-redline -k id compare/jenrich3a.csv compare/jenrich3b.csv ${REDIRECT1} ${TMP_DIR}/$@.out3raw && \
 	sed '/"generated_at"/d' ${TMP_DIR}/$@.out3raw > ${TMP_DIR}/$@.out3 && \
 	${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(${PREFIX} $< --json-enriched -k id compare/jenrich4a.csv compare/jenrich4b.csv ${REDIRECT1} ${TMP_DIR}/$@.out4raw && \
+	@(${PREFIX} $< --json-redline -k id compare/jenrich4a.csv compare/jenrich4b.csv ${REDIRECT1} ${TMP_DIR}/$@.out4raw && \
 	sed '/"generated_at"/d' ${TMP_DIR}/$@.out4raw > ${TMP_DIR}/$@.out4 && \
 	${CMP} ${TMP_DIR}/$@.out4 expected/$@.out4 && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(${PREFIX} $< --json-enriched -k id --include-unchanged-rows compare/jenrich5a.csv compare/jenrich5b.csv ${REDIRECT1} ${TMP_DIR}/$@.out5raw && \
+	@(${PREFIX} $< --json-redline -k id --include-unchanged-rows compare/jenrich5a.csv compare/jenrich5b.csv ${REDIRECT1} ${TMP_DIR}/$@.out5raw && \
 	sed '/"generated_at"/d' ${TMP_DIR}/$@.out5raw > ${TMP_DIR}/$@.out5 && \
 	${CMP} ${TMP_DIR}/$@.out5 expected/$@.out5 && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(${PREFIX} $< --json-enriched -k id --tolerance 1.0 --include-tolerated compare/jenrich2a.csv compare/jenrich2b.csv ${REDIRECT1} ${TMP_DIR}/$@.out6raw && \
+	@(${PREFIX} $< --json-redline -k id --tolerance 1.0 --include-tolerated compare/jenrich2a.csv compare/jenrich2b.csv ${REDIRECT1} ${TMP_DIR}/$@.out6raw && \
 	sed '/"generated_at"/d' ${TMP_DIR}/$@.out6raw > ${TMP_DIR}/$@.out6 && \
 	${CMP} ${TMP_DIR}/$@.out6 expected/$@.out6 && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(${PREFIX} $< --json-enriched -k id compare/jenrich7a.csv compare/jenrich7b.csv compare/jenrich7c.csv ${REDIRECT1} ${TMP_DIR}/$@.out7raw && \
+	@(${PREFIX} $< --json-redline -k id compare/jenrich7a.csv compare/jenrich7b.csv compare/jenrich7c.csv ${REDIRECT1} ${TMP_DIR}/$@.out7raw && \
 	sed '/"generated_at"/d' ${TMP_DIR}/$@.out7raw > ${TMP_DIR}/$@.out7 && \
 	${CMP} ${TMP_DIR}/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
 
