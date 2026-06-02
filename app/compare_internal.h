@@ -112,8 +112,6 @@ struct zsv_compare_data {
     double value;    /* bumped via nextafterf for comparison */
     double original; /* as specified by user — used for output */
 #define ZSV_COMPARE_MAX_NUMBER_BUFF_LEN 128
-    char str1[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
-    char str2[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
   } tolerance;
   struct {
     char type; // 'j' for json

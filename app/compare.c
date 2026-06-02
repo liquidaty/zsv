@@ -18,6 +18,8 @@
 #include <sqlite3.h>
 extern sqlite3_module CsvModule;
 
+#include <zsv/utils/compiler.h>
+#include <zsv/utils/mem.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/writer.h>
 
@@ -234,6 +236,20 @@ static const unsigned char *zsv_compare_combined_key_names(struct zsv_compare_da
 
 static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last_ix);
 
+// True if a and b both parse as numbers differing by less than the configured tolerance
+static int zsv_compare_within_tolerance(struct zsv_compare_data *data, struct zsv_cell a, struct zsv_cell b) {
+  if (!(data->tolerance.value > 0) || a.len >= ZSV_COMPARE_MAX_NUMBER_BUFF_LEN ||
+      b.len >= ZSV_COMPARE_MAX_NUMBER_BUFF_LEN)
+    return 0;
+  char sa[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN], sb[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
+  double da, db;
+  memcpy(sa, a.str ? a.str : (const unsigned char *)"", a.len);
+  sa[a.len] = '\0';
+  memcpy(sb, b.str ? b.str : (const unsigned char *)"", b.len);
+  sb[b.len] = '\0';
+  return !zsv_strtod_exact(sa, &da) && !zsv_strtod_exact(sb, &db) && fabs(da - db) < data->tolerance.value;
+}
+
 static void zsv_compare_print_row(struct zsv_compare_data *data,
                                   const unsigned last_ix // last input ix in inputs_to_sort
 ) {
@@ -300,21 +316,9 @@ static void zsv_compare_print_row(struct zsv_compare_data *data,
           output_col = input->output_colnames[input_col_ix];
         values[input_ix] = data->get_cell(input, input_col_ix);
         if (i > 0 && !different &&
-            data->cmp(data->cmp_ctx, values[first_input_ix], values[input_ix], data, input_col_ix)) {
+            data->cmp(data->cmp_ctx, values[first_input_ix], values[input_ix], data, input_col_ix) &&
+            !zsv_compare_within_tolerance(data, values[first_input_ix], values[input_ix]))
           different = 1;
-          if (data->tolerance.value && values[first_input_ix].len < ZSV_COMPARE_MAX_NUMBER_BUFF_LEN &&
-              values[input_ix].len < ZSV_COMPARE_MAX_NUMBER_BUFF_LEN) {
-            // check if both are numbers with a difference less than the given tolerance
-            double d1, d2;
-            memcpy(data->tolerance.str1, values[first_input_ix].str, values[first_input_ix].len);
-            data->tolerance.str1[values[first_input_ix].len] = '\0';
-            memcpy(data->tolerance.str2, values[input_ix].str, values[input_ix].len);
-            data->tolerance.str2[values[input_ix].len] = '\0';
-            if (!zsv_strtod_exact(data->tolerance.str1, &d1) && !zsv_strtod_exact(data->tolerance.str2, &d2) &&
-                fabs(d1 - d2) < data->tolerance.value)
-              different = 0;
-          }
-        }
       }
     }
 
@@ -368,15 +372,53 @@ static int zsv_compare_cell(void *ctx, struct zsv_cell c1, struct zsv_cell c2, v
 
 /* ---- Redline-mode helpers -------------------------------------------- */
 
-static unsigned char *zsv_compare_redline_strndup(const unsigned char *s, size_t len) {
-  if (!s || len == 0)
-    return NULL;
-  unsigned char *p = malloc(len + 1);
-  if (p) {
-    memcpy(p, s, len);
-    p[len] = '\0';
+// Copy a cell value into *dest_s/*dest_len, which must start NULL/0 (caller-zeroed). Empty/missing cells
+// are left NULL/0 (rendered as JSON null); *dest_len is only set on a successful copy, so it stays consistent
+// with *dest_s on every path. Returns nonzero only on allocation failure (callers must check — warn_unused_result).
+static ZSV_WARN_UNUSED_RESULT int zsv_compare_redline_dup_cell(unsigned char **dest_s, size_t *dest_len,
+                                                              struct zsv_cell v) {
+  if (v.str && v.len) {
+    if (!(*dest_s = zsv_memdup(v.str, v.len)))
+      return 1;
+    *dest_len = v.len;
   }
-  return p;
+  return 0;
+}
+
+// True if output column j is present in every input
+static int zsv_compare_col_in_all(struct zsv_compare_data *data, unsigned j) {
+  for (unsigned i = 0; i < data->input_count; i++)
+    if (data->inputs[i].out2in[j] == 0)
+      return 0;
+  return 1;
+}
+
+// Fill cell with the scalar from the first present (sorted) input that has output column j.
+// Returns nonzero only on allocation failure.
+static int zsv_compare_redline_scalar_from_first(struct zsv_compare_data *data, struct zsv_compare_redline_cell *cell,
+                                                 unsigned last_ix, unsigned j) {
+  for (unsigned pi = 0; pi <= last_ix; pi++) {
+    struct zsv_compare_input *inp = data->inputs_to_sort[pi];
+    if (inp->out2in[j] != 0)
+      return zsv_compare_redline_dup_cell(&cell->scalar_s, &cell->scalar_len, data->get_cell(inp, inp->out2in[j] - 1));
+  }
+  return 0;
+}
+
+// Emit s as a JSON string, or null when s is NULL
+static void zsv_compare_redline_emit_scalar(jsonwriter_handle jsw, const unsigned char *s, size_t len) {
+  if (s)
+    jsonwriter_strn(jsw, s, len);
+  else
+    jsonwriter_null(jsw);
+}
+
+// Free e's top-level arrays and e itself (rows are freed separately). Extend this when adding heap members.
+static void zsv_compare_redline_free_base(struct zsv_compare_redline *e) {
+  free(e->input_row_counts);
+  free(e->rows_only_in_input);
+  free(e->col_stats);
+  free(e);
 }
 
 static struct zsv_compare_redline *zsv_compare_redline_new(unsigned input_count, unsigned output_colcount) {
@@ -396,10 +438,7 @@ static struct zsv_compare_redline *zsv_compare_redline_new(unsigned input_count,
   }
   return e;
 err:
-  free(e->input_row_counts);
-  free(e->rows_only_in_input);
-  free(e->col_stats);
-  free(e);
+  zsv_compare_redline_free_base(e);
   return NULL;
 }
 
@@ -435,10 +474,7 @@ static void zsv_compare_redline_free(struct zsv_compare_redline *e, unsigned inp
     zsv_compare_redline_row_free(row, input_count, output_colcount);
     row = next;
   }
-  free(e->input_row_counts);
-  free(e->rows_only_in_input);
-  free(e->col_stats);
-  free(e);
+  zsv_compare_redline_free_base(e);
 }
 
 static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last_ix) {
@@ -462,16 +498,10 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
 
   /* Allocate row */
   struct zsv_compare_redline_row *row = calloc(1, sizeof(*row));
-  if (!row) {
-    data->status = zsv_compare_status_memory;
-    return;
-  }
-  row->cells = calloc(output_colcount, sizeof(*row->cells));
-  if (!row->cells) {
-    free(row);
-    data->status = zsv_compare_status_memory;
-    return;
-  }
+  if (row)
+    row->cells = calloc(output_colcount, sizeof(*row->cells));
+  if (!row || !row->cells)
+    goto oom;
 
   char has_diff = 0;
 
@@ -480,52 +510,27 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
     row->is_object = 1;
     row->missing_in_count = missing_count;
     row->missing_in = malloc(missing_count * sizeof(*row->missing_in));
-    if (!row->missing_in) {
-      free(row->cells);
-      free(row);
-      data->status = zsv_compare_status_memory;
-      return;
-    }
+    if (!row->missing_in)
+      goto oom;
     for (unsigned i = 0; i < missing_count; i++)
       row->missing_in[i] = data->inputs_to_sort[last_ix + 1 + i]->index;
     has_diff = 1;
 
     /* Per-column: use value from first present input that has this column */
     zsv_compare_unique_colname *oc = data->output_colnames_first;
-    for (unsigned j = 0; j < output_colcount && oc; j++, oc = oc->next) {
-      for (unsigned pi = 0; pi <= last_ix; pi++) {
-        struct zsv_compare_input *inp = data->inputs_to_sort[pi];
-        if (inp->out2in[j] != 0) {
-          struct zsv_cell v = data->get_cell(inp, inp->out2in[j] - 1);
-          row->cells[j].scalar_s = zsv_compare_redline_strndup(v.str, v.len);
-          row->cells[j].scalar_len = v.len;
-          break;
-        }
-      }
-    }
+    for (unsigned j = 0; j < output_colcount && oc; j++, oc = oc->next)
+      if (zsv_compare_redline_scalar_from_first(data, &row->cells[j], last_ix, j))
+        goto oom;
   } else {
     /* Array form: all inputs present — compare cells */
     struct zsv_compare_input *inp0 = data->inputs_to_sort[0];
 
     zsv_compare_unique_colname *oc = data->output_colnames_first;
     for (unsigned j = 0; j < output_colcount && oc; j++, oc = oc->next) {
-      /* Determine if column is in all inputs */
-      char col_in_all = 1;
-      for (unsigned i = 0; i < input_count && col_in_all; i++)
-        if (data->inputs[i].out2in[j] == 0)
-          col_in_all = 0;
-
-      if (!col_in_all) {
+      if (!zsv_compare_col_in_all(data, j)) {
         /* Schema-diff column: scalar from first input that has it */
-        for (unsigned pi = 0; pi <= last_ix; pi++) {
-          struct zsv_compare_input *inp = data->inputs_to_sort[pi];
-          if (inp->out2in[j] != 0) {
-            struct zsv_cell v = data->get_cell(inp, inp->out2in[j] - 1);
-            row->cells[j].scalar_s = zsv_compare_redline_strndup(v.str, v.len);
-            row->cells[j].scalar_len = v.len;
-            break;
-          }
-        }
+        if (zsv_compare_redline_scalar_from_first(data, &row->cells[j], last_ix, j))
+          goto oom;
         continue; /* not counted in cells.compared */
       }
 
@@ -542,8 +547,8 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
       if (oc->is_key) {
         e->col_stats[j].matched++;
         e->cells_matched++;
-        row->cells[j].scalar_s = zsv_compare_redline_strndup(v0.str, v0.len);
-        row->cells[j].scalar_len = v0.len;
+        if (zsv_compare_redline_dup_cell(&row->cells[j].scalar_s, &row->cells[j].scalar_len, v0))
+          goto oom;
         continue;
       }
 
@@ -562,33 +567,20 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
       if (!different) {
         e->col_stats[j].matched++;
         e->cells_matched++;
-        row->cells[j].scalar_s = zsv_compare_redline_strndup(v0.str, v0.len);
-        row->cells[j].scalar_len = v0.len;
+        if (zsv_compare_redline_dup_cell(&row->cells[j].scalar_s, &row->cells[j].scalar_len, v0))
+          goto oom;
         continue;
       }
 
-      /* Check tolerance: all pairs (0 vs i) must be within tolerance */
+      /* Check tolerance: all differing pairs (0 vs i) must be within tolerance */
       char tolerated = 0;
       if (data->tolerance.value > 0) {
         tolerated = 1;
         for (unsigned pi = 1; pi <= last_ix && tolerated; pi++) {
           struct zsv_compare_input *inp = data->inputs_to_sort[pi];
           unsigned ci = inp->out2in[j];
-          if (ci == 0)
-            continue;
-          struct zsv_cell vi = data->get_cell(inp, ci - 1);
-          if (v0.len >= ZSV_COMPARE_MAX_NUMBER_BUFF_LEN || vi.len >= ZSV_COMPARE_MAX_NUMBER_BUFF_LEN) {
+          if (ci != 0 && !zsv_compare_within_tolerance(data, v0, data->get_cell(inp, ci - 1)))
             tolerated = 0;
-          } else {
-            double d0, di;
-            char s0[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN], si[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
-            memcpy(s0, v0.str ? v0.str : (const unsigned char *)"", v0.len);
-            s0[v0.len] = '\0';
-            memcpy(si, vi.str ? vi.str : (const unsigned char *)"", vi.len);
-            si[vi.len] = '\0';
-            if (zsv_strtod_exact(s0, &d0) || zsv_strtod_exact(si, &di) || fabs(d0 - di) >= data->tolerance.value)
-              tolerated = 0;
-          }
         }
       }
 
@@ -598,8 +590,8 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
         row->cells[j].is_tolerated = 1;
         if (!data->writer.include_tolerated) {
           /* Collapse to input[0]'s scalar */
-          row->cells[j].scalar_s = zsv_compare_redline_strndup(v0.str, v0.len);
-          row->cells[j].scalar_len = v0.len;
+          if (zsv_compare_redline_dup_cell(&row->cells[j].scalar_s, &row->cells[j].scalar_len, v0))
+            goto oom;
           continue;
         }
         /* With include_tolerated: render as diff array — counts as a diff for row inclusion */
@@ -615,21 +607,16 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
       row->cells[j].is_diff = 1;
       row->cells[j].diff_s = calloc(input_count, sizeof(*row->cells[j].diff_s));
       row->cells[j].diff_len = calloc(input_count, sizeof(*row->cells[j].diff_len));
-      if (!row->cells[j].diff_s || !row->cells[j].diff_len) {
-        data->status = zsv_compare_status_memory;
-        zsv_compare_redline_row_free(row, input_count, output_colcount);
-        return;
-      }
+      if (!row->cells[j].diff_s || !row->cells[j].diff_len)
+        goto oom;
       for (unsigned pi = 0; pi <= last_ix; pi++) {
         struct zsv_compare_input *inp = data->inputs_to_sort[pi];
         unsigned ci = inp->out2in[j];
         unsigned inp_ix = inp->index;
-        if (ci != 0) {
-          struct zsv_cell vi = data->get_cell(inp, ci - 1);
-          row->cells[j].diff_s[inp_ix] = zsv_compare_redline_strndup(vi.str, vi.len);
-          row->cells[j].diff_len[inp_ix] = vi.len;
-        }
         /* Missing inputs stay NULL → emitted as JSON null */
+        if (ci != 0 && zsv_compare_redline_dup_cell(&row->cells[j].diff_s[inp_ix], &row->cells[j].diff_len[inp_ix],
+                                                    data->get_cell(inp, ci - 1)))
+          goto oom;
       }
     }
   }
@@ -646,6 +633,11 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
   row->next = NULL;
   *e->rows_tail = row;
   e->rows_tail = &row->next;
+  return;
+
+oom:
+  zsv_compare_redline_row_free(row, input_count, output_colcount);
+  data->status = zsv_compare_status_memory;
 }
 
 static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
@@ -665,8 +657,7 @@ static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
     struct tm *utc = gmtime(&now);
     char buf[32];
     strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", utc);
-    jsonwriter_object_key(jsw, "generated_at");
-    jsonwriter_cstr(jsw, buf);
+    jsonwriter_object_cstr(jsw, "generated_at", buf);
   }
 
   /* inputs[] */
@@ -676,10 +667,8 @@ static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
     jsonwriter_start_object(jsw);
     const char *slash = strrchr(inp->path, '/');
     const char *label = slash ? slash + 1 : inp->path;
-    jsonwriter_object_key(jsw, "label");
-    jsonwriter_cstr(jsw, label);
-    jsonwriter_object_key(jsw, "path");
-    jsonwriter_cstr(jsw, inp->path);
+    jsonwriter_object_cstr(jsw, "label", label);
+    jsonwriter_object_cstr(jsw, "path", inp->path);
     jsonwriter_object_size_t(jsw, "row_count", e->input_row_counts[i]);
     jsonwriter_end_object(jsw);
   }
@@ -693,12 +682,10 @@ static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
 
   /* options */
   jsonwriter_object_object(jsw, "options");
-  if (data->tolerance.original > 0) {
-    jsonwriter_object_key(jsw, "tolerance");
-    jsonwriter_dbl(jsw, (long double)data->tolerance.original);
-  } else {
+  if (data->tolerance.original > 0)
+    jsonwriter_object_dbl(jsw, "tolerance", (long double)data->tolerance.original);
+  else
     jsonwriter_object_null(jsw, "tolerance");
-  }
   jsonwriter_object_bool(jsw, "sort", data->sort);
   jsonwriter_object_bool(jsw, "include_unchanged_rows", data->writer.include_unchanged_rows);
   jsonwriter_object_bool(jsw, "include_tolerated", data->writer.include_tolerated);
@@ -710,8 +697,7 @@ static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
     zsv_compare_unique_colname *oc = data->output_colnames_first;
     for (unsigned j = 0; j < output_colcount && oc; j++, oc = oc->next) {
       jsonwriter_start_object(jsw);
-      jsonwriter_object_key(jsw, "name");
-      jsonwriter_strn(jsw, oc->name, oc->name_len);
+      jsonwriter_object_strn(jsw, "name", oc->name, oc->name_len);
       jsonwriter_object_bool(jsw, "is_key", oc->is_key);
       jsonwriter_object_array(jsw, "in_inputs");
       for (unsigned i = 0; i < input_count; i++)
@@ -747,8 +733,7 @@ static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
     zsv_compare_unique_colname *oc = data->output_colnames_first;
     for (unsigned j = 0; j < output_colcount && oc; j++, oc = oc->next) {
       jsonwriter_start_object(jsw);
-      jsonwriter_object_key(jsw, "name");
-      jsonwriter_strn(jsw, oc->name, oc->name_len);
+      jsonwriter_object_strn(jsw, "name", oc->name, oc->name_len);
       jsonwriter_object_size_t(jsw, "compared", e->col_stats[j].compared);
       jsonwriter_object_size_t(jsw, "matched", e->col_stats[j].matched);
       jsonwriter_object_size_t(jsw, "within_tolerance", e->col_stats[j].within_tolerance);
@@ -762,14 +747,9 @@ static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
   jsonwriter_object_array(jsw, "common");
   {
     zsv_compare_unique_colname *oc = data->output_colnames_first;
-    for (unsigned j = 0; j < output_colcount && oc; j++, oc = oc->next) {
-      char in_all = 1;
-      for (unsigned i = 0; i < input_count && in_all; i++)
-        if (data->inputs[i].out2in[j] == 0)
-          in_all = 0;
-      if (in_all)
+    for (unsigned j = 0; j < output_colcount && oc; j++, oc = oc->next)
+      if (zsv_compare_col_in_all(data, j))
         jsonwriter_strn(jsw, oc->name, oc->name_len);
-    }
   }
   jsonwriter_end_array(jsw);
   jsonwriter_object_array(jsw, "only_in_input");
@@ -799,13 +779,8 @@ static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
     if (row->is_object) {
       jsonwriter_start_object(jsw);
       jsonwriter_object_array(jsw, "data");
-      for (unsigned j = 0; j < output_colcount; j++) {
-        struct zsv_compare_redline_cell *cell = &row->cells[j];
-        if (cell->scalar_s)
-          jsonwriter_strn(jsw, cell->scalar_s, cell->scalar_len);
-        else
-          jsonwriter_null(jsw);
-      }
+      for (unsigned j = 0; j < output_colcount; j++)
+        zsv_compare_redline_emit_scalar(jsw, row->cells[j].scalar_s, row->cells[j].scalar_len);
       jsonwriter_end_array(jsw);
       jsonwriter_object_array(jsw, "missing_in");
       for (unsigned m = 0; m < row->missing_in_count; m++)
@@ -818,17 +793,12 @@ static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
         struct zsv_compare_redline_cell *cell = &row->cells[j];
         if (cell->is_diff) {
           jsonwriter_start_array(jsw);
-          for (unsigned i = 0; i < input_count; i++) {
-            if (cell->diff_s && cell->diff_s[i])
-              jsonwriter_strn(jsw, cell->diff_s[i], cell->diff_len[i]);
-            else
-              jsonwriter_null(jsw);
-          }
+          for (unsigned i = 0; i < input_count; i++)
+            zsv_compare_redline_emit_scalar(jsw, cell->diff_s ? cell->diff_s[i] : NULL,
+                                            cell->diff_len ? cell->diff_len[i] : 0);
           jsonwriter_end_array(jsw);
-        } else if (cell->scalar_s) {
-          jsonwriter_strn(jsw, cell->scalar_s, cell->scalar_len);
         } else {
-          jsonwriter_null(jsw);
+          zsv_compare_redline_emit_scalar(jsw, cell->scalar_s, cell->scalar_len);
         }
       }
       jsonwriter_end_array(jsw);

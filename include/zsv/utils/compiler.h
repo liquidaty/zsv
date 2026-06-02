@@ -55,4 +55,15 @@
 
 #endif /* HAVE___BUILTIN_EXPECT */
 
+/* Warn (and, under -Werror, fail to compile) when a function's return value is ignored by a caller. */
+#ifndef ZSV_WARN_UNUSED_RESULT
+#if defined(__GNUC__) || defined(__clang__)
+#define ZSV_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#elif defined(_MSC_VER)
+#define ZSV_WARN_UNUSED_RESULT _Check_return_
+#else
+#define ZSV_WARN_UNUSED_RESULT
+#endif
+#endif
+
 #endif /* ZSV_UTILS_COMPILER */
