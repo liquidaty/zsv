@@ -834,6 +834,8 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 # TC5: --include-unchanged-rows
 # TC6: --include-tolerated
 # TC7: three inputs → length-3 diff arrays
+# TC8: SOURCE_DATE_EPOCH yields a deterministic generated_at
+# TC9: --exit-code returns the number of differing cells in redline mode
 test-compare-redline: ${BUILD_DIR}/bin/zsv_compare${EXE}
 	@${TEST_INIT}
 	@(${PREFIX} $< --json-redline -k id compare/jredline1a.csv compare/jredline1b.csv ${REDIRECT1} ${TMP_DIR}/$@.out1raw && \
@@ -863,6 +865,14 @@ test-compare-redline: ${BUILD_DIR}/bin/zsv_compare${EXE}
 	@(${PREFIX} $< --json-redline -k id compare/jredline7a.csv compare/jredline7b.csv compare/jredline7c.csv ${REDIRECT1} ${TMP_DIR}/$@.out7raw && \
 	sed '/"generated_at"/d' ${TMP_DIR}/$@.out7raw > ${TMP_DIR}/$@.out7 && \
 	${CMP} ${TMP_DIR}/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC8: SOURCE_DATE_EPOCH must produce a fixed generated_at (1700000000 -> 2023-11-14T22:13:20Z)
+	@(SOURCE_DATE_EPOCH=1700000000 $< --json-redline -k id compare/jredline1a.csv compare/jredline1b.csv >${TMP_DIR}/$@.out8 2>&1 && \
+	grep -q '"generated_at": "2023-11-14T22:13:20Z"' ${TMP_DIR}/$@.out8 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC9: --exit-code returns the differing-cell count (jredline7 -> 1) in redline mode
+	@($< --json-redline --exit-code -k id compare/jredline7a.csv compare/jredline7b.csv compare/jredline7c.csv >/dev/null 2>&1; \
+	[ $$? -eq 1 ] && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-sheet-cleanup test-sheet-all
 

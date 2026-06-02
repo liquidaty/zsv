@@ -103,4 +103,4 @@ Columns present in only some inputs appear in `columns[]` with `in_inputs` listi
 
 ## Passthrough options
 
-All existing `zsv compare` options (`-k`, `--tolerance`, `--sort`, `--sort-in-memory`, `-e`) work as before.  `--json-redline` adds output metadata; it does not change comparison semantics.
+All existing `zsv compare` options (`-k`, `--tolerance`, `--sort`, `--sort-in-memory`, `-e`) work as before.  `--json-redline` adds output metadata; it does not change comparison semantics.  With `-e`/`--exit-code`, the process exit code is the number of differing cells (matching the non-redline path, and equal to `summary.cells.differing`); `< 0` indicates an error.

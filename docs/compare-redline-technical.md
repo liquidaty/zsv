@@ -8,7 +8,7 @@ The output is plain JSON (no comments).  The schema is documented with comments 
 
 | `schema.jsonc` section | Implementation |
 |------------------------|----------------|
-| `schema`, `version`, `generated_at` | Emitted by `zsv_compare_emit_redline` using `time()`/`gmtime()`. |
+| `schema`, `version`, `generated_at` | Emitted by `zsv_compare_emit_redline`.  `generated_at` uses `SOURCE_DATE_EPOCH` (epoch seconds) when set, for reproducible output; otherwise `time()`/`gmtime()`. |
 | `inputs[]` | One entry per `struct zsv_compare_input`.  `label` = `basename(path)`, `path` = CLI argument as given, `row_count` = rows consumed by `zsv_compare_collect_row`. |
 | `keys[]` | `data->keys` linked list. |
 | `options` | Flags from `data->tolerance.original`, `data->sort`, `data->writer.include_unchanged_rows`, `data->writer.include_tolerated`. |

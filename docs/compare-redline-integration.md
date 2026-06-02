@@ -34,7 +34,13 @@ The compare JSON is a peer document, not the renderer's input format.  This keep
 
 ## Consuming `generated_at`
 
-The `generated_at` field is an ISO 8601 UTC timestamp (`"%Y-%m-%dT%H:%M:%SZ"`).  It changes on every run and should be excluded from byte-for-byte regression tests.  Strip it before comparison:
+The `generated_at` field is an ISO 8601 UTC timestamp (`"%Y-%m-%dT%H:%M:%SZ"`).  By default it changes on every run.  For reproducible output, set the `SOURCE_DATE_EPOCH` environment variable (UNIX epoch seconds, the reproducible-builds convention) to pin it to a fixed value:
+
+```sh
+SOURCE_DATE_EPOCH=1700000000 zsv compare --json-redline ...   # generated_at = 2023-11-14T22:13:20Z
+```
+
+When `SOURCE_DATE_EPOCH` is unset or invalid, the current time is used.  Alternatively, strip the field before byte-for-byte comparison:
 
 ```sh
 zsv compare --json-redline ... | sed '/"generated_at"/d' > actual.json

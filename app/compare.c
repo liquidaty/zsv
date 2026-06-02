@@ -653,7 +653,15 @@ static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
   jsonwriter_object_str(jsw, "version", (const unsigned char *)"1");
 
   {
-    time_t now = time(NULL);
+    /* Honor SOURCE_DATE_EPOCH (reproducible-builds convention) for deterministic output; else wall clock. */
+    const char *sde = getenv("SOURCE_DATE_EPOCH");
+    time_t now;
+    if (sde && *sde) {
+      char *end;
+      long long epoch = strtoll(sde, &end, 10);
+      now = (*end || epoch < 0) ? time(NULL) : (time_t)epoch;
+    } else
+      now = time(NULL);
     struct tm *utc = gmtime(&now);
     char buf[32];
     strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", utc);
@@ -807,6 +815,10 @@ static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
   jsonwriter_end_array(jsw); /* rows */
 
   jsonwriter_end_object(jsw); /* top level */
+
+  /* Mirror the canonical path's per-differing-cell tally into diff_count so --return-count yields the
+     same exit code in redline mode (the redline struct is freed before that code is read). */
+  data->diff_count = e->cells_differing > INT_MAX ? INT_MAX : (int)e->cells_differing;
 }
 
 /* ---- End redline-mode helpers ---------------------------------------- */
@@ -1134,7 +1146,7 @@ static int compare_usage(void) {
     "  --json             : output as JSON",
     "  --json-compact     : output as compact JSON",
     "  --json-object      : output as an array of objects",
-    "  --json-redline    : output self-contained redline JSON (schema.jsonc format)",
+    "  --json-redline     : output self-contained redline JSON (schema.jsonc format)",
     "  --include-unchanged-rows: (with --json-redline) emit matched rows",
     "  --include-tolerated: (with --json-redline) emit tolerated diffs as arrays",
     "  --columns <spec>   : compare column ranges within a single file",
@@ -1163,6 +1175,10 @@ static int compare_usage(void) {
     "  superior. For handling quoted data, `2tsv` can be used to convert to a delimited",
     "  format without quotes, that can be directly parsed with common UNIX utilities",
     "  (such as `sort`), and `select --unescape` can be used to convert back",
+    "",
+    "  In --json-redline mode, the `generated_at` timestamp honors the",
+    "  SOURCE_DATE_EPOCH environment variable (UNIX epoch seconds) so that output",
+    "  can be made reproducible; if it is unset or invalid, the current time is used.",
     NULL,
   };
 
