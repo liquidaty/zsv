@@ -8,13 +8,13 @@ The output is plain JSON (no comments).  The schema is documented with comments 
 
 | `schema.jsonc` section | Implementation |
 |------------------------|----------------|
-| `schema`, `version`, `generated_at` | Emitted by `zsv_compare_emit_enriched` using `time()`/`gmtime()`. |
+| `schema`, `version`, `generated_at` | Emitted by `zsv_compare_emit_redline` using `time()`/`gmtime()`. |
 | `inputs[]` | One entry per `struct zsv_compare_input`.  `label` = `basename(path)`, `path` = CLI argument as given, `row_count` = rows consumed by `zsv_compare_collect_row`. |
 | `keys[]` | `data->keys` linked list. |
 | `options` | Flags from `data->tolerance.original`, `data->sort`, `data->writer.include_unchanged_rows`, `data->writer.include_tolerated`. |
 | `columns[]` | `output_colnames_first` linked list; `in_inputs` computed from `input->out2in[j] != 0`. |
-| `summary.*` | Aggregated in `struct zsv_compare_enriched` during the comparison pass. |
-| `rows[]` | `struct zsv_compare_enriched_row` linked list emitted in processing order. |
+| `summary.*` | Aggregated in `struct zsv_compare_redline` during the comparison pass. |
+| `rows[]` | `struct zsv_compare_redline_row` linked list emitted in processing order. |
 
 ## Tolerance semantics
 
@@ -35,23 +35,23 @@ A column present in only some inputs (`input->out2in[j] == 0` for at least one i
 
 ## Memory Ledger
 
-Every new allocation introduced by the enriched mode and its corresponding free path:
+Every new allocation introduced by the redline mode and its corresponding free path:
 
 | Allocation site | Owning field | Free path |
 |----------------|--------------|-----------|
-| `calloc(1, sizeof(*e))` — the enriched context | `data->enriched` | `zsv_compare_enriched_free` → called from `zsv_compare_data_free` |
-| `calloc(input_count, ...)` — `e->input_row_counts` | `enriched->input_row_counts` | `zsv_compare_enriched_free` |
-| `calloc(input_count, ...)` — `e->rows_only_in_input` | `enriched->rows_only_in_input` | `zsv_compare_enriched_free` |
-| `calloc(output_colcount, ...)` — `e->col_stats` | `enriched->col_stats` | `zsv_compare_enriched_free` |
-| `calloc(1, sizeof(*row))` — per row | `enriched->rows_head` linked list | `zsv_compare_enriched_row_free` (called for every row by `zsv_compare_enriched_free`) |
-| `calloc(output_colcount, ...)` — `row->cells` | `row->cells` | `zsv_compare_enriched_row_free` |
-| `malloc(missing_count * ...)` — `row->missing_in` | `row->missing_in` | `zsv_compare_enriched_row_free` |
-| `zsv_compare_enrich_strndup(v.str, v.len)` — `cell->scalar_s` | `cell->scalar_s` | `zsv_compare_enriched_cell_free` |
-| `calloc(input_count, ...)` — `cell->diff_s` | `cell->diff_s` | `zsv_compare_enriched_cell_free` |
-| `calloc(input_count, ...)` — `cell->diff_len` | `cell->diff_len` | `zsv_compare_enriched_cell_free` |
-| `zsv_compare_enrich_strndup(...)` — per slot in `cell->diff_s[i]` | `cell->diff_s[i]` | `zsv_compare_enriched_cell_free` (loops over input_count) |
+| `calloc(1, sizeof(*e))` — the redline context | `data->redline` | `zsv_compare_redline_free` → called from `zsv_compare_data_free` |
+| `calloc(input_count, ...)` — `e->input_row_counts` | `redline->input_row_counts` | `zsv_compare_redline_free` |
+| `calloc(input_count, ...)` — `e->rows_only_in_input` | `redline->rows_only_in_input` | `zsv_compare_redline_free` |
+| `calloc(output_colcount, ...)` — `e->col_stats` | `redline->col_stats` | `zsv_compare_redline_free` |
+| `calloc(1, sizeof(*row))` — per row | `redline->rows_head` linked list | `zsv_compare_redline_row_free` (called for every row by `zsv_compare_redline_free`) |
+| `calloc(output_colcount, ...)` — `row->cells` | `row->cells` | `zsv_compare_redline_row_free` |
+| `malloc(missing_count * ...)` — `row->missing_in` | `row->missing_in` | `zsv_compare_redline_row_free` |
+| `zsv_compare_redline_strndup(v.str, v.len)` — `cell->scalar_s` | `cell->scalar_s` | `zsv_compare_redline_cell_free` |
+| `calloc(input_count, ...)` — `cell->diff_s` | `cell->diff_s` | `zsv_compare_redline_cell_free` |
+| `calloc(input_count, ...)` — `cell->diff_len` | `cell->diff_len` | `zsv_compare_redline_cell_free` |
+| `zsv_compare_redline_strndup(...)` — per slot in `cell->diff_s[i]` | `cell->diff_s[i]` | `zsv_compare_redline_cell_free` (loops over input_count) |
 
-`zsv_compare_data_free` calls `zsv_compare_enriched_free` unconditionally (NULL-safe) before the existing JSON writer cleanup.
+`zsv_compare_data_free` calls `zsv_compare_redline_free` unconditionally (NULL-safe) before the existing JSON writer cleanup.
 
 ## Resolved open decisions
 
@@ -65,17 +65,17 @@ Every new allocation introduced by the enriched mode and its corresponding free 
 ## Code structure
 
 New files:
-- `app/compare_enriched.h` — struct definitions for `zsv_compare_enriched`, `zsv_compare_enriched_row`, `zsv_compare_enriched_cell`, `zsv_compare_col_stat`.
+- `app/compare_redline.h` — struct definitions for `zsv_compare_redline`, `zsv_compare_redline_row`, `zsv_compare_redline_cell`, `zsv_compare_col_stat`.
 
 Modified files:
-- `app/compare_internal.h` — added `data->enriched` pointer, `writer.include_unchanged_rows`, `writer.include_tolerated` bits, `tolerance.original` field.
+- `app/compare_internal.h` — added `data->redline` pointer, `writer.include_unchanged_rows`, `writer.include_tolerated` bits, `tolerance.original` field.
 - `app/compare.c` — added `#include <time.h>`, `ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE 'e'`, and the following static functions:
-  - `zsv_compare_enrich_strndup` — safe strdup for cell values.
-  - `zsv_compare_enriched_new` / `_free` / `_cell_free` / `_row_free` — lifecycle.
-  - `zsv_compare_collect_row` — called from `zsv_compare_print_row` in enriched mode; builds the in-memory row representation and updates stats.
-  - `zsv_compare_emit_enriched` — emits the complete JSON document via `jsonwriter_*` at the end.
+  - `zsv_compare_redline_strndup` — safe strdup for cell values.
+  - `zsv_compare_redline_new` / `_free` / `_cell_free` / `_row_free` — lifecycle.
+  - `zsv_compare_collect_row` — called from `zsv_compare_print_row` in redline mode; builds the in-memory row representation and updates stats.
+  - `zsv_compare_emit_redline` — emits the complete JSON document via `jsonwriter_*` at the end.
   - Hook in `zsv_compare_output_begin`: init `jsonwriter_new` only, no output yet.
-  - Hook in `zsv_compare_output_end`: call `zsv_compare_emit_enriched`.
-  - Hook in `zsv_compare_data_free`: call `zsv_compare_enriched_free`.
+  - Hook in `zsv_compare_output_end`: call `zsv_compare_emit_redline`.
+  - Hook in `zsv_compare_data_free`: call `zsv_compare_redline_free`.
 
 All hooks guard on `writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE` and are no-ops for all other modes.

@@ -1,4 +1,4 @@
-// zsv compare — enriched JSON output schema (v1)
+// zsv compare — redline JSON output schema (v1)
 //
 // Emitted by a new `zsv compare` output mode (proposed CLI flag: `--json-redline`,
 // final name TBD by implementer). The existing `--json` / `--json-object` /

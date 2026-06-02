@@ -1,9 +1,9 @@
-#ifndef ZSV_COMPARE_ENRICHED_H
-#define ZSV_COMPARE_ENRICHED_H
+#ifndef ZSV_COMPARE_REDLINE_H
+#define ZSV_COMPARE_REDLINE_H
 
 #include <stdlib.h>
 
-struct zsv_compare_enriched_cell {
+struct zsv_compare_redline_cell {
   unsigned char is_diff;      /* 1=diff array emitted, 0=scalar */
   unsigned char is_tolerated; /* 1=was within tolerance (only when !is_diff in default mode) */
   /* Scalar value (valid when !is_diff) */
@@ -14,12 +14,12 @@ struct zsv_compare_enriched_cell {
   size_t *diff_len;       /* [input_count] */
 };
 
-struct zsv_compare_enriched_row {
-  struct zsv_compare_enriched_row *next;
+struct zsv_compare_redline_row {
+  struct zsv_compare_redline_row *next;
   unsigned char is_object; /* 1=object form with missing_in */
   unsigned *missing_in;    /* [missing_in_count] input indices */
   unsigned missing_in_count;
-  struct zsv_compare_enriched_cell *cells; /* [output_colcount] */
+  struct zsv_compare_redline_cell *cells; /* [output_colcount] */
 };
 
 struct zsv_compare_col_stat {
@@ -29,9 +29,9 @@ struct zsv_compare_col_stat {
   size_t differing;
 };
 
-struct zsv_compare_enriched {
-  struct zsv_compare_enriched_row *rows_head;
-  struct zsv_compare_enriched_row **rows_tail;
+struct zsv_compare_redline {
+  struct zsv_compare_redline_row *rows_head;
+  struct zsv_compare_redline_row **rows_tail;
 
   size_t *input_row_counts;               /* [input_count] */
   struct zsv_compare_col_stat *col_stats; /* [output_colcount] */

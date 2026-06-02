@@ -3,18 +3,13 @@
   "version": "1",
   "inputs": [
     {
-      "label": "jenrich7a.csv",
-      "path": "compare/jenrich7a.csv",
+      "label": "jredline1a.csv",
+      "path": "compare/jredline1a.csv",
       "row_count": 2
     },
     {
-      "label": "jenrich7b.csv",
-      "path": "compare/jenrich7b.csv",
-      "row_count": 2
-    },
-    {
-      "label": "jenrich7c.csv",
-      "path": "compare/jenrich7c.csv",
+      "label": "jredline1b.csv",
+      "path": "compare/jredline1b.csv",
       "row_count": 2
     }
   ],
@@ -33,8 +28,15 @@
       "is_key": true,
       "in_inputs": [
         0,
-        1,
-        2
+        1
+      ]
+    },
+    {
+      "name": "name",
+      "is_key": false,
+      "in_inputs": [
+        0,
+        1
       ]
     },
     {
@@ -42,8 +44,7 @@
       "is_key": false,
       "in_inputs": [
         0,
-        1,
-        2
+        1
       ]
     }
   ],
@@ -52,16 +53,15 @@
       "in_all_inputs": 2,
       "only_in_input_count": [
         0,
-        0,
         0
       ],
-      "with_any_diff": 1
+      "with_any_diff": 0
     },
     "cells": {
-      "compared": 4,
-      "matched": 3,
+      "compared": 6,
+      "matched": 6,
       "within_tolerance": 0,
-      "differing": 1
+      "differing": 0
     },
     "by_column": [
       {
@@ -72,21 +72,27 @@
         "differing": 0
       },
       {
+        "name": "name",
+        "compared": 2,
+        "matched": 2,
+        "within_tolerance": 0,
+        "differing": 0
+      },
+      {
         "name": "val",
         "compared": 2,
-        "matched": 1,
+        "matched": 2,
         "within_tolerance": 0,
-        "differing": 1
+        "differing": 0
       }
     ],
     "schema": {
       "common": [
         "id",
+        "name",
         "val"
       ],
       "only_in_input": [
-        [
-        ],
         [
         ],
         [
@@ -95,13 +101,5 @@
     }
   },
   "rows": [
-    [
-      "2",
-      [
-        "B",
-        "X",
-        "Y"
-      ]
-    ]
   ]
 }

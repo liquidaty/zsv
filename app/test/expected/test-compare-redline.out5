@@ -3,14 +3,14 @@
   "version": "1",
   "inputs": [
     {
-      "label": "jenrich3a.csv",
-      "path": "compare/jenrich3a.csv",
-      "row_count": 2
+      "label": "jredline5a.csv",
+      "path": "compare/jredline5a.csv",
+      "row_count": 3
     },
     {
-      "label": "jenrich3b.csv",
-      "path": "compare/jenrich3b.csv",
-      "row_count": 2
+      "label": "jredline5b.csv",
+      "path": "compare/jredline5b.csv",
+      "row_count": 3
     }
   ],
   "keys": [
@@ -19,7 +19,7 @@
   "options": {
     "tolerance": null,
     "sort": false,
-    "include_unchanged_rows": false,
+    "include_unchanged_rows": true,
     "include_tolerated": false
   },
   "columns": [
@@ -38,51 +38,37 @@
         0,
         1
       ]
-    },
-    {
-      "name": "extra",
-      "is_key": false,
-      "in_inputs": [
-        0
-      ]
     }
   ],
   "summary": {
     "rows": {
-      "in_all_inputs": 2,
+      "in_all_inputs": 3,
       "only_in_input_count": [
         0,
         0
       ],
-      "with_any_diff": 0
+      "with_any_diff": 1
     },
     "cells": {
-      "compared": 4,
-      "matched": 4,
+      "compared": 6,
+      "matched": 5,
       "within_tolerance": 0,
-      "differing": 0
+      "differing": 1
     },
     "by_column": [
       {
         "name": "id",
-        "compared": 2,
-        "matched": 2,
+        "compared": 3,
+        "matched": 3,
         "within_tolerance": 0,
         "differing": 0
       },
       {
         "name": "name",
-        "compared": 2,
+        "compared": 3,
         "matched": 2,
         "within_tolerance": 0,
-        "differing": 0
-      },
-      {
-        "name": "extra",
-        "compared": 0,
-        "matched": 0,
-        "within_tolerance": 0,
-        "differing": 0
+        "differing": 1
       }
     ],
     "schema": {
@@ -92,7 +78,6 @@
       ],
       "only_in_input": [
         [
-          "extra"
         ],
         [
         ]
@@ -100,5 +85,20 @@
     }
   },
   "rows": [
+    [
+      "1",
+      "Alice"
+    ],
+    [
+      "2",
+      [
+        "Bob",
+        "Robert"
+      ]
+    ],
+    [
+      "3",
+      "Carol"
+    ]
   ]
 }

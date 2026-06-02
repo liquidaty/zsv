@@ -24,7 +24,7 @@ The redline composer runs one `zsv compare --json-redline` per stratification ta
 
 ## Integration with future `doc-to-html` / `doc-to-xlsx` renderers
 
-The enriched JSON output is **not** the document-model format that `doc-to-html`/`doc-to-xlsx` will consume.  The composer translates `compare --json-redline` output into a table block within a higher-level document model:
+The redline JSON output is **not** the document-model format that `doc-to-html`/`doc-to-xlsx` will consume.  The composer translates `compare --json-redline` output into a table block within a higher-level document model:
 
 ```
 compare JSON → composer → document model (headings + table blocks) → doc-to-html / doc-to-xlsx
@@ -41,7 +41,7 @@ zsv compare --json-redline ... | sed '/"generated_at"/d' > actual.json
 cmp actual.json expected.json
 ```
 
-This is exactly how the test harness (`app/test/Makefile`, rule `test-compare-enriched`) handles it.
+This is exactly how the test harness (`app/test/Makefile`, rule `test-compare-redline`) handles it.
 
 ## Schema versioning
 
@@ -49,7 +49,7 @@ The `"version": "1"` field in the output identifies the schema version.  Consume
 
 ## Test harness integration
 
-New test cases live in `app/test/Makefile` under the `test-compare-enriched` target, which is added to the `TESTS` list and runs as part of `make -C app test`.  Input fixtures are in `app/test/compare/jenrich*.csv`.  Expected outputs (with `generated_at` stripped) are in `app/test/expected/test-compare-enriched.out[1-7]`.
+New test cases live in `app/test/Makefile` under the `test-compare-redline` target, which is added to the `TESTS` list and runs as part of `make -C app test`.  Input fixtures are in `app/test/compare/jredline*.csv`.  Expected outputs (with `generated_at` stripped) are in `app/test/expected/test-compare-redline.out[1-7]`.
 
 To add a new test case, follow the pattern:
 ```makefile

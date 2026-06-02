@@ -3,14 +3,14 @@
   "version": "1",
   "inputs": [
     {
-      "label": "jenrich4a.csv",
-      "path": "compare/jenrich4a.csv",
-      "row_count": 3
+      "label": "jredline3a.csv",
+      "path": "compare/jredline3a.csv",
+      "row_count": 2
     },
     {
-      "label": "jenrich4b.csv",
-      "path": "compare/jenrich4b.csv",
-      "row_count": 3
+      "label": "jredline3b.csv",
+      "path": "compare/jredline3b.csv",
+      "row_count": 2
     }
   ],
   "keys": [
@@ -32,11 +32,18 @@
       ]
     },
     {
-      "name": "val",
+      "name": "name",
       "is_key": false,
       "in_inputs": [
         0,
         1
+      ]
+    },
+    {
+      "name": "extra",
+      "is_key": false,
+      "in_inputs": [
+        0
       ]
     }
   ],
@@ -44,10 +51,10 @@
     "rows": {
       "in_all_inputs": 2,
       "only_in_input_count": [
-        1,
-        1
+        0,
+        0
       ],
-      "with_any_diff": 2
+      "with_any_diff": 0
     },
     "cells": {
       "compared": 4,
@@ -64,9 +71,16 @@
         "differing": 0
       },
       {
-        "name": "val",
+        "name": "name",
         "compared": 2,
         "matched": 2,
+        "within_tolerance": 0,
+        "differing": 0
+      },
+      {
+        "name": "extra",
+        "compared": 0,
+        "matched": 0,
         "within_tolerance": 0,
         "differing": 0
       }
@@ -74,10 +88,11 @@
     "schema": {
       "common": [
         "id",
-        "val"
+        "name"
       ],
       "only_in_input": [
         [
+          "extra"
         ],
         [
         ]
@@ -85,23 +100,5 @@
     }
   },
   "rows": [
-    {
-      "data": [
-        "2",
-        "B"
-      ],
-      "missing_in": [
-        1
-      ]
-    },
-    {
-      "data": [
-        "3",
-        "C"
-      ],
-      "missing_in": [
-        0
-      ]
-    }
   ]
 }

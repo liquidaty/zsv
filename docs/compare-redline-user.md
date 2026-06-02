@@ -8,7 +8,7 @@
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--json-redline` | off | Emit the enriched JSON schema instead of CSV or `--json` output. |
+| `--json-redline` | off | Emit the redline JSON schema instead of CSV or `--json` output. |
 | `--include-unchanged-rows` | off | Also emit matched rows (all-scalar arrays) alongside diffed rows. |
 | `--include-tolerated` | off | Render within-tolerance cells as diff arrays instead of collapsing them to input[0]'s scalar. |
 

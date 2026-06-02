@@ -3,21 +3,21 @@
   "version": "1",
   "inputs": [
     {
-      "label": "jenrich1a.csv",
-      "path": "compare/jenrich1a.csv",
-      "row_count": 2
+      "label": "jredline2a.csv",
+      "path": "compare/jredline2a.csv",
+      "row_count": 3
     },
     {
-      "label": "jenrich1b.csv",
-      "path": "compare/jenrich1b.csv",
-      "row_count": 2
+      "label": "jredline2b.csv",
+      "path": "compare/jredline2b.csv",
+      "row_count": 3
     }
   ],
   "keys": [
     "id"
   ],
   "options": {
-    "tolerance": null,
+    "tolerance": 1,
     "sort": false,
     "include_unchanged_rows": false,
     "include_tolerated": false
@@ -40,7 +40,7 @@
       ]
     },
     {
-      "name": "val",
+      "name": "score",
       "is_key": false,
       "in_inputs": [
         0,
@@ -50,47 +50,47 @@
   ],
   "summary": {
     "rows": {
-      "in_all_inputs": 2,
+      "in_all_inputs": 3,
       "only_in_input_count": [
         0,
         0
       ],
-      "with_any_diff": 0
+      "with_any_diff": 1
     },
     "cells": {
-      "compared": 6,
-      "matched": 6,
-      "within_tolerance": 0,
-      "differing": 0
+      "compared": 9,
+      "matched": 7,
+      "within_tolerance": 1,
+      "differing": 1
     },
     "by_column": [
       {
         "name": "id",
-        "compared": 2,
-        "matched": 2,
+        "compared": 3,
+        "matched": 3,
         "within_tolerance": 0,
         "differing": 0
       },
       {
         "name": "name",
-        "compared": 2,
-        "matched": 2,
+        "compared": 3,
+        "matched": 3,
         "within_tolerance": 0,
         "differing": 0
       },
       {
-        "name": "val",
-        "compared": 2,
-        "matched": 2,
-        "within_tolerance": 0,
-        "differing": 0
+        "name": "score",
+        "compared": 3,
+        "matched": 1,
+        "within_tolerance": 1,
+        "differing": 1
       }
     ],
     "schema": {
       "common": [
         "id",
         "name",
-        "val"
+        "score"
       ],
       "only_in_input": [
         [
@@ -101,5 +101,13 @@
     }
   },
   "rows": [
+    [
+      "2",
+      "Bob",
+      [
+        "200.0",
+        "201.5"
+      ]
+    ]
   ]
 }

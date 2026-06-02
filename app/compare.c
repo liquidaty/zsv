@@ -35,7 +35,7 @@ extern sqlite3_module CsvModule;
 #define ZSV_COMPARE_OUTPUT_TYPE_JSON 'j'
 #define ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE 'e'
 
-#include "compare_enriched.h"
+#include "compare_redline.h"
 
 // Column name lookup for --columns: searches parser header row
 struct zsv_compare_colname_lookup_ctx {
@@ -366,9 +366,9 @@ static enum zsv_compare_status zsv_compare_set_inputs(struct zsv_compare_data *d
 
 static int zsv_compare_cell(void *ctx, struct zsv_cell c1, struct zsv_cell c2, void *data, unsigned col_ix);
 
-/* ---- Enriched-mode helpers -------------------------------------------- */
+/* ---- Redline-mode helpers -------------------------------------------- */
 
-static unsigned char *zsv_compare_enrich_strndup(const unsigned char *s, size_t len) {
+static unsigned char *zsv_compare_redline_strndup(const unsigned char *s, size_t len) {
   if (!s || len == 0)
     return NULL;
   unsigned char *p = malloc(len + 1);
@@ -379,8 +379,8 @@ static unsigned char *zsv_compare_enrich_strndup(const unsigned char *s, size_t 
   return p;
 }
 
-static struct zsv_compare_enriched *zsv_compare_enriched_new(unsigned input_count, unsigned output_colcount) {
-  struct zsv_compare_enriched *e = calloc(1, sizeof(*e));
+static struct zsv_compare_redline *zsv_compare_redline_new(unsigned input_count, unsigned output_colcount) {
+  struct zsv_compare_redline *e = calloc(1, sizeof(*e));
   if (!e)
     return NULL;
   e->rows_tail = &e->rows_head;
@@ -403,7 +403,7 @@ err:
   return NULL;
 }
 
-static void zsv_compare_enriched_cell_free(struct zsv_compare_enriched_cell *cell, unsigned input_count) {
+static void zsv_compare_redline_cell_free(struct zsv_compare_redline_cell *cell, unsigned input_count) {
   free(cell->scalar_s);
   if (cell->diff_s) {
     for (unsigned i = 0; i < input_count; i++)
@@ -413,26 +413,26 @@ static void zsv_compare_enriched_cell_free(struct zsv_compare_enriched_cell *cel
   free(cell->diff_len);
 }
 
-static void zsv_compare_enriched_row_free(struct zsv_compare_enriched_row *row, unsigned input_count,
+static void zsv_compare_redline_row_free(struct zsv_compare_redline_row *row, unsigned input_count,
                                           unsigned output_colcount) {
   if (!row)
     return;
   free(row->missing_in);
   if (row->cells) {
     for (unsigned j = 0; j < output_colcount; j++)
-      zsv_compare_enriched_cell_free(&row->cells[j], input_count);
+      zsv_compare_redline_cell_free(&row->cells[j], input_count);
     free(row->cells);
   }
   free(row);
 }
 
-static void zsv_compare_enriched_free(struct zsv_compare_enriched *e, unsigned input_count, unsigned output_colcount) {
+static void zsv_compare_redline_free(struct zsv_compare_redline *e, unsigned input_count, unsigned output_colcount) {
   if (!e)
     return;
-  struct zsv_compare_enriched_row *row = e->rows_head;
+  struct zsv_compare_redline_row *row = e->rows_head;
   while (row) {
-    struct zsv_compare_enriched_row *next = row->next;
-    zsv_compare_enriched_row_free(row, input_count, output_colcount);
+    struct zsv_compare_redline_row *next = row->next;
+    zsv_compare_redline_row_free(row, input_count, output_colcount);
     row = next;
   }
   free(e->input_row_counts);
@@ -442,7 +442,7 @@ static void zsv_compare_enriched_free(struct zsv_compare_enriched *e, unsigned i
 }
 
 static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last_ix) {
-  struct zsv_compare_enriched *e = data->enriched;
+  struct zsv_compare_redline *e = data->redline;
   if (!e)
     return;
   unsigned input_count = data->input_count;
@@ -461,7 +461,7 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
       e->rows_only_in_input[data->inputs_to_sort[i]->index]++;
 
   /* Allocate row */
-  struct zsv_compare_enriched_row *row = calloc(1, sizeof(*row));
+  struct zsv_compare_redline_row *row = calloc(1, sizeof(*row));
   if (!row) {
     data->status = zsv_compare_status_memory;
     return;
@@ -497,7 +497,7 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
         struct zsv_compare_input *inp = data->inputs_to_sort[pi];
         if (inp->out2in[j] != 0) {
           struct zsv_cell v = data->get_cell(inp, inp->out2in[j] - 1);
-          row->cells[j].scalar_s = zsv_compare_enrich_strndup(v.str, v.len);
+          row->cells[j].scalar_s = zsv_compare_redline_strndup(v.str, v.len);
           row->cells[j].scalar_len = v.len;
           break;
         }
@@ -521,7 +521,7 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
           struct zsv_compare_input *inp = data->inputs_to_sort[pi];
           if (inp->out2in[j] != 0) {
             struct zsv_cell v = data->get_cell(inp, inp->out2in[j] - 1);
-            row->cells[j].scalar_s = zsv_compare_enrich_strndup(v.str, v.len);
+            row->cells[j].scalar_s = zsv_compare_redline_strndup(v.str, v.len);
             row->cells[j].scalar_len = v.len;
             break;
           }
@@ -542,7 +542,7 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
       if (oc->is_key) {
         e->col_stats[j].matched++;
         e->cells_matched++;
-        row->cells[j].scalar_s = zsv_compare_enrich_strndup(v0.str, v0.len);
+        row->cells[j].scalar_s = zsv_compare_redline_strndup(v0.str, v0.len);
         row->cells[j].scalar_len = v0.len;
         continue;
       }
@@ -562,7 +562,7 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
       if (!different) {
         e->col_stats[j].matched++;
         e->cells_matched++;
-        row->cells[j].scalar_s = zsv_compare_enrich_strndup(v0.str, v0.len);
+        row->cells[j].scalar_s = zsv_compare_redline_strndup(v0.str, v0.len);
         row->cells[j].scalar_len = v0.len;
         continue;
       }
@@ -598,7 +598,7 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
         row->cells[j].is_tolerated = 1;
         if (!data->writer.include_tolerated) {
           /* Collapse to input[0]'s scalar */
-          row->cells[j].scalar_s = zsv_compare_enrich_strndup(v0.str, v0.len);
+          row->cells[j].scalar_s = zsv_compare_redline_strndup(v0.str, v0.len);
           row->cells[j].scalar_len = v0.len;
           continue;
         }
@@ -617,7 +617,7 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
       row->cells[j].diff_len = calloc(input_count, sizeof(*row->cells[j].diff_len));
       if (!row->cells[j].diff_s || !row->cells[j].diff_len) {
         data->status = zsv_compare_status_memory;
-        zsv_compare_enriched_row_free(row, input_count, output_colcount);
+        zsv_compare_redline_row_free(row, input_count, output_colcount);
         return;
       }
       for (unsigned pi = 0; pi <= last_ix; pi++) {
@@ -626,7 +626,7 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
         unsigned inp_ix = inp->index;
         if (ci != 0) {
           struct zsv_cell vi = data->get_cell(inp, ci - 1);
-          row->cells[j].diff_s[inp_ix] = zsv_compare_enrich_strndup(vi.str, vi.len);
+          row->cells[j].diff_s[inp_ix] = zsv_compare_redline_strndup(vi.str, vi.len);
           row->cells[j].diff_len[inp_ix] = vi.len;
         }
         /* Missing inputs stay NULL → emitted as JSON null */
@@ -636,7 +636,7 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
 
   /* Store row only if it has a diff or include_unchanged_rows is set */
   if (!has_diff && !data->writer.include_unchanged_rows) {
-    zsv_compare_enriched_row_free(row, input_count, output_colcount);
+    zsv_compare_redline_row_free(row, input_count, output_colcount);
     return;
   }
 
@@ -648,8 +648,8 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
   e->rows_tail = &row->next;
 }
 
-static void zsv_compare_emit_enriched(struct zsv_compare_data *data) {
-  struct zsv_compare_enriched *e = data->enriched;
+static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
+  struct zsv_compare_redline *e = data->redline;
   jsonwriter_handle jsw = data->writer.handle.jsw;
   unsigned input_count = data->input_count;
   unsigned output_colcount = data->output_colcount;
@@ -795,12 +795,12 @@ static void zsv_compare_emit_enriched(struct zsv_compare_data *data) {
 
   /* rows[] */
   jsonwriter_object_array(jsw, "rows");
-  for (struct zsv_compare_enriched_row *row = e->rows_head; row; row = row->next) {
+  for (struct zsv_compare_redline_row *row = e->rows_head; row; row = row->next) {
     if (row->is_object) {
       jsonwriter_start_object(jsw);
       jsonwriter_object_array(jsw, "data");
       for (unsigned j = 0; j < output_colcount; j++) {
-        struct zsv_compare_enriched_cell *cell = &row->cells[j];
+        struct zsv_compare_redline_cell *cell = &row->cells[j];
         if (cell->scalar_s)
           jsonwriter_strn(jsw, cell->scalar_s, cell->scalar_len);
         else
@@ -815,7 +815,7 @@ static void zsv_compare_emit_enriched(struct zsv_compare_data *data) {
     } else {
       jsonwriter_start_array(jsw);
       for (unsigned j = 0; j < output_colcount; j++) {
-        struct zsv_compare_enriched_cell *cell = &row->cells[j];
+        struct zsv_compare_redline_cell *cell = &row->cells[j];
         if (cell->is_diff) {
           jsonwriter_start_array(jsw);
           for (unsigned i = 0; i < input_count; i++) {
@@ -839,13 +839,13 @@ static void zsv_compare_emit_enriched(struct zsv_compare_data *data) {
   jsonwriter_end_object(jsw); /* top level */
 }
 
-/* ---- End enriched-mode helpers ---------------------------------------- */
+/* ---- End redline-mode helpers ---------------------------------------- */
 
 static void zsv_compare_output_begin(struct zsv_compare_data *data) {
   if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
     if (!(data->writer.handle.jsw = jsonwriter_new(stdout)))
       data->status = zsv_compare_status_memory;
-    /* Emit nothing yet — all output deferred to zsv_compare_emit_enriched */
+    /* Emit nothing yet — all output deferred to zsv_compare_emit_redline */
     return;
   }
   if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
@@ -903,7 +903,7 @@ static void zsv_compare_output_begin(struct zsv_compare_data *data) {
 static void zsv_compare_output_end(struct zsv_compare_data *data) {
   if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
     if (data->writer.handle.jsw)
-      zsv_compare_emit_enriched(data);
+      zsv_compare_emit_redline(data);
     if (data->status == zsv_compare_status_no_more_input)
       data->status = zsv_compare_status_ok;
     return;
@@ -996,8 +996,8 @@ static enum zsv_compare_status zsv_compare_init_sorted(struct zsv_compare_data *
 }
 
 static void zsv_compare_data_free(struct zsv_compare_data *data) {
-  zsv_compare_enriched_free(data->enriched, data->input_count, data->output_colcount);
-  data->enriched = NULL;
+  zsv_compare_redline_free(data->redline, data->input_count, data->output_colcount);
+  data->redline = NULL;
   if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON || data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
     if (data->writer.handle.jsw)
       jsonwriter_delete(data->writer.handle.jsw);
@@ -1164,7 +1164,7 @@ static int compare_usage(void) {
     "  --json             : output as JSON",
     "  --json-compact     : output as compact JSON",
     "  --json-object      : output as an array of objects",
-    "  --json-redline    : output enriched JSON (schema.jsonc format)",
+    "  --json-redline    : output self-contained redline JSON (schema.jsonc format)",
     "  --include-unchanged-rows: (with --json-redline) emit matched rows",
     "  --include-tolerated: (with --json-redline) emit tolerated diffs as arrays",
     "  --columns <spec>   : compare column ranges within a single file",
@@ -1511,10 +1511,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     }
 
-    // allocate enriched-mode state (after out2in is populated)
+    // allocate redline-mode state (after out2in is populated)
     if (data->status == zsv_compare_status_ok && data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
-      data->enriched = zsv_compare_enriched_new(data->input_count, data->output_colcount);
-      if (!data->enriched)
+      data->redline = zsv_compare_redline_new(data->input_count, data->output_colcount);
+      if (!data->redline)
         data->status = zsv_compare_status_memory;
     }
 
