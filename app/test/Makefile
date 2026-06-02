@@ -72,6 +72,7 @@ endif
 TESTS+=test-check
 TESTS+=test-quoted-nonstandard
 TESTS+=test-compare-redline
+TESTS+=test-compare-redline-v2
 
 # Security regression test - only run when not cross-compiling
 ifneq ($(CROSS_COMPILING),1)
@@ -873,6 +874,70 @@ test-compare-redline: ${BUILD_DIR}/bin/zsv_compare${EXE}
 	@# TC9: --exit-code returns the differing-cell count (jredline7 -> 1) in redline mode
 	@($< --json-redline --exit-code -k id compare/jredline7a.csv compare/jredline7b.csv compare/jredline7c.csv >/dev/null 2>&1; \
 	[ $$? -eq 1 ] && ${TEST_PASS} || ${TEST_FAIL})
+
+# TC-A: missing_in indices are strictly ascending in 3-input case
+# TC-B: -a/--add combined with --json-redline errors with non-zero exit, exact stderr, empty stdout
+# TC-C: zsv compare --help-topic emits non-empty content; version in output matches version in topics;
+#        JSON Schema from --help-topic validates actual --json-redline output
+test-compare-redline-v2: ${BUILD_DIR}/bin/zsv_compare${EXE}
+	@${TEST_INIT}
+
+	@# TC-A: 3-input missing_in sort — missing_in arrays must be ascending
+	@(${PREFIX} $< --json-redline -k id compare/jredline8a.csv compare/jredline8b.csv compare/jredline8c.csv ${REDIRECT1} ${TMP_DIR}/$@.out8raw && \
+	sed '/"generated_at"/d' ${TMP_DIR}/$@.out8raw > ${TMP_DIR}/$@.out8 && \
+	${CMP} ${TMP_DIR}/$@.out8 expected/test-compare-redline.out8 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC-B1: -a names column in input 0 + --json-redline → error (non-zero exit, exact stderr, empty stdout)
+	@($< --json-redline -k id -a val compare/jredline1a.csv compare/jredline1b.csv >${TMP_DIR}/$@.mutexout1 2>${TMP_DIR}/$@.mutexerr1; \
+	[ $$? -ne 0 ] && \
+	${CMP} /dev/null ${TMP_DIR}/$@.mutexout1 && \
+	${CMP} ${TMP_DIR}/$@.mutexerr1 expected/test-compare-redline-mutex.err && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC-B2: -a names column in both inputs + --json-redline → error
+	@($< --json-redline -k id -a name compare/jredline1a.csv compare/jredline1b.csv >${TMP_DIR}/$@.mutexout2 2>${TMP_DIR}/$@.mutexerr2; \
+	[ $$? -ne 0 ] && \
+	${CMP} /dev/null ${TMP_DIR}/$@.mutexout2 && \
+	${CMP} ${TMP_DIR}/$@.mutexerr2 expected/test-compare-redline-mutex.err && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC-B3: -a names nonexistent column + --json-redline → error (mutex fires before "column not found")
+	@($< --json-redline -k id -a nonexistent compare/jredline1a.csv compare/jredline1b.csv >${TMP_DIR}/$@.mutexout3 2>${TMP_DIR}/$@.mutexerr3; \
+	[ $$? -ne 0 ] && \
+	${CMP} /dev/null ${TMP_DIR}/$@.mutexout3 && \
+	${CMP} ${TMP_DIR}/$@.mutexerr3 expected/test-compare-redline-mutex.err && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC-B4: no -a with --json-redline → normal JSON output (no error)
+	@(${PREFIX} $< --json-redline -k id compare/jredline1a.csv compare/jredline1b.csv ${REDIRECT1} ${TMP_DIR}/$@.mutexout4 && \
+	[ -s ${TMP_DIR}/$@.mutexout4 ] && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC-B5: -a without --json-redline → normal operation (unaffected)
+	@(${PREFIX} $< -k id -a val compare/jredline1a.csv compare/jredline1b.csv ${REDIRECT1} ${TMP_DIR}/$@.mutexout5 && \
+	[ -s ${TMP_DIR}/$@.mutexout5 ] && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC-C1: --help-topic compare-json-redline emits non-empty content
+	@($< --help-topic compare-json-redline > ${TMP_DIR}/$@.topicout1 2>&1 && \
+	[ -s ${TMP_DIR}/$@.topicout1 ] && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC-C2: --help-topic compare-json-redline-json emits valid JSON with required schema fields
+	@($< --help-topic compare-json-redline-json > ${TMP_DIR}/$@.topicout2 2>&1 && \
+	[ -s ${TMP_DIR}/$@.topicout2 ] && \
+	jq -e 'has("title") and has("properties")' ${TMP_DIR}/$@.topicout2 >/dev/null && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC-C3: version in --json-redline output matches version declared in both help topics
+	@(${PREFIX} $< --json-redline -k id compare/jredline1a.csv compare/jredline1b.csv > ${TMP_DIR}/$@.verout 2>&1 && \
+	VER=$$(jq -r '.version' ${TMP_DIR}/$@.verout) && \
+	$< --help-topic compare-json-redline | grep -q "$$VER" && \
+	$< --help-topic compare-json-redline-json | jq -e --arg v "$$VER" '.properties.version.const == $$v' >/dev/null && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC-C4: JSON Schema (with draft $schema stripped for ajv compat) validates --json-redline output
+	@(${PREFIX} $< --json-redline -k id compare/jredline1a.csv compare/jredline1b.csv > ${TMP_DIR}/$@.fixture1.json 2>&1 && \
+	$< --help-topic compare-json-redline-json | jq 'del(.["$$schema"])' > ${TMP_DIR}/$@.schema.json && \
+	ajv validate --strict-tuples=false -s ${TMP_DIR}/$@.schema.json -d ${TMP_DIR}/$@.fixture1.json && \
+	${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-sheet-cleanup test-sheet-all
 

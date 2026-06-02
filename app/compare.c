@@ -37,6 +37,8 @@ extern sqlite3_module CsvModule;
 #define ZSV_COMPARE_OUTPUT_TYPE_JSON 'j'
 #define ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE 'e'
 
+#define ZSV_COMPARE_REDLINE_VERSION "1"
+
 #include "compare_redline.h"
 
 // Column name lookup for --columns: searches parser header row
@@ -376,7 +378,7 @@ static int zsv_compare_cell(void *ctx, struct zsv_cell c1, struct zsv_cell c2, v
 // are left NULL/0 (rendered as JSON null); *dest_len is only set on a successful copy, so it stays consistent
 // with *dest_s on every path. Returns nonzero only on allocation failure (callers must check — warn_unused_result).
 static ZSV_WARN_UNUSED_RESULT int zsv_compare_redline_dup_cell(unsigned char **dest_s, size_t *dest_len,
-                                                              struct zsv_cell v) {
+                                                               struct zsv_cell v) {
   if (v.str && v.len) {
     if (!(*dest_s = zsv_memdup(v.str, v.len)))
       return 1;
@@ -442,6 +444,12 @@ err:
   return NULL;
 }
 
+static int zsv_compare_uint_cmp(const void *a, const void *b) {
+  unsigned ua = *(const unsigned *)a;
+  unsigned ub = *(const unsigned *)b;
+  return (ua > ub) - (ua < ub);
+}
+
 static void zsv_compare_redline_cell_free(struct zsv_compare_redline_cell *cell, unsigned input_count) {
   free(cell->scalar_s);
   if (cell->diff_s) {
@@ -453,7 +461,7 @@ static void zsv_compare_redline_cell_free(struct zsv_compare_redline_cell *cell,
 }
 
 static void zsv_compare_redline_row_free(struct zsv_compare_redline_row *row, unsigned input_count,
-                                          unsigned output_colcount) {
+                                         unsigned output_colcount) {
   if (!row)
     return;
   free(row->missing_in);
@@ -514,6 +522,7 @@ static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last
       goto oom;
     for (unsigned i = 0; i < missing_count; i++)
       row->missing_in[i] = data->inputs_to_sort[last_ix + 1 + i]->index;
+    qsort(row->missing_in, missing_count, sizeof(*row->missing_in), zsv_compare_uint_cmp);
     has_diff = 1;
 
     /* Per-column: use value from first present input that has this column */
@@ -650,7 +659,7 @@ static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
 
   /* Identity */
   jsonwriter_object_str(jsw, "schema", (const unsigned char *)"zsv.compare");
-  jsonwriter_object_str(jsw, "version", (const unsigned char *)"1");
+  jsonwriter_object_str(jsw, "version", (const unsigned char *)ZSV_COMPARE_REDLINE_VERSION);
 
   {
     /* Honor SOURCE_DATE_EPOCH (reproducible-builds convention) for deterministic output; else wall clock. */
@@ -1126,6 +1135,204 @@ static enum zsv_compare_status zsv_compare_next(struct zsv_compare_data *data) {
   return zsv_compare_status_ok;
 }
 
+/* ---- Help topics (Change C) ------------------------------------------ */
+
+static void zsv_compare_print_help_topic_narrative(void) {
+  static const char *text[] = {"zsv compare --json-redline schema (version " ZSV_COMPARE_REDLINE_VERSION ")",
+                               "==========================================================",
+                               "",
+                               "Output mode: zsv compare --json-redline [options] <file.csv>...",
+                               "",
+                               "Produces a single JSON object describing the comparison between two or more",
+                               "CSV inputs. A downstream renderer can produce an HTML or XLSX redline from",
+                               "this output without re-reading the source CSVs.",
+                               "",
+                               "Top-level fields",
+                               "  schema        : \"zsv.compare\" (constant)",
+                               "  version       : \"" ZSV_COMPARE_REDLINE_VERSION "\" — bump on breaking changes only",
+                               "  generated_at  : ISO 8601 UTC timestamp (honors SOURCE_DATE_EPOCH)",
+                               "  inputs[]      : per-input metadata (label, path, row_count)",
+                               "  keys[]        : column names used to match rows",
+                               "  options       : tolerance, sort, include_unchanged_rows, include_tolerated",
+                               "  columns[]     : merged column list with is_key and in_inputs[]",
+                               "  summary       : aggregate row/cell counts and schema diff",
+                               "  rows[]        : differing (and optionally unchanged) rows",
+                               "",
+                               "Row forms",
+                               "  Array form    : row present in every input — [cell_0, cell_1, ...]",
+                               "  Object form   : row missing in some input —",
+                               "                  {\"data\": [...], \"missing_in\": [<input indices>]}",
+                               "                  missing_in indices are in ascending order",
+                               "",
+                               "Cell forms",
+                               "  Scalar        : string | null — all inputs agree (or tolerated diff collapsed)",
+                               "  Array         : [v_0, v_1, ..., v_N] parallel to inputs[] — values differ",
+                               "                  null slot means that input lacks this cell",
+                               "",
+                               "Tolerance",
+                               "  With --tolerance T, numeric cells differing by < T render as scalars",
+                               "  (input[0]'s value) unless --include-tolerated is also set.",
+                               "",
+                               "See also",
+                               "  zsv compare --help-topic compare-json-redline-json  (JSON Schema Draft 2020-12)",
+                               NULL};
+  for (size_t i = 0; text[i]; i++)
+    printf("%s\n", text[i]);
+}
+
+static void zsv_compare_print_help_topic_json_schema(void) {
+  printf("{\n");
+  printf("  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n");
+  printf("  \"$id\": \"zsv.compare.json-redline.v%s\",\n", ZSV_COMPARE_REDLINE_VERSION);
+  printf("  \"title\": \"zsv compare --json-redline output (v%s)\",\n", ZSV_COMPARE_REDLINE_VERSION);
+  printf("  \"type\": \"object\",\n");
+  printf(
+    "  \"required\": "
+    "[\"schema\",\"version\",\"generated_at\",\"inputs\",\"keys\",\"options\",\"columns\",\"summary\",\"rows\"],\n");
+  printf("  \"properties\": {\n");
+  printf("    \"schema\": {\"const\": \"zsv.compare\"},\n");
+  printf("    \"version\": {\"const\": \"%s\"},\n", ZSV_COMPARE_REDLINE_VERSION);
+  printf("    \"generated_at\": {\"type\": \"string\"},\n");
+  printf("    \"inputs\": {\n");
+  printf("      \"type\": \"array\",\n");
+  printf("      \"items\": {\n");
+  printf("        \"type\": \"object\",\n");
+  printf("        \"required\": [\"label\",\"path\",\"row_count\"],\n");
+  printf("        \"properties\": {\n");
+  printf("          \"label\": {\"type\": \"string\"},\n");
+  printf("          \"path\": {\"type\": \"string\"},\n");
+  printf("          \"row_count\": {\"type\": \"integer\", \"minimum\": 0}\n");
+  printf("        }\n");
+  printf("      }\n");
+  printf("    },\n");
+  printf("    \"keys\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}},\n");
+  printf("    \"options\": {\n");
+  printf("      \"type\": \"object\",\n");
+  printf("      \"required\": [\"tolerance\",\"sort\",\"include_unchanged_rows\",\"include_tolerated\"],\n");
+  printf("      \"properties\": {\n");
+  printf("        \"tolerance\": {\"oneOf\": [{\"type\": \"number\"},{\"type\": \"null\"}]},\n");
+  printf("        \"sort\": {\"type\": \"boolean\"},\n");
+  printf("        \"include_unchanged_rows\": {\"type\": \"boolean\"},\n");
+  printf("        \"include_tolerated\": {\"type\": \"boolean\"}\n");
+  printf("      }\n");
+  printf("    },\n");
+  printf("    \"columns\": {\n");
+  printf("      \"type\": \"array\",\n");
+  printf("      \"items\": {\n");
+  printf("        \"type\": \"object\",\n");
+  printf("        \"required\": [\"name\",\"is_key\",\"in_inputs\"],\n");
+  printf("        \"properties\": {\n");
+  printf("          \"name\": {\"type\": \"string\"},\n");
+  printf("          \"is_key\": {\"type\": \"boolean\"},\n");
+  printf("          \"in_inputs\": {\"type\": \"array\", \"items\": {\"type\": \"integer\", \"minimum\": 0}}\n");
+  printf("        }\n");
+  printf("      }\n");
+  printf("    },\n");
+  printf("    \"summary\": {\n");
+  printf("      \"type\": \"object\",\n");
+  printf("      \"required\": [\"rows\",\"cells\",\"by_column\",\"schema\"],\n");
+  printf("      \"properties\": {\n");
+  printf("        \"rows\": {\n");
+  printf("          \"type\": \"object\",\n");
+  printf("          \"required\": [\"in_all_inputs\",\"only_in_input_count\",\"with_any_diff\"],\n");
+  printf("          \"properties\": {\n");
+  printf("            \"in_all_inputs\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  printf("            \"only_in_input_count\": {\"type\": \"array\", \"items\": {\"type\": \"integer\", \"minimum\": "
+         "0}},\n");
+  printf("            \"with_any_diff\": {\"type\": \"integer\", \"minimum\": 0}\n");
+  printf("          }\n");
+  printf("        },\n");
+  printf("        \"cells\": {\n");
+  printf("          \"type\": \"object\",\n");
+  printf("          \"required\": [\"compared\",\"matched\",\"within_tolerance\",\"differing\"],\n");
+  printf("          \"properties\": {\n");
+  printf("            \"compared\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  printf("            \"matched\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  printf("            \"within_tolerance\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  printf("            \"differing\": {\"type\": \"integer\", \"minimum\": 0}\n");
+  printf("          }\n");
+  printf("        },\n");
+  printf("        \"by_column\": {\n");
+  printf("          \"type\": \"array\",\n");
+  printf("          \"items\": {\n");
+  printf("            \"type\": \"object\",\n");
+  printf("            \"required\": [\"name\",\"compared\",\"matched\",\"within_tolerance\",\"differing\"],\n");
+  printf("            \"properties\": {\n");
+  printf("              \"name\": {\"type\": \"string\"},\n");
+  printf("              \"compared\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  printf("              \"matched\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  printf("              \"within_tolerance\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  printf("              \"differing\": {\"type\": \"integer\", \"minimum\": 0}\n");
+  printf("            }\n");
+  printf("          }\n");
+  printf("        },\n");
+  printf("        \"schema\": {\n");
+  printf("          \"type\": \"object\",\n");
+  printf("          \"required\": [\"common\",\"only_in_input\"],\n");
+  printf("          \"properties\": {\n");
+  printf("            \"common\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}},\n");
+  printf("            \"only_in_input\": {\"type\": \"array\", \"items\": {\"type\": \"array\", \"items\": {\"type\": "
+         "\"string\"}}}\n");
+  printf("          }\n");
+  printf("        }\n");
+  printf("      }\n");
+  printf("    },\n");
+  printf("    \"rows\": {\n");
+  printf("      \"type\": \"array\",\n");
+  printf("      \"items\": {\n");
+  printf("        \"oneOf\": [\n");
+  printf("          {\n");
+  printf("            \"type\": \"array\",\n");
+  printf("            \"items\": {\n");
+  printf("              \"oneOf\": [\n");
+  printf("                {\"type\": [\"string\",\"null\"]},\n");
+  printf("                {\"type\": \"array\", \"items\": {\"type\": [\"string\",\"null\"]}}\n");
+  printf("              ]\n");
+  printf("            }\n");
+  printf("          },\n");
+  printf("          {\n");
+  printf("            \"type\": \"object\",\n");
+  printf("            \"required\": [\"data\",\"missing_in\"],\n");
+  printf("            \"properties\": {\n");
+  printf("              \"data\": {\n");
+  printf("                \"type\": \"array\",\n");
+  printf("                \"items\": {\n");
+  printf("                  \"oneOf\": [\n");
+  printf("                    {\"type\": [\"string\",\"null\"]},\n");
+  printf("                    {\"type\": \"array\", \"items\": {\"type\": [\"string\",\"null\"]}}\n");
+  printf("                  ]\n");
+  printf("                }\n");
+  printf("              },\n");
+  printf("              \"missing_in\": {\n");
+  printf("                \"type\": \"array\",\n");
+  printf("                \"items\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  printf("                \"description\": \"indices in ascending order\"\n");
+  printf("              }\n");
+  printf("            }\n");
+  printf("          }\n");
+  printf("        ]\n");
+  printf("      }\n");
+  printf("    }\n");
+  printf("  }\n");
+  printf("}\n");
+}
+
+static int zsv_compare_print_help_topic(const char *name) {
+  if (!strcmp(name, "compare-json-redline")) {
+    zsv_compare_print_help_topic_narrative();
+    return 0;
+  }
+  if (!strcmp(name, "compare-json-redline-json")) {
+    zsv_compare_print_help_topic_json_schema();
+    return 0;
+  }
+  fprintf(stderr, "Unknown help topic: %s\n", name);
+  fprintf(stderr, "Available topics: compare-json-redline, compare-json-redline-json\n");
+  return 1;
+}
+
+/* ---- End help topics ------------------------------------------------- */
+
 static int compare_usage(void) {
   static const char *usage[] = {
     "Usage: compare [options] <file.csv>...",
@@ -1136,6 +1343,7 @@ static int compare_usage(void) {
     "                       can be specified multiple times",
     "  -a,--add <colname> : specify an additional column to output",
     "                       will use the [first input] source",
+    "                       cannot be combined with --json-redline",
     "  --sort             : sort on keys before comparing",
     "  --sort-in-memory   : for sorting,  use in-memory instead of temporary db",
     "                       (see https://www.sqlite.org/inmemorydb.html)",
@@ -1195,6 +1403,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   if (argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
     compare_usage();
     return argc < 2 ? 1 : 0;
+  }
+
+  /* Change C: --help-topic <name> prints a topic and exits */
+  for (int i = 1; i < argc - 1; i++) {
+    if (!strcmp(argv[i], "--help-topic"))
+      return zsv_compare_print_help_topic(argv[i + 1]);
   }
 
   // temporarily hold the input file names
@@ -1273,6 +1487,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       data->print_key_col_names = 1;
     } else
       input_filenames[input_count++] = arg;
+  }
+
+  /* Change B: -a/--add is incompatible with --json-redline */
+  if (!err && data->added_colcount > 0 && data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
+    fprintf(stderr, "Error: -a/--add cannot be combined with --json-redline."
+                    " All input columns are already emitted under --json-redline.\n");
+    err = 1;
   }
 
   struct zsv_opts original_default_opts;

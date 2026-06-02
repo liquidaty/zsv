@@ -1,12 +1,16 @@
 // zsv compare — redline JSON output schema (v1)
 //
-// Emitted by a new `zsv compare` output mode (proposed CLI flag: `--json-redline`,
-// final name TBD by implementer). The existing `--json` / `--json-object` /
+// NOTE: This file is a snapshot/reference of the schema embedded in the binary.
+// The authoritative, version-pinned description is available at runtime via:
+//   zsv compare --help-topic compare-json-redline        (narrative)
+//   zsv compare --help-topic compare-json-redline-json   (JSON Schema Draft 2020-12)
+//
+// Emitted by `zsv compare --json-redline`. The existing `--json` / `--json-object` /
 // `--json-compact` outputs are unchanged.
+// Using `-a/--add` with `--json-redline` is an error; all columns are already emitted.
 //
 // This file is a JSON-with-comments illustration of the schema. The actual wire
-// format is plain JSON (no comments). Comments here document conventions; a
-// formal JSON Schema (Draft 2020-12) may follow once the design is locked.
+// format is plain JSON (no comments).
 //
 // Design goals:
 //   - Self-contained: a consumer can render a complete redline from this
@@ -98,7 +102,7 @@
   //       [cell_0, cell_1, ..., cell_N]   positionally aligned to `columns`.
   //
   //   (b) OBJECT form (used when the row is missing in some inputs):
-  //       { "data": [cell_0, ..., cell_N], "missing_in": [<input indices>] }
+  //       { "data": [cell_0, ..., cell_N], "missing_in": [<input indices in ascending order>] }
   //
   // The object form is also a forward-compatibility hook: future fields
   // (e.g., source-row position `ix`, composer annotations) attach here
