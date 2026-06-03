@@ -877,9 +877,9 @@ test-compare-redline: ${BUILD_DIR}/bin/zsv_compare${EXE}
 
 # TC-A: missing_in indices are strictly ascending in 3-input case
 # TC-B: -a/--add combined with --json-redline errors with non-zero exit, exact stderr, empty stdout
-# TC-C: zsv compare --help-topic emits non-empty content; version in output matches version in topics;
-#        JSON Schema from --help-topic validates actual --json-redline output
-test-compare-redline-v2: ${BUILD_DIR}/bin/zsv_compare${EXE}
+# TC-C: help topics accessible via canonical `zsv help compare <topic>` routing and via --help-topic
+#        alias; version pinning; JSON Schema validates real output
+test-compare-redline-v2: ${BUILD_DIR}/bin/zsv_compare${EXE} ${BUILD_DIR}/bin/cli${EXE}
 	@${TEST_INIT}
 
 	@# TC-A: 3-input missing_in sort — missing_in arrays must be ascending
@@ -916,27 +916,40 @@ test-compare-redline-v2: ${BUILD_DIR}/bin/zsv_compare${EXE}
 	@(${PREFIX} $< -k id -a val compare/jredline1a.csv compare/jredline1b.csv ${REDIRECT1} ${TMP_DIR}/$@.mutexout5 && \
 	[ -s ${TMP_DIR}/$@.mutexout5 ] && ${TEST_PASS} || ${TEST_FAIL})
 
-	@# TC-C1: --help-topic compare-json-redline emits non-empty content
-	@($< --help-topic compare-json-redline > ${TMP_DIR}/$@.topicout1 2>&1 && \
+	@# TC-C1: canonical `zsv help compare json-redline` routing emits non-empty narrative
+	@(${BUILD_DIR}/bin/cli help compare json-redline > ${TMP_DIR}/$@.topicout1 2>&1 && \
 	[ -s ${TMP_DIR}/$@.topicout1 ] && ${TEST_PASS} || ${TEST_FAIL})
 
-	@# TC-C2: --help-topic compare-json-redline-json emits valid JSON with required schema fields
-	@($< --help-topic compare-json-redline-json > ${TMP_DIR}/$@.topicout2 2>&1 && \
+	@# TC-C2: canonical `zsv help compare json-redline-json` emits valid JSON Schema
+	@(${BUILD_DIR}/bin/cli help compare json-redline-json > ${TMP_DIR}/$@.topicout2 2>&1 && \
 	[ -s ${TMP_DIR}/$@.topicout2 ] && \
 	jq -e 'has("title") and has("properties")' ${TMP_DIR}/$@.topicout2 >/dev/null && \
 	${TEST_PASS} || ${TEST_FAIL})
 
-	@# TC-C3: version in --json-redline output matches version declared in both help topics
-	@(${PREFIX} $< --json-redline -k id compare/jredline1a.csv compare/jredline1b.csv > ${TMP_DIR}/$@.verout 2>&1 && \
-	VER=$$(jq -r '.version' ${TMP_DIR}/$@.verout) && \
-	$< --help-topic compare-json-redline | grep -q "$$VER" && \
-	$< --help-topic compare-json-redline-json | jq -e --arg v "$$VER" '.properties.version.const == $$v' >/dev/null && \
+	@# TC-C3: `zsv help compare` (no topic) lists both topics
+	@(${BUILD_DIR}/bin/cli help compare > ${TMP_DIR}/$@.helpcmp 2>&1 && \
+	grep -q 'json-redline' ${TMP_DIR}/$@.helpcmp && \
+	grep -q 'json-redline-json' ${TMP_DIR}/$@.helpcmp && \
 	${TEST_PASS} || ${TEST_FAIL})
 
-	@# TC-C4: JSON Schema (with draft $schema stripped for ajv compat) validates --json-redline output
+	@# TC-C4: version in --json-redline output matches version in both help topics
+	@(${PREFIX} $< --json-redline -k id compare/jredline1a.csv compare/jredline1b.csv > ${TMP_DIR}/$@.verout 2>&1 && \
+	VER=$$(jq -r '.version' ${TMP_DIR}/$@.verout) && \
+	$< --help-topic json-redline | grep -q "$$VER" && \
+	$< --help-topic json-redline-json | jq -e --arg v "$$VER" '.properties.version.const == $$v' >/dev/null && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC-C5: JSON Schema validates actual --json-redline output
 	@(${PREFIX} $< --json-redline -k id compare/jredline1a.csv compare/jredline1b.csv > ${TMP_DIR}/$@.fixture1.json 2>&1 && \
-	$< --help-topic compare-json-redline-json | jq 'del(.["$$schema"])' > ${TMP_DIR}/$@.schema.json && \
+	$< --help-topic json-redline-json | jq 'del(.["$$schema"])' > ${TMP_DIR}/$@.schema.json && \
 	ajv validate --strict-tuples=false -s ${TMP_DIR}/$@.schema.json -d ${TMP_DIR}/$@.fixture1.json && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC-C6: old --help-topic compare-json-redline[-json] aliases still route correctly (undocumented)
+	@($< --help-topic compare-json-redline > ${TMP_DIR}/$@.alias1 2>&1 && \
+	[ -s ${TMP_DIR}/$@.alias1 ] && \
+	$< --help-topic compare-json-redline-json > ${TMP_DIR}/$@.alias2 2>&1 && \
+	jq -e 'has("title")' ${TMP_DIR}/$@.alias2 >/dev/null && \
 	${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-sheet-cleanup test-sheet-all

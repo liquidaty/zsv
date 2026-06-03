@@ -275,7 +275,8 @@ Two companion flags control what appears in `rows[]`:
 - `--include-tolerated` — show within-tolerance numeric differences as diff
   arrays rather than collapsing them to a scalar (requires `--tolerance`)
 
-The full schema is documented in [`schema.jsonc`](../schema.jsonc).
+The full schema is available at runtime via `zsv help compare json-redline` (narrative)
+and `zsv help compare json-redline-json` (JSON Schema, Draft 2020-12).
 
 and in each case if we wanted to include additional data in the output for
 context, we can do so using `--add`, e.g.:
@@ -327,7 +328,8 @@ Options:
   --json             : output as JSON
   --json-compact     : output as compact JSON
   --json-object      : output as an array of objects
-  --json-redline     : output self-contained redline JSON (see schema.jsonc)
+  --json-redline     : output self-contained redline JSON
+                       (see `zsv help compare json-redline` for schema)
   --include-unchanged-rows: (with --json-redline) also emit matched rows
   --include-tolerated: (with --json-redline) show tolerated diffs as arrays
   --print-key-colname: when outputting key column diffs,

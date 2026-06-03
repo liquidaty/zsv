@@ -1174,7 +1174,7 @@ static void zsv_compare_print_help_topic_narrative(void) {
                                "  (input[0]'s value) unless --include-tolerated is also set.",
                                "",
                                "See also",
-                               "  zsv compare --help-topic compare-json-redline-json  (JSON Schema Draft 2020-12)",
+                               "  zsv help compare json-redline-json  (JSON Schema Draft 2020-12)",
                                NULL};
   for (size_t i = 0; text[i]; i++)
     printf("%s\n", text[i]);
@@ -1318,16 +1318,18 @@ static void zsv_compare_print_help_topic_json_schema(void) {
 }
 
 static int zsv_compare_print_help_topic(const char *name) {
-  if (!strcmp(name, "compare-json-redline")) {
+  /* canonical: json-redline, json-redline-json
+     silent aliases (undocumented): compare-json-redline, compare-json-redline-json */
+  if (!strcmp(name, "json-redline") || !strcmp(name, "compare-json-redline")) {
     zsv_compare_print_help_topic_narrative();
     return 0;
   }
-  if (!strcmp(name, "compare-json-redline-json")) {
+  if (!strcmp(name, "json-redline-json") || !strcmp(name, "compare-json-redline-json")) {
     zsv_compare_print_help_topic_json_schema();
     return 0;
   }
   fprintf(stderr, "Unknown help topic: %s\n", name);
-  fprintf(stderr, "Available topics: compare-json-redline, compare-json-redline-json\n");
+  fprintf(stderr, "Available topics: json-redline, json-redline-json\n");
   return 1;
 }
 
@@ -1354,7 +1356,8 @@ static int compare_usage(void) {
     "  --json             : output as JSON",
     "  --json-compact     : output as compact JSON",
     "  --json-object      : output as an array of objects",
-    "  --json-redline     : output self-contained redline JSON (schema.jsonc format)",
+    "  --json-redline     : output self-contained redline JSON",
+    "                       (see `zsv help compare json-redline` for schema)",
     "  --include-unchanged-rows: (with --json-redline) emit matched rows",
     "  --include-tolerated: (with --json-redline) emit tolerated diffs as arrays",
     "  --columns <spec>   : compare column ranges within a single file",
@@ -1392,6 +1395,18 @@ static int compare_usage(void) {
 
   for (size_t i = 0; usage[i]; i++)
     printf("%s\n", usage[i]);
+
+  static const char *topics[] = {
+    "",
+    "Help topics:",
+    "  json-redline       : --json-redline output format (schema, narrative)",
+    "  json-redline-json  : --json-redline output format (JSON Schema, Draft 2020-12)",
+    "",
+    "  Usage: zsv help compare <topic>",
+    NULL,
+  };
+  for (size_t i = 0; topics[i]; i++)
+    printf("%s\n", topics[i]);
 
   return 0;
 }

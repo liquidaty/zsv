@@ -2,11 +2,11 @@
 
 ## Wire format
 
-The output is plain JSON (no comments).  The schema is documented with comments in `schema.jsonc` at the repository root.  The formal wire format version is `"version": "1"`.
+The output is plain JSON (no comments).  The authoritative schema is embedded in the binary: `zsv help compare json-redline` (narrative) and `zsv help compare json-redline-json` (JSON Schema, Draft 2020-12).  The formal wire format version is `"version": "1"`.
 
 ## Schema cross-reference
 
-| `schema.jsonc` section | Implementation |
+| Schema field | Implementation |
 |------------------------|----------------|
 | `schema`, `version`, `generated_at` | Emitted by `zsv_compare_emit_redline`.  `generated_at` uses `SOURCE_DATE_EPOCH` (epoch seconds) when set, for reproducible output; otherwise `time()`/`gmtime()`. |
 | `inputs[]` | One entry per `struct zsv_compare_input`.  `label` = `basename(path)`, `path` = CLI argument as given, `row_count` = rows consumed by `zsv_compare_collect_row`. |
