@@ -38,7 +38,7 @@ const char *zsv_lib_version(void) {
  * chunk remains available in a contiguous block of one or more rows
  */
 // __attribute__((always_inline))
-inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
+inline static enum zsv_status scanner_pre_parse(struct zsv_scanner *scanner, size_t *capacityp) {
   scanner->last = '\0';
   if (VERY_LIKELY(scanner->old_bytes_read)) {
     scanner->last = scanner->buff.buff[scanner->old_bytes_read - 1];
@@ -78,7 +78,9 @@ inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
     scanner->partial_row_length = 0;
     capacity = scanner->buff.size;
   }
-  return capacity;
+  if (capacityp)
+    *capacityp = capacity;
+  return zsv_status_ok;
 }
 
 /**
@@ -107,7 +109,10 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   if (VERY_UNLIKELY(scanner->insert_string != NULL))
     zsv_insert_string(scanner);
 
-  size_t capacity = scanner_pre_parse(scanner);
+  size_t capacity;
+  enum zsv_status stat = scanner_pre_parse(scanner, &capacity);
+  if (stat != zsv_status_ok)
+    return stat;
   size_t bytes_read;
   if (VERY_UNLIKELY(scanner->checked_bom == 0)) {
 #ifdef ZSV_EXTRAS
@@ -456,14 +461,26 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
         }
       }
     }
-    if (scanner->quote_close_position > 0 &&
+    if (scanner->quoted != 0 && scanner->quote_close_position > 0 &&
         scanner->cell_start + scanner->quote_close_position >= scanner->buff.size) {
       // the below does not work if !scanner->free_buff
       // use scanner_pre_parse() instead to shift the row over
       // then append '"' to the end
       size_t new_end = scanner->buff.size - scanner->row_start;
-
-      scanner_pre_parse(scanner);
+      if (new_end >= scanner->buff.size) {
+        // row_start == 0: buffer entirely full, nothing to shift; truncate in place
+        scanner->errprintf(scanner->errf, "Warning: row %zu truncated\n", scanner->data_row_count);
+        new_end = scanner->buff.size - 1;
+      } else {
+        stat = scanner_pre_parse(scanner, NULL);
+        if (stat != zsv_status_ok)
+          return stat;
+      }
+      // scanner_pre_parse adjusts cell_start but not scanned_length; cap it so
+      // cell_dl doesn't read past the synthetic closing '"' at new_end
+      if (scanner->scanned_length > scanner->cell_start + new_end + 1)
+        scanner->scanned_length = scanner->cell_start + new_end + 1;
+      scanner->quote_close_position = new_end;
       scanner->buff.buff[new_end] = '"';
       /*
       size_t new_size = scanner->cell_start + scanner->quote_close_position + 1;
@@ -580,7 +597,9 @@ enum zsv_status zsv_parse_bytes(struct zsv_scanner *scanner, const unsigned char
   enum zsv_status stat = zsv_status_ok;
   const unsigned char *cursor = bytes;
   while (len && stat == zsv_status_ok) {
-    size_t capacity = scanner_pre_parse(scanner);
+    size_t capacity;
+    if ((stat = scanner_pre_parse(scanner, &capacity)) != zsv_status_ok)
+      break;
     size_t this_chunk_size = len > capacity ? capacity : len;
     memcpy(scanner->buff.buff + scanner->partial_row_length, cursor, this_chunk_size);
     cursor += this_chunk_size;

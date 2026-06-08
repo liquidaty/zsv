@@ -71,6 +71,65 @@ static size_t membuf_read(void *dst, size_t n, size_t elem_size, void *stream) {
   return elem_size > 0 ? give / elem_size : 0;
 }
 
+static void fuzz_push_chunked(const unsigned char *data, size_t size, unsigned char scan_engine, size_t chunk_size) {
+  struct zsv_opts opts = {0};
+  opts.max_columns = 256;
+  opts.max_row_size = 4096;
+  opts.scan_engine = scan_engine;
+  opts.keep_empty_header_rows = 1;
+  opts.errprintf = dummy_errprintf;
+
+  zsv_parser parser = zsv_new(&opts);
+  if (!parser)
+    return;
+
+  zsv_set_row_handler(parser, row_handler);
+  zsv_set_context(parser, parser);
+
+  size_t off = 0;
+  while (off < size) {
+    size_t chunk = size - off;
+    if (chunk > chunk_size)
+      chunk = chunk_size;
+    zsv_parse_bytes(parser, data + off, chunk);
+    off += chunk;
+  }
+  zsv_finish(parser);
+  zsv_delete(parser);
+}
+
+static void fuzz_fixed(const unsigned char *data, size_t size) {
+  if (size < 8)
+    return;
+
+  size_t offsets[4];
+  size_t prev = 0;
+  for (int i = 0; i < 4; i++) {
+    size_t step = (data[i] & 0x3f) + 1;
+    offsets[i] = prev + step;
+    prev = offsets[i];
+  }
+
+  struct zsv_opts opts = {0};
+  opts.max_columns = 256;
+  opts.max_row_size = 4096;
+  opts.keep_empty_header_rows = 1;
+  opts.errprintf = dummy_errprintf;
+
+  zsv_parser parser = zsv_new(&opts);
+  if (!parser)
+    return;
+
+  zsv_set_row_handler(parser, row_handler);
+  zsv_set_context(parser, parser);
+
+  if (zsv_set_fixed_offsets(parser, 4, offsets) == zsv_status_ok) {
+    zsv_parse_bytes(parser, data + 4, size - 4);
+    zsv_finish(parser);
+  }
+  zsv_delete(parser);
+}
+
 static void fuzz_pull(const unsigned char *data, size_t size, char no_quotes) {
   struct membuf mb;
   mb.data = data;
@@ -102,13 +161,15 @@ void run_payload(const unsigned char *data, const size_t size) {
   if (size < 2)
     return;
 
-  const unsigned char mode = data[0] & 0x7;
+  const unsigned char ctrl = data[0];
+  const unsigned char mode = ctrl & 0x7;
+  const int chunked = (ctrl & 0x8) != 0; /* bit 3: feed in 17-byte chunks */
   const unsigned char *payload = data + 1;
   const size_t payload_size = size - 1;
   const char delim = payload_size > 0 ? (char)payload[0] : (char)';';
 
 #ifdef REPRO
-  fprintf(stderr, "MODE: 0x%02x\n", mode);
+  fprintf(stderr, "MODE: 0x%02x CHUNKED: %d\n", mode, chunked);
   if (isprint(delim)) {
     fprintf(stderr, "DELIM: '%c' (0x%02x)\n", delim, (unsigned char)delim);
   } else {
@@ -118,29 +179,41 @@ void run_payload(const unsigned char *data, const size_t size) {
 #endif
 
   switch (mode) {
-  case 0:
-    fuzz_push(payload, payload_size, ZSV_MODE_DELIM, 0, 0);
+  case 0: /* default engine */
+    if (chunked)
+      fuzz_push_chunked(payload, payload_size, ZSV_MODE_DELIM, 17);
+    else
+      fuzz_push(payload, payload_size, ZSV_MODE_DELIM, 0, 0);
     break;
-  case 1: /* fast SIMD */
-    fuzz_push(payload, payload_size, ZSV_MODE_DELIM_FAST, 0, 0);
+  case 1: /* fast SIMD engine */
+    if (chunked)
+      fuzz_push_chunked(payload, payload_size, ZSV_MODE_DELIM_FAST, 17);
+    else
+      fuzz_push(payload, payload_size, ZSV_MODE_DELIM_FAST, 0, 0);
     break;
-  case 2: /* compat */
-    fuzz_push(payload, payload_size, ZSV_MODE_COMPAT, 0, 0);
+  case 2: /* compat engine */
+    if (chunked)
+      fuzz_push_chunked(payload, payload_size, ZSV_MODE_COMPAT, 17);
+    else
+      fuzz_push(payload, payload_size, ZSV_MODE_COMPAT, 0, 0);
     break;
   case 3: /* alternate delimiter */
     fuzz_push(payload, payload_size, ZSV_MODE_DELIM, 0, delim);
     break;
   case 4: /* no-quotes */
-    fuzz_push(payload, payload_size, ZSV_MODE_DELIM, 1, 0);
+    if (chunked)
+      fuzz_push_chunked(payload, payload_size, ZSV_MODE_DELIM, 17);
+    else
+      fuzz_push(payload, payload_size, ZSV_MODE_DELIM, 1, 0);
     break;
-  case 5: /* pull */
+  case 5: /* fixed-width */
+    fuzz_fixed(payload, payload_size);
+    break;
+  case 6: /* pull */
     fuzz_pull(payload, payload_size, 0);
     break;
-  case 6: /* pull, no-quotes */
+  case 7: /* pull, no-quotes */
     fuzz_pull(payload, payload_size, 1);
-    break;
-  case 7: /* compat + alternate delimiter */
-    fuzz_push(payload, payload_size, ZSV_MODE_COMPAT, 0, delim);
     break;
   }
 }
