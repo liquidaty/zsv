@@ -90,7 +90,6 @@ app/benchmark/worldcitiespop_big.csv
 app/benchmark/worldcitiespop_big.tsv
 !**/expected/*.out
 pkg
-PDCurses-3.9
 default.profraw
 fuzz/afl
 fuzz/df

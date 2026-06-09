@@ -502,23 +502,9 @@ jobs:
         sudo apt update
         sudo apt install -y mingw-w64 nuget
 
-    - name: Cache PDCurses build
-      id: pdcurses
-      uses: actions/cache@v5
-      with:
-        path: PDCurses-3.9
-        key: linux-mingw-pdcurses
-
-    - name: Install PDCurses
-      if: ${{ steps.pdcurses.outputs.cache-hit != 'true' }}
-      run: ./scripts/ci-build-pdcurses-with-mingw.sh
-
-    - name: Set PDCurses env vars (CFLAGS and LDFLAGS)
-      run: |
-        {
-          echo "CFLAGS=-I$PWD/PDCurses-3.9"
-          echo "LDFLAGS=-L$PWD/PDCurses-3.9/wincon"
-        } >>"$GITHUB_ENV"
+    # PDCurses is bootstrapped automatically by the build (configure detects it
+    # is not installed and app/Makefile builds the vendored copy), same as the
+    # other vendored externals -- no manual provisioning step needed here.
 
     - name: Build
       env:
@@ -612,16 +598,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Cache PDCurses build
-      id: pdcurses
-      uses: actions/cache@v5
-      with:
-        path: PDCurses-3.9
-        key: wsl-mingw-pdcurses
-
-    - name: Install PDCurses
-      if: ${{ steps.pdcurses.outputs.cache-hit != 'true' }}
-      run: ./scripts/ci-build-pdcurses-with-mingw.sh
+    # PDCurses is bootstrapped automatically by the build (see the build job).
 
     - name: Test
       env:
@@ -633,8 +610,6 @@ jobs:
         SKIP_BUILD: true
         WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:CMP:RUN_TESTS:SKIP_BUILD
       run: |
-        export CFLAGS="-I$PWD/PDCurses-3.9"
-        export LDFLAGS="-L$PWD/PDCurses-3.9/wincon"
         ./scripts/ci-build.sh
 
   ci-musl:
