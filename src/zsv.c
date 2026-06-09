@@ -476,11 +476,11 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
         if (stat != zsv_status_ok)
           return stat;
       }
-      // scanner_pre_parse adjusts cell_start but not scanned_length; cap it so
-      // cell_dl doesn't read past the synthetic closing '"' at new_end
-      if (scanner->scanned_length > scanner->cell_start + new_end + 1)
-        scanner->scanned_length = scanner->cell_start + new_end + 1;
-      scanner->quote_close_position = new_end;
+      // qcp is relative to cell_start; scanned_length must not exceed new_end+1
+      // so that cell_dl's easy path (qcp+1 == n) is taken and no read past buffer
+      if (scanner->scanned_length > new_end + 1)
+        scanner->scanned_length = new_end + 1;
+      scanner->quote_close_position = new_end - scanner->cell_start;
       scanner->buff.buff[new_end] = '"';
       /*
       size_t new_size = scanner->cell_start + scanner->quote_close_position + 1;
