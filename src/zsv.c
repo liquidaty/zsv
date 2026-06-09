@@ -38,7 +38,7 @@ const char *zsv_lib_version(void) {
  * chunk remains available in a contiguous block of one or more rows
  */
 // __attribute__((always_inline))
-inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
+inline static enum zsv_status scanner_pre_parse(struct zsv_scanner *scanner, size_t *capacityp) {
   scanner->last = '\0';
   if (VERY_LIKELY(scanner->old_bytes_read)) {
     scanner->last = scanner->buff.buff[scanner->old_bytes_read - 1];
@@ -78,7 +78,9 @@ inline static size_t scanner_pre_parse(struct zsv_scanner *scanner) {
     scanner->partial_row_length = 0;
     capacity = scanner->buff.size;
   }
-  return capacity;
+  if (capacityp)
+    *capacityp = capacity;
+  return zsv_status_ok;
 }
 
 /**
@@ -107,7 +109,10 @@ enum zsv_status zsv_parse_more(struct zsv_scanner *scanner) {
   if (VERY_UNLIKELY(scanner->insert_string != NULL))
     zsv_insert_string(scanner);
 
-  size_t capacity = scanner_pre_parse(scanner);
+  size_t capacity;
+  enum zsv_status stat = scanner_pre_parse(scanner, &capacity);
+  if (stat != zsv_status_ok)
+    return stat;
   size_t bytes_read;
   if (VERY_UNLIKELY(scanner->checked_bom == 0)) {
 #ifdef ZSV_EXTRAS
@@ -392,16 +397,100 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
       return zsv_status_ok;
     }
 
-    if ((scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) && scanner->partial_row_length > scanner->cell_start) {
-      int quote = '"';
-      scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
-      scanner->quoted -= ZSV_PARSER_QUOTE_UNCLOSED;
-      if (scanner->last == quote)
-        scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start;
-      else {
-        scanner->quote_close_position = scanner->partial_row_length - scanner->cell_start;
-        scanner->scanned_length++;
+    /* EOF fix-up: if we ran out of input while still inside an unclosed
+     * quoted cell, virtually close it so cell_dl sees a consistent state.
+     * `pending` is the cell length signaled by whichever counter is set:
+     * partial_row_length (multi-chunk parses carrying data forward) or
+     * scanned_length (single-chunk parses where partial_row_length is 0).
+     *
+     * For a stray single `"` (pending < 2) the input is malformed; drop
+     * the quoted flag so the byte is emitted as plain content.
+     *
+     * Otherwise we synthesize a virtual closing quote and let cell_dl
+     * strip the surrounding quotes via its easy fast-path. cell_dl's
+     * easy path only adjusts pointer/length (no reads past the cell),
+     * so the synthesized closing quote at offset `pending` is never
+     * actually accessed.
+     *
+     * For the EMBEDDED case, however, cell_dl's `""`-collapse loop
+     * reads up to s[n-1] — i.e. one byte past the original valid input
+     * — which causes a heap-buffer-overflow on a tightly-sized scanner
+     * buffer. To produce the same cell content the easy path would
+     * produce when the over-read happened to land on a zero byte (no
+     * spurious extra `""` match), we do the de-escape ourselves in
+     * place, then have cell_dl run the easy fast-path on a synthetic
+     * envelope sized to the de-escaped content. The cell's quoted flags
+     * are preserved (CLOSED|NEEDED) so downstream writers re-quote on
+     * output. */
+    if (scanner->quoted & ZSV_PARSER_QUOTE_UNCLOSED) {
+      size_t pending = scanner->partial_row_length > scanner->cell_start
+                         ? scanner->partial_row_length - scanner->cell_start
+                       : scanner->scanned_length > scanner->cell_start ? scanner->scanned_length - scanner->cell_start
+                                                                       : 0;
+      if (pending > 0) {
+        if (pending < 2) {
+          scanner->quoted = 0;
+        } else if (scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) {
+          /* In-place de-escape of `""` pairs in the cell interior
+           * (everything after the leading `"`). After this, cell_dl's
+           * easy fast-path sees a `"<de-escaped>"`-shaped envelope of
+           * length 2+out and strips both surrounding quotes via
+           * `s++; n -= 2`, yielding a cell view of exactly <de-escaped>
+           * bytes. The synthetic trailing `"` is never read. */
+          unsigned char *inner = scanner->buff.buff + scanner->cell_start + 1;
+          size_t inner_len = pending - 1;
+          size_t out = 0;
+          for (size_t i = 0; i < inner_len; i++) {
+            inner[out++] = inner[i];
+            if (i + 1 < inner_len && inner[i] == '"' && inner[i + 1] == '"')
+              i++;
+          }
+          scanner->scanned_length = scanner->cell_start + 2 + out;
+          scanner->quote_close_position = 1 + out;
+          /* Drop EMBEDDED so cell_dl picks the easy path; keep CLOSED
+           * and NEEDED so writers see the cell as needing re-quoting. */
+          scanner->quoted = (scanner->quoted | ZSV_PARSER_QUOTE_CLOSED | ZSV_PARSER_QUOTE_NEEDED) &
+                            ~(ZSV_PARSER_QUOTE_UNCLOSED | ZSV_PARSER_QUOTE_PENDING | ZSV_PARSER_QUOTE_EMBEDDED);
+        } else {
+          int quote = '"';
+          scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
+          scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
+          scanner->quote_close_position = pending;
+          if (scanner->last != quote)
+            scanner->scanned_length++;
+        }
       }
+    }
+    if (scanner->quoted != 0 && scanner->quote_close_position > 0 &&
+        scanner->cell_start + scanner->quote_close_position >= scanner->buff.size) {
+      // the below does not work if !scanner->free_buff
+      // use scanner_pre_parse() instead to shift the row over
+      // then append '"' to the end
+      size_t new_end = scanner->buff.size - scanner->row_start;
+      if (new_end >= scanner->buff.size) {
+        // row_start == 0: buffer entirely full, nothing to shift; truncate in place
+        scanner->errprintf(scanner->errf, "Warning: row %zu truncated\n", scanner->data_row_count);
+        new_end = scanner->buff.size - 1;
+      } else {
+        stat = scanner_pre_parse(scanner, NULL);
+        if (stat != zsv_status_ok)
+          return stat;
+      }
+      // qcp is relative to cell_start; scanned_length must not exceed new_end+1
+      // so that cell_dl's easy path (qcp+1 == n) is taken and no read past buffer
+      if (scanner->scanned_length > new_end + 1)
+        scanner->scanned_length = new_end + 1;
+      scanner->quote_close_position = new_end - scanner->cell_start;
+      scanner->buff.buff[new_end] = '"';
+      /*
+      size_t new_size = scanner->cell_start + scanner->quote_close_position + 1;
+
+      void *mem = realloc(scanner->buff.buff, new_size);
+      if (!mem)
+        return zsv_status_memory;
+      scanner->buff.buff = mem;
+      scanner->buff.size = new_size;
+      */
     }
   }
 
@@ -436,9 +525,6 @@ enum zsv_status zsv_delete(zsv_parser parser) {
     collate_header_destroy(&parser->collate_header);
     free(parser->pull.regs);
 
-    // Clean up padded input buffer used by fast parser
-    free(parser->padded_input_buffer);
-
 #ifdef ZSV_EXTRAS
     if (parser->overwrite.close) {
       parser->overwrite.close(parser->overwrite.ctx);
@@ -472,6 +558,8 @@ const unsigned char *zsv_parse_status_desc(enum zsv_status status) {
     return (unsigned char *)"Row successfully pulled";
   case zsv_status_error:
     return (unsigned char *)"Unexpected error";
+  case zsv_status_nonstandard_csv:
+    return (unsigned char *)"Non-standard CSV detected by fast SIMD engine; retry with ZSV_MODE_COMPAT";
 #ifdef ZSV_EXTRAS
   case zsv_status_max_rows_read:
     return (unsigned char *)"Maximum specified rows have been parsed";
@@ -503,10 +591,15 @@ size_t zsv_row_length_raw_bytes(zsv_parser parser) {
  * @param len    length of the input to parse
  */
 enum zsv_status zsv_parse_bytes(struct zsv_scanner *scanner, const unsigned char *bytes, size_t len) {
+  if (VERY_UNLIKELY(scanner->abort || scanner->finished))
+    // e.g. from nonstandard-CSV detection, etc
+    return zsv_status_cancelled;
   enum zsv_status stat = zsv_status_ok;
   const unsigned char *cursor = bytes;
   while (len && stat == zsv_status_ok) {
-    size_t capacity = scanner_pre_parse(scanner);
+    size_t capacity;
+    if ((stat = scanner_pre_parse(scanner, &capacity)) != zsv_status_ok)
+      break;
     size_t this_chunk_size = len > capacity ? capacity : len;
     memcpy(scanner->buff.buff + scanner->partial_row_length, cursor, this_chunk_size);
     cursor += this_chunk_size;

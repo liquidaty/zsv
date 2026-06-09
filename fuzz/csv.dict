@@ -1,0 +1,91 @@
+# CSV Dictionary for libFuzzer — zsv target
+#
+# Covers:
+#   - RFC 4180 structural tokens
+#   - BOM (UTF-8 Byte Order Mark, handled by zsv)
+#   - CRLF and bare LF row terminators
+#   - Quoted-field edge cases (embedded quotes, empty quoted fields)
+#   - Long runs to stress SIMD vector boundaries (16/32 byte AVX2 chunks)
+#   - Non-ASCII / multi-byte UTF-8 sequences
+#   - Common CSV delimiters besides comma (tab, semicolon, pipe)
+
+# ----- Basic structural tokens -----
+comma=","
+dquote="\""
+crlf="\x0d\x0a"
+lf="\x0a"
+cr="\x0d"
+
+# ----- RFC 4180 quoting patterns -----
+# Simplest quoted field
+q_empty="\"\""
+# Embedded double-quote (RFC 4180 escaping: "" inside quoted field)
+q_embedded="\"\"\""
+# Opening quote without close (triggers unclosed-quote path)
+q_open="\""
+# Quoted field with comma inside
+q_comma="\",\""
+# Quoted field with newline inside
+q_newline="\"\x0a\""
+q_crnewline="\"\x0d\x0a\""
+
+# ----- Row patterns -----
+# Row with only a comma (two empty cells)
+two_empty=","
+# Row with only commas (stress max_columns)
+many_commas=",,,,,,,,,,,,,,,,"
+
+# ----- Field content patterns -----
+# All-spaces field
+spaces="   "
+# Field equal to buffer boundary sizes (to probe SIMD vector alignment)
+# 15 bytes (one short of 16-byte SSE2 lane)
+f15="aaaaaaaaaaaaaaa"
+# 16 bytes (exactly one SSE2 lane)
+f16="aaaaaaaaaaaaaaaa"
+# 17 bytes (one past the lane)
+f17="aaaaaaaaaaaaaaaaa"
+# 31 bytes (one short of 32-byte AVX2 lane)
+f31="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+# 32 bytes (exactly one AVX2 lane)
+f32="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+# 33 bytes (one past the AVX2 lane)
+f33="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+# ----- Alternate delimiters -----
+tab="\x09"
+semicolon=";"
+pipe="|"
+
+# ----- BOM -----
+bom="\xef\xbb\xbf"
+
+# ----- Long rows -----
+# A row that is likely to exceed max_row_size / 2 to trigger partial-row handling
+long_row="aaaaaaaaa,aaaaaaaaa,aaaaaaaaa,aaaaaaaaa,aaaaaaaaa,aaaaaaaaa,aaaaaaaaa,aaaaaaaaa,aaaaaaaaa,aaaaaaaaa,"
+
+# ----- Multi-byte UTF-8 sequences -----
+# 2-byte (U+00C9 É)
+utf8_2="\xc3\x89"
+# 3-byte (U+20AC €)
+utf8_3="\xe2\x82\xac"
+# 4-byte (U+1F600 emoji)
+utf8_4="\xf0\x9f\x98\x80"
+# Overlong / invalid UTF-8 (to exercise malformed_utf8 path)
+bad_utf8="\x80\x80\x80"
+bad_utf8_2="\xfe\xff"
+
+# ----- Numeric-like fields -----
+integer="42"
+negative="-1"
+float_val="3.14"
+sci="1e10"
+
+# ----- Typical header row -----
+header="id,name,value,timestamp\x0d\x0a"
+
+# ----- CRLF / LF boundary probes -----
+# Lone \r not followed by \n (should be treated as row end)
+bare_cr="\x0d"
+# \r\n split across a read boundary (gets tested by the chunking in zsv_parse_bytes)
+split_crlf="\x0d\x0a"

@@ -355,7 +355,7 @@ help:
 	@echo "If JQ_PREFIX is not defined, libjq will be built in the build dir"
 	@echo "If STATIC_BUILD is set to 1, will build with -static flag, if the compiler supports it"
 	@echo
-	@echo "To build and test individual apps, run:"
+	@echo "To build and/or test individual apps, run:"
 	@echo "  ${MAKE} test"
 	@echo "which will build and test all apps, or to build/test a single app:"
 	@echo "  ${MAKE} test-xx"
@@ -364,6 +364,12 @@ help:
 	@echo ""
 	@echo "To run benchmarks:"
 	@echo "  ${MAKE} benchmark"
+	@echo ""
+	@echo "To run asan/fuzz tests:"
+	@echo "  make -C test test-vuln-asan-repro"
+	@echo "  make -C test test-vuln-asan-fuzz [FUZZ_ITERS=1000000]"
+	@echo ""
+	@echo "To run msan tests: see ../.github/workflows/msan.yml"
 	@echo ""
 
 DESTDIR ?=

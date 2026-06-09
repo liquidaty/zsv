@@ -75,6 +75,13 @@ TESTS+=test-quoted-nonstandard
 # Security regression test - only run when not cross-compiling
 ifneq ($(CROSS_COMPILING),1)
   TESTS+=test-vuln-cve-underflow
+  # ASan-instrumented regression for the zsv_finish->cell_dl OOB. Skipped
+  # if SAN_CC (clang+sanitizers) is unavailable; build target itself runs
+  # the sanitizer.
+  ifneq ($(shell command -v clang 2>/dev/null),)
+    TESTS+=test-vuln-finish-cell-dl-oob
+    TESTS+=test-vuln-fast-nonstandard-oob
+  endif
 endif
 
 COLOR_NONE=\033[0m
@@ -206,6 +213,76 @@ test-vuln-cve-underflow: ${TMP_DIR}/test_vuln_cve_underflow
 ${TMP_DIR}/test_vuln_cve_underflow: test_vuln_cve_underflow.c ${BUILD_DIR}/lib/libzsv.a
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} -I../../include test_vuln_cve_underflow.c -L${BUILD_DIR}/lib -lzsv -o $@
+
+# -----------------------------------------------------------------------------
+# Sanitizer-driven reproduction of the integer-underflow investigation.
+#
+#   make test-vuln-asan-repro
+#     Builds sec/repro.c with the parser unity TU under
+#     -fsanitize=address,undefined and runs it against every payload in
+#     sec/poc/. Any sanitizer report aborts the process and fails the target.
+#
+#   make test-vuln-asan-fuzz [FUZZ_ITERS=N]
+#     Builds sec/fuzz.c (a portable in-process random-mutation fuzzer that
+#     does not require libFuzzer or AFL toolchains), seeds it from sec/poc/,
+#     and runs FUZZ_ITERS iterations under ASan+UBSan. Default 1,000,000.
+#
+# Neither target is part of the default `make test`. Both require a clang
+# with sanitizer runtimes (override via `make ... SAN_CC=/path/to/clang`).
+# -----------------------------------------------------------------------------
+SAN_CC ?= clang
+SAN_BUILD_FLAGS = -fsanitize=address,undefined -fno-omit-frame-pointer \
+                  -fno-sanitize-recover=all -O1 -g -std=gnu11 -fsigned-char \
+                  -DZSV_VERSION=\"sec-review\" -DZSV_HAVE_NEON \
+                  -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT \
+                  -I${THIS_LIB_BASE}/include -I${THIS_LIB_BASE}/src \
+                  -I${THIS_LIB_BASE}/app/external/sqlite3
+FUZZ_ITERS ?= 1000000
+
+${TMP_DIR}/sec_repro: sec/repro.c ${THIS_LIB_BASE}/src/zsv.c
+	@mkdir -p ${TMP_DIR}
+	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/repro.c -o $@
+
+${TMP_DIR}/sec_fuzz: sec/fuzz.c ${THIS_LIB_BASE}/src/zsv.c
+	@mkdir -p ${TMP_DIR}
+	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/fuzz.c -o $@
+
+${TMP_DIR}/sec_repro_finish_oob: sec/repro_finish_cell_dl_OOB.c ${THIS_LIB_BASE}/src/zsv.c
+	@mkdir -p ${TMP_DIR}
+	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/repro_finish_cell_dl_OOB.c -o $@
+
+${TMP_DIR}/sec_repro_fast_nonstandard_oob: sec/repro_fast_nonstandard_OOB.c ${THIS_LIB_BASE}/src/zsv.c
+	@mkdir -p ${TMP_DIR}
+	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/repro_fast_nonstandard_OOB.c -o $@
+
+test-vuln-asan-repro: ${TMP_DIR}/sec_repro
+	@${TEST_INIT}
+	@for f in sec/poc/*.bin; do \
+	  printf "  -- %s --\n" "$$f"; \
+	  ${TMP_DIR}/sec_repro "$$f" || ${TEST_FAIL}; \
+	done
+	@${TEST_PASS}
+
+# Tight-buffer regression for the zsv_finish->cell_dl heap-buffer-overflow.
+# The PoC payload is generated programmatically inside the binary so the
+# repro is self-contained.
+test-vuln-finish-cell-dl-oob: ${TMP_DIR}/sec_repro_finish_oob
+	@${TEST_INIT}
+	@${TMP_DIR}/sec_repro_finish_oob && ${TEST_PASS} || ${TEST_FAIL}
+
+# Regression for the FAST SIMD scanner OOB on non-standard CSV (mid-cell
+# quote that fills the buffer with no row terminator). Verifies that:
+#   (a) ASan does not report heap-buffer-overflow in zsv_finish, AND
+#   (b) the fast engine returns zsv_status_nonstandard_csv (detection on).
+test-vuln-fast-nonstandard-oob: ${TMP_DIR}/sec_repro_fast_nonstandard_oob
+	@${TEST_INIT}
+	@${TMP_DIR}/sec_repro_fast_nonstandard_oob && ${TEST_PASS} || ${TEST_FAIL}
+
+test-vuln-asan-fuzz: ${TMP_DIR}/sec_fuzz
+	@${TEST_INIT}
+	@printf "  fuzzing parser for ${FUZZ_ITERS} iterations under ASan+UBSan\n"
+	@${TMP_DIR}/sec_fuzz sec/poc ${FUZZ_ITERS} || ${TEST_FAIL}
+	@${TEST_PASS}
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE} ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}

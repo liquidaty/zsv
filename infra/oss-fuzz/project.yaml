@@ -1,0 +1,16 @@
+homepage: "https://github.com/liquidaty/zsv"
+language: c
+primary_contact: "matt@liquidaty.com"
+auto_ccs: []
+main_repo: "https://github.com/liquidaty/zsv"
+file_github_issue: true
+sanitizers:
+  - address
+  - undefined
+  - memory
+fuzzing_engines:
+  - libfuzzer
+  - afl
+  - honggfuzz
+architectures:
+  - x86_64
