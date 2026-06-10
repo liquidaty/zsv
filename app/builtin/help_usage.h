@@ -58,32 +58,43 @@ static const char *common_options[] = {
 };
 
 static const char *commands_title = "Commands that parse CSV or other tabular data:";
-static const char *commands[] = {
-  "  echo     : write tabular input to stdout with optional cell overwrites",
-  "  check    : check for anomalies (column counts, utf8 encoding etc)",
-  "  count    : print the number of rows",
-  "  select   : extract rows/columns by name or position and perform other basic and 'cleanup' operations",
-  "  desc     : describe each column",
-  "  sql      : run ad-hoc SQL on one or more CSV files",
-  "  pretty   : pretty print for console display",
-  "  serialize: convert into 3-column format (id, column name, cell value)",
-  "  flatten  : flatten a table consisting of N groups of data, each with 1 or",
-  "             more rows in the table, into a table of N rows",
-  "  2json    : convert CSV or sqlite3 db table to json",
-  "  2tsv     : convert to tab-delimited text",
-  "  stack    : stack tables vertically, aligning columns with common names",
-  "  paste    : horizontally paste two tables together: given inputs X, Y, ... of N rows",
-  "  compare  : compare two or more tables and output differences",
-  "  overwrite: save, modify or apply overwrites",
-  "",
-  "Other commands:",
-  "  2db      : convert json to sqlite3 db",
-  "  prop     : save parsing options associated with a file that are subsequently",
-  "             applied by default when processing that file",
-  "  rm       : remove a file and its related cache",
-  "  mv       : rename (move) a file and/or its related cache",
+
+/* Structured command catalog: the single source of truth for each
+ * command's name and one-line synopsis. help.c formats this into the
+ * display list shown by `zsv help`; downstream tools (e.g. the lq CLI)
+ * include this header and look up a command's synopsis by name, so the
+ * text lives in exactly one place rather than being duplicated. A NULL
+ * `name` marks a section break whose `synopsis`, if non-NULL, is printed
+ * as a sub-heading. The array is terminated by a {NULL, NULL} sentinel. */
+struct zsv_help_command {
+  const char *name;     /* command name; NULL marks a section break */
+  const char *synopsis; /* one-line description (or sub-heading text) */
+};
+static const struct zsv_help_command commands[] = {
+  {"echo", "write tabular input to stdout with optional cell overwrites"},
+  {"check", "check for anomalies (column counts, utf8 encoding etc)"},
+  {"count", "print the number of rows"},
+  {"select", "extract rows/columns by name or position and perform other basic and 'cleanup' operations"},
+  {"desc", "describe each column"},
+  {"sql", "run ad-hoc SQL on one or more CSV files"},
+  {"pretty", "pretty print for console display"},
+  {"serialize", "convert into 3-column format (id, column name, cell value)"},
+  {"flatten",
+   "flatten a table consisting of N groups of data, each with 1 or more rows in the table, into a table of N rows"},
+  {"2json", "convert CSV or sqlite3 db table to json"},
+  {"2tsv", "convert to tab-delimited text"},
+  {"stack", "stack tables vertically, aligning columns with common names"},
+  {"paste", "horizontally paste two tables together: given inputs X, Y, ... of N rows"},
+  {"compare", "compare two or more tables and output differences"},
+  {"overwrite", "save, modify or apply overwrites"},
+  {NULL, "Other commands:"},
+  {"2db", "convert json to sqlite3 db"},
+  {"prop",
+   "save parsing options associated with a file that are subsequently applied by default when processing that file"},
+  {"rm", "remove a file and its related cache"},
+  {"mv", "rename (move) a file and/or its related cache"},
 #ifdef USE_JQ
-  "  jq       : run a jq filter on json input",
+  {"jq", "run a jq filter on json input"},
 #endif
-  NULL,
+  {NULL, NULL},
 };

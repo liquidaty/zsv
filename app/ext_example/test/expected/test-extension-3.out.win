@@ -47,8 +47,7 @@ Commands that parse CSV or other tabular data:
   sql      : run ad-hoc SQL on one or more CSV files
   pretty   : pretty print for console display
   serialize: convert into 3-column format (id, column name, cell value)
-  flatten  : flatten a table consisting of N groups of data, each with 1 or
-             more rows in the table, into a table of N rows
+  flatten  : flatten a table consisting of N groups of data, each with 1 or more rows in the table, into a table of N rows
   2json    : convert CSV or sqlite3 db table to json
   2tsv     : convert to tab-delimited text
   stack    : stack tables vertically, aligning columns with common names
@@ -58,8 +57,7 @@ Commands that parse CSV or other tabular data:
 
 Other commands:
   2db      : convert json to sqlite3 db
-  prop     : save parsing options associated with a file that are subsequently
-             applied by default when processing that file
+  prop     : save parsing options associated with a file that are subsequently applied by default when processing that file
   rm       : remove a file and its related cache
   mv       : rename (move) a file and/or its related cache
   jq       : run a jq filter on json input
@@ -117,8 +115,7 @@ Commands that parse CSV or other tabular data:
   sql      : run ad-hoc SQL on one or more CSV files
   pretty   : pretty print for console display
   serialize: convert into 3-column format (id, column name, cell value)
-  flatten  : flatten a table consisting of N groups of data, each with 1 or
-             more rows in the table, into a table of N rows
+  flatten  : flatten a table consisting of N groups of data, each with 1 or more rows in the table, into a table of N rows
   2json    : convert CSV or sqlite3 db table to json
   2tsv     : convert to tab-delimited text
   stack    : stack tables vertically, aligning columns with common names
@@ -128,8 +125,7 @@ Commands that parse CSV or other tabular data:
 
 Other commands:
   2db      : convert json to sqlite3 db
-  prop     : save parsing options associated with a file that are subsequently
-             applied by default when processing that file
+  prop     : save parsing options associated with a file that are subsequently applied by default when processing that file
   rm       : remove a file and its related cache
   mv       : rename (move) a file and/or its related cache
   jq       : run a jq filter on json input

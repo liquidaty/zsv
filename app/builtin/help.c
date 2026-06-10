@@ -22,8 +22,12 @@ static int main_help(int argc, const char *argv[]) {
   for (size_t i = 0; common_options[i]; i++)
     fprintf(f, "%s\n", common_options[i]);
   fprintf(f, "\n%s\n", commands_title);
-  for (size_t i = 0; commands[i]; i++)
-    fprintf(f, "%s\n", commands[i]);
+  for (size_t i = 0; commands[i].name || commands[i].synopsis; i++) {
+    if (!commands[i].name) /* section break: print synopsis as a sub-heading */
+      fprintf(f, "\n%s\n", commands[i].synopsis);
+    else
+      fprintf(f, "  %-9s: %s\n", commands[i].name, commands[i].synopsis);
+  }
 
 #ifndef __EMSCRIPTEN__
   char printed_init = 0;
