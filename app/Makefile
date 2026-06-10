@@ -607,6 +607,24 @@ ifeq ($(HAVE_PCRE2_8),1)
   ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: MORE_LIBS+=${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o ${LDFLAGS_PCRE2_8} ${PCRE2_LIB}
 endif
 
+# sheet uses curses. On Windows/MinGW with no installed PDCurses, configure sets
+# PDCURSES_BUILTIN=1; bootstrap a private static copy into the build dir using the
+# same script CI uses, then point sheet's include + link at it.
+ifeq ($(PDCURSES_BUILTIN),1)
+  PDCURSES_VERSION ?= 3.9
+  BUILTIN_PDCURSES_PREFIX=${BUILD_DIR}-external/pdcurses
+  PDCURSES_SRC=${BUILTIN_PDCURSES_PREFIX}/PDCurses-${PDCURSES_VERSION}
+  PDCURSES_LIB=${PDCURSES_SRC}/wincon/libpdcurses.a
+  CFLAGS+= -I${PDCURSES_SRC}
+  # Compiling sheet.c needs curses.h and linking needs the static archive; both
+  # are produced by the bootstrap recipe below, so make sheet depend on the lib.
+  ${CLI_OBJ_PFX}sheet.o ${STANDALONE_PFX}sheet${EXE}: ${PDCURSES_LIB}
+  ${CLI} ${STANDALONE_PFX}sheet${EXE}: MORE_LIBS+= ${PDCURSES_LIB}
+
+${PDCURSES_LIB}:
+	${MAKE} -C external -f ${CONFIGFILEPATH} -f build.mk $@ BUILD_DIR=${BUILD_DIR} CONFIGURE_HOST=${CONFIGURE_HOST} PDCURSES_VERSION=${PDCURSES_VERSION} DESTDIR=
+endif
+
 # pcre2-8.o actually only needs ${PCRE2_8_PREFIX}/include/pcre2.h, but if we are using builtin pcre2, then
 # that will only exist after the builtin library has been built
 ifeq ($(PCRE2_8_PREFIX),$(BULITIN_PCRE2_PREFIX))
