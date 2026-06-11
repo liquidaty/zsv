@@ -980,6 +980,7 @@ test-sheet-all: \
 	test-sheet-pivot-1 \
 	test-sheet-pivot-V \
 	test-sheet-sqlfilter-1 \
+	test-sheet-sqlfilter-dupcol \
 	test-sheet-errors-1
 	@rm -f tmux-*.log zSE*
 	@(for SESSION in $^; do ! tmux -L "$$SESSION" kill-server 2>/dev/null || true; done && ${TEST_PASS} || ${TEST_FAIL})
@@ -1236,7 +1237,23 @@ test-sheet-pivot-V: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	${EXPECT} $@ drilldown && \
 	${TEST_PASS} || ${TEST_FAIL})
 
-test-sheet-sqlfilter: test-sheet-sqlfilter-1
+test-sheet-sqlfilter: test-sheet-sqlfilter-1 test-sheet-sqlfilter-dupcol
+
+# Exercises the capability sqlfilter's dedupe-on enables: a file whose header
+# repeats a column name can still be filtered in sheet. The initial view shows the
+# raw duplicate header (Country, City, Country); after :where, sqlfilter builds the
+# underlying table -- disambiguating the repeat to Country_2 -- and returns the
+# filtered rows. Pre-change this filter could not build its table at all.
+test-sheet-sqlfilter-dupcol: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'Country,City,Country\nus,new york,USA\nfr,paris,France\nde,berlin,Germany\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":where" ENTER "City like 'b%'" ENTER && \
+	${EXPECT} $@ filter && \
+	${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-sqlfilter-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
