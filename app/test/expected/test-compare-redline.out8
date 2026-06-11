@@ -1,0 +1,138 @@
+{
+  "schema": "zsv.compare",
+  "version": "1",
+  "inputs": [
+    {
+      "label": "jredline8a.csv",
+      "path": "compare/jredline8a.csv",
+      "row_count": 2
+    },
+    {
+      "label": "jredline8b.csv",
+      "path": "compare/jredline8b.csv",
+      "row_count": 3
+    },
+    {
+      "label": "jredline8c.csv",
+      "path": "compare/jredline8c.csv",
+      "row_count": 3
+    }
+  ],
+  "keys": [
+    "id"
+  ],
+  "options": {
+    "tolerance": null,
+    "sort": false,
+    "include_unchanged_rows": false,
+    "include_tolerated": false
+  },
+  "columns": [
+    {
+      "name": "id",
+      "is_key": true,
+      "in_inputs": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "name": "val",
+      "is_key": false,
+      "in_inputs": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "summary": {
+    "rows": {
+      "in_all_inputs": 1,
+      "only_in_input_count": [
+        3,
+        2,
+        2
+      ],
+      "with_any_diff": 4
+    },
+    "cells": {
+      "compared": 2,
+      "matched": 2,
+      "within_tolerance": 0,
+      "differing": 0
+    },
+    "by_column": [
+      {
+        "name": "id",
+        "compared": 1,
+        "matched": 1,
+        "within_tolerance": 0,
+        "differing": 0
+      },
+      {
+        "name": "val",
+        "compared": 1,
+        "matched": 1,
+        "within_tolerance": 0,
+        "differing": 0
+      }
+    ],
+    "schema": {
+      "common": [
+        "id",
+        "val"
+      ],
+      "only_in_input": [
+        [
+        ],
+        [
+        ],
+        [
+        ]
+      ]
+    }
+  },
+  "rows": [
+    {
+      "data": [
+        "1",
+        "A"
+      ],
+      "missing_in": [
+        1,
+        2
+      ]
+    },
+    {
+      "data": [
+        "2",
+        "B"
+      ],
+      "missing_in": [
+        0,
+        2
+      ]
+    },
+    {
+      "data": [
+        "3",
+        "C"
+      ],
+      "missing_in": [
+        0,
+        1
+      ]
+    },
+    {
+      "data": [
+        "4",
+        "D"
+      ],
+      "missing_in": [
+        0
+      ]
+    }
+  ]
+}

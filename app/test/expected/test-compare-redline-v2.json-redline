@@ -1,0 +1,37 @@
+zsv compare --json-redline schema (version 1)
+==========================================================
+
+Output mode: zsv compare --json-redline [options] <file.csv>...
+
+Produces a single JSON object describing the comparison between two or more
+CSV inputs. A downstream renderer can produce an HTML or XLSX redline from
+this output without re-reading the source CSVs.
+
+Top-level fields
+  schema        : "zsv.compare" (constant)
+  version       : "1" — bump on breaking changes only
+  generated_at  : ISO 8601 UTC timestamp (honors SOURCE_DATE_EPOCH)
+  inputs[]      : per-input metadata (label, path, row_count)
+  keys[]        : column names used to match rows
+  options       : tolerance, sort, include_unchanged_rows, include_tolerated
+  columns[]     : merged column list with is_key and in_inputs[]
+  summary       : aggregate row/cell counts and schema diff
+  rows[]        : differing (and optionally unchanged) rows
+
+Row forms
+  Array form    : row present in every input — [cell_0, cell_1, ...]
+  Object form   : row missing in some input —
+                  {"data": [...], "missing_in": [<input indices>]}
+                  missing_in indices are in ascending order
+
+Cell forms
+  Scalar        : string | null — all inputs agree (or tolerated diff collapsed)
+  Array         : [v_0, v_1, ..., v_N] parallel to inputs[] — values differ
+                  null slot means that input lacks this cell
+
+Tolerance
+  With --tolerance T, numeric cells differing by < T render as scalars
+  (input[0]'s value) unless --include-tolerated is also set.
+
+See also
+  zsv help compare json-redline-json  (JSON Schema Draft 2020-12)

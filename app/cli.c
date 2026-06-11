@@ -564,9 +564,15 @@ int ZSV_CLI_MAIN(int argc, const char *argv[]) {
   if (builtin) {
     // help is different from other commands: zsv help <arg> is treated as
     //   if it was zsv <arg> --help
+    // zsv help <cmd> <topic> routes to: zsv <cmd> --help-topic <topic>
     if (builtin->main == main_help && argc > 2) {
       struct builtin_cmd *help_builtin = find_builtin(argv[2]);
       if (help_builtin) {
+        if (argc > 3 && help_builtin->cmd) {
+          const char *argv_tmp[3] = {argv[2], "--help-topic", argv[3]};
+          struct zsv_opts opts = {0};
+          return help_builtin->cmd(3, argv_tmp, &opts, NULL);
+        }
         const char *argv_tmp[2] = {argv[2], "--help"};
         if (help_builtin->main)
           return help_builtin->main(2, argv_tmp);

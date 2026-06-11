@@ -109,10 +109,9 @@ struct zsv_compare_data {
   sqlite3 *sort_db; // used when --sort option was specified
 
   struct {
-    double value;
+    double value;    /* bumped via nextafterf for comparison */
+    double original; /* as specified by user — used for output */
 #define ZSV_COMPARE_MAX_NUMBER_BUFF_LEN 128
-    char str1[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
-    char str2[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
   } tolerance;
   struct {
     char type; // 'j' for json
@@ -127,11 +126,15 @@ struct zsv_compare_data {
       char **names;
     } properties;
 
-    unsigned cell_ix;          // only used for json + object output
-    unsigned char compact : 1; // whether to output compact JSON
-    unsigned char object : 1;  // whether to output JSON as objects
-    unsigned char _ : 6;
+    unsigned cell_ix;                         // only used for json + object output
+    unsigned char compact : 1;                // whether to output compact JSON
+    unsigned char object : 1;                 // whether to output JSON as objects
+    unsigned char include_unchanged_rows : 1; // --include-unchanged-rows
+    unsigned char include_tolerated : 1;      // --include-tolerated
+    unsigned char _ : 4;
   } writer;
+
+  struct zsv_compare_redline *redline; // allocated only for --json-redline mode
 
   unsigned char sort : 1;
   unsigned char sort_in_memory : 1;

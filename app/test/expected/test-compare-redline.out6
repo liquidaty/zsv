@@ -1,0 +1,121 @@
+{
+  "schema": "zsv.compare",
+  "version": "1",
+  "inputs": [
+    {
+      "label": "jredline2a.csv",
+      "path": "compare/jredline2a.csv",
+      "row_count": 3
+    },
+    {
+      "label": "jredline2b.csv",
+      "path": "compare/jredline2b.csv",
+      "row_count": 3
+    }
+  ],
+  "keys": [
+    "id"
+  ],
+  "options": {
+    "tolerance": 1,
+    "sort": false,
+    "include_unchanged_rows": false,
+    "include_tolerated": true
+  },
+  "columns": [
+    {
+      "name": "id",
+      "is_key": true,
+      "in_inputs": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "name",
+      "is_key": false,
+      "in_inputs": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "score",
+      "is_key": false,
+      "in_inputs": [
+        0,
+        1
+      ]
+    }
+  ],
+  "summary": {
+    "rows": {
+      "in_all_inputs": 3,
+      "only_in_input_count": [
+        0,
+        0
+      ],
+      "with_any_diff": 2
+    },
+    "cells": {
+      "compared": 9,
+      "matched": 7,
+      "within_tolerance": 1,
+      "differing": 1
+    },
+    "by_column": [
+      {
+        "name": "id",
+        "compared": 3,
+        "matched": 3,
+        "within_tolerance": 0,
+        "differing": 0
+      },
+      {
+        "name": "name",
+        "compared": 3,
+        "matched": 3,
+        "within_tolerance": 0,
+        "differing": 0
+      },
+      {
+        "name": "score",
+        "compared": 3,
+        "matched": 1,
+        "within_tolerance": 1,
+        "differing": 1
+      }
+    ],
+    "schema": {
+      "common": [
+        "id",
+        "name",
+        "score"
+      ],
+      "only_in_input": [
+        [
+        ],
+        [
+        ]
+      ]
+    }
+  },
+  "rows": [
+    [
+      "1",
+      "Alice",
+      [
+        "100.5",
+        "100.9"
+      ]
+    ],
+    [
+      "2",
+      "Bob",
+      [
+        "200.0",
+        "201.5"
+      ]
+    ]
+  ]
+}

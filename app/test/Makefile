@@ -71,6 +71,15 @@ ifneq ($(ZSV_NO_PARALLEL),1)
 endif
 TESTS+=test-check
 TESTS+=test-quoted-nonstandard
+# The redline tests pin output determinism via SOURCE_DATE_EPOCH and exercise the unified
+# `cli` / `--help-topic` routing. emscripten's getenv does not see host env vars (only a
+# minimal built-in ENV), and that multi-binary orchestration is not set up in the emcc/wasm
+# test sandbox, so register these on native builds only. The --json-redline feature is plain
+# C and is covered on every native platform (cf. the CROSS_COMPILING guard below).
+ifneq ($(CCBN),emcc)
+TESTS+=test-compare-redline
+TESTS+=test-compare-redline-v2
+endif
 
 # Security regression test - only run when not cross-compiling
 ifneq ($(CROSS_COMPILING),1)
@@ -757,6 +766,13 @@ test-sql5: ${BUILD_DIR}/bin/zsv_sql${EXE} # test blank rows
 ${BUILD_DIR}/bin/zsv_%${EXE}:
 	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
+# The unified `cli` (zsv) multitool is built by the parent app/Makefile, not by the
+# zsv_% pattern rule above. test-compare-redline-v2 exercises `cli help compare <topic>`
+# routing, so the standalone suite must be able to build it on a clean tree (CI) the same
+# way it builds the zsv_* binaries -- by delegating to the parent.
+${BUILD_DIR}/bin/cli${EXE}:
+	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+
 test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} -H 24999 -N worldcitiespop_mil.csv > ${TMP_DIR}/$@.csv
@@ -902,6 +918,8 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 
 	@# --columns: error - invalid spec
 	@($< --columns bad compare/colrange1.csv >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
+
+include test-compare-redline.mk
 
 test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-sheet-cleanup test-sheet-all
 
