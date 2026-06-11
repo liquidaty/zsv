@@ -291,6 +291,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       struct zsv_sqlite3_dbopts dbopts = {
         .in_memory = data.in_memory,
         .dedupe_cols = data.rename_dup_cols,
+        .warn_dupe_rename = data.rename_dup_cols, // non-interactive: note renames on stderr
       };
       struct zsv_sqlite3_db *zdb = zsv_sqlite3_db_new(&dbopts);
       if (zdb && zdb->rc == SQLITE_OK) {

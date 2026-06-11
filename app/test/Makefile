@@ -778,23 +778,25 @@ test-sql-dupcol: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	  [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 
 # --rename-duplicate-columns makes repeated header names unique (a,b,a -> a,b,a_2)
-# so input with duplicate columns loads successfully instead of erroring.
+# so input with duplicate columns loads successfully instead of erroring. The renamed
+# data goes to stdout; each rename is also noted on stderr (renames are never silent).
 test-sql-dupcol-rename: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
-	@(${PREFIX} $< --rename-duplicate-columns ${TMP_DIR}/$@.csv 'select * from data' ${REDIRECT1} ${TMP_DIR}/$@.out)
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --rename-duplicate-columns ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out \
+	  && grep -q 'renamed duplicate column "a"' ${TMP_DIR}/$@.err && ${TEST_PASS} || ${TEST_FAIL}
 
 # Without the flag, a duplicate header is detected at parse time and reported with
-# a single actionable message naming the column and its 1-based positions (rather
-# than SQLite's generic "bad schema"), while still exiting gracefully.
+# a single actionable message naming the column, its 1-based positions, and the flag
+# to fix it (rather than SQLite's generic "bad schema"), while still exiting gracefully.
 test-sql-dupcol-msg: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
 	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2>&1; \
 	  rc=$$?; \
 	  printf '  exit=%s\n' "$$rc"; \
-	  grep -q 'duplicate column name "a" at columns 1 and 3' ${TMP_DIR}/$@.out \
+	  grep -q 'duplicate column name "a" at columns 1 and 3; pass --rename-duplicate-columns' ${TMP_DIR}/$@.out \
 	    && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 
 ${BUILD_DIR}/bin/zsv_%${EXE}:
