@@ -740,7 +740,7 @@ test-serialize : test-%: ${BUILD_DIR}/bin/zsv_%${EXE} test-serialize-quoted test
 	@(${PREFIX} $< -p < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@-2.out && \
 	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
 
-test-sql: test-sql2 test-sql3 test-sql4 test-sql5
+test-sql: test-sql2 test-sql3 test-sql4 test-sql5 test-sql-dupcol
 test-sql2: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@echo ${ARGS-sql} > ${TMP_DIR}/$@.sql
@@ -762,6 +762,20 @@ test-sql5: ${BUILD_DIR}/bin/zsv_sql${EXE} # test blank rows
 	@echo 'a,b,c' > ${TMP_DIR}/1.csv
 	@(${PREFIX} $< ${TMP_DIR}/1.csv 'select * from data' ${REDIRECT1} ${TMP_DIR}/$@.out)
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+# Regression for the duplicate-column-name abort: input whose header has the same
+# name twice makes SQLite reject the CREATE TABLE. zsv sql must report the error and
+# exit *gracefully* (normal nonzero code), not die by signal (SIGABRT -> 128+6=134),
+# which is what the pre-fix double-free in zsv_sqlite3_add_csv() caused. We assert the
+# exit code is a graceful failure (nonzero and < 128) rather than a signal death, so
+# the test stays valid regardless of the exact error message wording.
+test-sql-dupcol: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select 1 from data limit 1' > ${TMP_DIR}/$@.out 2>&1; \
+	  rc=$$?; \
+	  printf '  exit=%s\n' "$$rc"; \
+	  [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 
 ${BUILD_DIR}/bin/zsv_%${EXE}:
 	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}

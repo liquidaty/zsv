@@ -72,16 +72,24 @@ int zsv_sqlite3_add_csv(struct zsv_sqlite3_db *zdb, const char *csv_filename, st
     if (err)
       zdb->rc = SQLITE_ERROR;
     else {
-      zcf->next = zdb->csv_files;
-      zdb->csv_files = zcf;
+      // Only link zcf into zdb->csv_files *after* the table is successfully
+      // created. Linking it before create_virtual_csv_table() and then freeing
+      // it below on failure would leave a dangling pointer in zdb->csv_files,
+      // causing a use-after-free / double-free in zsv_sqlite3_db_delete().
       zdb->rc = create_virtual_csv_table(csv_filename, zdb->db, &zdb->err_msg, zdb->table_count);
       if (zdb->rc == SQLITE_OK) {
+        zcf->next = zdb->csv_files;
+        zdb->csv_files = zcf;
         zdb->table_count++;
         return SQLITE_OK;
       }
     }
   }
   if (zcf) {
+    // On the failure paths zcf was never linked into zdb->csv_files, so it is
+    // owned here. Balance any successful sqlite3_zsv_list_add() before freeing.
+    if (zcf->added)
+      sqlite3_zsv_list_remove(zcf->path);
     free(zcf->path);
     free(zcf);
   }
