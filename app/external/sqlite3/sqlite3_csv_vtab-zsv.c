@@ -160,6 +160,83 @@ static void zsvTable_delete(struct zsvTable *z) {
 #define BLANK_COLUMN_NAME_PREFIX "Blank_Column"
 unsigned blank_column_name_count = 0;
 
+/* Return 1 if `name` matches any of the first `n` already-chosen column names,
+** compared the way SQLite compares identifiers (ASCII case-insensitive), so
+** that disambiguation guarantees the generated CREATE TABLE is accepted. */
+static int zsv_csv_colname_taken(char *const *seen, size_t n, const char *name) {
+  for(size_t i = 0; i < n; i++)
+    if(seen[i] && sqlite3_stricmp(seen[i], name) == 0)
+      return 1;
+  return 0;
+}
+
+/* Append the `"col" TEXT, ...` specifications for each header cell to pStr.
+** When `dedupe` is nonzero, duplicate column names are made unique by appending
+** _2, _3, ... (e.g. a,b,a -> a,b,a_2), so that input with repeated headers is
+** loadable instead of being rejected by SQLite. Returns 0 on success, -1 on
+** out-of-memory. */
+static int zsv_csv_append_column_defs(sqlite3_str *pStr, zsv_parser parser, int dedupe) {
+  size_t ncols = zsv_cell_count(parser);
+  char **seen = NULL;
+  int rc = 0;
+  if(dedupe && ncols) {
+    seen = sqlite3_malloc64((sqlite3_int64)(sizeof(*seen) * ncols));
+    if(!seen)
+      return -1;
+    memset(seen, 0, sizeof(*seen) * ncols);
+  }
+  for(size_t i = 0; i < ncols; i++) {
+    struct zsv_cell cell = zsv_get_cell(parser, i);
+    size_t len = cell.len;
+    unsigned char *utf8_value = (unsigned char *)zsv_strtrim(cell.str, &len);
+
+    // base (NUL-terminated) column name; blanks keep their existing placeholder
+    char *base;
+    if(!len) {
+      if(blank_column_name_count++)
+        base = sqlite3_mprintf("%s_%u", BLANK_COLUMN_NAME_PREFIX, blank_column_name_count - 1);
+      else
+        base = sqlite3_mprintf("%s", BLANK_COLUMN_NAME_PREFIX);
+    } else
+      base = sqlite3_mprintf("%.*s", (int)len, utf8_value);
+    if(!base) {
+      rc = -1;
+      break;
+    }
+
+    char *name = base;     // points at base, or at a freshly-allocated suffixed name
+    char *suffixed = NULL;
+    if(dedupe) {
+      for(unsigned n = 2; zsv_csv_colname_taken(seen, i, name); n++) {
+        sqlite3_free(suffixed);
+        suffixed = sqlite3_mprintf("%s_%u", base, n);
+        if(!suffixed) {
+          rc = -1;
+          break;
+        }
+        name = suffixed;
+      }
+      if(rc == 0)
+        seen[i] = sqlite3_mprintf("%s", name);
+      if(rc || !seen[i]) {
+        sqlite3_free(suffixed);
+        sqlite3_free(base);
+        rc = -1;
+        break;
+      }
+    }
+    sqlite3_str_appendf(pStr, "%s\"%w\" TEXT", i > 0 ? "," : "", name);
+    sqlite3_free(suffixed);
+    sqlite3_free(base);
+  }
+  if(seen) {
+    for(size_t i = 0; i < ncols; i++)
+      sqlite3_free(seen[i]);
+    sqlite3_free(seen);
+  }
+  return rc;
+}
+
 /**
  * Parameters:
  *    filename=FILENAME          Name of file containing CSV content
@@ -179,11 +256,12 @@ static int zsvtabConnect(
   int rc = SQLITE_OK;        /* Result code from this routine */
   #define ZSVTABCONNECT_PARAM_MAX 2
   static const char *azParam[ZSVTABCONNECT_PARAM_MAX] = {
-     "filename"
+     "filename", "dedupe"
   };
   char *azPValue[ZSVTABCONNECT_PARAM_MAX]; /* Parameter values */
   memset(azPValue, 0, sizeof(azPValue));
 # define CSV_FILENAME (azPValue[0])
+# define CSV_DEDUPE   (azPValue[1])
 
   char *schema = NULL;
   zsvTable *pNew = NULL;
@@ -236,26 +314,15 @@ static int zsvtabConnect(
 
   *ppVtab = (sqlite3_vtab*)pNew;
 
-  // generate the CREATE TABLE statement
+  // generate the CREATE TABLE statement. When `dedupe` is requested, repeated
+  // column names are disambiguated (a,b,a -> a,b,a_2) so the table is loadable.
+  int do_dedupe = CSV_DEDUPE && atoi(CSV_DEDUPE) != 0;
   sqlite3_str *pStr = sqlite3_str_new(0);
   sqlite3_str_appendf(pStr, "CREATE TABLE x(");
-
-  // for each column, add a spec to CREATE TABLE
-  for(size_t i = 0, j = zsv_cell_count(pNew->parser); i < j; i++) {
-    struct zsv_cell cell = zsv_get_cell(pNew->parser, i);
-    size_t len = cell.len;
-    unsigned char *utf8_value = (unsigned char *)zsv_strtrim(cell.str, &len);
-
-    if(!len) {
-      if(blank_column_name_count++)
-        sqlite3_str_appendf(pStr, "%s\"%s_%u\" TEXT", i > 0 ? "," : "", BLANK_COLUMN_NAME_PREFIX, blank_column_name_count - 1);
-      else
-        sqlite3_str_appendf(pStr, "%s\"%s\" TEXT", i > 0 ? "," : "", BLANK_COLUMN_NAME_PREFIX);
-    } else
-      sqlite3_str_appendf(pStr, "%s\"%.*w\" TEXT", i > 0 ? "," : "", len, utf8_value);
-    // to do: deal with duplicate column names
+  if(zsv_csv_append_column_defs(pStr, pNew->parser, do_dedupe)) {
+    sqlite3_free(sqlite3_str_finish(pStr));
+    goto zsvtab_connect_oom;
   }
-
   sqlite3_str_appendf(pStr, ")");
   schema = sqlite3_str_finish(pStr);
   if(!schema)

@@ -58,6 +58,8 @@ const char *zsv_sql_usage_msg[] = {
   "  -C,--max-cols <n>     : change the maximum allowable columns. must be > 0 and < 2000",
   "  -o <filename>         : filename to save output to",
   "  --memory              : use in-memory instead of temporary db (see https://www.sqlite.org/inmemorydb.html)",
+  "  --rename-duplicate-columns : auto-rename duplicate input column names (a, a_2, a_3, ...)",
+  "                          so input with repeated headers loads instead of erroring",
   NULL,
 };
 
@@ -75,7 +77,8 @@ struct zsv_sql_data {
   char *join_indexes; // will hold contents of join_indexes arg, prefixed and suffixed with a comma
   struct string_list *join_column_names;
   unsigned char in_memory : 1;
-  unsigned char _ : 7;
+  unsigned char rename_dup_cols : 1;
+  unsigned char _ : 6;
 };
 
 static void zsv_sql_finalize(struct zsv_sql_data *data) {
@@ -192,6 +195,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         writer_opts.output_path = zsv_next_arg(++arg_i, argc, argv, &err);
       else if (!strcmp(arg, "--memory"))
         data.in_memory = 1;
+      else if (!strcmp(arg, "--rename-duplicate-columns"))
+        data.rename_dup_cols = 1;
       else if (!strcmp(arg, "-b"))
         writer_opts.with_bom = 1;
       else if (*arg != '-') {
@@ -285,6 +290,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
       struct zsv_sqlite3_dbopts dbopts = {
         .in_memory = data.in_memory,
+        .dedupe_cols = data.rename_dup_cols,
       };
       struct zsv_sqlite3_db *zdb = zsv_sqlite3_db_new(&dbopts);
       if (zdb && zdb->rc == SQLITE_OK) {

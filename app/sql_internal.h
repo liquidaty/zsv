@@ -23,6 +23,7 @@ struct zsv_sqlite3_db {
   char *err_msg;
   struct zsv_sqlite3_csv_file *csv_files;
   int rc;
+  unsigned char dedupe_cols : 1; // auto-rename duplicate input column names (a, a_2, ...)
 };
 
 #include "../include/zsv/utils/sql.h"

@@ -6,6 +6,7 @@ struct zsv_sqlite3_db *zsv_sqlite3_db_new(struct zsv_sqlite3_dbopts *dbopts) {
     perror(NULL);
     return NULL;
   }
+  zdb->dedupe_cols = dbopts && dbopts->dedupe_cols;
   const char *db_url = dbopts && dbopts->in_memory ? "file::memory:" : "";
   int flags = SQLITE_OPEN_URI | SQLITE_OPEN_READWRITE;
   zdb->rc = sqlite3_open_v2(db_url, &zdb->db, flags, NULL);
@@ -32,7 +33,7 @@ void zsv_sqlite3_db_delete(struct zsv_sqlite3_db *zdb) {
 }
 
 static int create_virtual_csv_table(const char *fname, sqlite3 *db, // int max_columns,
-                                    char **err_msgp, int table_ix) {
+                                    char **err_msgp, int table_ix, int dedupe_cols) {
   // TO DO: set customizable maximum number of columns to prevent
   // runaway in case no line ends found
   char *sql = NULL;
@@ -45,7 +46,8 @@ static int create_virtual_csv_table(const char *fname, sqlite3 *db, // int max_c
   else
     snprintf(table_name_suffix, sizeof(table_name_suffix), "%i", table_ix + 1);
 
-  sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%s USING csv(filename=%Q)", table_name_suffix, fname);
+  sql = sqlite3_mprintf("CREATE VIRTUAL TABLE data%s USING csv(filename=%Q%s)", table_name_suffix, fname,
+                        dedupe_cols ? ",dedupe=1" : "");
 
   char *err_msg_tmp;
   int rc = sqlite3_exec(db, sql, NULL, NULL, &err_msg_tmp);
@@ -76,7 +78,7 @@ int zsv_sqlite3_add_csv(struct zsv_sqlite3_db *zdb, const char *csv_filename, st
       // created. Linking it before create_virtual_csv_table() and then freeing
       // it below on failure would leave a dangling pointer in zdb->csv_files,
       // causing a use-after-free / double-free in zsv_sqlite3_db_delete().
-      zdb->rc = create_virtual_csv_table(csv_filename, zdb->db, &zdb->err_msg, zdb->table_count);
+      zdb->rc = create_virtual_csv_table(csv_filename, zdb->db, &zdb->err_msg, zdb->table_count, zdb->dedupe_cols);
       if (zdb->rc == SQLITE_OK) {
         zcf->next = zdb->csv_files;
         zdb->csv_files = zcf;
