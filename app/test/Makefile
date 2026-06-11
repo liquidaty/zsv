@@ -682,6 +682,13 @@ test-sql5: ${BUILD_DIR}/bin/zsv_sql${EXE} # test blank rows
 ${BUILD_DIR}/bin/zsv_%${EXE}:
 	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
+# The unified `cli` (zsv) multitool is built by the parent app/Makefile, not by the
+# zsv_% pattern rule above. test-compare-redline-v2 exercises `cli help compare <topic>`
+# routing, so the standalone suite must be able to build it on a clean tree (CI) the same
+# way it builds the zsv_* binaries -- by delegating to the parent.
+${BUILD_DIR}/bin/cli${EXE}:
+	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+
 test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} -H 24999 -N worldcitiespop_mil.csv > ${TMP_DIR}/$@.csv
