@@ -56,7 +56,7 @@ ifneq ($(ZSV_EXTRAS),)
 endif
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
-TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-paste test-flatten-2
+TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-paste test-flatten-2 test-flatten-dupcol
 
 ifeq ($(ZSVSHEET_BUILD),1)
   SOURCES+=sheet
@@ -681,6 +681,16 @@ test-flatten-2 : test-%-2: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< --row-id 'Loan Number' -- 'Current Loan Amount'=array 'Current Interest Rate=json' < "${TEST_DATA_DIR}/test/$*-2.csv" ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+# flatten is a producer: when the row-id column name also occurs as an output value
+# it would otherwise emit a duplicate header (a,a,b). Ensure it disambiguates to
+# a,a_2,b by default and notes the rename on stderr (renames are never silent).
+test-flatten-dupcol: ${BUILD_DIR}/bin/zsv_flatten${EXE}
+	@${TEST_INIT}
+	@printf 'a,key,val\n1,a,x\n1,b,y\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< ${TMP_DIR}/$@.csv --row-id a --col-name key -V val > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out \
+	  && grep -q 'renamed duplicate column "a"' ${TMP_DIR}/$@.err && ${TEST_PASS} || ${TEST_FAIL}
 
 test-pretty: test-pretty-1 test-pretty-escape-chars
 
