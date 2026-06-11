@@ -71,8 +71,15 @@ ifneq ($(ZSV_NO_PARALLEL),1)
 endif
 TESTS+=test-check
 TESTS+=test-quoted-nonstandard
+# The redline tests pin output determinism via SOURCE_DATE_EPOCH and exercise the unified
+# `cli` / `--help-topic` routing. emscripten's getenv does not see host env vars (only a
+# minimal built-in ENV), and that multi-binary orchestration is not set up in the emcc/wasm
+# test sandbox, so register these on native builds only. The --json-redline feature is plain
+# C and is covered on every native platform (cf. the CROSS_COMPILING guard below).
+ifneq ($(CCBN),emcc)
 TESTS+=test-compare-redline
 TESTS+=test-compare-redline-v2
+endif
 
 # Security regression test - only run when not cross-compiling
 ifneq ($(CROSS_COMPILING),1)
