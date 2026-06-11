@@ -75,7 +75,10 @@ static zsvsheet_status zsvsheet_sqlfilter_handler(struct zsvsheet_proc_context *
   }
 
   enum zsvsheet_status zst = zsvsheet_status_ok;
-  struct zsv_sqlite3_dbopts dbopts = {0};
+  // sheet is interactive and has no flag surface for this prompt, so always
+  // disambiguate duplicate input column names (a,b,a -> a,b,a_2); otherwise a
+  // file with repeated headers could not be filtered/viewed at all.
+  struct zsv_sqlite3_dbopts dbopts = {.dedupe_cols = 1};
   struct zsv_opts zopts = zsvsheet_buffer_get_zsv_opts(buff);
   struct zsv_sqlite3_db *zdb = zsv_sqlite3_db_new(&dbopts);
   sqlite3_str *sql_str = NULL;
