@@ -56,7 +56,7 @@ ifneq ($(ZSV_EXTRAS),)
 endif
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
-TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-paste test-flatten-2
+TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-paste test-flatten-2 test-flatten-dupcol
 
 ifeq ($(ZSVSHEET_BUILD),1)
   SOURCES+=sheet
@@ -682,6 +682,16 @@ test-flatten-2 : test-%-2: ${BUILD_DIR}/bin/zsv_%${EXE}
 	(${PREFIX} $< --row-id 'Loan Number' -- 'Current Loan Amount'=array 'Current Interest Rate=json' < "${TEST_DATA_DIR}/test/$*-2.csv" ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
+# flatten is a producer: when the row-id column name also occurs as an output value
+# it would otherwise emit a duplicate header (a,a,b). Ensure it disambiguates to
+# a,a_2,b by default and notes the rename on stderr (renames are never silent).
+test-flatten-dupcol: ${BUILD_DIR}/bin/zsv_flatten${EXE}
+	@${TEST_INIT}
+	@printf 'a,key,val\n1,a,x\n1,b,y\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< ${TMP_DIR}/$@.csv --row-id a --col-name key -V val > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out \
+	  && grep -q 'renamed duplicate column "a"' ${TMP_DIR}/$@.err && ${TEST_PASS} || ${TEST_FAIL}
+
 test-pretty: test-pretty-1 test-pretty-escape-chars
 
 test-pretty-1 : test-%-1: ${BUILD_DIR}/bin/zsv_%${EXE}
@@ -740,7 +750,7 @@ test-serialize : test-%: ${BUILD_DIR}/bin/zsv_%${EXE} test-serialize-quoted test
 	@(${PREFIX} $< -p < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@-2.out && \
 	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
 
-test-sql: test-sql2 test-sql3 test-sql4 test-sql5
+test-sql: test-sql2 test-sql3 test-sql4 test-sql5 test-sql-dupcol test-sql-dupcol-rename test-sql-dupcol-msg
 test-sql2: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@echo ${ARGS-sql} > ${TMP_DIR}/$@.sql
@@ -762,6 +772,42 @@ test-sql5: ${BUILD_DIR}/bin/zsv_sql${EXE} # test blank rows
 	@echo 'a,b,c' > ${TMP_DIR}/1.csv
 	@(${PREFIX} $< ${TMP_DIR}/1.csv 'select * from data' ${REDIRECT1} ${TMP_DIR}/$@.out)
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+# Regression for the duplicate-column-name abort: input whose header has the same
+# name twice makes SQLite reject the CREATE TABLE. zsv sql must report the error and
+# exit *gracefully* (normal nonzero code), not die by signal (SIGABRT -> 128+6=134),
+# which is what the pre-fix double-free in zsv_sqlite3_add_csv() caused. We assert the
+# exit code is a graceful failure (nonzero and < 128) rather than a signal death, so
+# the test stays valid regardless of the exact error message wording.
+test-sql-dupcol: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select 1 from data limit 1' > ${TMP_DIR}/$@.out 2>&1; \
+	  rc=$$?; \
+	  printf '  exit=%s\n' "$$rc"; \
+	  [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+
+# --rename-duplicate-columns makes repeated header names unique (a,b,a -> a,b,a_2)
+# so input with duplicate columns loads successfully instead of erroring. The renamed
+# data goes to stdout; each rename is also noted on stderr (renames are never silent).
+test-sql-dupcol-rename: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< --rename-duplicate-columns ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out \
+	  && grep -q 'renamed duplicate column "a"' ${TMP_DIR}/$@.err && ${TEST_PASS} || ${TEST_FAIL}
+
+# Without the flag, a duplicate header is detected at parse time and reported with
+# a single actionable message naming the column, its 1-based positions, and the flag
+# to fix it (rather than SQLite's generic "bad schema"), while still exiting gracefully.
+test-sql-dupcol-msg: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2>&1; \
+	  rc=$$?; \
+	  printf '  exit=%s\n' "$$rc"; \
+	  grep -q 'duplicate column name "a" at columns 1 and 3; pass --rename-duplicate-columns' ${TMP_DIR}/$@.out \
+	    && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 
 ${BUILD_DIR}/bin/zsv_%${EXE}:
 	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
@@ -934,6 +980,7 @@ test-sheet-all: \
 	test-sheet-pivot-1 \
 	test-sheet-pivot-V \
 	test-sheet-sqlfilter-1 \
+	test-sheet-sqlfilter-dupcol \
 	test-sheet-errors-1
 	@rm -f tmux-*.log zSE*
 	@(for SESSION in $^; do ! tmux -L "$$SESSION" kill-server 2>/dev/null || true; done && ${TEST_PASS} || ${TEST_FAIL})
@@ -1190,7 +1237,23 @@ test-sheet-pivot-V: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	${EXPECT} $@ drilldown && \
 	${TEST_PASS} || ${TEST_FAIL})
 
-test-sheet-sqlfilter: test-sheet-sqlfilter-1
+test-sheet-sqlfilter: test-sheet-sqlfilter-1 test-sheet-sqlfilter-dupcol
+
+# Exercises the capability sqlfilter's dedupe-on enables: a file whose header
+# repeats a column name can still be filtered in sheet. The initial view shows the
+# raw duplicate header (Country, City, Country); after :where, sqlfilter builds the
+# underlying table -- disambiguating the repeat to Country_2 -- and returns the
+# filtered rows. Pre-change this filter could not build its table at all.
+test-sheet-sqlfilter-dupcol: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'Country,City,Country\nus,new york,USA\nfr,paris,France\nde,berlin,Germany\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":where" ENTER "City like 'b%'" ENTER && \
+	${EXPECT} $@ filter && \
+	${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-sqlfilter-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
