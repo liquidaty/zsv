@@ -718,6 +718,12 @@ clean-obj:
 clean-internal:
 	$(RM) cli_internal.c.in cli_internal.h.in
 
+# tar restores the archive's (old) mtimes, and this is a multi-target rule, so
+# touching only $@ leaves the other output older than the tarball -- which made
+# the two targets ping-pong re-extraction on every build (each extraction resets
+# both files to old mtimes but touches only one). That now surfaces as a spurious
+# zsv_sheet relink, since the sheet depfile makes it depend on utf8proc.h. Touch
+# BOTH so they are reliably newer than the tarball and the rule runs only once.
 ${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: ${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1.tar.gz
 	@cd external && tar xf utf8proc-2.6.1.tar.gz && chown -R `whoami` utf8proc-2.6.1
-	@touch $@
+	@touch ${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h
