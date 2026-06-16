@@ -2,7 +2,7 @@
 
 ## Wire format
 
-The output is plain JSON (no comments).  The authoritative schema is embedded in the binary: `zsv help compare json-redline` (narrative) and `zsv help compare json-redline-json` (JSON Schema, Draft 2020-12).  The formal wire format version is `"version": "1"`.
+The output is plain JSON (no comments).  The authoritative schema is embedded in the binary: `zsv help compare json-redline` (narrative) and `zsv help compare json-redline-schema` (JSON Schema, Draft 2020-12).  The formal wire format version is `"version": "1"`.
 
 ## Schema cross-reference
 

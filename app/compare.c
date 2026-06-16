@@ -1174,7 +1174,7 @@ static void zsv_compare_print_help_topic_narrative(void) {
                                "  (input[0]'s value) unless --include-tolerated is also set.",
                                "",
                                "See also",
-                               "  zsv help compare json-redline-json  (JSON Schema Draft 2020-12)",
+                               "  zsv help compare json-redline-schema  (JSON Schema Draft 2020-12)",
                                NULL};
   for (size_t i = 0; text[i]; i++)
     printf("%s\n", text[i]);
@@ -1318,18 +1318,20 @@ static void zsv_compare_print_help_topic_json_schema(void) {
 }
 
 static int zsv_compare_print_help_topic(const char *name) {
-  /* canonical: json-redline, json-redline-json
-     silent aliases (undocumented): compare-json-redline, compare-json-redline-json */
+  /* canonical: json-redline, json-redline-schema
+     silent aliases (undocumented): compare-json-redline, json-redline-json, compare-json-redline-schema
+  */
   if (!strcmp(name, "json-redline") || !strcmp(name, "compare-json-redline")) {
     zsv_compare_print_help_topic_narrative();
     return 0;
   }
-  if (!strcmp(name, "json-redline-json") || !strcmp(name, "compare-json-redline-json")) {
+  if (!strcmp(name, "json-redline-schema") || !strcmp(name, "json-redline-json") ||
+      !strcmp(name, "compare-json-redline-schema")) {
     zsv_compare_print_help_topic_json_schema();
     return 0;
   }
   fprintf(stderr, "Unknown help topic: %s\n", name);
-  fprintf(stderr, "Available topics: json-redline, json-redline-json\n");
+  fprintf(stderr, "Available topics: json-redline, json-redline-schema\n");
   return 1;
 }
 
@@ -1400,7 +1402,7 @@ static int compare_usage(void) {
     "",
     "Help topics:",
     "  json-redline       : --json-redline output format (schema, narrative)",
-    "  json-redline-json  : --json-redline output format (JSON Schema, Draft 2020-12)",
+    "  json-redline-schema: --json-redline output format (JSON Schema, Draft 2020-12)",
     "",
     "  Usage: zsv help compare <topic>",
     NULL,
