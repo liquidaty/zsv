@@ -276,7 +276,7 @@ Two companion flags control what appears in `rows[]`:
   arrays rather than collapsing them to a scalar (requires `--tolerance`)
 
 The full schema is available at runtime via `zsv help compare json-redline` (narrative)
-and `zsv help compare json-redline-json` (JSON Schema, Draft 2020-12).
+and `zsv help compare json-redline-schema` (JSON Schema, Draft 2020-12).
 
 and in each case if we wanted to include additional data in the output for
 context, we can do so using `--add`, e.g.:

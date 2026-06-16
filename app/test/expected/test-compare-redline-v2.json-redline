@@ -34,4 +34,4 @@ Tolerance
   (input[0]'s value) unless --include-tolerated is also set.
 
 See also
-  zsv help compare json-redline-json  (JSON Schema Draft 2020-12)
+  zsv help compare json-redline-schema  (JSON Schema Draft 2020-12)

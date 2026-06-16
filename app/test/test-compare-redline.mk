@@ -98,14 +98,14 @@ test-compare-redline-v2: ${BUILD_DIR}/bin/zsv_compare${EXE} ${BUILD_DIR}/bin/cli
 	@(${BUILD_DIR}/bin/cli help compare json-redline > ${TMP_DIR}/$@.topicout1 2>&1 && \
 	${CMP} ${TMP_DIR}/$@.topicout1 expected/$@.json-redline && ${TEST_PASS} || ${TEST_FAIL})
 
-	@# TC-C2: canonical `zsv help compare json-redline-json` JSON Schema matches the golden byte-for-byte
-	@(${BUILD_DIR}/bin/cli help compare json-redline-json > ${TMP_DIR}/$@.topicout2 2>&1 && \
-	${CMP} ${TMP_DIR}/$@.topicout2 expected/$@.json-redline-json && ${TEST_PASS} || ${TEST_FAIL})
+	@# TC-C2: canonical `zsv help compare json-redline-schema` JSON Schema matches the golden byte-for-byte
+	@(${BUILD_DIR}/bin/cli help compare json-redline-schema > ${TMP_DIR}/$@.topicout2 2>&1 && \
+	${CMP} ${TMP_DIR}/$@.topicout2 expected/$@.json-redline-schema && ${TEST_PASS} || ${TEST_FAIL})
 
 	@# TC-C3: `zsv help compare` (no topic) lists both topics
 	@(${BUILD_DIR}/bin/cli help compare > ${TMP_DIR}/$@.helpcmp 2>&1 && \
 	grep -q 'json-redline' ${TMP_DIR}/$@.helpcmp && \
-	grep -q 'json-redline-json' ${TMP_DIR}/$@.helpcmp && \
+	grep -q 'json-redline-schema' ${TMP_DIR}/$@.helpcmp && \
 	${TEST_PASS} || ${TEST_FAIL})
 
 	@# TC-C4: the version emitted in --json-redline output matches version.const in the schema topic.
@@ -124,6 +124,6 @@ test-compare-redline-v2: ${BUILD_DIR}/bin/zsv_compare${EXE} ${BUILD_DIR}/bin/cli
 	@# TC-C6: legacy --help-topic aliases route to the same bytes as the canonical `help compare <topic>`
 	@($< --help-topic compare-json-redline > ${TMP_DIR}/$@.alias1 2>&1 && \
 	${CMP} ${TMP_DIR}/$@.alias1 ${TMP_DIR}/$@.topicout1 && \
-	$< --help-topic compare-json-redline-json > ${TMP_DIR}/$@.alias2 2>&1 && \
+	$< --help-topic compare-json-redline-schema > ${TMP_DIR}/$@.alias2 2>&1 && \
 	${CMP} ${TMP_DIR}/$@.alias2 ${TMP_DIR}/$@.topicout2 && \
 	${TEST_PASS} || ${TEST_FAIL})

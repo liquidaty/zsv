@@ -3,7 +3,7 @@
 // NOTE: This file is a snapshot/reference of the schema embedded in the binary.
 // The authoritative, version-pinned description is available at runtime via:
 //   zsv compare --help-topic compare-json-redline        (narrative)
-//   zsv compare --help-topic compare-json-redline-json   (JSON Schema Draft 2020-12)
+//   zsv compare --help-topic compare-json-redline-schema (JSON Schema Draft 2020-12)
 //
 // Emitted by `zsv compare --json-redline`. The existing `--json` / `--json-object` /
 // `--json-compact` outputs are unchanged.
