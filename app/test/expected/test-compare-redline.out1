@@ -20,7 +20,8 @@
     "tolerance": null,
     "sort": false,
     "include_unchanged_rows": false,
-    "include_tolerated": false
+    "include_tolerated": false,
+    "require_all_inputs": false
   },
   "columns": [
     {
