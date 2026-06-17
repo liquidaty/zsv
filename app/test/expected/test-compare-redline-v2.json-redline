@@ -13,7 +13,8 @@ Top-level fields
   generated_at  : ISO 8601 UTC timestamp (honors SOURCE_DATE_EPOCH)
   inputs[]      : per-input metadata (label, path, row_count)
   keys[]        : column names used to match rows
-  options       : tolerance, sort, include_unchanged_rows, include_tolerated
+  options       : tolerance, sort, include_unchanged_rows, include_tolerated,
+                  require_all_inputs
   columns[]     : merged column list with is_key and in_inputs[]
   summary       : aggregate row/cell counts and schema diff
   rows[]        : differing (and optionally unchanged) rows

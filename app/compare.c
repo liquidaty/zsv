@@ -671,8 +671,11 @@ static enum zsv_compare_status zsv_compare_next(struct zsv_compare_data *data) {
     break;
   }
 
-  // print row
-  zsv_compare_print_row(data, last);
+  // print row, unless --require-all-inputs was given and this row's key is not present in every input.
+  // last + 1 == input_count means the group with the smallest key spans all inputs (qsort places any
+  // not-loaded/done inputs after the loaded ones, so a full span implies every input matched this key).
+  if (!data->require_all_inputs || last + 1 == data->input_count)
+    zsv_compare_print_row(data, last);
 
   // reset row_loaded
   for (unsigned tmp = 0; tmp <= last; tmp++)
@@ -715,6 +718,9 @@ static int compare_usage(void) {
     "                       e.g. --columns 2v15 or --columns \"2-14 vs 15-27\"",
     "  --print-key-colname: when outputting key column diffs,",
     "                       print column name instead of <key>",
+    "  --require-all-inputs: ignore rows whose key is not present in every input,",
+    "                       i.e. compare only the intersection of keys (an inner",
+    "                       join across all inputs). Alias: --intersect",
     "  -e,--exit-code     : return < 0 on error, else the number of differences found",
     "",
     "NOTES",
@@ -727,7 +733,8 @@ static int compare_usage(void) {
     "  If one or more key is specified, each input is assumed to already be",
     "  lexicographically sorted in ascending order; this is a necessary condition",
     "  for the output to be correct (unless the --sort option is used). However, it",
-    "  is not required for each input to contain the same population of row keys",
+    "  is not required for each input to contain the same population of row keys.",
+    "  (Use --require-all-inputs to ignore rows whose key is missing from any input.)",
     "",
     "  The --sort option uses sqlite3 (unindexed) sort and is intended to be a",
     "  convenience rather than performance feature. If you need high performance",
@@ -849,6 +856,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       data->writer.include_tolerated = 1;
     } else if (!strcmp(arg, "--print-key-colname")) {
       data->print_key_col_names = 1;
+    } else if (!strcmp(arg, "--require-all-inputs") || !strcmp(arg, "--intersect")) {
+      data->require_all_inputs = 1;
     } else
       input_filenames[input_count++] = arg;
   }

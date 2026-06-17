@@ -140,7 +140,8 @@ struct zsv_compare_data {
   unsigned char sort_in_memory : 1;
   unsigned char print_key_col_names : 1;
   unsigned char return_count : 1;
-  unsigned char _ : 4;
+  unsigned char require_all_inputs : 1; // --require-all-inputs/--intersect: ignore rows whose key is absent from any input
+  unsigned char _ : 3;
 };
 
 #endif

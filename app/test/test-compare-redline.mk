@@ -15,6 +15,7 @@
 # TC7: three inputs → length-3 diff arrays
 # TC8: SOURCE_DATE_EPOCH yields a deterministic generated_at
 # TC9: --exit-code returns the number of differing cells in redline mode
+# TC10: --require-all-inputs drops rows missing from any input; options.require_all_inputs is recorded
 test-compare-redline: ${BUILD_DIR}/bin/zsv_compare${EXE}
 	@${TEST_INIT}
 	@(${PREFIX} $< --json-redline -k id compare/jredline1a.csv compare/jredline1b.csv ${REDIRECT1} ${TMP_DIR}/$@.out1raw && \
@@ -52,6 +53,12 @@ test-compare-redline: ${BUILD_DIR}/bin/zsv_compare${EXE}
 	@# TC9: --exit-code returns the differing-cell count (jredline7 -> 1) in redline mode
 	@($< --json-redline --exit-code -k id compare/jredline7a.csv compare/jredline7b.csv compare/jredline7c.csv >/dev/null 2>&1; \
 	[ $$? -eq 1 ] && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC10: --require-all-inputs keeps only the key intersection; the only-in-input rows are dropped
+	@# (only_in_input_count -> 0,0) and the run is self-describing (options.require_all_inputs: true)
+	@(${PREFIX} $< --json-redline -k id --require-all-inputs compare/reqall_a.csv compare/reqall_b.csv ${REDIRECT1} ${TMP_DIR}/$@.out9raw && \
+	sed '/"generated_at"/d' ${TMP_DIR}/$@.out9raw > ${TMP_DIR}/$@.out9 && \
+	${CMP} ${TMP_DIR}/$@.out9 expected/$@.out9 && ${TEST_PASS} || ${TEST_FAIL})
 
 # TC-A: missing_in indices are strictly ascending in 3-input case
 # TC-B: -a/--add combined with --json-redline errors with non-zero exit, exact stderr, empty stdout

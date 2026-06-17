@@ -936,6 +936,19 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@(${PREFIX} $< ../../data/compare/t1.csv ../../data/compare/t2.csv --add AccentCity --sort -k country -k city ${REDIRECT1} ${TMP_DIR}/$@.out10 && \
 	${CMP} ${TMP_DIR}/$@.out10 expected/$@.out10 && ${TEST_PASS} || ${TEST_FAIL})
 
+	@# --require-all-inputs: ignore rows whose key is missing from any input (inner join);
+	@# keys 3 (only in a) and 4 (only in b) are dropped, the key-2 value diff is retained
+	@(${PREFIX} $< -k id --require-all-inputs compare/reqall_a.csv compare/reqall_b.csv ${REDIRECT1} ${TMP_DIR}/$@.out11 && \
+	${CMP} ${TMP_DIR}/$@.out11 expected/$@.out11 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --intersect is an alias for --require-all-inputs (byte-identical output)
+	@(${PREFIX} $< -k id --intersect compare/reqall_a.csv compare/reqall_b.csv ${REDIRECT1} ${TMP_DIR}/$@.out11b && \
+	${CMP} ${TMP_DIR}/$@.out11b expected/$@.out11 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --require-all-inputs in JSON mode
+	@(${PREFIX} $< -k id --require-all-inputs --json compare/reqall_a.csv compare/reqall_b.csv ${REDIRECT1} ${TMP_DIR}/$@.out12 && \
+	${CMP} ${TMP_DIR}/$@.out12 expected/$@.out12 && ${TEST_PASS} || ${TEST_FAIL})
+
 	@# --columns: explicit ranges
 	@(${PREFIX} $< --columns 1-3v4-6 compare/colrange1.csv ${REDIRECT1} ${TMP_DIR}/$@-colrange.out1 && \
 	${CMP} ${TMP_DIR}/$@-colrange.out1 expected/$@-colrange.out1 && ${TEST_PASS} || ${TEST_FAIL})

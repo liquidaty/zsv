@@ -3,13 +3,13 @@
   "version": "1",
   "inputs": [
     {
-      "label": "jredline4a.csv",
-      "path": "compare/jredline4a.csv",
+      "label": "reqall_a.csv",
+      "path": "compare/reqall_a.csv",
       "row_count": 3
     },
     {
-      "label": "jredline4b.csv",
-      "path": "compare/jredline4b.csv",
+      "label": "reqall_b.csv",
+      "path": "compare/reqall_b.csv",
       "row_count": 3
     }
   ],
@@ -21,7 +21,7 @@
     "sort": false,
     "include_unchanged_rows": false,
     "include_tolerated": false,
-    "require_all_inputs": false
+    "require_all_inputs": true
   },
   "columns": [
     {
@@ -43,33 +43,33 @@
   ],
   "summary": {
     "rows": {
-      "in_all_inputs": 2,
+      "in_all_inputs": 3,
       "only_in_input_count": [
-        1,
-        1
+        0,
+        0
       ],
-      "with_any_diff": 2
+      "with_any_diff": 1
     },
     "cells": {
-      "compared": 4,
-      "matched": 4,
+      "compared": 6,
+      "matched": 5,
       "within_tolerance": 0,
-      "differing": 0
+      "differing": 1
     },
     "by_column": [
       {
         "name": "id",
-        "compared": 2,
-        "matched": 2,
+        "compared": 3,
+        "matched": 3,
         "within_tolerance": 0,
         "differing": 0
       },
       {
         "name": "val",
-        "compared": 2,
+        "compared": 3,
         "matched": 2,
         "within_tolerance": 0,
-        "differing": 0
+        "differing": 1
       }
     ],
     "schema": {
@@ -86,23 +86,12 @@
     }
   },
   "rows": [
-    {
-      "data": [
-        "2",
-        "B"
-      ],
-      "missing_in": [
-        1
+    [
+      "2",
+      [
+        "B",
+        "X"
       ]
-    },
-    {
-      "data": [
-        "3",
-        "C"
-      ],
-      "missing_in": [
-        0
-      ]
-    }
+    ]
   ]
 }

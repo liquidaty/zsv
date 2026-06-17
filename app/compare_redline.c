@@ -347,6 +347,7 @@ static void zsv_compare_emit_redline(struct zsv_compare_data *data) {
   jsonwriter_object_bool(jsw, "sort", data->sort);
   jsonwriter_object_bool(jsw, "include_unchanged_rows", data->writer.include_unchanged_rows);
   jsonwriter_object_bool(jsw, "include_tolerated", data->writer.include_tolerated);
+  jsonwriter_object_bool(jsw, "require_all_inputs", data->require_all_inputs);
   jsonwriter_end_object(jsw);
 
   /* columns[] */

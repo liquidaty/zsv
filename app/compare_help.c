@@ -27,7 +27,8 @@ static void zsv_compare_print_help_topic_narrative(void) {
                                "  generated_at  : ISO 8601 UTC timestamp (honors SOURCE_DATE_EPOCH)",
                                "  inputs[]      : per-input metadata (label, path, row_count)",
                                "  keys[]        : column names used to match rows",
-                               "  options       : tolerance, sort, include_unchanged_rows, include_tolerated",
+                               "  options       : tolerance, sort, include_unchanged_rows, include_tolerated,",
+                               "                  require_all_inputs",
                                "  columns[]     : merged column list with is_key and in_inputs[]",
                                "  summary       : aggregate row/cell counts and schema diff",
                                "  rows[]        : differing (and optionally unchanged) rows",
@@ -87,7 +88,8 @@ static void zsv_compare_print_help_topic_json_schema(void) {
   printf("        \"tolerance\": {\"oneOf\": [{\"type\": \"number\"},{\"type\": \"null\"}]},\n");
   printf("        \"sort\": {\"type\": \"boolean\"},\n");
   printf("        \"include_unchanged_rows\": {\"type\": \"boolean\"},\n");
-  printf("        \"include_tolerated\": {\"type\": \"boolean\"}\n");
+  printf("        \"include_tolerated\": {\"type\": \"boolean\"},\n");
+  printf("        \"require_all_inputs\": {\"type\": \"boolean\"}\n");
   printf("      }\n");
   printf("    },\n");
   printf("    \"columns\": {\n");
