@@ -111,6 +111,10 @@ such as unescaped quotes in unquoted fields (e.g. `12" monitor` or `say "hello" 
 For such data, use the default compat parser which handles all real-world CSV the same way
 spreadsheet programs do.
 
+Builds for other targets, including `riscv64`, use the existing compat/scalar
+parser path today. The library and CLI remain buildable there, but there is
+not yet a dedicated RISC-V SIMD fast-parser backend.
+
 ## Parallel parsing
 Either the fast or compat parser can be combined with `--parallel` for multi-threaded parsing:
 
