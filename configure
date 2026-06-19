@@ -548,7 +548,7 @@ TARGET_RISCV=0
 case "$host" in
     riscv*|*-riscv*)
     TARGET_RISCV=1
-    if [ "$ARCH" = "native" ] ; then
+    if [ "$ARCH" = "native" ] || [ "$ARCH" = "riscv64" ] || [ "$ARCH" = "riscv32" ] ; then
         ARCH=none
     fi
     ;;
