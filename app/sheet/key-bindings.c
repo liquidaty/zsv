@@ -168,6 +168,7 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
   { .ch = 'n',                 .proc_id = zsvsheet_builtin_proc_find_next,     },
 
   { .ch = '|',                 .proc_id = zsvsheet_builtin_proc_goto_column,   },
+  { .ch = '\\',                .proc_id = zsvsheet_builtin_proc_goto_column_next, },
 
   /* Open is a subcommand only in vim. Keeping the binding for now */
   { .ch = 'e',                 .proc_id = zsvsheet_builtin_proc_open_file,     },
@@ -259,6 +260,7 @@ struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
   { .ch = 'f',                    .proc_id = zsvsheet_builtin_proc_filter,        },
   { .ch = 'F',                    .proc_id = zsvsheet_builtin_proc_filter_this,   },
   { .ch = '|',                    .proc_id = zsvsheet_builtin_proc_goto_column,   },
+  { .ch = '\\',                   .proc_id = zsvsheet_builtin_proc_goto_column_next, },
   { .ch = ZSVSHEET_CTRL('h'),     .proc_id = zsvsheet_builtin_proc_help,          },
   { .ch = '\n',                   .proc_id = zsvsheet_builtin_proc_newline,       },
   { .ch = '\r',                   .proc_id = zsvsheet_builtin_proc_newline,       },
