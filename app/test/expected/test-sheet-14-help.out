@@ -21,7 +21,8 @@ g g                       top                       Jump to the first row
 G                         bottom                    Jump to the last row (nG
 /                         find                      Set a search term and jum
 n                         next                      Jump to the next search r
-|                         gotocolumn                Go to column
+|                         gotocolumn                Find a column by name and
+\                         gotocolumnnext            Jump to the next column m
 e                         open                      Open another CSV file
 f                         filter                    Filter by specified text
 F                         filtercol                 Filter by specified text
@@ -35,6 +36,5 @@ V                         pivotexpr                 Group rows with group-by
                           errors                    Show errors (if any)
                           errors-clear              Clear any/all errors
                           compare                   Highlight differences bet
-
 
 <esc> to exit help Key(s)

@@ -607,43 +607,76 @@ static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di, struct z
   return 0;
 }
 
-/* Find column handler: case-insensitive column header find */
-static zsvsheet_status zsvsheet_goto_column(struct zsvsheet_sheet_context *state) {
-  struct zsvsheet_display_info *di = &state->display_info;
-  struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
-  if (zsvsheet_buffer_data_filename(current_ui_buffer)) {
-    char prompt_buffer[256] = {0};
-    int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
-    get_subcommand("Find column", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, state->goto_column);
-    if (*prompt_buffer != '\0') {
-      free(state->goto_column);
-      state->goto_column = strdup(prompt_buffer);
-      if (state->goto_column) {
-        size_t len_lc = strlen(state->goto_column);
-        int err;
-        unsigned char *find_lc = zsv_strtolowercase_w_err((const unsigned char *)state->goto_column, &len_lc, &err);
-        if (find_lc && len_lc) {
-          zsvsheet_screen_buffer_t buffer = current_ui_buffer->buffer;
-          size_t colcount = zsvsheet_screen_buffer_cols(buffer);
-          size_t found = 0; // if found, will equal 1 + column index
-          for (size_t i = 0; !found && i < colcount; i++) {
-            const unsigned char *colname = zsvsheet_screen_buffer_cell_display(buffer, 0, i);
-            if (colname && *colname) {
-              size_t colname_len_lc = strlen((const char *)colname);
-              unsigned char *colname_lc = zsv_strtolowercase_w_err(colname, &colname_len_lc, &err);
-              if (colname_lc && colname_len_lc > 0 && memmem(colname_lc, colname_len_lc, find_lc, len_lc))
-                found = i + 1;
-              free(colname_lc);
-            }
-          }
-          free(find_lc);
-          if (found)
-            zsvsheet_move_hor_to(di, found - 1);
-        }
-      }
+/* Scan column headers for the first case-insensitive substring match of
+ * needle_lc (already lowercased, length needle_len). Scanning begins at column
+ * start_col and wraps around so every column is examined exactly once.
+ * Returns 1 + the matching column index, or 0 if no column matches. */
+static size_t zsvsheet_find_column_match(zsvsheet_screen_buffer_t buffer, size_t colcount,
+                                         const unsigned char *needle_lc, size_t needle_len, size_t start_col) {
+  for (size_t n = 0; n < colcount; n++) {
+    size_t i = (start_col + n) % colcount;
+    const unsigned char *colname = zsvsheet_screen_buffer_cell_display(buffer, 0, i);
+    if (colname && *colname) {
+      int err;
+      size_t colname_len_lc = strlen((const char *)colname);
+      unsigned char *colname_lc = zsv_strtolowercase_w_err(colname, &colname_len_lc, &err);
+      size_t found = 0; // if matched, will equal 1 + column index
+      if (colname_lc && colname_len_lc > 0 && memmem(colname_lc, colname_len_lc, needle_lc, needle_len))
+        found = i + 1;
+      free(colname_lc);
+      if (found)
+        return found;
     }
   }
   return 0;
+}
+
+/* Find column handler: case-insensitive column header find.
+ * If next is true, reuse the previously entered search term and continue from
+ * the column after the cursor (wrapping around); otherwise prompt for a new
+ * term and search from the first column. */
+static zsvsheet_status zsvsheet_goto_column(struct zsvsheet_sheet_context *state, bool next) {
+  struct zsvsheet_display_info *di = &state->display_info;
+  struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
+  if (!zsvsheet_buffer_data_filename(current_ui_buffer))
+    return zsvsheet_status_ok;
+
+  if (!next) {
+    char prompt_buffer[256] = {0};
+    int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
+    get_subcommand("Find column", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, state->goto_column);
+    if (*prompt_buffer == '\0')
+      return zsvsheet_status_ok;
+    free(state->goto_column);
+    state->goto_column = strdup(prompt_buffer);
+  }
+
+  if (!state->goto_column)
+    return zsvsheet_status_ok;
+
+  size_t len_lc = strlen(state->goto_column);
+  int err;
+  unsigned char *find_lc = zsv_strtolowercase_w_err((const unsigned char *)state->goto_column, &len_lc, &err);
+  if (find_lc && len_lc) {
+    zsvsheet_screen_buffer_t buffer = current_ui_buffer->buffer;
+    size_t colcount = zsvsheet_screen_buffer_cols(buffer);
+    if (colcount > 0) {
+      // For "next", start scanning just after the current column so repeated
+      // invocations cycle through all matches; otherwise start from column 0.
+      size_t start_col = 0;
+      if (next) {
+        size_t current_col = current_ui_buffer->buff_offset.col + current_ui_buffer->cursor_col;
+        start_col = (current_col + 1) % colcount;
+      }
+      size_t found = zsvsheet_find_column_match(buffer, colcount, find_lc, len_lc, start_col);
+      if (found)
+        zsvsheet_move_hor_to(di, found - 1);
+      else
+        zsvsheet_priv_set_status(di->dimensions, 1, "Column not found");
+    }
+  }
+  free(find_lc);
+  return zsvsheet_status_ok;
 }
 
 /* Find and find-next handler */
@@ -1015,7 +1048,9 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
   case zsvsheet_builtin_proc_find_next:
     return zsvsheet_find(state, true);
   case zsvsheet_builtin_proc_goto_column:
-    return zsvsheet_goto_column(state);
+    return zsvsheet_goto_column(state, false);
+  case zsvsheet_builtin_proc_goto_column_next:
+    return zsvsheet_goto_column(state, true);
   }
 
   return zsvsheet_status_error;
@@ -1042,7 +1077,8 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_move_right,     "right",       "Move right one column",                                           zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_find,           "find",        "Set a search term and jump to the first result after the cursor", zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_find_next,      "next",        "Jump to the next search result",                                  zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_goto_column,    "gotocolumn",  "Go to column",                                                    zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_goto_column,    "gotocolumn",  "Find a column by name and jump to the first match",               zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_goto_column_next,"gotocolumnnext","Jump to the next column matching the find-column term",          zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_resize,         "resize",      "Resize the layout to fit new terminal dimensions",                zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_open_file,      "open",        "Open another CSV file",                                           zsvsheet_open_file_handler    },
   { zsvsheet_builtin_proc_filter,         "filter",      "Filter by specified text",                                        zsvsheet_filter_handler       },

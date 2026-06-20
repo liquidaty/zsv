@@ -115,7 +115,8 @@ Press `?` to see a list of commands:
 | G              | bottom     | Jump to the last row (nG for specific row e.g. 10G) |
 | /              | find       | Set a search term and jump to the …                 |
 | n              | next       | Jump to the next search result                      |
-| \|             | gotocolumn | Go to column                                        |
+| \|             | gotocolumn | Find a column by name and jump to the first match   |
+| \\             | gotocolumnnext | Jump to the next column matching the find-column term |
 | e              | open       | Open another CSV file                               |
 | f              | filter     | Filter by specified text                            |
 | F              | filtercol  | Filter by specified text only in c…                 |
