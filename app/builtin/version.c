@@ -23,10 +23,8 @@ static int main_version(int argc, const char *argv[]) {
     printf("  Fast parser (AVX2 SIMD):     available\n");
 #elif defined(__x86_64__) || defined(_M_X64)
     printf("  Fast parser (SSE2 SIMD):     available\n");
-#elif defined(__riscv) || defined(__riscv__)
-    printf("  Fast parser (RISC-V SIMD):   not available; using compat/scalar parser\n");
 #else
-    printf("  Fast parser (SIMD):          not available; using compat/scalar parser\n");
+    printf("  Fast parser (SIMD):          not available\n");
 #endif
 
 #ifdef ZSV_DEFAULT_PARSER_FAST

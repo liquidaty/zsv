@@ -544,10 +544,8 @@ printf 'checking host system type... '
 test -n "$host" || host=$($CC -dumpmachine 2>/dev/null) || fail "could not determine host"
 printf '%s\n' "$host"
 
-TARGET_RISCV=0
 case "$host" in
     riscv*|*-riscv*)
-    TARGET_RISCV=1
     if [ "$ARCH" = "native" ] || [ "$ARCH" = "riscv64" ] || [ "$ARCH" = "riscv32" ] ; then
         ARCH=none
     fi
@@ -948,7 +946,6 @@ MAKE = $MAKE
 
 AR = $AR
 RANLIB = $RANLIB
-CONFIGURE_HOST = $host
 CFLAGS = $CFLAGS
 LDFLAGS = $LDFLAGS
 CFLAGS_STD = $CFLAGS_STD
@@ -1064,10 +1061,7 @@ else
     printf '%-64s*\n' "*  - build sheet feature: no"
 fi
 
-if [ "$TARGET_RISCV" = "1" ]; then
-    printf '%-64s*\n' "*  - target architecture:    RISC-V"
-    printf '%-64s*\n' "*  - fast parser SIMD:       unavailable; compat/scalar parser path"
-elif [ "$HAVE_AVX512" = "1" ]; then
+if [ "$HAVE_AVX512" = "1" ]; then
     printf '%-64s*\n' "*  - using 512-bit AVX instruction set"
 elif [ "$CFLAGS_AVX" = "-mavx2" ]; then
     printf '%-64s*\n' "*  - using 256-bit AVX2 instruction set"

@@ -50,9 +50,7 @@ static const char *common_options[] = {
 #endif
   "  --parser <default|fast|compat>",
   "                           : select parser engine. 'fast' uses branchless SIMD",
-  "                             (aarch64 NEON or x86-64 AVX2/SSE2 builds).",
-  "                             Other targets, including RISC-V, use the",
-  "                             compat/scalar parser path.",
+  "                             (aarch64 NEON or x86-64 AVX2/SSE2).",
   "                             'compat' uses the scalar engine that works with",
   "                             all CSV including non-4180-compliant quoting",
   "  -v,--verbose             : verbose output",
