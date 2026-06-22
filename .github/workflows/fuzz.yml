@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Generate include/zsv.h from include/zsv.h.in
         # `include/zsv.h` is .gitignored — `make -C src build` normally

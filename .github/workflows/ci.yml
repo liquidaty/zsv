@@ -51,7 +51,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         sparse-checkout: |
           scripts/ci-set-tag-output-parameter.sh
@@ -67,7 +67,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Run clang-format
       run: |
@@ -79,7 +79,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Install apt dependencies
       uses: awalsh128/cache-apt-pkgs-action@latest
@@ -110,7 +110,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Run shellcheck
       run: ./scripts/ci-run-shellcheck.sh
@@ -145,7 +145,7 @@ jobs:
         packages: rpm alien tmux
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Test
       env:
@@ -246,7 +246,7 @@ jobs:
       run: sudo gem install --no-document fpm
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         sparse-checkout: |
           .fpm
@@ -294,7 +294,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Set up homebrew dependencies
       run: brew install --quiet coreutils tree tmux sqlite3
@@ -392,7 +392,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Set up FreeBSD
       uses: cross-platform-actions/action@v1.2.0
@@ -475,7 +475,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Set up apt dependencies
       run: |
@@ -576,7 +576,7 @@ jobs:
           tmux
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     # PDCurses is bootstrapped automatically by the build (see the build job).
 
@@ -610,7 +610,7 @@ jobs:
       run: apk add bash gcc make musl-dev ncurses-dev ncurses-static tmux file sqlite curl zip wget tar git
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Configure git in container
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -694,7 +694,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         sparse-checkout: |
           Dockerfile.ci
@@ -758,7 +758,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Set up emsdk
       uses: mymindstorm/setup-emsdk@v16
@@ -807,7 +807,7 @@ jobs:
       uses: mymindstorm/setup-emsdk@v16
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Update version in index.html
       run: sed "s|__VERSION__|$TAG|g" -i playground/index.html
