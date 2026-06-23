@@ -427,9 +427,11 @@ test-cli: ${CLI}
 	@${TEST_INIT}
 	@[ "${CLI}" = "" ] && echo 1>&2 'test-cli: missing CLI env var' && exit 1 || exit 0
 	@${PREFIX} $< help select 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "select: extracts and outputs specified columns" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_SELECT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
+# help/usage now prefixes the command with the host program name (e.g. `zsv select`,
+# or whatever argv[0]/$$ZSV_PROG_NAME resolves to), so match the text as a suffix.
+	@head -1 ${TMP_DIR}/$@.out | tr -d '\r\n' | grep -qE 'select: extracts and outputs specified columns$$' && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_SELECT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< help count 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_COUNT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@head -1 ${TMP_DIR}/$@.out | tr -d '\r\n' | grep -qE 'Usage: .*count \[options\]$$' && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_COUNT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-1-count test-1-count-pull: test-1-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
