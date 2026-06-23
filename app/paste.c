@@ -16,7 +16,7 @@
 
 static int zsv_paste_usage(void) {
   static const char *usage[] = {
-    "Usage: paste <filename> [<filename> ...]",
+    "Usage: " ZSV_USAGE_PROG " " APPNAME " <filename> [<filename> ...]",
     "",
     "Horizontally paste two tables together: given inputs X, Y, ... of N rows",
     "outputs 1...N rows, where each row i contains:",
@@ -28,8 +28,7 @@ static int zsv_paste_usage(void) {
     "  -h,--help : show usage",
     NULL,
   };
-  for (size_t i = 0; usage[i]; i++)
-    printf("%s\n", usage[i]);
+  zsv_print_usage(usage);
   return 0;
 }
 

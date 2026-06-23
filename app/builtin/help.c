@@ -16,8 +16,7 @@ static int main_help(int argc, const char *argv[]) {
 
 #include "help_usage.h"
 
-  for (size_t i = 0; usage[i]; i++)
-    fprintf(f, "%s\n", usage[i]);
+  zsv_fprint_usage(f, usage);
   fprintf(f, "\n%s\n", common_options_title);
   for (size_t i = 0; common_options[i]; i++)
     fprintf(f, "%s\n", common_options[i]);

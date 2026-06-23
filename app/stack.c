@@ -18,9 +18,9 @@
 #include <zsv/utils/string.h>
 
 const char *zsv_stack_usage_msg[] = {
-  APPNAME ": stack one or more csv files vertically, aligning columns with the same name",
+  ZSV_USAGE_PROG " " APPNAME ": stack one or more csv files vertically, aligning columns with the same name",
   "",
-  "Usage: " APPNAME " [options] filename [filename...]",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME " [options] filename [filename...]",
   "",
   "Options:",
   "  -o <filename>      : output file",
@@ -33,8 +33,7 @@ const char *zsv_stack_usage_msg[] = {
 };
 
 static int zsv_stack_usage(void) {
-  for (size_t i = 0; zsv_stack_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", zsv_stack_usage_msg[i]);
+  zsv_print_usage(zsv_stack_usage_msg);
   return 0;
 }
 

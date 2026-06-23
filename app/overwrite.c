@@ -26,10 +26,10 @@
 #include "zsv_command.h"
 
 const char *zsv_overwrite_usage_msg[] = {
-  APPNAME " - Manage overwrites associated with a CSV file",
+  ZSV_USAGE_PROG " " APPNAME " - Manage overwrites associated with a CSV file",
   "",
   "Usage:",
-  "  " APPNAME " <file> <command> [arguments] [options]",
+  "  " ZSV_USAGE_PROG " " APPNAME " <file> <command> [arguments] [options]",
   "",
   "Commands (where <cell> can be <row>-<col> or an Excel-style address):",
   "  list                   : Display all saved overwrite entries",
@@ -75,8 +75,7 @@ const char *zsv_overwrite_usage_msg[] = {
   NULL};
 
 static int zsv_overwrite_usage(void) {
-  for (size_t i = 0; zsv_overwrite_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", zsv_overwrite_usage_msg[i]);
+  zsv_print_usage(zsv_overwrite_usage_msg);
   return 1;
 }
 

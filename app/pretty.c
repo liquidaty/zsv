@@ -493,9 +493,9 @@ static void zsv_pretty_row(void *ctx) {
 }
 
 const char *zsv_pretty_usage_msg[] = {
-  APPNAME ": print one or more tables of data in fixed-width format",
+  ZSV_USAGE_PROG " " APPNAME ": print one or more tables of data in fixed-width format",
   "",
-  "Usage: " APPNAME " [options] <filename>",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME " [options] <filename>",
   "",
   "Options:",
   "  -o,--output <filename>     : save output the the specified file",
@@ -511,8 +511,7 @@ const char *zsv_pretty_usage_msg[] = {
 };
 
 static void zsv_pretty_usage(void) {
-  for (size_t i = 0; zsv_pretty_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", zsv_pretty_usage_msg[i]);
+  zsv_print_usage(zsv_pretty_usage_msg);
 }
 
 static void zsv_pretty_flush(struct zsv_pretty_data *data) {

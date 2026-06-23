@@ -14,12 +14,13 @@
 #include "zsv_command.h"
 
 static int count_usage(void) {
-  static const char *usage = "Usage: count [options]\n"
-                             "\n"
-                             "Options:\n"
-                             "  -h,--help              : show usage\n"
-                             "  -i,--input <filename>  : use specified file input\n";
-  printf("%s\n", usage);
+  printf("Usage: %s " APPNAME " [options]\n"
+         "\n"
+         "Options:\n"
+         "  -h,--help              : show usage\n"
+         "  -i,--input <filename>  : use specified file input\n"
+         "\n",
+         zsv_prog_name());
   return 0;
 }
 

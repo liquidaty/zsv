@@ -419,9 +419,9 @@ static void zsv_desc_row(void *ctx) {
 }
 
 const char *zsv_desc_usage_msg[] = {
-  APPNAME ": get column-level information about a table's content",
+  ZSV_USAGE_PROG " " APPNAME ": get column-level information about a table's content",
   "",
-  "Usage: " APPNAME " [options] <filename>",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME " [options] <filename>",
   "",
   "Options:",
   "  -b,--with-bom            : output with BOM",
@@ -434,8 +434,7 @@ const char *zsv_desc_usage_msg[] = {
 };
 
 static int zsv_desc_usage(void) {
-  for (size_t i = 0; zsv_desc_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", zsv_desc_usage_msg[i]);
+  zsv_print_usage(zsv_desc_usage_msg);
   return 0;
 }
 

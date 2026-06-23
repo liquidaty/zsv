@@ -20,6 +20,7 @@
 #endif
 #include <zsv.h>
 #include <zsv/ext.h>
+#include <zsv/utils/appname.h>
 #include "cli_internal.h"
 #include "cli_const.h"
 #include "cli_export.h"
@@ -559,6 +560,8 @@ static const char *extension_cmd_from_arg(const char *arg) {
 
 ZSV_CLI_EXPORT
 int ZSV_CLI_MAIN(int argc, const char *argv[]) {
+  const char *prog = getenv("ZSV_PROG_NAME");
+  zsv_set_prog_name(prog && *prog ? prog : argv[0]);
   const char **alt_argv = NULL;
   struct builtin_cmd *builtin = find_builtin(argc > 1 ? argv[1] : "help");
   if (builtin) {

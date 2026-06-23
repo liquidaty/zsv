@@ -208,9 +208,9 @@ static void serialize_row(void *hook) {
 }
 
 const char *serialize_usage_msg[] = {
-  APPNAME ": serialize a CSV file into row/column/value triplets",
+  ZSV_USAGE_PROG " " APPNAME ": serialize a CSV file into row/column/value triplets",
   "",
-  "Usage: " APPNAME " [<filename>]",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME " [<filename>]",
   "",
   "Options:",
   "  -b                     : output with BOM",
@@ -227,8 +227,7 @@ const char *serialize_usage_msg[] = {
 };
 
 static int serialize_usage(void) {
-  for (size_t i = 0; serialize_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", serialize_usage_msg[i]);
+  zsv_print_usage(serialize_usage_msg);
   return 1;
 }
 

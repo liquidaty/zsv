@@ -1,7 +1,15 @@
 #ifndef ZSV_COMPARE_REDLINE_H
 #define ZSV_COMPARE_REDLINE_H
 
+#include <stdio.h>
 #include <stdlib.h>
+
+/* Print the `--json-redline` schema documentation to `out`: a narrative
+ * reference and a JSON Schema (Draft 2020-12). Defined in compare_help.c. These
+ * are the single source of truth for the redline schema docs, reused both by
+ * `zsv help compare <topic>` */
+void zsv_compare_print_help_topic_narrative(FILE *out);
+void zsv_compare_print_help_topic_json_schema(FILE *out);
 
 struct zsv_compare_redline_cell {
   unsigned char is_diff;      /* 1=diff array emitted, 0=scalar */
