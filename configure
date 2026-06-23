@@ -658,6 +658,40 @@ EOF
         fi
     fi
 
+    # 'sheet' renders multibyte (UTF-8) cells via the wide-character curses API
+    # (addnwstr/mvaddnwstr). A narrow curses library declares no such symbols, so
+    # a selected library is necessary but not sufficient: verify the chosen
+    # library actually links a wide-char call before enabling the feature.
+    # PDCurses is built/linked with PDC_WIDE (see app/sheet/curses.h), so it is
+    # treated as wide-capable without a probe; for the builtin PDCurses path the
+    # library does not exist yet (the Makefile bootstraps it), so a probe would
+    # spuriously fail. The ncurses/ncursesw probe compiles AND links (never runs
+    # the binary), so it is valid when cross-compiling.
+    HAVE_WIDE_CURSES=0
+    case "$NCLIB" in
+        pdcurses)
+            HAVE_WIDE_CURSES=1
+            ;;
+        ncursesw|ncurses)
+            printf "checking whether %s provides wide-character curses (addnwstr)... " "$NCLIB"
+            rm -f "$tmpc"
+            cat > "$tmpc" <<EOF
+#define _GNU_SOURCE
+#define _XOPEN_SOURCE_EXTENDED
+#include <wchar.h>
+#include "sheet/curses.h"
+int main(void) { wchar_t w[1] = {0}; addnwstr(w, 0); return 0; }
+EOF
+            # shellcheck disable=SC2086
+            if $CC $CPPFLAGS $CFLAGS_NCURSES -Iapp "$tmpc" $LDFLAGS $LDFLAGS_NCURSES -o "$tmpo" >/dev/null 2>&1 ; then
+                HAVE_WIDE_CURSES=1
+                printf "yes\n"
+            else
+                printf "no\n"
+            fi
+            ;;
+    esac
+
     ZSVSHEET_BUILD=1
     # A selected library (NCLIB) is what makes sheet buildable. For the builtin
     # PDCurses path LDFLAGS_NCURSES is intentionally empty (filled in by the
@@ -667,6 +701,13 @@ EOF
         echo "WARNING: could not find a curses library; cannot build 'sheet' feature"
         if [ "$TRY_SHEET" = "yes" ] ; then
             echo "Error: --enable-sheet requested but no curses library is available"
+            exit 1
+        fi
+    elif [ "$HAVE_WIDE_CURSES" != "1" ] ; then
+        ZSVSHEET_BUILD=0
+        echo "WARNING: curses library '$NCLIB' lacks wide-character support (addnwstr); cannot build 'sheet' feature. Install a wide-character curses (e.g. ncursesw) to enable it."
+        if [ "$TRY_SHEET" = "yes" ] ; then
+            echo "Error: --enable-sheet requested but the available curses library lacks wide-character support (addnwstr)"
             exit 1
         fi
     fi
@@ -842,7 +883,12 @@ if [ "$usetermcap" = "yes" ] || [ "$usetermcap" = "auto" ] ; then
             fi
 fi
 
-if [ "$JQ_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/jq.h" ] ; then
+# Auto-adopt the install PREFIX's jq only for a native build. When
+# cross-compiling we cannot validate the host prefix's libjq (and the -ljq probe
+# below is itself gated on CROSS_COMPILING=no, so the library would never get
+# onto the link line). Leaving JQ_PREFIX empty routes the cross build to the
+# vendored libjq, which app/Makefile cross-compiles via --host=$CONFIGURE_HOST.
+if [ "$JQ_PREFIX" = "" ] && [ "$PREFIX" != "" ] && [ -f "$PREFIX/include/jq.h" ] && [ "$CROSS_COMPILING" = "no" ] ; then
     JQ_PREFIX="$PREFIX"
 fi
 
