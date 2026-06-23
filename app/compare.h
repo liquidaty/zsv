@@ -20,4 +20,6 @@ void zsv_compare_set_input_parser(zsv_compare_handle cmp, zsv_parser p, unsigned
 void zsv_compare_delete(zsv_compare_handle);
 void zsv_compare_set_comparison(zsv_compare_handle, zsv_compare_cell_func, void *);
 
+extern const char **zsv_compare_extra_usage; // set this to a NULL-terminated text array to insert additional help text
+
 #endif

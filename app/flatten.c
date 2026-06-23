@@ -597,11 +597,11 @@ static void flatten_row2(void *hook) {
 }
 
 const char *flatten_usage_msg[] = {
-  APPNAME ": flatten a table",
+  ZSV_USAGE_PROG " " APPNAME ": flatten a table",
   "          based on a single-column key, assuming that rows to flatten always",
   "          appear in contiguous lines",
   "",
-  "Usage: " APPNAME " [<filename>] [<options>] -- [aggregate_output_spec ...]",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME " [<filename>] [<options>] -- [aggregate_output_spec ...]",
   "",
   "Each aggregate output specification consists of the column name or index, followed",
   // "either (i) a single-column aggregation or (future: (ii) the \"*\" placeholder (in conjunction with -a)).",
@@ -653,8 +653,7 @@ B,90,B,you,zzz
 */
 
 static void flatten_usage(void) {
-  for (size_t i = 0; flatten_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", flatten_usage_msg[i]);
+  zsv_print_usage(flatten_usage_msg);
 }
 
 void flatten_agg_cols_delete(struct flatten_agg_col **p) {

@@ -646,9 +646,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
   opts.verbose = zsv_get_default_opts().verbose;
 
   const char *usage[] = {
-    APPNAME ": convert JSON to SQLite3 DB",
+    ZSV_USAGE_PROG " " APPNAME ": convert JSON to SQLite3 DB",
     "",
-    "Usage: " APPNAME " -o <output path> [-t <table name>] [input.json]\n",
+    "Usage: " ZSV_USAGE_PROG " " APPNAME " -o <output path> [-t <table name>] [input.json]\n",
     "",
     "Options:",
     "  -h,--help            : show usage",
@@ -678,8 +678,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
 
   for (int i = 1; !err && i < argc; i++) {
     if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-      for (int j = 0; usage[j]; j++)
-        fprintf(stdout, "%s\n", usage[j]);
+      zsv_print_usage(usage);
       goto exit_2db;
     } else if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if (++i >= argc)

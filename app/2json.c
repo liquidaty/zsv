@@ -231,9 +231,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   data.headers_next = &data.headers;
 
   const char *usage[] = {
-    APPNAME ": streaming CSV to JSON converter, or SQLite3 DB to JSON converter",
+    ZSV_USAGE_PROG " " APPNAME ": streaming CSV to JSON converter, or SQLite3 DB to JSON converter",
     "",
-    "Usage: " APPNAME " [options] [file.csv]",
+    "Usage: " ZSV_USAGE_PROG " " APPNAME " [options] [file.csv]",
     "",
     "Options:",
     "  -h,--help                     : show usage",
@@ -257,8 +257,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   for (int i = 1; !err && !done && i < argc; i++) {
     if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-      for (int j = 0; usage[j]; j++)
-        fprintf(stdout, "%s\n", usage[j]);
+      zsv_print_usage(usage);
       done = 1;
     } else if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if (++i >= argc)

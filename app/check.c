@@ -86,9 +86,9 @@ static void zsv_check_header(void *ctx) {
 
 static int zsv_check_usage(void) {
   const char *zsv_check_usage_msg[] = {
-    USAGE_APPNAME ": check input for anomalies",
+    ZSV_USAGE_PROG " " USAGE_APPNAME ": check input for anomalies",
     "",
-    "Usage: " APPNAME " <filename>",
+    "Usage: " ZSV_USAGE_PROG " " APPNAME " <filename>",
     "",
     "Options:",
     "  -o,--output <path> : output to specified file path",
@@ -99,8 +99,7 @@ static int zsv_check_usage(void) {
     "If no check options are provided, all checks are run",
     NULL,
   };
-  for (size_t i = 0; zsv_check_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", zsv_check_usage_msg[i]);
+  zsv_print_usage(zsv_check_usage_msg);
   return 1;
 }
 

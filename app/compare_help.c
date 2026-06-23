@@ -11,7 +11,7 @@
  * and its narrative). #included directly into compare.c as a single translation unit.
  */
 
-static void zsv_compare_print_help_topic_narrative(void) {
+void zsv_compare_print_help_topic_narrative(FILE *out) {
   static const char *text[] = {"zsv compare --json-redline schema (version " ZSV_COMPARE_REDLINE_VERSION ")",
                                "==========================================================",
                                "",
@@ -52,145 +52,148 @@ static void zsv_compare_print_help_topic_narrative(void) {
                                "  zsv help compare json-redline-schema  (JSON Schema Draft 2020-12)",
                                NULL};
   for (size_t i = 0; text[i]; i++)
-    printf("%s\n", text[i]);
+    fprintf(out, "%s\n", text[i]);
 }
 
-static void zsv_compare_print_help_topic_json_schema(void) {
-  printf("{\n");
-  printf("  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n");
-  printf("  \"$id\": \"zsv.compare.json-redline.v%s\",\n", ZSV_COMPARE_REDLINE_VERSION);
-  printf("  \"title\": \"zsv compare --json-redline output (v%s)\",\n", ZSV_COMPARE_REDLINE_VERSION);
-  printf("  \"type\": \"object\",\n");
-  printf(
+void zsv_compare_print_help_topic_json_schema(FILE *out) {
+  fprintf(out, "{\n");
+  fprintf(out, "  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n");
+  fprintf(out, "  \"$id\": \"zsv.compare.json-redline.v%s\",\n", ZSV_COMPARE_REDLINE_VERSION);
+  fprintf(out, "  \"title\": \"zsv compare --json-redline output (v%s)\",\n", ZSV_COMPARE_REDLINE_VERSION);
+  fprintf(out, "  \"type\": \"object\",\n");
+  fprintf(
+    out,
     "  \"required\": "
     "[\"schema\",\"version\",\"generated_at\",\"inputs\",\"keys\",\"options\",\"columns\",\"summary\",\"rows\"],\n");
-  printf("  \"properties\": {\n");
-  printf("    \"schema\": {\"const\": \"zsv.compare\"},\n");
-  printf("    \"version\": {\"const\": \"%s\"},\n", ZSV_COMPARE_REDLINE_VERSION);
-  printf("    \"generated_at\": {\"type\": \"string\"},\n");
-  printf("    \"inputs\": {\n");
-  printf("      \"type\": \"array\",\n");
-  printf("      \"items\": {\n");
-  printf("        \"type\": \"object\",\n");
-  printf("        \"required\": [\"label\",\"path\",\"row_count\"],\n");
-  printf("        \"properties\": {\n");
-  printf("          \"label\": {\"type\": \"string\"},\n");
-  printf("          \"path\": {\"type\": \"string\"},\n");
-  printf("          \"row_count\": {\"type\": \"integer\", \"minimum\": 0}\n");
-  printf("        }\n");
-  printf("      }\n");
-  printf("    },\n");
-  printf("    \"keys\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}},\n");
-  printf("    \"options\": {\n");
-  printf("      \"type\": \"object\",\n");
-  printf("      \"required\": [\"tolerance\",\"sort\",\"include_unchanged_rows\",\"include_tolerated\"],\n");
-  printf("      \"properties\": {\n");
-  printf("        \"tolerance\": {\"oneOf\": [{\"type\": \"number\"},{\"type\": \"null\"}]},\n");
-  printf("        \"sort\": {\"type\": \"boolean\"},\n");
-  printf("        \"include_unchanged_rows\": {\"type\": \"boolean\"},\n");
-  printf("        \"include_tolerated\": {\"type\": \"boolean\"},\n");
-  printf("        \"require_all_inputs\": {\"type\": \"boolean\"}\n");
-  printf("      }\n");
-  printf("    },\n");
-  printf("    \"columns\": {\n");
-  printf("      \"type\": \"array\",\n");
-  printf("      \"items\": {\n");
-  printf("        \"type\": \"object\",\n");
-  printf("        \"required\": [\"name\",\"is_key\",\"in_inputs\"],\n");
-  printf("        \"properties\": {\n");
-  printf("          \"name\": {\"type\": \"string\"},\n");
-  printf("          \"is_key\": {\"type\": \"boolean\"},\n");
-  printf("          \"in_inputs\": {\"type\": \"array\", \"items\": {\"type\": \"integer\", \"minimum\": 0}}\n");
-  printf("        }\n");
-  printf("      }\n");
-  printf("    },\n");
-  printf("    \"summary\": {\n");
-  printf("      \"type\": \"object\",\n");
-  printf("      \"required\": [\"rows\",\"cells\",\"by_column\",\"schema\"],\n");
-  printf("      \"properties\": {\n");
-  printf("        \"rows\": {\n");
-  printf("          \"type\": \"object\",\n");
-  printf("          \"required\": [\"in_all_inputs\",\"only_in_input_count\",\"with_any_diff\"],\n");
-  printf("          \"properties\": {\n");
-  printf("            \"in_all_inputs\": {\"type\": \"integer\", \"minimum\": 0},\n");
-  printf("            \"only_in_input_count\": {\"type\": \"array\", \"items\": {\"type\": \"integer\", \"minimum\": "
-         "0}},\n");
-  printf("            \"with_any_diff\": {\"type\": \"integer\", \"minimum\": 0}\n");
-  printf("          }\n");
-  printf("        },\n");
-  printf("        \"cells\": {\n");
-  printf("          \"type\": \"object\",\n");
-  printf("          \"required\": [\"compared\",\"matched\",\"within_tolerance\",\"differing\"],\n");
-  printf("          \"properties\": {\n");
-  printf("            \"compared\": {\"type\": \"integer\", \"minimum\": 0},\n");
-  printf("            \"matched\": {\"type\": \"integer\", \"minimum\": 0},\n");
-  printf("            \"within_tolerance\": {\"type\": \"integer\", \"minimum\": 0},\n");
-  printf("            \"differing\": {\"type\": \"integer\", \"minimum\": 0}\n");
-  printf("          }\n");
-  printf("        },\n");
-  printf("        \"by_column\": {\n");
-  printf("          \"type\": \"array\",\n");
-  printf("          \"items\": {\n");
-  printf("            \"type\": \"object\",\n");
-  printf("            \"required\": [\"name\",\"compared\",\"matched\",\"within_tolerance\",\"differing\"],\n");
-  printf("            \"properties\": {\n");
-  printf("              \"name\": {\"type\": \"string\"},\n");
-  printf("              \"compared\": {\"type\": \"integer\", \"minimum\": 0},\n");
-  printf("              \"matched\": {\"type\": \"integer\", \"minimum\": 0},\n");
-  printf("              \"within_tolerance\": {\"type\": \"integer\", \"minimum\": 0},\n");
-  printf("              \"differing\": {\"type\": \"integer\", \"minimum\": 0}\n");
-  printf("            }\n");
-  printf("          }\n");
-  printf("        },\n");
-  printf("        \"schema\": {\n");
-  printf("          \"type\": \"object\",\n");
-  printf("          \"required\": [\"common\",\"only_in_input\"],\n");
-  printf("          \"properties\": {\n");
-  printf("            \"common\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}},\n");
-  printf("            \"only_in_input\": {\"type\": \"array\", \"items\": {\"type\": \"array\", \"items\": {\"type\": "
-         "\"string\"}}}\n");
-  printf("          }\n");
-  printf("        }\n");
-  printf("      }\n");
-  printf("    },\n");
-  printf("    \"rows\": {\n");
-  printf("      \"type\": \"array\",\n");
-  printf("      \"items\": {\n");
-  printf("        \"oneOf\": [\n");
-  printf("          {\n");
-  printf("            \"type\": \"array\",\n");
-  printf("            \"items\": {\n");
-  printf("              \"oneOf\": [\n");
-  printf("                {\"type\": [\"string\",\"null\"]},\n");
-  printf("                {\"type\": \"array\", \"items\": {\"type\": [\"string\",\"null\"]}}\n");
-  printf("              ]\n");
-  printf("            }\n");
-  printf("          },\n");
-  printf("          {\n");
-  printf("            \"type\": \"object\",\n");
-  printf("            \"required\": [\"data\",\"missing_in\"],\n");
-  printf("            \"properties\": {\n");
-  printf("              \"data\": {\n");
-  printf("                \"type\": \"array\",\n");
-  printf("                \"items\": {\n");
-  printf("                  \"oneOf\": [\n");
-  printf("                    {\"type\": [\"string\",\"null\"]},\n");
-  printf("                    {\"type\": \"array\", \"items\": {\"type\": [\"string\",\"null\"]}}\n");
-  printf("                  ]\n");
-  printf("                }\n");
-  printf("              },\n");
-  printf("              \"missing_in\": {\n");
-  printf("                \"type\": \"array\",\n");
-  printf("                \"items\": {\"type\": \"integer\", \"minimum\": 0},\n");
-  printf("                \"description\": \"indices in ascending order\"\n");
-  printf("              }\n");
-  printf("            }\n");
-  printf("          }\n");
-  printf("        ]\n");
-  printf("      }\n");
-  printf("    }\n");
-  printf("  }\n");
-  printf("}\n");
+  fprintf(out, "  \"properties\": {\n");
+  fprintf(out, "    \"schema\": {\"const\": \"zsv.compare\"},\n");
+  fprintf(out, "    \"version\": {\"const\": \"%s\"},\n", ZSV_COMPARE_REDLINE_VERSION);
+  fprintf(out, "    \"generated_at\": {\"type\": \"string\"},\n");
+  fprintf(out, "    \"inputs\": {\n");
+  fprintf(out, "      \"type\": \"array\",\n");
+  fprintf(out, "      \"items\": {\n");
+  fprintf(out, "        \"type\": \"object\",\n");
+  fprintf(out, "        \"required\": [\"label\",\"path\",\"row_count\"],\n");
+  fprintf(out, "        \"properties\": {\n");
+  fprintf(out, "          \"label\": {\"type\": \"string\"},\n");
+  fprintf(out, "          \"path\": {\"type\": \"string\"},\n");
+  fprintf(out, "          \"row_count\": {\"type\": \"integer\", \"minimum\": 0}\n");
+  fprintf(out, "        }\n");
+  fprintf(out, "      }\n");
+  fprintf(out, "    },\n");
+  fprintf(out, "    \"keys\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}},\n");
+  fprintf(out, "    \"options\": {\n");
+  fprintf(out, "      \"type\": \"object\",\n");
+  fprintf(out, "      \"required\": [\"tolerance\",\"sort\",\"include_unchanged_rows\",\"include_tolerated\"],\n");
+  fprintf(out, "      \"properties\": {\n");
+  fprintf(out, "        \"tolerance\": {\"oneOf\": [{\"type\": \"number\"},{\"type\": \"null\"}]},\n");
+  fprintf(out, "        \"sort\": {\"type\": \"boolean\"},\n");
+  fprintf(out, "        \"include_unchanged_rows\": {\"type\": \"boolean\"},\n");
+  fprintf(out, "        \"include_tolerated\": {\"type\": \"boolean\"},\n");
+  fprintf(out, "        \"require_all_inputs\": {\"type\": \"boolean\"}\n");
+  fprintf(out, "      }\n");
+  fprintf(out, "    },\n");
+  fprintf(out, "    \"columns\": {\n");
+  fprintf(out, "      \"type\": \"array\",\n");
+  fprintf(out, "      \"items\": {\n");
+  fprintf(out, "        \"type\": \"object\",\n");
+  fprintf(out, "        \"required\": [\"name\",\"is_key\",\"in_inputs\"],\n");
+  fprintf(out, "        \"properties\": {\n");
+  fprintf(out, "          \"name\": {\"type\": \"string\"},\n");
+  fprintf(out, "          \"is_key\": {\"type\": \"boolean\"},\n");
+  fprintf(out, "          \"in_inputs\": {\"type\": \"array\", \"items\": {\"type\": \"integer\", \"minimum\": 0}}\n");
+  fprintf(out, "        }\n");
+  fprintf(out, "      }\n");
+  fprintf(out, "    },\n");
+  fprintf(out, "    \"summary\": {\n");
+  fprintf(out, "      \"type\": \"object\",\n");
+  fprintf(out, "      \"required\": [\"rows\",\"cells\",\"by_column\",\"schema\"],\n");
+  fprintf(out, "      \"properties\": {\n");
+  fprintf(out, "        \"rows\": {\n");
+  fprintf(out, "          \"type\": \"object\",\n");
+  fprintf(out, "          \"required\": [\"in_all_inputs\",\"only_in_input_count\",\"with_any_diff\"],\n");
+  fprintf(out, "          \"properties\": {\n");
+  fprintf(out, "            \"in_all_inputs\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  fprintf(out,
+          "            \"only_in_input_count\": {\"type\": \"array\", \"items\": {\"type\": \"integer\", \"minimum\": "
+          "0}},\n");
+  fprintf(out, "            \"with_any_diff\": {\"type\": \"integer\", \"minimum\": 0}\n");
+  fprintf(out, "          }\n");
+  fprintf(out, "        },\n");
+  fprintf(out, "        \"cells\": {\n");
+  fprintf(out, "          \"type\": \"object\",\n");
+  fprintf(out, "          \"required\": [\"compared\",\"matched\",\"within_tolerance\",\"differing\"],\n");
+  fprintf(out, "          \"properties\": {\n");
+  fprintf(out, "            \"compared\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  fprintf(out, "            \"matched\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  fprintf(out, "            \"within_tolerance\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  fprintf(out, "            \"differing\": {\"type\": \"integer\", \"minimum\": 0}\n");
+  fprintf(out, "          }\n");
+  fprintf(out, "        },\n");
+  fprintf(out, "        \"by_column\": {\n");
+  fprintf(out, "          \"type\": \"array\",\n");
+  fprintf(out, "          \"items\": {\n");
+  fprintf(out, "            \"type\": \"object\",\n");
+  fprintf(out, "            \"required\": [\"name\",\"compared\",\"matched\",\"within_tolerance\",\"differing\"],\n");
+  fprintf(out, "            \"properties\": {\n");
+  fprintf(out, "              \"name\": {\"type\": \"string\"},\n");
+  fprintf(out, "              \"compared\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  fprintf(out, "              \"matched\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  fprintf(out, "              \"within_tolerance\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  fprintf(out, "              \"differing\": {\"type\": \"integer\", \"minimum\": 0}\n");
+  fprintf(out, "            }\n");
+  fprintf(out, "          }\n");
+  fprintf(out, "        },\n");
+  fprintf(out, "        \"schema\": {\n");
+  fprintf(out, "          \"type\": \"object\",\n");
+  fprintf(out, "          \"required\": [\"common\",\"only_in_input\"],\n");
+  fprintf(out, "          \"properties\": {\n");
+  fprintf(out, "            \"common\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}},\n");
+  fprintf(out,
+          "            \"only_in_input\": {\"type\": \"array\", \"items\": {\"type\": \"array\", \"items\": {\"type\": "
+          "\"string\"}}}\n");
+  fprintf(out, "          }\n");
+  fprintf(out, "        }\n");
+  fprintf(out, "      }\n");
+  fprintf(out, "    },\n");
+  fprintf(out, "    \"rows\": {\n");
+  fprintf(out, "      \"type\": \"array\",\n");
+  fprintf(out, "      \"items\": {\n");
+  fprintf(out, "        \"oneOf\": [\n");
+  fprintf(out, "          {\n");
+  fprintf(out, "            \"type\": \"array\",\n");
+  fprintf(out, "            \"items\": {\n");
+  fprintf(out, "              \"oneOf\": [\n");
+  fprintf(out, "                {\"type\": [\"string\",\"null\"]},\n");
+  fprintf(out, "                {\"type\": \"array\", \"items\": {\"type\": [\"string\",\"null\"]}}\n");
+  fprintf(out, "              ]\n");
+  fprintf(out, "            }\n");
+  fprintf(out, "          },\n");
+  fprintf(out, "          {\n");
+  fprintf(out, "            \"type\": \"object\",\n");
+  fprintf(out, "            \"required\": [\"data\",\"missing_in\"],\n");
+  fprintf(out, "            \"properties\": {\n");
+  fprintf(out, "              \"data\": {\n");
+  fprintf(out, "                \"type\": \"array\",\n");
+  fprintf(out, "                \"items\": {\n");
+  fprintf(out, "                  \"oneOf\": [\n");
+  fprintf(out, "                    {\"type\": [\"string\",\"null\"]},\n");
+  fprintf(out, "                    {\"type\": \"array\", \"items\": {\"type\": [\"string\",\"null\"]}}\n");
+  fprintf(out, "                  ]\n");
+  fprintf(out, "                }\n");
+  fprintf(out, "              },\n");
+  fprintf(out, "              \"missing_in\": {\n");
+  fprintf(out, "                \"type\": \"array\",\n");
+  fprintf(out, "                \"items\": {\"type\": \"integer\", \"minimum\": 0},\n");
+  fprintf(out, "                \"description\": \"indices in ascending order\"\n");
+  fprintf(out, "              }\n");
+  fprintf(out, "            }\n");
+  fprintf(out, "          }\n");
+  fprintf(out, "        ]\n");
+  fprintf(out, "      }\n");
+  fprintf(out, "    }\n");
+  fprintf(out, "  }\n");
+  fprintf(out, "}\n");
 }
 
 static int zsv_compare_print_help_topic(const char *name) {
@@ -198,12 +201,12 @@ static int zsv_compare_print_help_topic(const char *name) {
      silent aliases (undocumented): compare-json-redline, json-redline-json, compare-json-redline-schema
   */
   if (!strcmp(name, "json-redline") || !strcmp(name, "compare-json-redline")) {
-    zsv_compare_print_help_topic_narrative();
+    zsv_compare_print_help_topic_narrative(stdout);
     return 0;
   }
   if (!strcmp(name, "json-redline-schema") || !strcmp(name, "json-redline-json") ||
       !strcmp(name, "compare-json-redline-schema")) {
-    zsv_compare_print_help_topic_json_schema();
+    zsv_compare_print_help_topic_json_schema(stdout);
     return 0;
   }
   fprintf(stderr, "Unknown help topic: %s\n", name);

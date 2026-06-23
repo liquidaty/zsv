@@ -1,10 +1,10 @@
 static const char *usage[] = {
-  "zsv: streaming csv processor",
+  ZSV_USAGE_PROG ": streaming csv processor",
   "",
   "Usage:",
-  "  zsv version: display version info (and if applicable, extension info)",
+  "  " ZSV_USAGE_PROG " version: display version info (and if applicable, extension info)",
 #ifndef __EMSCRIPTEN__
-  "  zsv (un)register [<extension_id>]    : (un)register an extension",
+  "  " ZSV_USAGE_PROG " (un)register [<extension_id>]    : (un)register an extension",
   "      Registration info is saved in zsv.ini located in a directory determined as:",
   "        ZSV_CONFIG_DIR environment variable value, if set",
 #if defined(_WIN32)
@@ -14,13 +14,13 @@ static const char *usage[] = {
   "        otherwise, " PREFIX "/etc",
 #endif
 #endif
-  "  zsv help [<command>]",
-  "  zsv <command> <options> <arguments>  : run a command on data (see below for details)",
+  "  " ZSV_USAGE_PROG " help [<command>]",
+  "  " ZSV_USAGE_PROG " <command> <options> <arguments>  : run a command on data (see below for details)",
 #ifndef __EMSCRIPTEN__
-  "  zsv <id>-<cmd> <options> <arguments> : invoke command 'cmd' of extension 'id'",
-  "  zsv license [<extension_id>]",
+  "  " ZSV_USAGE_PROG " <id>-<cmd> <options> <arguments> : invoke command 'cmd' of extension 'id'",
+  "  " ZSV_USAGE_PROG " license [<extension_id>]",
 #endif
-  "  zsv thirdparty                       : view third-party licenses & acknowledgements",
+  "  " ZSV_USAGE_PROG " thirdparty                       : view third-party licenses & acknowledgements",
   NULL,
 };
 static const char *common_options_title = "Options common to all commands except `prop`, `rm` and `jq`:";

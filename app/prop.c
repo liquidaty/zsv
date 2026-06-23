@@ -30,10 +30,10 @@
 #include <zsv/utils/string.h>
 
 const char *zsv_property_usage_msg[] = {
-  APPNAME ": view or save parsing options associated with a file",
+  ZSV_USAGE_PROG " " APPNAME ": view or save parsing options associated with a file",
   "          saved options will be applied by default when processing that file",
   "",
-  "Usage: " APPNAME " <filepath> [options]",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME " <filepath> [options]",
   "       where filepath is the path to the input CSV file, or",
   "       when using --auto, input CSV file or - for stdin",
   "       when using --clean, directory to clean from (use '.' for current directory)",
@@ -71,8 +71,7 @@ const char *zsv_property_usage_msg[] = {
 };
 
 static int zsv_property_usage(FILE *target) {
-  for (size_t j = 0; zsv_property_usage_msg[j]; j++)
-    fprintf(target, "%s\n", zsv_property_usage_msg[j]);
+  zsv_fprint_usage(target, zsv_property_usage_msg);
   return target == stdout ? 0 : 1;
 }
 

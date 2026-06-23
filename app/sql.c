@@ -33,17 +33,18 @@ struct string_list {
 #endif
 
 const char *zsv_sql_usage_msg[] = {
-  APPNAME ": run ad hoc sql on a CSV file",
+  ZSV_USAGE_PROG " " APPNAME ": run ad hoc sql on a CSV file",
   "          or join multiple CSV files on one or more common column(s)",
   "",
 #ifdef NO_STDIN
-  "Usage: " APPNAME " <filename> [filename ...] <sql | @file.sql>",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME " <filename> [filename ...] <sql | @file.sql>",
 #else
-  "Usage: " APPNAME " [filename, or - for stdin] [filename ...] <sql | @file.sql | --join-indexes <N,...>>",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME
+  " [filename, or - for stdin] [filename ...] <sql | @file.sql | --join-indexes <N,...>>",
 #endif
-  "  e.g. " APPNAME " file.csv \"select * from data\"",
-  "  e.g. " APPNAME " file1.csv file2.csv \"select * from data inner join data2\"",
-  "  e.g. " APPNAME " file1.csv file2.csv --join-indexes 1,2",
+  "  e.g. " ZSV_USAGE_PROG " " APPNAME " file.csv \"select * from data\"",
+  "  e.g. " ZSV_USAGE_PROG " " APPNAME " file1.csv file2.csv \"select * from data inner join data2\"",
+  "  e.g. " ZSV_USAGE_PROG " " APPNAME " file1.csv file2.csv --join-indexes 1,2",
   "",
   "Loads your CSV file into a table named 'data', then runs your sql, which must start with 'select '.",
   "If multiple files are specified, tables will be named data, data2, data3, ...",
@@ -64,8 +65,7 @@ const char *zsv_sql_usage_msg[] = {
 };
 
 static int zsv_sql_usage(FILE *f) {
-  for (size_t i = 0; zsv_sql_usage_msg[i]; i++)
-    fprintf(f, "%s\n", zsv_sql_usage_msg[i]);
+  zsv_fprint_usage(f, zsv_sql_usage_msg);
   return f == stderr ? 1 : 0;
 }
 

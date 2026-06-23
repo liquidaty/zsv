@@ -194,7 +194,7 @@ endif
 THIS_LIB_BASE:=$(shell cd .. && pwd)
 INCLUDE_DIR:=${THIS_LIB_BASE}/include
 BUILD_DIR:=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
-UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index chunk
+UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index chunk appname
 
 ZSV_EXTRAS ?=
 
@@ -239,7 +239,8 @@ ifeq ($(NO_MEMMEM),1)
   UTIL_A_OBJ_WIN=memmem
 endif
 
-ZSV=$(BINDIR)/zsv${EXE}
+PROG_NAME ?= zsv
+ZSV=$(BINDIR)/$(PROG_NAME)${EXE}
 
 SOURCES=echo paste check count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq
 ifeq ($(ZSV_EXTRAS),1)

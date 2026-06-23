@@ -1,6 +1,7 @@
 #ifndef ZSV_COMPARE_PRIVATE_H
 #define ZSV_COMPARE_PRIVATE_H
 
+#include <stdio.h>
 #include <sglib.h>
 #include <sqlite3.h>
 
@@ -106,6 +107,20 @@ struct zsv_compare_data {
   enum zsv_compare_status (*input_init)(struct zsv_compare_data *data, struct zsv_compare_input *input,
                                         struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler);
 
+  /* Output lifecycle hooks. zsv_compare_new() initializes these to the stock
+   * implementations; a host (e.g. a custom CLI) may override them to customize
+   * output, such as buffering the redline JSON and rendering it to a document. */
+  void (*output_begin)(struct zsv_compare_data *data);
+  void (*output_end)(struct zsv_compare_data *data);
+
+  /* Custom option handler for command-line args the stock parser does not
+   * recognize. NULL in stock zsv. A host may set it (e.g. to handle --redline).
+   * Should consume one option starting at argv[*arg_ip], advancing *arg_ip past
+   * any consumed value, set *errp nonzero on error, and return 1 if the option
+   * was recognized (0 otherwise, in which case arg is treated as an input). */
+  int (*parse_opt)(struct zsv_compare_data *data, const char *arg, int *arg_ip, int argc, const char *argv[],
+                   int *errp);
+
   sqlite3 *sort_db; // used when --sort option was specified
 
   struct {
@@ -131,7 +146,11 @@ struct zsv_compare_data {
     unsigned char object : 1;                 // whether to output JSON as objects
     unsigned char include_unchanged_rows : 1; // --include-unchanged-rows
     unsigned char include_tolerated : 1;      // --include-tolerated
-    unsigned char _ : 4;
+    unsigned char redline_render : 1;         // --redline: render the redline JSON to a document
+    unsigned char _ : 3;
+
+    const char *output_path; // -o <file>: destination for the --redline rendered document
+    FILE *tmp;               // temp file holding the redline JSON while --redline renders it
   } writer;
 
   struct zsv_compare_redline *redline; // allocated only for --json-redline mode

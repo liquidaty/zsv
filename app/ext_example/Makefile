@@ -124,7 +124,9 @@ endif
 
 CLI=${BUILD_DIR}/bin/cli${EXE}
 
-RUN_CLI=ZSV_CONFIG_DIR=${TMP_DIR} ${CLI}
+# Pin the program name so help/usage output matches the expected fixtures
+# regardless of the build-dir binary name (basename(argv[0]) would otherwise be "cli").
+RUN_CLI=ZSV_CONFIG_DIR=${TMP_DIR} ZSV_PROG_NAME=zsv ${CLI}
 
 ${BUILD_DIR}/bin/cli:
 	${MAKE} -C .. build-cli CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}

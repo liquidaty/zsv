@@ -278,7 +278,7 @@ static void header_handler(void *ctx) {
 
 static int count_usage(void) {
   static const char *usage[] = {
-    "Usage: count [options]",
+    "Usage: " ZSV_USAGE_PROG " " APPNAME " [options]",
     "",
     "Options:",
     "  -h,--help             : show usage",
@@ -290,9 +290,7 @@ static int count_usage(void) {
 #endif
     NULL,
   };
-  for (size_t i = 0; usage[i]; i++) {
-    printf("%s\n", usage[i]);
-  }
+  zsv_print_usage(usage);
   return 0;
 }
 

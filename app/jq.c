@@ -16,7 +16,7 @@
  */
 int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
   if (argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
-    printf("Usage: " APPNAME " <filter> filename [-o,--output filename] [--csv]\n");
+    printf("Usage: %s " APPNAME " <filter> filename [-o,--output filename] [--csv]\n", zsv_prog_name());
     return 0;
   }
 
