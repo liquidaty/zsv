@@ -142,7 +142,7 @@ ifeq ($(WIN),0)
 else
   BUILD_SUBDIR=win/${DBG_SUBDIR}
   EXE=.exe
-  CFLAGS+= -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE
+  CFLAGS+= -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE
   CFLAGS+= -Wl,--strip-all
   CONFIGURE_HOST=x86_64-w64-mingw32
   CFLAGS+=-Dsetenv\(a,b,c\)=_putenv_s\(a,b\)
@@ -168,8 +168,9 @@ CCBN=$(shell basename ${CC})
 
 CFLAGS+=${CFLAGS_O}
 CFLAGS+=-Wshadow -Wall -Wextra
+CFLAGS+=-D_GNU_SOURCE
 ifeq ($(DEBUG),0)
-  CFLAGS+=-DNDEBUG -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE ${CFLAGS_OPT} #-ftree-vectorize
+  CFLAGS+=-DNDEBUG -Wno-missing-braces -pedantic -DSTDC_HEADERS ${CFLAGS_OPT} #-ftree-vectorize
 
   ifeq (${CCBN},clang)
     CFLAGS+= -Wno-gnu-statement-expression
