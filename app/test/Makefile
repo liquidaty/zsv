@@ -79,6 +79,11 @@ TESTS+=test-quoted-nonstandard
 ifneq ($(CCBN),emcc)
 TESTS+=test-compare-redline
 TESTS+=test-compare-redline-v2
+# test-2db-csv pipes zsv_2json | zsv_2db and orchestrates multiple standalone
+# binaries; like the redline tests, this multi-binary orchestration is not set
+# up in the emcc/wasm sandbox (binaries are *.em.js run via node, not directly
+# executable). The CSV->DB path is plain C and is covered on every native build.
+TESTS+=test-2db-csv
 endif
 
 # Security regression test - only run when not cross-compiling
@@ -831,6 +836,69 @@ test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DI
 	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
 	@sqlite3 ${TMP_DIR}/$@.db "select count(*) from data" > ${TMP_DIR}/$@.out3
 	@${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
+
+# test-2db-csv: build a SQLite3 DB directly from CSV input (no JSON round-trip).
+# Covers basic conversion, legacy-pipeline agreement, --table, extension
+# detection / overrides, .tsv TAB, edge cases (header-only, ragged, empty &
+# duplicate headers, quoted fields) and error cases.
+DB2=${BUILD_DIR}/bin/zsv_2db${EXE}
+test-2db-csv: ${BUILD_DIR}/bin/zsv_2db${EXE} ${BUILD_DIR}/bin/zsv_2json${EXE}
+	@${TEST_INIT}
+	@# --- fixtures ---
+	@printf 'name,age,city\nAlice,30,NYC\nBob,25,LA\nCarol,40,SF\n' > ${TMP_DIR}/$@-basic.csv
+	@# 1a. basic CSV -> DB: schema
+	@(${PREFIX} ${DB2} ${TMP_DIR}/$@-basic.csv -o ${TMP_DIR}/$@-basic.db --overwrite ${REDIRECT1} ${TMP_DIR}/$@.run.out)
+	@sqlite3 ${TMP_DIR}/$@-basic.db .schema | sed 's/ IF NOT EXISTS//' > ${TMP_DIR}/$@.schema.out
+	@${CMP} ${TMP_DIR}/$@.schema.out expected/$@.schema.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 1b. row count
+	@sqlite3 ${TMP_DIR}/$@-basic.db 'select count(*) from mytable' > ${TMP_DIR}/$@.count.out
+	@${CMP} ${TMP_DIR}/$@.count.out expected/$@.count.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 1c. data
+	@sqlite3 ${TMP_DIR}/$@-basic.db 'select * from mytable' > ${TMP_DIR}/$@.data.out
+	@${CMP} ${TMP_DIR}/$@.data.out expected/$@.data.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 1d. agreement with the legacy 2json | 2db pipeline (same bytes in, same rows out)
+	@${BUILD_DIR}/bin/zsv_2json${EXE} --database ${TMP_DIR}/$@-basic.csv | ${DB2} -o ${TMP_DIR}/$@-legacy.db --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-legacy.db 'select * from mytable' > ${TMP_DIR}/$@.legacy.out
+	@${CMP} ${TMP_DIR}/$@.legacy.out ${TMP_DIR}/$@.data.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 2. --table honored for CSV input
+	@${DB2} ${TMP_DIR}/$@-basic.csv -o ${TMP_DIR}/$@-tbl.db --table people --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-tbl.db 'select count(*) from people' > ${TMP_DIR}/$@.tbl.out
+	@${CMP} ${TMP_DIR}/$@.tbl.out expected/$@.count.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 3a. extension override: --csv forces CSV on a .json-named file
+	@cp ${TMP_DIR}/$@-basic.csv ${TMP_DIR}/$@-asjson.json
+	@${DB2} --csv ${TMP_DIR}/$@-asjson.json -o ${TMP_DIR}/$@-csvjson.db --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-csvjson.db 'select count(*) from mytable' > ${TMP_DIR}/$@.csvjson.out
+	@${CMP} ${TMP_DIR}/$@.csvjson.out expected/$@.count.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 3b. .tsv auto-detects CSV and sets TAB delimiter
+	@printf 'a\tb\tc\n1\t2\t3\n' > ${TMP_DIR}/$@-x.tsv
+	@${DB2} ${TMP_DIR}/$@-x.tsv -o ${TMP_DIR}/$@-tsv.db --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-tsv.db 'select * from mytable' > ${TMP_DIR}/$@.tsv.out
+	@${CMP} ${TMP_DIR}/$@.tsv.out expected/$@.tsv.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 4a. header-only input -> empty table, exit 0
+	@printf 'h1,h2,h3\n' > ${TMP_DIR}/$@-honly.csv
+	@${DB2} ${TMP_DIR}/$@-honly.csv -o ${TMP_DIR}/$@-honly.db --overwrite >/dev/null 2>&1 && echo "rows=0 exit=$$?" > ${TMP_DIR}/$@.honly.out
+	@printf 'rows=0 exit=0\n' | ${CMP} - ${TMP_DIR}/$@.honly.out && ${TEST_PASS} || ${TEST_FAIL}
+	@sqlite3 ${TMP_DIR}/$@-honly.db 'select count(*) from mytable' > ${TMP_DIR}/$@.honlycount.out
+	@printf '0\n' | ${CMP} - ${TMP_DIR}/$@.honlycount.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 4b. empty header cell -> synthesized column_<n>; duplicate headers -> de-duped
+	@printf 'a,,c,c\n1,2,3,4\n' > ${TMP_DIR}/$@-edge.csv
+	@${DB2} ${TMP_DIR}/$@-edge.csv -o ${TMP_DIR}/$@-edge.db --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-edge.db .schema | sed 's/ IF NOT EXISTS//' > ${TMP_DIR}/$@.edge.out
+	@${CMP} ${TMP_DIR}/$@.edge.out expected/$@.edge.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 4c. ragged rows (short pads with empty, long truncates to header width)
+	@printf 'a,b,c\n1,2\n3,4,5,6\n' > ${TMP_DIR}/$@-rag.csv
+	@${DB2} ${TMP_DIR}/$@-rag.csv -o ${TMP_DIR}/$@-rag.db --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-rag.db 'select * from mytable' > ${TMP_DIR}/$@.rag.out
+	@${CMP} ${TMP_DIR}/$@.rag.out expected/$@.rag.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 4d. quoted fields with embedded comma and newline (round-trip via the parser)
+	@printf 'a,b\n"x,y","l1\nl2"\n' > ${TMP_DIR}/$@-q.csv
+	@${DB2} ${TMP_DIR}/$@-q.csv -o ${TMP_DIR}/$@-q.db --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-q.db "select a || '|' || b from mytable" > ${TMP_DIR}/$@.q.out
+	@printf 'x,y|l1\nl2\n' | ${CMP} - ${TMP_DIR}/$@.q.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 5. error cases (each must exit non-zero)
+	@(! ${DB2} ${TMP_DIR}/$@-basic.csv >/dev/null 2>&1) && ${TEST_PASS} || ${TEST_FAIL}
+	@(! ${DB2} ${TMP_DIR}/$@-basic.csv -o ${TMP_DIR}/$@-basic.db >/dev/null 2>&1) && ${TEST_PASS} || ${TEST_FAIL}
+	@(! ${DB2} --csv --json ${TMP_DIR}/$@-basic.csv -o ${TMP_DIR}/$@-z.db --overwrite >/dev/null 2>&1) && ${TEST_PASS} || ${TEST_FAIL}
 
 test-jq: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
