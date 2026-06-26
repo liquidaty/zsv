@@ -56,7 +56,7 @@ ifneq ($(ZSV_EXTRAS),)
 endif
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
-TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-paste test-flatten-2 test-flatten-dupcol test-2db-csv
+TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-paste test-flatten-2 test-flatten-dupcol
 
 ifeq ($(ZSVSHEET_BUILD),1)
   SOURCES+=sheet
@@ -79,6 +79,11 @@ TESTS+=test-quoted-nonstandard
 ifneq ($(CCBN),emcc)
 TESTS+=test-compare-redline
 TESTS+=test-compare-redline-v2
+# test-2db-csv pipes zsv_2json | zsv_2db and orchestrates multiple standalone
+# binaries; like the redline tests, this multi-binary orchestration is not set
+# up in the emcc/wasm sandbox (binaries are *.em.js run via node, not directly
+# executable). The CSV->DB path is plain C and is covered on every native build.
+TESTS+=test-2db-csv
 endif
 
 # Security regression test - only run when not cross-compiling
