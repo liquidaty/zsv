@@ -333,9 +333,9 @@ MEMFILE_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/memfile-1.0/include
 MEMFILE_OBJECT=${BUILD_DIR}-external/memfile-1.0/memfile.o
 
 ## utf8proc
-UTF8PROC_SRC=${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1
-UTF8PROC_INCLUDE=${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1
-UTF8PROC_OBJECT=${BUILD_DIR}-external/utf8proc-2.6.1/utf8proc.o
+UTF8PROC_SRC=${THIS_MAKEFILE_DIR}/external/utf8proc-2.11.3
+UTF8PROC_INCLUDE=${THIS_MAKEFILE_DIR}/external/utf8proc-2.11.3
+UTF8PROC_OBJECT=${BUILD_DIR}-external/utf8proc-2.11.3/utf8proc.o
 CFLAGS+= -I${UTF8PROC_INCLUDE} -DUTF8PROC -DUTF8PROC_STATIC
 
 # sqlite3
@@ -714,7 +714,7 @@ clean: clean-obj clean-internal
 
 clean-obj:
 	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT} ${MEMFILE_OBJECT}
-	rm -rf external/utf8proc-2.6.1
+	rm -rf external/utf8proc-2.11.3
 
 clean-internal:
 	$(RM) cli_internal.c.in cli_internal.h.in
@@ -725,6 +725,6 @@ clean-internal:
 # both files to old mtimes but touches only one). That now surfaces as a spurious
 # zsv_sheet relink, since the sheet depfile makes it depend on utf8proc.h. Touch
 # BOTH so they are reliably newer than the tarball and the rule runs only once.
-${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: ${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1.tar.gz
-	@cd external && tar xf utf8proc-2.6.1.tar.gz && chown -R `whoami` utf8proc-2.6.1
+${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: ${THIS_MAKEFILE_DIR}/external/utf8proc-2.11.3.tar.gz
+	@cd external && tar xf utf8proc-2.11.3.tar.gz && chown -R `whoami` utf8proc-2.11.3
 	@touch ${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h
