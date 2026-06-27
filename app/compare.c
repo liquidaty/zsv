@@ -512,6 +512,8 @@ zsv_compare_handle zsv_compare_new(void) {
 
   z->output_begin = zsv_compare_output_begin;
   z->output_end = zsv_compare_output_end;
+  /* Unchanged rows are included by default; --only-changed-rows clears this */
+  z->writer.include_unchanged_rows = 1;
   /* z->parse_opt left NULL: stock zsv has no custom options */
   return z;
 }
@@ -720,7 +722,8 @@ static int compare_usage(void) {
     NULL,
   };
   static const char *usage2[] = {
-    "  --include-unchanged-rows: (with --json-redline) emit matched rows",
+    "  --only-changed-rows: (with --json-redline) emit only rows that have a diff",
+    "                       (by default, unchanged/matched rows are also emitted)",
     "  --include-tolerated: (with --json-redline) emit tolerated diffs as arrays",
     "  --columns <spec>   : compare column ranges within a single file",
     "                       spec uses 'v' or 'vs' to separate ranges, '-' or ':'",
@@ -875,8 +878,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       const char *next_arg = zsv_next_arg(++arg_i, argc, argv, &err);
       if (next_arg)
         data->writer.output_path = next_arg;
-    } else if (!strcmp(arg, "--include-unchanged-rows")) {
-      data->writer.include_unchanged_rows = 1;
+    } else if (!strcmp(arg, "--only-changed-rows")) {
+      data->writer.include_unchanged_rows = 0;
     } else if (!strcmp(arg, "--include-tolerated")) {
       data->writer.include_tolerated = 1;
     } else if (!strcmp(arg, "--print-key-colname")) {

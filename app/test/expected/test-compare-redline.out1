@@ -19,7 +19,7 @@
   "options": {
     "tolerance": null,
     "sort": false,
-    "include_unchanged_rows": false,
+    "include_unchanged_rows": true,
     "include_tolerated": false,
     "require_all_inputs": false
   },
@@ -102,5 +102,15 @@
     }
   },
   "rows": [
+    [
+      "1",
+      "Alice",
+      "100"
+    ],
+    [
+      "2",
+      "Bob",
+      "200"
+    ]
   ]
 }
