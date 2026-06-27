@@ -144,7 +144,7 @@ struct zsv_compare_data {
     unsigned cell_ix;                         // only used for json + object output
     unsigned char compact : 1;                // whether to output compact JSON
     unsigned char object : 1;                 // whether to output JSON as objects
-    unsigned char include_unchanged_rows : 1; // --include-unchanged-rows
+    unsigned char include_unchanged_rows : 1; // default on; cleared by --only-changed-rows
     unsigned char include_tolerated : 1;      // --include-tolerated
     unsigned char redline_render : 1;         // --redline: render the redline JSON to a document
     unsigned char _ : 3;

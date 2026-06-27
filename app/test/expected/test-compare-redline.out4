@@ -19,7 +19,7 @@
   "options": {
     "tolerance": null,
     "sort": false,
-    "include_unchanged_rows": false,
+    "include_unchanged_rows": true,
     "include_tolerated": false,
     "require_all_inputs": false
   },
@@ -86,6 +86,10 @@
     }
   },
   "rows": [
+    [
+      "1",
+      "A"
+    ],
     {
       "data": [
         "2",
@@ -103,6 +107,10 @@
       "missing_in": [
         0
       ]
-    }
+    },
+    [
+      "4",
+      "D"
+    ]
   ]
 }

@@ -6,16 +6,17 @@
 # Help-topic and --json-redline outputs are deterministic, so they are checked byte-for-byte
 # against goldens in expected/ (no jq/ajv: those tools are absent on the CI runners).
 
-# TC1: two identical inputs → empty rows[]
+# TC1: two identical inputs → all rows emitted (unchanged rows are included by default)
 # TC2: mix diff/tolerated (--tolerance 1.0)
 # TC3: schema mismatch (extra column in input 0)
 # TC4: missing rows on each side → object form
-# TC5: --include-unchanged-rows
+# TC5: unchanged rows are emitted by default (no flag needed)
 # TC6: --include-tolerated
 # TC7: three inputs → length-3 diff arrays
 # TC8: SOURCE_DATE_EPOCH yields a deterministic generated_at
 # TC9: --exit-code returns the number of differing cells in redline mode
 # TC10: --require-all-inputs drops rows missing from any input; options.require_all_inputs is recorded
+# TC11: --only-changed-rows suppresses unchanged rows (inverse of the new default)
 test-compare-redline: ${BUILD_DIR}/bin/zsv_compare${EXE}
 	@${TEST_INIT}
 	@(${PREFIX} $< --json-redline -k id compare/jredline1a.csv compare/jredline1b.csv ${REDIRECT1} ${TMP_DIR}/$@.out1raw && \
@@ -34,7 +35,7 @@ test-compare-redline: ${BUILD_DIR}/bin/zsv_compare${EXE}
 	sed '/"generated_at"/d' ${TMP_DIR}/$@.out4raw > ${TMP_DIR}/$@.out4 && \
 	${CMP} ${TMP_DIR}/$@.out4 expected/$@.out4 && ${TEST_PASS} || ${TEST_FAIL})
 
-	@(${PREFIX} $< --json-redline -k id --include-unchanged-rows compare/jredline5a.csv compare/jredline5b.csv ${REDIRECT1} ${TMP_DIR}/$@.out5raw && \
+	@(${PREFIX} $< --json-redline -k id compare/jredline5a.csv compare/jredline5b.csv ${REDIRECT1} ${TMP_DIR}/$@.out5raw && \
 	sed '/"generated_at"/d' ${TMP_DIR}/$@.out5raw > ${TMP_DIR}/$@.out5 && \
 	${CMP} ${TMP_DIR}/$@.out5 expected/$@.out5 && ${TEST_PASS} || ${TEST_FAIL})
 
@@ -59,6 +60,12 @@ test-compare-redline: ${BUILD_DIR}/bin/zsv_compare${EXE}
 	@(${PREFIX} $< --json-redline -k id --require-all-inputs compare/reqall_a.csv compare/reqall_b.csv ${REDIRECT1} ${TMP_DIR}/$@.out9raw && \
 	sed '/"generated_at"/d' ${TMP_DIR}/$@.out9raw > ${TMP_DIR}/$@.out9 && \
 	${CMP} ${TMP_DIR}/$@.out9 expected/$@.out9 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# TC11: --only-changed-rows suppresses unchanged rows (the inverse of the new default);
+	@# options.include_unchanged_rows is recorded as false and rows[] holds only the diffed row
+	@(${PREFIX} $< --json-redline -k id --only-changed-rows compare/jredline5a.csv compare/jredline5b.csv ${REDIRECT1} ${TMP_DIR}/$@.out10raw && \
+	sed '/"generated_at"/d' ${TMP_DIR}/$@.out10raw > ${TMP_DIR}/$@.out10 && \
+	${CMP} ${TMP_DIR}/$@.out10 expected/$@.out10 && ${TEST_PASS} || ${TEST_FAIL})
 
 # TC-A: missing_in indices are strictly ascending in 3-input case
 # TC-B: -a/--add combined with --json-redline errors with non-zero exit, exact stderr, empty stdout

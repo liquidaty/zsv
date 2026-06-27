@@ -19,7 +19,7 @@
   "options": {
     "tolerance": 1,
     "sort": false,
-    "include_unchanged_rows": false,
+    "include_unchanged_rows": true,
     "include_tolerated": true,
     "require_all_inputs": false
   },
@@ -117,6 +117,11 @@
         "200.0",
         "201.5"
       ]
+    ],
+    [
+      "3",
+      "Carol",
+      "300.0"
     ]
   ]
 }
