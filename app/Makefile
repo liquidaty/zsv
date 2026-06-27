@@ -309,7 +309,7 @@ YAJL_HELPER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/yajl_helper
 CFLAGS+=${YAJL_HELPER_INCLUDE} ${YAJL_INCLUDE}
 
 # jq
-JQ_TARBALL=${THIS_MAKEFILE_DIR}/external/jq-1.6.tar.gz
+JQ_TARBALL=${THIS_MAKEFILE_DIR}/external/jq-1.8.2.tar.gz
 JQ_SRC=${BUILD_DIR}-external/jq-src
 
 JQ_PREFIX ?=
@@ -507,7 +507,7 @@ ${JQ_SRC}: ${JQ_TARBALL}
 	@rm -rf $@-tmp
 	@mkdir -p $@-tmp
 	cd $@-tmp && tar xf ${JQ_TARBALL}
-	mv $@-tmp/jq-1.6 $@
+	mv $@-tmp/jq-1.8.2 $@
 	rm -rf $@-tmp
 
 lib-jq: ${JQ_LIB}
