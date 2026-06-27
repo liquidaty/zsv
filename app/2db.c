@@ -878,7 +878,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
     if (!data)
       err = 1;
     else if (is_json) {
-      size_t chunk_size = 4096 * 16;
+      size_t chunk_size = 65536; /* 4096 * 16 */
       unsigned char *buff = malloc(chunk_size);
       if (!buff)
         err = 1;
