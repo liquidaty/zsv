@@ -1143,7 +1143,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
 #if defined(WIN32) || defined(_WIN32)
-  if (setenv("TERM", "", 1) != 0)
+  if (_putenv_s("TERM", "") != 0)
     fprintf(stderr, "Warning: unable to unset TERM env var\n");
 #endif
 

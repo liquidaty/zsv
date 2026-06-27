@@ -17,7 +17,11 @@ static int terminfo_ok(void) {
   for (int i = 0; default_paths[i] != NULL; i++) {
     if (access(default_paths[i], R_OK) == 0) {
       // Set the TERMINFO environment variable
+#if defined(WIN32) || defined(_WIN32)
+      if (_putenv_s("TERMINFO", default_paths[i]) == 0)
+#else
       if (setenv("TERMINFO", default_paths[i], 1) == 0)
+#endif
         return 1; // ok
       else {
         perror("Failed to set TERMINFO environment variable");

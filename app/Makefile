@@ -145,7 +145,6 @@ else
   CFLAGS+= -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE
   CFLAGS+= -Wl,--strip-all
   CONFIGURE_HOST=x86_64-w64-mingw32
-  CFLAGS+=-Dsetenv\(a,b,c\)=_putenv_s\(a,b\)
 endif
 
 JQ_CONFIGURE_HOST=
