@@ -56,7 +56,7 @@ ifneq ($(ZSV_EXTRAS),)
 endif
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
-TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-paste test-flatten-2 test-flatten-dupcol
+TESTS=test-toon $(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-paste test-flatten-2 test-flatten-dupcol
 
 ifeq ($(ZSVSHEET_BUILD),1)
   SOURCES+=sheet
@@ -183,6 +183,35 @@ test: ${TESTS}
 
 test-paste:
 	@echo "TO DO: test paste"
+
+# TOON round-trip (R1/T1): CSV -> JSON and CSV -> TOON via the same 2json code
+# path, then TOON -> JSON via toon2json; the round-tripped JSON must equal the
+# direct compact JSON. Also asserts the tabular array header was produced. Uses
+# data/test/2json.csv, which contains quoted commas and many empty cells.
+test-toon: ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_toon2json${EXE}
+	@${TEST_INIT}
+	@in=${TEST_DATA_DIR}/test/2json.csv; \
+	${PREFIX} $< --object --compact -o ${TMP_DIR}/$@.json $$in; \
+	${PREFIX} $< --object --toon -o ${TMP_DIR}/$@.toon $$in; \
+	${PREFIX} ${BUILD_DIR}/bin/zsv_toon2json${EXE} -o ${TMP_DIR}/$@.rt.json ${TMP_DIR}/$@.toon; \
+	AI_AGENT=test-harness ${PREFIX} $< --object -o ${TMP_DIR}/$@.ai.out $$in 2> ${TMP_DIR}/$@.ai.err; \
+	ZSV_STRUCTURED_FORMAT=json AI_AGENT=test-harness ${PREFIX} $< --object -o ${TMP_DIR}/$@.ov.out $$in 2> ${TMP_DIR}/$@.ov.err; \
+	if [ "$$(cat ${TMP_DIR}/$@.json)" = "$$(cat ${TMP_DIR}/$@.rt.json)" ] \
+	   && grep -q ']{' ${TMP_DIR}/$@.toon \
+	   && grep -q ']{' ${TMP_DIR}/$@.ai.out \
+	   && grep -q 'TOON output (AI_AGENT)' ${TMP_DIR}/$@.ai.err \
+	   && ! grep -q ']{' ${TMP_DIR}/$@.ov.out \
+	   && ! grep -q 'TOON output' ${TMP_DIR}/$@.ov.err; then \
+	  ${TEST_PASS}; \
+	else \
+	  echo '== round-trip equal? toon tabular? agent-profile toon+notice? env override back to json? =='; \
+	  echo '== TOON (head) =='; head -c 300 ${TMP_DIR}/$@.toon; echo; \
+	  echo '== roundtrip toon2json (head) =='; head -c 300 ${TMP_DIR}/$@.rt.json; echo; \
+	  echo '== 2json --compact (head) =='; head -c 300 ${TMP_DIR}/$@.json; echo; \
+	  echo '== AI_AGENT stderr =='; cat ${TMP_DIR}/$@.ai.err; \
+	  echo '== override stderr =='; cat ${TMP_DIR}/$@.ov.err; \
+	  ${TEST_FAIL}; \
+	fi
 
 ${TIMINGS_CSV}:
 	@mkdir -p ${TMP_DIR}

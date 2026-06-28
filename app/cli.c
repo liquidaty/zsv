@@ -71,6 +71,7 @@ static int config_init_2(struct cli_config *c, char err_if_dl_not_found, char do
 CLI_BUILTIN_DECL_STATIC(version);
 CLI_BUILTIN_DECL_STATIC(help);
 CLI_BUILTIN_DECL_STATIC(thirdparty);
+CLI_BUILTIN_DECL_STATIC(toon);
 
 #ifndef __EMSCRIPTEN__
 CLI_BUILTIN_DECL_STATIC(register);
@@ -83,6 +84,7 @@ ZSV_MAIN_DECL(count);
 ZSV_MAIN_DECL(paste);
 ZSV_MAIN_DECL(check);
 ZSV_MAIN_DECL(2json);
+ZSV_MAIN_DECL(toon2json);
 ZSV_MAIN_DECL(2tsv);
 ZSV_MAIN_DECL(serialize);
 ZSV_MAIN_DECL(flatten);
@@ -132,6 +134,9 @@ struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_COMMAND(paste),
   CLI_BUILTIN_COMMAND(check),
   CLI_BUILTIN_COMMAND(2json),
+  {.name = "2toon", .main = NULL, .cmd = ZSV_MAIN_FUNC(2json)},
+  CLI_BUILTIN_COMMAND(toon2json),
+  CLI_BUILTIN_CMD(toon),
   CLI_BUILTIN_COMMAND(2tsv),
   CLI_BUILTIN_COMMAND(serialize),
   CLI_BUILTIN_COMMAND(flatten),
@@ -544,6 +549,7 @@ static struct builtin_cmd *find_builtin(const char *cmd_name) {
 #include "builtin/license.c"
 #include "builtin/thirdparty.c"
 #include "builtin/help.c"
+#include "builtin/toon.c"
 #include "builtin/version.c"
 #include "builtin/register.c"
 

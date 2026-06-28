@@ -195,7 +195,7 @@ endif
 THIS_LIB_BASE:=$(shell cd .. && pwd)
 INCLUDE_DIR:=${THIS_LIB_BASE}/include
 BUILD_DIR:=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
-UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index chunk appname
+UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index chunk appname toon structured
 
 ZSV_EXTRAS ?=
 
@@ -232,6 +232,18 @@ ifeq ($(ZSV_EXTRAS),1)
   CFLAGS+= -DZSV_EXTRAS
 endif
 
+## json2toon: the installed reference library providing JSON<->TOON conversion.
+## Link the native static archive by full path: a stray pkg-config .pc for a
+## cross target (e.g. WASI under /opt) must not hijack the native link, and a
+## static link keeps the deployed binary free of a runtime libjson2toon dep.
+## Override JSON2TOON_PREFIX (or JSON2TOON_LIBS/JSON2TOON_CFLAGS) for other
+## targets / install layouts.
+JSON2TOON_PREFIX ?= /usr/local
+JSON2TOON_CFLAGS ?= -I$(JSON2TOON_PREFIX)/include
+JSON2TOON_LIBS ?= $(JSON2TOON_PREFIX)/lib/libjson2toon.a
+CFLAGS += $(JSON2TOON_CFLAGS)
+LDFLAGS += $(JSON2TOON_LIBS)
+
 OBJECTS=${UTILS}
 
 ifeq ($(NO_MEMMEM),1)
@@ -243,11 +255,11 @@ endif
 PROG_NAME ?= zsv
 ZSV=$(BINDIR)/$(PROG_NAME)${EXE}
 
-SOURCES=echo paste check count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq
+SOURCES=echo paste check count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq toon2json
 ifeq ($(ZSV_EXTRAS),1)
   SOURCES+=overwrite
 endif
-CLI_SOURCES=echo select desc count paste check 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq
+CLI_SOURCES=echo select desc count paste check 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq toon2json
 ifeq ($(ZSV_EXTRAS),1)
   CLI_SOURCES+=overwrite
 endif

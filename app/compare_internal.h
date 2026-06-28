@@ -147,7 +147,15 @@ struct zsv_compare_data {
     unsigned char include_unchanged_rows : 1; // default on; cleared by --only-changed-rows
     unsigned char include_tolerated : 1;      // --include-tolerated
     unsigned char redline_render : 1;         // --redline: render the redline JSON to a document
-    unsigned char _ : 3;
+    unsigned char to_toon : 1;                // --toon*: emit TOON (JSON captured then converted)
+    unsigned char _ : 2;
+
+    // When to_toon: the jsonwriter writes JSON into this buffer instead of
+    // stdout; it is converted to TOON (via json2toon) once output is complete.
+    char *toon_buf;
+    size_t toon_len;
+    size_t toon_cap;
+    unsigned char toon_oom;
 
     const char *output_path; // -o <file>: destination for the --redline rendered document
     FILE *tmp;               // temp file holding the redline JSON while --redline renders it

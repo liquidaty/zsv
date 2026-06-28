@@ -16,6 +16,8 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/mem.h>
 #include <zsv/utils/db.h>
+#include <zsv/utils/toon.h>
+#include <zsv/utils/structured.h>
 
 struct zsv_2json_header {
   struct zsv_2json_header *next;
@@ -224,6 +226,35 @@ static int zsv_db2json(const char *input_filename, char **tname, jsonwriter_hand
   return err;
 }
 
+/* In TOON mode the JSON is first serialized to this in-memory sink (via
+ * jsonwriter_new_stream) and then converted to TOON; this keeps the TOON output
+ * byte-for-byte equivalent to the JSON the command would otherwise produce. */
+struct zsv_2json_memsink {
+  char *buf;
+  size_t n, cap;
+  char oom;
+};
+
+static size_t zsv_2json_memsink_write(const void *restrict p, size_t sz, size_t ni, void *restrict arg) {
+  struct zsv_2json_memsink *m = arg;
+  size_t total = sz * ni;
+  if (m->n + total > m->cap) {
+    size_t nc = m->cap ? m->cap : 4096;
+    while (m->n + total > nc)
+      nc *= 2;
+    char *nb = realloc(m->buf, nc);
+    if (!nb) {
+      m->oom = 1;
+      return 0;
+    }
+    m->buf = nb;
+    m->cap = nc;
+  }
+  memcpy(m->buf + m->n, p, total);
+  m->n += total;
+  return ni;
+}
+
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
                                struct zsv_prop_handler *custom_prop_handler) {
   struct zsv_opts opts = *optsp;
@@ -231,7 +262,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   data.headers_next = &data.headers;
 
   const char *usage[] = {
-    ZSV_USAGE_PROG " " APPNAME ": streaming CSV to JSON converter, or SQLite3 DB to JSON converter",
+    ZSV_USAGE_PROG " " APPNAME ": streaming CSV to JSON/TOON converter, or SQLite3 DB to JSON/TOON converter",
     "",
     "Usage: " ZSV_USAGE_PROG " " APPNAME " [options] [file.csv]",
     "",
@@ -239,6 +270,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     "  -h,--help                     : show usage",
     "  -o,--output <filename>        : filename to write output to",
     "  --compact                     : output compact JSON",
+    "  --json                        : output JSON (the default for 2json)",
+    "  --toon                        : output TOON instead of JSON (see `" ZSV_USAGE_PROG " help toon`)",
+    "  --indent <N>                  : spaces per TOON nesting level (default 2; --toon only)",
     "  --from-db                     : input is sqlite3 database",
     "  --db-table <table_name>       : name of table in input database to convert",
     "  --object                      : output as array of objects",
@@ -255,10 +289,30 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   enum zsv_status err = zsv_status_ok;
   int done = 0;
 
+  /* TOON support: the same code path serves both `2json` and its mirror `2toon`
+   * (see U5). The command name acts like an explicit format choice; --json /
+   * --toon flags override; otherwise the session default (ZSV_STRUCTURED_FORMAT
+   * / agent profile) applies. */
+  struct zsv_structured_opts sopts = {0};
+  if (argc > 0 && argv[0] && !strcmp(argv[0], "2toon"))
+    sopts.flag_toon = 1;
+  int toon_indent = 0;
+
   for (int i = 1; !err && !done && i < argc; i++) {
     if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
       zsv_print_usage(usage);
       done = 1;
+    } else if (!strcmp(argv[i], "--toon")) {
+      sopts.flag_toon = 1;
+    } else if (!strcmp(argv[i], "--json")) {
+      sopts.flag_json = 1;
+    } else if (!strcmp(argv[i], "--indent")) {
+      if (++i >= argc)
+        fprintf(stderr, "%s option requires a value\n", argv[i - 1]), err = zsv_status_error;
+      else
+        toon_indent = atoi(argv[i]);
+    } else if (!strcmp(argv[i], "-q") || !strcmp(argv[i], "--quiet")) {
+      sopts.quiet = 1;
     } else if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if (++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i - 1]), err = zsv_status_error;
@@ -340,13 +394,31 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
   }
 
+  int to_toon = 0;
+  if (!(err || done)) {
+    enum zsv_structured_source ssrc;
+    int rfmt = zsv_structured_resolve(&sopts, &ssrc);
+    if (rfmt < 0) {
+      fprintf(stderr, "--json and --toon are mutually exclusive\n");
+      err = zsv_status_error;
+    } else {
+      to_toon = (rfmt == zsv_structured_format_toon);
+      zsv_structured_emit_notice((enum zsv_structured_format)rfmt, ssrc, sopts.quiet);
+    }
+  }
+
+  struct zsv_2json_memsink sink = {0};
   if (!(err || done)) {
     if (!out)
       out = stdout;
-    if (!(data.jsw = jsonwriter_new(out)))
+    if (to_toon)
+      data.jsw = jsonwriter_new_stream(zsv_2json_memsink_write, &sink);
+    else
+      data.jsw = jsonwriter_new(out);
+    if (!data.jsw)
       err = zsv_status_error;
     else {
-      if (data.compact)
+      if (data.compact && !to_toon)
         jsonwriter_set_option(data.jsw, jsonwriter_option_compact);
       if (data.from_db) {
         if (opts.stream != stdin) {
@@ -369,10 +441,20 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     }
     jsonwriter_delete(data.jsw);
+    data.jsw = NULL;
+
+    if (to_toon) {
+      if (sink.oom)
+        fprintf(stderr, "Out of memory!\n"), err = zsv_status_error;
+      if (!err && zsv_json_to_toon_str((const unsigned char *)(sink.buf ? sink.buf : (char *)""), sink.n, out,
+                                       toon_indent))
+        err = zsv_status_error;
+      free(sink.buf);
+    }
   }
 
   if (!err) {
-    if (data.compact && out == stdout)
+    if (data.compact && !to_toon && out == stdout)
       fprintf(stdout, "\n");
   }
 
