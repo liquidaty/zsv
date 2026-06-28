@@ -1,5 +1,5 @@
-#ifndef LQ_FS_API_H
-#define LQ_FS_API_H
+#ifndef ZSV_FS_API_H
+#define ZSV_FS_API_H
 
 typedef struct fs_data *fshandle;
 

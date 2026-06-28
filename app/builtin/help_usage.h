@@ -61,7 +61,7 @@ static const char *commands_title = "Commands that parse CSV or other tabular da
 
 /* Structured command catalog: the single source of truth for each
  * command's name and one-line synopsis. help.c formats this into the
- * display list shown by `zsv help`; downstream tools (e.g. the lq CLI)
+ * display list shown by `zsv help`; downstream tools
  * include this header and look up a command's synopsis by name, so the
  * text lives in exactly one place rather than being duplicated. A NULL
  * `name` marks a section break whose `synopsis`, if non-NULL, is printed

@@ -24,7 +24,7 @@ struct zsv_2json_header {
   char *name;
 };
 
-#define LQ_2JSON_MAX_INDEXES 32
+#define ZSV_2JSON_MAX_INDEXES 32
 
 struct zsv_2json_data {
   zsv_parser parser;
@@ -33,8 +33,8 @@ struct zsv_2json_data {
   size_t rows_processed; // includes header row
 
   struct {
-    const char *clauses[LQ_2JSON_MAX_INDEXES];
-    char unique[LQ_2JSON_MAX_INDEXES];
+    const char *clauses[ZSV_2JSON_MAX_INDEXES];
+    char unique[ZSV_2JSON_MAX_INDEXES];
     unsigned count;
   } indexes;
 
@@ -323,7 +323,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if (!strcmp(argv[i], "--index") || !strcmp(argv[i], "--unique-index")) {
       if (++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i - 1]), err = zsv_status_error;
-      else if (data.indexes.count > LQ_2JSON_MAX_INDEXES)
+      else if (data.indexes.count > ZSV_2JSON_MAX_INDEXES)
         fprintf(stderr, "Max index count exceeded; ignoring %s\n", argv[i]), err = zsv_status_error;
       else if (!strstr(argv[i], " on "))
         fprintf(stderr, "Index value should be in the form of 'index_name on expr'; got %s\n", argv[i]),
@@ -446,8 +446,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     if (to_toon) {
       if (sink.oom)
         fprintf(stderr, "Out of memory!\n"), err = zsv_status_error;
-      if (!err && zsv_json_to_toon_str((const unsigned char *)(sink.buf ? sink.buf : (char *)""), sink.n, out,
-                                       toon_indent))
+      if (!err &&
+          zsv_json_to_toon_str((const unsigned char *)(sink.buf ? sink.buf : (char *)""), sink.n, out, toon_indent))
         err = zsv_status_error;
       free(sink.buf);
     }

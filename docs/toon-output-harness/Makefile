@@ -1,6 +1,6 @@
-# TOON-vs-JSON token-savings harness for lq output surfaces.
+# TOON-vs-JSON token-savings harness for zsv output surfaces.
 # Metric: token count (lower = more ergonomic for an LLM consumer).
-# Pipeline: corpus (lq -> json) -> toon (json2toon) -> count (tiktoken) -> report.
+# Pipeline: corpus (zsv -> json) -> toon (json2toon) -> count (tiktoken) -> report.
 
 VENV := venv/bin/python
 C    := corpus
@@ -18,16 +18,16 @@ venv:                       ## create venv with tiktoken
 	python3 -m venv venv && venv/bin/pip install -q tiktoken
 
 .PHONY: corpus
-corpus:                     ## generate JSON corpus from the live lq binary
+corpus:                     ## generate JSON corpus from the live zsv binary
 	@mkdir -p $(C) $(O)
-	lq commands --json                  > $(C)/commands.json
-	lq help formula-functions-json      > $(C)/formula-functions.json
-	lq help formats-json                > $(C)/formats.json
-	lq help json-schema                 > $(C)/json-schema.json
-	lq help compare-json-redline-schema > $(C)/redline-schema.json
+	zsv commands --json                  > $(C)/commands.json
+	zsv help formula-functions-json      > $(C)/formula-functions.json
+	zsv help formats-json                > $(C)/formats.json
+	zsv help json-schema                 > $(C)/json-schema.json
+	zsv help compare-json-redline-schema > $(C)/redline-schema.json
 	python3 gen_people.py $(C)/people.csv
-	lq 2json     $(C)/people.csv > $(C)/people-2json.json
-	lq desc+ -a -j $(C)/people.csv > $(C)/people-descplus.json
+	zsv 2json     $(C)/people.csv > $(C)/people-2json.json
+	zsv desc+ -a -j $(C)/people.csv > $(C)/people-descplus.json
 
 .PHONY: toon
 toon: corpus                ## convert every JSON to TOON

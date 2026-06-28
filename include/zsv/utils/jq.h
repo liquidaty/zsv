@@ -1,5 +1,5 @@
-#ifndef LQJQ_INTERNAL_H
-#define LQJQ_INTERNAL_H
+#ifndef ZSV_JQ_INTERNAL_H
+#define ZSV_JQ_INTERNAL_H
 
 #include <ctype.h>
 #include <jq.h>
@@ -44,7 +44,7 @@ void zsv_jq_trace(zsv_jq_handle h, FILE *);
 void zsv_jq_delete(zsv_jq_handle h);
 
 // helper functions
-void jv_to_lqjq(jv value, void *zsv_jq_handle);
+void jv_to_zsvjq(jv value, void *zsv_jq_handle);
 
 void jv_to_csv(jv value, void *file);
 

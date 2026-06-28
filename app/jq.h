@@ -1,6 +1,6 @@
-#ifndef LQJQ_H
-#define LQJQ_H
+#ifndef ZSV_JQ_H
+#define ZSV_JQ_H
 
-int lq_jq(int argc, const char *argv[]);
+int zsv_jq(int argc, const char *argv[]);
 
 #endif

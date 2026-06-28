@@ -242,8 +242,8 @@ void jv_to_txt(jv value, void *file) {
   jv_free(value);
 }
 
-void jv_to_lqjq(jv value, void *h) {
-  zsv_jq_handle lqjq = h;
+void jv_to_zsvjq(jv value, void *h) {
+  zsv_jq_handle zsvjq = h;
 
   // jv_dump_string is memory-inefficient
   // would be better to create custom dump function that, instead of writing to string buffer,
@@ -252,7 +252,7 @@ void jv_to_lqjq(jv value, void *h) {
   size_t len = jv_string_length_bytes(jv_copy(jv_s));
   const char *p = jv_string_value(jv_s);
   if (len)
-    zsv_jq_parse(lqjq, p, len);
+    zsv_jq_parse(zsvjq, p, len);
   jv_free(jv_s);
 }
 

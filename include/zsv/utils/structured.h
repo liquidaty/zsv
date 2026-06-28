@@ -10,9 +10,12 @@
  * observability rules from the TOON-output spec (U7-U11):
  *
  *   1. explicit per-command --json / --toon flag
- *   2. ZSV_STRUCTURED_FORMAT  (json|toon)         [LQ_STRUCTURED_FORMAT alias]
+ *   2. ZSV_STRUCTURED_FORMAT  (json|toon)
  *   3. agent profile: ZSV_AGENT_DEFAULTS (auto|on|off) + AI_AGENT  => toon
  *   4. built-in default: json
+ *
+ * All environment variables live in the zsv layer and are therefore ZSV_*. A
+ * host program built on zsv may add its own branded aliases in its own layer.
  *
  * Anything explicit always beats the auto profile. The agent profile only
  * changes the *encoding* of already-structured output; it never changes which

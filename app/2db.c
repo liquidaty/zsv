@@ -36,7 +36,7 @@ enum zsv_2db_state {
   zsv_2db_state_done
 };
 
-#define LQ_2DB_MAX_INDEXES 32
+#define ZSV_2DB_MAX_INDEXES 32
 
 struct zsv_2db_ix {
   struct zsv_2db_ix *next;

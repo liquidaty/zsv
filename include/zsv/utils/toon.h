@@ -25,8 +25,8 @@
 #include <stddef.h>
 
 /* Default number of spaces of indentation per nesting level (the libjson2toon
- * default). `lq help toon` documents the grammar; json2toon_version() reports
- * the authoritative reference-library version. */
+ * default). The `help toon` topic documents the grammar; json2toon_version()
+ * reports the authoritative reference-library version. */
 #define ZSV_TOON_DEFAULT_INDENT 2
 
 /**
