@@ -5,15 +5,53 @@
  * https://opensource.org/licenses/MIT
  */
 
-// implements `select --rename <selector>=<newname>` (see SPEC-zsv-select-rename.md):
-// a streaming, header-only rewrite. <selector> is a column name (case-insensitive, like -x,
-// renaming every column with that name) or #N for the 1-based input column index (the only
-// way to target a blank-named or one of several duplicate-named columns).
+// implements `select --rename <selector>=<newname>` (see SPEC-zsv-select-rename.md and its
+// hash-escape addendum): a streaming, header-only rewrite. <selector> is #N for the 1-based
+// input column index (the only way to target a blank-named or one of several duplicate-named
+// columns), otherwise a column name (case-insensitive, like -x, renaming every column with
+// that name). '#' is the index sigil only when followed by digits; '\' escapes the next char,
+// so '\#foo' (or just '#foo', since '#'+non-digit is never an index) names a column literally
+// beginning with '#', and '\#5' names the column "#5" (vs. the index #5).
+
+// zsv_select_find_unescaped_eq(): return a pointer to the first '=' that is not preceded by a
+// '\' escape, or NULL if none. '\' escapes the following character (including '\' and '=').
+static const char *zsv_select_find_unescaped_eq(const char *s) {
+  while (*s) {
+    if (*s == '\\') {
+      if (!s[1]) // trailing lone '\': nothing follows to escape
+        return NULL;
+      s += 2; // skip the '\' and the character it escapes
+    } else if (*s == '=')
+      return s;
+    else
+      s++;
+  }
+  return NULL;
+}
+
+// zsv_select_unescape_dup(): copy [start,end) into a fresh NUL-terminated string, turning each
+// "\X" into a literal X. A trailing lone '\' (start[len-1]=='\\') is kept as a literal '\'. The
+// result is never longer than the source. Returns NULL on out-of-memory.
+static char *zsv_select_unescape_dup(const char *start, const char *end) {
+  char *out = malloc((size_t)(end - start) + 1);
+  if (!out)
+    return NULL;
+  char *w = out;
+  for (const char *p = start; p < end; p++) {
+    if (*p == '\\' && p + 1 < end)
+      p++; // drop the backslash; copy the escaped character below
+    *w++ = *p;
+  }
+  *w = '\0';
+  return out;
+}
 
 // zsv_select_add_rename(): parse one --rename argument and append it to data->renames.
 // Returns 0 on success, or nonzero (after printing an error) on a malformed argument.
 static int zsv_select_add_rename(struct zsv_select_data *data, const char *arg) {
-  const char *eq = strchr(arg, '='); // split on the FIRST '=' so newname may itself contain '='
+  // split on the first UNESCAPED '=' so newname may itself contain '=', and a selector name
+  // may contain an escaped '\='
+  const char *eq = zsv_select_find_unescaped_eq(arg);
   if (!eq || eq == arg)
     return zsv_printerr(1, "--rename: expected <selector>=<newname>, got: %s", arg);
   const char *newname = eq + 1;
@@ -25,7 +63,14 @@ static int zsv_select_add_rename(struct zsv_select_data *data, const char *arg) 
     return zsv_printerr(1, "Out of memory!");
   r->newname = newname; // points into argv, which outlives this command
 
-  if (*arg == '#') { // index selector: #N, 1-based (any selector starting with '#' is index form)
+  // index form only when the raw selector is '#' followed by one or more digits and nothing
+  // else (up to '='). '#'+non-digit, or an escaped '\#', falls through to the name branch.
+  char is_index = *arg == '#' && eq - arg >= 2;
+  for (const char *p = arg + 1; is_index && p < eq; p++)
+    if (*p < '0' || *p > '9')
+      is_index = 0;
+
+  if (is_index) { // #N, 1-based input column index
     unsigned int n = 0;
     int consumed = 0;
     if (sscanf(arg + 1, "%u%n", &n, &consumed) != 1 || consumed <= 0 || (size_t)consumed + 1 != (size_t)(eq - arg) ||
@@ -35,8 +80,8 @@ static int zsv_select_add_rename(struct zsv_select_data *data, const char *arg) 
     }
     r->is_index = 1;
     r->index = n;
-  } else { // name selector: copy the text before the '='
-    if (!(r->selector = zsv_memdup(arg, (size_t)(eq - arg)))) {
+  } else { // name selector: un-escape the text before the '=' (\# -> #, \\ -> \, \= -> =)
+    if (!(r->selector = zsv_select_unescape_dup(arg, eq))) {
       free(r);
       return zsv_printerr(1, "Out of memory!");
     }

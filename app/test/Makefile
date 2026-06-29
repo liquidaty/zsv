@@ -488,6 +488,16 @@ test-rename-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv | tail -n +2 > ${TMP_DIR}/$@-data.out; tail -n +2 ${TMP_DIR}/$@-r.csv > ${TMP_DIR}/$@-data.exp; ${CMP} ${TMP_DIR}/$@-data.out ${TMP_DIR}/$@-data.exp && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< --rename 'nope=x' ${TMP_DIR}/$@-r.csv >/dev/null 2>${TMP_DIR}/$@-err.txt; rc=$$?; grep -q nope ${TMP_DIR}/$@-err.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< --rename '#9=x' ${TMP_DIR}/$@-r.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+# hash-escape addendum (AC14-AC18): address columns whose name begins with '#'
+	@printf 'id,#foo,amt\n1,a,10\n' > ${TMP_DIR}/$@-hf.csv
+	@printf 'id,#5,amt\n1,a,10\n' > ${TMP_DIR}/$@-h5.csv
+	@h=`${PREFIX} $< --rename '\#foo=x' ${TMP_DIR}/$@-hf.csv | head -1`; [ "$$h" = "id,x,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#foo=x' ${TMP_DIR}/$@-hf.csv | head -1`; [ "$$h" = "id,x,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '\#5=NEW' ${TMP_DIR}/$@-h5.csv | head -1`; [ "$$h" = "id,NEW,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#2=b' ${TMP_DIR}/$@-r.csv | head -1`; [ "$$h" = "id,b,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --rename '#5=oops' ${TMP_DIR}/$@-h5.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+# unmatched escaped selector reports the RESOLVED literal name (#9), not the raw arg (\#9)
+	@${PREFIX} $< --rename '\#9=x' ${TMP_DIR}/$@-hf.csv >/dev/null 2>${TMP_DIR}/$@-err2.txt; rc=$$?; grep -q '"#9"' ${TMP_DIR}/$@-err2.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-quotebuff-select test-quotebuff-select-pull: test-quotebuff-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
