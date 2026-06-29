@@ -764,13 +764,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
     "",
     "  input                : input file. Format is auto-detected from the",
     "                         extension (.csv/.tsv/.txt = CSV; .json = JSON).",
-    "                         If omitted, reads stdin as JSON (use --csv for CSV).",
+    "                         If omitted, reads stdin as JSON (use --from-csv for CSV).",
     "",
     "Options:",
     "  -h,--help            : show usage",
     "  -o,--output <path>   : output SQLite3 database path (required)",
-    "  --csv                : treat input as CSV (overrides extension detection)",
-    "  --json               : treat input as JSON (overrides extension detection)",
+    "  --from-csv           : treat input as CSV (overrides extension detection)",
+    "  --from-json          : treat input as JSON (overrides extension detection)",
     "  --table <name>       : table name (default: " ZSV_2DB_DEFAULT_TABLE_NAME ")",
     "  --overwrite          : overwrite existing database",
     // TO DO:
@@ -812,9 +812,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
         opts.db_fn = (char *)argv[i]; // we won't free this
     } else if (!strcmp(argv[i], "--overwrite")) {
       opts.overwrite = 1;
-    } else if (!strcmp(argv[i], "--csv")) {
+    } else if (!strcmp(argv[i], "--from-csv")) {
       force_csv = 1;
-    } else if (!strcmp(argv[i], "--json")) {
+    } else if (!strcmp(argv[i], "--from-json")) {
       force_json = 1;
     } else if (!strcmp(argv[i], "--table")) {
       if (++i >= argc)
@@ -832,7 +832,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
   }
 
   if (!err && force_csv && force_json)
-    fprintf(stderr, "--csv and --json are mutually exclusive\n"), err = 1;
+    fprintf(stderr, "--from-csv and --from-json are mutually exclusive\n"), err = 1;
 
   if (!f_in) {
 #ifdef NO_STDIN
