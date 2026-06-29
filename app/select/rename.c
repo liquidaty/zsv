@@ -28,8 +28,8 @@ static int zsv_select_add_rename(struct zsv_select_data *data, const char *arg) 
   if (*arg == '#') { // index selector: #N, 1-based (any selector starting with '#' is index form)
     unsigned int n = 0;
     int consumed = 0;
-    if (sscanf(arg + 1, "%u%n", &n, &consumed) != 1 || consumed <= 0 ||
-        (size_t)consumed + 1 != (size_t)(eq - arg) || n < 1) {
+    if (sscanf(arg + 1, "%u%n", &n, &consumed) != 1 || consumed <= 0 || (size_t)consumed + 1 != (size_t)(eq - arg) ||
+        n < 1) {
       free(r);
       return zsv_printerr(1, "--rename: invalid column index in: %s", arg);
     }
