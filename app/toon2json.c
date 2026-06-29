@@ -19,7 +19,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   (void)custom_prop_handler;
 
   const char *usage[] = {
-    ZSV_USAGE_PROG " " APPNAME ": convert TOON to JSON (the inverse of " ZSV_USAGE_PROG " 2toon)",
+    ZSV_USAGE_PROG " " APPNAME ": convert TOON to JSON (the inverse of " ZSV_USAGE_PROG " json2toon)",
     "",
     "Usage: " ZSV_USAGE_PROG " " APPNAME " [options] [file.toon]",
     "",

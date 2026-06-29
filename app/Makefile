@@ -255,11 +255,11 @@ endif
 PROG_NAME ?= zsv
 ZSV=$(BINDIR)/$(PROG_NAME)${EXE}
 
-SOURCES=echo paste check count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq toon2json
+SOURCES=echo paste check count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq toon2json json2toon
 ifeq ($(ZSV_EXTRAS),1)
   SOURCES+=overwrite
 endif
-CLI_SOURCES=echo select desc count paste check 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq toon2json
+CLI_SOURCES=echo select desc count paste check 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq toon2json json2toon
 ifeq ($(ZSV_EXTRAS),1)
   CLI_SOURCES+=overwrite
 endif

@@ -184,32 +184,38 @@ test: ${TESTS}
 test-paste:
 	@echo "TO DO: test paste"
 
-# TOON round-trip (R1/T1): CSV -> JSON and CSV -> TOON via the same 2json code
-# path, then TOON -> JSON via toon2json; the round-tripped JSON must equal the
-# direct compact JSON. Also asserts the tabular array header was produced. Uses
-# data/test/2json.csv, which contains quoted commas and many empty cells.
-test-toon: ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_toon2json${EXE}
+# TOON round-trip + name-authority contract. Uses data/test/2json.csv, which
+# contains quoted commas and many empty cells.
+#   1. R1 round-trip via the JSON<->TOON codec pair: CSV -> JSON (2json), then
+#      JSON -> TOON (json2toon), then TOON -> JSON (toon2json); the round-tripped
+#      JSON must equal the direct compact JSON, and the TOON must be tabular.
+#   2. The command name fixes the format: `2json --toon` is a usage error (the
+#      sibling `2toon` is the way to get TOON), and `2json` ignores the AI_AGENT
+#      agent profile entirely -- it emits JSON with no TOON notice on stderr.
+# This exercises the new json2toon command and the error/cleanup path (no leak).
+test-toon: ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_json2toon${EXE} ${BUILD_DIR}/bin/zsv_toon2json${EXE}
 	@${TEST_INIT}
 	@in=${TEST_DATA_DIR}/test/2json.csv; \
-	${PREFIX} $< --object --compact -o ${TMP_DIR}/$@.json $$in; \
-	${PREFIX} $< --object --toon -o ${TMP_DIR}/$@.toon $$in; \
-	${PREFIX} ${BUILD_DIR}/bin/zsv_toon2json${EXE} -o ${TMP_DIR}/$@.rt.json ${TMP_DIR}/$@.toon; \
+	j=${TMP_DIR}/$@.json; t=${TMP_DIR}/$@.toon; rt=${TMP_DIR}/$@.rt.json; \
+	${PREFIX} $< --object --compact -o $$j $$in; \
+	${PREFIX} ${BUILD_DIR}/bin/zsv_json2toon${EXE} --indent 2 -o $$t $$j; \
+	${PREFIX} ${BUILD_DIR}/bin/zsv_toon2json${EXE} -o $$rt $$t; \
+	${PREFIX} $< --toon $$in >/dev/null 2> ${TMP_DIR}/$@.rej.err; rej=$$?; \
 	AI_AGENT=test-harness ${PREFIX} $< --object -o ${TMP_DIR}/$@.ai.out $$in 2> ${TMP_DIR}/$@.ai.err; \
-	ZSV_STRUCTURED_FORMAT=json AI_AGENT=test-harness ${PREFIX} $< --object -o ${TMP_DIR}/$@.ov.out $$in 2> ${TMP_DIR}/$@.ov.err; \
-	if [ "$$(cat ${TMP_DIR}/$@.json)" = "$$(cat ${TMP_DIR}/$@.rt.json)" ] \
-	   && grep -q ']{' ${TMP_DIR}/$@.toon \
-	   && grep -q ']{' ${TMP_DIR}/$@.ai.out \
-	   && grep -q 'TOON output (AI_AGENT)' ${TMP_DIR}/$@.ai.err \
-	   && ! grep -q ']{' ${TMP_DIR}/$@.ov.out \
-	   && ! grep -q 'TOON output' ${TMP_DIR}/$@.ov.err; then \
+	if [ "$$(cat $$j)" = "$$(cat $$rt)" ] \
+	   && grep -q ']{' $$t \
+	   && [ $$rej -ne 0 ] \
+	   && grep -q '2toon' ${TMP_DIR}/$@.rej.err \
+	   && ! grep -q ']{' ${TMP_DIR}/$@.ai.out \
+	   && ! grep -q 'TOON output' ${TMP_DIR}/$@.ai.err; then \
 	  ${TEST_PASS}; \
 	else \
-	  echo '== round-trip equal? toon tabular? agent-profile toon+notice? env override back to json? =='; \
-	  echo '== TOON (head) =='; head -c 300 ${TMP_DIR}/$@.toon; echo; \
-	  echo '== roundtrip toon2json (head) =='; head -c 300 ${TMP_DIR}/$@.rt.json; echo; \
-	  echo '== 2json --compact (head) =='; head -c 300 ${TMP_DIR}/$@.json; echo; \
-	  echo '== AI_AGENT stderr =='; cat ${TMP_DIR}/$@.ai.err; \
-	  echo '== override stderr =='; cat ${TMP_DIR}/$@.ov.err; \
+	  echo '== round-trip equal? toon tabular? 2json--toon rejected? 2json ignores AI_AGENT? =='; \
+	  echo '== TOON (head) =='; head -c 300 $$t; echo; \
+	  echo '== roundtrip toon2json (head) =='; head -c 300 $$rt; echo; \
+	  echo '== 2json --compact (head) =='; head -c 300 $$j; echo; \
+	  echo "== 2json --toon exit=$$rej, stderr: =="; cat ${TMP_DIR}/$@.rej.err; \
+	  echo '== AI_AGENT 2json stderr (should be empty) =='; cat ${TMP_DIR}/$@.ai.err; \
 	  ${TEST_FAIL}; \
 	fi
 

@@ -17,7 +17,7 @@
 #include <zsv/utils/mem.h>
 #include <zsv/utils/db.h>
 #include <zsv/utils/toon.h>
-#include <zsv/utils/structured.h>
+#include <zsv/utils/appname.h>
 
 struct zsv_2json_header {
   struct zsv_2json_header *next;
@@ -262,17 +262,19 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   data.headers_next = &data.headers;
 
   const char *usage[] = {
-    ZSV_USAGE_PROG " " APPNAME ": streaming CSV to JSON/TOON converter, or SQLite3 DB to JSON/TOON converter",
+    ZSV_USAGE_PROG " " APPNAME ": streaming CSV (or SQLite3 DB) to JSON converter",
+    "",
+    "The command name selects the output format: `" ZSV_USAGE_PROG " 2json` emits JSON and",
+    "`" ZSV_USAGE_PROG " 2toon` emits TOON (see `" ZSV_USAGE_PROG " help toon`). To convert between",
+    "JSON and TOON directly, use `" ZSV_USAGE_PROG " json2toon` / `" ZSV_USAGE_PROG " toon2json`.",
     "",
     "Usage: " ZSV_USAGE_PROG " " APPNAME " [options] [file.csv]",
     "",
     "Options:",
     "  -h,--help                     : show usage",
     "  -o,--output <filename>        : filename to write output to",
-    "  --compact                     : output compact JSON",
-    "  --json                        : output JSON (the default for 2json)",
-    "  --toon                        : output TOON instead of JSON (see `" ZSV_USAGE_PROG " help toon`)",
-    "  --indent <N>                  : spaces per TOON nesting level (default 2; --toon only)",
+    "  --compact                     : output compact JSON (2json only)",
+    "  --indent <N>                  : spaces per TOON nesting level (default 2; 2toon only)",
     "  --from-db                     : input is sqlite3 database",
     "  --db-table <table_name>       : name of table in input database to convert",
     "  --object                      : output as array of objects",
@@ -289,13 +291,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   enum zsv_status err = zsv_status_ok;
   int done = 0;
 
-  /* TOON support: the same code path serves both `2json` and its mirror `2toon`
-   * (see U5). The command name acts like an explicit format choice; --json /
-   * --toon flags override; otherwise the session default (ZSV_STRUCTURED_FORMAT
-   * / agent profile) applies. */
-  struct zsv_structured_opts sopts = {0};
-  if (argc > 0 && argv[0] && !strcmp(argv[0], "2toon"))
-    sopts.flag_toon = 1;
+  /* The same code path serves both `2json` and its mirror `2toon`. The command
+   * name alone fixes the output format: `2json` always emits JSON, `2toon`
+   * always emits TOON. A command named `2json` never emits anything but JSON, so
+   * a contradicting `--toon`/`--json` flag is a usage error (rejected below)
+   * rather than a silent override, and no environment/agent default (e.g.
+   * ZSV_STRUCTURED_FORMAT / AI_AGENT) can flip these two. Those session defaults
+   * and the universal `--json`/`--toon` flags apply to format-unpinned commands
+   * (e.g. `compare`), not to the `2json`/`2toon` converters whose name is the
+   * format. */
+  const int to_toon = (argc > 0 && argv[0] && !strcmp(argv[0], "2toon"));
   int toon_indent = 0;
 
   for (int i = 1; !err && !done && i < argc; i++) {
@@ -303,16 +308,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       zsv_print_usage(usage);
       done = 1;
     } else if (!strcmp(argv[i], "--toon")) {
-      sopts.flag_toon = 1;
+      if (!to_toon) /* `2json --toon`: the name already fixed the format to JSON */
+        fprintf(stderr, "2json emits JSON; run `%s 2toon` to emit TOON\n", zsv_prog_name()), err = zsv_status_error;
     } else if (!strcmp(argv[i], "--json")) {
-      sopts.flag_json = 1;
+      if (to_toon) /* `2toon --json`: the name already fixed the format to TOON */
+        fprintf(stderr, "2toon emits TOON; run `%s 2json` to emit JSON\n", zsv_prog_name()), err = zsv_status_error;
     } else if (!strcmp(argv[i], "--indent")) {
       if (++i >= argc)
         fprintf(stderr, "%s option requires a value\n", argv[i - 1]), err = zsv_status_error;
       else
         toon_indent = atoi(argv[i]);
-    } else if (!strcmp(argv[i], "-q") || !strcmp(argv[i], "--quiet")) {
-      sopts.quiet = 1;
     } else if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if (++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i - 1]), err = zsv_status_error;
@@ -391,19 +396,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         opts.stream = stdin;
 #endif
       }
-    }
-  }
-
-  int to_toon = 0;
-  if (!(err || done)) {
-    enum zsv_structured_source ssrc;
-    int rfmt = zsv_structured_resolve(&sopts, &ssrc);
-    if (rfmt < 0) {
-      fprintf(stderr, "--json and --toon are mutually exclusive\n");
-      err = zsv_status_error;
-    } else {
-      to_toon = (rfmt == zsv_structured_format_toon);
-      zsv_structured_emit_notice((enum zsv_structured_format)rfmt, ssrc, sopts.quiet);
     }
   }
 

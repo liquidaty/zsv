@@ -85,6 +85,7 @@ ZSV_MAIN_DECL(paste);
 ZSV_MAIN_DECL(check);
 ZSV_MAIN_DECL(2json);
 ZSV_MAIN_DECL(toon2json);
+ZSV_MAIN_DECL(json2toon);
 ZSV_MAIN_DECL(2tsv);
 ZSV_MAIN_DECL(serialize);
 ZSV_MAIN_DECL(flatten);
@@ -136,6 +137,7 @@ struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_COMMAND(2json),
   {.name = "2toon", .main = NULL, .cmd = ZSV_MAIN_FUNC(2json)},
   CLI_BUILTIN_COMMAND(toon2json),
+  CLI_BUILTIN_COMMAND(json2toon),
   CLI_BUILTIN_CMD(toon),
   CLI_BUILTIN_COMMAND(2tsv),
   CLI_BUILTIN_COMMAND(serialize),
