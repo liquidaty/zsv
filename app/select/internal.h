@@ -88,6 +88,12 @@ struct zsv_select_data {
 #endif
 
   zsv_csv_writer csv_writer;
+  struct zsv_csv_writer_options *writer_opts; // -> main()'s writer_opts; the writer is created (and
+                                              // the -o file opened) in header_finish, after the
+                                              // header validates, so a header-phase error never
+                                              // creates or truncates the -o file (F1b)
+  const char *output_filename;                // -o/--output path, or NULL for stdout
+  unsigned char writer_buff[512];             // temp buffer for csv_writer (set in header_finish)
 
   size_t overflow_size;
 

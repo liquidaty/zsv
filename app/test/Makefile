@@ -498,6 +498,14 @@ test-rename-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${PREFIX} $< --rename '#5=oops' ${TMP_DIR}/$@-h5.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 # unmatched escaped selector reports the RESOLVED literal name (#9), not the raw arg (\#9)
 	@${PREFIX} $< --rename '\#9=x' ${TMP_DIR}/$@-hf.csv >/dev/null 2>${TMP_DIR}/$@-err2.txt; rc=$$?; grep -q '"#9"' ${TMP_DIR}/$@-err2.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+# F1b: a header-phase --rename error must NOT leave a 0-byte -o output file behind
+	@rm -f ${TMP_DIR}/$@-oerr.csv; ${PREFIX} $< --rename '#9=x' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-oerr.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && [ ! -f ${TMP_DIR}/$@-oerr.csv ] && ${TEST_PASS} || ${TEST_FAIL}
+# F1b: same for a bad column selector (the deferred-open fix covers all header-phase errors)
+	@rm -f ${TMP_DIR}/$@-oselerr.csv; ${PREFIX} $< ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-oselerr.csv -- nope >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && [ ! -f ${TMP_DIR}/$@-oselerr.csv ] && ${TEST_PASS} || ${TEST_FAIL}
+# F1b: a pre-existing -o target is preserved (not truncated) on a header-phase error
+	@printf 'KEEP\n' > ${TMP_DIR}/$@-okeep.csv; ${PREFIX} $< --rename '#9=x' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-okeep.csv >/dev/null 2>&1; g=`cat ${TMP_DIR}/$@-okeep.csv 2>/dev/null`; [ "$$g" = "KEEP" ] && ${TEST_PASS} || ${TEST_FAIL}
+# F1b: a successful --rename with -o still writes the file with the renamed header
+	@rm -f ${TMP_DIR}/$@-ook.csv; ${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-ook.csv >/dev/null 2>&1; h=`head -1 ${TMP_DIR}/$@-ook.csv 2>/dev/null`; [ "$$h" = "id,full_name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-quotebuff-select test-quotebuff-select-pull: test-quotebuff-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
