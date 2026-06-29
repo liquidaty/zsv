@@ -395,7 +395,7 @@ jobs:
       uses: actions/checkout@v7
 
     - name: Set up FreeBSD
-      uses: cross-platform-actions/action@v1.2.0
+      uses: cross-platform-actions/action@v1.3.0
       with:
         operating_system: freebsd
         version: '13.2'
