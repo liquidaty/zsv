@@ -864,9 +864,9 @@ test-2db-csv: ${BUILD_DIR}/bin/zsv_2db${EXE} ${BUILD_DIR}/bin/zsv_2json${EXE}
 	@${DB2} ${TMP_DIR}/$@-basic.csv -o ${TMP_DIR}/$@-tbl.db --table people --overwrite >/dev/null 2>&1
 	@sqlite3 ${TMP_DIR}/$@-tbl.db 'select count(*) from people' > ${TMP_DIR}/$@.tbl.out
 	@${CMP} ${TMP_DIR}/$@.tbl.out expected/$@.count.out && ${TEST_PASS} || ${TEST_FAIL}
-	@# 3a. extension override: --csv forces CSV on a .json-named file
+	@# 3a. extension override: --from-csv forces CSV on a .json-named file
 	@cp ${TMP_DIR}/$@-basic.csv ${TMP_DIR}/$@-asjson.json
-	@${DB2} --csv ${TMP_DIR}/$@-asjson.json -o ${TMP_DIR}/$@-csvjson.db --overwrite >/dev/null 2>&1
+	@${DB2} --from-csv ${TMP_DIR}/$@-asjson.json -o ${TMP_DIR}/$@-csvjson.db --overwrite >/dev/null 2>&1
 	@sqlite3 ${TMP_DIR}/$@-csvjson.db 'select count(*) from mytable' > ${TMP_DIR}/$@.csvjson.out
 	@${CMP} ${TMP_DIR}/$@.csvjson.out expected/$@.count.out && ${TEST_PASS} || ${TEST_FAIL}
 	@# 3b. .tsv auto-detects CSV and sets TAB delimiter
@@ -898,7 +898,7 @@ test-2db-csv: ${BUILD_DIR}/bin/zsv_2db${EXE} ${BUILD_DIR}/bin/zsv_2json${EXE}
 	@# 5. error cases (each must exit non-zero)
 	@(! ${DB2} ${TMP_DIR}/$@-basic.csv >/dev/null 2>&1) && ${TEST_PASS} || ${TEST_FAIL}
 	@(! ${DB2} ${TMP_DIR}/$@-basic.csv -o ${TMP_DIR}/$@-basic.db >/dev/null 2>&1) && ${TEST_PASS} || ${TEST_FAIL}
-	@(! ${DB2} --csv --json ${TMP_DIR}/$@-basic.csv -o ${TMP_DIR}/$@-z.db --overwrite >/dev/null 2>&1) && ${TEST_PASS} || ${TEST_FAIL}
+	@(! ${DB2} --from-csv --from-json ${TMP_DIR}/$@-basic.csv -o ${TMP_DIR}/$@-z.db --overwrite >/dev/null 2>&1) && ${TEST_PASS} || ${TEST_FAIL}
 
 test-jq: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
