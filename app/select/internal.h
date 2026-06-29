@@ -18,6 +18,15 @@ struct zsv_select_uint_list {
   unsigned int value;
 };
 
+// one --rename <selector>=<newname> directive (see SPEC-zsv-select-rename.md)
+struct zsv_select_rename {
+  struct zsv_select_rename *next;
+  char *selector;      // malloc'd copy of the text before the first '='; NULL when is_index
+  const char *newname; // points into argv (the text after the first '='); outlives the command
+  unsigned int index;  // 1-based input column index, when is_index
+  char is_index;       // selector began with '#'
+};
+
 struct fixed {
   size_t *offsets;
   size_t count;
@@ -58,6 +67,9 @@ struct zsv_select_data {
   unsigned char **header_names;
 
   const char *prepend_header; // --prepend-header
+
+  // --rename directives, in the order given (singly-linked list, appended via renames_tail)
+  struct zsv_select_rename *renames, **renames_tail;
 
   char header_finished;
 
@@ -107,7 +119,8 @@ struct zsv_select_data {
   unsigned char unescape : 1;
   unsigned char no_header : 1;       // --no-header
   unsigned char run_in_parallel : 1; // Flag if parallel mode is active
-  unsigned char _ : 2;               // Reduced padding by 1 bit due to addition of run_in_parallel
+  unsigned char header_failed : 1;   // a header-phase error occurred; propagate a non-zero exit status
+  unsigned char _ : 1;               // padding
 };
 
 enum zsv_select_column_index_selection_type {

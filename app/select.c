@@ -55,6 +55,9 @@
 // zsv_select_check_exclusions_are_indexes()
 #include "select/selection.c"
 
+// zsv_select_add_rename(), zsv_select_apply_renames(), zsv_select_renames_delete()
+#include "select/rename.c"
+
 #ifndef ZSV_NO_PARALLEL
 #include "select/parallel.c" // zsv_parallel_data_new(), zsv_parallel_data_delete()
 
@@ -335,6 +338,15 @@ static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *p
 
 static void zsv_select_header_finish(struct zsv_select_data *data) {
   if (zsv_select_set_output_columns(data)) {
+    data->header_failed = 1;
+    data->cancelled = 1;
+    return;
+  }
+
+  // apply --rename directives after projection/-x/distinct have resolved against the original
+  // input names, but before any output is written (so a failed rename yields no partial output)
+  if (zsv_select_apply_renames(data)) {
+    data->header_failed = 1;
     data->cancelled = 1;
     return;
   }
@@ -428,6 +440,7 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
 
   zsv_writer_delete(data->csv_writer);
   zsv_select_search_str_delete(data->search_strings);
+  zsv_select_renames_delete(data->renames);
 #ifdef HAVE_PCRE2_8
   zsv_select_regexs_delete(data->search_regexs);
 #endif
@@ -664,6 +677,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       const char *v;
       ARG_require_val(v, (const char *));
       zsv_select_add_exclusion(&data, v);
+    } else if (!strcmp(arg, "--rename")) {
+      const char *v;
+      ARG_require_val(v, (const char *));
+      if (zsv_select_add_rename(&data, v))
+        stat = zsv_status_error;
     } else if (*arg == '-')
       stat = zsv_printerr(1, "Unrecognized argument: %s", arg);
     else if (data.input_path)
@@ -784,6 +802,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
 #endif
   }
+
+  // a header-phase error (bad column selector or --rename) must yield a non-zero exit status
+  if (data.header_failed && stat == zsv_status_ok)
+    stat = zsv_status_error;
 
 zsv_select_main_done:
   free(preview_buff);

@@ -70,6 +70,7 @@ ifneq ($(ZSV_NO_PARALLEL),1)
   TESTS+=test-parallel
 endif
 TESTS+=test-check
+TESTS+=test-rename-select
 TESTS+=test-quoted-nonstandard
 # The redline tests pin output determinism via SOURCE_DATE_EPOCH and exercise the unified
 # `cli` / `--help-topic` routing. emscripten's getenv does not see host env vars (only a
@@ -413,18 +414,18 @@ test-count test-count-pull: test-% : test-1-% test-2-%
 
 ifeq ($(ZSV_NO_PARALLEL),1)
   ifeq ($(HAVE_PCRE2_8),1)
-    HELP_SELECT_LINES=41
+    HELP_SELECT_LINES=45
     HELP_COUNT_LINES=6
   else
-    HELP_SELECT_LINES=39
+    HELP_SELECT_LINES=43
     HELP_COUNT_LINES=6
   endif
 else
   ifeq ($(HAVE_PCRE2_8),1)
-    HELP_SELECT_LINES=43
+    HELP_SELECT_LINES=47
     HELP_COUNT_LINES=8
   else
-    HELP_SELECT_LINES=42
+    HELP_SELECT_LINES=46
     HELP_COUNT_LINES=8
   endif
 endif
@@ -468,6 +469,25 @@ test-merge-select test-merge-select-pull: test-merge-% : ${BUILD_DIR}/bin/zsv_%$
 	@${TEST_INIT}
 	@${PREFIX} $< --merge ${TEST_DATA_DIR}/test/select-merge.csv ${REDIRECT} ${TMP_DIR}/test-merge-%.out
 	@${CMP} ${TMP_DIR}/test-merge-%.out expected/test-merge-select.out && ${TEST_PASS} || ${TEST_FAIL}
+
+# --rename: targeted column rename by name (renames every match) or #N (1-based input index; the only
+# way to target a blank-named or one of several duplicate-named columns). Header-only and streaming:
+# data rows are byte-identical, and a selector matching no column / an out-of-range index is a hard
+# error with non-zero exit. See SPEC-zsv-select-rename.md and the f1-rename-tests.make AC harness.
+test-rename-select: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_INIT}
+	@printf 'id,name,amount\n1,a,10\n2,b,20\n' > ${TMP_DIR}/$@-r.csv
+	@printf 'id,,amount\n1,x,10\n2,y,20\n' > ${TMP_DIR}/$@-blank.csv
+	@printf 'id,name,name,amount\n1,a,b,10\n2,c,d,20\n' > ${TMP_DIR}/$@-dup.csv
+	@h=`${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv | head -1`; [ "$$h" = "id,full_name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#3=amt' ${TMP_DIR}/$@-r.csv | head -1`; [ "$$h" = "id,name,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#2=subtype' ${TMP_DIR}/$@-blank.csv | head -1`; [ "$$h" = "id,subtype,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename 'name=n' ${TMP_DIR}/$@-dup.csv | head -1`; [ "$$h" = "id,n,n,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#2=first_name' ${TMP_DIR}/$@-dup.csv | head -1`; [ "$$h" = "id,first_name,name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< -n --rename '#2=subtype' ${TMP_DIR}/$@-blank.csv -- 1 2 | head -1`; [ "$$h" = "id,subtype" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv | tail -n +2 > ${TMP_DIR}/$@-data.out; tail -n +2 ${TMP_DIR}/$@-r.csv > ${TMP_DIR}/$@-data.exp; ${CMP} ${TMP_DIR}/$@-data.out ${TMP_DIR}/$@-data.exp && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --rename 'nope=x' ${TMP_DIR}/$@-r.csv >/dev/null 2>${TMP_DIR}/$@-err.txt; rc=$$?; grep -q nope ${TMP_DIR}/$@-err.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --rename '#9=x' ${TMP_DIR}/$@-r.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-quotebuff-select test-quotebuff-select-pull: test-quotebuff-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
