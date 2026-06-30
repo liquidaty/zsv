@@ -82,7 +82,7 @@ jobs:
       uses: actions/checkout@v7
 
     - name: Install apt dependencies
-      uses: awalsh128/cache-apt-pkgs-action@latest
+      uses: awalsh128/cache-apt-pkgs-action@v1
       with:
         packages: cppcheck
 
@@ -140,7 +140,7 @@ jobs:
 
     steps:
     - name: Install apt dependencies
-      uses: awalsh128/cache-apt-pkgs-action@latest
+      uses: awalsh128/cache-apt-pkgs-action@v1
       with:
         packages: rpm alien tmux
 
@@ -238,7 +238,7 @@ jobs:
 
     steps:
     - name: Install apt dependencies
-      uses: awalsh128/cache-apt-pkgs-action@latest
+      uses: awalsh128/cache-apt-pkgs-action@v1
       with:
         packages: rpm dpkg-dev createrepo-c
 
