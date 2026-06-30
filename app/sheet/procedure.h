@@ -3,9 +3,9 @@
 #include <stdbool.h>
 #include <zsv/ext.h>
 
-/* ID's of bulitin procedures, extensions can register more.
+/* ID's of builtin procedures, extensions can register more.
  *
- * TODO: What specific procedures are bulitin and what are their
+ * TODO: What specific procedures are builtin and what are their
  *       id's is not a concern of the procedure system. This should
  *       be defined by the registrar who defines those procedures,
  *       in this case sheet. move it out of here at some point.
@@ -30,6 +30,7 @@ enum {
   zsvsheet_builtin_proc_find,
   zsvsheet_builtin_proc_find_next,
   zsvsheet_builtin_proc_goto_column,
+  zsvsheet_builtin_proc_goto_column_next,
   zsvsheet_builtin_proc_open_file,
   zsvsheet_builtin_proc_resize,
   zsvsheet_builtin_proc_prompt,

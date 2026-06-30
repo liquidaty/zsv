@@ -132,7 +132,9 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
   }
   struct pivot_row *pr = get_pivot_row_data(pd, rc.row);
   if (pd && pd->data_filename && pd->value_sql && pr) {
-    struct zsv_sqlite3_dbopts dbopts = {0};
+    // interactive (no flag surface): disambiguate duplicate input columns so the
+    // pivot's underlying table can be created; warn stays off to keep curses clean
+    struct zsv_sqlite3_dbopts dbopts = {.dedupe_cols = 1};
     sqlite3_str *sql_str = NULL;
     struct zsv_sqlite3_db *zdb = zsv_sqlite3_db_new(&dbopts);
 
@@ -234,7 +236,8 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
   }
 
   enum zsvsheet_status zst = zsvsheet_status_ok;
-  struct zsv_sqlite3_dbopts dbopts = {0};
+  // interactive (no flag surface): disambiguate duplicate input columns; warn off for curses
+  struct zsv_sqlite3_dbopts dbopts = {.dedupe_cols = 1};
   struct zsv_opts zopts = zsvsheet_buffer_get_zsv_opts(buff);
   struct zsv_sqlite3_db *zdb = zsv_sqlite3_db_new(&dbopts);
   sqlite3_str *sql_str = NULL;

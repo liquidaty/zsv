@@ -26,8 +26,6 @@ ifeq ($(WIN),)
   endif
 endif
 
-IS_WSL=$(shell grep -qi microsoft /proc/version 2>/dev/null && echo 1 || echo 0)
-
 ifeq ($(WIN),0)
   EXE=
   EXT=
@@ -110,7 +108,7 @@ else
   INSTALLED_EXTENSION=
 endif
 
-CFLAGS+= -I${THIS_LIB_BASE}/include -I${PREFIX}/include
+CFLAGS+= -I${THIS_LIB_BASE}/include -I${INCLUDEDIR}
 
 all: ${TARGET} ${TARGET_SHEET}
 	@echo Built ${TARGET}
@@ -126,7 +124,9 @@ endif
 
 CLI=${BUILD_DIR}/bin/cli${EXE}
 
-RUN_CLI=ZSV_CONFIG_DIR=${TMP_DIR} ${CLI}
+# Pin the program name so help/usage output matches the expected fixtures
+# regardless of the build-dir binary name (basename(argv[0]) would otherwise be "cli").
+RUN_CLI=ZSV_CONFIG_DIR=${TMP_DIR} ZSV_PROG_NAME=zsv ${CLI}
 
 ${BUILD_DIR}/bin/cli:
 	${MAKE} -C .. build-cli CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
@@ -198,7 +198,7 @@ TMUX_TERM=xterm-256color
 test-sheet-extension-1: ${CLI} ${TARGET} ../test/worldcitiespop_mil.csv
 	@${TEST_INIT}
 	@rm -f ${TMP_DIR}/$@.out tmux-*.log
-	@tmux kill-session -t $@ || echo 'No tmux session to kill'
+	@tmux kill-session -t $@ 2>/dev/null || true
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || true
 	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} || true
@@ -209,21 +209,17 @@ test-sheet-extension-1: ${CLI} ${TARGET} ../test/worldcitiespop_mil.csv
 
 test-sheet-extension-2: ${CLI} ${TARGET}
 	@${TEST_INIT}
-ifeq ($(IS_WSL),1)
-	@${TEST_SKIP}
-else
 	@rm -f ${TMP_DIR}/$@.out tmux-*.log
 	@tmux kill-session -t $@ 2>/dev/null || true
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@${RUN_CLI} unregister my 2>/dev/null 1>/dev/null || true
 	@${RUN_CLI} register my 2>&1 | grep -v [.]${SO} || true
-	(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 120 -y 5 -d -s $@ "$< sheet -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
+	@(ZSV_CONFIG_DIR=${TMP_DIR} tmux -v new-session -x 120 -y 5 -d -s $@ "$< sheet -d 3 ${TEST_DATA_DIR}/test/mixed-line-endings.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux send-keys -t $@ "T" && \
 	${EXPECT} $@ transformed && \
 	tmux send-keys -t $@ "G" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
-endif
 
 clean:
 	@rm -f ${TARGET} ${TARGET_SHEET} ${TMP_DIR}/test*.out
@@ -231,21 +227,21 @@ clean:
 ${BUILD_DIR}/objs/%.o : ${THIS_LIB_BASE}/src/%.c ${PARSER_DEPS}
 	${MAKE} -C ${THIS_LIB_BASE}/src CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} WIN=${WIN} $@
 
-LIBZSV=${PREFIX}/lib/libzsv.a
+LIBZSV=${LIBDIR}/libzsv.a
 ${LIBZSV}:
 	${MAKE} -C ${THIS_LIB_BASE}/src CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} WIN=${WIN} install
 
-LIBZSVUTIL=${PREFIX}/lib/libzsvutil.a
+LIBZSVUTIL=${LIBDIR}/libzsvutil.a
 ${LIBZSVUTIL}:
 	${MAKE} -C ${THIS_LIB_BASE}/app CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} WIN=${WIN} install-util-lib
 
 YAJL_SRC_DIR=${THIS_MAKEFILE_DIR}/../external/yajl
 YAJL_INCLUDE=-I${YAJL_SRC_DIR}/build/yajl-2.1.1/include
 YAJL_HELPER_INCLUDE=-I${THIS_MAKEFILE_DIR}/../external/yajl_helper
-${TARGET_SHEET}: LIBS="../external/sqlite3/sqlite3.c" -lzsvutil -lzsv -L${PREFIX}/lib -ljq -lutf8proc
-${TARGET}: LIBS=-lzsvutil -lzsv -L${PREFIX}/lib
+${TARGET_SHEET}: LIBS="../external/sqlite3/sqlite3.c" -lzsvutil -lzsv -L${LIBDIR} -ljq -lutf8proc
+${TARGET}: LIBS=-lzsvutil -lzsv -L${LIBDIR}
 ${TARGET} ${TARGET_SHEET}: ${BUILD_DIR}/bin/zsvext%.${SO} : %_extension.c ${LIBZSV} ${LIBZSVUTIL}
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${CFLAGS_SHARED} $< -o $@ ${LIBS} ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE}
 
-.PHONY: all test test-% clean install ${PREFIX}/lib/libzsvutil.a
+.PHONY: all test test-% clean install ${LIBDIR}/libzsvutil.a

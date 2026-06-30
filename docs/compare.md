@@ -1,7 +1,7 @@
 # Tabular file compare
 
 zsv's `compare` command compares multiple tables and outputs differences in
-tabular or JSON format.
+tabular, JSON, or redline JSON format.
 
 ## Background
 
@@ -211,6 +211,73 @@ to get:
 ]
 ```
 
+or in the redline JSON format:
+
+```shell
+zsv compare --json-redline t1.csv t2.csv --sort -k country -k city
+```
+
+to get a self-contained document a downstream tool can use to render a
+side-by-side diff view without re-reading the source files:
+
+```json
+{
+  "schema": "zsv.compare",
+  "version": "1",
+  "generated_at": "...",
+  "inputs": [
+    {"label": "t1.csv", "path": "t1.csv", "row_count": 11},
+    {"label": "t2.csv", "path": "t2.csv", "row_count": 14}
+  ],
+  "keys": ["country", "city"],
+  "options": {
+    "tolerance": null,
+    "sort": true,
+    "include_unchanged_rows": false,
+    "include_tolerated": false
+  },
+  "columns": [
+    {"name": "Country",    "is_key": true,  "in_inputs": [0, 1]},
+    {"name": "City",       "is_key": true,  "in_inputs": [0, 1]},
+    {"name": "AccentCity", "is_key": false, "in_inputs": [0, 1]},
+    ...
+  ],
+  "summary": {
+    "rows":  {"in_all_inputs": 10, "only_in_input_count": [4, 1], "with_any_diff": 8},
+    "cells": {"compared": 70, "matched": 67, "within_tolerance": 0, "differing": 3},
+    "by_column": [...],
+    "schema": {"common": ["Country", "City", ...], "only_in_input": [[], []]}
+  },
+  "rows": [
+    // row only in t2.csv — object form, data aligned to columns[]
+    {"data": ["cn", "fulongling", "Fulongling", "3", null, "26.934908", "115.628584"],
+     "missing_in": [0]},
+
+    // row in both inputs — bare array, differing cell is itself an array
+    ["de", "placken", "Placken", "7", null, "52.15", ["8.433333", "10.4"]],
+
+    // row only in t1.csv
+    {"data": ["ru", "chishmabash", "Chishmabash", "73", null, "55.4708", "53.8996"],
+     "missing_in": [1]},
+    ...
+  ]
+}
+```
+
+Each entry in `rows[]` is positionally aligned to `columns[]`. A cell is a
+scalar when both inputs agree; an array `["t1_val", "t2_val"]` when they
+differ. Rows missing from one input use the object form with `missing_in`.
+
+Two companion flags control what appears in `rows[]`:
+
+- `--include-unchanged-rows` — also emit matched rows as scalar arrays,
+  useful when rendering a complete side-by-side view
+- `--include-tolerated` — show within-tolerance numeric differences as diff
+  arrays rather than collapsing them to a scalar (requires `--tolerance`)
+
+The full schema is available at runtime via `zsv help compare json-redline` (narrative)
+and `zsv help compare json-redline-schema` (JSON Schema, Draft 2020-12).
+
 and in each case if we wanted to include additional data in the output for
 context, we can do so using `--add`, e.g.:
 
@@ -261,6 +328,10 @@ Options:
   --json             : output as JSON
   --json-compact     : output as compact JSON
   --json-object      : output as an array of objects
+  --json-redline     : output self-contained redline JSON
+                       (see `zsv help compare json-redline` for schema)
+  --include-unchanged-rows: (with --json-redline) also emit matched rows
+  --include-tolerated: (with --json-redline) show tolerated diffs as arrays
   --print-key-colname: when outputting key column diffs,
                        print column name instead of <key>
 

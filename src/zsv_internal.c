@@ -121,7 +121,10 @@ struct zsv_scanner {
   unsigned char have_cell : 1;
   unsigned char started : 1;
 
-  unsigned char skip_cells : 1; // fast engine: skip cell storage, just count rows
+  unsigned char skip_cells : 1;  // fast engine: skip cell storage, just count rows
+  unsigned char nonstandard : 1; // fast engine: set when input violates RFC 4180
+                                 // (e.g. quote mid-unquoted-cell). Cold-path falls back
+                                 // to COMPAT to match its byte-for-byte interpretation.
 
   /* Column filter for the fast engine. When non-NULL, only columns
    * with needed_cols[col_ix] != 0 get full processing (quote normalization,
@@ -159,6 +162,7 @@ struct zsv_scanner {
 #define ZSV_MODE_FIXED 1
 #define ZSV_MODE_DELIM_PULL 2
 #define ZSV_MODE_DELIM_FAST 3
+#define ZSV_MODE_COMPAT 255
   unsigned char mode;
   struct {
     unsigned *offsets; // 0-based position of each cell end. offset[0] = end of first cell
@@ -225,47 +229,50 @@ static int collate_header_append(struct zsv_scanner *scanner, struct collate_hea
       this_row_size += c.len + 1; // +1: terminating null or delim
   }
   size_t new_row_size = ch->buff.used + this_row_size;
-  unsigned char *new_row = realloc(ch->buff.buff, new_row_size);
-  if (!new_row) {
-    scanner->errprintf(scanner->errf, "Out of memory!\n");
-    return -1;
-  }
-
-  // now: splice the new row into the old row, starting with the last cell
-  // e.g. prior row = A1.B1.C1.
-  //      this row =  A2.B2.C2.
-  //      new_row =   A1.B1.C1..........
-  // starting with last cell in this row, move the old data, then splice new:
-  //      new_row =   A1.B1.C1.......C2.
-  //      new_row =   A1.B1.C1....C1 C2.
-  //      new_row =   A1.B1.C1.B2.C1 C2.
-  //      new_row =   A1.B1.B1 B2.C1 C2.
-  //      new_row =   A1.A2.B1 B2.C1 C2.
-  //      new_row =   A1 A2.B1 B2.C1 C2.
-
-  size_t new_row_end = ch->buff.used + this_row_size;
-  size_t old_row_end = ch->buff.used;
-  ch->buff.used += this_row_size;
-  ch->buff.buff = new_row;
-  for (size_t i = column_count; i > 0; i--) {
-    struct zsv_cell c = zsv_get_cell_1(scanner, i - 1);
-    // copy new row's cell value to end
-    if (c.len) {
-      memcpy(new_row + new_row_end - c.len - 1, c.str, c.len);
-      new_row[new_row_end - 1] = ' ';
-      new_row_end = new_row_end - c.len - 1;
+  if (new_row_size > 0) {
+    unsigned char *new_row = realloc(ch->buff.buff, new_row_size);
+    if (!new_row) {
+      scanner->errprintf(scanner->errf, "Out of memory!\n");
+      return -1;
     }
 
-    // move prior cell value
-    size_t old_cell_len = ch->lengths[i - 1]; // old_cell_len includes delim
-    if (old_cell_len) {
-      // need memmove, not memcpy
-      memmove(new_row + new_row_end - old_cell_len, new_row + old_row_end - old_cell_len, old_cell_len);
-      old_row_end -= old_cell_len;
-      new_row_end -= old_cell_len;
+    // now: splice the new row into the old row, starting with the last cell
+    // e.g. prior row = A1.B1.C1.
+    //      this row =  A2.B2.C2.
+    //      new_row =   A1.B1.C1..........
+    // starting with last cell in this row, move the old data, then splice new:
+    //      new_row =   A1.B1.C1.......C2.
+    //      new_row =   A1.B1.C1....C1 C2.
+    //      new_row =   A1.B1.C1.B2.C1 C2.
+    //      new_row =   A1.B1.B1 B2.C1 C2.
+    //      new_row =   A1.A2.B1 B2.C1 C2.
+    //      new_row =   A1 A2.B1 B2.C1 C2.
+
+    size_t new_row_end = ch->buff.used + this_row_size;
+    size_t old_row_end = ch->buff.used;
+    ch->buff.used += this_row_size;
+    ch->buff.buff = new_row;
+
+    for (size_t i = column_count; i > 0; i--) {
+      struct zsv_cell c = zsv_get_cell_1(scanner, i - 1);
+      // copy new row's cell value to end
+      if (c.len) {
+        memcpy(new_row + new_row_end - c.len - 1, c.str, c.len);
+        new_row[new_row_end - 1] = ' ';
+        new_row_end = new_row_end - c.len - 1;
+      }
+
+      // move prior cell value
+      size_t old_cell_len = ch->lengths[i - 1]; // old_cell_len includes delim
+      if (old_cell_len) {
+        // need memmove, not memcpy
+        memmove(new_row + new_row_end - old_cell_len, new_row + old_row_end - old_cell_len, old_cell_len);
+        old_row_end -= old_cell_len;
+        new_row_end -= old_cell_len;
+      }
+      if (c.len)
+        ch->lengths[i - 1] += c.len + 1;
     }
-    if (c.len)
-      ch->lengths[i - 1] += c.len + 1;
   }
   if (column_count > ch->column_count)
     ch->column_count = column_count;
@@ -283,8 +290,10 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *sc
     if (UNLIKELY(scanner->quoted > 0)) {
       if (LIKELY(scanner->quote_close_position + 1 == n)) {
         if (LIKELY((scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) == 0)) {
-          // this is the easy and usual case: no embedded double-quotes
-          // just remove surrounding quotes from content
+          // easy and usual case: no embedded double-quotes
+          // just remove surrounding quotes from content (n >= 2 enforced
+          // by EOF fix-up in zsv_finish, and by the parser state machine
+          // in scan-loop call sites)
           s++;
           n -= 2;
         } else { // embedded dbl-quotes to remove
@@ -465,6 +474,7 @@ static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
 #ifdef ZSV_SUPPORT_PULL_PARSER
 #undef ZSV_SUPPORT_PULL_PARSER
 #endif
+
 #define ZSV_SCAN_DELIM zsv_scan_delim
 #include "zsv_scan_delim.c"
 #undef ZSV_SCAN_DELIM
@@ -694,7 +704,7 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
   else if (opts->buffsize < ZSV_MIN_SCANNER_BUFFSIZE)
     opts->buffsize = ZSV_MIN_SCANNER_BUFFSIZE;
 
-  if (opts->scan_engine == 255)
+  if (opts->scan_engine == ZSV_MODE_COMPAT)
     scanner->mode = ZSV_MODE_DELIM; /* force compat/standard engine */
   else if (opts->scan_engine)
     scanner->mode = opts->scan_engine;

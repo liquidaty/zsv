@@ -1,0 +1,115 @@
+{
+  "schema": "zsv.compare",
+  "version": "1",
+  "inputs": [
+    {
+      "label": "jredline3a.csv",
+      "path": "compare/jredline3a.csv",
+      "row_count": 2
+    },
+    {
+      "label": "jredline3b.csv",
+      "path": "compare/jredline3b.csv",
+      "row_count": 2
+    }
+  ],
+  "keys": [
+    "id"
+  ],
+  "options": {
+    "tolerance": null,
+    "sort": false,
+    "include_unchanged_rows": true,
+    "include_tolerated": false,
+    "require_all_inputs": false
+  },
+  "columns": [
+    {
+      "name": "id",
+      "is_key": true,
+      "in_inputs": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "name",
+      "is_key": false,
+      "in_inputs": [
+        0,
+        1
+      ]
+    },
+    {
+      "name": "extra",
+      "is_key": false,
+      "in_inputs": [
+        0
+      ]
+    }
+  ],
+  "summary": {
+    "rows": {
+      "in_all_inputs": 2,
+      "only_in_input_count": [
+        0,
+        0
+      ],
+      "with_any_diff": 0
+    },
+    "cells": {
+      "compared": 4,
+      "matched": 4,
+      "within_tolerance": 0,
+      "differing": 0
+    },
+    "by_column": [
+      {
+        "name": "id",
+        "compared": 2,
+        "matched": 2,
+        "within_tolerance": 0,
+        "differing": 0
+      },
+      {
+        "name": "name",
+        "compared": 2,
+        "matched": 2,
+        "within_tolerance": 0,
+        "differing": 0
+      },
+      {
+        "name": "extra",
+        "compared": 0,
+        "matched": 0,
+        "within_tolerance": 0,
+        "differing": 0
+      }
+    ],
+    "schema": {
+      "common": [
+        "id",
+        "name"
+      ],
+      "only_in_input": [
+        [
+          "extra"
+        ],
+        [
+        ]
+      ]
+    }
+  },
+  "rows": [
+    [
+      "1",
+      "Alice",
+      "X"
+    ],
+    [
+      "2",
+      "Bob",
+      "Y"
+    ]
+  ]
+}

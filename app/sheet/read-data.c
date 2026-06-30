@@ -182,6 +182,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
         zsvsheet_opts->hide_row_nums = 1;
         if (uibuff)
           uibuff->has_row_num = 1;
+        if (buffer && !buffer->opts.no_rownum_column) {
+          buffer->cols = col_count;
+          buffer->opts.no_rownum_column = 1;
+        }
       }
     }
 
@@ -254,14 +258,15 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
   pthread_mutex_unlock(&uibuff->mutex);
 
   if (need_index) {
-    if (asprintf(&uibuff->status, "%s(building index) ", old_ui_status ? old_ui_status : "") == -1) {
-      rc = -1;
-      goto done;
-    }
-
     uibuff->buff_used_rows = rows_read;
     uibuff->dimensions.row_count = rows_read;
+
     if (original_row_num > 1 && rows_read > 0) {
+      if (asprintf(&uibuff->status, "%s(building index) ", old_ui_status ? old_ui_status : "") == -1) {
+        rc = -1;
+        goto done;
+      }
+
       opts.stream = NULL;
       get_data_index_async(uibuff, filename, &opts, custom_prop_handler, old_ui_status);
     }

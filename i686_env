@@ -1,0 +1,61 @@
+#!/bin/sh
+
+## Run this file to switch to i686 build env
+## Typical use would be to run this together with configure e.g.:
+##   ./i686_env configure
+##
+export THIS_CROSS_COMPILE_ENV="`dirname "$0"`/`basename "$0"`"
+
+## Build libressl out-of-tree, into a per-arch build-<triple> dir, so the
+## shared ~/install source tree's native (arm64) objects can't contaminate the
+## i686 link (the in-tree path links stale arch objects and fails on ocspcheck).
+export OUT_OF_TREE_BUILD=1
+
+export PREFIX=/opt/i686
+if ! [ -d $PREFIX ]; then ${SUDO} mkdir -p $PREFIX && ${SUDO} chown `whoami` $PREFIX ; fi
+
+if [ "$LDFLAGS" = "" ] ; then
+    export LDFLAGS=-L$PREFIX/lib
+fi
+if [ "$CPPFLAGS" = "" ]; then
+    export CPPFLAGS=-I$PREFIX/include
+fi
+
+export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:$PREFIX/share/pkgconfig"
+export BIN_PREFIX=i686-nptl-linux-gnu
+export CONFIGURE_HOST=i686-nptl-linux-gnu
+export CONFIGURE_TARGET=i686-nptl-linux-gnu
+export CONFIGURE_BUILD=
+export CONFIGURE_ARCH=none
+
+## We build i686 binaries on a non-i686 host, so this is a cross-compile.
+## configure keys its behavior off CROSS_COMPILING (not the CONFIGURE_* vars):
+## with it set, ARCH defaults to "none" (so -march=native is not attempted,
+## which the cross gcc rejects) and the avx2/avx/sse2/NEON probes are skipped
+## (those compile-and-RUN a test binary, which can't execute on the host).
+export CROSS_COMPILING=yes
+export CC=$BIN_PREFIX-gcc
+export CXX=$BIN_PREFIX-g++
+export CPP=$BIN_PREFIX-cpp
+export RANLIB=$BIN_PREFIX-ranlib
+export PATH="$PREFIX/bin:$PATH"
+export AR=$BIN_PREFIX-ar
+export NM=$BIN_PREFIX-nm
+export LIBTOOL=$PREFIX/bin/libtool
+export C_INCLUDE_PATH=$PREFIX/include
+export WINDRES=$BIN_PREFIX-windres
+
+export CPLUS_INCLUDE_PATH=$C_INCLUDE_PATH
+
+export LIBRARY_PATH=$PREFIX/lib64:$PREFIX/lib:$LIBRARY_PATH
+
+export OTHER_LD_FLAGS=
+
+export CONFIGFILE=config.i686
+
+export SSL_DIR=$PREFIX/libressl
+
+if [ $# != 0 ]; then
+    exec "$@"
+fi
+

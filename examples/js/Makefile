@@ -25,7 +25,7 @@ ZSVSRC=$(addprefix ${ZSVSRCDIR}/,${ZSVSRC1})
 
 INCLUDE_DIR=${THIS_MAKEFILE_DIR}/../../include
 
-CFLAGS += -I../../app/external/utf8proc-2.6.1 # for app/utils/string.c
+CFLAGS += -I../../app/external/utf8proc-2.11.3 # for app/utils/string.c
 CFLAGS += -I../../app/external/sqlite3
 
 ifeq ($(DEBUG),1)
@@ -89,7 +89,7 @@ zsv.h:
 	make -C ../../src ../include/zsv.h
 
 utf8proc.h:
-	make -C ../../app ./external/utf8proc-2.6.1/utf8proc.h THIS_MAKEFILE_DIR=.
+	make -C ../../app ./external/utf8proc-2.11.3/utf8proc.h THIS_MAKEFILE_DIR=.
 
 test: node_ok npm/test/select_all.js node
 	@mkdir -p build/test

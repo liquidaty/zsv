@@ -14,6 +14,7 @@
 #include <zsv/utils/compiler.h>
 #include <zsv/utils/signal.h>
 #include <zsv/utils/memmem.h>
+#include <zsv/utils/appname.h>
 
 #include "zsv_main.h"
 

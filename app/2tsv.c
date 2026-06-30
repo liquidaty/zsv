@@ -140,12 +140,12 @@ static void zsv_2tsv_row(void *ctx) {
 
 int zsv_2tsv_usage(int rc) {
   static const char *zsv_2tsv_usage_msg[] = {
-    APPNAME ": convert CSV to TSV (tab-delimited text) suitable for simple-delimiter",
+    ZSV_USAGE_PROG " " APPNAME ": convert CSV to TSV (tab-delimited text) suitable for simple-delimiter",
     "          text processing. By default, embedded tabs or multilines will be escaped",
     "          to \\t, \\n or \\r, respectively",
     "",
-    "Usage: " APPNAME " [filename] [options]",
-    "  e.g. " APPNAME " < file.csv > file.tsv",
+    "Usage: " ZSV_USAGE_PROG " " APPNAME " [filename] [options]",
+    "  e.g. " ZSV_USAGE_PROG " " APPNAME " < file.csv > file.tsv",
     "",
     "Options:",
     "  -o <file>         : save output to <file>",
@@ -153,8 +153,7 @@ int zsv_2tsv_usage(int rc) {
     NULL,
   };
 
-  for (size_t i = 0; zsv_2tsv_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", zsv_2tsv_usage_msg[i]);
+  zsv_print_usage(zsv_2tsv_usage_msg);
 
   return rc;
 }

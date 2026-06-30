@@ -1,6 +1,7 @@
 #ifndef ZSV_COMPARE_PRIVATE_H
 #define ZSV_COMPARE_PRIVATE_H
 
+#include <stdio.h>
 #include <sglib.h>
 #include <sqlite3.h>
 
@@ -106,13 +107,26 @@ struct zsv_compare_data {
   enum zsv_compare_status (*input_init)(struct zsv_compare_data *data, struct zsv_compare_input *input,
                                         struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler);
 
+  /* Output lifecycle hooks. zsv_compare_new() initializes these to the stock
+   * implementations; a host (e.g. a custom CLI) may override them to customize
+   * output, such as buffering the redline JSON and rendering it to a document. */
+  void (*output_begin)(struct zsv_compare_data *data);
+  void (*output_end)(struct zsv_compare_data *data);
+
+  /* Custom option handler for command-line args the stock parser does not
+   * recognize. NULL in stock zsv. A host may set it (e.g. to handle --redline).
+   * Should consume one option starting at argv[*arg_ip], advancing *arg_ip past
+   * any consumed value, set *errp nonzero on error, and return 1 if the option
+   * was recognized (0 otherwise, in which case arg is treated as an input). */
+  int (*parse_opt)(struct zsv_compare_data *data, const char *arg, int *arg_ip, int argc, const char *argv[],
+                   int *errp);
+
   sqlite3 *sort_db; // used when --sort option was specified
 
   struct {
-    double value;
+    double value;    /* bumped via nextafterf for comparison */
+    double original; /* as specified by user — used for output */
 #define ZSV_COMPARE_MAX_NUMBER_BUFF_LEN 128
-    char str1[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
-    char str2[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
   } tolerance;
   struct {
     char type; // 'j' for json
@@ -127,17 +141,27 @@ struct zsv_compare_data {
       char **names;
     } properties;
 
-    unsigned cell_ix;          // only used for json + object output
-    unsigned char compact : 1; // whether to output compact JSON
-    unsigned char object : 1;  // whether to output JSON as objects
-    unsigned char _ : 6;
+    unsigned cell_ix;                         // only used for json + object output
+    unsigned char compact : 1;                // whether to output compact JSON
+    unsigned char object : 1;                 // whether to output JSON as objects
+    unsigned char include_unchanged_rows : 1; // default on; cleared by --only-changed-rows
+    unsigned char include_tolerated : 1;      // --include-tolerated
+    unsigned char redline_render : 1;         // --redline: render the redline JSON to a document
+    unsigned char _ : 3;
+
+    const char *output_path; // -o <file>: destination for the --redline rendered document
+    FILE *tmp;               // temp file holding the redline JSON while --redline renders it
   } writer;
+
+  struct zsv_compare_redline *redline; // allocated only for --json-redline mode
 
   unsigned char sort : 1;
   unsigned char sort_in_memory : 1;
   unsigned char print_key_col_names : 1;
   unsigned char return_count : 1;
-  unsigned char _ : 4;
+  unsigned char
+    require_all_inputs : 1; // --require-all-inputs/--intersect: ignore rows whose key is absent from any input
+  unsigned char _ : 3;
 };
 
 #endif

@@ -160,6 +160,107 @@ static void zsvTable_delete(struct zsvTable *z) {
 #define BLANK_COLUMN_NAME_PREFIX "Blank_Column"
 unsigned blank_column_name_count = 0;
 
+/* Return the 0-based index of the first of the `n` already-chosen column names
+** that equals `name` under SQLite's identifier comparison (ASCII
+** case-insensitive), or -1 if none. Using SQLite's own comparison means
+** disambiguation is guaranteed to be accepted and detection matches exactly
+** what SQLite would otherwise reject. */
+static long zsv_csv_colname_find(char *const *seen, size_t n, const char *name) {
+  for(size_t i = 0; i < n; i++)
+    if(seen[i] && sqlite3_stricmp(seen[i], name) == 0)
+      return (long)i;
+  return -1;
+}
+
+/* Append the `"col" TEXT, ...` specifications for each header cell to pStr.
+** When `dedupe` is nonzero, duplicate column names are made unique by appending
+** _2, _3, ... (e.g. a,b,a -> a,b,a_2) so input with repeated headers is loadable;
+** if `warn` is also nonzero, each rename is noted on stderr (renames are never
+** silent). Callers that drive a curses UI (sheet) pass warn=0 to keep stderr clean.
+** When `dedupe` is zero, the first duplicate name is reported via *dup_errmsg
+** (allocated with asprintf, naming the column and its 1-based positions) so the
+** caller can fail with an actionable message instead of SQLite's generic one.
+** Returns 0 on success, 1 if a duplicate was reported, -1 on out-of-memory. */
+static int zsv_csv_append_column_defs(sqlite3_str *pStr, zsv_parser parser, int dedupe, int warn, char **dup_errmsg) {
+  size_t ncols = zsv_cell_count(parser);
+  char **seen = NULL;
+  int rc = 0;
+  if(ncols) {
+    seen = sqlite3_malloc64((sqlite3_int64)(sizeof(*seen) * ncols));
+    if(!seen)
+      return -1;
+    memset(seen, 0, sizeof(*seen) * ncols);
+  }
+  for(size_t i = 0; i < ncols; i++) {
+    struct zsv_cell cell = zsv_get_cell(parser, i);
+    size_t len = cell.len;
+    unsigned char *utf8_value = (unsigned char *)zsv_strtrim(cell.str, &len);
+
+    // base (NUL-terminated) column name; blanks keep their existing placeholder
+    char *base;
+    if(!len) {
+      if(blank_column_name_count++)
+        base = sqlite3_mprintf("%s_%u", BLANK_COLUMN_NAME_PREFIX, blank_column_name_count - 1);
+      else
+        base = sqlite3_mprintf("%s", BLANK_COLUMN_NAME_PREFIX);
+    } else
+      base = sqlite3_mprintf("%.*s", (int)len, utf8_value);
+    if(!base) {
+      rc = -1;
+      break;
+    }
+
+    char *name = base;     // points at base, or at a freshly-allocated suffixed name
+    char *suffixed = NULL;
+    if(dedupe) {
+      for(unsigned n = 2; zsv_csv_colname_find(seen, i, name) >= 0; n++) {
+        sqlite3_free(suffixed);
+        suffixed = sqlite3_mprintf("%s_%u", base, n);
+        if(!suffixed) {
+          rc = -1;
+          break;
+        }
+        name = suffixed;
+      }
+      if(rc) {
+        sqlite3_free(suffixed);
+        sqlite3_free(base);
+        break;
+      }
+      if(warn && name != base) // a rename happened; never silent
+        fprintf(stderr, "renamed duplicate column \"%s\" \xe2\x86\x92 \"%s\"\n", base, name);
+    } else {
+      long prior = zsv_csv_colname_find(seen, i, name);
+      if(prior >= 0) {
+        if(asprintf(dup_errmsg,
+                    "duplicate column name \"%s\" at columns %d and %d"
+                    "; pass --rename-duplicate-columns to auto-disambiguate",
+                    name, (int)(prior + 1), (int)(i + 1)) < 0)
+          *dup_errmsg = NULL;
+        rc = *dup_errmsg ? 1 : -1;
+        sqlite3_free(base);
+        break;
+      }
+    }
+    seen[i] = sqlite3_mprintf("%s", name);
+    if(!seen[i]) {
+      sqlite3_free(suffixed);
+      sqlite3_free(base);
+      rc = -1;
+      break;
+    }
+    sqlite3_str_appendf(pStr, "%s\"%w\" TEXT", i > 0 ? "," : "", name);
+    sqlite3_free(suffixed);
+    sqlite3_free(base);
+  }
+  if(seen) {
+    for(size_t i = 0; i < ncols; i++)
+      sqlite3_free(seen[i]);
+    sqlite3_free(seen);
+  }
+  return rc;
+}
+
 /**
  * Parameters:
  *    filename=FILENAME          Name of file containing CSV content
@@ -177,13 +278,15 @@ static int zsvtabConnect(
   (void)(_pAux);
   zsvTable pTmp = { 0 };
   int rc = SQLITE_OK;        /* Result code from this routine */
-  #define ZSVTABCONNECT_PARAM_MAX 2
+  #define ZSVTABCONNECT_PARAM_MAX 3
   static const char *azParam[ZSVTABCONNECT_PARAM_MAX] = {
-     "filename"
+     "filename", "dedupe", "warn_renames"
   };
   char *azPValue[ZSVTABCONNECT_PARAM_MAX]; /* Parameter values */
   memset(azPValue, 0, sizeof(azPValue));
-# define CSV_FILENAME (azPValue[0])
+# define CSV_FILENAME     (azPValue[0])
+# define CSV_DEDUPE       (azPValue[1])
+# define CSV_WARN_RENAMES (azPValue[2])
 
   char *schema = NULL;
   zsvTable *pNew = NULL;
@@ -236,26 +339,19 @@ static int zsvtabConnect(
 
   *ppVtab = (sqlite3_vtab*)pNew;
 
-  // generate the CREATE TABLE statement
+  // generate the CREATE TABLE statement. When `dedupe` is requested, repeated
+  // column names are disambiguated (a,b,a -> a,b,a_2) so the table is loadable.
+  int do_dedupe = CSV_DEDUPE && atoi(CSV_DEDUPE) != 0;
+  int do_warn = CSV_WARN_RENAMES && atoi(CSV_WARN_RENAMES) != 0;
   sqlite3_str *pStr = sqlite3_str_new(0);
   sqlite3_str_appendf(pStr, "CREATE TABLE x(");
-
-  // for each column, add a spec to CREATE TABLE
-  for(size_t i = 0, j = zsv_cell_count(pNew->parser); i < j; i++) {
-    struct zsv_cell cell = zsv_get_cell(pNew->parser, i);
-    size_t len = cell.len;
-    unsigned char *utf8_value = (unsigned char *)zsv_strtrim(cell.str, &len);
-
-    if(!len) {
-      if(blank_column_name_count++)
-        sqlite3_str_appendf(pStr, "%s\"%s_%u\" TEXT", i > 0 ? "," : "", BLANK_COLUMN_NAME_PREFIX, blank_column_name_count - 1);
-      else
-        sqlite3_str_appendf(pStr, "%s\"%s\" TEXT", i > 0 ? "," : "", BLANK_COLUMN_NAME_PREFIX);
-    } else
-      sqlite3_str_appendf(pStr, "%s\"%.*w\" TEXT", i > 0 ? "," : "", len, utf8_value);
-    // to do: deal with duplicate column names
+  int defstat = zsv_csv_append_column_defs(pStr, pNew->parser, do_dedupe, do_warn, &errmsg);
+  if(defstat) {
+    sqlite3_free(sqlite3_str_finish(pStr));
+    if(defstat > 0) // duplicate column name; errmsg holds an actionable message
+      goto zsvtab_connect_error;
+    goto zsvtab_connect_oom;
   }
-
   sqlite3_str_appendf(pStr, ")");
   schema = sqlite3_str_finish(pStr);
   if(!schema)

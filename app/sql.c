@@ -33,17 +33,18 @@ struct string_list {
 #endif
 
 const char *zsv_sql_usage_msg[] = {
-  APPNAME ": run ad hoc sql on a CSV file",
+  ZSV_USAGE_PROG " " APPNAME ": run ad hoc sql on a CSV file",
   "          or join multiple CSV files on one or more common column(s)",
   "",
 #ifdef NO_STDIN
-  "Usage: " APPNAME " <filename> [filename ...] <sql | @file.sql>",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME " <filename> [filename ...] <sql | @file.sql>",
 #else
-  "Usage: " APPNAME " [filename, or - for stdin] [filename ...] <sql | @file.sql | --join-indexes <N,...>>",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME
+  " [filename, or - for stdin] [filename ...] <sql | @file.sql | --join-indexes <N,...>>",
 #endif
-  "  e.g. " APPNAME " file.csv \"select * from data\"",
-  "  e.g. " APPNAME " file1.csv file2.csv \"select * from data inner join data2\"",
-  "  e.g. " APPNAME " file1.csv file2.csv --join-indexes 1,2",
+  "  e.g. " ZSV_USAGE_PROG " " APPNAME " file.csv \"select * from data\"",
+  "  e.g. " ZSV_USAGE_PROG " " APPNAME " file1.csv file2.csv \"select * from data inner join data2\"",
+  "  e.g. " ZSV_USAGE_PROG " " APPNAME " file1.csv file2.csv --join-indexes 1,2",
   "",
   "Loads your CSV file into a table named 'data', then runs your sql, which must start with 'select '.",
   "If multiple files are specified, tables will be named data, data2, data3, ...",
@@ -58,12 +59,13 @@ const char *zsv_sql_usage_msg[] = {
   "  -C,--max-cols <n>     : change the maximum allowable columns. must be > 0 and < 2000",
   "  -o <filename>         : filename to save output to",
   "  --memory              : use in-memory instead of temporary db (see https://www.sqlite.org/inmemorydb.html)",
+  "  --rename-duplicate-columns : auto-rename duplicate input column names (a, a_2, a_3, ...)",
+  "                          so input with repeated headers loads instead of erroring",
   NULL,
 };
 
 static int zsv_sql_usage(FILE *f) {
-  for (size_t i = 0; zsv_sql_usage_msg[i]; i++)
-    fprintf(f, "%s\n", zsv_sql_usage_msg[i]);
+  zsv_fprint_usage(f, zsv_sql_usage_msg);
   return f == stderr ? 1 : 0;
 }
 
@@ -75,7 +77,8 @@ struct zsv_sql_data {
   char *join_indexes; // will hold contents of join_indexes arg, prefixed and suffixed with a comma
   struct string_list *join_column_names;
   unsigned char in_memory : 1;
-  unsigned char _ : 7;
+  unsigned char rename_dup_cols : 1;
+  unsigned char _ : 6;
 };
 
 static void zsv_sql_finalize(struct zsv_sql_data *data) {
@@ -192,6 +195,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         writer_opts.output_path = zsv_next_arg(++arg_i, argc, argv, &err);
       else if (!strcmp(arg, "--memory"))
         data.in_memory = 1;
+      else if (!strcmp(arg, "--rename-duplicate-columns"))
+        data.rename_dup_cols = 1;
       else if (!strcmp(arg, "-b"))
         writer_opts.with_bom = 1;
       else if (*arg != '-') {
@@ -285,6 +290,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
       struct zsv_sqlite3_dbopts dbopts = {
         .in_memory = data.in_memory,
+        .dedupe_cols = data.rename_dup_cols,
+        .warn_dupe_rename = data.rename_dup_cols, // non-interactive: note renames on stderr
       };
       struct zsv_sqlite3_db *zdb = zsv_sqlite3_db_new(&dbopts);
       if (zdb && zdb->rc == SQLITE_OK) {

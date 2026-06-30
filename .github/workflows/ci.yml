@@ -8,8 +8,6 @@ on:
     - 'setup-action/**'
     - '.github/workflows/setup-action.yml'
     - '.github/workflows/codeql.yml'
-    - '.github/workflows/benchmarks.yml'
-    - 'scripts/ci-run-benchmarks.sh'
   pull_request:
     branches: [main]
     paths-ignore:
@@ -17,8 +15,6 @@ on:
     - 'setup-action/**'
     - '.github/workflows/setup-action.yml'
     - '.github/workflows/codeql.yml'
-    - '.github/workflows/benchmarks.yml'
-    - 'scripts/ci-run-benchmarks.sh'
   release:
     types: [published]
   workflow_dispatch:
@@ -55,7 +51,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         sparse-checkout: |
           scripts/ci-set-tag-output-parameter.sh
@@ -71,7 +67,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Run clang-format
       run: |
@@ -83,7 +79,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Install apt dependencies
       uses: awalsh128/cache-apt-pkgs-action@latest
@@ -114,7 +110,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Run shellcheck
       run: ./scripts/ci-run-shellcheck.sh
@@ -149,7 +145,7 @@ jobs:
         packages: rpm alien tmux
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Test
       env:
@@ -250,7 +246,7 @@ jobs:
       run: sudo gem install --no-document fpm
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         sparse-checkout: |
           .fpm
@@ -298,7 +294,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Set up homebrew dependencies
       run: brew install --quiet coreutils tree tmux sqlite3
@@ -367,26 +363,6 @@ jobs:
       if: ${{ startsWith(github.ref, 'refs/tags/v') }}
       run: ./scripts/ci-upload-release-artifacts.sh
 
-  update-homebrew-tap:
-    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-    needs: ci-macos
-    runs-on: ubuntu-22.04
-
-    env:
-      TAG: ${{ needs.ci-macos.outputs.TAG }}
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v6
-      with:
-        sparse-checkout: |
-          scripts/ci-update-homebrew-tap.sh
-
-    - name: Update
-      env:
-        HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-      run: ./scripts/ci-update-homebrew-tap.sh
-
   update-homebrew-core:
     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
     needs: ci-macos
@@ -416,24 +392,38 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
-    - name: Test and Build
-      uses: cross-platform-actions/action@v1.0.0
-      env:
-        PREFIX: ${{ env.AMD64_FREEBSD_GCC }}
-        CC: gcc13
-        MAKE: gmake
+    - name: Set up FreeBSD
+      uses: cross-platform-actions/action@v1.3.0
       with:
         operating_system: freebsd
         version: '13.2'
-        environment_variables: 'PREFIX CC MAKE ARTIFACT_DIR'
+        environment_variables: TAG ARTIFACT_DIR
         shell: sh
-        run: |
-          ./scripts/ci-freebsd-setup.sh
-          export HOST=
-          RUN_TESTS=true SKIP_BUILD=true ./scripts/ci-build.sh
-          RUN_TESTS=false SKIP_BUILD=false CFLAGS='-DPREFIX=\"\"' ./scripts/ci-build.sh
+
+    - name: Set up dependencies
+      shell: cpa.sh {0}
+      run: |
+        ./scripts/ci-freebsd-setup.sh
+
+    - name: Test
+      shell: cpa.sh {0}
+      run: |
+        export HOST=
+        export PREFIX=${{ env.AMD64_FREEBSD_GCC }}
+        export CC=gcc13
+        export MAKE=gmake
+        RUN_TESTS=true SKIP_BUILD=true ./scripts/ci-build.sh
+
+    - name: Build
+      shell: cpa.sh {0}
+      run: |
+        export HOST=
+        export PREFIX=${{ env.AMD64_FREEBSD_GCC }}
+        export CC=gcc13
+        export MAKE=gmake
+        RUN_TESTS=false SKIP_BUILD=false CFLAGS='-DPREFIX=\"\"' ./scripts/ci-build.sh
 
     - name: Prepare build artifacts for upload
       run: ./scripts/ci-prepare-artifacts-for-upload.sh
@@ -485,30 +475,16 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Set up apt dependencies
       run: |
         sudo apt update
         sudo apt install -y mingw-w64 nuget
 
-    - name: Cache PDCurses build
-      id: pdcurses
-      uses: actions/cache@v5
-      with:
-        path: PDCurses-3.9
-        key: linux-mingw-pdcurses
-
-    - name: Install PDCurses
-      if: ${{ steps.pdcurses.outputs.cache-hit != 'true' }}
-      run: ./scripts/ci-build-pdcurses-with-mingw.sh
-
-    - name: Set PDCurses env vars (CFLAGS and LDFLAGS)
-      run: |
-        {
-          echo "CFLAGS=-I$PWD/PDCurses-3.9"
-          echo "LDFLAGS=-L$PWD/PDCurses-3.9/wincon"
-        } >>"$GITHUB_ENV"
+    # PDCurses is bootstrapped automatically by the build (configure detects it
+    # is not installed and app/Makefile builds the vendored copy), same as the
+    # other vendored externals -- no manual provisioning step needed here.
 
     - name: Build
       env:
@@ -600,18 +576,9 @@ jobs:
           tmux
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
-    - name: Cache PDCurses build
-      id: pdcurses
-      uses: actions/cache@v5
-      with:
-        path: PDCurses-3.9
-        key: wsl-mingw-pdcurses
-
-    - name: Install PDCurses
-      if: ${{ steps.pdcurses.outputs.cache-hit != 'true' }}
-      run: ./scripts/ci-build-pdcurses-with-mingw.sh
+    # PDCurses is bootstrapped automatically by the build (see the build job).
 
     - name: Test
       env:
@@ -623,8 +590,6 @@ jobs:
         SKIP_BUILD: true
         WSLENV: ARTIFACT_DIR:TAG:PREFIX:CC:MAKE:CMP:RUN_TESTS:SKIP_BUILD
       run: |
-        export CFLAGS="-I$PWD/PDCurses-3.9"
-        export LDFLAGS="-L$PWD/PDCurses-3.9/wincon"
         ./scripts/ci-build.sh
 
   ci-musl:
@@ -645,7 +610,7 @@ jobs:
       run: apk add bash gcc make musl-dev ncurses-dev ncurses-static tmux file sqlite curl zip wget tar git
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Configure git in container
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -729,7 +694,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         sparse-checkout: |
           Dockerfile.ci
@@ -780,8 +745,44 @@ jobs:
           ghcr.io/liquidaty/zsv:${{ env.TAG }}
           ghcr.io/liquidaty/zsv:latest
 
-  ci-wasm-playground:
+  ci-wasm:
     needs: [tag, clang-format, cppcheck, shellcheck]
+    runs-on: ubuntu-22.04-arm
+    timeout-minutes: 15
+
+    outputs:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
+    env:
+      TAG: ${{ needs.tag.outputs.TAG }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Set up emsdk
+      uses: mymindstorm/setup-emsdk@v16
+
+    - name: Set up NodeJS
+      uses: actions/setup-node@v6
+
+    - name: Test
+      env:
+        PREFIX: amd64-linux-wasm
+        CC: emcc
+        MAKE: make
+        CONFIGFILE: config.emcc
+        CFLAGS: -msse2 -msimd128
+        CROSS_COMPILING: "yes"
+        NO_THREADING: "1"
+        STATIC_BUILD: "1"
+      run: |
+        emconfigure ./configure --enable-pic --disable-pie
+        emmake make test CONFIGFILE=config.emcc
+
+  wasm-playground:
+    if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
+    needs: [ci-wasm]
     runs-on: ubuntu-22.04-arm
     timeout-minutes: 15
 
@@ -790,23 +791,23 @@ jobs:
       matrix:
         include:
           - name: simd
-            cflags: -msse2 -msimd128
+            cflags: "-msse2 -msimd128"
             plgdir: playground
           - name: non-simd
-            cflags:
+            cflags: ""
             plgdir: playground/non-simd
 
-    name: ci-wasm-playground (${{ matrix.name }})
+    name: wasm-playground (${{ matrix.name }})
 
     env:
-      TAG: ${{ needs.tag.outputs.TAG }}
+      TAG: ${{ needs.ci-wasm.outputs.TAG }}
 
     steps:
     - name: Set up emsdk
       uses: mymindstorm/setup-emsdk@v16
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Update version in index.html
       run: sed "s|__VERSION__|$TAG|g" -i playground/index.html
@@ -816,7 +817,6 @@ jobs:
         PREFIX: amd64-linux-wasm
         CC: emcc
         MAKE: make
-        RUN_TESTS: false
         CONFIGFILE: config.emcc
         CFLAGS: ${{ matrix.cflags }}
         CROSS_COMPILING: "yes"
@@ -836,7 +836,7 @@ jobs:
 
   upload-github-pages-artifact:
     if: ${{ github.ref_name == 'main' || startsWith(github.ref, 'refs/tags/v') }}
-    needs: [prepare-linux-packages, ci-wasm-playground]
+    needs: [prepare-linux-packages, wasm-playground]
     runs-on: ubuntu-latest
 
     steps:
@@ -854,7 +854,7 @@ jobs:
         merge-multiple: true
 
     - name: Upload GitHub Pages artifacts
-      uses: actions/upload-pages-artifact@v4
+      uses: actions/upload-pages-artifact@v5
       with:
         path: ${{ env.ARTIFACT_DIR }}
 

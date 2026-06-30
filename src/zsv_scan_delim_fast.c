@@ -17,7 +17,11 @@
  * Falls back to the compat/scalar engine on unsupported platforms.
  */
 
-#if defined(__aarch64__)
+#if defined(__wasm_simd128__)
+#include "zsv_scan_simd_wasm.h"
+#define ZSV_FAST_PARSER_AVAILABLE 1
+#pragma message "Using WebAssembly SIMD for fast CSV parsing"
+#elif defined(__aarch64__)
 #include "zsv_scan_simd_neon.h"
 #define ZSV_FAST_PARSER_AVAILABLE 1
 #elif defined(__AVX2__)
@@ -318,8 +322,8 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
    */
   if (scanner->skip_cells) {
     while (i + 64 <= bytes_read) {
-      uint64_t commas_sc, newlines, crs, quotes;
-      fast_scan_block(buff + i, v_comma, v_nl, v_cr, v_qt, &commas_sc, &newlines, &crs, &quotes);
+      uint64_t commas, newlines, crs, quotes;
+      fast_scan_block(buff + i, v_comma, v_nl, v_cr, v_qt, &commas, &newlines, &crs, &quotes);
       if (quote_char <= 0)
         quotes = 0;
 
@@ -542,6 +546,49 @@ normal_parse:
 
       uint64_t valid_delims = all_delims & ~state_mask;
 
+      /* Non-standard-CSV detection (COMPAT-parity check).
+       * COMPAT only treats `"` as a quote-toggle when the `"` is at a cell
+       * boundary (zsv_scan_delim.c:239 — i.e. immediately after a delim,
+       * \r, \n, or at scanner->cell_start). Prefix-XOR toggles on every `"`.
+       * A `"` that opens a quoted region per prefix-XOR but is NOT at a
+       * cell boundary signals non-standard input — the two engines will
+       * diverge on the rest of the buffer. Flag it so the cold path can
+       * fall back to COMPAT for byte-for-byte parity.
+       *
+       * opening_quotes: bits where state transitions outside→inside
+       *   (= quotes & state_mask in current state convention).
+       * valid_prev:     bits whose preceding byte is a delim/CR/LF, plus
+       *   the cell_start position itself.
+       *
+       * Cost: ~4 bitops + a branch per block. The check piggybacks on
+       * already-loaded data (quotes, all_delims, state_mask). */
+#ifndef ZSV_NO_NONSTANDARD_CHECK
+      if (UNLIKELY(quotes)) {
+        /* A bit is a "valid open position" if its preceding byte is a delim,
+         * CR, LF, OR another quote (the `""` escape sequence inside a quoted
+         * cell — prefix-XOR sees it as close+open, but it's standard CSV).
+         * Also valid: scanner->cell_start position itself. */
+        uint64_t opening_quotes = quotes & state_mask;
+        uint64_t valid_prev = (all_delims | quotes) << 1;
+        unsigned char prev_byte = i > 0 ? buff[i - 1] : (unsigned char)scanner->last;
+        if (prev_byte == (unsigned char)delimiter || prev_byte == '\r' || prev_byte == '\n' || prev_byte == '"')
+          valid_prev |= 1ULL;
+        if (scanner->cell_start >= i && scanner->cell_start < i + 64)
+          valid_prev |= 1ULL << (scanner->cell_start - i);
+        if (UNLIKELY(opening_quotes & ~valid_prev)) {
+          /* Non-standard input: opening quote not at a cell boundary.
+           * The fast engine cannot safely continue — bail out before any
+           * cells from this block are emitted, so already-delivered rows
+           * remain valid. Caller should switch to ZSV_MODE_COMPAT. */
+          scanner->nonstandard = 1;
+          scanner->abort = 1;
+          scanner->scanned_length = i;
+          scanner->old_bytes_read = bytes_read;
+          return zsv_status_nonstandard_csv;
+        }
+      }
+#endif
+
       if (LIKELY(valid_delims == 0)) {
         i += 64;
         continue;
@@ -625,6 +672,21 @@ normal_parse:
           inside_quote = 0;
         }
       } else {
+#ifndef ZSV_NO_NONSTANDARD_CHECK
+        /* Non-standard check: opening quote must be at a cell boundary OR
+         * immediately after another `"` (the `""` escape inside a quoted
+         * cell — closed at the previous byte, reopens here). */
+        if (UNLIKELY(i != scanner->cell_start)) {
+          unsigned char prev = i > 0 ? buff[i - 1] : (unsigned char)scanner->last;
+          if (prev != (unsigned char)delimiter && prev != '\r' && prev != '\n' && prev != '"') {
+            scanner->nonstandard = 1;
+            scanner->abort = 1;
+            scanner->scanned_length = i;
+            scanner->old_bytes_read = bytes_read;
+            return zsv_status_nonstandard_csv;
+          }
+        }
+#endif
         inside_quote = 1;
       }
       continue;
@@ -644,8 +706,21 @@ normal_parse:
     }
   }
 
-  /* Carry quote state across buffer boundaries */
-  if (inside_quote)
+  /* Carry quote state across buffer boundaries.
+   *
+   * COMPAT-parity gate: COMPAT only treats `"` as a state-toggling quote
+   * when it appears AT the cell start (zsv_scan_delim.c:239); a `"` in the
+   * middle of an unquoted cell is a literal. Prefix-XOR cannot distinguish
+   * the two inside a 64-byte block and may end the buffer with
+   * inside_quote=1 even though the current cell never opened with a quote
+   * (e.g. cell starts `D~E.F.FD"..."""..`). Letting that spurious UNCLOSED
+   * out of this scan call is what drives zsv_finish's EOF fix-up into the
+   * cell_dl memmove path that overruns the buffer (zsv.c:465 / zsv_internal.c:312).
+   *
+   * Gate the carry on COMPAT's invariant: UNCLOSED is only valid when the
+   * current cell actually begins with the quote char. This runs once per
+   * scan call (cold path); the hot SIMD loop is untouched. */
+  if (inside_quote && scanner->cell_start < bytes_read && buff[scanner->cell_start] == (unsigned char)quote_char)
     scanner->quoted |= ZSV_PARSER_QUOTE_UNCLOSED;
   else
     scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
@@ -660,6 +735,7 @@ normal_parse:
 
 #else /* !ZSV_FAST_PARSER_AVAILABLE */
 /* Unsupported platform: fall back to compat/scalar engine */
+#pragma message "Fast parser not available on this platform, falling back to compat/scalar engine"
 static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned char *buff, size_t bytes_read) {
   return zsv_scan_delim(scanner, buff, bytes_read);
 }

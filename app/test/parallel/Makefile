@@ -14,8 +14,39 @@ COLOR_BLUE=\033[1;34m
 COLOR_PINK=\033[1;35m
 COLOR_YELLOW=\033[1;33m
 
-IS_WSL=$(shell grep -qi microsoft /proc/version 2>/dev/null && echo 1 || echo 0)
-ifeq ($(IS_WSL),1)
+CONFIGFILE ?= ../../../config.mk
+ifneq ($(QUIET),1)
+  $(info # Using config file ${CONFIGFILE})
+endif
+include ${CONFIGFILE}
+
+CONFIGFILEPATH=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
+ifeq ($(CONFIGFILEPATH),)
+  $(error Config file ${CONFIGFILE} not found)
+endif
+
+ifeq ($(filter clean,$(MAKECMDGOALS)),)
+ifeq ($(SELECT_EXE),)
+  $(error Missing SELECT_EXE)
+endif
+
+ifeq ($(COUNT_EXE),)
+  $(error Missing COUNT_EXE)
+endif
+
+$(info SELECT_EXE=$(SELECT_EXE))
+$(info COUNT_EXE=$(COUNT_EXE))
+endif
+
+WIN=
+ifeq ($(WIN),)
+  WIN=0
+  ifneq ($(findstring w64,$(CC)),) # e.g. mingw64
+    WIN=1
+  endif
+endif
+
+ifeq ($(WIN),1)
   TMP_DIR=./tmp
 else
   TMP_DIR=${THIS_MAKEFILE_DIR}/tmp
@@ -35,19 +66,6 @@ else
   PREFIX=
   SUFFIX=>${TMP_DIR}/$@.out
   CHECK=
-endif
-
-ifeq ($(filter clean,$(MAKECMDGOALS)),)
-ifeq ($(SELECT_EXE),)
-  $(error Missing SELECT_EXE)
-endif
-
-ifeq ($(COUNT_EXE),)
-  $(error Missing COUNT_EXE)
-endif
-
-$(info SELECT_EXE=$(SELECT_EXE))
-$(info COUNT_EXE=$(COUNT_EXE))
 endif
 
 help:

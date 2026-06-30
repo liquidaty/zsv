@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "zsv.compare.json-redline.v1",
+  "title": "zsv compare --json-redline output (v1)",
+  "type": "object",
+  "required": ["schema","version","generated_at","inputs","keys","options","columns","summary","rows"],
+  "properties": {
+    "schema": {"const": "zsv.compare"},
+    "version": {"const": "1"},
+    "generated_at": {"type": "string"},
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label","path","row_count"],
+        "properties": {
+          "label": {"type": "string"},
+          "path": {"type": "string"},
+          "row_count": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "keys": {"type": "array", "items": {"type": "string"}},
+    "options": {
+      "type": "object",
+      "required": ["tolerance","sort","include_unchanged_rows","include_tolerated"],
+      "properties": {
+        "tolerance": {"oneOf": [{"type": "number"},{"type": "null"}]},
+        "sort": {"type": "boolean"},
+        "include_unchanged_rows": {"type": "boolean"},
+        "include_tolerated": {"type": "boolean"},
+        "require_all_inputs": {"type": "boolean"}
+      }
+    },
+    "columns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name","is_key","in_inputs"],
+        "properties": {
+          "name": {"type": "string"},
+          "is_key": {"type": "boolean"},
+          "in_inputs": {"type": "array", "items": {"type": "integer", "minimum": 0}}
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["rows","cells","by_column","schema"],
+      "properties": {
+        "rows": {
+          "type": "object",
+          "required": ["in_all_inputs","only_in_input_count","with_any_diff"],
+          "properties": {
+            "in_all_inputs": {"type": "integer", "minimum": 0},
+            "only_in_input_count": {"type": "array", "items": {"type": "integer", "minimum": 0}},
+            "with_any_diff": {"type": "integer", "minimum": 0}
+          }
+        },
+        "cells": {
+          "type": "object",
+          "required": ["compared","matched","within_tolerance","differing"],
+          "properties": {
+            "compared": {"type": "integer", "minimum": 0},
+            "matched": {"type": "integer", "minimum": 0},
+            "within_tolerance": {"type": "integer", "minimum": 0},
+            "differing": {"type": "integer", "minimum": 0}
+          }
+        },
+        "by_column": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name","compared","matched","within_tolerance","differing"],
+            "properties": {
+              "name": {"type": "string"},
+              "compared": {"type": "integer", "minimum": 0},
+              "matched": {"type": "integer", "minimum": 0},
+              "within_tolerance": {"type": "integer", "minimum": 0},
+              "differing": {"type": "integer", "minimum": 0}
+            }
+          }
+        },
+        "schema": {
+          "type": "object",
+          "required": ["common","only_in_input"],
+          "properties": {
+            "common": {"type": "array", "items": {"type": "string"}},
+            "only_in_input": {"type": "array", "items": {"type": "array", "items": {"type": "string"}}}
+          }
+        }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {"type": ["string","null"]},
+                {"type": "array", "items": {"type": ["string","null"]}}
+              ]
+            }
+          },
+          {
+            "type": "object",
+            "required": ["data","missing_in"],
+            "properties": {
+              "data": {
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {"type": ["string","null"]},
+                    {"type": "array", "items": {"type": ["string","null"]}}
+                  ]
+                }
+              },
+              "missing_in": {
+                "type": "array",
+                "items": {"type": "integer", "minimum": 0},
+                "description": "indices in ascending order"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

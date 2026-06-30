@@ -45,19 +45,18 @@ BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 export TMP_DIR=${THIS_LIB_BASE}/tmp
 TEST_DATA_DIR=${THIS_LIB_BASE}/data
 
-IS_WSL=$(shell grep -qi microsoft /proc/version 2>/dev/null && echo 1 || echo 0)
-ifeq ($(IS_WSL),1)
+ifeq ($(WIN),1)
   TEST_DATA_DIR=./../../data
   TMP_DIR=./../../tmp
 endif
 
-SOURCES=echo count count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare
+SOURCES=count echo count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare
 ifneq ($(ZSV_EXTRAS),)
   SOURCES+=overwrite
 endif
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
-TESTS=test-blank-leading-rows $(addprefix test-,${SOURCES}) test-rm test-mv test-2json-help test-paste test-flatten-2
+TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-paste test-flatten-2 test-flatten-dupcol
 
 ifeq ($(ZSVSHEET_BUILD),1)
   SOURCES+=sheet
@@ -71,7 +70,34 @@ ifneq ($(ZSV_NO_PARALLEL),1)
   TESTS+=test-parallel
 endif
 TESTS+=test-check
+TESTS+=test-rename-select
 TESTS+=test-quoted-nonstandard
+# The redline tests pin output determinism via SOURCE_DATE_EPOCH and exercise the unified
+# `cli` / `--help-topic` routing. emscripten's getenv does not see host env vars (only a
+# minimal built-in ENV), and that multi-binary orchestration is not set up in the emcc/wasm
+# test sandbox, so register these on native builds only. The --json-redline feature is plain
+# C and is covered on every native platform (cf. the CROSS_COMPILING guard below).
+ifneq ($(CCBN),emcc)
+TESTS+=test-compare-redline
+TESTS+=test-compare-redline-v2
+# test-2db-csv pipes zsv_2json | zsv_2db and orchestrates multiple standalone
+# binaries; like the redline tests, this multi-binary orchestration is not set
+# up in the emcc/wasm sandbox (binaries are *.em.js run via node, not directly
+# executable). The CSV->DB path is plain C and is covered on every native build.
+TESTS+=test-2db-csv
+endif
+
+# Security regression test - only run when not cross-compiling
+ifneq ($(CROSS_COMPILING),1)
+  TESTS+=test-vuln-cve-underflow
+  # ASan-instrumented regression for the zsv_finish->cell_dl OOB. Skipped
+  # if SAN_CC (clang+sanitizers) is unavailable; build target itself runs
+  # the sanitizer.
+  ifneq ($(shell command -v clang 2>/dev/null),)
+    TESTS+=test-vuln-finish-cell-dl-oob
+    TESTS+=test-vuln-fast-nonstandard-oob
+  endif
+endif
 
 COLOR_NONE=\033[0m
 COLOR_GREEN=\033[1;32m
@@ -101,6 +127,17 @@ else
   REDIRECT2=-o
   CMP ?= cmp
   export CMP
+endif
+
+ifeq ($(CCBN),emcc)
+ifeq ($(TESTING),1)
+  NODE_EXISTS := $(shell command -v node 2>/dev/null)
+  ifeq ($(NODE_EXISTS),)
+    $(error "NodeJS not found. Install NodeJS to run wasm tests.")
+  endif
+  PREFIX="node"
+  EXE=.em.js
+endif
 endif
 
 BIG_FILE ?= none
@@ -173,15 +210,94 @@ test-check: test-check-1 test-check-2
 
 test-check-1: ${BUILD_DIR}/bin/zsv_check${EXE}
 	@${TEST_INIT}
-	@$< ${TEST_DATA_DIR}/test/check.csv -o ${TMP_DIR}/$@.out1 && (echo "should have failed!") || true
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/check.csv -o ${TMP_DIR}/$@.out1 && (echo "should have failed!") || true
 	@${CMP} ${TMP_DIR}/$@.out1 expected/$@.out1 && ${TEST_PASS} || ${TEST_FAIL}
-	@$< ${TEST_DATA_DIR}/test/check.csv --display-row -o ${TMP_DIR}/$@.out2 && (echo "should have failed!" && exit 1) || true
+	@${PREFIX} $< ${TEST_DATA_DIR}/test/check.csv --display-row -o ${TMP_DIR}/$@.out2 && (echo "should have failed!" && exit 1) || true
 	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
 
 test-check-2: ${BUILD_DIR}/bin/zsv_check${EXE}
 	@${TEST_INIT}
-	@$< --display-row ${TEST_DATA_DIR}/test/latin1.csv -o ${TMP_DIR}/$@.out && (echo "should have failed!") || true
+	@${PREFIX} $< --display-row ${TEST_DATA_DIR}/test/latin1.csv -o ${TMP_DIR}/$@.out && (echo "should have failed!") || true
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+# Security regression test for integer underflow vulnerability
+test-vuln-cve-underflow: ${TMP_DIR}/test_vuln_cve_underflow
+	@${TEST_INIT}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
+
+${TMP_DIR}/test_vuln_cve_underflow: test_vuln_cve_underflow.c ${BUILD_DIR}/lib/libzsv.a
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} -I../../include test_vuln_cve_underflow.c -L${BUILD_DIR}/lib -lzsv -o $@
+
+# -----------------------------------------------------------------------------
+# Sanitizer-driven reproduction of the integer-underflow investigation.
+#
+#   make test-vuln-asan-repro
+#     Builds sec/repro.c with the parser unity TU under
+#     -fsanitize=address,undefined and runs it against every payload in
+#     sec/poc/. Any sanitizer report aborts the process and fails the target.
+#
+#   make test-vuln-asan-fuzz [FUZZ_ITERS=N]
+#     Builds sec/fuzz.c (a portable in-process random-mutation fuzzer that
+#     does not require libFuzzer or AFL toolchains), seeds it from sec/poc/,
+#     and runs FUZZ_ITERS iterations under ASan+UBSan. Default 1,000,000.
+#
+# Neither target is part of the default `make test`. Both require a clang
+# with sanitizer runtimes (override via `make ... SAN_CC=/path/to/clang`).
+# -----------------------------------------------------------------------------
+SAN_CC ?= clang
+SAN_BUILD_FLAGS = -fsanitize=address,undefined -fno-omit-frame-pointer \
+                  -fno-sanitize-recover=all -O1 -g -std=gnu11 -fsigned-char \
+                  -DZSV_VERSION=\"sec-review\" -DZSV_HAVE_NEON \
+                  -DHAVE_MEMMEM -DHAVE___BUILTIN_EXPECT \
+                  -I${THIS_LIB_BASE}/include -I${THIS_LIB_BASE}/src \
+                  -I${THIS_LIB_BASE}/app/external/sqlite3
+FUZZ_ITERS ?= 1000000
+
+${TMP_DIR}/sec_repro: sec/repro.c ${THIS_LIB_BASE}/src/zsv.c
+	@mkdir -p ${TMP_DIR}
+	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/repro.c -o $@
+
+${TMP_DIR}/sec_fuzz: sec/fuzz.c ${THIS_LIB_BASE}/src/zsv.c
+	@mkdir -p ${TMP_DIR}
+	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/fuzz.c -o $@
+
+${TMP_DIR}/sec_repro_finish_oob: sec/repro_finish_cell_dl_OOB.c ${THIS_LIB_BASE}/src/zsv.c
+	@mkdir -p ${TMP_DIR}
+	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/repro_finish_cell_dl_OOB.c -o $@
+
+${TMP_DIR}/sec_repro_fast_nonstandard_oob: sec/repro_fast_nonstandard_OOB.c ${THIS_LIB_BASE}/src/zsv.c
+	@mkdir -p ${TMP_DIR}
+	@${SAN_CC} ${SAN_BUILD_FLAGS} ${THIS_LIB_BASE}/src/zsv.c sec/repro_fast_nonstandard_OOB.c -o $@
+
+test-vuln-asan-repro: ${TMP_DIR}/sec_repro
+	@${TEST_INIT}
+	@for f in sec/poc/*.bin; do \
+	  printf "  -- %s --\n" "$$f"; \
+	  ${TMP_DIR}/sec_repro "$$f" || ${TEST_FAIL}; \
+	done
+	@${TEST_PASS}
+
+# Tight-buffer regression for the zsv_finish->cell_dl heap-buffer-overflow.
+# The PoC payload is generated programmatically inside the binary so the
+# repro is self-contained.
+test-vuln-finish-cell-dl-oob: ${TMP_DIR}/sec_repro_finish_oob
+	@${TEST_INIT}
+	@${TMP_DIR}/sec_repro_finish_oob && ${TEST_PASS} || ${TEST_FAIL}
+
+# Regression for the FAST SIMD scanner OOB on non-standard CSV (mid-cell
+# quote that fills the buffer with no row terminator). Verifies that:
+#   (a) ASan does not report heap-buffer-overflow in zsv_finish, AND
+#   (b) the fast engine returns zsv_status_nonstandard_csv (detection on).
+test-vuln-fast-nonstandard-oob: ${TMP_DIR}/sec_repro_fast_nonstandard_oob
+	@${TEST_INIT}
+	@${TMP_DIR}/sec_repro_fast_nonstandard_oob && ${TEST_PASS} || ${TEST_FAIL}
+
+test-vuln-asan-fuzz: ${TMP_DIR}/sec_fuzz
+	@${TEST_INIT}
+	@printf "  fuzzing parser for ${FUZZ_ITERS} iterations under ASan+UBSan\n"
+	@${TMP_DIR}/sec_fuzz sec/poc ${FUZZ_ITERS} || ${TEST_FAIL}
+	@${TEST_PASS}
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE} ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
@@ -256,7 +372,7 @@ test-echo-buffsize: ${BUILD_DIR}/bin/zsv_echo${EXE} ${TEST_DATA_DIR}/bigger-than
 
 test-echo-chars: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
-	@${PREFIX} echo '東京都' | $< -u '?' ${REDIRECT} ${TMP_DIR}/$@.out
+	@echo '東京都' | ${PREFIX} $< -u '?' ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-echo-overwrite: ${BUILD_DIR}/bin/zsv_echo${EXE}
@@ -297,39 +413,43 @@ worldcitiespop_mil.tsv: worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2tsv${EXE}
 test-count test-count-pull: test-% : test-1-% test-2-%
 
 ifeq ($(ZSV_NO_PARALLEL),1)
-ifeq ($(HAVE_PCRE2_8),1)
-  HELP_SELECT_LINES=40
-  HELP_COUNT_LINES=6
+  ifeq ($(HAVE_PCRE2_8),1)
+    HELP_SELECT_LINES=45
+    HELP_COUNT_LINES=6
+  else
+    HELP_SELECT_LINES=43
+    HELP_COUNT_LINES=6
+  endif
 else
-  HELP_SELECT_LINES=39
-  HELP_COUNT_LINES=6
-endif
-else
-ifeq ($(HAVE_PCRE2_8),1)
-  HELP_SELECT_LINES=43
-  HELP_COUNT_LINES=8
-else
-  HELP_SELECT_LINES=42
-  HELP_COUNT_LINES=8
-endif
+  ifeq ($(HAVE_PCRE2_8),1)
+    HELP_SELECT_LINES=47
+    HELP_COUNT_LINES=8
+  else
+    HELP_SELECT_LINES=46
+    HELP_COUNT_LINES=8
+  endif
 endif
 test-cli: ${CLI}
 	@${TEST_INIT}
 	@[ "${CLI}" = "" ] && echo 1>&2 'test-cli: missing CLI env var' && exit 1 || exit 0
-	@$< help select 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "select: extracts and outputs specified columns" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_SELECT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@$< help count 2>&1 > ${TMP_DIR}/$@.out
-	@[ "`head -1 ${TMP_DIR}/$@.out | tr -d '\r\n'`" = "Usage: count [options]" ] && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_COUNT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< help select 2>&1 > ${TMP_DIR}/$@.out
+# help/usage now prefixes the command with the host program name (e.g. `zsv select`,
+# or whatever argv[0]/$$ZSV_PROG_NAME resolves to), so match the text as a suffix.
+	@head -1 ${TMP_DIR}/$@.out | tr -d '\r\n' | grep -qE 'select: extracts and outputs specified columns$$' && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_SELECT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< help count 2>&1 > ${TMP_DIR}/$@.out
+	@head -1 ${TMP_DIR}/$@.out | tr -d '\r\n' | grep -qE 'Usage: .*count \[options\]$$' && [ $$(( `cat ${TMP_DIR}/$@.out | wc -l` )) = "${HELP_COUNT_LINES}" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-1-count test-1-count-pull: test-1-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
 	@cat worldcitiespop_mil.csv | ${PREFIX} $< ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/test-1-count.out && ${TEST_PASS} || ${TEST_FAIL}
+	@cat worldcitiespop_mil.csv | ${PREFIX} $< --parser fast ${REDIRECT} ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/test-1-count.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-2-count test-2-count-pull: ${BUILD_DIR}/bin/zsv_count${EXE} ${TEST_DATA_DIR}/test/buffsplit_quote.csv
 	@${TEST_INIT}
 	@for x in 5000 5002 5004 5006 5008 5010 5013 5015 5017 5019 5021 5101 5105 5111 5113 5115 5117 5119 5121 5123 5125 5127 5129 5131 5211 5213 5215 5217 5311 5313 5315 5317 5413 5431 5433 5455 6133; do \
-	$< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv; \
+	${PREFIX} $< -r $$x ${TEST_DATA_DIR}/test/buffsplit_quote.csv; \
 	done > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/test-2-count.out && ${TEST_PASS} || ${TEST_FAIL}
 
@@ -349,6 +469,43 @@ test-merge-select test-merge-select-pull: test-merge-% : ${BUILD_DIR}/bin/zsv_%$
 	@${TEST_INIT}
 	@${PREFIX} $< --merge ${TEST_DATA_DIR}/test/select-merge.csv ${REDIRECT} ${TMP_DIR}/test-merge-%.out
 	@${CMP} ${TMP_DIR}/test-merge-%.out expected/test-merge-select.out && ${TEST_PASS} || ${TEST_FAIL}
+
+# --rename: targeted column rename by name (renames every match) or #N (1-based input index; the only
+# way to target a blank-named or one of several duplicate-named columns). Header-only and streaming:
+# data rows are byte-identical, and a selector matching no column / an out-of-range index is a hard
+# error with non-zero exit. See SPEC-zsv-select-rename.md and the f1-rename-tests.make AC harness.
+test-rename-select: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_INIT}
+	@printf 'id,name,amount\n1,a,10\n2,b,20\n' > ${TMP_DIR}/$@-r.csv
+	@printf 'id,,amount\n1,x,10\n2,y,20\n' > ${TMP_DIR}/$@-blank.csv
+	@printf 'id,name,name,amount\n1,a,b,10\n2,c,d,20\n' > ${TMP_DIR}/$@-dup.csv
+	@h=`${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv | head -1`; [ "$$h" = "id,full_name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#3=amt' ${TMP_DIR}/$@-r.csv | head -1`; [ "$$h" = "id,name,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#2=subtype' ${TMP_DIR}/$@-blank.csv | head -1`; [ "$$h" = "id,subtype,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename 'name=n' ${TMP_DIR}/$@-dup.csv | head -1`; [ "$$h" = "id,n,n,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#2=first_name' ${TMP_DIR}/$@-dup.csv | head -1`; [ "$$h" = "id,first_name,name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< -n --rename '#2=subtype' ${TMP_DIR}/$@-blank.csv -- 1 2 | head -1`; [ "$$h" = "id,subtype" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv | tail -n +2 > ${TMP_DIR}/$@-data.out; tail -n +2 ${TMP_DIR}/$@-r.csv > ${TMP_DIR}/$@-data.exp; ${CMP} ${TMP_DIR}/$@-data.out ${TMP_DIR}/$@-data.exp && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --rename 'nope=x' ${TMP_DIR}/$@-r.csv >/dev/null 2>${TMP_DIR}/$@-err.txt; rc=$$?; grep -q nope ${TMP_DIR}/$@-err.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --rename '#9=x' ${TMP_DIR}/$@-r.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+# hash-escape addendum (AC14-AC18): address columns whose name begins with '#'
+	@printf 'id,#foo,amt\n1,a,10\n' > ${TMP_DIR}/$@-hf.csv
+	@printf 'id,#5,amt\n1,a,10\n' > ${TMP_DIR}/$@-h5.csv
+	@h=`${PREFIX} $< --rename '\#foo=x' ${TMP_DIR}/$@-hf.csv | head -1`; [ "$$h" = "id,x,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#foo=x' ${TMP_DIR}/$@-hf.csv | head -1`; [ "$$h" = "id,x,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '\#5=NEW' ${TMP_DIR}/$@-h5.csv | head -1`; [ "$$h" = "id,NEW,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#2=b' ${TMP_DIR}/$@-r.csv | head -1`; [ "$$h" = "id,b,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --rename '#5=oops' ${TMP_DIR}/$@-h5.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+# unmatched escaped selector reports the RESOLVED literal name (#9), not the raw arg (\#9)
+	@${PREFIX} $< --rename '\#9=x' ${TMP_DIR}/$@-hf.csv >/dev/null 2>${TMP_DIR}/$@-err2.txt; rc=$$?; grep -q '"#9"' ${TMP_DIR}/$@-err2.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+# F1b: a header-phase --rename error must NOT leave a 0-byte -o output file behind
+	@rm -f ${TMP_DIR}/$@-oerr.csv; ${PREFIX} $< --rename '#9=x' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-oerr.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && [ ! -f ${TMP_DIR}/$@-oerr.csv ] && ${TEST_PASS} || ${TEST_FAIL}
+# F1b: same for a bad column selector (the deferred-open fix covers all header-phase errors)
+	@rm -f ${TMP_DIR}/$@-oselerr.csv; ${PREFIX} $< ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-oselerr.csv -- nope >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && [ ! -f ${TMP_DIR}/$@-oselerr.csv ] && ${TEST_PASS} || ${TEST_FAIL}
+# F1b: a pre-existing -o target is preserved (not truncated) on a header-phase error
+	@printf 'KEEP\n' > ${TMP_DIR}/$@-okeep.csv; ${PREFIX} $< --rename '#9=x' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-okeep.csv >/dev/null 2>&1; g=`cat ${TMP_DIR}/$@-okeep.csv 2>/dev/null`; [ "$$g" = "KEEP" ] && ${TEST_PASS} || ${TEST_FAIL}
+# F1b: a successful --rename with -o still writes the file with the renamed header
+	@rm -f ${TMP_DIR}/$@-ook.csv; ${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-ook.csv >/dev/null 2>&1; h=`head -1 ${TMP_DIR}/$@-ook.csv 2>/dev/null`; [ "$$h" = "id,full_name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-quotebuff-select test-quotebuff-select-pull: test-quotebuff-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -432,7 +589,7 @@ test-10-select-pull test-search-select-pull test-regex-select-pull test-onlycrlf
 
 test-11-select test-11-select-pull: test-11-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@${PREFIX} (echo "A1,B1" | $< --header-row "column1,column2") > ${TMP_DIR}/$@.out
+	@echo "A1,B1" | ${PREFIX} $< --header-row "column1,column2" > ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/test-11-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-12-select test-12-select-pull: test-12-% : ${BUILD_DIR}/bin/zsv_%${EXE}
@@ -442,7 +599,7 @@ test-12-select test-12-select-pull: test-12-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 
 test-13-select test-13-select-pull: test-13-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@(${PREFIx} $< --header-row-span 2 ${TEST_DATA_DIR}/test/select-13.csv | head -1 > ${TMP_DIR}/$@.out && \
+	@(${PREFIX} $< --header-row-span 2 ${TEST_DATA_DIR}/test/select-13.csv | head -1 > ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/test-13-select.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-search-select: test-search-% : ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv
@@ -528,7 +685,7 @@ test-stack: test-stack1 test-stack2 test-stack3 test-stack4 test-stack-filename
 
 test-stack-filename: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${TEST_INIT}
-	@${PREFIX} (cd ${TEST_DATA_DIR} && $< --prepend-filename stack[12].csv ) ${REDIRECT} ${TMP_DIR}/$@.out
+	@cd ${TEST_DATA_DIR} && ${PREFIX} $< --prepend-filename stack[12].csv ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-stack1: ${BUILD_DIR}/bin/zsv_stack${EXE}
@@ -569,6 +726,16 @@ test-flatten-2 : test-%-2: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@( ( ! [ -s "${TEST_DATA_DIR}/test/$*.csv" ] ) && echo "No test input for $*") || \
 	(${PREFIX} $< --row-id 'Loan Number' -- 'Current Loan Amount'=array 'Current Interest Rate=json' < "${TEST_DATA_DIR}/test/$*-2.csv" ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+# flatten is a producer: when the row-id column name also occurs as an output value
+# it would otherwise emit a duplicate header (a,a,b). Ensure it disambiguates to
+# a,a_2,b by default and notes the rename on stderr (renames are never silent).
+test-flatten-dupcol: ${BUILD_DIR}/bin/zsv_flatten${EXE}
+	@${TEST_INIT}
+	@printf 'a,key,val\n1,a,x\n1,b,y\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< ${TMP_DIR}/$@.csv --row-id a --col-name key -V val > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out \
+	  && grep -q 'renamed duplicate column "a"' ${TMP_DIR}/$@.err && ${TEST_PASS} || ${TEST_FAIL}
 
 test-pretty: test-pretty-1 test-pretty-escape-chars
 
@@ -628,7 +795,7 @@ test-serialize : test-%: ${BUILD_DIR}/bin/zsv_%${EXE} test-serialize-quoted test
 	@(${PREFIX} $< -p < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@-2.out && \
 	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
 
-test-sql: test-sql2 test-sql3 test-sql4 test-sql5
+test-sql: test-sql2 test-sql3 test-sql4 test-sql5 test-sql-dupcol test-sql-dupcol-rename test-sql-dupcol-msg
 test-sql2: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@echo ${ARGS-sql} > ${TMP_DIR}/$@.sql
@@ -651,19 +818,125 @@ test-sql5: ${BUILD_DIR}/bin/zsv_sql${EXE} # test blank rows
 	@(${PREFIX} $< ${TMP_DIR}/1.csv 'select * from data' ${REDIRECT1} ${TMP_DIR}/$@.out)
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
+# Regression for the duplicate-column-name abort: input whose header has the same
+# name twice makes SQLite reject the CREATE TABLE. zsv sql must report the error and
+# exit *gracefully* (normal nonzero code), not die by signal (SIGABRT -> 128+6=134),
+# which is what the pre-fix double-free in zsv_sqlite3_add_csv() caused. We assert the
+# exit code is a graceful failure (nonzero and < 128) rather than a signal death, so
+# the test stays valid regardless of the exact error message wording.
+test-sql-dupcol: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select 1 from data limit 1' > ${TMP_DIR}/$@.out 2>&1; \
+	  rc=$$?; \
+	  printf '  exit=%s\n' "$$rc"; \
+	  [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+
+# --rename-duplicate-columns makes repeated header names unique (a,b,a -> a,b,a_2)
+# so input with duplicate columns loads successfully instead of erroring. The renamed
+# data goes to stdout; each rename is also noted on stderr (renames are never silent).
+test-sql-dupcol-rename: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< --rename-duplicate-columns ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out \
+	  && grep -q 'renamed duplicate column "a"' ${TMP_DIR}/$@.err && ${TEST_PASS} || ${TEST_FAIL}
+
+# Without the flag, a duplicate header is detected at parse time and reported with
+# a single actionable message naming the column, its 1-based positions, and the flag
+# to fix it (rather than SQLite's generic "bad schema"), while still exiting gracefully.
+test-sql-dupcol-msg: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2>&1; \
+	  rc=$$?; \
+	  printf '  exit=%s\n' "$$rc"; \
+	  grep -q 'duplicate column name "a" at columns 1 and 3; pass --rename-duplicate-columns' ${TMP_DIR}/$@.out \
+	    && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+
 ${BUILD_DIR}/bin/zsv_%${EXE}:
+	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+
+# The unified `cli` (zsv) multitool is built by the parent app/Makefile, not by the
+# zsv_% pattern rule above. test-compare-redline-v2 exercises `cli help compare <topic>`
+# routing, so the standalone suite must be able to build it on a clean tree (CI) the same
+# way it builds the zsv_* binaries -- by delegating to the parent.
+${BUILD_DIR}/bin/cli${EXE}:
 	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
-	@${BUILD_DIR}/bin/zsv_select${EXE} -H 24999 -N worldcitiespop_mil.csv > ${TMP_DIR}/$@.csv
-	@${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@.json
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} -H 24999 -N worldcitiespop_mil.csv > ${TMP_DIR}/$@.csv
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@.json
 	@(${PREFIX} $< ${ARGS-$*} -o ${TMP_DIR}/$@.db --table data --overwrite < ${TMP_DIR}/test-2db.json ${REDIRECT1} ${TMP_DIR}/$@.out)
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 	@sqlite3 ${TMP_DIR}/$@.db .schema | sed 's/ IF NOT EXISTS//' | sed 's/"data"/data/g' > ${TMP_DIR}/$@.out2
 	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
 	@sqlite3 ${TMP_DIR}/$@.db "select count(*) from data" > ${TMP_DIR}/$@.out3
 	@${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL}
+
+# test-2db-csv: build a SQLite3 DB directly from CSV input (no JSON round-trip).
+# Covers basic conversion, legacy-pipeline agreement, --table, extension
+# detection / overrides, .tsv TAB, edge cases (header-only, ragged, empty &
+# duplicate headers, quoted fields) and error cases.
+DB2=${BUILD_DIR}/bin/zsv_2db${EXE}
+test-2db-csv: ${BUILD_DIR}/bin/zsv_2db${EXE} ${BUILD_DIR}/bin/zsv_2json${EXE}
+	@${TEST_INIT}
+	@# --- fixtures ---
+	@printf 'name,age,city\nAlice,30,NYC\nBob,25,LA\nCarol,40,SF\n' > ${TMP_DIR}/$@-basic.csv
+	@# 1a. basic CSV -> DB: schema
+	@(${PREFIX} ${DB2} ${TMP_DIR}/$@-basic.csv -o ${TMP_DIR}/$@-basic.db --overwrite ${REDIRECT1} ${TMP_DIR}/$@.run.out)
+	@sqlite3 ${TMP_DIR}/$@-basic.db .schema | sed 's/ IF NOT EXISTS//' > ${TMP_DIR}/$@.schema.out
+	@${CMP} ${TMP_DIR}/$@.schema.out expected/$@.schema.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 1b. row count
+	@sqlite3 ${TMP_DIR}/$@-basic.db 'select count(*) from mytable' > ${TMP_DIR}/$@.count.out
+	@${CMP} ${TMP_DIR}/$@.count.out expected/$@.count.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 1c. data
+	@sqlite3 ${TMP_DIR}/$@-basic.db 'select * from mytable' > ${TMP_DIR}/$@.data.out
+	@${CMP} ${TMP_DIR}/$@.data.out expected/$@.data.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 1d. agreement with the legacy 2json | 2db pipeline (same bytes in, same rows out)
+	@${BUILD_DIR}/bin/zsv_2json${EXE} --database ${TMP_DIR}/$@-basic.csv | ${DB2} -o ${TMP_DIR}/$@-legacy.db --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-legacy.db 'select * from mytable' > ${TMP_DIR}/$@.legacy.out
+	@${CMP} ${TMP_DIR}/$@.legacy.out ${TMP_DIR}/$@.data.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 2. --table honored for CSV input
+	@${DB2} ${TMP_DIR}/$@-basic.csv -o ${TMP_DIR}/$@-tbl.db --table people --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-tbl.db 'select count(*) from people' > ${TMP_DIR}/$@.tbl.out
+	@${CMP} ${TMP_DIR}/$@.tbl.out expected/$@.count.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 3a. extension override: --from-csv forces CSV on a .json-named file
+	@cp ${TMP_DIR}/$@-basic.csv ${TMP_DIR}/$@-asjson.json
+	@${DB2} --from-csv ${TMP_DIR}/$@-asjson.json -o ${TMP_DIR}/$@-csvjson.db --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-csvjson.db 'select count(*) from mytable' > ${TMP_DIR}/$@.csvjson.out
+	@${CMP} ${TMP_DIR}/$@.csvjson.out expected/$@.count.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 3b. .tsv auto-detects CSV and sets TAB delimiter
+	@printf 'a\tb\tc\n1\t2\t3\n' > ${TMP_DIR}/$@-x.tsv
+	@${DB2} ${TMP_DIR}/$@-x.tsv -o ${TMP_DIR}/$@-tsv.db --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-tsv.db 'select * from mytable' > ${TMP_DIR}/$@.tsv.out
+	@${CMP} ${TMP_DIR}/$@.tsv.out expected/$@.tsv.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 4a. header-only input -> empty table, exit 0
+	@printf 'h1,h2,h3\n' > ${TMP_DIR}/$@-honly.csv
+	@${DB2} ${TMP_DIR}/$@-honly.csv -o ${TMP_DIR}/$@-honly.db --overwrite >/dev/null 2>&1 && echo "rows=0 exit=$$?" > ${TMP_DIR}/$@.honly.out
+	@printf 'rows=0 exit=0\n' | ${CMP} - ${TMP_DIR}/$@.honly.out && ${TEST_PASS} || ${TEST_FAIL}
+	@sqlite3 ${TMP_DIR}/$@-honly.db 'select count(*) from mytable' > ${TMP_DIR}/$@.honlycount.out
+	@printf '0\n' | ${CMP} - ${TMP_DIR}/$@.honlycount.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 4b. empty header cell -> synthesized column_<n>; duplicate headers -> de-duped
+	@printf 'a,,c,c\n1,2,3,4\n' > ${TMP_DIR}/$@-edge.csv
+	@${DB2} ${TMP_DIR}/$@-edge.csv -o ${TMP_DIR}/$@-edge.db --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-edge.db .schema | sed 's/ IF NOT EXISTS//' > ${TMP_DIR}/$@.edge.out
+	@${CMP} ${TMP_DIR}/$@.edge.out expected/$@.edge.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 4c. ragged rows (short pads with empty, long truncates to header width)
+	@printf 'a,b,c\n1,2\n3,4,5,6\n' > ${TMP_DIR}/$@-rag.csv
+	@${DB2} ${TMP_DIR}/$@-rag.csv -o ${TMP_DIR}/$@-rag.db --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-rag.db 'select * from mytable' > ${TMP_DIR}/$@.rag.out
+	@${CMP} ${TMP_DIR}/$@.rag.out expected/$@.rag.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 4d. quoted fields with embedded comma and newline (round-trip via the parser)
+	@printf 'a,b\n"x,y","l1\nl2"\n' > ${TMP_DIR}/$@-q.csv
+	@${DB2} ${TMP_DIR}/$@-q.csv -o ${TMP_DIR}/$@-q.db --overwrite >/dev/null 2>&1
+	@sqlite3 ${TMP_DIR}/$@-q.db "select a || '|' || b from mytable" > ${TMP_DIR}/$@.q.out
+	@printf 'x,y|l1\nl2\n' | ${CMP} - ${TMP_DIR}/$@.q.out && ${TEST_PASS} || ${TEST_FAIL}
+	@# 5. error cases (each must exit non-zero)
+	@(! ${DB2} ${TMP_DIR}/$@-basic.csv >/dev/null 2>&1) && ${TEST_PASS} || ${TEST_FAIL}
+	@(! ${DB2} ${TMP_DIR}/$@-basic.csv -o ${TMP_DIR}/$@-basic.db >/dev/null 2>&1) && ${TEST_PASS} || ${TEST_FAIL}
+	@(! ${DB2} --from-csv --from-json ${TMP_DIR}/$@-basic.csv -o ${TMP_DIR}/$@-z.db --overwrite >/dev/null 2>&1) && ${TEST_PASS} || ${TEST_FAIL}
 
 test-jq: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -699,13 +972,17 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} 
 	@(${PREFIX} $< --object --no-empty < ${TEST_DATA_DIR}/quoted4.csv ${REDIRECT1} ${TMP_DIR}/$@.out6 && \
 	${CMP} ${TMP_DIR}/$@.out6 expected/$@.out6 && ${TEST_PASS} || ${TEST_FAIL})
 
-	@${BUILD_DIR}/bin/zsv_select${EXE} -H 1999 -N worldcitiespop_mil.csv | ${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" | ${BUILD_DIR}/bin/zsv_2db${EXE} -o ${TMP_DIR}/$@.db --table data --overwrite && (${PREFIX} $< --from-db ${TMP_DIR}/$@.db ${REDIRECT1} ${TMP_DIR}/$@.out7 && ${CMP} ${TMP_DIR}/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} -H 1999 -N worldcitiespop_mil.csv | \
+	${PREFIX} ${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" | \
+	${PREFIX} ${BUILD_DIR}/bin/zsv_2db${EXE} -o ${TMP_DIR}/$@.db --table data --overwrite
+	@(${PREFIX} $< --from-db ${TMP_DIR}/$@.db ${REDIRECT1} ${TMP_DIR}/$@.out7 && \
+	${CMP} ${TMP_DIR}/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
 #	ajv validate --strict-tuples=false -s ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json -d expected/$@.out7.json [suffix must be json]
 
 test-2json-help: test-%-help: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
-	@[ "`$< -h | wc -l`" -gt 15 ] && ${TEST_PASS} || ${TEST_FAIL} # check output nonempty
-	@$< -h >/dev/null && ${TEST_PASS} || ${TEST_FAIL} # check exit code
+	@[ "`${PREFIX} $< -h | wc -l`" -gt 15 ] && ${TEST_PASS} || ${TEST_FAIL} # check output nonempty
+	@${PREFIX} $< -h >/dev/null && ${TEST_PASS} || ${TEST_FAIL} # check exit code
 
 test-desc: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -767,6 +1044,19 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@(${PREFIX} $< ../../data/compare/t1.csv ../../data/compare/t2.csv --add AccentCity --sort -k country -k city ${REDIRECT1} ${TMP_DIR}/$@.out10 && \
 	${CMP} ${TMP_DIR}/$@.out10 expected/$@.out10 && ${TEST_PASS} || ${TEST_FAIL})
 
+	@# --require-all-inputs: ignore rows whose key is missing from any input (inner join);
+	@# keys 3 (only in a) and 4 (only in b) are dropped, the key-2 value diff is retained
+	@(${PREFIX} $< -k id --require-all-inputs compare/reqall_a.csv compare/reqall_b.csv ${REDIRECT1} ${TMP_DIR}/$@.out11 && \
+	${CMP} ${TMP_DIR}/$@.out11 expected/$@.out11 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --intersect is an alias for --require-all-inputs (byte-identical output)
+	@(${PREFIX} $< -k id --intersect compare/reqall_a.csv compare/reqall_b.csv ${REDIRECT1} ${TMP_DIR}/$@.out11b && \
+	${CMP} ${TMP_DIR}/$@.out11b expected/$@.out11 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --require-all-inputs in JSON mode
+	@(${PREFIX} $< -k id --require-all-inputs --json compare/reqall_a.csv compare/reqall_b.csv ${REDIRECT1} ${TMP_DIR}/$@.out12 && \
+	${CMP} ${TMP_DIR}/$@.out12 expected/$@.out12 && ${TEST_PASS} || ${TEST_FAIL})
+
 	@# --columns: explicit ranges
 	@(${PREFIX} $< --columns 1-3v4-6 compare/colrange1.csv ${REDIRECT1} ${TMP_DIR}/$@-colrange.out1 && \
 	${CMP} ${TMP_DIR}/$@-colrange.out1 expected/$@-colrange.out1 && ${TEST_PASS} || ${TEST_FAIL})
@@ -796,6 +1086,8 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@# --columns: error - invalid spec
 	@($< --columns bad compare/colrange1.csv >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
 
+include test-compare-redline.mk
+
 test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-sheet-cleanup test-sheet-all
 
 test-sheet-cleanup:
@@ -803,11 +1095,16 @@ test-sheet-cleanup:
 
 test-sheet-all: \
 	test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 \
-	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-subcommand test-sheet-prop-cmd-opt \
+	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-15 test-sheet-16 test-sheet-17 \
+	test-sheet-18 \
+	test-sheet-subcommand \
+	test-sheet-prop-cmd-opt \
 	test-sheet-pivot-1 \
 	test-sheet-pivot-V \
 	test-sheet-sqlfilter-1 \
+	test-sheet-sqlfilter-dupcol \
 	test-sheet-errors-1
+	@rm -f tmux-*.log zSE*
 	@(for SESSION in $^; do ! tmux -L "$$SESSION" kill-server 2>/dev/null || true; done && ${TEST_PASS} || ${TEST_FAIL})
 
 TMUX_TERM=xterm-256color
@@ -871,9 +1168,6 @@ test-sheet-7: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 
 test-sheet-8: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
-ifeq ($(IS_WSL),1)
-	@${TEST_SKIP}
-else
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
 	tmux -L $@ new-session -x 160 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
@@ -883,7 +1177,6 @@ else
 	${EXPECT} $@ filtered && \
 	tmux -L $@ send-keys -t $@ "G" "C-u" "k" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
-endif
 
 test-sheet-9: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
@@ -898,9 +1191,6 @@ test-sheet-9: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 
 test-sheet-10: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.tsv ${TIMINGS_CSV}
 	@${TEST_INIT}
-ifeq ($(IS_WSL),1)
-	@${TEST_SKIP}
-else
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
 	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< -t worldcitiespop_mil.tsv" && \
@@ -909,7 +1199,6 @@ else
 	${EXPECT} $@ filtered && \
 	tmux -L $@ send-keys -t $@ "G" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
-endif
 
 test-sheet-11: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
 	@${TEST_INIT}
@@ -958,6 +1247,43 @@ test-sheet-15: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ send-keys -t $@ "G" && \
 	${EXPECT} $@ bottom && \
 	tmux -L $@ send-keys -t $@ -N 4096 "k" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-16: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< ${TEST_DATA_DIR}/test/header-only.csv" && \
+	${EXPECT} $@ indexed && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-17: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 50 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ "500G" && \
+	${EXPECT} $@ 500g && \
+	tmux -L $@ send-keys -t $@ "0G" && \
+	${EXPECT} $@ 0g && \
+	tmux -L $@ send-keys -t $@ "1G" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# Find column ("|") then find-next-column ("\") cycles through every header that
+# matches the search term. "it" matches City, AccentCity and Latitude; the footer
+# shows the selected cell value, confirming the cursor lands on each in turn.
+test-sheet-18: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ "|" "it" ENTER && \
+	${EXPECT} $@ find-col && \
+	tmux -L $@ send-keys -t $@ "\\" && \
+	${EXPECT} $@ next-1 && \
+	tmux -L $@ send-keys -t $@ "\\" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-subcommand: \
@@ -1049,7 +1375,23 @@ test-sheet-pivot-V: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	${EXPECT} $@ drilldown && \
 	${TEST_PASS} || ${TEST_FAIL})
 
-test-sheet-sqlfilter: test-sheet-sqlfilter-1
+test-sheet-sqlfilter: test-sheet-sqlfilter-1 test-sheet-sqlfilter-dupcol
+
+# Exercises the capability sqlfilter's dedupe-on enables: a file whose header
+# repeats a column name can still be filtered in sheet. The initial view shows the
+# raw duplicate header (Country, City, Country); after :where, sqlfilter builds the
+# underlying table -- disambiguating the repeat to Country_2 -- and returns the
+# filtered rows. Pre-change this filter could not build its table at all.
+test-sheet-sqlfilter-dupcol: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'Country,City,Country\nus,new york,USA\nfr,paris,France\nde,berlin,Germany\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":where" ENTER "City like 'b%'" ENTER && \
+	${EXPECT} $@ filter && \
+	${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-sqlfilter-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}

@@ -9,20 +9,37 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [actions, c]
+        include:
+          - language: actions
+            config: |
+              paths:
+                - .github/workflows
+          - language: c
+            config: |
+              paths:
+                - src
+                - include
+                - app
+              paths-ignore:
+                - app/external
+
+    name: ${{ matrix.language }}
 
     permissions:
       security-events: write
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
       with:
-        languages: ${{ matrix.language }}
         build-mode: none
+        languages: ${{ matrix.language }}
+        config: ${{ matrix.config }}
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v4
+      with:
+        category: "/language:${{ matrix.language }}"

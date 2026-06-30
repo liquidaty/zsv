@@ -1,0 +1,5 @@
+CREATE TABLE "mytable" (
+  "a",
+  "column_2",
+  "c",
+  "c_2");

@@ -11,12 +11,15 @@
 #include <stdlib.h>
 #include <math.h>
 #include <limits.h>
+#include <time.h>
 
 #include <jsonwriter.h>
 
 #include <sqlite3.h>
 extern sqlite3_module CsvModule;
 
+#include <zsv/utils/compiler.h>
+#include <zsv/utils/mem.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/writer.h>
 
@@ -32,6 +35,11 @@ extern sqlite3_module CsvModule;
 #include "utils/column_range.h"
 
 #define ZSV_COMPARE_OUTPUT_TYPE_JSON 'j'
+#define ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE 'e'
+
+#define ZSV_COMPARE_REDLINE_VERSION "1"
+
+#include "compare_redline.h"
 
 // Column name lookup for --columns: searches parser header row
 struct zsv_compare_colname_lookup_ctx {
@@ -228,9 +236,29 @@ static const unsigned char *zsv_compare_combined_key_names(struct zsv_compare_da
   return data->combined_key_names;
 }
 
+static void zsv_compare_collect_row(struct zsv_compare_data *data, unsigned last_ix);
+
+// True if a and b both parse as numbers differing by less than the configured tolerance
+static int zsv_compare_within_tolerance(struct zsv_compare_data *data, struct zsv_cell a, struct zsv_cell b) {
+  if (!(data->tolerance.value > 0) || a.len >= ZSV_COMPARE_MAX_NUMBER_BUFF_LEN ||
+      b.len >= ZSV_COMPARE_MAX_NUMBER_BUFF_LEN)
+    return 0;
+  char sa[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN], sb[ZSV_COMPARE_MAX_NUMBER_BUFF_LEN];
+  double da, db;
+  memcpy(sa, a.str ? a.str : (const unsigned char *)"", a.len);
+  sa[a.len] = '\0';
+  memcpy(sb, b.str ? b.str : (const unsigned char *)"", b.len);
+  sb[b.len] = '\0';
+  return !zsv_strtod_exact(sa, &da) && !zsv_strtod_exact(sb, &db) && fabs(da - db) < data->tolerance.value;
+}
+
 static void zsv_compare_print_row(struct zsv_compare_data *data,
                                   const unsigned last_ix // last input ix in inputs_to_sort
 ) {
+  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
+    zsv_compare_collect_row(data, last_ix);
+    return;
+  }
   struct zsv_compare_input *key_input = data->inputs_to_sort[0];
 
   // for now, output format is simple: for each value,
@@ -290,21 +318,9 @@ static void zsv_compare_print_row(struct zsv_compare_data *data,
           output_col = input->output_colnames[input_col_ix];
         values[input_ix] = data->get_cell(input, input_col_ix);
         if (i > 0 && !different &&
-            data->cmp(data->cmp_ctx, values[first_input_ix], values[input_ix], data, input_col_ix)) {
+            data->cmp(data->cmp_ctx, values[first_input_ix], values[input_ix], data, input_col_ix) &&
+            !zsv_compare_within_tolerance(data, values[first_input_ix], values[input_ix]))
           different = 1;
-          if (data->tolerance.value && values[first_input_ix].len < ZSV_COMPARE_MAX_NUMBER_BUFF_LEN &&
-              values[input_ix].len < ZSV_COMPARE_MAX_NUMBER_BUFF_LEN) {
-            // check if both are numbers with a difference less than the given tolerance
-            double d1, d2;
-            memcpy(data->tolerance.str1, values[first_input_ix].str, values[first_input_ix].len);
-            data->tolerance.str1[values[first_input_ix].len] = '\0';
-            memcpy(data->tolerance.str2, values[input_ix].str, values[input_ix].len);
-            data->tolerance.str2[values[input_ix].len] = '\0';
-            if (!zsv_strtod_exact(data->tolerance.str1, &d1) && !zsv_strtod_exact(data->tolerance.str2, &d2) &&
-                fabs(d1 - d2) < data->tolerance.value)
-              different = 0;
-          }
-        }
       }
     }
 
@@ -356,7 +372,19 @@ static enum zsv_compare_status zsv_compare_set_inputs(struct zsv_compare_data *d
 
 static int zsv_compare_cell(void *ctx, struct zsv_cell c1, struct zsv_cell c2, void *data, unsigned col_ix);
 
+/*
+ * Redline-mode JSON output (`--json-redline`); #included as part of this translation
+ * unit. See compare_redline.h for the data model.
+ */
+#include "compare_redline.c"
+
 static void zsv_compare_output_begin(struct zsv_compare_data *data) {
+  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
+    if (!(data->writer.handle.jsw = jsonwriter_new(stdout)))
+      data->status = zsv_compare_status_memory;
+    /* Emit nothing yet — all output deferred to zsv_compare_emit_redline */
+    return;
+  }
   if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
     if (!(data->writer.handle.jsw = jsonwriter_new(stdout))) // to do: data->out
       data->status = zsv_compare_status_memory;
@@ -410,6 +438,13 @@ static void zsv_compare_output_begin(struct zsv_compare_data *data) {
 }
 
 static void zsv_compare_output_end(struct zsv_compare_data *data) {
+  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
+    if (data->writer.handle.jsw)
+      zsv_compare_emit_redline(data);
+    if (data->status == zsv_compare_status_no_more_input)
+      data->status = zsv_compare_status_ok;
+    return;
+  }
   if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
     if (data->writer.handle.jsw)
       jsonwriter_end(data->writer.handle.jsw);
@@ -474,6 +509,12 @@ zsv_compare_handle zsv_compare_new(void) {
   z->get_column_name = zsv_compare_get_unsorted_cell;
   z->get_column_count = zsv_compare_get_unsorted_colcount;
   z->input_init = input_init_unsorted;
+
+  z->output_begin = zsv_compare_output_begin;
+  z->output_end = zsv_compare_output_end;
+  /* Unchanged rows are included by default; --only-changed-rows clears this */
+  z->writer.include_unchanged_rows = 1;
+  /* z->parse_opt left NULL: stock zsv has no custom options */
   return z;
 }
 
@@ -498,11 +539,15 @@ static enum zsv_compare_status zsv_compare_init_sorted(struct zsv_compare_data *
 }
 
 static void zsv_compare_data_free(struct zsv_compare_data *data) {
-  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
+  zsv_compare_redline_free(data->redline, data->input_count, data->output_colcount);
+  data->redline = NULL;
+  if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON || data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
     if (data->writer.handle.jsw)
       jsonwriter_delete(data->writer.handle.jsw);
   } else
     zsv_writer_delete(data->writer.handle.csv);
+  if (data->writer.tmp) /* --redline scratch (closed here on every path) */
+    fclose(data->writer.tmp);
 
   for (unsigned i = 0; i < data->input_count; i++)
     zsv_compare_input_free(&data->inputs[i]);
@@ -634,8 +679,11 @@ static enum zsv_compare_status zsv_compare_next(struct zsv_compare_data *data) {
     break;
   }
 
-  // print row
-  zsv_compare_print_row(data, last);
+  // print row, unless --require-all-inputs was given and this row's key is not present in every input.
+  // last + 1 == input_count means the group with the smallest key spans all inputs (qsort places any
+  // not-loaded/done inputs after the loaded ones, so a full span implies every input matched this key).
+  if (!data->require_all_inputs || last + 1 == data->input_count)
+    zsv_compare_print_row(data, last);
 
   // reset row_loaded
   for (unsigned tmp = 0; tmp <= last; tmp++)
@@ -644,9 +692,13 @@ static enum zsv_compare_status zsv_compare_next(struct zsv_compare_data *data) {
   return zsv_compare_status_ok;
 }
 
+/* Help topics for `zsv help compare <topic>` (see compare_help.c). */
+#include "compare_help.c"
+
+const char **zsv_compare_extra_usage = NULL;
 static int compare_usage(void) {
   static const char *usage[] = {
-    "Usage: compare [options] <file.csv>...",
+    "Usage: " ZSV_USAGE_PROG " " APPNAME " [options] <file.csv>...",
     "",
     "Options:",
     "  -h,--help          : show usage",
@@ -654,6 +706,7 @@ static int compare_usage(void) {
     "                       can be specified multiple times",
     "  -a,--add <colname> : specify an additional column to output",
     "                       will use the [first input] source",
+    "                       cannot be combined with --json-redline",
     "  --sort             : sort on keys before comparing",
     "  --sort-in-memory   : for sorting,  use in-memory instead of temporary db",
     "                       (see https://www.sqlite.org/inmemorydb.html)",
@@ -664,12 +717,23 @@ static int compare_usage(void) {
     "  --json             : output as JSON",
     "  --json-compact     : output as compact JSON",
     "  --json-object      : output as an array of objects",
+    "  --json-redline     : output self-contained redline JSON",
+    "                       (see `" ZSV_USAGE_PROG " help " APPNAME " json-redline` for schema)",
+    NULL,
+  };
+  static const char *usage2[] = {
+    "  --only-changed-rows: (with --json-redline) emit only rows that have a diff",
+    "                       (by default, unchanged/matched rows are also emitted)",
+    "  --include-tolerated: (with --json-redline) emit tolerated diffs as arrays",
     "  --columns <spec>   : compare column ranges within a single file",
     "                       spec uses 'v' or 'vs' to separate ranges, '-' or ':'",
     "                       as range delimiters. 1-based columns.",
     "                       e.g. --columns 2v15 or --columns \"2-14 vs 15-27\"",
     "  --print-key-colname: when outputting key column diffs,",
     "                       print column name instead of <key>",
+    "  --require-all-inputs: ignore rows whose key is not present in every input,",
+    "                       i.e. compare only the intersection of keys (an inner",
+    "                       join across all inputs). Alias: --intersect",
     "  -e,--exit-code     : return < 0 on error, else the number of differences found",
     "",
     "NOTES",
@@ -682,7 +746,8 @@ static int compare_usage(void) {
     "  If one or more key is specified, each input is assumed to already be",
     "  lexicographically sorted in ascending order; this is a necessary condition",
     "  for the output to be correct (unless the --sort option is used). However, it",
-    "  is not required for each input to contain the same population of row keys",
+    "  is not required for each input to contain the same population of row keys.",
+    "  (Use --require-all-inputs to ignore rows whose key is missing from any input.)",
     "",
     "  The --sort option uses sqlite3 (unindexed) sort and is intended to be a",
     "  convenience rather than performance feature. If you need high performance",
@@ -690,22 +755,49 @@ static int compare_usage(void) {
     "  superior. For handling quoted data, `2tsv` can be used to convert to a delimited",
     "  format without quotes, that can be directly parsed with common UNIX utilities",
     "  (such as `sort`), and `select --unescape` can be used to convert back",
+    "",
+    "  In --json-redline mode, the `generated_at` timestamp honors the",
+    "  SOURCE_DATE_EPOCH environment variable (UNIX epoch seconds) so that output",
+    "  can be made reproducible; if it is unset or invalid, the current time is used.",
     NULL,
   };
 
-  for (size_t i = 0; usage[i]; i++)
-    printf("%s\n", usage[i]);
+  zsv_print_usage(usage);
+  if (zsv_compare_extra_usage != NULL)
+    zsv_print_usage(zsv_compare_extra_usage);
+  zsv_print_usage(usage2);
+
+  static const char *topics[] = {
+    "",
+    "Help topics:",
+    "  json-redline       : --json-redline output format (schema, narrative)",
+    "  json-redline-schema: --json-redline output format (JSON Schema, Draft 2020-12)",
+    "",
+    "  Usage: " ZSV_USAGE_PROG " help " APPNAME " <topic>",
+    NULL,
+  };
+  zsv_print_usage(topics);
 
   return 0;
 }
 
-// TO DO: consolidate w sql.c, move common code to utils/db.c
+/* Customization hook: invoked once on the freshly-created handle so a host can
+ * override the output_begin/output_end/parse_opt members (e.g. to add --redline
+ * rendering). No-op in stock zsv. */
+#ifndef ZSV_COMPARE_CUSTOMIZE
+#define ZSV_COMPARE_CUSTOMIZE(data) ((void)(data))
+#endif
+
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
                                struct zsv_prop_handler *custom_prop_handler) {
-  // See sql.c re passing options to sqlite3 when sorting is used
   if (argc < 2 || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
     compare_usage();
     return argc < 2 ? 1 : 0;
+  }
+
+  for (int i = 1; i < argc - 1; i++) {
+    if (!strcmp(argv[i], "--help-topic"))
+      return zsv_compare_print_help_topic(argv[i + 1]);
   }
 
   // temporarily hold the input file names
@@ -718,11 +810,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     free(input_filenames);
     return zsv_compare_status_memory;
   }
+  ZSV_COMPARE_CUSTOMIZE(data);
 
   int err = 0;
   const char *column_ranges_spec = NULL;
   // initialization starts here. to do: make this a separate function
   unsigned input_count = 0;
+  int saw_json = 0, saw_json_redline = 0;
   struct zsv_compare_key **next_key = &data->keys;
   struct zsv_compare_added_column **added_column_next = &data->added_columns;
   for (int arg_i = 1; data->status == zsv_compare_status_ok && !err && arg_i < argc; arg_i++) {
@@ -757,8 +851,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           fprintf(stderr, "Invalid numeric value: %s\n", next_arg), err = 1;
         else if (data->tolerance.value < 0)
           fprintf(stderr, "Tolerance must be greater than zero (got %s)\n", next_arg), err = 1;
-        else
+        else {
+          data->tolerance.original = data->tolerance.value;
           data->tolerance.value = nextafterf(data->tolerance.value, INFINITY);
+        }
       }
     } else if (!strcmp(arg, "--sort")) {
       data->sort = 1;
@@ -766,16 +862,56 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       data->return_count = 1;
     } else if (!strcmp(arg, "--json")) {
       data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
+      saw_json = 1;
     } else if (!strcmp(arg, "--json-object")) {
       data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
       data->writer.object = 1;
+      saw_json = 1;
     } else if (!strcmp(arg, "--json-compact")) {
       data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
       data->writer.compact = 1;
+      saw_json = 1;
+    } else if (!strcmp(arg, "--json-redline")) {
+      data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE;
+      saw_json_redline = 1;
+    } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
+      const char *next_arg = zsv_next_arg(++arg_i, argc, argv, &err);
+      if (next_arg)
+        data->writer.output_path = next_arg;
+    } else if (!strcmp(arg, "--only-changed-rows")) {
+      data->writer.include_unchanged_rows = 0;
+    } else if (!strcmp(arg, "--include-tolerated")) {
+      data->writer.include_tolerated = 1;
     } else if (!strcmp(arg, "--print-key-colname")) {
       data->print_key_col_names = 1;
+    } else if (!strcmp(arg, "--require-all-inputs") || !strcmp(arg, "--intersect")) {
+      data->require_all_inputs = 1;
+    } else if (data->parse_opt && data->parse_opt(data, arg, &arg_i, argc, argv, &err)) {
+      ; /* option consumed by a host-provided custom handler (e.g. --redline) */
     } else
       input_filenames[input_count++] = arg;
+  }
+
+  if (!err && data->added_colcount > 0 && data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
+    fprintf(stderr, "Error: -a/--add cannot be combined with --json-redline."
+                    " All input columns are already emitted under --json-redline.\n");
+    err = 1;
+  }
+
+  /* A host-provided --redline (writer.redline_render) fuses `compare
+   * --json-redline` with document rendering; it owns the output format, so it is
+   * mutually exclusive with the other JSON output flags and requires an -o
+   * destination. redline_render is always 0 in stock zsv, so these checks are
+   * no-ops there. */
+  if (!err && data->writer.redline_render && (saw_json || saw_json_redline)) {
+    fprintf(stderr, "Error: --redline cannot be combined with --json, --json-object,"
+                    " --json-compact, or --json-redline.\n");
+    err = 1;
+  }
+  if (!err && data->writer.redline_render && !data->writer.output_path) {
+    fprintf(stderr, "Error: --redline requires -o <file> (format inferred from the"
+                    " .html or .xlsx extension).\n");
+    err = 1;
   }
 
   struct zsv_opts original_default_opts;
@@ -959,7 +1095,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     char started = 0;
     if (data->status == zsv_compare_status_ok) {
       started = 1;
-      zsv_compare_output_begin(data);
+      data->output_begin(data);
 
       // match output colnames to added columns
       for (struct zsv_compare_added_column *ac = data->added_columns; ac; ac = ac->next) {
@@ -1000,6 +1136,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     }
 
+    // allocate redline-mode state (after out2in is populated)
+    if (data->status == zsv_compare_status_ok && data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
+      data->redline = zsv_compare_redline_new(data->input_count, data->output_colcount);
+      if (!data->redline)
+        data->status = zsv_compare_status_memory;
+    }
+
     // assertions
     if (data->status == zsv_compare_status_ok) {
       int ok = 0;
@@ -1017,7 +1160,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     while (data->status == zsv_compare_status_ok && zsv_compare_next(data) == zsv_compare_status_ok)
       ;
     if (started)
-      zsv_compare_output_end(data);
+      data->output_end(data);
   }
 
   err = data->status == zsv_compare_status_ok ? 0 : 1;

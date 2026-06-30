@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdbool.h>
 
 #if 0
 #define lexer_debug(FMT, ...) fprintf(stderr, "%s:%d: " FMT "\n", __func__, __LINE__, __VA_ARGS__)

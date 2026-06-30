@@ -1,0 +1,1 @@
+Error: -a/--add cannot be combined with --json-redline. All input columns are already emitted under --json-redline.

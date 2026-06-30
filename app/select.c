@@ -55,6 +55,9 @@
 // zsv_select_check_exclusions_are_indexes()
 #include "select/selection.c"
 
+// zsv_select_add_rename(), zsv_select_apply_renames(), zsv_select_renames_delete()
+#include "select/rename.c"
+
 #ifndef ZSV_NO_PARALLEL
 #include "select/parallel.c" // zsv_parallel_data_new(), zsv_parallel_data_delete()
 
@@ -335,9 +338,35 @@ static int zsv_setup_parallel_chunks(struct zsv_select_data *data, const char *p
 
 static void zsv_select_header_finish(struct zsv_select_data *data) {
   if (zsv_select_set_output_columns(data)) {
+    data->header_failed = 1;
     data->cancelled = 1;
     return;
   }
+
+  // apply --rename directives after projection/-x/distinct have resolved against the original
+  // input names, but before any output is written (so a failed rename yields no partial output)
+  if (zsv_select_apply_renames(data)) {
+    data->header_failed = 1;
+    data->cancelled = 1;
+    return;
+  }
+
+  // The header has now validated, so it is safe to create the output. For -o, the file is opened
+  // here (not at arg-parse time), so a header-phase error above never creates or truncates it (F1b).
+  if (data->output_filename && !(data->writer_opts->stream = fopen(data->output_filename, "wb"))) {
+    zsv_printerr(1, "Unable to open %s", data->output_filename);
+    data->header_failed = 1;
+    data->cancelled = 1;
+    return;
+  }
+  data->csv_writer = zsv_writer_new(data->writer_opts);
+  if (!data->csv_writer) {
+    data->header_failed = 1;
+    data->cancelled = 1;
+    return;
+  }
+  zsv_writer_set_temp_buff(data->csv_writer, data->writer_buff, sizeof(data->writer_buff));
+  data->header_finished = 1;
 
   /* Set column filter for fast engine: only process columns we need */
   if (data->output_cols_count > 0 && !data->search_strings
@@ -428,6 +457,7 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
 
   zsv_writer_delete(data->csv_writer);
   zsv_select_search_str_delete(data->search_strings);
+  zsv_select_renames_delete(data->renames);
 #ifdef HAVE_PCRE2_8
   zsv_select_regexs_delete(data->search_regexs);
 #endif
@@ -594,13 +624,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     else if (!strcmp(arg, "--merge"))
       data.distinct = ZSV_SELECT_DISTINCT_MERGE;
     else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
-      if (writer_opts.stream && writer_opts.stream != stdout)
+      // defer opening the file until the header has validated (see header_finish), so a
+      // header-phase error (bad column selector or --rename) never creates/truncates it (F1b)
+      if (data.output_filename)
         stat = zsv_printerr(1, "Output specified twice");
-      else {
-        ARG_require_val(arg, (const char *));
-        if (!(writer_opts.stream = fopen(arg, "wb")))
-          stat = zsv_printerr(1, "Unable to open %s", arg);
-      }
+      else
+        ARG_require_val(data.output_filename, (const char *));
     } else if (!strcmp(arg, "-N") || !strcmp(arg, "--line-number"))
       data.prepend_line_number = 1;
     else if (!strcmp(arg, "-n"))
@@ -664,6 +693,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       const char *v;
       ARG_require_val(v, (const char *));
       zsv_select_add_exclusion(&data, v);
+    } else if (!strcmp(arg, "--rename")) {
+      const char *v;
+      ARG_require_val(v, (const char *));
+      if (zsv_select_add_rename(&data, v))
+        stat = zsv_status_error;
     } else if (*arg == '-')
       stat = zsv_printerr(1, "Unrecognized argument: %s", arg);
     else if (data.input_path)
@@ -676,7 +710,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     goto zsv_select_main_done;
 
   // configuration & setup
-  if (!writer_opts.stream)
+  if (data.output_filename)
+    writer_opts.stream = NULL; // opened later, in header_finish, once the header validates (F1b)
+  else if (!writer_opts.stream)
     writer_opts.stream = stdout;
   if (data.sample_pct)
     srand(time(0));
@@ -733,9 +769,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   data.header_names = calloc(data.opts->max_columns, sizeof(*data.header_names));
   data.out2in = calloc(data.opts->max_columns, sizeof(*data.out2in));
-  data.csv_writer = zsv_writer_new(&writer_opts);
+  // the writer is created later, in zsv_select_header_finish(), once the header has validated
+  data.writer_opts = &writer_opts;
 
-  if (!data.header_names || !data.out2in || !data.csv_writer) {
+  if (!data.header_names || !data.out2in) {
     stat = zsv_status_memory;
     goto zsv_select_main_done;
   }
@@ -750,9 +787,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     // apply fixed offsets (whether from --fixed arg or --fixed-auto detection)
     if (data.fixed.count && zsv_set_fixed_offsets(data.parser, data.fixed.count, data.fixed.offsets) != zsv_status_ok)
       data.cancelled = 1;
-
-    unsigned char writer_buff[512];
-    zsv_writer_set_temp_buff(data.csv_writer, writer_buff, sizeof(writer_buff));
 
     zsv_handle_ctrl_c_signal();
 
@@ -784,6 +818,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
 #endif
   }
+
+  // a header-phase error (bad column selector or --rename) must yield a non-zero exit status
+  if (data.header_failed && stat == zsv_status_ok)
+    stat = zsv_status_error;
+
+  // empty input: no header row was parsed, so header_finish never opened the deferred -o file.
+  // preserve the historical behavior of emitting an (empty) output file.
+  if (data.output_filename && !data.header_finished && !data.header_failed && stat == zsv_status_ok &&
+      !(writer_opts.stream = fopen(data.output_filename, "wb")))
+    stat = zsv_printerr(1, "Unable to open %s", data.output_filename);
 
 zsv_select_main_done:
   free(preview_buff);

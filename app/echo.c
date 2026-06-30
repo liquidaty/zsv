@@ -113,12 +113,12 @@ static void zsv_echo_row_start_at(void *ctx) {
 
 const char *zsv_echo_usage_msg[] = {
 #ifdef ZSV_EXTRAS
-  APPNAME ": write tabular input to stdout with optional cell overwrites",
+  ZSV_USAGE_PROG " " APPNAME ": write tabular input to stdout with optional cell overwrites",
 #else
-  APPNAME ": write tabular input to stdout",
+  ZSV_USAGE_PROG " " APPNAME ": write tabular input to stdout",
 #endif
   "",
-  "Usage: " APPNAME " [options] <filename>",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME " [options] <filename>",
   "",
   "Options:",
   "  -b                     : output with BOM",
@@ -144,8 +144,7 @@ const char *zsv_echo_usage_msg[] = {
 };
 
 static int zsv_echo_usage(void) {
-  for (size_t i = 0; zsv_echo_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", zsv_echo_usage_msg[i]);
+  zsv_print_usage(zsv_echo_usage_msg);
   return 1;
 }
 

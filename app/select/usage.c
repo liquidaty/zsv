@@ -1,11 +1,11 @@
 const char *zsv_select_usage_msg[] = {
-  APPNAME ": extracts and outputs specified columns",
+  ZSV_USAGE_PROG " " APPNAME ": extracts and outputs specified columns",
   "",
-  "Usage: " APPNAME " [filename] [options] [-- col_specifier [... col_specifier]]",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME " [filename] [options] [-- col_specifier [... col_specifier]]",
   "       where col_specifier is a column name or, if the -n option is used,",
   "       a column index (starting at 1) or index range in the form of n-m",
-  "       e.g. " APPNAME " -n file.csv -- 1 4-6 50 10",
-  "            " APPNAME " file.csv -- first_col fiftieth_column \"Tenth Column\"",
+  "       e.g. " ZSV_USAGE_PROG " " APPNAME " -n file.csv -- 1 4-6 50 10",
+  "            " ZSV_USAGE_PROG " " APPNAME " file.csv -- first_col fiftieth_column \"Tenth Column\"",
   "",
   "Note: Outputs the columns specified after '--' separator, or all columns if omitted.",
   "",
@@ -23,6 +23,10 @@ const char *zsv_select_usage_msg[] = {
   "  --skip-data <n>              : skip the specified number of data rows",
   "  --no-header                  : do not output header row",
   "  --prepend-header <value>     : prepend each column header with the given text <value>",
+  "  --rename <selector=newname>  : rename column(s); repeatable. <selector> is #N (1-based input column",
+  "                                 index; the only way to target a blank-named or duplicate column), or a",
+  "                                 column name -- renames every column so named (use a leading \\# to name",
+  "                                 a column that literally starts with '#'). Splits on first unescaped '='.",
   "  -s,--search <value>          : only output rows with at least one cell containing <value>",
 #ifdef HAVE_PCRE2_8
   "  --regex-search <pattern>     : only output rows with at least one cell matching the given regex pattern",
@@ -67,6 +71,5 @@ const char *zsv_select_usage_msg[] = {
 };
 
 static void zsv_select_usage(void) {
-  for (size_t i = 0; zsv_select_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", zsv_select_usage_msg[i]);
+  zsv_print_usage(zsv_select_usage_msg);
 }

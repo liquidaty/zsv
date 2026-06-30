@@ -29,9 +29,9 @@
 #include <zsv/utils/os.h>
 
 const char *zsv_mv_usage_msg[] = {
-  APPNAME ": move a file and its related cache",
+  ZSV_USAGE_PROG " " APPNAME ": move a file and its related cache",
   "",
-  "Usage: " APPNAME " [options] <source> <destination>",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME " [options] <source> <destination>",
   "",
   "Options:",
   "  -v,--verbose         : verbose output",
@@ -40,8 +40,7 @@ const char *zsv_mv_usage_msg[] = {
 };
 
 static int zsv_mv_usage(FILE *target) {
-  for (size_t j = 0; zsv_mv_usage_msg[j]; j++)
-    fprintf(target, "%s\n", zsv_mv_usage_msg[j]);
+  zsv_fprint_usage(target, zsv_mv_usage_msg);
   return target == stdout ? 0 : 1;
 }
 

@@ -17,6 +17,7 @@
 #define ZSV_SCAN_SIMD_SSE2_H
 
 #include <emmintrin.h>
+#include <stdint.h>
 
 #ifdef __PCLMUL__
 #include <wmmintrin.h> /* PCLMULQDQ */

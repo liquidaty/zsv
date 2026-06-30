@@ -32,6 +32,18 @@ else
   CHECK=
 endif
 
+CCBN=$(shell basename ${CC})
+
+ifeq ($(CCBN),emcc)
+ifeq ($(TESTING),1)
+  NODE_EXISTS := $(shell command -v node 2>/dev/null)
+  ifeq ($(NODE_EXISTS),)
+    $(error "NodeJS not found. Install NodeJS to run wasm tests.")
+  endif
+  PREFIX="node"
+endif
+endif
+
 help:
 	@echo "# run all tests:"
 	@echo "    make test"
@@ -49,7 +61,7 @@ test: \
 test-1:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear
-	@(${EXE} dummy.csv list > ${TMP_DIR}/$@.out && \
+	@(${PREFIX} ${EXE} dummy.csv list > ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 TIMESTAMP=$(shell date +"%s")
@@ -58,16 +70,16 @@ test-2:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear
 	@${PREFIX} ${EXE} dummy.csv add 2-1 ABC --no-timestamp
-	@(${EXE} dummy.csv list > ${TMP_DIR}/$@.out && \
+	@(${PREFIX} ${EXE} dummy.csv list > ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-excel-cells:
 	@${TEST_INIT}
 	@${PREFIX} ${EXE} dummy.csv clear
 	@${PREFIX} ${EXE} dummy.csv add C2 EXCEL --no-timestamp
-	@(${EXE} dummy.csv list > ${TMP_DIR}/$@.out && \
+	@(${PREFIX} ${EXE} dummy.csv list > ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
-	@(${EXE} dummy.csv list --A1 > ${TMP_DIR}/$@-a1.out && \
+	@(${PREFIX} ${EXE} dummy.csv list --A1 > ${TMP_DIR}/$@-a1.out && \
 	${CMP} ${TMP_DIR}/$@-a1.out expected/$@-a1.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-add:
@@ -77,7 +89,7 @@ test-add:
 	@${PREFIX} ${EXE} dummy2.csv add 2-2 VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 2-3 VAL3 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 2-4 VAL4 --no-timestamp
-	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-list.out && \
+	@(${PREFIX} ${EXE} dummy2.csv list > ${TMP_DIR}/$@-list.out && \
 	${CMP} ${TMP_DIR}/$@-list.out expected/$@-list.out && ${TEST_PASS} || ${TEST_FAIL})
 	@(${PREFIX} ${ECHO_EXE} --apply-overwrites dummy2.csv > ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
@@ -90,10 +102,10 @@ test-remove:
 	@${PREFIX} ${EXE} dummy2.csv add 3-1 V3 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 4-1 V4 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv remove 2-1
-	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-1.out && \
+	@(${PREFIX} ${EXE} dummy2.csv list > ${TMP_DIR}/$@-1.out && \
 	${CMP} ${TMP_DIR}/$@-1.out expected/$@-1.out && ${TEST_PASS} || ${TEST_FAIL})
 	@${PREFIX} ${EXE} dummy2.csv remove 4-1
-	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-2.out && \
+	@(${PREFIX} ${EXE} dummy2.csv list > ${TMP_DIR}/$@-2.out && \
 	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
 	@(${PREFIX} ${EXE} dummy2.csv remove --all && \
 	[ ! -f ".zsv/overwrite/dummy2.csv/overwrite.sqlite3" ] && ${TEST_PASS} || ${TEST_FAIL})
@@ -105,16 +117,16 @@ test-old-value:
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 V2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 3-1 V3 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 4-1 V4 --no-timestamp
-	@(${EXE} dummy2.csv add 3-1 NEW_V4 --no-timestamp 2> ${TMP_DIR}/$@-fail.out || \
+	@(${PREFIX} ${EXE} dummy2.csv add 3-1 NEW_V4 --no-timestamp 2> ${TMP_DIR}/$@-fail.out || \
 	${CMP} ${TMP_DIR}/$@-fail.out expected/$@-fail.out && ${TEST_PASS} || ${TEST_FAIL})
 	@${PREFIX} ${EXE} dummy2.csv remove 2-1 --old-value V3
-	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-1.out && \
+	@(${PREFIX} ${EXE} dummy2.csv list > ${TMP_DIR}/$@-1.out && \
 	${CMP} ${TMP_DIR}/$@-1.out expected/$@-1.out && ${TEST_PASS} || ${TEST_FAIL})
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 NEW_V2 --old-value V2 --no-timestamp
-	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-2.out && \
+	@(${PREFIX} ${EXE} dummy2.csv list > ${TMP_DIR}/$@-2.out && \
 	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
 	@${PREFIX} ${EXE} dummy2.csv remove 3-1 --old-value V3
-	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-3.out && \
+	@(${PREFIX} ${EXE} dummy2.csv list > ${TMP_DIR}/$@-3.out && \
 	${CMP} ${TMP_DIR}/$@-3.out expected/$@-3.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-force:
@@ -124,12 +136,12 @@ test-force:
 	@${PREFIX} ${EXE} dummy2.csv add 2-2 VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 2-3 VAL3 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv add 2-4 VAL4 --no-timestamp
-	@(${EXE} dummy2.csv add 2-4 NEW_VAL4 --no-timestamp 2> ${TMP_DIR}/$@-fail.out || \
+	@(${PREFIX} ${EXE} dummy2.csv add 2-4 NEW_VAL4 --no-timestamp 2> ${TMP_DIR}/$@-fail.out || \
 	${CMP} ${TMP_DIR}/$@-fail.out expected/$@-fail.out && ${TEST_PASS} || ${TEST_FAIL})
-	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@-1.out && \
+	@(${PREFIX} ${EXE} dummy2.csv list > ${TMP_DIR}/$@-1.out && \
 	${CMP} ${TMP_DIR}/$@-1.out expected/$@-1.out && ${TEST_PASS} || ${TEST_FAIL})
 	@(${PREFIX} ${EXE} dummy2.csv add 2-4 NEW_VAL4 --no-timestamp --force && \
-	${EXE} dummy2.csv list > ${TMP_DIR}/$@-2.out && \
+	${PREFIX} ${EXE} dummy2.csv list > ${TMP_DIR}/$@-2.out && \
 	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-bulk-add:
@@ -138,7 +150,7 @@ test-bulk-add:
 	@${PREFIX} ${EXE} dummy2.csv add 1-1 OLD_V1 --no-timestamp # for old value test
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 OLD_VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv bulk-add overwrite.csv
-	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@.out && \
+	@(${PREFIX} ${EXE} dummy2.csv list > ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 test-bulk-remove:
@@ -148,7 +160,7 @@ test-bulk-remove:
 	@${PREFIX} ${EXE} dummy2.csv add 2-1 OLD_VAL2 --no-timestamp
 	@${PREFIX} ${EXE} dummy2.csv bulk-add overwrite.csv
 	@${PREFIX} ${EXE} dummy2.csv bulk-remove remove.csv
-	@(${EXE} dummy2.csv list > ${TMP_DIR}/$@.out && \
+	@(${PREFIX} ${EXE} dummy2.csv list > ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 STAT_MOD_TS=$(shell if stat -c %Y Makefile >/dev/null 2>/dev/null; then echo 'stat -c %Y' ; else echo 'stat -f %m' ; fi)
@@ -165,14 +177,14 @@ test-timestamp:
 		MAX_EXPECTED_TS1=`cat ${TMP_DIR}/timestamp1.txt`; \
 		MIN_EXPECTED_TS1=`expr $$MAX_EXPECTED_TS1 - ${MOD_TS_OFFSET}`; \
 		SQL_QUERY1="SELECT * FROM data WHERE row=1 AND column=2 AND value='ABC' AND timestamp BETWEEN $$MIN_EXPECTED_TS1 AND $$MAX_EXPECTED_TS1;"; \
-		SQL_OUTPUT1=`${EXE} dummy2.csv list | ${SQL_EXE} "$$SQL_QUERY1"`; \
+		SQL_OUTPUT1=`${PREFIX} ${EXE} dummy2.csv list | ${PREFIX} ${SQL_EXE} "$$SQL_QUERY1"`; \
 		[ `echo "$$SQL_OUTPUT1" | wc -l` = 2 ] && ${TEST_PASS} || ${TEST_FAIL}; \
 	}
 	@{ \
 		MAX_EXPECTED_TS2=`cat ${TMP_DIR}/timestamp2.txt`; \
 		MIN_EXPECTED_TS2=`expr $$MAX_EXPECTED_TS2 - ${MOD_TS_OFFSET}`; \
 		SQL_QUERY2="SELECT * FROM data WHERE row=1 AND column=3 AND value='ABC' AND timestamp BETWEEN $$MIN_EXPECTED_TS2 AND $$MAX_EXPECTED_TS2;"; \
-		SQL_OUTPUT2=`${EXE} dummy2.csv list | ${SQL_EXE} "$$SQL_QUERY2"`; \
+		SQL_OUTPUT2=`${PREFIX} ${EXE} dummy2.csv list | ${PREFIX} ${SQL_EXE} "$$SQL_QUERY2"`; \
 		[ `echo "$$SQL_OUTPUT2" | wc -l` = 2 ] && ${TEST_PASS} || ${TEST_FAIL}; \
 	}
 
@@ -181,10 +193,10 @@ test-echo-overwrite-auto:
 	@${PREFIX} ${EXE} dummy.csv clear
 	@${PREFIX} ${EXE} dummy.csv add 1-0 ABC
 	@${PREFIX} ${EXE} dummy.csv add 2-2 123
-	@(${ECHO_EXE} --apply-overwrites dummy.csv > ${TMP_DIR}/$@.out && \
+	@(${PREFIX} ${ECHO_EXE} --apply-overwrites dummy.csv > ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
 clean:
-	@rm -rf ${TMP_DIR}
+	rm -rf ${TMP_DIR}
 
 .PHONY: help test% clean

@@ -215,7 +215,8 @@ struct flatten_data {
   unsigned char cancelled : 1;
   unsigned char verbose : 1;
   unsigned char have_agg : 1;
-  unsigned char dummy : 5;
+  unsigned char rename_dup_cols : 1; // ensure unique output column names (on by default)
+  unsigned char dummy : 4;
 };
 
 static int flatten_output_column_add(struct flatten_data *data, const unsigned char *utf8_value, size_t len,
@@ -343,16 +344,105 @@ static void flatten_cell2(void *hook, unsigned char *utf8_value, size_t len) {
   data->current_column_index++;
 }
 
-static void flatten_output_header(struct flatten_data *data) {
-  zsv_writer_cell(data->csv_writer, 1, data->row_id_column.name, data->row_id_column.name_len, 1);
-  unsigned int i = 1;
-  for (struct flatten_output_column *col = data->output_columns_by_value_head; col; col = col->next, i++) {
-    zsv_writer_cell(data->csv_writer, 0, col->name, col->name_len, 1);
-  }
+// --- duplicate output-column-name disambiguation ---------------------------
+// flatten's value-based output columns are already unique among themselves (the
+// rbtree keys on a lowercased value), but the row-id column name and aggregate
+// column names can still collide with them (e.g. a row-id column "a" plus an
+// output value "a"). To avoid emitting a malformed CSV with a repeated header,
+// the emitted header names are made unique here, compared case-insensitively
+// (matching both SQLite and flatten's own value matching). Only the displayed
+// header is affected; data rows are positional, so the stored column structures
+// are left untouched.
+struct flatten_seen_name {
+  unsigned char *lc; // lowercased name, for case-insensitive comparison
+  struct flatten_seen_name *next;
+};
 
-  for (struct flatten_agg_col *c = data->agg_output_cols; c; c = c->next)
-    zsv_writer_cell(data->csv_writer, !i++, c->column.name, c->column.name_len, 1);
+static void flatten_seen_names_free(struct flatten_seen_name *head) {
+  while (head) {
+    struct flatten_seen_name *next = head->next;
+    free(head->lc);
+    free(head);
+    head = next;
+  }
+}
+
+static int flatten_seen_names_has(struct flatten_seen_name *head, const unsigned char *lc) {
+  for (; head; head = head->next)
+    if (!strcmp((const char *)head->lc, (const char *)lc))
+      return 1;
+  return 0;
+}
+
+// Write one header cell, disambiguating against names already in *seen when
+// data->rename_dup_cols is set. Each rename (a -> a_2) is noted on stderr so it
+// is never silent. Returns 0 on success, 1 on out-of-memory.
+static int flatten_write_header_cell(struct flatten_data *data, struct flatten_seen_name **seen, char new_row,
+                                     const unsigned char *name, size_t name_len) {
+  if (!name) { // nothing to disambiguate; preserve prior behavior
+    zsv_writer_cell(data->csv_writer, new_row, name, name_len, 1);
+    return 0;
+  }
+  unsigned char *candidate = zsv_memdup(name, name_len);
+  size_t cand_len = name_len;
+  if (!candidate)
+    return 1;
+  int renamed = 0;
+  if (data->rename_dup_cols) {
+    for (unsigned n = 2;; n++) {
+      size_t lc_len = cand_len;
+      unsigned char *lc = zsv_strtolowercase(candidate, &lc_len);
+      if (!lc) {
+        free(candidate);
+        return 1;
+      }
+      if (!flatten_seen_names_has(*seen, lc)) {
+        struct flatten_seen_name *e = calloc(1, sizeof(*e));
+        if (!e) {
+          free(lc);
+          free(candidate);
+          return 1;
+        }
+        e->lc = lc; // takes ownership
+        e->next = *seen;
+        *seen = e;
+        break; // candidate is unique
+      }
+      free(lc);
+      // collision: try name + "_" + n
+      char suffix[24];
+      int sl = snprintf(suffix, sizeof(suffix), "_%u", n);
+      unsigned char *next = malloc(name_len + (size_t)sl + 1);
+      if (!next) {
+        free(candidate);
+        return 1;
+      }
+      memcpy(next, name, name_len);
+      memcpy(next + name_len, suffix, (size_t)sl + 1); // includes NUL terminator
+      free(candidate);
+      candidate = next;
+      cand_len = name_len + (size_t)sl;
+      renamed = 1;
+    }
+  }
+  if (renamed)
+    fprintf(stderr, "renamed duplicate column \"%.*s\" \xe2\x86\x92 \"%.*s\"\n", (int)name_len, name, (int)cand_len,
+            candidate);
+  zsv_writer_cell(data->csv_writer, new_row, candidate, cand_len, 1);
+  free(candidate);
+  return 0;
+}
+
+static int flatten_output_header(struct flatten_data *data) {
+  struct flatten_seen_name *seen = NULL;
+  int oom = flatten_write_header_cell(data, &seen, 1, data->row_id_column.name, data->row_id_column.name_len);
+  for (struct flatten_output_column *col = data->output_columns_by_value_head; !oom && col; col = col->next)
+    oom = flatten_write_header_cell(data, &seen, 0, col->name, col->name_len);
+  for (struct flatten_agg_col *c = data->agg_output_cols; !oom && c; c = c->next)
+    oom = flatten_write_header_cell(data, &seen, 0, c->column.name, c->column.name_len);
+  flatten_seen_names_free(seen);
   data->output_row = 1;
+  return oom ? zsv_printerr(1, "ERROR: out of memory writing header") : 0;
 }
 
 static unsigned char *flatten_replace_delim(unsigned char *inout, const unsigned char *delimiter, char replacement) {
@@ -507,11 +597,11 @@ static void flatten_row2(void *hook) {
 }
 
 const char *flatten_usage_msg[] = {
-  APPNAME ": flatten a table",
+  ZSV_USAGE_PROG " " APPNAME ": flatten a table",
   "          based on a single-column key, assuming that rows to flatten always",
   "          appear in contiguous lines",
   "",
-  "Usage: " APPNAME " [<filename>] [<options>] -- [aggregate_output_spec ...]",
+  "Usage: " ZSV_USAGE_PROG " " APPNAME " [<filename>] [<options>] -- [aggregate_output_spec ...]",
   "",
   "Each aggregate output specification consists of the column name or index, followed",
   // "either (i) a single-column aggregation or (future: (ii) the \"*\" placeholder (in conjunction with -a)).",
@@ -540,6 +630,10 @@ const char *flatten_usage_msg[] = {
   "  -V <column_name>                 : column name specifying the output value",
   //  "  --default-agg <method>           : default aggregation method to use, if none specified",
   "  -o <filename>                    : filename to save output to",
+  "  --rename-duplicate-columns       : ensure output column names are unique, e.g. when the",
+  "                                     row-id column name also occurs as an output value",
+  "                                     (a,a,b -> a,a_2,b). On by default; each rename is noted",
+  "                                     on stderr",
   NULL,
 };
 
@@ -559,8 +653,7 @@ B,90,B,you,zzz
 */
 
 static void flatten_usage(void) {
-  for (size_t i = 0; flatten_usage_msg[i]; i++)
-    fprintf(stdout, "%s\n", flatten_usage_msg[i]);
+  zsv_print_usage(flatten_usage_msg);
 }
 
 void flatten_agg_cols_delete(struct flatten_agg_col **p) {
@@ -681,6 +774,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   data.output_columns_by_value_tail = &data.output_columns_by_value_head;
   data.max_rows_per_aggregation = 1024;
   data.max_cols = 1024;
+  data.rename_dup_cols = 1; // producers should not emit malformed (duplicate-header) CSV
 
   int err = 0;
   int agg_arg_i = 0;
@@ -729,6 +823,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         err = zsv_printerr(1, "-o option: filename may not start with '-' (got %s)", argv[arg_i + 1]);
       else
         data.output_filename = argv[++arg_i];
+    } else if (!strcmp(argv[arg_i], "--rename-duplicate-columns")) {
+      data.rename_dup_cols = 1; // on by default; accepted for consistency with `zsv sql`
     } else if (data.in)
       err = zsv_printerr(1, "Input file was specified, cannot also read: %s", argv[arg_i]);
     else if (!(data.in = fopen(argv[arg_i], "rb")))
@@ -823,7 +919,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     if (!(data.csv_writer = zsv_writer_new(&writer_opts)))
       err = data.cancelled = zsv_printerr(1, "Unable to create csv writer");
 
-    flatten_output_header(&data);
+    if (!data.cancelled && flatten_output_header(&data))
+      err = data.cancelled = 1;
 
     opts2.stream = in;
     zsv_parser parser = zsv_new(&opts2);

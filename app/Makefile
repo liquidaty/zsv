@@ -23,8 +23,6 @@ endif
 
 CC ?= cc
 
-CFLAGS_EXE ?=
-
 LIB_SUFFIX=
 LIBZSV_L=-lzsv${LIB_SUFFIX}
 LIBZSV_A=libzsv${LIB_SUFFIX}.a
@@ -106,31 +104,45 @@ ifneq ($(HOST),)
 endif
 endif
 
+EXE=
 ifeq ($(WIN),0)
   BUILD_SUBDIR=$(shell uname)/${DBG_SUBDIR}
-  EXE=
   ifneq ($(findstring emcc,$(CC)),) # emcc
     NO_THREADING ?= 1
     NO_PLAYGROUND ?= 1
     EXE=.em.js
-    ifeq ($(NO_PLAYGROUND),0) # wasm playground
-      LDFLAGS += -sEXPORTED_RUNTIME_METHODS="['callMain']" -sINVOKE_RUN=0 -sALLOW_MEMORY_GROWTH=1
+    LDFLAGS += -s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -s WASM_BIGINT=1
+    ifeq ($(DEBUG),1)
+      CFLAGS += -DWASM_SIMD_COMPAT_SLOW
+      LDFLAGS += -s ASSERTIONS=1 -s STACK_OVERFLOW_CHECK=1 -s SAFE_HEAP=1
+    endif
+    ifeq ($(TESTING),1) # make test
+      NODE_EXISTS := $(shell command -v node 2>/dev/null)
+      ifeq ($(NODE_EXISTS),)
+        $(error "NodeJS not found. Install NodeJS to run wasm tests.")
+      endif
+      LDFLAGS += -s ENVIRONMENT=node
+      LDFLAGS += -s INVOKE_RUN=1 -s MAIN_MODULE=2
+      LDFLAGS += -s EXIT_RUNTIME=1 -s NODERAWFS=1
+      LDFLAGS += -s STACK_SIZE=128KB # for 2tsv test
+    else ifeq ($(NO_PLAYGROUND),0) # wasm playground
+      LDFLAGS += -s ENVIRONMENT=web
+      LDFLAGS += -s EXPORTED_RUNTIME_METHODS="['callMain']" -s INVOKE_RUN=0 -s MAIN_MODULE=2
     else
       CFLAGS += -DNO_PLAYGROUND
-      LDFLAGS += -sEXPORTED_FUNCTIONS="['_free','_malloc']"
-      LDFLAGS += -sEXPORTED_RUNTIME_METHODS="['setValue','allocateUTF8','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory']"
-      LDFLAGS += -sRESERVED_FUNCTION_POINTERS=4 -sALLOW_MEMORY_GROWTH=1
+      LDFLAGS += -s EXPORTED_FUNCTIONS="['_free','_malloc']"
+      LDFLAGS += -s EXPORTED_RUNTIME_METHODS="['setValue','stringToUTF8Array','lengthBytesUTF8','writeArrayToMemory']"
+      LDFLAGS += -s RESERVED_FUNCTION_POINTERS=4 -s MAIN_MODULE=2 -lidbfs.js
     endif
-    LDFLAGS += -sFORCE_FILESYSTEM=1 -lidbfs.js -sMAIN_MODULE
     ifneq ($(NO_THREADING),1)
-      CFLAGS+=-pthread
-      LDFLAGS += -sUSE_PTHREADS=1 -sPTHREAD_POOL_SIZE=2
+      CFLAGS += -pthread
+      LDFLAGS += -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2
     endif
   endif
 else
   BUILD_SUBDIR=win/${DBG_SUBDIR}
   EXE=.exe
-  CFLAGS+= -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE -D_GNU_SOURCE
+  CFLAGS+= -D__USE_MINGW_ANSI_STDIO -D_ISOC99_SOURCE
   CFLAGS+= -Wl,--strip-all
   CONFIGURE_HOST=x86_64-w64-mingw32
   CFLAGS+=-Dsetenv\(a,b,c\)=_putenv_s\(a,b\)
@@ -156,8 +168,9 @@ CCBN=$(shell basename ${CC})
 
 CFLAGS+=${CFLAGS_O}
 CFLAGS+=-Wshadow -Wall -Wextra
+CFLAGS+=-D_GNU_SOURCE
 ifeq ($(DEBUG),0)
-  CFLAGS+=-DNDEBUG -Wno-missing-braces -pedantic -DSTDC_HEADERS -D_GNU_SOURCE ${CFLAGS_OPT} #-ftree-vectorize
+  CFLAGS+=-DNDEBUG -Wno-missing-braces -pedantic -DSTDC_HEADERS ${CFLAGS_OPT} #-ftree-vectorize
 
   ifeq (${CCBN},clang)
     CFLAGS+= -Wno-gnu-statement-expression
@@ -176,11 +189,13 @@ else
   CFLAGS += ${CFLAGS_DEBUG}
 endif
 
-CFLAGS+= -I${PREFIX}/include
+ifneq ($(INCLUDEDIR),)
+  CFLAGS+= -I${INCLUDEDIR}
+endif
 THIS_LIB_BASE:=$(shell cd .. && pwd)
 INCLUDE_DIR:=${THIS_LIB_BASE}/include
 BUILD_DIR:=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
-UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index chunk
+UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index chunk appname
 
 ZSV_EXTRAS ?=
 
@@ -203,7 +218,6 @@ UTILS=$(addprefix ${BUILD_DIR}/objs/utils/,$(addsuffix .o,${UTILS1}))
 
 ifeq ($(NO_THREADING),1)
   CFLAGS+= -DNO_THREADING
-  ZSV_NO_PARALLEL=1
 endif
 
 ifeq ($(ZSV_NO_PARALLEL),1)
@@ -226,7 +240,8 @@ ifeq ($(NO_MEMMEM),1)
   UTIL_A_OBJ_WIN=memmem
 endif
 
-ZSV=$(BINDIR)/zsv${EXE}
+PROG_NAME ?= zsv
+ZSV=$(BINDIR)/$(PROG_NAME)${EXE}
 
 SOURCES=echo paste check count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq
 ifeq ($(ZSV_EXTRAS),1)
@@ -319,9 +334,9 @@ MEMFILE_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/memfile-1.0/include
 MEMFILE_OBJECT=${BUILD_DIR}-external/memfile-1.0/memfile.o
 
 ## utf8proc
-UTF8PROC_SRC=${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1
-UTF8PROC_INCLUDE=${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1
-UTF8PROC_OBJECT=${BUILD_DIR}-external/utf8proc-2.6.1/utf8proc.o
+UTF8PROC_SRC=${THIS_MAKEFILE_DIR}/external/utf8proc-2.11.3
+UTF8PROC_INCLUDE=${THIS_MAKEFILE_DIR}/external/utf8proc-2.11.3
+UTF8PROC_OBJECT=${BUILD_DIR}-external/utf8proc-2.11.3/utf8proc.o
 CFLAGS+= -I${UTF8PROC_INCLUDE} -DUTF8PROC -DUTF8PROC_STATIC
 
 # sqlite3
@@ -342,7 +357,7 @@ help:
 	@echo "If JQ_PREFIX is not defined, libjq will be built in the build dir"
 	@echo "If STATIC_BUILD is set to 1, will build with -static flag, if the compiler supports it"
 	@echo
-	@echo "To build and test individual apps, run:"
+	@echo "To build and/or test individual apps, run:"
 	@echo "  ${MAKE} test"
 	@echo "which will build and test all apps, or to build/test a single app:"
 	@echo "  ${MAKE} test-xx"
@@ -351,6 +366,12 @@ help:
 	@echo ""
 	@echo "To run benchmarks:"
 	@echo "  ${MAKE} benchmark"
+	@echo ""
+	@echo "To run asan/fuzz tests:"
+	@echo "  make -C test test-vuln-asan-repro"
+	@echo "  make -C test test-vuln-asan-fuzz [FUZZ_ITERS=1000000]"
+	@echo ""
+	@echo "To run msan tests: see ../.github/workflows/msan.yml"
 	@echo ""
 
 DESTDIR ?=
@@ -362,7 +383,7 @@ ifneq ($(DESTDIR),)
 endif
 
 benchmark: ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}count${EXE} ${STANDALONE_PFX}2tsv${EXE}
-	make -C benchmark all
+	${MAKE} -C benchmark all TESTING=1
 
 uninstall-all: uninstall uninstall-util-lib
 
@@ -424,7 +445,7 @@ ${CLEANS}: clean-%:
 	rm -f ${STANDALONE_PFX}$*${EXE}
 	rm -f ${BUILD_DIR}/*/*$*.o
 
-.PHONY: all install cli build build-% clean clean-% test test-% lib-% check install-util-lib uninstall-util-lib clean-util-lib
+.PHONY: all install cli build build-% clean clean-% test test-% lib-% check install-util-lib uninstall-util-lib clean-util-lib benchmark
 
 .SECONDARY: ${OBJECTS}
 
@@ -459,11 +480,11 @@ ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 ${CLI_APP_OBJECT} : cli_ini.c builtin/*.c ${JQ_LIB}
 ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8proc.c # ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} ${MEMFILE_INCLUDE} -I${THIS_MAKEFILE_DIR}/external/sglib -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -c $< -o $@ ${MORE_SOURCE}
+	${CC} ${CFLAGS} ${DEPFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} ${MEMFILE_INCLUDE} -I${THIS_MAKEFILE_DIR}/external/sglib -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -c $< -o $@ ${MORE_SOURCE}
 
 ${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${LIBZSV_BUILD} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${MORE_OBJECTS} ${SQL_INTERNAL_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${CFLAGS_EXE} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBZSV_BUILD_DIR} ${LIBZSV_L} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBZSV_BUILD_DIR} ${LIBZSV_L} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
 	@echo Built $@
 
 cli_internal.h.in: ${THIS_MAKEFILE_DIR}/../include/zsv/ext/implementation_private.h
@@ -577,7 +598,7 @@ ifeq ($(HAVE_PCRE2_8),1)
   endif
 
   LDFLAGS_PCRE2_8=
-  INCLUDE_PCRE2_8=${PREFIX}/include
+  INCLUDE_PCRE2_8=${INCLUDEDIR}
   ifneq ($(PCRE2_8_PREFIX),$(PREFIX))
     ifneq ($(PCRE2_STATIC),1)
       LDFLAGS_PCRE2_8=-L${PCRE2_8_PREFIX}/lib
@@ -586,6 +607,24 @@ ifeq ($(HAVE_PCRE2_8),1)
   endif
 
   ${CLI} ${STANDALONE_PFX}select${EXE} ${STANDALONE_PFX}sheet${EXE}: MORE_LIBS+=${BUILD_DIR}/objs/utils/pcre2-8/pcre2-8.o ${LDFLAGS_PCRE2_8} ${PCRE2_LIB}
+endif
+
+# sheet uses curses. On Windows/MinGW with no installed PDCurses, configure sets
+# PDCURSES_BUILTIN=1; bootstrap a private static copy into the build dir using the
+# same script CI uses, then point sheet's include + link at it.
+ifeq ($(PDCURSES_BUILTIN),1)
+  PDCURSES_VERSION ?= 3.9
+  BUILTIN_PDCURSES_PREFIX=${BUILD_DIR}-external/pdcurses
+  PDCURSES_SRC=${BUILTIN_PDCURSES_PREFIX}/PDCurses-${PDCURSES_VERSION}
+  PDCURSES_LIB=${PDCURSES_SRC}/wincon/libpdcurses.a
+  CFLAGS+= -I${PDCURSES_SRC}
+  # Compiling sheet.c needs curses.h and linking needs the static archive; both
+  # are produced by the bootstrap recipe below, so make sheet depend on the lib.
+  ${CLI_OBJ_PFX}sheet.o ${STANDALONE_PFX}sheet${EXE}: ${PDCURSES_LIB}
+  ${CLI} ${STANDALONE_PFX}sheet${EXE}: MORE_LIBS+= ${PDCURSES_LIB}
+
+${PDCURSES_LIB}:
+	${MAKE} -C external -f ${CONFIGFILEPATH} -f build.mk $@ BUILD_DIR=${BUILD_DIR} CONFIGURE_HOST=${CONFIGURE_HOST} PDCURSES_VERSION=${PDCURSES_VERSION} DESTDIR=
 endif
 
 # pcre2-8.o actually only needs ${PCRE2_8_PREFIX}/include/pcre2.h, but if we are using builtin pcre2, then
@@ -621,9 +660,20 @@ ${CLI} ${STANDALONE_PFX}pretty${EXE}: MORE_LIBS+=${LDFLAGS_TERMCAP}
 ${CLI} ${STANDALONE_PFX}sheet${EXE} ${STANDALONE_PFX}sql${EXE}: ${SQL_INTERNAL_OBJECT}
 ${CLI} ${STANDALONE_PFX}sheet${EXE} ${STANDALONE_PFX}sql${EXE}: MORE_OBJECTS+=${SQL_INTERNAL_OBJECT}
 
+# Dependency tracking for the sheet unity build: sheet.c #includes ~20 sheet/*.c
+# sources, but the compile rules list only sheet.c as a prerequisite, so edits to
+# the included files would otherwise not trigger a rebuild (stale binary). -MMD
+# records every #included user file (including the .c files), -MP adds phony
+# targets so a later-removed include does not break the build, and -MT/-MF name
+# the rule target and the depfile. DEPFLAGS is set only on the two sheet targets,
+# so it expands to nothing for every other command; the depfiles live under
+# ${BUILD_DIR} and are removed by `make clean`.
+${CLI_OBJ_PFX}sheet.o ${STANDALONE_PFX}sheet${EXE}: DEPFLAGS=-MMD -MP -MT $@ -MF $@.d
+-include ${CLI_OBJ_PFX}sheet.o.d ${STANDALONE_PFX}sheet${EXE}.d
+
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_BUILD} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${BUILD_DIR}/lib ${LIBZSV_L} ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
+	${CC} ${CFLAGS} ${DEPFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${BUILD_DIR}/lib ${LIBZSV_L} ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
 
 ${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}-external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`
@@ -646,7 +696,7 @@ test-standalone:
 	@${MAKE} -C test test QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 test-cli: ${CLI}
-	@${MAKE} -C test $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} CLI=${CLI}
+	@${MAKE} -C test $@ QUIET=1 LEAKS=${LEAKS} CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG} CLI=${CLI} TESTING=${TESTING}
 
 clean-all: clean clean-external clean-obj clean-lib clean-util-lib
 
@@ -665,11 +715,17 @@ clean: clean-obj clean-internal
 
 clean-obj:
 	rm -rf ${BUILD_DIR}/bin ${INIH_OBJECT} ${JSONWRITER_OBJECT} ${UTF8PROC_OBJECT} ${MEMFILE_OBJECT}
-	rm -rf external/utf8proc-2.6.1
+	rm -rf external/utf8proc-2.11.3
 
 clean-internal:
 	$(RM) cli_internal.c.in cli_internal.h.in
 
-${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: ${THIS_MAKEFILE_DIR}/external/utf8proc-2.6.1.tar.gz
-	@cd external && tar xf utf8proc-2.6.1.tar.gz && chown -R `whoami` utf8proc-2.6.1
-	@touch $@
+# tar restores the archive's (old) mtimes, and this is a multi-target rule, so
+# touching only $@ leaves the other output older than the tarball -- which made
+# the two targets ping-pong re-extraction on every build (each extraction resets
+# both files to old mtimes but touches only one). That now surfaces as a spurious
+# zsv_sheet relink, since the sheet depfile makes it depend on utf8proc.h. Touch
+# BOTH so they are reliably newer than the tarball and the rule runs only once.
+${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h: ${THIS_MAKEFILE_DIR}/external/utf8proc-2.11.3.tar.gz
+	@cd external && tar xf utf8proc-2.11.3.tar.gz && chown -R `whoami` utf8proc-2.11.3
+	@touch ${UTF8PROC_SRC}/utf8proc.c ${UTF8PROC_SRC}/utf8proc.h

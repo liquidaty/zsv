@@ -72,6 +72,11 @@ struct zsv_2db_data {
   char transaction_started;
   char *connection_string;
 
+  /* CSV input path: the standard zsv parser. NULL for JSON input.
+   * The DB-side machinery below (columns, row_values, insert_stmt, ...) is
+   * format-agnostic and shared by both the JSON and CSV paths. */
+  zsv_parser csv_parser;
+
   struct {
     yajl_helper_t yh;
     yajl_status yajl_stat;
@@ -134,6 +139,33 @@ static void zsv_2db_columns_delete(struct zsv_2db_column **p) {
     }
     *p = NULL;
   }
+}
+
+// zsv_2db_append_column: append a column to the table definition, taking
+// ownership of *col's heap members. On success *col is zeroed so the caller's
+// cleanup is a no-op; returns 1 on success, 0 on allocation failure.
+// Shared by the JSON (json_end_map) and CSV (zsv_2db_csv_row) paths.
+static int zsv_2db_append_column(struct zsv_2db_data *data, struct zsv_2db_column *col) {
+  struct zsv_2db_column *e = calloc(1, sizeof(*e));
+  if (!e) {
+    fprintf(stderr, "Out of memory!");
+    return 0;
+  }
+  *e = *col;
+  *data->json_parser.last_column = e;
+  data->json_parser.last_column = &e->next;
+  data->json_parser.col_count++;
+  memset(col, 0, sizeof(*col));
+  return 1;
+}
+
+// zsv_2db_colname_exists: return 1 if a column named `name` is already
+// registered (used by the CSV path to de-dup duplicate header names)
+static int zsv_2db_colname_exists(const struct zsv_2db_data *data, const char *name) {
+  for (const struct zsv_2db_column *e = data->json_parser.columns; e; e = e->next)
+    if (e->name && !strcmp(e->name, name))
+      return 1;
+  return 0;
 }
 
 static void zsv_2db_delete(zsv_2db_handle data) {
@@ -219,11 +251,11 @@ static sqlite3_str *build_create_table_statement(sqlite3 *db, const char *tname,
     if (!err) {
       const char *collate = collates ? collates[i] : NULL;
       if (collate && *collate) {
-        if (collate && !(!strcmp("binary", collate) || !strcmp("rtrim", collate) || !strcmp("nocase", collate))) {
+        if (!(!strcmp("binary", collate) || !strcmp("rtrim", collate) || !strcmp("nocase", collate))) {
           fprintf(stderr, "Unrecognized collate: expected binary, rtrim or nocase, got %s", collate);
           err = 1;
         } else
-          sqlite3_str_appendf(pStr, " %s%s%s", datatype, collate ? " collate " : "", collate ? collate : "");
+          sqlite3_str_appendf(pStr, " %s collate %s", datatype, collate);
       }
     }
   }
@@ -289,14 +321,17 @@ static int zsv_2db_set_insert_stmt(struct zsv_2db_data *data) {
       collates[i] = e->collate;
     }
 
-    sqlite3_str *create_sql = build_create_table_statement(data->db, data->opts.table_name, colnames, datatypes,
-                                                           collates, data->json_parser.col_count);
+    // Resolve the effective table name once so CREATE TABLE and the INSERT
+    // statement always agree (build_create_table_statement defaults a NULL name
+    // to ZSV_2DB_DEFAULT_TABLE_NAME; create_insert_statement does not).
+    const char *tname = data->opts.table_name ? data->opts.table_name : ZSV_2DB_DEFAULT_TABLE_NAME;
+    sqlite3_str *create_sql =
+      build_create_table_statement(data->db, tname, colnames, datatypes, collates, data->json_parser.col_count);
     if (!create_sql)
       err = 1;
     else {
       if (!(err = zsv_2db_sqlite3_exec_2db(data->db, sqlite3_str_value(create_sql))) &&
-          !(data->json_parser.insert_stmt =
-              create_insert_statement(data->db, data->opts.table_name, data->json_parser.col_count))) {
+          !(data->json_parser.insert_stmt = create_insert_statement(data->db, tname, data->json_parser.col_count))) {
         err = 1;
         zsv_2db_start_transaction(data);
       } else
@@ -394,18 +429,8 @@ static int json_end_map(yajl_helper_t yh) {
     if (!data->json_parser.current_column.name) {
       fprintf(stderr, "Name missing from column spec!\n");
       return 0;
-    } else {
-      struct zsv_2db_column *e = calloc(1, sizeof(*e));
-      if (!e) {
-        fprintf(stderr, "Out of memory!");
-        return 0;
-      }
-      *e = data->json_parser.current_column;
-      *data->json_parser.last_column = e;
-      data->json_parser.last_column = &e->next;
-      data->json_parser.col_count++;
-      memset(&data->json_parser.current_column, 0, sizeof(data->json_parser.current_column));
-    }
+    } else if (!zsv_2db_append_column(data, &data->json_parser.current_column))
+      return 0;
   } else if (data->json_parser.state == zsv_2db_state_header &&
              yajl_helper_got_path(yh, 3, "[{indexes{")) { // exiting an index
     if (!data->json_parser.current_index.name) {
@@ -535,10 +560,94 @@ static int json_process_value(yajl_helper_t yh, struct json_value *value) {
   return 1;
 }
 
+/* csv parser functions */
+
+/*
+ * zsv_2db_csv_row(): row handler for the CSV input path. Dispatches on parser
+ * state: the first row registers columns (header), subsequent rows are inserted
+ * as data. Drives the same DB-side helpers as the JSON path (DRY).
+ *
+ * Future work (out of scope, see SPEC): type inference (all columns are TEXT),
+ * CSV-driven index creation, --append, and multi-table import.
+ */
+static void zsv_2db_csv_row(void *ctx) {
+  struct zsv_2db_data *data = ctx;
+  if (data->err)
+    return;
+
+  zsv_parser parser = data->csv_parser;
+  size_t cell_count = zsv_cell_count(parser);
+
+  if (data->json_parser.state == zsv_2db_state_header) {
+    for (size_t i = 0; i < cell_count; i++) {
+      struct zsv_cell cell = zsv_get_cell(parser, i);
+      struct zsv_2db_column col = {0}; // datatype/collate NULL -> TEXT, no collate
+
+      // Column name is the (non-NUL-terminated) header cell text. An empty
+      // header cell is synthesized as "column_<1-based-index>" so CREATE TABLE
+      // never emits a "" identifier.
+      if (cell.str && cell.len)
+        col.name = zsv_memdup(cell.str, cell.len);
+      else
+        asprintf(&col.name, "column_%zu", i + 1);
+      if (!col.name) {
+        data->err = 1;
+        return;
+      }
+
+      // De-dup duplicate header names (SQLite rejects duplicate column
+      // identifiers) by suffixing _2, _3, ... until unique.
+      if (zsv_2db_colname_exists(data, col.name)) {
+        char *unique = NULL;
+        for (unsigned int suffix = 2; suffix; suffix++) {
+          free(unique);
+          unique = NULL;
+          asprintf(&unique, "%s_%u", col.name, suffix);
+          if (!unique || !zsv_2db_colname_exists(data, unique))
+            break;
+        }
+        free(col.name);
+        col.name = unique;
+        if (!col.name) {
+          data->err = 1;
+          return;
+        }
+      }
+
+      if (!zsv_2db_append_column(data, &col)) {
+        zsv_2db_column_free(&col);
+        data->err = 1;
+        return;
+      }
+    }
+
+    // Allocate row_values[] and create the table+insert statement eagerly so a
+    // header-only input still produces an empty table (exit 0).
+    if (!zsv_2db_finish_header(data) || zsv_2db_set_insert_stmt(data))
+      data->err = 1;
+  } else {
+    // Data row: copy each cell into row_values[]. Cells beyond col_count are
+    // ignored; missing trailing cells stay NULL and bind as "" per existing
+    // insert logic (matching the JSON path).
+    for (size_t i = 0; i < cell_count && i < data->json_parser.col_count; i++) {
+      struct zsv_cell cell = zsv_get_cell(parser, i);
+      if (cell.str && cell.len) {
+        if (!(data->json_parser.row_values[i] = zsv_memdup(cell.str, cell.len))) {
+          data->err = 1;
+          return;
+        }
+        data->json_parser.have_row_data = 1;
+      }
+    }
+    zsv_2db_insert_row(data);
+    reset_row_values(data);
+  }
+}
+
 /* api functions */
 
 // exportable
-static zsv_2db_handle zsv_2db_new(struct zsv_2db_options *opts) {
+static zsv_2db_handle zsv_2db_new(struct zsv_2db_options *opts, int need_json_parser) {
   int err = 0;
   if (!opts->db_fn)
     fprintf(stderr, "Please specify an output file\n"), err = 1;
@@ -583,8 +692,11 @@ static zsv_2db_handle zsv_2db_new(struct zsv_2db_options *opts) {
       sqlite3_exec(data->db, "PRAGMA synchronous = OFF", NULL, NULL, NULL);
       sqlite3_exec(data->db, "PRAGMA journal_mode = OFF", NULL, NULL, NULL);
 
-      // parse the input and create & populate the database table
-      if (!(data->json_parser.yh = yajl_helper_new(32, json_start_map, json_end_map, json_map_key, json_start_array,
+      // For JSON input, set up the yajl parser that drives the DB machinery.
+      // The CSV path does not allocate a yajl handle (it uses the zsv parser);
+      // zsv_2db_delete()'s yajl_helper_delete(NULL) stays a safe no-op.
+      if (need_json_parser &&
+          !(data->json_parser.yh = yajl_helper_new(32, json_start_map, json_end_map, json_map_key, json_start_array,
                                                    json_end_array, json_process_value, data))) {
         fprintf(stderr, "Unable to get yajl parser\n");
         err = 1;
@@ -638,28 +750,39 @@ static yajl_handle zsv_2db_yajl_handle(zsv_2db_handle data) {
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zsv_opts,
                                struct zsv_prop_handler *custom_prop_handler) {
-  (void)(zsv_opts);
-  (void)(custom_prop_handler);
   FILE *f_in = NULL;
+  const char *input_path = NULL; // NULL => stdin
   int err = 0;
+  char force_csv = 0, force_json = 0;
   struct zsv_2db_options opts = {0};
   opts.verbose = zsv_get_default_opts().verbose;
 
   const char *usage[] = {
-    APPNAME ": convert JSON to SQLite3 DB",
+    ZSV_USAGE_PROG " " APPNAME ": build a SQLite3 database from CSV or JSON input",
     "",
-    "Usage: " APPNAME " -o <output path> [-t <table name>] [input.json]\n",
+    "Usage: " ZSV_USAGE_PROG " " APPNAME " -o <output path> [options] [input]",
+    "",
+    "  input                : input file. Format is auto-detected from the",
+    "                         extension (.csv/.tsv/.txt = CSV; .json = JSON).",
+    "                         If omitted, reads stdin as JSON (use --from-csv for CSV).",
     "",
     "Options:",
     "  -h,--help            : show usage",
-    "  --table <table_name> : save as specified table name",
+    "  -o,--output <path>   : output SQLite3 database path (required)",
+    "  --from-csv           : treat input as CSV (overrides extension detection)",
+    "  --from-json          : treat input as JSON (overrides extension detection)",
+    "  --table <name>       : table name (default: " ZSV_2DB_DEFAULT_TABLE_NAME ")",
     "  --overwrite          : overwrite existing database",
     // TO DO:
     // --sql to output sql statements
     // --append: append to existing db
+    // --index <name>:<cols> to create indexes for CSV input
     "",
-    // TO DO: add output examples and schema descriptions
-    "The input should conform to the schema defined at:",
+    "CSV input: the first row is used as column names; every column is created",
+    "as TEXT. Standard zsv parsing options (-t/--tab, --delimiter, -q, etc.) apply.",
+    "Empty header cells are named column_<n>; duplicate names are de-duped (_2, _3).",
+    "",
+    "JSON input: must conform to the schema at",
     "  https://github.com/liquidaty/zsv/blob/main/app/schema/database-table.json",
     "",
     "Example:",
@@ -678,8 +801,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
 
   for (int i = 1; !err && i < argc; i++) {
     if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-      for (int j = 0; usage[j]; j++)
-        fprintf(stdout, "%s\n", usage[j]);
+      zsv_print_usage(usage);
       goto exit_2db;
     } else if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
       if (++i >= argc)
@@ -690,6 +812,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
         opts.db_fn = (char *)argv[i]; // we won't free this
     } else if (!strcmp(argv[i], "--overwrite")) {
       opts.overwrite = 1;
+    } else if (!strcmp(argv[i], "--from-csv")) {
+      force_csv = 1;
+    } else if (!strcmp(argv[i], "--from-json")) {
+      force_json = 1;
     } else if (!strcmp(argv[i], "--table")) {
       if (++i >= argc)
         fprintf(stderr, "%s option requires a filename value\n", argv[i - 1]), err = 1;
@@ -701,26 +827,58 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
       fprintf(stderr, "Input file specified more than once\n"), err = 1;
     else if (!(f_in = fopen(argv[i], "rb")))
       fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
-    else if (!(strlen(argv[i]) > 5 &&
-               !zsv_stricmp((const unsigned char *)argv[i] + strlen(argv[i]) - 5, (const unsigned char *)".json")))
-      fprintf(stderr, "Warning: input filename does not end with .json (%s)\n", argv[i]);
+    else
+      input_path = argv[i];
   }
+
+  if (!err && force_csv && force_json)
+    fprintf(stderr, "--from-csv and --from-json are mutually exclusive\n"), err = 1;
 
   if (!f_in) {
 #ifdef NO_STDIN
-    fprintf(stderr, "Please specify an input file\n");
-    err = 1;
+    if (!err)
+      fprintf(stderr, "Please specify an input file\n"), err = 1;
 #else
     f_in = stdin;
 #endif
   }
 
+  // Resolve the input format (see SPEC §3): explicit override wins; else detect
+  // by filename extension; else (unknown extension or stdin) default to JSON to
+  // preserve historical behavior.
+  int is_json = 1;
   if (!err) {
-    zsv_2db_handle data = zsv_2db_new(&opts);
+    if (force_csv)
+      is_json = 0;
+    else if (force_json)
+      is_json = 1;
+    else if (input_path) {
+      const unsigned char *p = (const unsigned char *)input_path;
+      size_t n = strlen(input_path);
+      if (n >= 4 && (!zsv_stricmp(p + n - 4, (const unsigned char *)".csv") ||
+                     !zsv_stricmp(p + n - 4, (const unsigned char *)".tsv") ||
+                     !zsv_stricmp(p + n - 4, (const unsigned char *)".txt"))) {
+        is_json = 0;
+        // .tsv implies a TAB delimiter unless the user already set one
+        if (!zsv_stricmp(p + n - 4, (const unsigned char *)".tsv") && zsv_opts->delimiter == 0)
+          zsv_opts->delimiter = '\t';
+      } else if (n >= 5 && !zsv_stricmp(p + n - 5, (const unsigned char *)".json"))
+        is_json = 1;
+    }
+    // Preserve the historical warning when a non-.json file is parsed as JSON
+    if (is_json && input_path) {
+      size_t n = strlen(input_path);
+      if (!(n > 5 && !zsv_stricmp((const unsigned char *)input_path + n - 5, (const unsigned char *)".json")))
+        fprintf(stderr, "Warning: input filename does not end with .json (%s)\n", input_path);
+    }
+  }
+
+  if (!err) {
+    zsv_2db_handle data = zsv_2db_new(&opts, is_json);
     if (!data)
       err = 1;
-    else {
-      size_t chunk_size = 4096 * 16;
+    else if (is_json) {
+      size_t chunk_size = 65536;
       unsigned char *buff = malloc(chunk_size);
       if (!buff)
         err = 1;
@@ -743,6 +901,29 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
             err = 1;
         }
         free(buff);
+      }
+      zsv_2db_delete(data);
+    } else {
+      // CSV path: drive the shared DB machinery from the standard zsv parser,
+      // honoring the caller-provided zsv_opts (delimiter, quoting, header span,
+      // saved properties, etc.) just like select.c.
+      zsv_opts->stream = f_in;
+      zsv_opts->row_handler = zsv_2db_csv_row;
+      zsv_opts->ctx = data;
+      if (zsv_new_with_properties(zsv_opts, custom_prop_handler, input_path, &data->csv_parser) != zsv_status_ok ||
+          !data->csv_parser) {
+        fprintf(stderr, "Unable to initialize CSV parser\n");
+        err = 1;
+      } else {
+        enum zsv_status st;
+        while ((st = zsv_parse_more(data->csv_parser)) == zsv_status_ok)
+          ;
+        if (st == zsv_status_no_more_input)
+          zsv_finish(data->csv_parser); // flush a final row that lacks a trailing newline
+        zsv_delete(data->csv_parser);
+        data->csv_parser = NULL;
+        if (st != zsv_status_no_more_input || zsv_2db_err(data) || zsv_2db_finish(data))
+          err = 1;
       }
       zsv_2db_delete(data);
     }

@@ -13,7 +13,7 @@ static int main_version(int argc, const char *argv[]) {
       verbose = 1;
   }
 
-  printf("zsv version %s (lib %s)\n", VERSION, zsv_lib_version());
+  printf("%s version %s (lib %s)\n", zsv_prog_name(), VERSION, zsv_lib_version());
 
   if (verbose) {
     printf("\nBuild configuration:\n");

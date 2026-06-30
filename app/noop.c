@@ -9,6 +9,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/signal.h>
 #include <zsv/utils/arg.h>
+#include <zsv/utils/appname.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -51,7 +52,7 @@ int main(int argc, const char *argv[]) {
 
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-      fprintf(stdout, "Usage: noop [filename]\n");
+      fprintf(stdout, "Usage: %s noop [filename]\n", zsv_prog_name());
       fprintf(stdout, "  Reads CSV input and does nothing. For performance testing\n\n");
       return 0;
     } else if (!f) {

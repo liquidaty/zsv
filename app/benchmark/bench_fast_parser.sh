@@ -7,12 +7,14 @@
 # Optional: app/benchmark/quoted_standard.csv, quoted_nonstandard.csv
 #   (generate with: python3 app/benchmark/gen_quoted_test.py)
 
+OS=$(uname -s)
+
 ITERATIONS=${1:-5}
 CSV=app/benchmark/worldcitiespop.csv
 QCSV=app/benchmark/quoted_standard.csv
 NCSV=app/benchmark/quoted_nonstandard.csv
-COUNT=./build/Darwin/rel/gcc-14/bin/zsv_count
-SELECT=./build/Darwin/rel/gcc-14/bin/zsv_select
+COUNT=./build/${OS}/rel/gcc-14/bin/zsv_count
+SELECT=./build/${OS}/rel/gcc-14/bin/zsv_select
 XSV=$(which xsv 2>/dev/null)
 XAN=$(which xan 2>/dev/null)
 QSV=$(which qsv 2>/dev/null)
