@@ -163,7 +163,11 @@ test-extension-3: test-%: ${CLI} ${TARGET}
 	@${RUN_CLI} register my >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
 	@${RUN_CLI} help >>${TMP_DIR}/$@.out 2>>${TMP_DIR}/$@.err || true
 	@grep -v [.]${SO} ${TMP_DIR}/$@.err >${TMP_DIR}/$@.err.filtered && mv ${TMP_DIR}/$@.err.filtered ${TMP_DIR}/$@.err
-	@${CMP} ${TMP_DIR}/$@.out 2>&1 test/expected/$@.out${EXT} && ${TEST_PASS} || ${TEST_FAIL}
+	@# 2toon's help line only appears when built with TOON (configure --disable-toon omits it);
+	@# filter it from the actual output and the expected so this passes in either build configuration
+	@grep -v '^  2toon ' ${TMP_DIR}/$@.out >${TMP_DIR}/$@.out.filtered && mv ${TMP_DIR}/$@.out.filtered ${TMP_DIR}/$@.out
+	@grep -v '^  2toon ' test/expected/$@.out${EXT} >${TMP_DIR}/$@.out.expected
+	@${CMP} ${TMP_DIR}/$@.out 2>&1 ${TMP_DIR}/$@.out.expected && ${TEST_PASS} || ${TEST_FAIL}
 	@${CMP} ${TMP_DIR}/$@.err 2>&1 test/expected/$@.err${EXT} && ${TEST_PASS} || ${TEST_FAIL}
 
 test-extension-4: test-%: ${CLI} ${TARGET}
