@@ -133,6 +133,7 @@ struct zsv_compare_data {
     union {
       zsv_csv_writer csv;
       jsonwriter_handle jsw;
+      toonwriter_handle toonw; // used instead of jsw when writer.toon is set
     } handle;
 
     struct {
@@ -147,7 +148,8 @@ struct zsv_compare_data {
     unsigned char include_unchanged_rows : 1; // default on; cleared by --only-changed-rows
     unsigned char include_tolerated : 1;      // --include-tolerated
     unsigned char redline_render : 1;         // --redline: render the redline JSON to a document
-    unsigned char _ : 3;
+    unsigned char toon : 1;                   // --toon (or AI_AGENT default): emit TOON via handle.toonw
+    unsigned char _ : 2;
 
     const char *output_path; // -o <file>: destination for the --redline rendered document
     FILE *tmp;               // temp file holding the redline JSON while --redline renders it

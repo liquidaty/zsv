@@ -556,10 +556,11 @@ ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o ${STANDALONE_PFX}flatten${EXE} ${CLI_OBJ_PFX}flatten.o: MORE_SOURCE+=${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
 
-# 2toon uses toonwriter (and its own db->toon converter, so it needs sqlite3 headers)
-${CLI} ${STANDALONE_PFX}2toon${EXE}: ${TOONWRITER_OBJECT}
-${CLI} ${STANDALONE_PFX}2toon${EXE}: MORE_OBJECTS+= ${TOONWRITER_OBJECT}
+# 2toon and compare use toonwriter; 2toon also has its own db->toon converter, so it needs sqlite3 headers
+${CLI} ${STANDALONE_PFX}2toon${EXE} ${STANDALONE_PFX}compare${EXE}: ${TOONWRITER_OBJECT}
+${CLI} ${STANDALONE_PFX}2toon${EXE} ${STANDALONE_PFX}compare${EXE}: MORE_OBJECTS+= ${TOONWRITER_OBJECT}
 ${STANDALONE_PFX}2toon${EXE} ${CLI_OBJ_PFX}2toon.o: MORE_SOURCE+=${TOONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
+${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o: MORE_SOURCE+=${TOONWRITER_INCLUDE}
 
 ifeq ($(USE_SIMDUTF),1)
 CFLAGS+=-DUSE_SIMDUTF

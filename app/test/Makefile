@@ -1,5 +1,10 @@
 # Makefile for use with GNU make
 
+# Tests assert default (non-agent) output formats, so neutralize AI_AGENT (which
+# the harness running these tests may set) for all recipes. Tests that exercise
+# the AI_AGENT=TOON default set it explicitly per command (e.g. `AI_AGENT=1 ...`).
+unexport AI_AGENT
+
 THIS_MAKEFILE_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 THIS_DIR:=$(shell basename "${THIS_MAKEFILE_DIR}")
 THIS_MAKEFILE:=$(lastword $(MAKEFILE_LIST))
@@ -1117,6 +1122,21 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 
 	@# --columns: error - invalid spec
 	@($< --columns bad compare/colrange1.csv >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
+
+	@# --toon: TOON output (same comparison as --json out6, rendered as TOON)
+	@(${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv --toon ${REDIRECT1} ${TMP_DIR}/$@.toon && \
+	${CMP} ${TMP_DIR}/$@.toon expected/$@.toon && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# AI_AGENT default: with AI_AGENT set and no format flag, output defaults to TOON
+	@(AI_AGENT=1 ${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv ${REDIRECT1} ${TMP_DIR}/$@.toon-default && \
+	${CMP} ${TMP_DIR}/$@.toon-default expected/$@.toon && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# an explicit --json overrides the AI_AGENT TOON default (byte-identical to plain --json)
+	@(AI_AGENT=1 ${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv --json ${REDIRECT1} ${TMP_DIR}/$@.toon-json-override && \
+	${CMP} ${TMP_DIR}/$@.toon-json-override expected/$@.out6 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --json and --toon together is an error
+	@($< compare/t1.csv compare/t2.csv compare/t3.csv --json --toon >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
 
 include test-compare-redline.mk
 
