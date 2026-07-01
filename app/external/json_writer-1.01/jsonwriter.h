@@ -26,6 +26,10 @@ extern "C" {
 #  define jsw_uint32 uint32_t
 # endif
 
+#ifndef JSONWRITER_MAX_NESTING
+#define JSONWRITER_MAX_NESTING 256 // default max nesting; see jsonwriter_set_max_nesting()
+#endif
+
   enum jsonwriter_option {
     jsonwriter_option_pretty = 0,
     jsonwriter_option_compact = 1
@@ -49,6 +53,13 @@ extern "C" {
                                           void *write_arg);
 
   void jsonwriter_set_option(jsonwriter_handle h, enum jsonwriter_option opt);
+
+  // Override the default (JSONWRITER_MAX_NESTING) max container nesting for this
+  // writer. Must be called before any container is open (depth 0). Returns:
+  //   jsonwriter_status_ok, _invalid_value (max_nesting==0),
+  //   _misconfiguration (a container is open), or _out_of_memory.
+  enum jsonwriter_status jsonwriter_set_max_nesting(jsonwriter_handle h, unsigned int max_nesting);
+
   void jsonwriter_flush(jsonwriter_handle h);
   void jsonwriter_delete(jsonwriter_handle h);
 
