@@ -82,7 +82,9 @@ static const struct zsv_help_command commands[] = {
   {"flatten",
    "flatten a table consisting of N groups of data, each with 1 or more rows in the table, into a table of N rows"},
   {"2json", "convert CSV or sqlite3 db table to json"},
+#ifndef ZSV_NO_TOON
   {"2toon", "convert CSV or sqlite3 db table to TOON"},
+#endif
   {"2tsv", "convert to tab-delimited text"},
   {"stack", "stack tables vertically, aligning columns with common names"},
   {"paste", "horizontally paste two tables together: given inputs X, Y, ... of N rows"},

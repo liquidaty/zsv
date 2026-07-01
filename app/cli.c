@@ -83,7 +83,9 @@ ZSV_MAIN_DECL(count);
 ZSV_MAIN_DECL(paste);
 ZSV_MAIN_DECL(check);
 ZSV_MAIN_DECL(2json);
+#ifndef ZSV_NO_TOON
 ZSV_MAIN_DECL(2toon);
+#endif
 ZSV_MAIN_DECL(2tsv);
 ZSV_MAIN_DECL(serialize);
 ZSV_MAIN_DECL(flatten);
@@ -133,7 +135,9 @@ struct builtin_cmd builtin_cmds[] = {
   CLI_BUILTIN_COMMAND(paste),
   CLI_BUILTIN_COMMAND(check),
   CLI_BUILTIN_COMMAND(2json),
+#ifndef ZSV_NO_TOON
   CLI_BUILTIN_COMMAND(2toon),
+#endif
   CLI_BUILTIN_COMMAND(2tsv),
   CLI_BUILTIN_COMMAND(serialize),
   CLI_BUILTIN_COMMAND(flatten),

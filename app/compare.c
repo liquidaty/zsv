@@ -14,7 +14,9 @@
 #include <time.h>
 
 #include <jsonwriter.h>
+#ifndef ZSV_NO_TOON
 #include <toonwriter.h>
+#endif
 
 #include <sqlite3.h>
 extern sqlite3_module CsvModule;
@@ -23,7 +25,9 @@ extern sqlite3_module CsvModule;
 #include <zsv/utils/mem.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/writer.h>
+#ifndef ZSV_NO_TOON
 #include <zsv/utils/output.h>
+#endif
 
 #define ZSV_COMMAND compare
 #include "zsv_command.h"
@@ -85,12 +89,26 @@ static struct zsv_compare_key **zsv_compare_key_add(struct zsv_compare_key **nex
 }
 
 /*
- * Writer dispatch: compare emits either JSON or TOON (selected via --toon or the
- * get_default_output_format() default). jsonwriter and toonwriter share a
- * drop-in push API, so each op dispatches on writer.toon; the two handles share
- * one union (only the active one is used). Handle creation/teardown (which
- * differ) is handled inline at zsv_compare_output_begin/_free.
+ * Writer dispatch: compare emits JSON, or -- unless built with ZSV_NO_TOON --
+ * TOON (selected via --toon or the get_default_output_format() default).
+ * jsonwriter and toonwriter share a drop-in push API, so with TOON enabled each
+ * op dispatches on writer.toon (the two handles share one union). Handle
+ * creation/teardown (which differ) is handled inline at
+ * zsv_compare_output_begin/_free.
  */
+#ifdef ZSV_NO_TOON
+static void cw_object_key(struct zsv_compare_data *d, const char *k) { jsonwriter_object_key(d->writer.handle.jsw, k); }
+static void cw_null(struct zsv_compare_data *d) { jsonwriter_null(d->writer.handle.jsw); }
+static void cw_strn(struct zsv_compare_data *d, const unsigned char *s, size_t len) {
+  jsonwriter_strn(d->writer.handle.jsw, s, len);
+}
+static void cw_int(struct zsv_compare_data *d, size_t n) { jsonwriter_int(d->writer.handle.jsw, n); }
+static void cw_start_object(struct zsv_compare_data *d) { jsonwriter_start_object(d->writer.handle.jsw); }
+static void cw_end_object(struct zsv_compare_data *d) { jsonwriter_end_object(d->writer.handle.jsw); }
+static void cw_start_array(struct zsv_compare_data *d) { jsonwriter_start_array(d->writer.handle.jsw); }
+static void cw_end_array(struct zsv_compare_data *d) { jsonwriter_end_array(d->writer.handle.jsw); }
+static void cw_end(struct zsv_compare_data *d) { jsonwriter_end(d->writer.handle.jsw); }
+#else
 static void cw_object_key(struct zsv_compare_data *d, const char *k) {
   if (d->writer.toon)
     toonwriter_object_key(d->writer.handle.toonw, k);
@@ -145,6 +163,7 @@ static void cw_end(struct zsv_compare_data *d) {
   else
     jsonwriter_end(d->writer.handle.jsw);
 }
+#endif
 
 static void zsv_compare_output_property_name(struct zsv_compare_data *data, int new_row, char skip) {
   if (new_row)
@@ -451,9 +470,12 @@ static void zsv_compare_output_begin(struct zsv_compare_data *data) {
   }
   if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
     int ok;
+#ifndef ZSV_NO_TOON
     if (data->writer.toon)
       ok = (data->writer.handle.toonw = toonwriter_new(stdout, NULL)) != NULL;
-    else {
+    else
+#endif
+    {
       ok = (data->writer.handle.jsw = jsonwriter_new(stdout)) != NULL; // to do: data->out
       if (ok && data->writer.compact)
         jsonwriter_set_option(data->writer.handle.jsw, jsonwriter_option_compact);
@@ -611,10 +633,13 @@ static void zsv_compare_data_free(struct zsv_compare_data *data) {
   zsv_compare_redline_free(data->redline, data->input_count, data->output_colcount);
   data->redline = NULL;
   if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON || data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
+#ifndef ZSV_NO_TOON
     if (data->writer.toon) {
       if (data->writer.handle.toonw)
         toonwriter_delete(data->writer.handle.toonw);
-    } else if (data->writer.handle.jsw)
+    } else
+#endif
+      if (data->writer.handle.jsw)
       jsonwriter_delete(data->writer.handle.jsw);
   } else
     zsv_writer_delete(data->writer.handle.csv);
@@ -790,7 +815,9 @@ static int compare_usage(void) {
     "  --json-compact     : output as compact JSON",
     "  --json-object      : output as an array of objects",
     "  --json-redline     : output self-contained redline JSON",
+#ifndef ZSV_NO_TOON
     "  --toon             : output as TOON (https://github.com/toon-format/spec)",
+#endif
     "                       (see `" ZSV_USAGE_PROG " help " APPNAME " json-redline` for schema)",
     NULL,
   };
@@ -889,7 +916,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   const char *column_ranges_spec = NULL;
   // initialization starts here. to do: make this a separate function
   unsigned input_count = 0;
-  int saw_json = 0, saw_json_redline = 0, saw_toon = 0;
+  int saw_json = 0, saw_json_redline = 0;
+#ifndef ZSV_NO_TOON
+  int saw_toon = 0;
+#endif
   struct zsv_compare_key **next_key = &data->keys;
   struct zsv_compare_added_column **added_column_next = &data->added_columns;
   for (int arg_i = 1; data->status == zsv_compare_status_ok && !err && arg_i < argc; arg_i++) {
@@ -947,10 +977,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else if (!strcmp(arg, "--json-redline")) {
       data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE;
       saw_json_redline = 1;
+#ifndef ZSV_NO_TOON
     } else if (!strcmp(arg, "--toon")) {
       data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
       data->writer.toon = 1;
       saw_toon = 1;
+#endif
     } else if (!strcmp(arg, "-o") || !strcmp(arg, "--output")) {
       const char *next_arg = zsv_next_arg(++arg_i, argc, argv, &err);
       if (next_arg)
@@ -975,6 +1007,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     err = 1;
   }
 
+#ifndef ZSV_NO_TOON
   // --toon selects TOON output and is mutually exclusive with the JSON
   // output-format options.
   if (!err && saw_toon && (saw_json || saw_json_redline)) {
@@ -990,17 +1023,26 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
     data->writer.toon = 1;
   }
+#endif
 
   /* A host-provided --redline (writer.redline_render) fuses `compare
    * --json-redline` with document rendering; it owns the output format, so it is
    * mutually exclusive with the other JSON output flags and requires an -o
    * destination. redline_render is always 0 in stock zsv, so these checks are
    * no-ops there. */
+#ifndef ZSV_NO_TOON
   if (!err && data->writer.redline_render && (saw_json || saw_json_redline || saw_toon)) {
     fprintf(stderr, "Error: --redline cannot be combined with --json, --json-object,"
                     " --json-compact, --json-redline, or --toon.\n");
     err = 1;
   }
+#else
+  if (!err && data->writer.redline_render && (saw_json || saw_json_redline)) {
+    fprintf(stderr, "Error: --redline cannot be combined with --json, --json-object,"
+                    " --json-compact, or --json-redline.\n");
+    err = 1;
+  }
+#endif
   if (!err && data->writer.redline_render && !data->writer.output_path) {
     fprintf(stderr, "Error: --redline requires -o <file> (format inferred from the"
                     " .html or .xlsx extension).\n");

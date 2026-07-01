@@ -55,13 +55,20 @@ ifeq ($(WIN),1)
   TMP_DIR=./../../tmp
 endif
 
-SOURCES=count echo count-pull select select-pull sql 2json 2toon serialize flatten pretty desc stack 2db 2tsv jq compare
+SOURCES=count echo count-pull select select-pull sql 2json serialize flatten pretty desc stack 2db 2tsv jq compare
 ifneq ($(ZSV_EXTRAS),)
   SOURCES+=overwrite
 endif
+# 2toon exists only when TOON features are enabled (configure --disable-toon omits it)
+ifneq ($(ZSV_NO_TOON),1)
+  SOURCES+=2toon
+endif
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
-TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-2toon-help test-paste test-flatten-2 test-flatten-dupcol
+TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-paste test-flatten-2 test-flatten-dupcol
+ifneq ($(ZSV_NO_TOON),1)
+  TESTS+=test-2toon-help
+endif
 
 ifeq ($(ZSVSHEET_BUILD),1)
   SOURCES+=sheet
@@ -984,12 +991,14 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} 
 	${CMP} ${TMP_DIR}/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
 #	ajv validate --strict-tuples=false -s ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json -d expected/$@.out7.json [suffix must be json]
 
+ifneq ($(ZSV_NO_TOON),1)
 	@# --from-toon: convert a TOON document to JSON
 	@(printf '[2]{a,b}:\n  1,x\n  2,"y,z"\n' | ${PREFIX} $< --from-toon ${REDIRECT1} ${TMP_DIR}/$@.from-toon && \
 	${CMP} ${TMP_DIR}/$@.from-toon expected/$@.from-toon && ${TEST_PASS} || ${TEST_FAIL})
 
 	@# --from-toon is mutually exclusive with --from-db
 	@(printf '[0]:\n' | $< --from-toon --from-db /dev/null >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
+endif
 
 # 2toon mirrors 2json but emits TOON. Same inputs/options; the db input for
 # --from-db is built the same way (2json | 2db) and read back with 2toon.
@@ -1139,6 +1148,7 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@# --columns: error - invalid spec
 	@($< --columns bad compare/colrange1.csv >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
 
+ifneq ($(ZSV_NO_TOON),1)
 	@# --toon: TOON output (same comparison as --json out6, rendered as TOON)
 	@(${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv --toon ${REDIRECT1} ${TMP_DIR}/$@.toon && \
 	${CMP} ${TMP_DIR}/$@.toon expected/$@.toon && ${TEST_PASS} || ${TEST_FAIL})
@@ -1153,6 +1163,7 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 
 	@# --json and --toon together is an error
 	@($< compare/t1.csv compare/t2.csv compare/t3.csv --json --toon >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
+endif
 
 include test-compare-redline.mk
 

@@ -8,7 +8,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <jsonwriter.h>
+#ifndef ZSV_NO_TOON
 #include <json2toon.h>
+#endif
 #include <sqlite3.h>
 
 #define ZSV_COMMAND 2json
@@ -50,7 +52,9 @@ struct zsv_2json_data {
   unsigned char err : 1;
   unsigned char from_db : 1;
   unsigned char compact : 1;
+#ifndef ZSV_NO_TOON
   unsigned char from_toon : 1; // --from-toon: input is TOON, convert to JSON
+#endif
 };
 
 static void zsv_2json_cleanup(struct zsv_2json_data *data) {
@@ -241,7 +245,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     "  -o,--output <filename>        : filename to write output to",
     "  --compact                     : output compact JSON",
     "  --from-db                     : input is sqlite3 database",
+#ifndef ZSV_NO_TOON
     "  --from-toon                   : input is TOON; convert TOON to JSON",
+#endif
     "  --db-table <table_name>       : name of table in input database to convert",
     "  --object                      : output as array of objects",
     "  --no-empty                    : omit empty properties (only with --object)",
@@ -301,8 +307,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         input_path = argv[i];
         data.from_db = 1;
       }
+#ifndef ZSV_NO_TOON
     } else if (!strcmp(argv[i], "--from-toon")) {
       data.from_toon = 1;
+#endif
     } else if (!strcmp(argv[i], "--database") || !strcmp(argv[i], "--object")) {
       if (data.schema)
         fprintf(stderr, "Output schema specified more than once\n"), err = zsv_status_error;
@@ -325,9 +333,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   }
 
   if (!(err || done)) {
+#ifndef ZSV_NO_TOON
     if (data.from_toon && (data.from_db || data.schema || data.no_header || data.no_empty || data.indexes.count))
       fprintf(stderr, "--from-toon cannot be combined with --from-db or CSV/schema options\n"), err = zsv_status_error;
-    else if (data.indexes.count && data.schema != ZSV_JSON_SCHEMA_DATABASE)
+    else
+#endif
+      if (data.indexes.count && data.schema != ZSV_JSON_SCHEMA_DATABASE)
       fprintf(stderr, "--index/--unique-index can only be used with --database\n"), err = zsv_status_error;
     else if (data.no_header && data.schema)
       fprintf(stderr, "--no-header cannot be used together with --object or --database\n"), err = zsv_status_error;
@@ -349,13 +360,16 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   if (!(err || done)) {
     if (!out)
       out = stdout;
+#ifndef ZSV_NO_TOON
     if (data.from_toon) {
       size_t off = 0;
       int rc = toon2json_convert_file(opts.stream, out, NULL, &off);
       if (rc != JSON2TOON_OK)
         fprintf(stderr, "%s: TOON to JSON conversion failed at byte %zu: %s\n", APPNAME, off, toon2json_strerror(rc)),
           err = zsv_status_error;
-    } else if (!(data.jsw = jsonwriter_new(out)))
+    } else
+#endif
+      if (!(data.jsw = jsonwriter_new(out)))
       err = zsv_status_error;
     else {
       if (data.compact)

@@ -64,6 +64,13 @@ ifeq ($(ZSV_NO_ONLY_CRLF),1)
   CFLAGS+= -DZSV_NO_ONLY_CRLF
 endif
 
+# ZSV_NO_TOON: build without any TOON features (no 2toon command, no compare
+# --toon, no 2json --from-toon / 2toon --from-json, and no toonwriter/json2toon
+# objects). Guards in cli.c/compare.c/2json.c and the link rules key off this.
+ifeq ($(ZSV_NO_TOON),1)
+  CFLAGS+= -DZSV_NO_TOON
+endif
+
 DEBUG=0
 WIN=
 ifeq ($(WIN),)
@@ -243,13 +250,18 @@ endif
 PROG_NAME ?= zsv
 ZSV=$(BINDIR)/$(PROG_NAME)${EXE}
 
-SOURCES=echo paste check count count-pull select select-pull 2tsv 2json 2toon serialize flatten pretty stack desc sql 2db compare prop rm mv jq
+SOURCES=echo paste check count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq
 ifeq ($(ZSV_EXTRAS),1)
   SOURCES+=overwrite
 endif
-CLI_SOURCES=echo select desc count paste check 2tsv pretty sql flatten 2json 2toon serialize stack 2db compare prop rm mv jq
+CLI_SOURCES=echo select desc count paste check 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq
 ifeq ($(ZSV_EXTRAS),1)
   CLI_SOURCES+=overwrite
+endif
+# 2toon exists only when TOON features are enabled
+ifneq ($(ZSV_NO_TOON),1)
+  SOURCES+=2toon
+  CLI_SOURCES+=2toon
 endif
 
 ifeq ($(ZSVSHEET_BUILD),1)
@@ -574,6 +586,7 @@ ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o ${STANDALONE_PFX}flatten${EXE} ${CLI_OBJ_PFX}flatten.o: MORE_SOURCE+=${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
 
+ifneq ($(ZSV_NO_TOON),1)
 # 2toon and compare use toonwriter; 2toon also has its own db->toon converter, so it needs sqlite3 headers
 ${CLI} ${STANDALONE_PFX}2toon${EXE} ${STANDALONE_PFX}compare${EXE}: ${TOONWRITER_OBJECT}
 ${CLI} ${STANDALONE_PFX}2toon${EXE} ${STANDALONE_PFX}compare${EXE}: MORE_OBJECTS+= ${TOONWRITER_OBJECT}
@@ -591,6 +604,7 @@ ${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+= ${JSON2TOON_OBJECT} ${TOONWRITER_OB
 ${STANDALONE_PFX}2toon${EXE}: ${JSON2TOON_OBJECT} ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2toon${EXE}: MORE_OBJECTS+= ${JSON2TOON_OBJECT} ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}2toon${EXE} ${CLI_OBJ_PFX}2toon.o: MORE_SOURCE+=${JSON2TOON_INCLUDE}
+endif
 
 ifeq ($(USE_SIMDUTF),1)
 CFLAGS+=-DUSE_SIMDUTF
