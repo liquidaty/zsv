@@ -1076,10 +1076,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     data->writer.toon = saw_toon || (!saw_json && get_default_output_format() == zsv_output_format_toon);
 #endif
 
-  /* A host-provided document renderer (writer.redline_render) turns the redline
-   * into an HTML/XLSX document; it owns the output format, so it is mutually
-   * exclusive with the stdout output-format flags and requires an -o destination.
-   * redline_render is always 0 in stock zsv, so these checks are no-ops there. */
+    /* A host-provided document renderer (writer.redline_render) turns the redline
+     * into an HTML/XLSX document; it owns the output format, so it is mutually
+     * exclusive with the stdout output-format flags and requires an -o destination.
+     * redline_render is always 0 in stock zsv, so these checks are no-ops there. */
 #ifndef ZSV_NO_TOON
   if (!err && data->writer.redline_render && (saw_json || saw_redline || saw_toon)) {
     fprintf(stderr, "Error: document rendering cannot be combined with --json, --json-object,"
