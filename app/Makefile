@@ -505,7 +505,7 @@ ${INIH_OBJECT}: ${INIH_SRC}/ini.c
 ${CLI_APP_OBJECT} : cli_ini.c builtin/*.c ${JQ_LIB}
 ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8proc.c # ${MORE_OBJECTS}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${DEPFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} ${MEMFILE_INCLUDE} -I${THIS_MAKEFILE_DIR}/external/sglib -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -c $< -o $@ ${MORE_SOURCE}
+	${CC} ${PREPEND_INCLUDE} ${CFLAGS} ${DEPFLAGS} -DVERSION=\"${VERSION}\" -DZSV_CLI ${CLI_INCLUDE} ${MEMFILE_INCLUDE} -I${THIS_MAKEFILE_DIR}/external/sglib -I${INCLUDE_DIR} -I${UTF8PROC_INCLUDE} -c $< -o $@ ${MORE_SOURCE}
 
 ${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${LIBZSV_BUILD} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${MORE_OBJECTS} ${SQL_INTERNAL_OBJECT}
 	@mkdir -p `dirname "$@"`
@@ -603,7 +603,11 @@ ${STANDALONE_PFX}2json${EXE}: ${JSON2TOON_OBJECT} ${TOONWRITER_OBJECT}
 ${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+= ${JSON2TOON_OBJECT} ${TOONWRITER_OBJECT}
 ${STANDALONE_PFX}2toon${EXE}: ${JSON2TOON_OBJECT} ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2toon${EXE}: MORE_OBJECTS+= ${JSON2TOON_OBJECT} ${JSONWRITER_OBJECT}
-${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}2toon${EXE} ${CLI_OBJ_PFX}2toon.o: MORE_SOURCE+=${JSON2TOON_INCLUDE}
+# 2json/2toon include the vendored <json2toon.h>/<jsonwriter.h>/<toonwriter.h> with
+# angle brackets, so put the vendored dirs FIRST -- via PREPEND_INCLUDE, emitted right
+# after $(CC), ahead of the global -I${INCLUDEDIR} -- so a copy installed under the
+# prefix (e.g. an older json2toon) cannot shadow the vendored headers.
+${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}2toon${EXE} ${CLI_OBJ_PFX}2toon.o: PREPEND_INCLUDE+=${JSON2TOON_INCLUDE} ${JSONWRITER_INCLUDE} ${TOONWRITER_INCLUDE}
 endif
 
 ifeq ($(USE_SIMDUTF),1)
@@ -732,7 +736,7 @@ ${CLI_OBJ_PFX}sheet.o ${STANDALONE_PFX}sheet${EXE}: DEPFLAGS=-MMD -MP -MT $@ -MF
 
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_BUILD} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} ${DEPFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${BUILD_DIR}/lib ${LIBZSV_L} ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
+	${CC} ${PREPEND_INCLUDE} ${CFLAGS} ${DEPFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${BUILD_DIR}/lib ${LIBZSV_L} ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
 
 ${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}-external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`
