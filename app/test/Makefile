@@ -1153,13 +1153,19 @@ ifneq ($(ZSV_NO_TOON),1)
 	@(${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv --toon ${REDIRECT1} ${TMP_DIR}/$@.toon && \
 	${CMP} ${TMP_DIR}/$@.toon expected/$@.toon && ${TEST_PASS} || ${TEST_FAIL})
 
-	@# AI_AGENT default: with AI_AGENT set and no format flag, output defaults to TOON
-	@(AI_AGENT=1 ${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv ${REDIRECT1} ${TMP_DIR}/$@.toon-default && \
-	${CMP} ${TMP_DIR}/$@.toon-default expected/$@.toon && ${TEST_PASS} || ${TEST_FAIL})
+	@# get_default_output_format() does NOT affect the (non-redline) comparison output: with
+	@# AI_AGENT set and no format flag, output stays the default CSV (byte-identical to out).
+	@# The AI_AGENT default only selects TOON under --redline (see test-compare-redline-v2).
+	@(AI_AGENT=1 ${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv ${REDIRECT1} ${TMP_DIR}/$@.ai-default && \
+	${CMP} ${TMP_DIR}/$@.ai-default expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
 
-	@# an explicit --json overrides the AI_AGENT TOON default (byte-identical to plain --json)
-	@(AI_AGENT=1 ${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv --json ${REDIRECT1} ${TMP_DIR}/$@.toon-json-override && \
-	${CMP} ${TMP_DIR}/$@.toon-json-override expected/$@.out6 && ${TEST_PASS} || ${TEST_FAIL})
+	@# an explicit --toon still yields TOON even when AI_AGENT is unset (blank env)
+	@(AI_AGENT= ${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv --toon ${REDIRECT1} ${TMP_DIR}/$@.toon-noenv && \
+	${CMP} ${TMP_DIR}/$@.toon-noenv expected/$@.toon && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# an explicit --json yields JSON regardless of AI_AGENT (byte-identical to plain --json)
+	@(AI_AGENT=1 ${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv --json ${REDIRECT1} ${TMP_DIR}/$@.json-override && \
+	${CMP} ${TMP_DIR}/$@.json-override expected/$@.out6 && ${TEST_PASS} || ${TEST_FAIL})
 
 	@# --json and --toon together is an error
 	@($< compare/t1.csv compare/t2.csv compare/t3.csv --json --toon >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})

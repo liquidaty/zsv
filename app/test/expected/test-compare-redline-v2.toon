@@ -1,0 +1,45 @@
+schema: zsv.compare
+version: "1"
+generated_at: "2023-11-14T22:13:20Z"
+inputs[2]{label,path,row_count}:
+  jredline1a.csv,compare/jredline1a.csv,2
+  jredline1b.csv,compare/jredline1b.csv,2
+keys[1]: id
+options:
+  tolerance: null
+  sort: false
+  include_unchanged_rows: true
+  include_tolerated: false
+  require_all_inputs: false
+columns[3]:
+  - name: id
+    is_key: true
+    in_inputs[2]: 0,1
+  - name: name
+    is_key: false
+    in_inputs[2]: 0,1
+  - name: val
+    is_key: false
+    in_inputs[2]: 0,1
+summary:
+  rows:
+    in_all_inputs: 2
+    only_in_input_count[2]: 0,0
+    with_any_diff: 0
+  cells:
+    compared: 6
+    matched: 6
+    within_tolerance: 0
+    differing: 0
+  by_column[3]{name,compared,matched,within_tolerance,differing}:
+    id,2,2,0,0
+    name,2,2,0,0
+    val,2,2,0,0
+  schema:
+    common[3]: id,name,val
+    only_in_input[2]:
+      - []
+      - []
+rows[2]:
+  - [3]: "1",Alice,"100"
+  - [3]: "2",Bob,"200"

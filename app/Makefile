@@ -603,11 +603,14 @@ ${STANDALONE_PFX}2json${EXE}: ${JSON2TOON_OBJECT} ${TOONWRITER_OBJECT}
 ${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+= ${JSON2TOON_OBJECT} ${TOONWRITER_OBJECT}
 ${STANDALONE_PFX}2toon${EXE}: ${JSON2TOON_OBJECT} ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2toon${EXE}: MORE_OBJECTS+= ${JSON2TOON_OBJECT} ${JSONWRITER_OBJECT}
-# 2json/2toon include the vendored <json2toon.h>/<jsonwriter.h>/<toonwriter.h> with
-# angle brackets, so put the vendored dirs FIRST -- via PREPEND_INCLUDE, emitted right
-# after $(CC), ahead of the global -I${INCLUDEDIR} -- so a copy installed under the
-# prefix (e.g. an older json2toon) cannot shadow the vendored headers.
-${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}2toon${EXE} ${CLI_OBJ_PFX}2toon.o: PREPEND_INCLUDE+=${JSON2TOON_INCLUDE} ${JSONWRITER_INCLUDE} ${TOONWRITER_INCLUDE}
+# compare uses json2toon for its --redline TOON output (already links jsonwriter/toonwriter)
+${STANDALONE_PFX}compare${EXE}: ${JSON2TOON_OBJECT}
+${STANDALONE_PFX}compare${EXE}: MORE_OBJECTS+= ${JSON2TOON_OBJECT}
+# 2json/2toon/compare include the vendored <json2toon.h>/<jsonwriter.h>/<toonwriter.h>
+# with angle brackets, so put the vendored dirs FIRST -- via PREPEND_INCLUDE, emitted
+# right after $(CC), ahead of the global -I${INCLUDEDIR} -- so a copy installed under
+# the prefix (e.g. an older json2toon) cannot shadow the vendored headers.
+${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}2toon${EXE} ${CLI_OBJ_PFX}2toon.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o: PREPEND_INCLUDE+=${JSON2TOON_INCLUDE} ${JSONWRITER_INCLUDE} ${TOONWRITER_INCLUDE}
 endif
 
 ifeq ($(USE_SIMDUTF),1)

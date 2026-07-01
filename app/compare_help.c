@@ -7,15 +7,15 @@
  */
 
 /*
- * Help-topic printers for `zsv help compare <topic>` (the --json-redline schema
+ * Help-topic printers for `zsv help compare <topic>` (the --redline schema
  * and its narrative). #included directly into compare.c as a single translation unit.
  */
 
 void zsv_compare_print_help_topic_narrative(FILE *out) {
-  static const char *text[] = {"zsv compare --json-redline schema (version " ZSV_COMPARE_REDLINE_VERSION ")",
+  static const char *text[] = {"zsv compare --redline schema (version " ZSV_COMPARE_REDLINE_VERSION ")",
                                "==========================================================",
                                "",
-                               "Output mode: zsv compare --json-redline [options] <file.csv>...",
+                               "Output mode: zsv compare --redline [options] <file.csv>...",
                                "",
                                "Produces a single JSON object describing the comparison between two or more",
                                "CSV inputs. A downstream renderer can produce an HTML or XLSX redline from",
@@ -49,7 +49,7 @@ void zsv_compare_print_help_topic_narrative(FILE *out) {
                                "  (input[0]'s value) unless --include-tolerated is also set.",
                                "",
                                "See also",
-                               "  zsv help compare json-redline-schema  (JSON Schema Draft 2020-12)",
+                               "  zsv help compare redline-schema  (JSON Schema Draft 2020-12)",
                                NULL};
   for (size_t i = 0; text[i]; i++)
     fprintf(out, "%s\n", text[i]);
@@ -58,8 +58,8 @@ void zsv_compare_print_help_topic_narrative(FILE *out) {
 void zsv_compare_print_help_topic_json_schema(FILE *out) {
   fprintf(out, "{\n");
   fprintf(out, "  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n");
-  fprintf(out, "  \"$id\": \"zsv.compare.json-redline.v%s\",\n", ZSV_COMPARE_REDLINE_VERSION);
-  fprintf(out, "  \"title\": \"zsv compare --json-redline output (v%s)\",\n", ZSV_COMPARE_REDLINE_VERSION);
+  fprintf(out, "  \"$id\": \"zsv.compare.redline.v%s\",\n", ZSV_COMPARE_REDLINE_VERSION);
+  fprintf(out, "  \"title\": \"zsv compare --redline output (v%s)\",\n", ZSV_COMPARE_REDLINE_VERSION);
   fprintf(out, "  \"type\": \"object\",\n");
   fprintf(
     out,
@@ -197,19 +197,21 @@ void zsv_compare_print_help_topic_json_schema(FILE *out) {
 }
 
 static int zsv_compare_print_help_topic(const char *name) {
-  /* canonical: json-redline, json-redline-schema
-     silent aliases (undocumented): compare-json-redline, json-redline-json, compare-json-redline-schema
-  */
-  if (!strcmp(name, "json-redline") || !strcmp(name, "compare-json-redline")) {
+  /* canonical: redline, redline-schema (also as the compare-redline[-schema] --help-topic prefix form)
+     legacy/silent aliases: json-redline, json-redline-schema, compare-json-redline,
+     json-redline-json, compare-json-redline-schema */
+  if (!strcmp(name, "redline") || !strcmp(name, "compare-redline") || !strcmp(name, "json-redline") ||
+      !strcmp(name, "compare-json-redline")) {
     zsv_compare_print_help_topic_narrative(stdout);
     return 0;
   }
-  if (!strcmp(name, "json-redline-schema") || !strcmp(name, "json-redline-json") ||
+  if (!strcmp(name, "redline-schema") || !strcmp(name, "compare-redline-schema") ||
+      !strcmp(name, "json-redline-schema") || !strcmp(name, "json-redline-json") ||
       !strcmp(name, "compare-json-redline-schema")) {
     zsv_compare_print_help_topic_json_schema(stdout);
     return 0;
   }
   fprintf(stderr, "Unknown help topic: %s\n", name);
-  fprintf(stderr, "Available topics: json-redline, json-redline-schema\n");
+  fprintf(stderr, "Available topics: redline, redline-schema\n");
   return 1;
 }

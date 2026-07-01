@@ -1,8 +1,8 @@
-# `zsv compare --json-redline` — Technical Guide
+# `zsv compare --redline` — Technical Guide
 
 ## Wire format
 
-The output is plain JSON (no comments).  The authoritative schema is embedded in the binary: `zsv help compare json-redline` (narrative) and `zsv help compare json-redline-schema` (JSON Schema, Draft 2020-12).  The formal wire format version is `"version": "1"`.
+The output is plain JSON (no comments).  The authoritative schema is embedded in the binary: `zsv help compare redline` (narrative) and `zsv help compare redline-schema` (JSON Schema, Draft 2020-12).  The formal wire format version is `"version": "1"`.
 
 ## Schema cross-reference
 
@@ -57,7 +57,7 @@ Every new allocation introduced by the redline mode and its corresponding free p
 
 | Decision | Resolution |
 |----------|-----------|
-| Final flag name | `--json-redline` (consistent with `--json`, `--json-object`, `--json-compact` prefix) |
+| Final flag name | `--redline` (renamed from the original `--redline`, which is retained as a legacy alias). The output defaults to JSON but is emitted as TOON when `--toon` is given or when the `AI_AGENT` environment default selects TOON. |
 | Float formatting | Cell values are raw CSV strings — no float formatting. `options.tolerance` emits the user-specified value via `data->tolerance.original`. No floats are computed or emitted in `rows[]`. |
 | Row order without `--sort` | Input[0]'s processing order; rows unique to later inputs appear at their natural key position in the output stream. |
 | `only_in_input` shape for >2 inputs | Parallel array `[["cols_only_in_0"], ["cols_only_in_1"], ...]` indexed by input position — consistent with all other parallel arrays in the schema. |
