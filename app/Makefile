@@ -243,11 +243,11 @@ endif
 PROG_NAME ?= zsv
 ZSV=$(BINDIR)/$(PROG_NAME)${EXE}
 
-SOURCES=echo paste check count count-pull select select-pull 2tsv 2json serialize flatten pretty stack desc sql 2db compare prop rm mv jq
+SOURCES=echo paste check count count-pull select select-pull 2tsv 2json 2toon serialize flatten pretty stack desc sql 2db compare prop rm mv jq
 ifeq ($(ZSV_EXTRAS),1)
   SOURCES+=overwrite
 endif
-CLI_SOURCES=echo select desc count paste check 2tsv pretty sql flatten 2json serialize stack 2db compare prop rm mv jq
+CLI_SOURCES=echo select desc count paste check 2tsv pretty sql flatten 2json 2toon serialize stack 2db compare prop rm mv jq
 ifeq ($(ZSV_EXTRAS),1)
   CLI_SOURCES+=overwrite
 endif
@@ -327,6 +327,11 @@ endif
 JSONWRITER_SRC=${THIS_MAKEFILE_DIR}/external/json_writer-1.01
 JSONWRITER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/json_writer-1.01
 JSONWRITER_OBJECT=${BUILD_DIR}-external/json_writer-1.01/jsonwriter.o
+
+## toon writer
+TOONWRITER_SRC=${THIS_MAKEFILE_DIR}/external/toon_writer-1.0
+TOONWRITER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/toon_writer-1.0
+TOONWRITER_OBJECT=${BUILD_DIR}-external/toon_writer-1.0/toonwriter.o
 
 ## memfile
 MEMFILE_SRC=${THIS_MAKEFILE_DIR}/external/memfile-1.0/src
@@ -535,6 +540,10 @@ ${JSONWRITER_OBJECT}: ${JSONWRITER_SRC}/jsonwriter.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${JSONWRITER_INCLUDE} -DINCLUDE_UTILS $< -c -o $@
 
+${TOONWRITER_OBJECT}: ${TOONWRITER_SRC}/toonwriter.c ${TOONWRITER_SRC}/toon_numeric.c ${TOONWRITER_SRC}/toonwriter.h ${TOONWRITER_SRC}/toon_numeric.h
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} ${TOONWRITER_INCLUDE} $< -c -o $@
+
 ${MEMFILE_OBJECT}: ${MEMFILE_SRC}/memfile.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${MEMFILE_INCLUDE} -DINCLUDE_UTILS $< -c -o $@
@@ -546,6 +555,11 @@ MORE_SOURCE+=-I${THIS_MAKEFILE_DIR}/external/sglib
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: ${JSONWRITER_OBJECT}
 ${CLI} ${STANDALONE_PFX}2json${EXE} ${STANDALONE_PFX}desc${EXE} ${STANDALONE_PFX}compare${EXE} ${STANDALONE_PFX}flatten${EXE}: MORE_OBJECTS+= ${JSONWRITER_OBJECT}
 ${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}desc${EXE} ${CLI_OBJ_PFX}desc.o ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o ${STANDALONE_PFX}flatten${EXE} ${CLI_OBJ_PFX}flatten.o: MORE_SOURCE+=${JSONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
+
+# 2toon uses toonwriter (and its own db->toon converter, so it needs sqlite3 headers)
+${CLI} ${STANDALONE_PFX}2toon${EXE}: ${TOONWRITER_OBJECT}
+${CLI} ${STANDALONE_PFX}2toon${EXE}: MORE_OBJECTS+= ${TOONWRITER_OBJECT}
+${STANDALONE_PFX}2toon${EXE} ${CLI_OBJ_PFX}2toon.o: MORE_SOURCE+=${TOONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
 
 ifeq ($(USE_SIMDUTF),1)
 CFLAGS+=-DUSE_SIMDUTF
