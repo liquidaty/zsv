@@ -984,6 +984,13 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} 
 	${CMP} ${TMP_DIR}/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
 #	ajv validate --strict-tuples=false -s ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json -d expected/$@.out7.json [suffix must be json]
 
+	@# --from-toon: convert a TOON document to JSON
+	@(printf '[2]{a,b}:\n  1,x\n  2,"y,z"\n' | ${PREFIX} $< --from-toon ${REDIRECT1} ${TMP_DIR}/$@.from-toon && \
+	${CMP} ${TMP_DIR}/$@.from-toon expected/$@.from-toon && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --from-toon is mutually exclusive with --from-db
+	@(printf '[0]:\n' | $< --from-toon --from-db /dev/null >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
+
 # 2toon mirrors 2json but emits TOON. Same inputs/options; the db input for
 # --from-db is built the same way (2json | 2db) and read back with 2toon.
 test-2toon: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select${EXE} worldcitiespop_mil.csv
@@ -1015,6 +1022,15 @@ test-2toon: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} 
 	${PREFIX} ${BUILD_DIR}/bin/zsv_2db${EXE} -o ${TMP_DIR}/$@.db --table data --overwrite
 	@(${PREFIX} $< --from-db ${TMP_DIR}/$@.db ${REDIRECT1} ${TMP_DIR}/$@.out7 && \
 	${CMP} ${TMP_DIR}/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --from-json: convert a JSON document to TOON
+	@(printf '[{"a":1,"b":"x"},{"a":2,"b":"y,z"}]' | ${PREFIX} $< --from-json ${REDIRECT1} ${TMP_DIR}/$@.from-json && \
+	${CMP} ${TMP_DIR}/$@.from-json expected/$@.from-json && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# round-trip JSON -> TOON (2toon --from-json) -> JSON (2json --from-toon) is the identity
+	@(printf '[{"a":1,"b":"x"},{"a":2,"b":"y,z"}]' | ${PREFIX} $< --from-json | \
+	${PREFIX} ${BUILD_DIR}/bin/zsv_2json${EXE} --from-toon ${REDIRECT1} ${TMP_DIR}/$@.roundtrip && \
+	${CMP} ${TMP_DIR}/$@.roundtrip expected/$@.roundtrip && ${TEST_PASS} || ${TEST_FAIL})
 
 test-2json-help test-2toon-help: test-%-help: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}

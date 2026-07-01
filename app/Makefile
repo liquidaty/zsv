@@ -333,6 +333,14 @@ TOONWRITER_SRC=${THIS_MAKEFILE_DIR}/external/toon_writer-1.0
 TOONWRITER_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/toon_writer-1.0
 TOONWRITER_OBJECT=${BUILD_DIR}-external/toon_writer-1.0/toonwriter.o
 
+## json2toon: JSON<->TOON conversion (2json --from-toon / 2toon --from-json), with
+## its vendored yatl TOON parser. Shares zsv's yajl/jsonwriter/toonwriter (identical headers).
+JSON2TOON_SRC=${THIS_MAKEFILE_DIR}/external/json2toon-1.0
+JSON2TOON_INCLUDE=-I${JSON2TOON_SRC} -I${JSON2TOON_SRC}/yatl
+JSON2TOON_CORE_OBJ=$(addprefix ${BUILD_DIR}-external/json2toon-1.0/,$(addsuffix .o,json2toon toon2json format convenience))
+YATL_OBJ=$(addprefix ${BUILD_DIR}-external/json2toon-1.0/yatl/,$(addsuffix .o,yatl yatl_parser yatl_buf yatl_encode yatl_alloc yatl_version))
+JSON2TOON_OBJECT=${JSON2TOON_CORE_OBJ} ${YATL_OBJ}
+
 ## memfile
 MEMFILE_SRC=${THIS_MAKEFILE_DIR}/external/memfile-1.0/src
 MEMFILE_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/memfile-1.0/include
@@ -544,6 +552,16 @@ ${TOONWRITER_OBJECT}: ${TOONWRITER_SRC}/toonwriter.c ${TOONWRITER_SRC}/toon_nume
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${TOONWRITER_INCLUDE} $< -c -o $@
 
+# json2toon core translation units (share zsv's yajl/jsonwriter/toonwriter). -w: vendored third-party.
+${JSON2TOON_CORE_OBJ}: ${BUILD_DIR}-external/json2toon-1.0/%.o: ${JSON2TOON_SRC}/%.c ${JSON2TOON_SRC}/internal.h ${JSON2TOON_SRC}/j2t_config.h ${JSON2TOON_SRC}/json2toon.h
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} ${JSON2TOON_INCLUDE} ${JSONWRITER_INCLUDE} ${TOONWRITER_INCLUDE} ${YAJL_INCLUDE} -w -c $< -o $@
+
+# vendored yatl TOON parser (used by json2toon's reverse direction)
+${YATL_OBJ}: ${BUILD_DIR}-external/json2toon-1.0/yatl/%.o: ${JSON2TOON_SRC}/yatl/%.c
+	@mkdir -p `dirname "$@"`
+	${CC} ${CFLAGS} -I${JSON2TOON_SRC}/yatl -w -c $< -o $@
+
 ${MEMFILE_OBJECT}: ${MEMFILE_SRC}/memfile.c
 	@mkdir -p `dirname "$@"`
 	${CC} ${CFLAGS} ${MEMFILE_INCLUDE} -DINCLUDE_UTILS $< -c -o $@
@@ -561,6 +579,18 @@ ${CLI} ${STANDALONE_PFX}2toon${EXE} ${STANDALONE_PFX}compare${EXE}: ${TOONWRITER
 ${CLI} ${STANDALONE_PFX}2toon${EXE} ${STANDALONE_PFX}compare${EXE}: MORE_OBJECTS+= ${TOONWRITER_OBJECT}
 ${STANDALONE_PFX}2toon${EXE} ${CLI_OBJ_PFX}2toon.o: MORE_SOURCE+=${TOONWRITER_INCLUDE} ${SQLITE_EXT_INCLUDE}
 ${STANDALONE_PFX}compare${EXE} ${CLI_OBJ_PFX}compare.o: MORE_SOURCE+=${TOONWRITER_INCLUDE}
+
+# 2json --from-toon / 2toon --from-json use json2toon (+ vendored yatl); both
+# directions share zsv's yajl/jsonwriter/toonwriter. The CLI already links both
+# writers (via 2json/2toon/compare), so it only adds json2toon; each standalone
+# adds the one writer it does not already link.
+${CLI}: ${JSON2TOON_OBJECT}
+${CLI}: MORE_OBJECTS+= ${JSON2TOON_OBJECT}
+${STANDALONE_PFX}2json${EXE}: ${JSON2TOON_OBJECT} ${TOONWRITER_OBJECT}
+${STANDALONE_PFX}2json${EXE}: MORE_OBJECTS+= ${JSON2TOON_OBJECT} ${TOONWRITER_OBJECT}
+${STANDALONE_PFX}2toon${EXE}: ${JSON2TOON_OBJECT} ${JSONWRITER_OBJECT}
+${STANDALONE_PFX}2toon${EXE}: MORE_OBJECTS+= ${JSON2TOON_OBJECT} ${JSONWRITER_OBJECT}
+${STANDALONE_PFX}2json${EXE} ${CLI_OBJ_PFX}2json.o ${STANDALONE_PFX}2toon${EXE} ${CLI_OBJ_PFX}2toon.o: MORE_SOURCE+=${JSON2TOON_INCLUDE}
 
 ifeq ($(USE_SIMDUTF),1)
 CFLAGS+=-DUSE_SIMDUTF
