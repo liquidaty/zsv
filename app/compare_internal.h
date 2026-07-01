@@ -151,7 +151,7 @@ struct zsv_compare_data {
     unsigned char include_tolerated : 1;      // --include-tolerated
     unsigned char redline_render : 1;         // --redline: render the redline JSON to a document
 #ifndef ZSV_NO_TOON
-    unsigned char toon : 1;                   // --toon (or AI_AGENT default): emit TOON via handle.toonw
+    unsigned char toon : 1; // --toon (or AI_AGENT default): emit TOON via handle.toonw
 #endif
     unsigned char _ : 2;
 

@@ -97,17 +97,33 @@ static struct zsv_compare_key **zsv_compare_key_add(struct zsv_compare_key **nex
  * zsv_compare_output_begin/_free.
  */
 #ifdef ZSV_NO_TOON
-static void cw_object_key(struct zsv_compare_data *d, const char *k) { jsonwriter_object_key(d->writer.handle.jsw, k); }
-static void cw_null(struct zsv_compare_data *d) { jsonwriter_null(d->writer.handle.jsw); }
+static void cw_object_key(struct zsv_compare_data *d, const char *k) {
+  jsonwriter_object_key(d->writer.handle.jsw, k);
+}
+static void cw_null(struct zsv_compare_data *d) {
+  jsonwriter_null(d->writer.handle.jsw);
+}
 static void cw_strn(struct zsv_compare_data *d, const unsigned char *s, size_t len) {
   jsonwriter_strn(d->writer.handle.jsw, s, len);
 }
-static void cw_int(struct zsv_compare_data *d, size_t n) { jsonwriter_int(d->writer.handle.jsw, n); }
-static void cw_start_object(struct zsv_compare_data *d) { jsonwriter_start_object(d->writer.handle.jsw); }
-static void cw_end_object(struct zsv_compare_data *d) { jsonwriter_end_object(d->writer.handle.jsw); }
-static void cw_start_array(struct zsv_compare_data *d) { jsonwriter_start_array(d->writer.handle.jsw); }
-static void cw_end_array(struct zsv_compare_data *d) { jsonwriter_end_array(d->writer.handle.jsw); }
-static void cw_end(struct zsv_compare_data *d) { jsonwriter_end(d->writer.handle.jsw); }
+static void cw_int(struct zsv_compare_data *d, size_t n) {
+  jsonwriter_int(d->writer.handle.jsw, n);
+}
+static void cw_start_object(struct zsv_compare_data *d) {
+  jsonwriter_start_object(d->writer.handle.jsw);
+}
+static void cw_end_object(struct zsv_compare_data *d) {
+  jsonwriter_end_object(d->writer.handle.jsw);
+}
+static void cw_start_array(struct zsv_compare_data *d) {
+  jsonwriter_start_array(d->writer.handle.jsw);
+}
+static void cw_end_array(struct zsv_compare_data *d) {
+  jsonwriter_end_array(d->writer.handle.jsw);
+}
+static void cw_end(struct zsv_compare_data *d) {
+  jsonwriter_end(d->writer.handle.jsw);
+}
 #else
 static void cw_object_key(struct zsv_compare_data *d, const char *k) {
   if (d->writer.toon)

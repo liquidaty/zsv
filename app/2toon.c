@@ -276,7 +276,7 @@ static void zsv_2toon_row(void *ctx) {
   if (cols) {
     char obj = 0;
     char arr = 0;
-    if (!data->rows_processed) {          // header row
+    if (!data->rows_processed) {           // header row
       toonwriter_start_array(data->toonw); // start array of rows
       if (data->schema == ZSV_TOON_SCHEMA_DATABASE) {
         toonwriter_start_object(data->toonw); // start this row
