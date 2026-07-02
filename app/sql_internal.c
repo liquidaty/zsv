@@ -29,6 +29,7 @@ void zsv_sqlite3_db_delete(struct zsv_sqlite3_db *zdb) {
     }
     if (zdb->db)
       sqlite3_close(zdb->db);
+    free(zdb->err_msg); // strdup'd in zsv_sqlite3_db_new / create_virtual_csv_table
     free(zdb);
   }
 }

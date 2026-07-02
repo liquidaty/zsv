@@ -807,7 +807,9 @@ test-serialize : test-%: ${BUILD_DIR}/bin/zsv_%${EXE} test-serialize-quoted test
 	@(${PREFIX} $< -p < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@-2.out && \
 	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
 
-test-sql: test-sql2 test-sql3 test-sql4 test-sql5 test-sql-dupcol test-sql-dupcol-rename test-sql-dupcol-msg
+test-sql: test-sql2 test-sql3 test-sql4 test-sql5 test-sql-dupcol test-sql-dupcol-rename test-sql-dupcol-msg \
+          test-sql-dupcol-default test-sql-dupcol-3x test-sql-dupcol-collide test-sql-dupcol-caseins \
+          test-sql-dupcol-nodup
 test-sql2: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@echo ${ARGS-sql} > ${TMP_DIR}/$@.sql
@@ -830,41 +832,85 @@ test-sql5: ${BUILD_DIR}/bin/zsv_sql${EXE} # test blank rows
 	@(${PREFIX} $< ${TMP_DIR}/1.csv 'select * from data' ${REDIRECT1} ${TMP_DIR}/$@.out)
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-# Regression for the duplicate-column-name abort: input whose header has the same
-# name twice makes SQLite reject the CREATE TABLE. zsv sql must report the error and
-# exit *gracefully* (normal nonzero code), not die by signal (SIGABRT -> 128+6=134),
-# which is what the pre-fix double-free in zsv_sqlite3_add_csv() caused. We assert the
-# exit code is a graceful failure (nonzero and < 128) rather than a signal death, so
-# the test stays valid regardless of the exact error message wording.
+# Regression for the duplicate-column-name abort under the opt-out flag: input whose
+# header has the same name twice makes SQLite reject the CREATE TABLE. With
+# --error-on-duplicate-columns, zsv sql must report the error and exit *gracefully*
+# (normal nonzero code), not die by signal (SIGABRT -> 128+6=134), which is what the
+# pre-fix double-free in zsv_sqlite3_add_csv() caused. We assert the exit code is a
+# graceful failure (nonzero and < 128) rather than a signal death.
 test-sql-dupcol: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
-	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select 1 from data limit 1' > ${TMP_DIR}/$@.out 2>&1; \
+	@${PREFIX} $< --error-on-duplicate-columns ${TMP_DIR}/$@.csv 'select 1 from data limit 1' > ${TMP_DIR}/$@.out 2>&1; \
 	  rc=$$?; \
 	  printf '  exit=%s\n' "$$rc"; \
 	  [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 
-# --rename-duplicate-columns makes repeated header names unique (a,b,a -> a,b,a_2)
-# so input with duplicate columns loads successfully instead of erroring. The renamed
-# data goes to stdout; each rename is also noted on stderr (renames are never silent).
+# Back-compat: --rename-duplicate-columns still makes repeated header names unique
+# (a,b,a -> a,b,a_2). The renamed data goes to stdout; the rename is noted on stderr
+# as a single summary line containing the token 'auto-renamed' (never silent). (F7 G7)
 test-sql-dupcol-rename: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
 	@${PREFIX} $< --rename-duplicate-columns ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err
-	@${CMP} ${TMP_DIR}/$@.out expected/$@.out \
-	  && grep -q 'renamed duplicate column "a"' ${TMP_DIR}/$@.err && ${TEST_PASS} || ${TEST_FAIL}
+	@n=$$(grep -c -i 'auto-renamed' ${TMP_DIR}/$@.err); ${CMP} ${TMP_DIR}/$@.out expected/$@.out \
+	  && [ "$$n" = "1" ] && ${TEST_PASS} || ${TEST_FAIL}
 
-# Without the flag, a duplicate header is detected at parse time and reported with
-# a single actionable message naming the column, its 1-based positions, and the flag
-# to fix it (rather than SQLite's generic "bad schema"), while still exiting gracefully.
+# Opt-out: with --error-on-duplicate-columns a duplicate header is detected at parse
+# time and reported with a single actionable message naming the column and its 1-based
+# positions (rather than SQLite's generic "bad schema"), while exiting gracefully. (F7 G5)
 test-sql-dupcol-msg: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
-	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2>&1; \
+	@${PREFIX} $< --error-on-duplicate-columns ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2>&1; \
 	  rc=$$?; \
 	  printf '  exit=%s\n' "$$rc"; \
-	  grep -q 'duplicate column name "a" at columns 1 and 3; pass --rename-duplicate-columns' ${TMP_DIR}/$@.out \
+	  grep -q 'duplicate column name "a" at columns 1 and 3' ${TMP_DIR}/$@.out \
 	    && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+
+# F7 G1/G2: duplicate input columns are auto-disambiguated by DEFAULT (no flag) ->
+# exit 0, header BV_NUM,name,amount,BV_NUM_2, and exactly ONE 'auto-renamed' stderr line.
+test-sql-dupcol-default: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@printf 'BV_NUM,name,amount,BV_NUM\n1,a,10,100\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err; \
+	  rc=$$?; h=$$(sed -n '1p' ${TMP_DIR}/$@.out); n=$$(grep -c -i 'auto-renamed' ${TMP_DIR}/$@.err); \
+	  [ "$$rc" = "0" ] && [ "$$h" = "BV_NUM,name,amount,BV_NUM_2" ] && [ "$$n" = "1" ] && ${TEST_PASS} || ${TEST_FAIL}
+
+# F7 G3/G4: three 'a' columns -> a,a_2,a_3,b, and the two renames COLLAPSE to one line.
+test-sql-dupcol-3x: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@printf 'a,a,a,b\n1,2,3,4\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err; \
+	  rc=$$?; h=$$(sed -n '1p' ${TMP_DIR}/$@.out); n=$$(grep -c -i 'auto-renamed' ${TMP_DIR}/$@.err); \
+	  [ "$$rc" = "0" ] && [ "$$h" = "a,a_2,a_3,b" ] && [ "$$n" = "1" ] && ${TEST_PASS} || ${TEST_FAIL}
+
+# F7 G8 + decision D1 (collision-stability): a,a,a_2 -> a,a_3,a_2. The synthesized name
+# skips past the user's explicit a_2 (left intact); all three output headers are unique.
+test-sql-dupcol-collide: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@printf 'a,a,a_2\n1,2,3\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err; \
+	  rc=$$?; h=$$(sed -n '1p' ${TMP_DIR}/$@.out); \
+	  uq=$$(printf '%s' "$$h" | tr ',' '\n' | sort -u | grep -c .); \
+	  [ "$$rc" = "0" ] && [ "$$h" = "a,a_3,a_2" ] && [ "$$uq" = "3" ] && ${TEST_PASS} || ${TEST_FAIL}
+
+# F7 G9: case-insensitive duplicate (BV_NUM/bv_num) is auto-fixed -> exit 0, 2 columns.
+test-sql-dupcol-caseins: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@printf 'BV_NUM,bv_num\n1,2\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err; \
+	  rc=$$?; h=$$(sed -n '1p' ${TMP_DIR}/$@.out); \
+	  tot=$$(printf '%s' "$$h" | tr ',' '\n' | grep -c .); \
+	  [ "$$rc" = "0" ] && [ "$$tot" = "2" ] && ${TEST_PASS} || ${TEST_FAIL}
+
+# F7 G6 (guard, no false positive): a file with no duplicates exits 0 with NO summary line.
+test-sql-dupcol-nodup: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@printf 'a,b,c\n1,2,3\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err; \
+	  rc=$$?; n=$$(grep -c -i 'auto-renamed' ${TMP_DIR}/$@.err); \
+	  [ "$$rc" = "0" ] && [ "$$n" = "0" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 ${BUILD_DIR}/bin/zsv_%${EXE}:
 	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
