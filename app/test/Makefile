@@ -62,6 +62,8 @@ endif
 # 2toon exists only when TOON features are enabled (configure --disable-toon omits it)
 ifneq ($(ZSV_NO_TOON),1)
   SOURCES+=2toon
+  # test-compare's --toon equivalence check pipes through 2toon (empty under --disable-toon)
+  COMPARE_TOON_DEP=${BUILD_DIR}/bin/zsv_2toon${EXE}
 endif
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
@@ -1117,7 +1119,7 @@ test-compare-tolerance: ${BUILD_DIR}/bin/zsv_compare${EXE}
 	@(${PREFIX} $< --tolerance 0.00001 ../../data/compare/tolerance1.csv ../../data/compare/tolerance2.csv ${REDIRECT1} ${TMP_DIR}/$@.out4 && \
 	${CMP} ${TMP_DIR}/$@.out4 expected/$@.out4 && ${TEST_PASS} || ${TEST_FAIL})
 
-test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
+test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${COMPARE_TOON_DEP}
 	@${TEST_INIT}
 	@(${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
@@ -1195,9 +1197,14 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@($< --columns bad compare/colrange1.csv >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
 
 ifneq ($(ZSV_NO_TOON),1)
-	@# --toon: TOON output (same comparison as --json out6, rendered as TOON)
+	@# --toon: TOON output (same comparison as --json-object out7, rendered as TOON)
 	@(${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv --toon ${REDIRECT1} ${TMP_DIR}/$@.toon && \
 	${CMP} ${TMP_DIR}/$@.toon expected/$@.toon && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --toon is equivalent to --json-object piped through `2toon --from-json`
+	@(${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv --json-object | \
+	${PREFIX} ${BUILD_DIR}/bin/zsv_2toon${EXE} --from-json ${REDIRECT1} ${TMP_DIR}/$@.toon-equiv && \
+	${CMP} ${TMP_DIR}/$@.toon-equiv expected/$@.toon && ${TEST_PASS} || ${TEST_FAIL})
 
 	@# get_default_output_format() does NOT affect the (non-redline) comparison output: with
 	@# AI_AGENT set and no format flag, output stays the default CSV (byte-identical to out).

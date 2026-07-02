@@ -862,7 +862,7 @@ static int compare_usage(void) {
     "  --json-compact     : output as compact JSON",
     "  --json-object      : output as an array of objects",
 #ifndef ZSV_NO_TOON
-    "  --toon             : output as TOON (https://github.com/toon-format/spec)",
+    "  --toon             : output as TOON, an array of objects (https://github.com/toon-format/spec)",
     "  --redline          : output a self-contained redline document (JSON by default,",
     "                       or TOON with --toon or when the AI_AGENT env var is non-blank)",
 #else
@@ -1030,6 +1030,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #ifndef ZSV_NO_TOON
     } else if (!strcmp(arg, "--toon")) {
       data->writer.type = ZSV_COMPARE_OUTPUT_TYPE_JSON;
+      data->writer.object = 1; // --toon == --json-object rendered as TOON
       data->writer.toon = 1;
       saw_toon = 1;
 #endif
