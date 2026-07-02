@@ -15,7 +15,7 @@
 #define ZSV_COMMAND count
 #include "zsv_command.h"
 #include <zsv/utils/file.h>
-#include <zsv/utils/os.h> // zsv_get_number_of_cores
+#include <zsv/utils/os.h>  // zsv_get_number_of_cores
 #include <zsv/utils/arg.h> // zsv_arg_is_option
 #include "utils/chunk.h"
 
