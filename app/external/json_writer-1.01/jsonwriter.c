@@ -20,12 +20,12 @@ struct jsonwriter_output_buff {
   void *write_arg;
 };
 
-#define JSONWRITER_MAX_NESTING 256
 struct jsonwriter_data {
   struct jsonwriter_output_buff out;
 
   unsigned int depth;
-  unsigned char *close_brackets; // length = JSONWRITER_MAX_NESTING
+  unsigned int max_nesting;      // per-instance cap; default JSONWRITER_MAX_NESTING
+  unsigned char *close_brackets; // length = max_nesting
   int *counts;                   // at each level, the current number of items
   char tmp[128];                 // number buffer
 
@@ -81,6 +81,24 @@ void jsonwriter_set_option(jsonwriter_handle data, enum jsonwriter_option opt) {
   }
 }
 
+enum jsonwriter_status jsonwriter_set_max_nesting(jsonwriter_handle data, unsigned int max_nesting) {
+  size_t cbytes = (size_t)max_nesting * sizeof(*data->counts);
+  if (!max_nesting || cbytes / sizeof(*data->counts) != max_nesting) // reject 0 and size overflow
+    return jsonwriter_status_invalid_value;
+  if (data->depth)                       // resizing with live entries is unsafe
+    return jsonwriter_status_misconfiguration;
+  unsigned char *cb = realloc(data->close_brackets, (size_t)max_nesting * sizeof(*cb));
+  if (!cb)
+    return jsonwriter_status_out_of_memory;
+  data->close_brackets = cb;
+  int *counts = realloc(data->counts, cbytes);
+  if (!counts)
+    return jsonwriter_status_out_of_memory;
+  data->counts = counts;
+  data->max_nesting = max_nesting;
+  return jsonwriter_status_ok;
+}
+
 static size_t fwrite2(const void *restrict p, size_t n, size_t size, void *restrict f) {
   return (size_t)fwrite(p, n, size, f);
 }
@@ -95,9 +113,10 @@ jsonwriter_handle jsonwriter_new_stream(size_t (*write)(const void *restrict, si
   if (data) {
     data->out.write = write;
     data->out.write_arg = write_arg;
+    data->max_nesting = JSONWRITER_MAX_NESTING;
     if (!(data->out.buff = malloc(JSONWRITER_OUTPUT_BUFF_SIZE)) ||
-        !(data->close_brackets = malloc(JSONWRITER_MAX_NESTING * sizeof(*data->close_brackets))) ||
-        !(data->counts = calloc(JSONWRITER_MAX_NESTING, sizeof(*data->counts)))) {
+        !(data->close_brackets = malloc(data->max_nesting * sizeof(*data->close_brackets))) ||
+        !(data->counts = calloc(data->max_nesting, sizeof(*data->counts)))) {
       // avoid jsonwriter_delete() delete here to suppress compiler warning
       free(data->counts);
       free(data->close_brackets);
@@ -173,7 +192,7 @@ static enum jsonwriter_status jsonwriter_end_aux(jsonwriter_handle data,
 
     data->depth--;
 
-    if (data->depth < JSONWRITER_MAX_NESTING - 1) {
+    if (data->depth < data->max_nesting - 1) {
       jsonwriter_indent(data, 1);
       jsonwriter_output_buff_write(&data->out, data->close_brackets + data->depth, 1);
     }
@@ -204,30 +223,36 @@ int jsonwriter_end_all(jsonwriter_handle data) {
 
 static int write_json_str(struct jsonwriter_output_buff *b, const unsigned char *s, size_t len,
                           unsigned char no_quotes) {
-  unsigned int replacelen;
-  unsigned char replace[10];
-  const unsigned char *end = s + len;
-  const unsigned char *new_s;
   size_t written = 0;
-  if (!no_quotes)
-    jsonwriter_output_buff_write(b, (const unsigned char *)"\"", 1), written++;
+  if(!len || !s) {
+    if(!no_quotes) {
+      jsonwriter_output_buff_write(b, (const unsigned char *)"\"\"", 2);
+      written += 2;
+    }
+  } else {
+    unsigned int replacelen;
+    unsigned char replace[10];
+    const unsigned char *end = s + len;
+    const unsigned char *new_s;
+    if (!no_quotes)
+      jsonwriter_output_buff_write(b, (const unsigned char *)"\"", 1), written++;
 
-  while (s < end) {
-    replacelen = 0;
-    unsigned int no_esc = json_esc1((const unsigned char *)s, len, &replacelen, replace, &new_s, len + sizeof(replace));
-    if (no_esc)
-      jsonwriter_output_buff_write(b, s, no_esc), written += no_esc;
-    if (replacelen)
-      jsonwriter_output_buff_write(b, replace, replacelen), written += replacelen;
-    if (new_s > s) {
-      s = new_s;
-      len = end - new_s;
-    } else
-      break;
+    while (s < end) {
+      replacelen = 0;
+      unsigned int no_esc = json_esc1((const unsigned char *)s, len, &replacelen, replace, &new_s, len + sizeof(replace));
+      if (no_esc)
+        jsonwriter_output_buff_write(b, s, no_esc), written += no_esc;
+      if (replacelen)
+        jsonwriter_output_buff_write(b, replace, replacelen), written += replacelen;
+      if (new_s > s) {
+        s = new_s;
+        len = end - new_s;
+      } else
+        break;
+    }
+    if (!no_quotes)
+      jsonwriter_output_buff_write(b, (const unsigned char *)"\"", 1), written += 1;
   }
-  if (!no_quotes)
-    jsonwriter_output_buff_write(b, (const unsigned char *)"\"", 1), written += 1;
-
   return written;
 }
 
@@ -237,7 +262,7 @@ static int jsonwriter_str1(jsonwriter_handle data, const unsigned char *s, size_
 }
 
 int jsonwriter_null(jsonwriter_handle data) {
-  if (data->depth < JSONWRITER_MAX_NESTING) {
+  if (data->depth < data->max_nesting) {
     jsonwriter_indent(data, 0);
     jsonwriter_output_buff_write(&data->out, (const unsigned char *)"null", 4);
     return 0;
@@ -246,7 +271,7 @@ int jsonwriter_null(jsonwriter_handle data) {
 }
 
 int jsonwriter_bool(jsonwriter_handle data, unsigned char value) {
-  if (data->depth < JSONWRITER_MAX_NESTING) {
+  if (data->depth < data->max_nesting) {
     jsonwriter_indent(data, 0);
     if (value)
       jsonwriter_output_buff_write(&data->out, (const unsigned char *)"true", 4);
@@ -266,7 +291,7 @@ int jsonwriter_cstrn(jsonwriter_handle data, const char *s, size_t len) {
 }
 
 int jsonwriter_str(jsonwriter_handle data, const unsigned char *s) {
-  if (data->depth < JSONWRITER_MAX_NESTING) {
+  if (data->depth < data->max_nesting) {
     jsonwriter_indent(data, 0);
     if (s)
       jsonwriter_str1(data, s, JSW_STRLEN(s));
@@ -278,7 +303,7 @@ int jsonwriter_str(jsonwriter_handle data, const unsigned char *s) {
 }
 
 int jsonwriter_strn(jsonwriter_handle data, const unsigned char *s, size_t len) {
-  if (data->depth < JSONWRITER_MAX_NESTING) {
+  if (data->depth < data->max_nesting) {
     jsonwriter_indent(data, 0);
     jsonwriter_str1(data, s, len);
     return 0;
@@ -287,9 +312,9 @@ int jsonwriter_strn(jsonwriter_handle data, const unsigned char *s, size_t len) 
 }
 
 int jsonwriter_object_keyn(jsonwriter_handle data, const char *key, size_t len_or_zero) {
-  if (data->depth < JSONWRITER_MAX_NESTING) {
+  if (data->depth < data->max_nesting) {
     jsonwriter_indent(data, 0);
-    jsonwriter_str1(data, (const unsigned char *)key, len_or_zero == 0 ? JSW_STRLEN(key) : len_or_zero);
+    jsonwriter_str1(data, (const unsigned char *)key, len_or_zero == 0 && key ? JSW_STRLEN(key) : len_or_zero);
     data->just_wrote_key = 1;
     return 0;
   }
@@ -302,10 +327,12 @@ int jsonwriter_object_key(jsonwriter_handle data, const char *key) {
 
 int jsonwriter_dblf(jsonwriter_handle data, long double d, const char *format_string,
                     unsigned char trim_trailing_zeros_after_dec) {
-  if (data->depth < JSONWRITER_MAX_NESTING) {
+  if (data->depth < data->max_nesting) {
     jsonwriter_indent(data, 0);
-    if (isnan(d)) {
+    if (isnan(d))
       jsonwriter_output_buff_write(&data->out, (unsigned char *)"\"NaN\"", 5);
+    else if (isinf(d)) {
+      jsonwriter_output_buff_write(&data->out, (unsigned char *)"\"Infinity\"", 10);
     } else {
       if (format_string && !strstr(format_string, "Lf")) // TO DO: return error code
         fprintf(stderr, "Warning: format string passed to jsonwriter_dblf() does not contain Lf: %s\n", format_string);
@@ -339,7 +366,7 @@ int jsonwriter_dbl(jsonwriter_handle data, long double d) {
 }
 
 int jsonwriter_size_t(jsonwriter_handle data, size_t sz) {
-  if (data->depth < JSONWRITER_MAX_NESTING) {
+  if (data->depth < data->max_nesting) {
     jsonwriter_indent(data, 0);
     int len = snprintf(data->tmp, sizeof(data->tmp), "%zu", sz);
     if (len < 0 || len >= (int)sizeof(data->tmp))
@@ -352,7 +379,7 @@ int jsonwriter_size_t(jsonwriter_handle data, size_t sz) {
 }
 
 int jsonwriter_int(jsonwriter_handle data, jsw_int64 i) {
-  if (data->depth < JSONWRITER_MAX_NESTING) {
+  if (data->depth < data->max_nesting) {
     jsonwriter_indent(data, 0);
     int len = snprintf(data->tmp, sizeof(data->tmp), JSW_INT64_PRINTF_FMT, i);
     if (len < 0 || len >= (int)sizeof(data->tmp))
@@ -365,7 +392,7 @@ int jsonwriter_int(jsonwriter_handle data, jsw_int64 i) {
 }
 
 static int jsonwriter_go_deeper(struct jsonwriter_data *data, unsigned char open, unsigned char close) {
-  if (data->depth < JSONWRITER_MAX_NESTING - 1) {
+  if (data->depth < data->max_nesting - 1) {
     jsonwriter_indent(data, 0);
     data->started = 1;
     jsonwriter_output_buff_write(&data->out, &open, 1);

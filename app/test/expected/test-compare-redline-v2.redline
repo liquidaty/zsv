@@ -1,7 +1,7 @@
-zsv compare --json-redline schema (version 1)
+zsv compare --redline schema (version 1)
 ==========================================================
 
-Output mode: zsv compare --json-redline [options] <file.csv>...
+Output mode: zsv compare --redline [options] <file.csv>...
 
 Produces a single JSON object describing the comparison between two or more
 CSV inputs. A downstream renderer can produce an HTML or XLSX redline from
@@ -35,4 +35,4 @@ Tolerance
   (input[0]'s value) unless --include-tolerated is also set.
 
 See also
-  zsv help compare json-redline-schema  (JSON Schema Draft 2020-12)
+  zsv help compare redline-schema  (JSON Schema Draft 2020-12)

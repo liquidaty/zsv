@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "zsv.compare.json-redline.v1",
-  "title": "zsv compare --json-redline output (v1)",
+  "$id": "zsv.compare.redline.v1",
+  "title": "zsv compare --redline output (v1)",
   "type": "object",
   "required": ["schema","version","generated_at","inputs","keys","options","columns","summary","rows"],
   "properties": {

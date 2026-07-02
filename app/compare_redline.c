@@ -7,7 +7,7 @@
  */
 
 /*
- * Redline-mode JSON output for `zsv compare --json-redline`.
+ * Redline-mode output for `zsv compare --redline` (JSON, or TOON via json2toon).
  *
  * This file is #included directly into compare.c (a single translation unit), so its
  * helpers are static and rely on the headers and declarations already pulled in there

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* Print the `--json-redline` schema documentation to `out`: a narrative
+/* Print the `--redline` schema documentation to `out`: a narrative
  * reference and a JSON Schema (Draft 2020-12). Defined in compare_help.c. These
  * are the single source of truth for the redline schema docs, reused both by
  * `zsv help compare <topic>` */

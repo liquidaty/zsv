@@ -1,5 +1,10 @@
 # Makefile for use with GNU make
 
+# Tests assert default (non-agent) output formats, so neutralize AI_AGENT (which
+# the harness running these tests may set) for all recipes. Tests that exercise
+# the AI_AGENT=TOON default set it explicitly per command (e.g. `AI_AGENT=1 ...`).
+unexport AI_AGENT
+
 THIS_MAKEFILE_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 THIS_DIR:=$(shell basename "${THIS_MAKEFILE_DIR}")
 THIS_MAKEFILE:=$(lastword $(MAKEFILE_LIST))
@@ -54,9 +59,16 @@ SOURCES=count echo count-pull select select-pull sql 2json serialize flatten pre
 ifneq ($(ZSV_EXTRAS),)
   SOURCES+=overwrite
 endif
+# 2toon exists only when TOON features are enabled (configure --disable-toon omits it)
+ifneq ($(ZSV_NO_TOON),1)
+  SOURCES+=2toon
+endif
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
 TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-paste test-flatten-2 test-flatten-dupcol
+ifneq ($(ZSV_NO_TOON),1)
+  TESTS+=test-2toon-help
+endif
 
 ifeq ($(ZSVSHEET_BUILD),1)
   SOURCES+=sheet
@@ -979,7 +991,57 @@ test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} 
 	${CMP} ${TMP_DIR}/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
 #	ajv validate --strict-tuples=false -s ${THIS_MAKEFILE_DIR}/../../docs/db.schema.json -d expected/$@.out7.json [suffix must be json]
 
-test-2json-help: test-%-help: ${BUILD_DIR}/bin/zsv_%${EXE}
+ifneq ($(ZSV_NO_TOON),1)
+	@# --from-toon: convert a TOON document to JSON
+	@(printf '[2]{a,b}:\n  1,x\n  2,"y,z"\n' | ${PREFIX} $< --from-toon ${REDIRECT1} ${TMP_DIR}/$@.from-toon && \
+	${CMP} ${TMP_DIR}/$@.from-toon expected/$@.from-toon && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --from-toon is mutually exclusive with --from-db
+	@(printf '[0]:\n' | $< --from-toon --from-db /dev/null >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
+endif
+
+# 2toon mirrors 2json but emits TOON. Same inputs/options; the db input for
+# --from-db is built the same way (2json | 2db) and read back with 2toon.
+test-2toon: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select${EXE} worldcitiespop_mil.csv
+	@${TEST_INIT}
+	@( ( ! [ -s "${TEST_DATA_DIR}/test/2json.csv" ] ) && echo "No test input for $*") || \
+	(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/2json.csv ${REDIRECT1} ${TMP_DIR}/$@.out && \
+	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/2json.csv --compact ${REDIRECT1} ${TMP_DIR}/$@.compact.out && \
+	${CMP} ${TMP_DIR}/$@.compact.out expected/$@.compact.out && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< --object < ${TEST_DATA_DIR}/quoted2.csv ${REDIRECT1} ${TMP_DIR}/$@.out2 && \
+	${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< --no-header < ${TEST_DATA_DIR}/quoted2.csv ${REDIRECT1} ${TMP_DIR}/$@.out3 && \
+	${CMP} ${TMP_DIR}/$@.out3 expected/$@.out3 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< --database < ${TEST_DATA_DIR}/test/2json.csv ${REDIRECT1} ${TMP_DIR}/$@.out4 && \
+	${CMP} ${TMP_DIR}/$@.out4 expected/$@.out4 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< --object --no-empty < ${TEST_DATA_DIR}/test/2json.csv ${REDIRECT1} ${TMP_DIR}/$@.out5 && \
+	${CMP} ${TMP_DIR}/$@.out5 expected/$@.out5 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@(${PREFIX} $< --object --no-empty < ${TEST_DATA_DIR}/quoted4.csv ${REDIRECT1} ${TMP_DIR}/$@.out6 && \
+	${CMP} ${TMP_DIR}/$@.out6 expected/$@.out6 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} -H 1999 -N worldcitiespop_mil.csv | \
+	${PREFIX} ${BUILD_DIR}/bin/zsv_2json${EXE} --database --index "country_ix on country" --unique-index "ux on [#]" | \
+	${PREFIX} ${BUILD_DIR}/bin/zsv_2db${EXE} -o ${TMP_DIR}/$@.db --table data --overwrite
+	@(${PREFIX} $< --from-db ${TMP_DIR}/$@.db ${REDIRECT1} ${TMP_DIR}/$@.out7 && \
+	${CMP} ${TMP_DIR}/$@.out7 expected/$@.out7 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --from-json: convert a JSON document to TOON
+	@(printf '[{"a":1,"b":"x"},{"a":2,"b":"y,z"}]' | ${PREFIX} $< --from-json ${REDIRECT1} ${TMP_DIR}/$@.from-json && \
+	${CMP} ${TMP_DIR}/$@.from-json expected/$@.from-json && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# round-trip JSON -> TOON (2toon --from-json) -> JSON (2json --from-toon) is the identity
+	@(printf '[{"a":1,"b":"x"},{"a":2,"b":"y,z"}]' | ${PREFIX} $< --from-json | \
+	${PREFIX} ${BUILD_DIR}/bin/zsv_2json${EXE} --from-toon ${REDIRECT1} ${TMP_DIR}/$@.roundtrip && \
+	${CMP} ${TMP_DIR}/$@.roundtrip expected/$@.roundtrip && ${TEST_PASS} || ${TEST_FAIL})
+
+test-2json-help test-2toon-help: test-%-help: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
 	@[ "`${PREFIX} $< -h | wc -l`" -gt 15 ] && ${TEST_PASS} || ${TEST_FAIL} # check output nonempty
 	@${PREFIX} $< -h >/dev/null && ${TEST_PASS} || ${TEST_FAIL} # check exit code
@@ -1085,6 +1147,29 @@ test-compare: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 
 	@# --columns: error - invalid spec
 	@($< --columns bad compare/colrange1.csv >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
+
+ifneq ($(ZSV_NO_TOON),1)
+	@# --toon: TOON output (same comparison as --json out6, rendered as TOON)
+	@(${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv --toon ${REDIRECT1} ${TMP_DIR}/$@.toon && \
+	${CMP} ${TMP_DIR}/$@.toon expected/$@.toon && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# get_default_output_format() does NOT affect the (non-redline) comparison output: with
+	@# AI_AGENT set and no format flag, output stays the default CSV (byte-identical to out).
+	@# The AI_AGENT default only selects TOON under --redline (see test-compare-redline-v2).
+	@(AI_AGENT=1 ${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv ${REDIRECT1} ${TMP_DIR}/$@.ai-default && \
+	${CMP} ${TMP_DIR}/$@.ai-default expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# an explicit --toon still yields TOON even when AI_AGENT is unset (blank env)
+	@(AI_AGENT= ${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv --toon ${REDIRECT1} ${TMP_DIR}/$@.toon-noenv && \
+	${CMP} ${TMP_DIR}/$@.toon-noenv expected/$@.toon && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# an explicit --json yields JSON regardless of AI_AGENT (byte-identical to plain --json)
+	@(AI_AGENT=1 ${PREFIX} $< compare/t1.csv compare/t2.csv compare/t3.csv --json ${REDIRECT1} ${TMP_DIR}/$@.json-override && \
+	${CMP} ${TMP_DIR}/$@.json-override expected/$@.out6 && ${TEST_PASS} || ${TEST_FAIL})
+
+	@# --json and --toon together is an error
+	@($< compare/t1.csv compare/t2.csv compare/t3.csv --json --toon >/dev/null 2>&1 && ${TEST_FAIL} || ${TEST_PASS})
+endif
 
 include test-compare-redline.mk
 

@@ -214,7 +214,7 @@ to get:
 or in the redline JSON format:
 
 ```shell
-zsv compare --json-redline t1.csv t2.csv --sort -k country -k city
+zsv compare --redline t1.csv t2.csv --sort -k country -k city
 ```
 
 to get a self-contained document a downstream tool can use to render a
@@ -275,8 +275,14 @@ Two companion flags control what appears in `rows[]`:
 - `--include-tolerated` — show within-tolerance numeric differences as diff
   arrays rather than collapsing them to a scalar (requires `--tolerance`)
 
-The full schema is available at runtime via `zsv help compare json-redline` (narrative)
-and `zsv help compare json-redline-schema` (JSON Schema, Draft 2020-12).
+The full schema is available at runtime via `zsv help compare redline` (narrative)
+and `zsv help compare redline-schema` (JSON Schema, Draft 2020-12).
+
+The redline document is JSON by default. It is emitted as
+[TOON](https://github.com/toon-format/spec) instead when `--toon` is given, or
+when the `AI_AGENT` environment default selects TOON (that default only applies to
+`--redline`; it never changes the plain CSV/`--json` comparison output). An explicit
+`--json` always forces JSON. `--json-redline` remains a legacy alias for `--redline`.
 
 and in each case if we wanted to include additional data in the output for
 context, we can do so using `--add`, e.g.:
@@ -328,10 +334,13 @@ Options:
   --json             : output as JSON
   --json-compact     : output as compact JSON
   --json-object      : output as an array of objects
-  --json-redline     : output self-contained redline JSON
-                       (see `zsv help compare json-redline` for schema)
-  --include-unchanged-rows: (with --json-redline) also emit matched rows
-  --include-tolerated: (with --json-redline) show tolerated diffs as arrays
+  --toon             : output as TOON (https://github.com/toon-format/spec)
+  --redline          : output a self-contained redline document (JSON by default,
+                       or TOON with --toon or when the AI_AGENT environment default
+                       is TOON; --json-redline is a legacy alias)
+                       (see `zsv help compare redline` for schema)
+  --only-changed-rows: (with --redline) emit only rows that have a diff
+  --include-tolerated: (with --redline) show tolerated diffs as arrays
   --print-key-colname: when outputting key column diffs,
                        print column name instead of <key>
 
