@@ -601,7 +601,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *pa
   const char *size_t_args[] = {"-W", "--width", "-C", "--max-col-width", "-D", "--min-col-width", "-p", "--rows", NULL};
   size_t size_t_maximums[] = {32000, 32000, 500, 500, 500, 500, 100000000, 100000000};
   for (int i = 1; !rc && i < argc; i++) {
-    if (*argv[i] == '-') {
+    if (zsv_arg_is_option(argv[i])) {
       if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
         if (++i >= argc)
           rc = zsv_printerr(1, "%s option requires a filename value", argv[i - 1]);
@@ -653,7 +653,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *pa
         if (!got_opt)
           rc = zsv_printerr(1, "Unrecognized option: %s", argv[i]);
       }
-    } else if (!(in = fopen(argv[i], "rb")))
+    } else if (!strcmp(argv[i], "-"))
+      ; /* bare '-' is the stdin sentinel; in already defaults to stdin */
+    else if (!(in = fopen(argv[i], "rb")))
       rc = zsv_printerr(1, "Unable to open file %s for reading", argv[i]);
     else
       input_path = argv[i];

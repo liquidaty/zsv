@@ -829,6 +829,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       err = zsv_err_unrecognized_option(argv[arg_i]);
     else if (data.in)
       err = zsv_printerr(1, "Input file was specified, cannot also read: %s", argv[arg_i]);
+    else if (!strcmp(argv[arg_i], "-"))
+      ; /* bare '-' is the stdin sentinel; leave data.in unset (stdin default) */
     else if (!(data.in = fopen(argv[arg_i], "rb")))
       err = zsv_printerr(1, "Could not open for reading: %s", argv[arg_i]);
     else

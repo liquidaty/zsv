@@ -181,6 +181,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     } else {
       if (opts.stream)
         fprintf(stderr, "Input file specified more than once\n"), err = 1;
+      else if (!strcmp(argv[i], "-"))
+        ; /* bare '-' is the stdin sentinel; leave opts.stream unset (stdin default) */
       else if (!(opts.stream = fopen(argv[i], "rb")))
         fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
       else

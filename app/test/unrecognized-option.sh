@@ -46,4 +46,44 @@ for cmd in $CMDS; do
   done
 done
 
+# --- Bare '-' is the stdin sentinel, never an unrecognized option ---
+# For commands that read a single CSV stream, `cmd -` must read stdin: exit 0,
+# produce output, and print no "unrecognized" diagnostic.
+JSON='{"a":1}'
+CSV='a,b,c
+1,2,3'
+for cmd in count select desc serialize flatten 2tsv 2json 2toon pretty echo check sql count-pull select-pull jq; do
+  exe="$BIN/zsv_$cmd$EXE"
+  [ -x "$exe" ] || continue
+  case "$cmd" in
+    jq)  printf '%s\n' "$JSON" | "$exe" '.' - >"$TMP/uo.out" 2>"$TMP/uo.err"; code=$? ;;
+    sql) printf '%s\n' "$CSV" | "$exe" 'select * from data' - >"$TMP/uo.out" 2>"$TMP/uo.err"; code=$? ;;
+    *)   printf '%s\n' "$CSV"  | "$exe" -    >"$TMP/uo.out" 2>"$TMP/uo.err"; code=$? ;;
+  esac
+  if [ "$code" != 0 ]; then
+    echo "  FAIL: $cmd - (bare dash) -> exit $code (want 0, should read stdin)"; rc=1
+  fi
+  if grep -iq "unrecognized" "$TMP/uo.err"; then
+    echo "  FAIL: $cmd - (bare dash) -> misreported as unrecognized"; rc=1
+  fi
+  # 'check' is a validator: no stdout on clean input. Others must echo stdin through.
+  if [ "$cmd" != check ] && [ ! -s "$TMP/uo.out" ]; then
+    echo "  FAIL: $cmd - (bare dash) -> produced no output from stdin"; rc=1
+  fi
+done
+
+# For commands that cannot read stdin (they rewind/register inputs by path),
+# a bare '-' must still not be misreported as an unrecognized option.
+for cmd in stack 2db compare paste; do
+  exe="$BIN/zsv_$cmd$EXE"
+  [ -x "$exe" ] || continue
+  case "$cmd" in
+    compare) printf '%s\n' "$CSV" | "$exe" - - >"$TMP/uo.out" 2>"$TMP/uo.err" ;;
+    *)       printf '%s\n' "$CSV" | "$exe" -   >"$TMP/uo.out" 2>"$TMP/uo.err" ;;
+  esac
+  if grep -iq "unrecognized" "$TMP/uo.err"; then
+    echo "  FAIL: $cmd - (bare dash) -> misreported as unrecognized"; rc=1
+  fi
+done
+
 exit $rc

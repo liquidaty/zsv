@@ -827,6 +827,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *zs
       err = zsv_err_unrecognized_option(argv[i]);
     else if (f_in)
       fprintf(stderr, "Input file specified more than once\n"), err = 1;
+    else if (!strcmp(argv[i], "-"))
+      f_in = stdin; /* bare '-' is the stdin sentinel */
     else if (!(f_in = fopen(argv[i], "rb")))
       fprintf(stderr, "Unable to open for reading: %s\n", argv[i]), err = 1;
     else

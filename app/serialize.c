@@ -315,6 +315,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       else if (data.in) {
         err = 1;
         fprintf(stderr, "Input file specified twice, or unrecognized argument: %s\n", argv[arg_i]);
+      } else if (!strcmp(argv[arg_i], "-")) {
+        ; /* bare '-' is the stdin sentinel; leave data.in unset (stdin default) */
       } else if (!(data.in = fopen(argv[arg_i], "rb"))) {
         err = 1;
         fprintf(stderr, "Could not open for reading: %s\n", argv[arg_i]);

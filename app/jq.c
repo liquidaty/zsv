@@ -45,8 +45,10 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
 
   for (int i = 2; !err && i < argc; i++) { // jq filter filename
     const char *arg = argv[i];
-    if (i == 2 && *arg != '-') {
-      if (!(f_in = fopen(arg, "rb"))) {
+    if (i == 2 && !zsv_arg_is_option(arg)) {
+      if (!strcmp(arg, "-"))
+        f_in = stdin; /* bare '-' is the stdin sentinel */
+      else if (!(f_in = fopen(arg, "rb"))) {
         err = 1;
         fprintf(stderr, "Unable to open for read: %s\n", arg);
       }

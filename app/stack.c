@@ -275,10 +275,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           fprintf(stderr, "Unable to open file for writing: %s\n", argv[arg_i]);
         }
       }
-    } else if (*arg == '-') {
+    } else if (zsv_arg_is_option(arg)) {
       fprintf(stderr, "Unrecognized option: %s\n", arg);
       data.err = 1;
     } else {
+      /* bare '-' is not an option; stack re-reads inputs (rewind) so stdin is
+         unsupported -- fall through and let fopen report it as an unopenable file */
       FILE *f = fopen(arg, "rb");
       if (!f) {
         fprintf(stderr, "Could not open file for reading: %s\n", arg);

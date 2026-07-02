@@ -205,8 +205,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         data.error_on_dup_cols = 1;
       else if (!strcmp(arg, "-b"))
         writer_opts.with_bom = 1;
-      else if (*arg != '-') {
-        if (!data.input_filename) {
+      else if (!zsv_arg_is_option(arg)) {
+        if (!data.input_filename && !strcmp(arg, "-")) {
+          data.in = stdin; /* bare '-' is the stdin sentinel (see usage) */
+        } else if (!data.input_filename) {
           data.input_filename = arg;
           if (!(data.in = fopen(arg, "rb"))) {
             fprintf(stderr, "Unable to open for reading: %s\n", arg);
