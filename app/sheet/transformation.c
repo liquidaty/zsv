@@ -146,6 +146,8 @@ void zsvsheet_transformation_delete(zsvsheet_transformation trn) {
     remove(trn->input_filename_owned);
     free(trn->input_filename_owned);
   }
+  // free on every teardown path (worker, synchronous completion, error); on_done has already run by here
+  free(trn->user_context);
   free(trn);
 }
 
@@ -191,10 +193,7 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   if (trn->on_done)
     trn->on_done(trn);
 
-  if (trn->user_context)
-    free(trn->user_context);
-
-  zsvsheet_transformation_delete(trn);
+  zsvsheet_transformation_delete(trn); // frees user_context
 
   pthread_mutex_lock(mutex);
   char *buff_status_old = uib->status;
