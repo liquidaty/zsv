@@ -864,7 +864,7 @@ static int compare_usage(void) {
 #ifndef ZSV_NO_TOON
     "  --toon             : output as TOON (https://github.com/toon-format/spec)",
     "  --redline          : output a self-contained redline document (JSON by default,",
-    "                       or TOON with --toon or when the AI_AGENT environment default is TOON)",
+    "                       or TOON with --toon or when the AI_AGENT env var is non-blank)",
 #else
     "  --redline          : output a self-contained redline document (JSON)",
 #endif
