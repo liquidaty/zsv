@@ -334,7 +334,7 @@ Options:
   --json             : output as JSON
   --json-compact     : output as compact JSON
   --json-object      : output as an array of objects
-  --toon             : output as TOON (https://github.com/toon-format/spec)
+  --toon             : output as TOON, an array of objects (https://github.com/toon-format/spec)
   --redline          : output a self-contained redline document (JSON by default,
                        or TOON with --toon or when the AI_AGENT environment default
                        is TOON; --json-redline is a legacy alias)
