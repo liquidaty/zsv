@@ -15,7 +15,8 @@
 #define ZSV_COMMAND count
 #include "zsv_command.h"
 #include <zsv/utils/file.h>
-#include <zsv/utils/os.h> // zsv_get_number_of_cores
+#include <zsv/utils/os.h>  // zsv_get_number_of_cores
+#include <zsv/utils/arg.h> // zsv_arg_is_option
 #include "utils/chunk.h"
 
 #define ZSV_COUNT_PARALLEL_MIN_BYTES (1024 * 1024 * 2)
@@ -307,13 +308,15 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       count_usage();
       goto count_done;
     }
-    if (!strcmp(arg, "-i") || !strcmp(arg, "--input") || *arg != '-') {
+    if (!strcmp(arg, "-i") || !strcmp(arg, "--input") || !zsv_arg_is_option(arg)) {
       err = 1;
       if ((!strcmp(arg, "-i") || !strcmp(arg, "--input")) && ++i >= argc)
         fprintf(stderr, "%s option requires a filename\n", arg);
       else {
         if (opts.stream)
           fprintf(stderr, "Input may not be specified more than once\n");
+        else if (!strcmp(argv[i], "-"))
+          err = 0; /* bare '-' is the stdin sentinel; leave opts.stream unset (stdin default) */
         else if (!(opts.stream = fopen(argv[i], "rb")))
           fprintf(stderr, "Unable to open for reading: %s\n", argv[i]);
         else {

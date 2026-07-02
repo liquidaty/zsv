@@ -698,9 +698,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       ARG_require_val(v, (const char *));
       if (zsv_select_add_rename(&data, v))
         stat = zsv_status_error;
-    } else if (*arg == '-')
+    } else if (zsv_arg_is_option(arg))
       stat = zsv_printerr(1, "Unrecognized argument: %s", arg);
-    else if (data.input_path)
+    else if (!strcmp(arg, "-")) {
+      /* bare '-' is the stdin sentinel; leave input_path NULL so stdin is used */
+    } else if (data.input_path)
       stat = zsv_printerr(1, "Input specified twice");
     else
       data.input_path = arg;

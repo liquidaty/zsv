@@ -741,9 +741,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         stat = zsv_printerr(1, "%s option requires a value", argv[arg_i - 1]);
       else
         zsv_select_add_exclusion(&data, argv[arg_i]);
-    } else if (*argv[arg_i] == '-')
+    } else if (zsv_arg_is_option(argv[arg_i]))
       stat = zsv_printerr(1, "Unrecognized argument: %s", argv[arg_i]);
-    else if (data.opts->stream)
+    else if (!strcmp(argv[arg_i], "-")) {
+      /* bare '-' is the stdin sentinel; leave stream unset so stdin is used */
+    } else if (data.opts->stream)
       stat = zsv_printerr(1, "Input file was specified, cannot also read: %s", argv[arg_i]);
     else if (!(data.opts->stream = fopen(argv[arg_i], "rb")))
       stat = zsv_printerr(1, "Could not open for reading: %s", argv[arg_i]);

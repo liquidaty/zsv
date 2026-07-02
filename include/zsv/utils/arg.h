@@ -87,4 +87,18 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, co
  */
 const char *zsv_next_arg(int arg_i, int argc, const char *argv[], int *err);
 
+/**
+ * zsv_arg_is_option: true for an option-shaped token ('-x', '-xyz', '--name');
+ * false for a lone "-" (stdin) and for non-dash tokens. Use at a command's
+ * "treat as input" fall-through to detect a token that no option branch matched.
+ */
+int zsv_arg_is_option(const char *arg);
+
+/**
+ * zsv_err_unrecognized_option: print the canonical unrecognized-option
+ * diagnostic ("Unrecognized option: <arg>") to stderr and return the uniform
+ * nonzero exit status used across all commands.
+ */
+int zsv_err_unrecognized_option(const char *arg);
+
 #endif

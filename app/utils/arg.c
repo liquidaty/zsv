@@ -333,3 +333,12 @@ const char *zsv_next_arg(int arg_i, int argc, const char *argv[], int *err) {
   }
   return argv[arg_i];
 }
+
+int zsv_arg_is_option(const char *arg) {
+  return arg && arg[0] == '-' && arg[1] != '\0';
+}
+
+int zsv_err_unrecognized_option(const char *arg) {
+  fprintf(stderr, "Unrecognized option: %s\n", arg);
+  return 1;
+}

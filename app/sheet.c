@@ -1134,7 +1134,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--compare") && i + 1 < argc) {
       compare_spec = argv[++i];
-    } else if (argv[i][0] != '-' && !filename_arg) {
+    } else if (!zsv_arg_is_option(argv[i]) && !filename_arg) {
+      /* accepts a filename, or a bare '-' which sheet cannot open (not an option) */
       filename_arg = argv[i];
     } else {
       fprintf(stderr, "Unrecognized option: %s\n", argv[i]);

@@ -601,7 +601,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *pa
   const char *size_t_args[] = {"-W", "--width", "-C", "--max-col-width", "-D", "--min-col-width", "-p", "--rows", NULL};
   size_t size_t_maximums[] = {32000, 32000, 500, 500, 500, 500, 100000000, 100000000};
   for (int i = 1; !rc && i < argc; i++) {
-    if (*argv[i] == '-') {
+    if (zsv_arg_is_option(argv[i])) {
       if (!strcmp(argv[i], "-o") || !strcmp(argv[i], "--output")) {
         if (++i >= argc)
           rc = zsv_printerr(1, "%s option requires a filename value", argv[i - 1]);
@@ -653,35 +653,40 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *pa
         if (!got_opt)
           rc = zsv_printerr(1, "Unrecognized option: %s", argv[i]);
       }
-    } else if (!(in = fopen(argv[i], "rb")))
+    } else if (!strcmp(argv[i], "-"))
+      ; /* bare '-' is the stdin sentinel; in already defaults to stdin */
+    else if (!(in = fopen(argv[i], "rb")))
       rc = zsv_printerr(1, "Unable to open file %s for reading", argv[i]);
     else
       input_path = argv[i];
   }
 
+  if (!rc) {
 #ifdef NO_STDIN
-  if (in == stdin)
-    rc = zsv_printerr(1, "Please specify an input file");
+    if (in == stdin)
+      rc = zsv_printerr(1, "Please specify an input file");
 #endif
-  if (opts.column_width_min > opts.column_width_max || opts.column_width_min > opts.line_width_max)
-    rc = zsv_printerr(1, "Min column width cannot exceed max column width or max line width");
+    if (opts.column_width_min > opts.column_width_max || opts.column_width_min > opts.line_width_max)
+      rc = zsv_printerr(1, "Min column width cannot exceed max column width or max line width");
+  }
 
-  parser_opts->stream = in;
-  struct zsv_pretty_data *h = zsv_pretty_init(&opts, parser_opts, custom_prop_handler, input_path);
-  if (!h)
-    rc = 1;
-  else {
-    zsv_handle_ctrl_c_signal();
-    rc = 0;
-    enum zsv_status status;
-    while (zsv_parse_more(h->parser) == zsv_status_ok)
-      ;
+  if (!rc) {
+    parser_opts->stream = in;
+    struct zsv_pretty_data *h = zsv_pretty_init(&opts, parser_opts, custom_prop_handler, input_path);
+    if (!h)
+      rc = 1;
+    else {
+      zsv_handle_ctrl_c_signal();
+      enum zsv_status status;
+      while (zsv_parse_more(h->parser) == zsv_status_ok)
+        ;
 
-    while (!rc && !zsv_signal_interrupted && (status = zsv_parse_more(h->parser)) == zsv_status_ok)
-      ;
+      while (!rc && !zsv_signal_interrupted && (status = zsv_parse_more(h->parser)) == zsv_status_ok)
+        ;
 
-    zsv_pretty_flush(h);
-    zsv_pretty_destroy(h);
+      zsv_pretty_flush(h);
+      zsv_pretty_destroy(h);
+    }
   }
   if (opts.out && opts.out != stdout)
     fclose(opts.out);

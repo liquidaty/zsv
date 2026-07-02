@@ -861,6 +861,8 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int m_argc, const char *m_argv[]) {
     opts.R = ZSV_PROP_ARG_NONE;
 
     const unsigned char *filepath = (const unsigned char *)m_argv[1];
+    if (zsv_arg_is_option(m_argv[1]))
+      return zsv_err_unrecognized_option(m_argv[1]);
     if (m_argc == 2)
       return show_all_properties(filepath);
 

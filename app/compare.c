@@ -1048,7 +1048,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       data->require_all_inputs = 1;
     } else if (data->parse_opt && data->parse_opt(data, arg, &arg_i, argc, argv, &err)) {
       ; /* option consumed by a host-provided custom handler (e.g. --redline) */
-    } else
+    } else if (zsv_arg_is_option(arg))
+      err = zsv_err_unrecognized_option(arg);
+    else
       input_filenames[input_count++] = arg;
   }
 

@@ -137,6 +137,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           perror(fn);
         }
       }
+    } else if (zsv_arg_is_option(arg)) {
+      err = zsv_err_unrecognized_option(arg);
     } else if (!data.in) {
 #ifndef NO_STDIN
       if (!strcmp(arg, "-"))

@@ -141,7 +141,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
   for (int i = 1; status == zsv_paste_status_ok && i < argc; i++) {
     const char *arg = argv[i];
-    if (!(!strcmp(arg, "-h") || !strcmp(arg, "--help")))
+    if (!strcmp(arg, "-h") || !strcmp(arg, "--help"))
+      continue;
+    if (zsv_arg_is_option(arg))
+      status = zsv_err_unrecognized_option(arg);
+    else
       status = zsv_paste_add_input(arg, next_input, &next_input, opts, custom_prop_handler);
   }
 
