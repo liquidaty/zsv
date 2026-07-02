@@ -195,6 +195,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   overwrite.timestamp = (size_t)time(NULL);
 
   args.filepath = (char *)argv[1];
+  if (zsv_arg_is_option(argv[1]))
+    return zsv_err_unrecognized_option(argv[1]);
 
   for (int i = 2; !err && i < argc; i++) {
     const char *opt = argv[i];

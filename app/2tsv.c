@@ -176,6 +176,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         fprintf(stderr, "Output file specified more than once\n"), err = 1;
       else if (!(data.out.stream = fopen(argv[i], "wb")))
         fprintf(stderr, "Unable to open for writing: %s\n", argv[i]), err = 1;
+    } else if (zsv_arg_is_option(argv[i])) {
+      err = zsv_err_unrecognized_option(argv[i]);
     } else {
       if (opts.stream)
         fprintf(stderr, "Input file specified more than once\n"), err = 1;

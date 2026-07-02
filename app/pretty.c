@@ -659,29 +659,32 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *pa
       input_path = argv[i];
   }
 
+  if (!rc) {
 #ifdef NO_STDIN
-  if (in == stdin)
-    rc = zsv_printerr(1, "Please specify an input file");
+    if (in == stdin)
+      rc = zsv_printerr(1, "Please specify an input file");
 #endif
-  if (opts.column_width_min > opts.column_width_max || opts.column_width_min > opts.line_width_max)
-    rc = zsv_printerr(1, "Min column width cannot exceed max column width or max line width");
+    if (opts.column_width_min > opts.column_width_max || opts.column_width_min > opts.line_width_max)
+      rc = zsv_printerr(1, "Min column width cannot exceed max column width or max line width");
+  }
 
-  parser_opts->stream = in;
-  struct zsv_pretty_data *h = zsv_pretty_init(&opts, parser_opts, custom_prop_handler, input_path);
-  if (!h)
-    rc = 1;
-  else {
-    zsv_handle_ctrl_c_signal();
-    rc = 0;
-    enum zsv_status status;
-    while (zsv_parse_more(h->parser) == zsv_status_ok)
-      ;
+  if (!rc) {
+    parser_opts->stream = in;
+    struct zsv_pretty_data *h = zsv_pretty_init(&opts, parser_opts, custom_prop_handler, input_path);
+    if (!h)
+      rc = 1;
+    else {
+      zsv_handle_ctrl_c_signal();
+      enum zsv_status status;
+      while (zsv_parse_more(h->parser) == zsv_status_ok)
+        ;
 
-    while (!rc && !zsv_signal_interrupted && (status = zsv_parse_more(h->parser)) == zsv_status_ok)
-      ;
+      while (!rc && !zsv_signal_interrupted && (status = zsv_parse_more(h->parser)) == zsv_status_ok)
+        ;
 
-    zsv_pretty_flush(h);
-    zsv_pretty_destroy(h);
+      zsv_pretty_flush(h);
+      zsv_pretty_destroy(h);
+    }
   }
   if (opts.out && opts.out != stdout)
     fclose(opts.out);

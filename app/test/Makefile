@@ -99,6 +99,9 @@ TESTS+=test-compare-redline-v2
 # up in the emcc/wasm sandbox (binaries are *.em.js run via node, not directly
 # executable). The CSV->DB path is plain C and is covered on every native build.
 TESTS+=test-2db-csv
+# Uniform unrecognized-option rejection across commands; execs the standalone
+# binaries directly, so native-only (like the redline/2db-csv orchestration above).
+TESTS+=test-unrecognized-option
 endif
 
 # Security regression test - only run when not cross-compiling
@@ -219,6 +222,10 @@ test-parallel: ${BUILD_DIR}/bin/zsv_select${EXE} ${BUILD_DIR}/bin/zsv_count${EXE
 	COUNT_EXE=${BUILD_DIR}/bin/zsv_count${EXE} \
 	${MAKE} -C parallel test
 endif
+
+test-unrecognized-option: ${TARGETS} ${BUILD_DIR}/bin/zsv_paste${EXE} ${BUILD_DIR}/bin/zsv_check${EXE} ${BUILD_DIR}/bin/zsv_prop${EXE}
+	@${TEST_INIT}
+	@sh unrecognized-option.sh "${BUILD_DIR}/bin" "${EXE}" "${TMP_DIR}" && ${TEST_PASS} || ${TEST_FAIL}
 
 test-check: test-check-1 test-check-2
 

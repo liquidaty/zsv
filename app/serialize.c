@@ -310,6 +310,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         data.filter.entire = 1;
       else if (!strcmp(argv[arg_i], "-b"))
         writer_opts.with_bom = 1;
+      else if (zsv_arg_is_option(argv[arg_i]))
+        err = zsv_err_unrecognized_option(argv[arg_i]);
       else if (data.in) {
         err = 1;
         fprintf(stderr, "Input file specified twice, or unrecognized argument: %s\n", argv[arg_i]);

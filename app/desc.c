@@ -524,6 +524,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
                                   "-C (max cols) invalid: should be positive integer > 9 (got %s)", argv[arg_i]);
         else
           data.max_cols = atoi(argv[arg_i]);
+      } else if (zsv_arg_is_option(argv[arg_i])) {
+        data.err = zsv_err_unrecognized_option(argv[arg_i]);
       } else {
         if (data.opts->stream) {
           err = 1;
