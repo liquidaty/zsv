@@ -1,0 +1,5 @@
+Row #               Key(s)              Action              Description
+26                  f                   filter              Filter by specified
+27                  F                   filtercol           Filter by specified
+34                                      where               Filter by sql expre
+(3 filtered rows) 26

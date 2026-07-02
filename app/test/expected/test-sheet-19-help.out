@@ -1,0 +1,5 @@
+Key(s)                    Action                    Description
+q                         quit                      Exit the application
+<esc>                     escape                    Leave the current view or
+^                         first                     Jump to the first column
+<esc> to exit help Key(s)
