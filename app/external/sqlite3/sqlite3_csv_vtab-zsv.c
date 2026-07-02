@@ -174,90 +174,117 @@ static long zsv_csv_colname_find(char *const *seen, size_t n, const char *name) 
 
 /* Append the `"col" TEXT, ...` specifications for each header cell to pStr.
 ** When `dedupe` is nonzero, duplicate column names are made unique by appending
-** _2, _3, ... (e.g. a,b,a -> a,b,a_2) so input with repeated headers is loadable;
-** if `warn` is also nonzero, each rename is noted on stderr (renames are never
-** silent). Callers that drive a curses UI (sheet) pass warn=0 to keep stderr clean.
+** _2, _3, ... so input with repeated headers is loadable: the first occurrence of
+** a name keeps it and later occurrences are renamed. A synthesized name is probed
+** against every user-supplied name and every name already assigned, so it never
+** displaces an explicit column (a,a,a_2 -> a,a_3,a_2). If `warn` is nonzero, one
+** summary line naming up to 5 renames is printed to stderr (never silent, but
+** collapsed to a single line); callers driving a curses UI (sheet) pass warn=0.
 ** When `dedupe` is zero, the first duplicate name is reported via *dup_errmsg
 ** (allocated with asprintf, naming the column and its 1-based positions) so the
 ** caller can fail with an actionable message instead of SQLite's generic one.
 ** Returns 0 on success, 1 if a duplicate was reported, -1 on out-of-memory. */
 static int zsv_csv_append_column_defs(sqlite3_str *pStr, zsv_parser parser, int dedupe, int warn, char **dup_errmsg) {
   size_t ncols = zsv_cell_count(parser);
-  char **seen = NULL;
+  char **base = NULL;  // user-supplied name (trimmed, or blank placeholder) per column
+  char **final = NULL; // unique name assigned to each column (may alias base[i])
+  sqlite3_str *summary = NULL;
+  unsigned nrenamed = 0;
   int rc = 0;
   if(ncols) {
-    seen = sqlite3_malloc64((sqlite3_int64)(sizeof(*seen) * ncols));
-    if(!seen)
-      return -1;
-    memset(seen, 0, sizeof(*seen) * ncols);
+    base = sqlite3_malloc64((sqlite3_int64)(sizeof(*base) * ncols));
+    final = sqlite3_malloc64((sqlite3_int64)(sizeof(*final) * ncols));
+    if(!base || !final) {
+      rc = -1;
+      goto done;
+    }
+    memset(base, 0, sizeof(*base) * ncols);
+    memset(final, 0, sizeof(*final) * ncols);
   }
+
+  // phase 1: capture every column's user-supplied name; blanks keep their placeholder
   for(size_t i = 0; i < ncols; i++) {
     struct zsv_cell cell = zsv_get_cell(parser, i);
     size_t len = cell.len;
     unsigned char *utf8_value = (unsigned char *)zsv_strtrim(cell.str, &len);
-
-    // base (NUL-terminated) column name; blanks keep their existing placeholder
-    char *base;
     if(!len) {
       if(blank_column_name_count++)
-        base = sqlite3_mprintf("%s_%u", BLANK_COLUMN_NAME_PREFIX, blank_column_name_count - 1);
+        base[i] = sqlite3_mprintf("%s_%u", BLANK_COLUMN_NAME_PREFIX, blank_column_name_count - 1);
       else
-        base = sqlite3_mprintf("%s", BLANK_COLUMN_NAME_PREFIX);
+        base[i] = sqlite3_mprintf("%s", BLANK_COLUMN_NAME_PREFIX);
     } else
-      base = sqlite3_mprintf("%.*s", (int)len, utf8_value);
-    if(!base) {
+      base[i] = sqlite3_mprintf("%.*s", (int)len, utf8_value);
+    if(!base[i]) {
       rc = -1;
-      break;
+      goto done;
     }
+  }
 
-    char *name = base;     // points at base, or at a freshly-allocated suffixed name
-    char *suffixed = NULL;
-    if(dedupe) {
-      for(unsigned n = 2; zsv_csv_colname_find(seen, i, name) >= 0; n++) {
-        sqlite3_free(suffixed);
-        suffixed = sqlite3_mprintf("%s_%u", base, n);
-        if(!suffixed) {
-          rc = -1;
-          break;
-        }
-        name = suffixed;
-      }
-      if(rc) {
-        sqlite3_free(suffixed);
-        sqlite3_free(base);
-        break;
-      }
-      if(warn && name != base) // a rename happened; never silent
-        fprintf(stderr, "renamed duplicate column \"%s\" \xe2\x86\x92 \"%s\"\n", base, name);
-    } else {
-      long prior = zsv_csv_colname_find(seen, i, name);
+  // phase 2: assign a unique name to each column and emit its column def
+  for(size_t i = 0; i < ncols; i++) {
+    if(!dedupe) {
+      long prior = zsv_csv_colname_find(base, i, base[i]);
       if(prior >= 0) {
-        if(asprintf(dup_errmsg,
-                    "duplicate column name \"%s\" at columns %d and %d"
-                    "; pass --rename-duplicate-columns to auto-disambiguate",
-                    name, (int)(prior + 1), (int)(i + 1)) < 0)
+        if(asprintf(dup_errmsg, "duplicate column name \"%s\" at columns %d and %d", base[i], (int)(prior + 1),
+                    (int)(i + 1)) < 0)
           *dup_errmsg = NULL;
         rc = *dup_errmsg ? 1 : -1;
-        sqlite3_free(base);
-        break;
+        goto done;
+      }
+      final[i] = base[i]; // no dedupe: name is already unique (borrows base[i])
+    } else if(zsv_csv_colname_find(base, i, base[i]) < 0) {
+      final[i] = base[i]; // first occurrence keeps its name (borrows base[i])
+    } else {
+      // duplicate: bump _k past every user-supplied name and every name already assigned,
+      // so disambiguation never collides with, or displaces, an explicit column
+      char *cand = NULL;
+      for(unsigned k = 2;; k++) {
+        sqlite3_free(cand);
+        cand = sqlite3_mprintf("%s_%u", base[i], k);
+        if(!cand) {
+          rc = -1;
+          goto done;
+        }
+        if(zsv_csv_colname_find(base, ncols, cand) < 0 && zsv_csv_colname_find(final, i, cand) < 0)
+          break;
+      }
+      final[i] = cand;
+      if(warn) {
+        if(!summary && !(summary = sqlite3_str_new(0))) {
+          rc = -1;
+          goto done;
+        }
+        if(nrenamed < 5)
+          sqlite3_str_appendf(summary, "%s%s\xe2\x86\x92%s", nrenamed ? ", " : "", base[i], final[i]);
+        nrenamed++;
       }
     }
-    seen[i] = sqlite3_mprintf("%s", name);
-    if(!seen[i]) {
-      sqlite3_free(suffixed);
-      sqlite3_free(base);
-      rc = -1;
-      break;
-    }
-    sqlite3_str_appendf(pStr, "%s\"%w\" TEXT", i > 0 ? "," : "", name);
-    sqlite3_free(suffixed);
+    sqlite3_str_appendf(pStr, "%s\"%w\" TEXT", i > 0 ? "," : "", final[i]);
+  }
+
+  if(warn && nrenamed) {
+    if(nrenamed > 5)
+      sqlite3_str_appendf(summary, ", +%u more", nrenamed - 5);
+    fprintf(stderr,
+            "note: auto-renamed %u duplicate input column(s): %s"
+            "  (pass --error-on-duplicate-columns to treat as an error)\n",
+            nrenamed, sqlite3_str_value(summary));
+  }
+
+done:
+  if(final) {
+    for(size_t i = 0; i < ncols; i++)
+      if(final[i] && final[i] != base[i]) // only synthesized names are owned separately
+        sqlite3_free(final[i]);
+    sqlite3_free(final);
+  }
+  if(base) {
+    for(size_t i = 0; i < ncols; i++)
+      sqlite3_free(base[i]);
     sqlite3_free(base);
   }
-  if(seen) {
-    for(size_t i = 0; i < ncols; i++)
-      sqlite3_free(seen[i]);
-    sqlite3_free(seen);
-  }
+  if(summary)
+    sqlite3_free(sqlite3_str_finish(summary));
   return rc;
 }
 
