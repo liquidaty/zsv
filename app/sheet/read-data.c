@@ -313,12 +313,9 @@ static void *get_data_index(void *gdi) {
   return NULL;
 }
 
-// zsvsheet_find_next_in_buffer: search the in-memory screen buffer for the next
-// match at or after the cursor. Used for static buffers (e.g. help, errors) that
-// have no backing data file. Scans row-major starting at the cell after the
-// cursor; on a match sets found_rownum/found_colnum in buffer coordinates (these
-// buffers have no row-number column). Starting after the cursor cell is what lets
-// repeated "find next" advance without the row-number-column offset the file path relies on.
+// Search the in-memory screen buffer for the next match after the cursor cell. Used for
+// static buffers (help/errors) that have no data file; scans row-major and sets
+// found_rownum/found_colnum in buffer coords (these buffers have no row-number column).
 static void zsvsheet_find_next_in_buffer(struct zsvsheet_ui_buffer *uib, struct zsvsheet_opts *zsvsheet_opts,
                                          size_t header_span) {
   const char *needle = zsvsheet_opts->find;
@@ -352,10 +349,9 @@ static void zsvsheet_find_next_in_buffer(struct zsvsheet_ui_buffer *uib, struct 
 
 static size_t zsvsheet_find_next(struct zsvsheet_ui_buffer *uib, struct zsvsheet_opts *zsvsheet_opts,
                                  size_t header_span, struct zsv_prop_handler *custom_prop_handler) {
-  if (!uib->data_filename && !uib->filename) {
-    // static/in-memory buffer: search the screen buffer directly (no data file to read)
+  if (!uib->data_filename && !uib->filename) // static buffer: no data file, scan screen buffer
     zsvsheet_find_next_in_buffer(uib, zsvsheet_opts, header_span);
-  } else {
+  else {
     struct zsvsheet_rowcol *input_offset = &uib->input_offset;
     struct zsvsheet_rowcol *buff_offset = &uib->buff_offset;
     size_t cursor_row = uib->cursor_row;

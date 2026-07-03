@@ -770,8 +770,7 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   if (binfo.write_in_progress && !binfo.write_done)
     return zsvsheet_status_busy;
 
-  // Note: no data-file guard here; static (in-memory) buffers such as help are
-  // materialized to a temp CSV by zsvsheet_push_transformation before filtering.
+  // No data-file guard: zsvsheet_push_transformation materializes static buffers (e.g. help) to a temp CSV first.
 
   if (ctx->num_params > 0) {
     filter = ctx->params[0].u.string;

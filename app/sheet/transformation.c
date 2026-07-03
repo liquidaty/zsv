@@ -141,13 +141,11 @@ void zsvsheet_transformation_delete(zsvsheet_transformation trn) {
   free(trn->output_filename);
   fclose(trn->output_stream);
   free(trn->output_buffer);
-  if (trn->input_filename_owned) {
-    // remove after the parser (and its input stream) is torn down above
+  if (trn->input_filename_owned) { // temp input; parser (above) already closed it
     remove(trn->input_filename_owned);
     free(trn->input_filename_owned);
   }
-  // free on every teardown path (worker, synchronous completion, error); on_done has already run by here
-  free(trn->user_context);
+  free(trn->user_context); // freed here so every teardown path (worker/sync/error) releases it once
   free(trn);
 }
 
@@ -210,37 +208,27 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   return NULL;
 }
 
-// zsvsheet_buffer_to_temp_csv: write an in-memory (static) buffer's contents to a
-// new temp CSV file so a transformation can read it. Returns a malloc'd filename
-// the caller owns (remove + free), or NULL on error.
+// Write a static (in-memory) buffer's cells to a new temp CSV so a transformation
+// can read it. Returns a malloc'd filename the caller owns (remove + free), or NULL.
 static char *zsvsheet_buffer_to_temp_csv(struct zsvsheet_ui_buffer *uib) {
   char *tmpfn = zsv_get_temp_filename("zsvsheet_src_XXXXXXXX");
   if (!tmpfn)
     return NULL;
-  struct zsv_csv_writer_options wopts = {0};
-  wopts.output_path = tmpfn;
-  zsv_csv_writer writer = zsv_writer_new(&wopts);
-  if (!writer) {
-    free(tmpfn);
-    return NULL;
-  }
-  size_t rows = uib->buff_used_rows;
-  size_t cols = uib->dimensions.col_count;
-  enum zsv_writer_status wstat = zsv_writer_status_ok;
-  for (size_t r = 0; r < rows && wstat == zsv_writer_status_ok; r++) {
+  zsv_csv_writer writer = zsv_writer_new(&(struct zsv_csv_writer_options){.output_path = tmpfn});
+  enum zsv_writer_status wstat = writer ? zsv_writer_status_ok : zsv_writer_status_error;
+  size_t rows = uib->buff_used_rows, cols = uib->dimensions.col_count;
+  for (size_t r = 0; r < rows && wstat == zsv_writer_status_ok; r++)
     for (size_t c = 0; c < cols && wstat == zsv_writer_status_ok; c++) {
       const unsigned char *cell = zsvsheet_screen_buffer_cell_display(uib->buffer, r, c);
-      size_t len = cell ? strlen((const char *)cell) : 0;
-      wstat = zsv_writer_cell(writer, c == 0, cell ? cell : (const unsigned char *)"", len, 1);
+      wstat = zsv_writer_cell(writer, c == 0, cell ? cell : (const unsigned char *)"",
+                              cell ? strlen((const char *)cell) : 0, 1);
     }
-  }
-  zsv_writer_delete(writer);
-  if (wstat != zsv_writer_status_ok) {
-    remove(tmpfn);
-    free(tmpfn);
-    return NULL;
-  }
-  return tmpfn;
+  zsv_writer_delete(writer); // NULL-safe
+  if (wstat == zsv_writer_status_ok)
+    return tmpfn;
+  remove(tmpfn); // mkstemp created the file; drop it on any failure
+  free(tmpfn);
+  return NULL;
 }
 
 enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
@@ -248,6 +236,7 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   zsvsheet_buffer_t buff = zsvsheet_buffer_current(ctx);
   const char *filename = zsvsheet_buffer_data_filename(buff);
   char *owned_input = NULL;
+  zsvsheet_transformation trn = NULL; // declared before any `goto error` so error: never reads it uninitialized
   enum zsvsheet_status stat = zsvsheet_status_error;
   struct zsvsheet_buffer_info_internal info = zsvsheet_buffer_info_internal(buff);
   struct zsv_index *index = NULL;
@@ -276,7 +265,6 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
     .ui_buffer = NULL,
     .index = index,
   };
-  zsvsheet_transformation trn = NULL;
   struct zsv_opts zopts = zsvsheet_buffer_get_zsv_opts(buff);
 
   zopts.ctx = opts.user_context;
@@ -353,8 +341,7 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
 error:
   zsv_index_delete(index);
 
-  if (owned_input) {
-    // ownership not yet transferred to trn
+  if (owned_input) { // ownership not yet transferred to trn
     remove(owned_input);
     free(owned_input);
   }
