@@ -1241,7 +1241,7 @@ test-sheet-cleanup:
 test-sheet-all: \
 	test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 \
 	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-15 test-sheet-16 test-sheet-17 \
-	test-sheet-18 \
+	test-sheet-18 test-sheet-19 test-sheet-20 \
 	test-sheet-subcommand \
 	test-sheet-prop-cmd-opt \
 	test-sheet-pivot-1 \
@@ -1429,6 +1429,30 @@ test-sheet-18: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS
 	tmux -L $@ send-keys -t $@ "\\" && \
 	${EXPECT} $@ next-1 && \
 	tmux -L $@ send-keys -t $@ "\\" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# find works in the help screen just like in a regular sheet
+test-sheet-19: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ "?" && \
+	${EXPECT} $@ help && \
+	tmux -L $@ send-keys -t $@ "/" "find" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# filter works in the help screen (in-memory buffer materialized to a temp CSV)
+test-sheet-20: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ "?" && \
+	${EXPECT} $@ help && \
+	tmux -L $@ send-keys -t $@ "f" "Filter" ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-subcommand: \

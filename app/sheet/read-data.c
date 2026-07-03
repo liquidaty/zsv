@@ -313,15 +313,53 @@ static void *get_data_index(void *gdi) {
   return NULL;
 }
 
+// Search the in-memory screen buffer for the next match after the cursor cell. Used for
+// static buffers (help/errors) that have no data file; scans row-major and sets
+// found_rownum/found_colnum in buffer coords (these buffers have no row-number column).
+static void zsvsheet_find_next_in_buffer(struct zsvsheet_ui_buffer *uib, struct zsvsheet_opts *zsvsheet_opts,
+                                         size_t header_span) {
+  const char *needle = zsvsheet_opts->find;
+  if (!needle)
+    return;
+  zsvsheet_screen_buffer_t buffer = uib->buffer;
+  size_t needle_len = strlen(needle);
+  size_t row_count = uib->dimensions.row_count;
+  size_t col_count = uib->dimensions.col_count;
+  size_t from_row = uib->input_offset.row + uib->buff_offset.row + uib->cursor_row;
+  size_t from_col = uib->cursor_col + uib->buff_offset.col;
+  if (from_row < header_span)
+    from_row = header_span;
+  for (size_t r = from_row; r < row_count; r++) {
+    for (size_t c = (r == from_row ? from_col + 1 : 0); c < col_count; c++) {
+      if (zsvsheet_opts->find_specified_column_plus_1 && c + 1 != zsvsheet_opts->find_specified_column_plus_1)
+        continue;
+      const unsigned char *cell = zsvsheet_screen_buffer_cell_display(buffer, r, c);
+      if (!cell)
+        continue;
+      size_t cell_len = strlen((const char *)cell);
+      if (zsvsheet_opts->find_exact ? (cell_len == needle_len && !memcmp(cell, needle, needle_len))
+                                    : (memmem(cell, cell_len, needle, needle_len) != NULL)) {
+        zsvsheet_opts->found_rownum = r;
+        zsvsheet_opts->found_colnum = c;
+        return;
+      }
+    }
+  }
+}
+
 static size_t zsvsheet_find_next(struct zsvsheet_ui_buffer *uib, struct zsvsheet_opts *zsvsheet_opts,
                                  size_t header_span, struct zsv_prop_handler *custom_prop_handler) {
-  struct zsvsheet_rowcol *input_offset = &uib->input_offset;
-  struct zsvsheet_rowcol *buff_offset = &uib->buff_offset;
-  size_t cursor_row = uib->cursor_row;
-  size_t start_row = input_offset->row + buff_offset->row + header_span + cursor_row - 1;
-  if (start_row > 0)
-    start_row--;
-  read_data(&uib, NULL, start_row, 0, header_span, zsvsheet_opts, custom_prop_handler);
+  if (!uib->data_filename && !uib->filename) // static buffer: no data file, scan screen buffer
+    zsvsheet_find_next_in_buffer(uib, zsvsheet_opts, header_span);
+  else {
+    struct zsvsheet_rowcol *input_offset = &uib->input_offset;
+    struct zsvsheet_rowcol *buff_offset = &uib->buff_offset;
+    size_t cursor_row = uib->cursor_row;
+    size_t start_row = input_offset->row + buff_offset->row + header_span + cursor_row - 1;
+    if (start_row > 0)
+      start_row--;
+    read_data(&uib, NULL, start_row, 0, header_span, zsvsheet_opts, custom_prop_handler);
+  }
   zsvsheet_opts->find = NULL;
   return zsvsheet_opts->found_rownum;
 }

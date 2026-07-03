@@ -1,0 +1,5 @@
+Key(s)                    Action                    Description
+/                         find                      Set a search term and jum
+n                         next                      Jump to the next search r
+|                         gotocolumn                Find a column by name and
+<esc> to exit help find
