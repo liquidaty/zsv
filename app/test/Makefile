@@ -86,6 +86,7 @@ endif
 TESTS+=test-check
 TESTS+=test-rename-select
 TESTS+=test-quoted-nonstandard
+TESTS+=test-tab-auto-recognize
 # The redline tests pin output determinism via SOURCE_DATE_EPOCH and exercise the unified
 # `cli` / `--help-topic` routing. emscripten's getenv does not see host env vars (only a
 # minimal built-in ENV), and that multi-binary orchestration is not set up in the emcc/wasm
@@ -770,6 +771,23 @@ test-pretty-escape-chars: ${BUILD_DIR}/bin/zsv_pretty${EXE}
 	@${TEST_INIT}
 	@(${PREFIX} $< ${ARGS-$*} < ${TEST_DATA_DIR}/test/pretty-escape.csv -M ${REDIRECT1} ${TMP_DIR}/$@.out && \
 	${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL})
+
+# .tsv/.tab input files default to a tab delimiter (== -t); other extensions and
+# an explicit delimiter are unaffected. Exercises the app/utils/prop.c seam that
+# every delimited-input command routes through. Fails before the seam was added.
+test-tab-auto-recognize: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_INIT}
+	@cp ${TEST_DATA_DIR}/Excel.tsv ${TMP_DIR}/$@.tsv && \
+	cp ${TEST_DATA_DIR}/Excel.tsv ${TMP_DIR}/$@.tab && \
+	cp ${TEST_DATA_DIR}/Excel.tsv ${TMP_DIR}/$@.csv && \
+	${PREFIX} $< -t ${TMP_DIR}/$@.tsv > ${TMP_DIR}/$@-t.out && \
+	${PREFIX} $< ${TMP_DIR}/$@.tsv > ${TMP_DIR}/$@-tsv.out && \
+	${PREFIX} $< ${TMP_DIR}/$@.tab > ${TMP_DIR}/$@-tab.out && \
+	${PREFIX} $< ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-csv.out && \
+	cmp ${TMP_DIR}/$@-tsv.out ${TMP_DIR}/$@-t.out && \
+	cmp ${TMP_DIR}/$@-tab.out ${TMP_DIR}/$@-t.out && \
+	! cmp -s ${TMP_DIR}/$@-csv.out ${TMP_DIR}/$@-t.out && \
+	${TEST_PASS} || ${TEST_FAIL}
 
 test-2tsv: test-2tsv-1 test-2tsv-2 test-2tsv-3
 

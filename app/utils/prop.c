@@ -7,6 +7,7 @@
 #include <zsv/utils/cache.h>
 #include <zsv/utils/file.h>
 #include <zsv/utils/overwrite.h>
+#include <zsv/utils/string.h>
 #include <yajl_helper/yajl_helper.h>
 
 #ifndef ZSVTLS
@@ -241,6 +242,26 @@ static int zsv_properties_parse_process_value(yajl_helper_t yh, struct json_valu
 }
 
 /**
+ * zsv_tab_ext_delim(): return '\t' if `path` ends (case-insensitive) with a
+ * standard tab-delimited extension, else 0. `.tsv` is always recognized; `.tab`
+ * unless compiled out via ZSV_NO_TAB_AUTO_RECOGNIZE (configure
+ * --disable-tab-auto-recognize).
+ */
+static char zsv_tab_ext_delim(const char *path) {
+  size_t n = path ? strlen(path) : 0;
+  if (n >= 4) {
+    const unsigned char *ext = (const unsigned char *)path + (n - 4);
+    if (!zsv_stricmp(ext, (const unsigned char *)".tsv"))
+      return '\t';
+#ifndef ZSV_NO_TAB_AUTO_RECOGNIZE
+    if (!zsv_stricmp(ext, (const unsigned char *)".tab"))
+      return '\t';
+#endif
+  }
+  return 0;
+}
+
+/**
  * zsv_new_with_properties(): use in lieu of zsv_new() to also merge zsv options
  * with any saved properties (such as rows_to_ignore or header_span) for the
  * specified input file. In the event that saved properties conflict with a
@@ -261,6 +282,10 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts, struct zsv_prop_h
   if (opts->overwrite_auto)
     zsv_overwrite_auto(opts, input_path);
 #endif
+  // Default to a tab delimiter for .tsv/.tab input unless one was set explicitly
+  // (via -t/-O) or by a saved property (either leaves delimiter non-zero here)
+  if (input_path && opts->delimiter == 0)
+    opts->delimiter = zsv_tab_ext_delim(input_path);
   if ((*handle_out = zsv_new(opts)))
     return zsv_status_ok;
   return zsv_status_memory;

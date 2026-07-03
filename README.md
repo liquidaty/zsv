@@ -167,6 +167,10 @@ and/or use multi-row header span -- see documentation for further detail.
 * Cell delimiter can be a character other than comma
 * Row delimiter can be specfied as CRLF only, in which case a standalone CR
   or LF is simply part of the cell value, even without quoting
+* When the input is a file whose name ends in `.tsv` or `.tab`, the cell
+  delimiter defaults to tab (equivalent to passing `-t`), unless a delimiter
+  is set explicitly. Recognition of `.tab` can be turned off at build time via
+  `./configure --disable-tab-auto-recognize` (`.tsv` is always recognized)
 
 ## Built-in and extensible features
 
