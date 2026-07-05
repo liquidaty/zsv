@@ -18,6 +18,7 @@
 
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
+#include <zsv/utils/prop.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/sql.h>
 #include "sql_internal.h"
@@ -310,6 +311,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       struct zsv_sqlite3_db *zdb = zsv_sqlite3_db_new(&dbopts);
       if (zdb && zdb->rc == SQLITE_OK) {
         const char *csv_filename = tmpfn ? (const char *)tmpfn : data.input_filename;
+
+        // stdin input is buffered to a temp file whose path has no property cache,
+        // so honor --stdin-filename here rather than in the vtab's property lookup
+        if (tmpfn && opts->stdin_filename &&
+            zsv_cache_load_props(opts->stdin_filename, opts, custom_prop_handler).stat != zsv_status_ok)
+          fprintf(stderr, "Warning: unable to load properties for %s\n", opts->stdin_filename);
 
         // for simplicity, we assume the same opts and custom_prop_handler for every input
         // it may be desirable later to make this customizable for each input

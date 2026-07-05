@@ -499,7 +499,17 @@ test-stdin-filename-select test-stdin-filename-select-pull: test-stdin-filename-
 	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv - < ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv -d 1 < ${TMP_DIR}/$@/data.csv 2>/dev/null | head -1`; [ "$$h" = "Col,Type" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col,Type" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@${PREFIX} $< --stdin-filename >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+# rc assertions run unwrapped: under LEAKS=1, leaks(1) owns the exit code
+	@$< --stdin-filename >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@$< --stdin-filename - >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+
+# sql buffers stdin to a temp file; --stdin-filename must still apply saved props
+test-stdin-filename-sql: ${BUILD_DIR}/bin/zsv_sql${EXE} ${BUILD_DIR}/bin/zsv_prop${EXE}
+	@${TEST_INIT}
+	@mkdir -p ${TMP_DIR}/$@
+	@printf 'Col,Type\nA,B\n1,x\n2,y\n' > ${TMP_DIR}/$@/data.csv
+	@${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@/file.csv -d 2 >/dev/null
+	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv - 'select * from data' < ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-merge-select test-merge-select-pull: test-merge-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -831,7 +841,7 @@ test-serialize : test-%: ${BUILD_DIR}/bin/zsv_%${EXE} test-serialize-quoted test
 	@(${PREFIX} $< -p < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@-2.out && \
 	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
 
-test-sql: test-sql2 test-sql3 test-sql4 test-sql5 test-sql-dupcol test-sql-dupcol-rename test-sql-dupcol-msg \
+test-sql: test-sql2 test-sql3 test-sql4 test-sql5 test-stdin-filename-sql test-sql-dupcol test-sql-dupcol-rename test-sql-dupcol-msg \
           test-sql-dupcol-default test-sql-dupcol-3x test-sql-dupcol-collide test-sql-dupcol-caseins \
           test-sql-dupcol-nodup
 test-sql2: ${BUILD_DIR}/bin/zsv_sql${EXE}
