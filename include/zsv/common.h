@@ -311,9 +311,10 @@ struct zsv_opts {
    * Optional file path to be treated as the input's path when locating
    * cached file properties (.zsv/data/<filepath>/). Applied only to an
    * input that has no path of its own (e.g. stdin); an input read from an
-   * actual file keeps its own property lookup. Only used by
-   * zsv_new_with_properties(); ignored by zsv_new(). Has no effect on
-   * which data is parsed
+   * actual file keeps its own property lookup. Consumed when loading cached
+   * properties (by zsv_new_with_properties(), and directly by `sql` for
+   * buffered stdin input); ignored by zsv_new(). Has no effect on which
+   * data is parsed
    *
    * cli option: --stdin-filename <path>
    */
