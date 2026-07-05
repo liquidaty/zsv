@@ -41,6 +41,8 @@ static const char *common_options[] = {
   "  -S,--keep-blank-headers  : disable default behavior of ignoring leading blank rows",
   "  -0,--header-row <header> : insert the provided CSV as the first row (in position 0)",
   "                             e.g. --header-row 'col1,col2,\"my col 3\"'",
+  "  --as-filename <path>     : treat the input as if read from the given path, e.g. to apply",
+  "                             saved file properties when piping data via stdin",
 #ifndef ZSV_NO_ONLY_CRLF
   "  --only-crlf              : only treat CRLF as row delimiter",
   "                             CR or LF alone are treated as normal chars that do not require quotes",

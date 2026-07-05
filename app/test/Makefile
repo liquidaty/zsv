@@ -484,7 +484,22 @@ test-quoted-nonstandard: ${BUILD_DIR}/bin/zsv_count${EXE} ${BUILD_DIR}/bin/zsv_s
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} --parser compat ${TEST_DATA_DIR}/test/quoted_nonstandard.csv ${REDIRECT} ${TMP_DIR}/$@-select-compat.out
 	@${CMP} ${TMP_DIR}/$@-select-compat.out expected/test-quoted-nonstandard-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select test-select-pull: test-% : test-onlycrlf-% test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-11-% test-12-% test-13-% test-search-% test-regex-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-fixed-3-% test-fixed-4-% test-merge-%
+test-select test-select-pull: test-% : test-onlycrlf-% test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-11-% test-12-% test-13-% test-search-% test-regex-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-fixed-3-% test-fixed-4-% test-merge-% test-as-filename-%
+
+# --as-filename: apply file properties saved under the given path to stdin input;
+# the path need not exist (only its .zsv/data cache does), an explicit
+# command-line option still overrides the saved property, and an input read
+# from an actual file keeps its own property lookup
+test-as-filename-select test-as-filename-select-pull: test-as-filename-% : ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_prop${EXE}
+	@${TEST_INIT}
+	@mkdir -p ${TMP_DIR}/$@
+	@printf 'Col,Type\nA,B\n1,x\n2,y\n' > ${TMP_DIR}/$@/data.csv
+	@${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@/file.csv -d 2 >/dev/null
+	@h=`${PREFIX} $< --as-filename ${TMP_DIR}/$@/file.csv < ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --as-filename ${TMP_DIR}/$@/file.csv - < ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --as-filename ${TMP_DIR}/$@/file.csv -d 1 < ${TMP_DIR}/$@/data.csv 2>/dev/null | head -1`; [ "$$h" = "Col,Type" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --as-filename ${TMP_DIR}/$@/file.csv ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col,Type" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --as-filename >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-merge-select test-merge-select-pull: test-merge-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
