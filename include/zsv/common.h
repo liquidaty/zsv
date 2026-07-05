@@ -315,9 +315,9 @@ struct zsv_opts {
    * zsv_new_with_properties(); ignored by zsv_new(). Has no effect on
    * which data is parsed
    *
-   * cli option: --as-filename <path>
+   * cli option: --stdin-filename <path>
    */
-  const char *as_filename;
+  const char *stdin_filename;
 
   int (*errprintf)(void *ctx, const char *format, ...);
   void *errf;

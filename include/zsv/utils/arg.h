@@ -58,7 +58,7 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx);
  *     -q,--no-quote
  *     -S,--keep-blank-headers: disable default behavior of ignoring leading blank rows
  *     -d,--header-row-span <n>: apply header depth (rowspan) of n
- *     --as-filename <path>: treat the input as if read from the given path,
+ *     --stdin-filename <path>: treat the input as if read from the given path,
  *         e.g. to apply saved file properties when piping data via stdin
  *     -v,--verbose
  *

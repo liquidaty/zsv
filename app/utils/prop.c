@@ -252,8 +252,8 @@ static int zsv_properties_parse_process_value(yajl_helper_t yh, struct json_valu
 enum zsv_status zsv_new_with_properties(struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler,
                                         const char *input_path, zsv_parser *handle_out) {
   *handle_out = NULL;
-  if (opts->as_filename && (!input_path || !strcmp(input_path, "-")))
-    input_path = opts->as_filename;
+  if (opts->stdin_filename && (!input_path || !strcmp(input_path, "-")))
+    input_path = opts->stdin_filename;
   if (input_path) {
     struct zsv_file_properties fp = zsv_cache_load_props(input_path, opts, custom_prop_handler);
     if (fp.stat != zsv_status_ok)
