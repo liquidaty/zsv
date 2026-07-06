@@ -62,7 +62,12 @@ static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char 
 
   if (uibuffp->worker_active)
     zsvsheet_ui_buffer_join_worker(uibuffp);
-  zsvsheet_ui_buffer_create_worker(uibuffp, get_data_index, ixopts);
+  if (zsvsheet_ui_buffer_create_worker(uibuffp, get_data_index, ixopts) != 0) {
+    free(uibuffp->status); // restore the pre-"(building index)" status
+    uibuffp->status = old_ui_status;
+    uibuffp->ixopts = NULL;
+    free(ixopts);
+  }
 }
 
 static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_ui_buffer will be allocated
