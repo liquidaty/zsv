@@ -298,10 +298,20 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
 
   if (asprintf(&trn->default_status, "(working) Press ESC to cancel ") == -1)
     trn->default_status = NULL; // asprintf leaves its output indeterminate on failure
-  else
-    nbuff->status = trn->default_status;
+  nbuff->status = trn->default_status;
 
-  zsvsheet_ui_buffer_create_worker(nbuff, zsvsheet_run_buffer_transformation, trn);
+  if (zsvsheet_ui_buffer_create_worker(nbuff, zsvsheet_run_buffer_transformation, trn) != 0) {
+    // no worker will ever run: release what it would have and unstick the buffer
+    nbuff->write_done = 1;
+    nbuff->index_ready = 1;
+    nbuff->status = NULL;
+    free(trn->default_status);
+    trn->default_status = NULL;
+    if (trn->on_done)
+      opts.on_done(trn);
+    zsvsheet_transformation_delete(trn);
+    return zsvsheet_status_error;
+  }
   return stat;
 
 error:

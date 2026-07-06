@@ -128,7 +128,7 @@ static void zsvsheet_filter_file_on_done(zsvsheet_transformation trn) {
   struct zsvsheet_ui_buffer *uib = trn->ui_buffer;
 
   char *status;
-  if (asprintf(&status, "(%zu filtered rows) ", ctx->passed - 1) == -1)
+  if (asprintf(&status, "(%zu filtered rows) ", ctx->passed ? ctx->passed - 1 : 0) == -1)
     status = NULL; // asprintf leaves its output indeterminate on failure
 
   pthread_mutex_lock(&uib->mutex);
