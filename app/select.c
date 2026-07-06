@@ -783,7 +783,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   data.opts->row_handler = zsv_select_header_row;
   data.opts->ctx = &data;
 
-  if (zsv_new_with_properties(data.opts, custom_prop_handler, data.input_path, &data.parser) == zsv_status_ok) {
+  stat = zsv_new_with_properties(data.opts, custom_prop_handler, data.input_path, &data.parser);
+  if (stat == zsv_status_ok) {
     data.any_clean = !data.no_trim_whitespace || data.clean_white || data.embedded_lineend || data.unescape;
 
     // apply fixed offsets (whether from --fixed arg or --fixed-auto detection)

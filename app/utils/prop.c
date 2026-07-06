@@ -176,8 +176,10 @@ struct zsv_file_properties zsv_cache_load_props(const char *data_filepath, struc
             break;
           }
         }
-        if (tmp.stat == zsv_status_ok)
-          zsv_properties_parse_complete(p);
+        if (tmp.stat == zsv_status_ok && zsv_properties_parse_complete(p) != zsv_status_ok)
+          tmp.stat = zsv_status_error;
+        if (tmp.stat == zsv_status_error)
+          fprintf(stderr, "Error: unable to parse properties file %s\n", (const char *)fn);
       }
       fclose(f);
     }
@@ -232,7 +234,7 @@ static int zsv_properties_parse_process_value(yajl_helper_t yh, struct json_valu
       long long i = json_value_long(value, &err);
       if (err || i < 0 || i > UINT_MAX) {
         fp->stat = zsv_status_error;
-        fprintf(stderr, "Invalid %s property value: should be an integer between 0 and %u", prop_name, UINT_MAX);
+        fprintf(stderr, "Invalid %s property value: should be an integer between 0 and %u\n", prop_name, UINT_MAX);
       } else
         *target = (unsigned int)i;
     }

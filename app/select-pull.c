@@ -784,7 +784,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       stat = zsv_status_memory;
     else {
       zsv_parser parser;
-      if (zsv_new_with_properties(data.opts, custom_prop_handler, input_path, &parser) == zsv_status_ok) {
+      stat = zsv_new_with_properties(data.opts, custom_prop_handler, input_path, &parser);
+      if (stat == zsv_status_ok) {
         // all done with
         data.any_clean = !data.no_trim_whitespace || data.clean_white || data.embedded_lineend;
 

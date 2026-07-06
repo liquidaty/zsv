@@ -169,6 +169,12 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       if (uibuff) {
         uibuff->parse_errs = parse_errs;            // transfer errors
         memset(&parse_errs, 0, sizeof(parse_errs)); // prevent double-free
+        // the index worker can outlive caller-owned uibopts strings, so from
+        // here on point filename at the copy owned by (and freed with) uibuff
+        if (uibuff->filename)
+          filename = uibuff->filename;
+        else if (uibuff->data_filename)
+          filename = uibuff->data_filename;
       }
     }
 
