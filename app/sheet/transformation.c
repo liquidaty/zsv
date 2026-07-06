@@ -119,19 +119,16 @@ enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts 
   *out = trn;
   return zst;
 
-free:
-  if (trn)
-    free(trn);
-  if (temp_filename)
-    free(temp_filename);
+free: // reverse-acquisition order: the writer's delete-time flush writes through trn
+  if (temp_file_writer)
+    zsv_writer_delete(temp_file_writer); // on_delete tears down ctx
+  else
+    free(ctx); // writer never took ownership (and nothing was written)
+  free(temp_buff);
   if (temp_f)
     fclose(temp_f);
-  if (temp_file_writer)
-    zsv_writer_delete(temp_file_writer);
-  if (temp_buff)
-    free(temp_buff);
-  if (ctx)
-    transformation_writer_index_delete(ctx);
+  free(temp_filename);
+  free(trn);
 
   return zst;
 }
@@ -189,8 +186,7 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   if (trn->on_done)
     trn->on_done(trn);
 
-  if (trn->user_context)
-    free(trn->user_context);
+  free(trn->user_context);
 
   zsvsheet_transformation_delete(trn);
 
@@ -322,15 +318,17 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   return stat;
 
 error:
-  zsv_index_delete(index);
-
   if (trn && trn->on_done)
     trn->on_done(trn);
   if (trn) {
     free(trn->user_context);
-    zsvsheet_transformation_delete(trn);
-  } else if (zopts.stream) // ownership never reached the transformation
-    fclose(zopts.stream);
+    zsvsheet_transformation_delete(trn); // may stage rows into index via the writer teardown
+  } else {
+    free(opts.user_context); // on_done needs a trn; at least reclaim the context itself
+    if (zopts.stream)        // ownership never reached the transformation
+      fclose(zopts.stream);
+  }
+  zsv_index_delete(index); // only after the delete above, which writes into it
 
   return stat;
 }

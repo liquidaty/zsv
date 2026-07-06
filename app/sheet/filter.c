@@ -127,17 +127,19 @@ static void zsvsheet_filter_file_on_done(zsvsheet_transformation trn) {
   struct filtered_file_ctx *ctx = zsvsheet_transformation_user_context(trn);
   struct zsvsheet_ui_buffer *uib = trn->ui_buffer;
 
-  char *status;
-  if (asprintf(&status, "(%zu filtered rows) ", ctx->passed ? ctx->passed - 1 : 0) == -1)
-    status = NULL; // asprintf leaves its output indeterminate on failure
+  if (uib) { // NULL when the transformation failed before a buffer was attached
+    char *status;
+    if (asprintf(&status, "(%zu filtered rows) ", ctx->passed ? ctx->passed - 1 : 0) == -1)
+      status = NULL; // asprintf leaves its output indeterminate on failure
 
-  pthread_mutex_lock(&uib->mutex);
-  char *old_status = uib->status;
-  uib->status = status;
-  uib->status_is_index_placeholder = 0; // never set on a transformation buffer; keep the invariant local
-  pthread_mutex_unlock(&uib->mutex);
+    pthread_mutex_lock(&uib->mutex);
+    char *old_status = uib->status;
+    uib->status = status;
+    uib->status_is_index_placeholder = 0; // never set on a transformation buffer; keep the invariant local
+    pthread_mutex_unlock(&uib->mutex);
 
-  free(old_status);
+    free(old_status);
+  }
 #ifdef HAVE_PCRE2_8
   zsv_pcre2_8_delete(ctx->regex);
 #endif
