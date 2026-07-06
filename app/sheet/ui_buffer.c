@@ -69,7 +69,11 @@ struct zsvsheet_ui_buffer {
   unsigned char write_done : 1;
   unsigned char worker_active : 1;
   unsigned char worker_cancelled : 1;
-  unsigned char _ : 7;
+  // status is the "(building index) " placeholder the index worker must
+  // restore on completion; cleared by whoever replaces (and frees) status
+  // first, so the string is never freed twice
+  unsigned char status_is_index_placeholder : 1;
+  unsigned char _ : 6;
 };
 
 int zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*start_func)(void *), void *arg) {
@@ -83,8 +87,12 @@ int zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*star
 }
 
 void zsvsheet_ui_buffer_set_status(struct zsvsheet_ui_buffer *ub, const char *status) {
-  free(ub->status);
+  assert(ub->mutex_inited);
+  pthread_mutex_lock(&ub->mutex);
+  free(ub->status); // may be the index worker's placeholder; the cleared flag tells it
   ub->status = status ? strdup(status) : NULL;
+  ub->status_is_index_placeholder = 0;
+  pthread_mutex_unlock(&ub->mutex);
 }
 
 int zsvsheet_ui_buffer_index_ready(struct zsvsheet_ui_buffer *ub, char skip_lock) {

@@ -50,6 +50,7 @@ static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char 
   if (!ixopts) { // the index is an optimization; without it the buffer still works
     free(uibuffp->status); // restore the pre-"(building index)" status
     uibuffp->status = old_ui_status;
+    uibuffp->status_is_index_placeholder = 0;
     return;
   }
   ixopts->mutexp = &uibuffp->mutex;
@@ -65,6 +66,7 @@ static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char 
   if (zsvsheet_ui_buffer_create_worker(uibuffp, get_data_index, ixopts) != 0) {
     free(uibuffp->status); // restore the pre-"(building index)" status
     uibuffp->status = old_ui_status;
+    uibuffp->status_is_index_placeholder = 0;
     uibuffp->ixopts = NULL;
     free(ixopts);
   }
@@ -282,6 +284,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
         rc = -1;
         goto done;
       }
+      uibuff->status_is_index_placeholder = 1; // no worker yet, so no lock needed
 
       opts.stream = NULL;
       get_data_index_async(uibuff, filename, &opts, custom_prop_handler, old_ui_status);
@@ -303,30 +306,24 @@ done:
 static void *get_data_index(void *gdi) {
   struct zsvsheet_index_opts *d = gdi;
   pthread_mutex_t *mutexp = d->mutexp;
-  int *errp = d->errp;
   struct zsvsheet_ui_buffer *uib = d->uib;
-  char *ui_status = uib->status;
 
   enum zsv_index_status ix_status = build_memory_index(d);
 
-  if (ix_status != zsv_index_status_ok) {
-    pthread_mutex_lock(mutexp);
-    if (errp != NULL)
-      *errp = errno;
-    uib->status = d->old_ui_status; // restore the pre-"(building index)" status
-    uib->ixopts = NULL;             // ui_buffer_delete writes through ixopts if left set
-    free(d);
-    pthread_mutex_unlock(mutexp);
-    free(ui_status);
-    return NULL;
-  }
-
   pthread_mutex_lock(mutexp);
-  uib->status = d->old_ui_status;
-  uib->ixopts = NULL;
+  if (ix_status != zsv_index_status_ok && d->errp != NULL)
+    *d->errp = errno;
+  char *to_free;
+  if (uib->status_is_index_placeholder) { // restore the pre-"(building index)" status
+    to_free = uib->status;
+    uib->status = d->old_ui_status;
+    uib->status_is_index_placeholder = 0;
+  } else // set_status() replaced (and freed) the placeholder mid-build
+    to_free = d->old_ui_status;
+  uib->ixopts = NULL; // ui_buffer_delete writes through ixopts if left set
   pthread_mutex_unlock(mutexp);
 
-  free(ui_status);
+  free(to_free);
   free(d);
 
   return NULL;
