@@ -168,17 +168,23 @@ struct zsv_file_properties zsv_cache_load_props(const char *data_filepath, struc
       else if (p->stat != yajl_status_ok)
         tmp.stat = zsv_status_error;
       else {
+        char parse_failed = 0;
         unsigned char buff[1024];
         size_t bytes_read;
         while ((bytes_read = fread(buff, 1, sizeof(buff), f))) {
           if ((p->stat = yajl_parse(yajl_helper_yajl(p->yh), buff, bytes_read)) != yajl_status_ok) {
+            parse_failed = 1;
             tmp.stat = zsv_status_error;
             break;
           }
         }
-        if (tmp.stat == zsv_status_ok && zsv_properties_parse_complete(p) != zsv_status_ok)
+        if (tmp.stat == zsv_status_ok && zsv_properties_parse_complete(p) != zsv_status_ok) {
+          parse_failed = 1;
           tmp.stat = zsv_status_error;
-        if (tmp.stat == zsv_status_error)
+        }
+        // semantic errors (e.g. unrecognized property) report themselves; only
+        // a JSON parse failure is reported here, with the file path
+        if (parse_failed)
           fprintf(stderr, "Error: unable to parse properties file %s\n", (const char *)fn);
       }
       fclose(f);
@@ -201,8 +207,11 @@ struct zsv_file_properties zsv_cache_load_props(const char *data_filepath, struc
         opts->header_span = fp->header_span;
     }
   }
-  if (p && tmp.stat == zsv_status_ok && zsv_properties_parser_destroy(p) != zsv_status_ok)
-    tmp.stat = zsv_status_error;
+  if (p) { // destroy on every path; only a success may be downgraded by its result
+    enum zsv_status dstat = zsv_properties_parser_destroy(p);
+    if (tmp.stat == zsv_status_ok)
+      tmp.stat = dstat;
+  }
   return tmp;
 }
 

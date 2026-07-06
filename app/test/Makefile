@@ -146,6 +146,15 @@ else
   export CMP
 endif
 
+# prefix for invocations whose (nonzero) exit code is asserted: under LEAKS=1,
+# leaks(1) owns the exit code, so run them without the leaks wrapper -- but
+# still under any required runner PREFIX (e.g. node for emcc, assigned below)
+ifneq ($(LEAKS),)
+  RC_PREFIX=
+else
+  RC_PREFIX=${PREFIX}
+endif
+
 ifeq ($(CCBN),emcc)
 ifeq ($(TESTING),1)
   NODE_EXISTS := $(shell command -v node 2>/dev/null)
@@ -499,22 +508,22 @@ test-stdin-filename-select test-stdin-filename-select-pull: test-stdin-filename-
 	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv - < ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv -d 1 < ${TMP_DIR}/$@/data.csv 2>/dev/null | head -1`; [ "$$h" = "Col,Type" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col,Type" ] && ${TEST_PASS} || ${TEST_FAIL}
-# rc assertions run unwrapped: under LEAKS=1, leaks(1) owns the exit code
-	@$< --stdin-filename >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
-	@$< --stdin-filename - >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${RC_PREFIX} $< --stdin-filename >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${RC_PREFIX} $< --stdin-filename - >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 
 # a corrupt .zsv/data property cache must fail loudly (nonzero exit + message
 # naming the props file), not silently exit 0 with no output
-# rc assertion runs unwrapped: under LEAKS=1, leaks(1) owns the exit code
 test-corrupt-props-select test-corrupt-props-select-pull: test-corrupt-props-% : ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_prop${EXE}
 	@${TEST_INIT}
 	@rm -rf ${TMP_DIR}/$@ && mkdir -p ${TMP_DIR}/$@
 	@printf 'Col,Type\nA,B\n1,x\n' > ${TMP_DIR}/$@/file.csv
 	@${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@/file.csv -d 2 >/dev/null
 	@echo 'not json' > ${TMP_DIR}/$@/.zsv/data/file.csv/props.json
-	@$< ${TMP_DIR}/$@/file.csv > ${TMP_DIR}/$@/out.txt 2> ${TMP_DIR}/$@/err.txt; rc=$$?; \
+	@${RC_PREFIX} $< ${TMP_DIR}/$@/file.csv > ${TMP_DIR}/$@/out.txt 2> ${TMP_DIR}/$@/err.txt; rc=$$?; \
 	  grep -q 'unable to parse properties file' ${TMP_DIR}/$@/err.txt \
 	    && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ! [ -s ${TMP_DIR}/$@/out.txt ] && ${TEST_PASS} || ${TEST_FAIL}
+# under LEAKS=1 the line above runs unwrapped, so leak-gate the error path here
+	@(${PREFIX} $< ${TMP_DIR}/$@/file.csv 2>/dev/null ${REDIRECT1} ${TMP_DIR}/$@/leakchk.out) || true
 
 # sql buffers stdin to a temp file; --stdin-filename must still apply saved props
 test-stdin-filename-sql: ${BUILD_DIR}/bin/zsv_sql${EXE} ${BUILD_DIR}/bin/zsv_prop${EXE}
@@ -545,9 +554,8 @@ test-rename-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@h=`${PREFIX} $< --rename '#2=first_name' ${TMP_DIR}/$@-dup.csv | head -1`; [ "$$h" = "id,first_name,name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@h=`${PREFIX} $< -n --rename '#2=subtype' ${TMP_DIR}/$@-blank.csv -- 1 2 | head -1`; [ "$$h" = "id,subtype" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv | tail -n +2 > ${TMP_DIR}/$@-data.out; tail -n +2 ${TMP_DIR}/$@-r.csv > ${TMP_DIR}/$@-data.exp; ${CMP} ${TMP_DIR}/$@-data.out ${TMP_DIR}/$@-data.exp && ${TEST_PASS} || ${TEST_FAIL}
-# rc assertions run unwrapped: under LEAKS=1, leaks(1) owns the exit code
-	@$< --rename 'nope=x' ${TMP_DIR}/$@-r.csv >/dev/null 2>${TMP_DIR}/$@-err.txt; rc=$$?; grep -q nope ${TMP_DIR}/$@-err.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
-	@$< --rename '#9=x' ${TMP_DIR}/$@-r.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${RC_PREFIX} $< --rename 'nope=x' ${TMP_DIR}/$@-r.csv >/dev/null 2>${TMP_DIR}/$@-err.txt; rc=$$?; grep -q nope ${TMP_DIR}/$@-err.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${RC_PREFIX} $< --rename '#9=x' ${TMP_DIR}/$@-r.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 # hash-escape addendum (AC14-AC18): address columns whose name begins with '#'
 	@printf 'id,#foo,amt\n1,a,10\n' > ${TMP_DIR}/$@-hf.csv
 	@printf 'id,#5,amt\n1,a,10\n' > ${TMP_DIR}/$@-h5.csv
@@ -555,13 +563,13 @@ test-rename-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@h=`${PREFIX} $< --rename '#foo=x' ${TMP_DIR}/$@-hf.csv | head -1`; [ "$$h" = "id,x,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@h=`${PREFIX} $< --rename '\#5=NEW' ${TMP_DIR}/$@-h5.csv | head -1`; [ "$$h" = "id,NEW,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@h=`${PREFIX} $< --rename '#2=b' ${TMP_DIR}/$@-r.csv | head -1`; [ "$$h" = "id,b,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@$< --rename '#5=oops' ${TMP_DIR}/$@-h5.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${RC_PREFIX} $< --rename '#5=oops' ${TMP_DIR}/$@-h5.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 # unmatched escaped selector reports the RESOLVED literal name (#9), not the raw arg (\#9)
-	@$< --rename '\#9=x' ${TMP_DIR}/$@-hf.csv >/dev/null 2>${TMP_DIR}/$@-err2.txt; rc=$$?; grep -q '"#9"' ${TMP_DIR}/$@-err2.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${RC_PREFIX} $< --rename '\#9=x' ${TMP_DIR}/$@-hf.csv >/dev/null 2>${TMP_DIR}/$@-err2.txt; rc=$$?; grep -q '"#9"' ${TMP_DIR}/$@-err2.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 # F1b: a header-phase --rename error must NOT leave a 0-byte -o output file behind
-	@rm -f ${TMP_DIR}/$@-oerr.csv; $< --rename '#9=x' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-oerr.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && [ ! -f ${TMP_DIR}/$@-oerr.csv ] && ${TEST_PASS} || ${TEST_FAIL}
+	@rm -f ${TMP_DIR}/$@-oerr.csv; ${RC_PREFIX} $< --rename '#9=x' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-oerr.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && [ ! -f ${TMP_DIR}/$@-oerr.csv ] && ${TEST_PASS} || ${TEST_FAIL}
 # F1b: same for a bad column selector (the deferred-open fix covers all header-phase errors)
-	@rm -f ${TMP_DIR}/$@-oselerr.csv; $< ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-oselerr.csv -- nope >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && [ ! -f ${TMP_DIR}/$@-oselerr.csv ] && ${TEST_PASS} || ${TEST_FAIL}
+	@rm -f ${TMP_DIR}/$@-oselerr.csv; ${RC_PREFIX} $< ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-oselerr.csv -- nope >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && [ ! -f ${TMP_DIR}/$@-oselerr.csv ] && ${TEST_PASS} || ${TEST_FAIL}
 # F1b: a pre-existing -o target is preserved (not truncated) on a header-phase error
 	@printf 'KEEP\n' > ${TMP_DIR}/$@-okeep.csv; ${PREFIX} $< --rename '#9=x' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-okeep.csv >/dev/null 2>&1; g=`cat ${TMP_DIR}/$@-okeep.csv 2>/dev/null`; [ "$$g" = "KEEP" ] && ${TEST_PASS} || ${TEST_FAIL}
 # F1b: a successful --rename with -o still writes the file with the renamed header
@@ -886,11 +894,10 @@ test-sql5: ${BUILD_DIR}/bin/zsv_sql${EXE} # test blank rows
 # (normal nonzero code), not die by signal (SIGABRT -> 128+6=134), which is what the
 # pre-fix double-free in zsv_sqlite3_add_csv() caused. We assert the exit code is a
 # graceful failure (nonzero and < 128) rather than a signal death.
-# rc assertion runs unwrapped: under LEAKS=1, leaks(1) owns the exit code
 test-sql-dupcol: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
-	@$< --error-on-duplicate-columns ${TMP_DIR}/$@.csv 'select 1 from data limit 1' > ${TMP_DIR}/$@.out 2>&1; \
+	@${RC_PREFIX} $< --error-on-duplicate-columns ${TMP_DIR}/$@.csv 'select 1 from data limit 1' > ${TMP_DIR}/$@.out 2>&1; \
 	  rc=$$?; \
 	  printf '  exit=%s\n' "$$rc"; \
 	  [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
@@ -908,11 +915,10 @@ test-sql-dupcol-rename: ${BUILD_DIR}/bin/zsv_sql${EXE}
 # Opt-out: with --error-on-duplicate-columns a duplicate header is detected at parse
 # time and reported with a single actionable message naming the column and its 1-based
 # positions (rather than SQLite's generic "bad schema"), while exiting gracefully. (F7 G5)
-# rc assertion runs unwrapped: under LEAKS=1, leaks(1) owns the exit code
 test-sql-dupcol-msg: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@printf 'a,b,a\n1,2,3\n' > ${TMP_DIR}/$@.csv
-	@$< --error-on-duplicate-columns ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2>&1; \
+	@${RC_PREFIX} $< --error-on-duplicate-columns ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2>&1; \
 	  rc=$$?; \
 	  printf '  exit=%s\n' "$$rc"; \
 	  grep -q 'duplicate column name "a" at columns 1 and 3' ${TMP_DIR}/$@.out \

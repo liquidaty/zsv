@@ -47,6 +47,8 @@ static void *get_data_index(void *d);
 static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char *filename, struct zsv_opts *optsp,
                                  struct zsv_prop_handler *custom_prop_handler, char *old_ui_status) {
   struct zsvsheet_index_opts *ixopts = calloc(1, sizeof(*ixopts));
+  if (!ixopts) // the index is an optimization; without it the buffer still works
+    return;
   ixopts->mutexp = &uibuffp->mutex;
   ixopts->filename = filename;
   ixopts->zsv_opts = *optsp;
@@ -171,10 +173,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
         memset(&parse_errs, 0, sizeof(parse_errs)); // prevent double-free
         // the index worker can outlive caller-owned uibopts strings, so from
         // here on point filename at the copy owned by (and freed with) uibuff
-        if (uibuff->filename)
-          filename = uibuff->filename;
-        else if (uibuff->data_filename)
+        if (uibuff->data_filename)
           filename = uibuff->data_filename;
+        else if (uibuff->filename)
+          filename = uibuff->filename;
       }
     }
 
@@ -303,6 +305,7 @@ static void *get_data_index(void *gdi) {
     pthread_mutex_lock(mutexp);
     if (errp != NULL)
       *errp = errno;
+    uib->ixopts = NULL; // ui_buffer_delete writes through ixopts if left set
     free(d);
     pthread_mutex_unlock(mutexp);
     return NULL;
