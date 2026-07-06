@@ -47,8 +47,11 @@ static void *get_data_index(void *d);
 static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char *filename, struct zsv_opts *optsp,
                                  struct zsv_prop_handler *custom_prop_handler, char *old_ui_status) {
   struct zsvsheet_index_opts *ixopts = calloc(1, sizeof(*ixopts));
-  if (!ixopts) // the index is an optimization; without it the buffer still works
+  if (!ixopts) { // the index is an optimization; without it the buffer still works
+    free(uibuffp->status); // restore the pre-"(building index)" status
+    uibuffp->status = old_ui_status;
     return;
+  }
   ixopts->mutexp = &uibuffp->mutex;
   ixopts->filename = filename;
   ixopts->zsv_opts = *optsp;
@@ -305,9 +308,11 @@ static void *get_data_index(void *gdi) {
     pthread_mutex_lock(mutexp);
     if (errp != NULL)
       *errp = errno;
-    uib->ixopts = NULL; // ui_buffer_delete writes through ixopts if left set
+    uib->status = d->old_ui_status; // restore the pre-"(building index)" status
+    uib->ixopts = NULL;             // ui_buffer_delete writes through ixopts if left set
     free(d);
     pthread_mutex_unlock(mutexp);
+    free(ui_status);
     return NULL;
   }
 
