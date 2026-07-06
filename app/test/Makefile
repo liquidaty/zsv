@@ -103,6 +103,11 @@ TESTS+=test-2db-csv
 # Uniform unrecognized-option rejection across commands; execs the standalone
 # binaries directly, so native-only (like the redline/2db-csv orchestration above).
 TESTS+=test-unrecognized-option
+# --stdin-filename applies saved props to stdin input, so its tests pipe data via
+# stdin (< data.csv); emscripten's node sandbox has no usable stdin, so wire these
+# into the select/sql aggregates on native builds only. Left empty under emcc.
+STDIN_FILENAME_SELECT_TESTS=test-stdin-filename-%
+STDIN_FILENAME_SQL_TESTS=test-stdin-filename-sql
 endif
 
 # Security regression test - only run when not cross-compiling
@@ -494,7 +499,7 @@ test-quoted-nonstandard: ${BUILD_DIR}/bin/zsv_count${EXE} ${BUILD_DIR}/bin/zsv_s
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_select${EXE} --parser compat ${TEST_DATA_DIR}/test/quoted_nonstandard.csv ${REDIRECT} ${TMP_DIR}/$@-select-compat.out
 	@${CMP} ${TMP_DIR}/$@-select-compat.out expected/test-quoted-nonstandard-select.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-select test-select-pull: test-% : test-onlycrlf-% test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-11-% test-12-% test-13-% test-search-% test-regex-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-fixed-3-% test-fixed-4-% test-merge-% test-stdin-filename-% test-corrupt-props-%
+test-select test-select-pull: test-% : test-onlycrlf-% test-n-% test-6-% test-7-% test-8-% test-9-% test-10-% test-11-% test-12-% test-13-% test-search-% test-regex-% test-quotebuff-% test-fixed-1-% test-fixed-2-% test-fixed-3-% test-fixed-4-% test-merge-% ${STDIN_FILENAME_SELECT_TESTS} test-corrupt-props-%
 
 # --stdin-filename: apply file properties saved under the given path to stdin input;
 # the path need not exist (only its .zsv/data cache does), an explicit
@@ -504,7 +509,7 @@ test-stdin-filename-select test-stdin-filename-select-pull: test-stdin-filename-
 	@${TEST_INIT}
 	@mkdir -p ${TMP_DIR}/$@
 	@printf 'Col,Type\nA,B\n1,x\n2,y\n' > ${TMP_DIR}/$@/data.csv
-	@${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@/file.csv -d 2 >/dev/null
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@/file.csv -d 2 >/dev/null
 	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv < ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv - < ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv -d 1 < ${TMP_DIR}/$@/data.csv 2>/dev/null | head -1`; [ "$$h" = "Col,Type" ] && ${TEST_PASS} || ${TEST_FAIL}
@@ -518,7 +523,7 @@ test-corrupt-props-select test-corrupt-props-select-pull: test-corrupt-props-% :
 	@${TEST_INIT}
 	@rm -rf ${TMP_DIR}/$@ && mkdir -p ${TMP_DIR}/$@
 	@printf 'Col,Type\nA,B\n1,x\n' > ${TMP_DIR}/$@/file.csv
-	@${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@/file.csv -d 2 >/dev/null
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@/file.csv -d 2 >/dev/null
 	@echo 'not json' > ${TMP_DIR}/$@/.zsv/data/file.csv/props.json
 	@${RC_PREFIX} $< ${TMP_DIR}/$@/file.csv > ${TMP_DIR}/$@/out.txt 2> ${TMP_DIR}/$@/err.txt; rc=$$?; \
 	  grep -q 'unable to parse properties file' ${TMP_DIR}/$@/err.txt \
@@ -531,7 +536,7 @@ test-stdin-filename-sql: ${BUILD_DIR}/bin/zsv_sql${EXE} ${BUILD_DIR}/bin/zsv_pro
 	@${TEST_INIT}
 	@mkdir -p ${TMP_DIR}/$@
 	@printf 'Col,Type\nA,B\n1,x\n2,y\n' > ${TMP_DIR}/$@/data.csv
-	@${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@/file.csv -d 2 >/dev/null
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@/file.csv -d 2 >/dev/null
 	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv - 'select * from data' < ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-merge-select test-merge-select-pull: test-merge-% : ${BUILD_DIR}/bin/zsv_%${EXE}
@@ -881,7 +886,7 @@ test-serialize : test-%: ${BUILD_DIR}/bin/zsv_%${EXE} test-serialize-quoted test
 	@(${PREFIX} $< -p < ${TEST_DATA_DIR}/test/$*.csv ${REDIRECT1} ${TMP_DIR}/$@-2.out && \
 	${CMP} ${TMP_DIR}/$@-2.out expected/$@-2.out && ${TEST_PASS} || ${TEST_FAIL})
 
-test-sql: test-sql2 test-sql3 test-sql4 test-sql5 test-stdin-filename-sql test-sql-dupcol test-sql-dupcol-rename test-sql-dupcol-msg \
+test-sql: test-sql2 test-sql3 test-sql4 test-sql5 ${STDIN_FILENAME_SQL_TESTS} test-sql-dupcol test-sql-dupcol-rename test-sql-dupcol-msg \
           test-sql-dupcol-default test-sql-dupcol-3x test-sql-dupcol-collide test-sql-dupcol-caseins \
           test-sql-dupcol-nodup
 test-sql2: ${BUILD_DIR}/bin/zsv_sql${EXE}
