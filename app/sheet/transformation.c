@@ -10,6 +10,7 @@
 
 struct zsvsheet_transformation {
   zsv_parser parser;
+  FILE *input_stream; // parser input; owned once _new() succeeds, closed on delete
   zsv_csv_writer writer;
   char *output_filename;
   FILE *output_stream;
@@ -108,6 +109,7 @@ enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts 
   trn->writer = temp_file_writer;
 
   trn->user_context = opts.zsv_opts.ctx;
+  trn->input_stream = opts.zsv_opts.stream;
   opts.zsv_opts.ctx = trn;
 
   zst = zsv_new_with_properties(&opts.zsv_opts, opts.custom_prop_handler, opts.input_filename, &trn->parser);
@@ -137,6 +139,8 @@ free:
 void zsvsheet_transformation_delete(zsvsheet_transformation trn) {
   zsv_writer_delete(trn->writer);
   zsv_delete(trn->parser);
+  if (trn->input_stream)
+    fclose(trn->input_stream);
   free(trn->output_filename);
   fclose(trn->output_stream);
   free(trn->output_buffer);
@@ -290,7 +294,8 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
     nbuff->write_done = 1;
     nbuff->index_ready = 1;
     if (trn->on_done)
-      opts.on_done(trn);
+      trn->on_done(trn);
+    free(trn->user_context);
     zsvsheet_transformation_delete(trn);
     zsv_index_commit_rows(index);
     return stat;
@@ -308,8 +313,10 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
     free(trn->default_status);
     trn->default_status = NULL;
     if (trn->on_done)
-      opts.on_done(trn);
+      trn->on_done(trn);
+    free(trn->user_context);
     zsvsheet_transformation_delete(trn);
+    zsv_index_commit_rows(index); // the delete stages the final index row
     return zsvsheet_status_error;
   }
   return stat;
@@ -318,9 +325,12 @@ error:
   zsv_index_delete(index);
 
   if (trn && trn->on_done)
-    opts.on_done(trn);
-  if (trn)
+    trn->on_done(trn);
+  if (trn) {
+    free(trn->user_context);
     zsvsheet_transformation_delete(trn);
+  } else if (zopts.stream) // ownership never reached the transformation
+    fclose(zopts.stream);
 
   return stat;
 }
