@@ -72,10 +72,11 @@ enum zsv_status zsv_properties_parser_destroy(struct zsv_properties_parser *pars
  *
  * @param opts       parser options. see `zsv_new()`
  * @param cust_prop  optional custom file property handler
- * @param input_path path of file whose zsv properties should be loaded. this
- *                   param is used solely for loading properties and has no
- *                   impact on the data that is actually parsed, which is
- *                   determined by opts->stream
+ * @param input_path path of file whose zsv properties should be loaded
+ *                   (if NULL or "-", opts->stdin_filename, if set, is used in
+ *                   its place). this param is used solely for loading
+ *                   properties and has no impact on the data that is
+ *                   actually parsed, which is determined by opts->stream
  * @param handle_out returns zsv parser handle, or NULL on fail
  */
 enum zsv_status zsv_new_with_properties(struct zsv_opts *opts, struct zsv_prop_handler *custom_prop,

@@ -18,6 +18,7 @@
 
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
+#include <zsv/utils/prop.h>
 #include <zsv/utils/string.h>
 #include <zsv/utils/sql.h>
 #include "sql_internal.h"
@@ -253,6 +254,15 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
     if (!my_sql && !data.join_indexes) {
       fprintf(stderr, "No sql command specified\n");
+      err = 1;
+    }
+
+    // stdin input is buffered to a temp file whose path has no property cache,
+    // so honor --stdin-filename here rather than in the vtab's property lookup;
+    // a corrupt cache is fatal, matching the vtab's own property-load failure
+    if (!err && !data.input_filename && opts->stdin_filename &&
+        zsv_cache_load_props(opts->stdin_filename, opts, custom_prop_handler).stat != zsv_status_ok) {
+      fprintf(stderr, "Error: unable to load properties for %s\n", opts->stdin_filename);
       err = 1;
     }
 

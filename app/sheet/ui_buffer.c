@@ -69,20 +69,32 @@ struct zsvsheet_ui_buffer {
   unsigned char write_done : 1;
   unsigned char worker_active : 1;
   unsigned char worker_cancelled : 1;
-  unsigned char _ : 7;
+  // status is the "(building index) " placeholder the index worker must
+  // restore on completion; cleared by whoever replaces (and frees) status
+  // first, so the string is never freed twice
+  unsigned char status_is_index_placeholder : 1;
+  unsigned char _ : 6;
 };
 
-void zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*start_func)(void *), void *arg) {
+int zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*start_func)(void *), void *arg) {
   assert(!ub->worker_active);
   assert(ub->mutex_inited);
 
-  pthread_create(&ub->worker_thread, NULL, start_func, arg);
-  ub->worker_active = 1;
+  int rc = pthread_create(&ub->worker_thread, NULL, start_func, arg);
+  if (rc == 0) // on failure, worker_thread is indeterminate and must never be joined
+    ub->worker_active = 1;
+  return rc;
 }
 
 void zsvsheet_ui_buffer_set_status(struct zsvsheet_ui_buffer *ub, const char *status) {
-  free(ub->status);
+  if (!ub) // e.g. pivot/sqlfilter report "not available" on a NULL buffer
+    return;
+  assert(ub->mutex_inited);
+  pthread_mutex_lock(&ub->mutex);
+  free(ub->status); // may be the index worker's placeholder; the cleared flag tells it
   ub->status = status ? strdup(status) : NULL;
+  ub->status_is_index_placeholder = 0;
+  pthread_mutex_unlock(&ub->mutex);
 }
 
 int zsvsheet_ui_buffer_index_ready(struct zsvsheet_ui_buffer *ub, char skip_lock) {

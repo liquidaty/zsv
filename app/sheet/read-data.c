@@ -47,6 +47,12 @@ static void *get_data_index(void *d);
 static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char *filename, struct zsv_opts *optsp,
                                  struct zsv_prop_handler *custom_prop_handler, char *old_ui_status) {
   struct zsvsheet_index_opts *ixopts = calloc(1, sizeof(*ixopts));
+  if (!ixopts) {           // the index is an optimization; without it the buffer still works
+    free(uibuffp->status); // restore the pre-"(building index)" status
+    uibuffp->status = old_ui_status;
+    uibuffp->status_is_index_placeholder = 0;
+    return;
+  }
   ixopts->mutexp = &uibuffp->mutex;
   ixopts->filename = filename;
   ixopts->zsv_opts = *optsp;
@@ -57,7 +63,13 @@ static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char 
 
   if (uibuffp->worker_active)
     zsvsheet_ui_buffer_join_worker(uibuffp);
-  zsvsheet_ui_buffer_create_worker(uibuffp, get_data_index, ixopts);
+  if (zsvsheet_ui_buffer_create_worker(uibuffp, get_data_index, ixopts) != 0) {
+    free(uibuffp->status); // restore the pre-"(building index)" status
+    uibuffp->status = old_ui_status;
+    uibuffp->status_is_index_placeholder = 0;
+    uibuffp->ixopts = NULL;
+    free(ixopts);
+  }
 }
 
 static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_ui_buffer will be allocated
@@ -169,6 +181,12 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       if (uibuff) {
         uibuff->parse_errs = parse_errs;            // transfer errors
         memset(&parse_errs, 0, sizeof(parse_errs)); // prevent double-free
+        // the index worker can outlive caller-owned uibopts strings, so from
+        // here on point filename at the copy owned by (and freed with) uibuff
+        if (uibuff->data_filename)
+          filename = uibuff->data_filename;
+        else if (uibuff->filename)
+          filename = uibuff->filename;
       }
     }
 
@@ -262,10 +280,13 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     uibuff->dimensions.row_count = rows_read;
 
     if (original_row_num > 1 && rows_read > 0) {
-      if (asprintf(&uibuff->status, "%s(building index) ", old_ui_status ? old_ui_status : "") == -1) {
-        rc = -1;
+      char *ix_placeholder; // asprintf leaves its output indeterminate on failure,
+      if (asprintf(&ix_placeholder, "%s(building index) ", old_ui_status ? old_ui_status : "") == -1) {
+        rc = -1; // so on failure leave uibuff->status holding old_ui_status
         goto done;
       }
+      uibuff->status = ix_placeholder;
+      uibuff->status_is_index_placeholder = 1; // no worker yet, so no lock needed
 
       opts.stream = NULL;
       get_data_index_async(uibuff, filename, &opts, custom_prop_handler, old_ui_status);
@@ -287,27 +308,24 @@ done:
 static void *get_data_index(void *gdi) {
   struct zsvsheet_index_opts *d = gdi;
   pthread_mutex_t *mutexp = d->mutexp;
-  int *errp = d->errp;
   struct zsvsheet_ui_buffer *uib = d->uib;
-  char *ui_status = uib->status;
 
   enum zsv_index_status ix_status = build_memory_index(d);
 
-  if (ix_status != zsv_index_status_ok) {
-    pthread_mutex_lock(mutexp);
-    if (errp != NULL)
-      *errp = errno;
-    free(d);
-    pthread_mutex_unlock(mutexp);
-    return NULL;
-  }
-
   pthread_mutex_lock(mutexp);
-  uib->status = d->old_ui_status;
-  uib->ixopts = NULL;
+  if (ix_status != zsv_index_status_ok && d->errp != NULL)
+    *d->errp = errno;
+  char *to_free;
+  if (uib->status_is_index_placeholder) { // restore the pre-"(building index)" status
+    to_free = uib->status;
+    uib->status = d->old_ui_status;
+    uib->status_is_index_placeholder = 0;
+  } else // set_status() replaced (and freed) the placeholder mid-build
+    to_free = d->old_ui_status;
+  uib->ixopts = NULL; // ui_buffer_delete writes through ixopts if left set
   pthread_mutex_unlock(mutexp);
 
-  free(ui_status);
+  free(to_free);
   free(d);
 
   return NULL;

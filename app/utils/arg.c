@@ -125,6 +125,8 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx) {
  * blank rows -0,--header-row <header> : insert the provided CSV as the first row (in position 0) e.g. --header-row
  * 'col1,col2,\"my col 3\"'", -v,--verbose
  *     -1,--apply-overwrites: automatically apply cached overwrites
+ *     --stdin-filename <path>: apply saved file properties associated with
+ *         the given path to input read from stdin
  *     --parser <default|fast|compat>: select parser engine
  *
  * @param  argc      count of args to process
@@ -189,6 +191,14 @@ enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, co
       opts_out->only_crlf_rowend = 1;
       continue;
 #endif
+    } else if (!strcmp(argv[i] + 2, "stdin-filename")) {
+      if (++i >= argc || !*argv[i])
+        err = fprintf(stderr, "Error: --stdin-filename requires a non-empty value\n");
+      else if (!strcmp(argv[i], "-"))
+        err = fprintf(stderr, "Error: --stdin-filename value may not be '-'\n");
+      else
+        opts_out->stdin_filename = argv[i];
+      continue;
     } else if (!strcmp(argv[i] + 2, "parser")) {
       if (++i >= argc)
         err = fprintf(stderr, "Error: --parser requires a value (default, fast, or compat)\n");

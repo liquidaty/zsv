@@ -10,6 +10,7 @@
 
 struct zsvsheet_transformation {
   zsv_parser parser;
+  FILE *input_stream; // parser input; owned once _new() succeeds, closed on delete
   zsv_csv_writer writer;
   char *output_filename;
   char *input_filename_owned; // temp input materialized from an in-memory buffer; removed on delete (else NULL)
@@ -109,6 +110,7 @@ enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts 
   trn->writer = temp_file_writer;
 
   trn->user_context = opts.zsv_opts.ctx;
+  trn->input_stream = opts.zsv_opts.stream;
   opts.zsv_opts.ctx = trn;
 
   zst = zsv_new_with_properties(&opts.zsv_opts, opts.custom_prop_handler, opts.input_filename, &trn->parser);
@@ -118,19 +120,16 @@ enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts 
   *out = trn;
   return zst;
 
-free:
-  if (trn)
-    free(trn);
-  if (temp_filename)
-    free(temp_filename);
+free: // reverse-acquisition order: the writer's delete-time flush writes through trn
+  if (temp_file_writer)
+    zsv_writer_delete(temp_file_writer); // on_delete tears down ctx
+  else
+    free(ctx); // writer never took ownership (and nothing was written)
+  free(temp_buff);
   if (temp_f)
     fclose(temp_f);
-  if (temp_file_writer)
-    zsv_writer_delete(temp_file_writer);
-  if (temp_buff)
-    free(temp_buff);
-  if (ctx)
-    transformation_writer_index_delete(ctx);
+  free(temp_filename);
+  free(trn);
 
   return zst;
 }
@@ -138,6 +137,8 @@ free:
 void zsvsheet_transformation_delete(zsvsheet_transformation trn) {
   zsv_writer_delete(trn->writer);
   zsv_delete(trn->parser);
+  if (trn->input_stream)
+    fclose(trn->input_stream);
   free(trn->output_filename);
   fclose(trn->output_stream);
   free(trn->output_buffer);
@@ -198,8 +199,10 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   uib->write_done = 1;
   zsv_index_commit_rows(uib->index);
   uib->index_ready = 1;
-  if (buff_status_old == default_status)
+  if (buff_status_old == default_status) {
     uib->status = NULL;
+    uib->status_is_index_placeholder = 0; // never set on a transformation buffer; keep the invariant local
+  }
   pthread_mutex_unlock(mutex);
 
   if (buff_status_old == default_status)
@@ -326,30 +329,47 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
     nbuff->write_done = 1;
     nbuff->index_ready = 1;
     if (trn->on_done)
-      opts.on_done(trn);
-    zsvsheet_transformation_delete(trn);
+      trn->on_done(trn);
+    zsvsheet_transformation_delete(trn); // frees user_context
     zsv_index_commit_rows(index);
     return stat;
   }
 
-  asprintf(&trn->default_status, "(working) Press ESC to cancel ");
+  if (asprintf(&trn->default_status, "(working) Press ESC to cancel ") == -1)
+    trn->default_status = NULL; // asprintf leaves its output indeterminate on failure
   nbuff->status = trn->default_status;
 
-  zsvsheet_ui_buffer_create_worker(nbuff, zsvsheet_run_buffer_transformation, trn);
+  if (zsvsheet_ui_buffer_create_worker(nbuff, zsvsheet_run_buffer_transformation, trn) != 0) {
+    // no worker will ever run: release what it would have and unstick the buffer
+    nbuff->write_done = 1;
+    nbuff->index_ready = 1;
+    nbuff->status = NULL;
+    free(trn->default_status);
+    trn->default_status = NULL;
+    if (trn->on_done)
+      trn->on_done(trn);
+    zsvsheet_transformation_delete(trn); // frees user_context
+    zsv_index_commit_rows(index);        // the delete stages the final index row
+    return zsvsheet_status_error;
+  }
   return stat;
 
 error:
-  zsv_index_delete(index);
-
   if (owned_input) { // ownership not yet transferred to trn
     remove(owned_input);
     free(owned_input);
   }
 
   if (trn && trn->on_done)
-    opts.on_done(trn);
-  if (trn)
-    zsvsheet_transformation_delete(trn);
+    trn->on_done(trn);
+  if (trn) {
+    zsvsheet_transformation_delete(trn); // frees user_context; may stage rows into index via the writer teardown
+  } else {
+    free(opts.user_context); // on_done needs a trn; at least reclaim the context itself
+    if (zopts.stream)        // ownership never reached the transformation
+      fclose(zopts.stream);
+  }
+  zsv_index_delete(index); // only after the delete above, which writes into it
 
   return stat;
 }

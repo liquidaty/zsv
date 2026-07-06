@@ -141,7 +141,9 @@ static enum check_select_expression_result check_select_expression(sqlite3 *db, 
 
   const char *pzTail = NULL;
   int rc = sqlite3_prepare_v2(db, sql_valid_test, -1, &stmt, &pzTail);
-  sqlite3_free(sql_valid_test); // Free the string immediately
+  // pzTail points into sql_valid_test, so it must be read before the free
+  int tail_empty = is_str_empty(pzTail);
+  sqlite3_free(sql_valid_test);
   if (rc != SQLITE_OK) {
     if (stmt)
       sqlite3_finalize(stmt);
@@ -149,9 +151,9 @@ static enum check_select_expression_result check_select_expression(sqlite3 *db, 
   }
 
   // if we are here, the expression is valid. check it is a single statement
-  // pzTail points to the start of the *next* statement. If it's not
+  // pzTail pointed to the start of the *next* statement. If it was not
   // empty or just whitespace, the user tried to inject a second command.
-  if (!is_str_empty(pzTail)) {
+  if (!tail_empty) {
     sqlite3_finalize(stmt);
     return zsv_select_sql_expression_multiple_statements;
   }
