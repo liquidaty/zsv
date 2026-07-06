@@ -133,6 +133,7 @@ static void zsvsheet_filter_file_on_done(zsvsheet_transformation trn) {
   pthread_mutex_lock(&uib->mutex);
   char *old_status = uib->status;
   uib->status = status;
+  uib->status_is_index_placeholder = 0; // never set on a transformation buffer; keep the invariant local
   pthread_mutex_unlock(&uib->mutex);
 
   free(old_status);

@@ -280,10 +280,12 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     uibuff->dimensions.row_count = rows_read;
 
     if (original_row_num > 1 && rows_read > 0) {
-      if (asprintf(&uibuff->status, "%s(building index) ", old_ui_status ? old_ui_status : "") == -1) {
-        rc = -1;
+      char *ix_placeholder; // asprintf leaves its output indeterminate on failure,
+      if (asprintf(&ix_placeholder, "%s(building index) ", old_ui_status ? old_ui_status : "") == -1) {
+        rc = -1; // so on failure leave uibuff->status holding old_ui_status
         goto done;
       }
+      uibuff->status = ix_placeholder;
       uibuff->status_is_index_placeholder = 1; // no worker yet, so no lock needed
 
       opts.stream = NULL;

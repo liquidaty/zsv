@@ -195,8 +195,10 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   uib->write_done = 1;
   zsv_index_commit_rows(uib->index);
   uib->index_ready = 1;
-  if (buff_status_old == default_status)
+  if (buff_status_old == default_status) {
     uib->status = NULL;
+    uib->status_is_index_placeholder = 0; // never set on a transformation buffer; keep the invariant local
+  }
   pthread_mutex_unlock(mutex);
 
   if (buff_status_old == default_status)

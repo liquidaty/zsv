@@ -87,6 +87,8 @@ int zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*star
 }
 
 void zsvsheet_ui_buffer_set_status(struct zsvsheet_ui_buffer *ub, const char *status) {
+  if (!ub) // e.g. pivot/sqlfilter report "not available" on a NULL buffer
+    return;
   assert(ub->mutex_inited);
   pthread_mutex_lock(&ub->mutex);
   free(ub->status); // may be the index worker's placeholder; the cleared flag tells it
