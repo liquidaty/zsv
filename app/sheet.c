@@ -599,8 +599,8 @@ static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di, struct z
   if (zsvsheet_find_next(uib, &zsvsheet_opts, header_span, custom_prop_handler) > 0) {
     *update_buffer = zsvsheet_goto_input_raw_row(uib, zsvsheet_opts.found_rownum, header_span, ddims, (size_t)-1);
 
-    // move to zsvsheet_opts->found_colnum; + 1 to skip the "Row #" column
-    zsvsheet_move_hor_to(di, zsvsheet_opts.found_colnum + 1);
+    // move to zsvsheet_opts->found_colnum, skipping the "Row #" column when the buffer has one
+    zsvsheet_move_hor_to(di, zsvsheet_opts.found_colnum + uib->rownum_col_offset);
     return 1;
   }
   zsvsheet_priv_set_status(ddims, 1, "Not found");
@@ -684,8 +684,7 @@ static zsvsheet_status zsvsheet_find(struct zsvsheet_sheet_context *state, bool 
   struct zsvsheet_display_info *di = &state->display_info;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
 
-  if (!zsvsheet_buffer_data_filename(current_ui_buffer))
-    goto out;
+  // Note: no data-file guard here; static (in-memory) buffers such as help are searched directly.
 
   if (!next) {
     char prompt_buffer[256] = {0};
@@ -771,8 +770,7 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   if (binfo.write_in_progress && !binfo.write_done)
     return zsvsheet_status_busy;
 
-  if (!zsvsheet_buffer_data_filename(current_ui_buffer))
-    goto out;
+  // No data-file guard: zsvsheet_push_transformation materializes static buffers (e.g. help) to a temp CSV first.
 
   if (ctx->num_params > 0) {
     filter = ctx->params[0].u.string;

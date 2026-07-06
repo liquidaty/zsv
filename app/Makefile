@@ -71,6 +71,12 @@ ifeq ($(ZSV_NO_TOON),1)
   CFLAGS+= -DZSV_NO_TOON
 endif
 
+# ZSV_NO_TAB_AUTO_RECOGNIZE: do not default to a tab delimiter for .tab input
+# files (.tsv is always recognized). Guard in app/utils/prop.c keys off this.
+ifeq ($(ZSV_NO_TAB_AUTO_RECOGNIZE),1)
+  CFLAGS+= -DZSV_NO_TAB_AUTO_RECOGNIZE
+endif
+
 DEBUG=0
 WIN=
 ifeq ($(WIN),)

@@ -56,6 +56,9 @@ Optional features:
   --disable-only-crlf     disable the --only-crlf parsing option
   --disable-toon          build without any TOON features (no 2toon command,
                           no compare --toon, no 2json --from-toon / 2toon --from-json)
+  --disable-tab-auto-recognize
+                          do not auto-select tab delimiter for .tab input files
+                          (.tsv is always recognized) [enabled]
   --default-parser=fast|compat
                           set the default parsing engine when --parser is
                           not specified on the command line [compat]
@@ -356,6 +359,7 @@ usetermcap=auto
 ZSV_NO_PARALLEL=
 ZSV_PARALLEL_TEMPFILE=
 ZSV_NO_TOON=
+ZSV_NO_TAB_AUTO_RECOGNIZE=
 NCURSES_DYNAMIC=
 for arg ; do
     case "$arg" in
@@ -418,6 +422,9 @@ for arg ; do
 
         --enable-toon|--enable-toon=yes) ZSV_NO_TOON=0;;
         --disable-toon|--enable-toon=no) ZSV_NO_TOON=1;;
+
+        --enable-tab-auto-recognize|--enable-tab-auto-recognize=yes) ZSV_NO_TAB_AUTO_RECOGNIZE=0;;
+        --disable-tab-auto-recognize|--enable-tab-auto-recognize=no) ZSV_NO_TAB_AUTO_RECOGNIZE=1;;
 
         --enable-shared|--enable-shared=yes) BUILD_SHAREDLIB=1;;
         --disable-shared|--enable-shared=no) BUILD_SHAREDLIB=0;;
@@ -1054,6 +1061,8 @@ ZSV_NO_ONLY_CRLF = $ZSV_NO_ONLY_CRLF
 
 ZSV_NO_TOON = $ZSV_NO_TOON
 
+ZSV_NO_TAB_AUTO_RECOGNIZE = $ZSV_NO_TAB_AUTO_RECOGNIZE
+
 $NO_HAVE
 $USE_LIBS
 
@@ -1139,6 +1148,12 @@ if [ "$ZSV_NO_TOON" = "1" ]; then
     printf '%-64s*\n' "*  - TOON features: DISABLED"
 else
     printf '%-64s*\n' "*  - TOON features: enabled"
+fi
+
+if [ "$ZSV_NO_TAB_AUTO_RECOGNIZE" = "1" ]; then
+    printf '%-64s*\n' "*  - .tab auto-recognize: DISABLED (.tsv still recognized)"
+else
+    printf '%-64s*\n' "*  - .tab/.tsv auto-recognize: enabled"
 fi
 
 echo "*****************************************************************"

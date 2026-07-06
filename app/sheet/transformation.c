@@ -13,6 +13,7 @@ struct zsvsheet_transformation {
   FILE *input_stream; // parser input; owned once _new() succeeds, closed on delete
   zsv_csv_writer writer;
   char *output_filename;
+  char *input_filename_owned; // temp input materialized from an in-memory buffer; removed on delete (else NULL)
   FILE *output_stream;
   unsigned char *output_buffer;
   int output_fileno;
@@ -141,6 +142,11 @@ void zsvsheet_transformation_delete(zsvsheet_transformation trn) {
   free(trn->output_filename);
   fclose(trn->output_stream);
   free(trn->output_buffer);
+  if (trn->input_filename_owned) { // temp input; parser (above) already closed it
+    remove(trn->input_filename_owned);
+    free(trn->input_filename_owned);
+  }
+  free(trn->user_context); // freed here so every teardown path (worker/sync/error) releases it once
   free(trn);
 }
 
@@ -186,9 +192,7 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   if (trn->on_done)
     trn->on_done(trn);
 
-  free(trn->user_context);
-
-  zsvsheet_transformation_delete(trn);
+  zsvsheet_transformation_delete(trn); // frees user_context
 
   pthread_mutex_lock(mutex);
   char *buff_status_old = uib->status;
@@ -207,10 +211,35 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   return NULL;
 }
 
+// Write a static (in-memory) buffer's cells to a new temp CSV so a transformation
+// can read it. Returns a malloc'd filename the caller owns (remove + free), or NULL.
+static char *zsvsheet_buffer_to_temp_csv(struct zsvsheet_ui_buffer *uib) {
+  char *tmpfn = zsv_get_temp_filename("zsvsheet_src_XXXXXXXX");
+  if (!tmpfn)
+    return NULL;
+  zsv_csv_writer writer = zsv_writer_new(&(struct zsv_csv_writer_options){.output_path = tmpfn});
+  enum zsv_writer_status wstat = writer ? zsv_writer_status_ok : zsv_writer_status_error;
+  size_t rows = uib->buff_used_rows, cols = uib->dimensions.col_count;
+  for (size_t r = 0; r < rows && wstat == zsv_writer_status_ok; r++)
+    for (size_t c = 0; c < cols && wstat == zsv_writer_status_ok; c++) {
+      const unsigned char *cell = zsvsheet_screen_buffer_cell_display(uib->buffer, r, c);
+      wstat = zsv_writer_cell(writer, c == 0, cell ? cell : (const unsigned char *)"",
+                              cell ? strlen((const char *)cell) : 0, 1);
+    }
+  zsv_writer_delete(writer); // NULL-safe
+  if (wstat == zsv_writer_status_ok)
+    return tmpfn;
+  remove(tmpfn); // mkstemp created the file; drop it on any failure
+  free(tmpfn);
+  return NULL;
+}
+
 enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
                                                   struct zsvsheet_buffer_transformation_opts opts) {
   zsvsheet_buffer_t buff = zsvsheet_buffer_current(ctx);
   const char *filename = zsvsheet_buffer_data_filename(buff);
+  char *owned_input = NULL;
+  zsvsheet_transformation trn = NULL; // declared before any `goto error` so error: never reads it uninitialized
   enum zsvsheet_status stat = zsvsheet_status_error;
   struct zsvsheet_buffer_info_internal info = zsvsheet_buffer_info_internal(buff);
   struct zsv_index *index = NULL;
@@ -224,6 +253,13 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   if (!(index = zsv_index_new()))
     return zsvsheet_status_memory;
 
+  if (!filename) {
+    // static/in-memory buffer (e.g. help): materialize its contents to a temp CSV to transform
+    if (!(owned_input = zsvsheet_buffer_to_temp_csv(buff)))
+      goto error;
+    filename = owned_input;
+  }
+
   // TODO: custom_prop_handler is not passed to extensions?
   struct zsvsheet_transformation_opts trn_opts = {
     .custom_prop_handler = NULL,
@@ -232,7 +268,6 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
     .ui_buffer = NULL,
     .index = index,
   };
-  zsvsheet_transformation trn = NULL;
   struct zsv_opts zopts = zsvsheet_buffer_get_zsv_opts(buff);
 
   zopts.ctx = opts.user_context;
@@ -248,6 +283,10 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   enum zsv_status zst = zsvsheet_transformation_new(trn_opts, &trn);
   if (zst != zsv_status_ok)
     goto error;
+
+  // Hand the temp input (if any) to the transformation so it is removed once the parser is torn down
+  trn->input_filename_owned = owned_input;
+  owned_input = NULL;
 
   // Transform part of the file to initially populate the UI buffer
   // TODO: If the transformation is a reduction that doesn't output for some time this will caus a pause
@@ -291,8 +330,7 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
     nbuff->index_ready = 1;
     if (trn->on_done)
       trn->on_done(trn);
-    free(trn->user_context);
-    zsvsheet_transformation_delete(trn);
+    zsvsheet_transformation_delete(trn); // frees user_context
     zsv_index_commit_rows(index);
     return stat;
   }
@@ -310,19 +348,22 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
     trn->default_status = NULL;
     if (trn->on_done)
       trn->on_done(trn);
-    free(trn->user_context);
-    zsvsheet_transformation_delete(trn);
-    zsv_index_commit_rows(index); // the delete stages the final index row
+    zsvsheet_transformation_delete(trn); // frees user_context
+    zsv_index_commit_rows(index);        // the delete stages the final index row
     return zsvsheet_status_error;
   }
   return stat;
 
 error:
+  if (owned_input) { // ownership not yet transferred to trn
+    remove(owned_input);
+    free(owned_input);
+  }
+
   if (trn && trn->on_done)
     trn->on_done(trn);
   if (trn) {
-    free(trn->user_context);
-    zsvsheet_transformation_delete(trn); // may stage rows into index via the writer teardown
+    zsvsheet_transformation_delete(trn); // frees user_context; may stage rows into index via the writer teardown
   } else {
     free(opts.user_context); // on_done needs a trn; at least reclaim the context itself
     if (zopts.stream)        // ownership never reached the transformation
