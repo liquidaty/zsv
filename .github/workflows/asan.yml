@@ -18,11 +18,11 @@ on:
         description: 'Compiler(s) to run ASan tests with'
         required: false
         type: choice
-        default: '[gcc, clang]'
+        default: '["gcc", "clang"]'
         options:
-        - '[gcc]'
-        - '[clang]'
-        - '[gcc, clang]'
+        - '["gcc"]'
+        - '["clang"]'
+        - '["gcc", "clang"]'
 
 permissions:
   contents: read
