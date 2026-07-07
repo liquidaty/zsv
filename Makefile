@@ -7,11 +7,16 @@ THIS_MAKEFILE:=$(lastword $(MAKEFILE_LIST))
 THIS_MAKE=`basename ${MAKE}`
 
 CONFIGFILE ?= config.mk
-include ${CONFIGFILE}
 
-CONFIGFILEPATH=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
-ifeq (${CONFIGFILEPATH},)
-  $(error Config file ${CONFIGFILE} not found)
+ifneq (,$(filter help test-asan,$(MAKECMDGOALS)))
+  CONFIGFILEPATH :=
+else
+  include ${CONFIGFILE}
+
+  CONFIGFILEPATH=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
+  ifeq (${CONFIGFILEPATH},)
+    $(error Config file ${CONFIGFILE} not found)
+  endif
 endif
 
 help:
