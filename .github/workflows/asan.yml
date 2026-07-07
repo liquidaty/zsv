@@ -1,0 +1,83 @@
+name: asan
+
+# AddressSanitizer test run.
+#
+# ASan roughly doubles build+test time, so -- unlike the normal `ci` workflow
+# -- this is opt-in: it runs ONLY when triggered manually (workflow_dispatch),
+# never on push/pull_request/release. It runs just `make test-asan` on linux
+# amd64; it does not build, package, or test any other platform.
+#
+# The `compiler` input selects which compiler(s) to run under ASan: gcc,
+# clang, or both. Only the requested leg(s) are scheduled -- the matrix is
+# generated from the input rather than filtered with per-step `if:`, so an
+# unselected compiler does not show up as an empty (misleadingly green) job.
+on:
+  workflow_dispatch:
+    inputs:
+      compiler:
+        description: 'Compiler(s) to run ASan tests with'
+        required: false
+        type: choice
+        default: both
+        options:
+        - gcc
+        - clang
+        - both
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  select-compilers:
+    runs-on: ubuntu-latest
+
+    outputs:
+      include: ${{ steps.set.outputs.include }}
+
+    steps:
+    - name: Compute compiler matrix
+      id: set
+      env:
+        COMPILER: ${{ inputs.compiler }}
+      run: |
+        case "$COMPILER" in
+          gcc)   include='[{"cc":"gcc"}]' ;;
+          clang) include='[{"cc":"clang"}]' ;;
+          *)     include='[{"cc":"gcc"},{"cc":"clang"}]' ;;
+        esac
+        echo "include=$include" >> "$GITHUB_OUTPUT"
+
+  asan:
+    needs: select-compilers
+
+    # linux amd64 only: gcc and clang are preinstalled on this runner (each
+    # ships its own ASan runtime). No cross-compiling and no other platforms.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.select-compilers.outputs.include) }}
+
+    name: asan (${{ matrix.cc }})
+
+    steps:
+    # tmux is required by the interactive `zsv view` tests exercised by
+    # `make test-asan` (via app/test).
+    - name: Install apt dependencies
+      uses: awalsh128/cache-apt-pkgs-action@v1
+      with:
+        packages: tmux
+
+    - name: Checkout
+      uses: actions/checkout@v7
+
+    - name: Test (AddressSanitizer)
+      env:
+        CC: ${{ matrix.cc }}
+      run: make test-asan
