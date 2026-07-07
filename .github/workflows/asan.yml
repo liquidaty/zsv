@@ -18,11 +18,11 @@ on:
         description: 'Compiler(s) to run ASan tests with'
         required: false
         type: choice
-        default: both
+        default: '["gcc", "clang"]'
         options:
-        - gcc
-        - clang
-        - both
+        - '["gcc"]'
+        - '["clang"]'
+        - '["gcc", "clang"]'
 
 permissions:
   contents: read
@@ -32,43 +32,18 @@ defaults:
     shell: bash
 
 jobs:
-  select-compilers:
-    runs-on: ubuntu-latest
-
-    outputs:
-      include: ${{ steps.set.outputs.include }}
-
-    steps:
-    - name: Compute compiler matrix
-      id: set
-      env:
-        COMPILER: ${{ inputs.compiler }}
-      run: |
-        case "$COMPILER" in
-          gcc)   include='[{"cc":"gcc"}]' ;;
-          clang) include='[{"cc":"clang"}]' ;;
-          *)     include='[{"cc":"gcc"},{"cc":"clang"}]' ;;
-        esac
-        echo "include=$include" >> "$GITHUB_OUTPUT"
-
   asan:
-    needs: select-compilers
-
-    # linux amd64 only: gcc and clang are preinstalled on this runner (each
-    # ships its own ASan runtime). No cross-compiling and no other platforms.
     runs-on: ubuntu-22.04
     timeout-minutes: 25
 
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.select-compilers.outputs.include) }}
+        cc: ${{ fromJSON(inputs.compiler) }}
 
     name: asan (${{ matrix.cc }})
 
     steps:
-    # tmux is required by the interactive `zsv view` tests exercised by
-    # `make test-asan` (via app/test).
     - name: Install apt dependencies
       uses: awalsh128/cache-apt-pkgs-action@v1
       with:
