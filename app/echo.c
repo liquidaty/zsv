@@ -64,14 +64,14 @@ static void zsv_echo_get_max_nonempty_cols(void *ctx) {
 // blank cells so the row spans max_nonempty_cols columns. max_nonempty_cols is 0
 // unless --trim-columns is set, so the pad loop is a no-op otherwise.
 static void zsv_echo_output_cells(struct zsv_echo_data *data, size_t j) {
-  for (size_t i = 0; i < j; i++) {
-    struct zsv_cell cell = zsv_get_cell(data->parser, i);
+  size_t total = data->trim_columns ? data->max_nonempty_cols : j;
+  // using a single loop is slightly faster than two loops (0->j then j->data->max_nonempty_cols)
+  for (size_t i = 0; i < total; i++) {
+    struct zsv_cell cell = zsv_get_cell(data->parser, i); // {0,0,0,0} for i >= cell_count
     if (UNLIKELY(data->trim_white))
       cell.str = (unsigned char *)zsv_strtrim(cell.str, &cell.len);
     zsv_writer_cell(data->csv_writer, i == 0, cell.str, cell.len, cell.quoted);
   }
-  for (size_t i = j; i < data->max_nonempty_cols; i++)
-    zsv_writer_cell_blank(data->csv_writer, i == 0);
 }
 
 static void zsv_echo_row(void *ctx) {
