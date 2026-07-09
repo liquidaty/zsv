@@ -60,6 +60,20 @@ static void zsv_echo_get_max_nonempty_cols(void *ctx) {
     data->max_nonempty_cols = row_nonempty_col_count;
 }
 
+// output the current row's first j cells, then (when trimming columns) pad with
+// blank cells so the row spans max_nonempty_cols columns. max_nonempty_cols is 0
+// unless --trim-columns is set, so the pad loop is a no-op otherwise.
+static void zsv_echo_output_cells(struct zsv_echo_data *data, size_t j) {
+  for (size_t i = 0; i < j; i++) {
+    struct zsv_cell cell = zsv_get_cell(data->parser, i);
+    if (UNLIKELY(data->trim_white))
+      cell.str = (unsigned char *)zsv_strtrim(cell.str, &cell.len);
+    zsv_writer_cell(data->csv_writer, i == 0, cell.str, cell.len, cell.quoted);
+  }
+  for (size_t i = j; i < data->max_nonempty_cols; i++)
+    zsv_writer_cell_blank(data->csv_writer, i == 0);
+}
+
 static void zsv_echo_row(void *ctx) {
   struct zsv_echo_data *data = ctx;
   if (VERY_UNLIKELY((data->end_row > 0 && data->end_row <= data->row_ix))) {
@@ -71,21 +85,11 @@ static void zsv_echo_row(void *ctx) {
     j = data->max_nonempty_cols;
 
   if (VERY_UNLIKELY(data->row_ix == 0)) { // header
-    for (size_t i = 0; i < j; i++) {
-      struct zsv_cell cell = zsv_get_cell(data->parser, i);
-      if (UNLIKELY(data->trim_white))
-        cell.str = (unsigned char *)zsv_strtrim(cell.str, &cell.len);
-      zsv_writer_cell(data->csv_writer, i == 0, cell.str, cell.len, cell.quoted);
-    }
+    zsv_echo_output_cells(data, j);
   } else if (VERY_UNLIKELY(data->contiguous && zsv_row_is_blank(data->parser))) {
     zsv_abort(data->parser);
   } else {
-    for (size_t i = 0; i < j; i++) {
-      struct zsv_cell cell = zsv_get_cell(data->parser, i);
-      if (UNLIKELY(data->trim_white))
-        cell.str = (unsigned char *)zsv_strtrim(cell.str, &cell.len);
-      zsv_writer_cell(data->csv_writer, i == 0, cell.str, cell.len, cell.quoted);
-    }
+    zsv_echo_output_cells(data, j);
   }
   data->row_ix++;
 }
@@ -124,7 +128,8 @@ const char *zsv_echo_usage_msg[] = {
   "  -b                     : output with BOM",
   "  -o <filename>          : filename to save output to",
   "  --trim                 : trim whitespace",
-  "  --trim-columns         : trim blank columns",
+  "  --trim-columns         : trim trailing blank columns, and pad short rows with blank",
+  "                           columns, so every output row has the same number of columns",
   "  --contiguous           : stop output upon scanning an entire row of blank values",
   "  --start-row    <N>     : only output from row N (starting at 1)",
   "  --end-row      <N>     : only output up to row N (starting at 1)",
@@ -274,57 +279,71 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     opts.row_handler = zsv_echo_row_start_at;
   else if (data.skip_until_prefix)
     opts.row_handler = zsv_echo_row_skip_until;
-  else {
+  else
     opts.row_handler = zsv_echo_row;
-    if (data.trim_columns) {
-      // trim columns requires two passes, because we may need to read the entire table
-      // to know the maximum number of non-empty columns (e.g. the last row might contain
-      // more non-empty columns than the rest of the table
 
-      // first, save the file if it is stdin
-      if (data.in == stdin) {
-        if (!(data.tmp_fn = zsv_get_temp_filename("zec"))) {
-          zsv_echo_cleanup(&data);
-          return 1;
-        }
+  if (data.trim_columns) {
+    // trim columns requires two passes, because we may need to read the entire table
+    // to know the maximum number of non-empty columns (e.g. the last row might contain
+    // more non-empty columns than the rest of the table
 
-        FILE *f = fopen(data.tmp_fn, "wb");
-        if (!f) {
-          perror(data.tmp_fn);
-          zsv_echo_cleanup(&data);
-          return 1;
-        } else {
-          size_t bytes_read;
-          while ((bytes_read = fread(buff, 1, sizeof(buff), data.in)) > 0)
-            fwrite(buff, 1, bytes_read, f);
-          fclose(f);
-          if (!(data.in = fopen(data.tmp_fn, "rb"))) {
-            perror(data.tmp_fn);
-            zsv_echo_cleanup(&data);
-            return 1;
-          }
-        }
+    // first, save the file if it is stdin
+    if (data.in == stdin) {
+      if (!(data.tmp_fn = zsv_get_temp_filename("zec"))) {
+        zsv_echo_cleanup(&data);
+        return 1;
       }
 
-      // next, determine the max number of columns from the left that contain data
-      struct zsv_opts tmp_opts = opts;
-      tmp_opts.row_handler = zsv_echo_get_max_nonempty_cols;
-      tmp_opts.stream = data.in;
-      tmp_opts.ctx = &data;
-      if (zsv_new_with_properties(&tmp_opts, custom_prop_handler, data.input_path, &data.parser) != zsv_status_ok) {
+      FILE *f = fopen(data.tmp_fn, "wb");
+      if (!f) {
+        perror(data.tmp_fn);
         zsv_echo_cleanup(&data);
         return 1;
       } else {
-        // find the max nonempty col count
-        enum zsv_status status;
-        while (!zsv_signal_interrupted && (status = zsv_parse_more(data.parser)) == zsv_status_ok)
-          ;
-        zsv_finish(data.parser);
-        zsv_delete(data.parser);
-        data.parser = NULL;
+        size_t bytes_read;
+        int io_err = 0;
+        while (!io_err && (bytes_read = fread(buff, 1, sizeof(buff), data.in)) > 0)
+          io_err = fwrite(buff, 1, bytes_read, f) != bytes_read;
+        io_err = io_err || ferror(data.in); // fread returns a short count on read error, not just EOF
+        if (fclose(f) || io_err) {          // fclose also flushes/reports buffered short writes
+          perror(data.tmp_fn);
+          zsv_echo_cleanup(&data);
+          return 1;
+        }
+        if (!(data.in = fopen(data.tmp_fn, "rb"))) {
+          perror(data.tmp_fn);
+          zsv_echo_cleanup(&data);
+          return 1;
+        }
+      }
+    }
 
-        // re-open the input again
-        data.in = fopen(data.tmp_fn ? data.tmp_fn : data.input_path, "rb");
+    // next, determine the max number of columns from the left that contain data
+    struct zsv_opts tmp_opts = opts;
+    tmp_opts.row_handler = zsv_echo_get_max_nonempty_cols;
+    tmp_opts.stream = data.in;
+    tmp_opts.ctx = &data;
+    if (zsv_new_with_properties(&tmp_opts, custom_prop_handler, data.input_path, &data.parser) != zsv_status_ok) {
+      zsv_echo_cleanup(&data);
+      return 1;
+    } else {
+      // find the max nonempty col count
+      enum zsv_status status;
+      while (!zsv_signal_interrupted && (status = zsv_parse_more(data.parser)) == zsv_status_ok)
+        ;
+      zsv_finish(data.parser);
+      zsv_delete(data.parser);
+      data.parser = NULL;
+
+      // the first pass leaves data.in open (the parser never closes its stream); close it
+      // before re-opening the input for the second pass so the handle does not leak
+      const char *reopen_path = data.tmp_fn ? data.tmp_fn : data.input_path;
+      if (data.in != stdin)
+        fclose(data.in);
+      if (!(data.in = fopen(reopen_path, "rb"))) {
+        perror(reopen_path);
+        zsv_echo_cleanup(&data);
+        return 1;
       }
     }
   }
