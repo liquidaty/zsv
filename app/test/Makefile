@@ -346,7 +346,7 @@ test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${
 test-echo: \
 	test-echo1 test-echo-overwrite-all test-echo-eol test-echo-chars test-echo-trim \
 	test-echo-skip-until test-echo-contiguous test-echo-trim-columns test-echo-trim-columns-2 test-echo-buffsize \
-	test-echo-quoted test-echo-rows
+	test-echo-trim-columns-pad test-echo-quoted test-echo-rows
 
 test-echo-rows: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
@@ -395,6 +395,14 @@ test-echo-trim-columns-2: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
 	@${PREFIX} $< --trim --trim-columns ${TEST_DATA_DIR}/test/echo-trim-columns.csv ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+
+# short rows (incl. header) are padded with blank columns so every output row has equal width
+test-echo-trim-columns-pad: ${BUILD_DIR}/bin/zsv_echo${EXE}
+	@${TEST_INIT}
+	@${PREFIX} $< --trim-columns ${TEST_DATA_DIR}/test/echo-trim-columns-pad.csv ${REDIRECT} ${TMP_DIR}/$@.out
+	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --trim-columns --start-row 2 ${TEST_DATA_DIR}/test/echo-trim-columns-pad.csv ${REDIRECT} ${TMP_DIR}/$@.out2
+	@${CMP} ${TMP_DIR}/$@.out2 expected/$@.out2 && ${TEST_PASS} || ${TEST_FAIL}
 
 test-echo-quoted: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
