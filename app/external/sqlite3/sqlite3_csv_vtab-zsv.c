@@ -92,15 +92,16 @@ static int zsvtabEof(sqlite3_vtab_cursor*);
 static int zsvtabColumn(sqlite3_vtab_cursor*,sqlite3_context*,int);
 static int zsvtabRowid(sqlite3_vtab_cursor*,sqlite3_int64*);
 
-/* An instance of the CSV virtual table */
+/* An instance of the CSV virtual table.
+** Holds only configuration: each scan runs on a cursor-owned parser (see
+** zsvCursor), so the table itself keeps no live parser or file handle and is
+** safe to share across the concurrent cursors SQLite opens for self joins,
+** correlated subqueries, etc. */
 typedef struct zsvTable {
   sqlite3_vtab base;              /* Base class.  Must be first */
   char *zFilename;                /* Name of the CSV file */
-  struct zsv_opts parser_opts;
+  struct zsv_opts parser_opts;    /* template; per-cursor copies set .stream */
   struct zsv_prop_handler custom_prop_handler;
-  enum zsv_status parser_status;
-  zsv_parser parser;
-  sqlite_int64 rowCount;
 } zsvTable;
 
 struct zsvTable *zsvTable_new(const char *filename) {
@@ -119,9 +120,15 @@ struct zsvTable *zsvTable_new(const char *filename) {
 /* Allowed values for tstFlags */
 #define CSVTEST_FIDX  0x0001      /* Pretend that constrained searchs cost less*/
 
-/* A cursor for the CSV virtual table */
+/* A cursor for the CSV virtual table. Each cursor owns an independent parser and
+** file handle so concurrent scans over the same table maintain separate scan
+** state and never free memory another cursor still references. */
 typedef struct zsvCursor {
   sqlite3_vtab_cursor base;       /* Base class.  Must be first */
+  FILE *stream;                   /* this cursor's own handle on the CSV file */
+  zsv_parser parser;
+  enum zsv_status parser_status;
+  sqlite_int64 rowCount;
 } zsvCursor;
 
 /*
@@ -138,21 +145,60 @@ static int zsvtabCreate(
  return zsvtabConnect(db, pAux, argc, argv, ppVtab, pzErr);
 }
 
-static void zsvTable_free(struct zsvTable *z) {
-  if(z->parser)
-    zsv_delete(z->parser);
-  z->parser = NULL;
-  z->rowCount = 0;
-}
-
 static void zsvTable_delete(struct zsvTable *z) {
   if(z) {
-    zsvTable_free(z);
-    if(z->parser_opts.stream)
-      fclose(z->parser_opts.stream);
     sqlite3_free(z->zFilename);
     sqlite3_free(z);
   }
+}
+
+/* Release a cursor's parser and file handle. Idempotent: safe to call on a
+** partially-initialized or already-freed cursor. */
+static void zsvCursor_free(struct zsvCursor *cur) {
+  if(cur->parser) {
+    zsv_delete(cur->parser);
+    cur->parser = NULL;
+  }
+  if(cur->stream) {
+    fclose(cur->stream);
+    cur->stream = NULL;
+  }
+  cur->rowCount = 0;
+}
+
+/* Open pTab's file and construct a parser over it using pTab's saved options.
+** On success *pStream and *pParser are set and owned by the caller; on failure
+** both are left NULL (the stream, if opened, is closed here) and SQLITE_ERROR is
+** returned. Shared by zsvCursor_init (per-cursor scan) and zsvtabConnect (a
+** throwaway header read); each caller does its own zsv_next_row handling after,
+** since that part diverges (stop-at-header vs skip-header-then-advance). */
+static int zsvOpenParser(struct zsvTable *pTab, FILE **pStream, zsv_parser *pParser) {
+  *pStream = NULL;
+  *pParser = NULL;
+  FILE *stream = fopen(pTab->zFilename, "rb");
+  if(!stream)
+    return SQLITE_ERROR;
+  struct zsv_opts opts = pTab->parser_opts;
+  opts.stream = stream;
+  if(zsv_new_with_properties(&opts, &pTab->custom_prop_handler, pTab->zFilename, pParser) != zsv_status_ok) {
+    fclose(stream);
+    *pParser = NULL;
+    return SQLITE_ERROR;
+  }
+  *pStream = stream;
+  return SQLITE_OK;
+}
+
+/* Open a fresh parser for this cursor, positioned at the first data row.
+** Skips the header row exactly as zsvtabConnect does when building the schema. */
+static int zsvCursor_init(struct zsvCursor *cur, struct zsvTable *pTab) {
+  if(zsvOpenParser(pTab, &cur->stream, &cur->parser) != SQLITE_OK)
+    return SQLITE_ERROR;
+  if((cur->parser_status = zsv_next_row(cur->parser)) != zsv_status_row) /* header */
+    return SQLITE_ERROR;
+  cur->parser_status = zsv_next_row(cur->parser);                        /* first data row */
+  cur->rowCount = 1;
+  return SQLITE_OK;
 }
 
 #include "vtab_helper.c"
@@ -317,6 +363,8 @@ static int zsvtabConnect(
 
   char *schema = NULL;
   zsvTable *pNew = NULL;
+  zsv_parser hdr_parser = NULL; /* throwaway: reads the header row to build the schema */
+  FILE *hdr_stream = NULL;
 
   char *errmsg = NULL;
   // set parameters
@@ -348,19 +396,19 @@ static int zsvtabConnect(
   else if(!pNew->parser_opts.max_columns)
     pNew->parser_opts.max_columns = 2000; /* default max columns */
 
-  if(!(pNew->parser_opts.stream = fopen(CSV_FILENAME, "rb"))) {
-    asprintf(&errmsg, "Unable to open for reading: %s", CSV_FILENAME);
+  pNew->zFilename = CSV_FILENAME;
+  CSV_FILENAME = 0; // in use; don't free
+
+  // Read the header row with a throwaway parser (each scan uses its own
+  // cursor-owned parser, so the table holds no live parser or file handle).
+  if(zsvOpenParser(pNew, &hdr_stream, &hdr_parser) != SQLITE_OK) {
+    asprintf(&errmsg, "Unable to open for reading: %s", pNew->zFilename);
     goto zsvtab_connect_error;
   }
 
-  pNew->zFilename = CSV_FILENAME;
-  CSV_FILENAME = 0; // in use; don't free
-  if(zsv_new_with_properties(&pNew->parser_opts, &pNew->custom_prop_handler, pNew->zFilename,
-                             &pNew->parser) != zsv_status_ok)
-    goto zsvtab_connect_error;
-
-  if((pNew->parser_status = zsv_next_row(pNew->parser)) != zsv_status_row) {
-    asprintf(&errmsg, "Could not fetch header row: %s", zsv_parse_status_desc(pNew->parser_status));
+  enum zsv_status hdr_status = zsv_next_row(hdr_parser);
+  if(hdr_status != zsv_status_row) {
+    asprintf(&errmsg, "Could not fetch header row: %s", zsv_parse_status_desc(hdr_status));
     goto zsvtab_connect_error;
   }
 
@@ -372,7 +420,7 @@ static int zsvtabConnect(
   int do_warn = CSV_WARN_RENAMES && atoi(CSV_WARN_RENAMES) != 0;
   sqlite3_str *pStr = sqlite3_str_new(0);
   sqlite3_str_appendf(pStr, "CREATE TABLE x(");
-  int defstat = zsv_csv_append_column_defs(pStr, pNew->parser, do_dedupe, do_warn, &errmsg);
+  int defstat = zsv_csv_append_column_defs(pStr, hdr_parser, do_dedupe, do_warn, &errmsg);
   if(defstat) {
     sqlite3_free(sqlite3_str_finish(pStr));
     if(defstat > 0) // duplicate column name; errmsg holds an actionable message
@@ -383,10 +431,6 @@ static int zsvtabConnect(
   schema = sqlite3_str_finish(pStr);
   if(!schema)
     goto zsvtab_connect_oom;
-
-  // advance cursor to first data row
-  pNew->parser_status = zsv_next_row(pNew->parser);
-  pNew->rowCount = 1;
 
 #ifdef SQLITE_TEST
   pNew->tstFlags = tstFlags;
@@ -401,6 +445,8 @@ static int zsvtabConnect(
     sqlite3_free(azPValue[i]);
   }
   sqlite3_free(schema);
+  zsv_delete(hdr_parser);
+  fclose(hdr_stream);
 
   /* Rationale for DIRECTONLY:
   ** An attacker who controls a database schema could use this vtab
@@ -418,6 +464,8 @@ zsvtab_connect_oom:
   asprintf(&errmsg, "Out of memory!");
 
 zsvtab_connect_error:
+  if(hdr_parser) zsv_delete(hdr_parser);
+  if(hdr_stream) fclose(hdr_stream);
   if( pNew ) zsvtabDisconnect(&pNew->base);
   for(unsigned int i=0; i<sizeof(azPValue)/sizeof(azPValue[0]); i++){
     sqlite3_free(azPValue[i]);
@@ -472,13 +520,14 @@ static int zsvtabOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
 ** Destructor for a zsvCursor.
 */
 static int zsvtabClose(sqlite3_vtab_cursor *cur){
+  zsvCursor_free((struct zsvCursor*)cur);
   sqlite3_free(cur);
   return SQLITE_OK;
 }
 
 /*
-** Only a full table scan is supported.  So xFilter simply rewinds to
-** the beginning.
+** Only a full table scan is supported.  So xFilter simply (re)opens this
+** cursor's own parser at the start of the file.
 */
 static int zsvtabFilter(
   sqlite3_vtab_cursor *pVtabCursor,
@@ -489,30 +538,25 @@ static int zsvtabFilter(
   (void)(idxStr);
   (void)(argc);
   (void)(argv);
+  struct zsvCursor *pCur = (struct zsvCursor*)pVtabCursor;
   zsvTable *pTab = (zsvTable*)pVtabCursor->pVtab;
 
-  zsvTable_free(pTab);
-  fseek(pTab->parser_opts.stream, 0, SEEK_SET);
-
-  // reload and advance header, then first data row
-  if(zsv_new_with_properties(&pTab->parser_opts, &pTab->custom_prop_handler, pTab->zFilename,
-                             &pTab->parser) != zsv_status_ok
-     || (pTab->parser_status = zsv_next_row(pTab->parser)) != zsv_status_row)
-    return SQLITE_ERROR;
-  pTab->parser_status = zsv_next_row(pTab->parser);
-  pTab->rowCount = 1;
-  return SQLITE_OK;
+  zsvCursor_free(pCur); // discard any prior scan (xFilter may be called repeatedly)
+  int rc = zsvCursor_init(pCur, pTab);
+  if(rc != SQLITE_OK)
+    zsvCursor_free(pCur);
+  return rc;
 }
 
 
 /*
 ** Advance a zsvCursor to its next row of input.
-** Set the EOF marker via pTab->parser_status if we reach the end of input.
+** Set the EOF marker via the cursor's parser_status if we reach end of input.
 */
 static int zsvtabNext(sqlite3_vtab_cursor *cur){
-  zsvTable *pTab = (zsvTable*)cur->pVtab;
-  pTab->parser_status = zsv_next_row(pTab->parser);
-  pTab->rowCount++;
+  struct zsvCursor *pCur = (struct zsvCursor*)cur;
+  pCur->parser_status = zsv_next_row(pCur->parser);
+  pCur->rowCount++;
   return SQLITE_OK;
 }
 
@@ -521,8 +565,8 @@ static int zsvtabNext(sqlite3_vtab_cursor *cur){
 ** row of output.
 */
 static int zsvtabEof(sqlite3_vtab_cursor *cur){
-  zsvTable *pTab = (zsvTable*)cur->pVtab;
-  return pTab->parser_status != zsv_status_row;
+  struct zsvCursor *pCur = (struct zsvCursor*)cur;
+  return pCur->parser_status != zsv_status_row;
 }
 
 /*
@@ -534,8 +578,11 @@ static int zsvtabColumn(
   sqlite3_context *ctx,       /* First argument to sqlite3_result_...() */
   int i                       /* Which column to return */
 ){
-  zsvTable *pTab = (zsvTable*)cur->pVtab;
-  struct zsv_cell c = zsv_get_cell(pTab->parser, i);
+  struct zsvCursor *pCur = (struct zsvCursor*)cur;
+  struct zsv_cell c = zsv_get_cell(pCur->parser, i);
+  // SQLITE_STATIC is safe: the cell points into this cursor's own parser buffer,
+  // which stays valid until this cursor advances (zsvtabNext) or closes -- no
+  // other cursor can free it.
   sqlite3_result_text(ctx, (char *)c.str, c.len, SQLITE_STATIC);
   return SQLITE_OK;
 }
@@ -545,8 +592,8 @@ static int zsvtabColumn(
 ** Return the rowid for the current row.
 */
 static int zsvtabRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid){
-  zsvTable *pTab = (zsvTable*)cur->pVtab;
-  *pRowid = pTab->rowCount;
+  struct zsvCursor *pCur = (struct zsvCursor*)cur;
+  *pRowid = pCur->rowCount;
   return SQLITE_OK;
 }
 

@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h> // isspace
 
 #include <sqlite3.h>
 
@@ -202,14 +203,53 @@ static int zsv_2db_sqlite3_exec_2db(sqlite3 *db, const char *sql) {
     return 0;
   return 1;
 }
+
+// zsv_2db_exec_single: execute exactly one SQL statement, returning 0 on success
+// else an error code. Unlike sqlite3_exec(), which runs every semicolon-separated
+// statement it is given, this compiles only the first statement and rejects any
+// trailing one. It is used for CREATE INDEX, whose indexed-expression is taken
+// verbatim from untrusted JSON: SQLite's own parser -- not string escaping --
+// enforces the single-statement boundary, so an injected `);ATTACH ...;--` cannot
+// smuggle extra statements (ATTACH/UPDATE/DROP) past the intended CREATE INDEX.
+static int zsv_2db_exec_single(sqlite3 *db, const char *sql) {
+  sqlite3_stmt *stmt = NULL;
+  const char *tail = NULL;
+  if (sqlite3_prepare_v2(db, sql, -1, &stmt, &tail) != SQLITE_OK) {
+    fprintf(stderr, "Error preparing '%s': %s\n", sql ? sql : "(null)", sqlite3_errmsg(db));
+    sqlite3_finalize(stmt);
+    return 1;
+  }
+  int err = 0;
+  while (tail && isspace((unsigned char)*tail))
+    tail++;
+  if (tail && *tail) {
+    fprintf(stderr, "Refusing multi-statement index expression: %s\n", sql);
+    err = 1;
+  } else if (stmt) { // stmt is NULL for empty/whitespace/comment-only SQL: a benign no-op
+    int rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE && rc != SQLITE_ROW && rc != SQLITE_OK) {
+      fprintf(stderr, "Error executing '%s': %s\n", sql, sqlite3_errmsg(db));
+      err = 1;
+    }
+  }
+  sqlite3_finalize(stmt);
+  return err;
+}
+
 // add_db_indexes: return 0 on success, else error code
 static int zsv_2db_add_indexes(struct zsv_2db_data *data) {
   int err = 0;
   for (struct zsv_2db_ix *ix = data->json_parser.indexes; !err && ix; ix = ix->next) {
     sqlite3_str *pStr = sqlite3_str_new(data->db);
+    // ix->on is a free-form SQL indexed-column expression (e.g. "country", "[#]",
+    // "a,b", "lower(x)"), so it is intentionally NOT %w identifier-escaped. Its
+    // safety rests on zsv_2db_exec_single()'s single-statement barrier: SQLite
+    // forbids subqueries/statements inside index expressions, so no ATTACH/UPDATE
+    // can be smuggled in. Do not "fix" this to %w -- that would break valid
+    // multi-column and expression indexes.
     sqlite3_str_appendf(pStr, "create%s index \"%w_%w\" on \"%w\"(%s)", ix->unique ? " unique" : "",
                         data->opts.table_name, ix->name, data->opts.table_name, ix->on);
-    err = zsv_2db_sqlite3_exec_2db(data->db, sqlite3_str_value(pStr));
+    err = zsv_2db_exec_single(data->db, sqlite3_str_value(pStr));
     if (!err)
       data->json_parser.index_sequence_num_max++;
     sqlite3_free(sqlite3_str_finish(pStr));

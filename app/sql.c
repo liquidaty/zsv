@@ -22,6 +22,7 @@
 #include <zsv/utils/string.h>
 #include <zsv/utils/sql.h>
 #include "sql_internal.h"
+#include "sql_authorizer.h"
 
 #include <unistd.h> // unlink
 
@@ -329,6 +330,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
               break;
         }
 
+        // Input tables are now registered; constrain every statement prepared
+        // hereafter (the internally-built join query and the user's query) to
+        // read-only operations so uncontrolled SQL cannot escape read semantics.
+        if (zdb->rc == SQLITE_OK)
+          sqlite3_set_authorizer(zdb->db, zsv_sql_authorizer, NULL);
+
         if (zdb->rc == SQLITE_OK && data.join_indexes) { // get column names, and construct the sql
           // sql template:
           // select t1.*, t2.*, t3.* from t1 left join (select * from t2 group by a) t2 left join (select * from t3
@@ -354,7 +361,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           if (!err) {
             zdb->rc = sqlite3_prepare_v2(zdb->db, "select * from data", -1, &stmt, NULL);
             if (zdb->rc != SQLITE_OK) {
-              fprintf(stderr, "%s:\n  %s\n (or bad CSV/utf8 input)\n\n", sqlite3_errstr(err), "select * from data");
+              fprintf(stderr, "%s:\n  %s\n (or bad CSV/utf8 input)\n\n", sqlite3_errstr(zdb->rc), "select * from data");
               err = 1;
             }
           }

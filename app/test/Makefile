@@ -120,6 +120,16 @@ ifneq ($(CROSS_COMPILING),1)
     TESTS+=test-vuln-finish-cell-dl-oob
     TESTS+=test-vuln-fast-nonstandard-oob
   endif
+  # SQL-command security regressions. The 2db/crossjoin cases exec the
+  # standalone binaries directly (like the redline/2db-csv orchestration); the
+  # authorizer unit test is a host-compiled pure-C policy check. All are
+  # native-only: under emcc the test binaries are wasm artifacts that must run
+  # via node, which this simple direct-exec wiring does not set up.
+  ifneq ($(CCBN),emcc)
+    TESTS+=test-vuln-2db-injection
+    TESTS+=test-vuln-sql-crossjoin
+    TESTS+=test-vuln-sql-readonly
+  endif
 endif
 
 COLOR_NONE=\033[0m
@@ -334,6 +344,48 @@ test-vuln-asan-fuzz: ${TMP_DIR}/sec_fuzz
 	@printf "  fuzzing parser for ${FUZZ_ITERS} iterations under ASan+UBSan\n"
 	@${TMP_DIR}/sec_fuzz sec/poc ${FUZZ_ITERS} || ${TEST_FAIL}
 	@${TEST_PASS}
+
+# Security regression: a malicious JSON index "on" expression must not be able to
+# inject extra SQL statements (advisory GHSA-98m3-r6j4-7mpw). Pre-fix, the
+# unescaped %s fed to sqlite3_exec() ran every ;-separated statement; here the
+# injected second statement is a CREATE TABLE whose presence is the observable
+# side effect. Post-fix the multi-statement is refused (non-zero exit) and the
+# injected statement never runs.
+test-vuln-2db-injection: ${BUILD_DIR}/bin/zsv_2db${EXE}
+	@${TEST_INIT}
+	@rm -f ${TMP_DIR}/$@.db
+	@printf '%s\n' '[{"columns":[{"name":"id"}],"indexes":{"ix1":{"on":"id); CREATE TABLE injected(x); --"}}},[["1"]]]' > ${TMP_DIR}/$@.json
+	@# the injection must be refused (non-zero exit)
+	@(! ${PREFIX} ${BUILD_DIR}/bin/zsv_2db${EXE} -o ${TMP_DIR}/$@.db --overwrite --from-json --table mytable ${TMP_DIR}/$@.json >/dev/null 2>&1) && ${TEST_PASS} || ${TEST_FAIL}
+	@# and the injected statement must not have executed (no "injected" table)
+	@sqlite3 ${TMP_DIR}/$@.db "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='injected'" 2>/dev/null > ${TMP_DIR}/$@.chk || printf '0\n' > ${TMP_DIR}/$@.chk
+	@printf '0\n' | ${CMP} - ${TMP_DIR}/$@.chk && ${TEST_PASS} || ${TEST_FAIL}
+
+# Security regression: concurrent cursors over one CSV vtab (self join /
+# correlated subquery) must keep independent scan state (GHSA-6gxc-p95v-24wg).
+# Pre-fix all cursors shared one parser, so a self cross join of a 5-row table
+# returned 5 rows instead of 25 (and a correlated subquery hit a
+# heap-use-after-free); post-fix each cursor owns its parser. The deterministic
+# count check catches the regression without a sanitizer.
+test-vuln-sql-crossjoin: ${BUILD_DIR}/bin/zsv_sql${EXE}
+	@${TEST_INIT}
+	@printf 'id,value\n1,A\n2,B\n3,C\n4,D\n5,E\n' > ${TMP_DIR}/$@.csv
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_sql${EXE} --memory ${TMP_DIR}/$@.csv 'select count(*) from data a cross join data b' > ${TMP_DIR}/$@.cross.out 2>/dev/null
+	@printf 'count(*)\n25\n' | ${CMP} - ${TMP_DIR}/$@.cross.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_sql${EXE} --memory ${TMP_DIR}/$@.csv 'select a.id,(select b.value from data b where b.id=a.id) v from data a order by cast(a.id as integer)' > ${TMP_DIR}/$@.corr.out 2>/dev/null
+	@printf 'id,v\n1,A\n2,B\n3,C\n4,D\n5,E\n' | ${CMP} - ${TMP_DIR}/$@.corr.out && ${TEST_PASS} || ${TEST_FAIL}
+
+# Security regression: unit-test the real zsv_sql_authorizer read-only policy
+# used by `zsv sql` to sandbox uncontrolled user SQL (CodeQL cpp/sql-injection
+# defense-in-depth). Verifies SELECT/READ/FUNCTION/RECURSIVE are allowed and
+# every write/DDL/ATTACH action is denied.
+test-vuln-sql-readonly: ${TMP_DIR}/test_sql_authorizer
+	@${TEST_INIT}
+	@${TMP_DIR}/test_sql_authorizer && ${TEST_PASS} || ${TEST_FAIL}
+
+${TMP_DIR}/test_sql_authorizer: test_sql_authorizer.c ../sql_authorizer.h
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} -I.. test_sql_authorizer.c -o $@
 
 test-overwrite: ${BUILD_DIR}/bin/zsv_overwrite${EXE} ${BUILD_DIR}/bin/zsv_echo${EXE} ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
