@@ -119,6 +119,31 @@ static char is_select_sql(const char *s) {
                                                         (const unsigned char *)s, strlen("select "));
 }
 
+// zsv_sql_authorizer: restrict user-supplied SQL to read-only operations.
+// zsv sql's contract is to run a caller-provided SELECT over the input CSV(s).
+// Default-deny (allowing only the actions a read-only SELECT needs) defensively
+// bounds what an untrusted/uncontrolled SQL string can do: it cannot mutate data,
+// ATTACH other database files, load extensions, or create/drop schema objects.
+// Installed only after the input tables are registered, so table setup is
+// unaffected. (Resolves CodeQL cpp/sql-injection for the prepare of user SQL.)
+static int zsv_sql_authorizer(void *ctx, int action, const char *a3, const char *a4, const char *a5,
+                              const char *a6) {
+  (void)ctx;
+  (void)a3;
+  (void)a4;
+  (void)a5;
+  (void)a6;
+  switch (action) {
+  case SQLITE_SELECT:    // a SELECT statement (issued once per select)
+  case SQLITE_READ:      // read a column value
+  case SQLITE_FUNCTION:  // call a SQL function (this build registers only safe built-ins)
+  case SQLITE_RECURSIVE: // recursive CTE
+    return SQLITE_OK;
+  default:
+    return SQLITE_DENY;
+  }
+}
+
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
                                struct zsv_prop_handler *custom_prop_handler) {
   /**
@@ -328,6 +353,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
             if (zsv_sqlite3_add_csv(zdb, sl->value, opts, custom_prop_handler) != SQLITE_OK)
               break;
         }
+
+        // Input tables are now registered; constrain every statement prepared
+        // hereafter (the internally-built join query and the user's query) to
+        // read-only operations so uncontrolled SQL cannot escape read semantics.
+        if (zdb->rc == SQLITE_OK)
+          sqlite3_set_authorizer(zdb->db, zsv_sql_authorizer, NULL);
 
         if (zdb->rc == SQLITE_OK && data.join_indexes) { // get column names, and construct the sql
           // sql template:
