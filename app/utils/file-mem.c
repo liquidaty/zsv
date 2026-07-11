@@ -1,5 +1,6 @@
 #include <string.h>
 #include <errno.h>
+#include <stdint.h> // SIZE_MAX
 
 // TO DO: make this a standalone repo
 
