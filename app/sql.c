@@ -385,7 +385,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           if (!err) {
             zdb->rc = sqlite3_prepare_v2(zdb->db, "select * from data", -1, &stmt, NULL);
             if (zdb->rc != SQLITE_OK) {
-              fprintf(stderr, "%s:\n  %s\n (or bad CSV/utf8 input)\n\n", sqlite3_errstr(err), "select * from data");
+              fprintf(stderr, "%s:\n  %s\n (or bad CSV/utf8 input)\n\n", sqlite3_errstr(zdb->rc), "select * from data");
               err = 1;
             }
           }
