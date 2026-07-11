@@ -22,6 +22,7 @@
 #include <zsv/utils/string.h>
 #include <zsv/utils/sql.h>
 #include "sql_internal.h"
+#include "sql_authorizer.h"
 
 #include <unistd.h> // unlink
 
@@ -117,30 +118,6 @@ static void zsv_sql_cleanup(struct zsv_sql_data *data) {
 static char is_select_sql(const char *s) {
   return strlen(s) > strlen("select ") && !zsv_strincmp((const unsigned char *)"select ", strlen("select "),
                                                         (const unsigned char *)s, strlen("select "));
-}
-
-// zsv_sql_authorizer: restrict user-supplied SQL to read-only operations.
-// zsv sql's contract is to run a caller-provided SELECT over the input CSV(s).
-// Default-deny (allowing only the actions a read-only SELECT needs) defensively
-// bounds what an untrusted/uncontrolled SQL string can do: it cannot mutate data,
-// ATTACH other database files, load extensions, or create/drop schema objects.
-// Installed only after the input tables are registered, so table setup is
-// unaffected. (Resolves CodeQL cpp/sql-injection for the prepare of user SQL.)
-static int zsv_sql_authorizer(void *ctx, int action, const char *a3, const char *a4, const char *a5, const char *a6) {
-  (void)ctx;
-  (void)a3;
-  (void)a4;
-  (void)a5;
-  (void)a6;
-  switch (action) {
-  case SQLITE_SELECT:    // a SELECT statement (issued once per select)
-  case SQLITE_READ:      // read a column value
-  case SQLITE_FUNCTION:  // call a SQL function (this build registers only safe built-ins)
-  case SQLITE_RECURSIVE: // recursive CTE
-    return SQLITE_OK;
-  default:
-    return SQLITE_DENY;
-  }
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
