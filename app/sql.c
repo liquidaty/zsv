@@ -126,8 +126,7 @@ static char is_select_sql(const char *s) {
 // ATTACH other database files, load extensions, or create/drop schema objects.
 // Installed only after the input tables are registered, so table setup is
 // unaffected. (Resolves CodeQL cpp/sql-injection for the prepare of user SQL.)
-static int zsv_sql_authorizer(void *ctx, int action, const char *a3, const char *a4, const char *a5,
-                              const char *a6) {
+static int zsv_sql_authorizer(void *ctx, int action, const char *a3, const char *a4, const char *a5, const char *a6) {
   (void)ctx;
   (void)a3;
   (void)a4;
