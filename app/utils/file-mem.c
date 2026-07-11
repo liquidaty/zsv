@@ -21,6 +21,8 @@ typedef struct zsv_memfile zsv_memfile;
  * Equivalent to fopen: Allocates and initializes the stream.
  */
 zsv_memfile *zsv_memfile_open(size_t buffersize) {
+  if (buffersize > SIZE_MAX - sizeof(zsv_memfile))
+    return NULL;
   zsv_memfile *zfm = malloc(sizeof(zsv_memfile) + buffersize);
   if (!zfm)
     return NULL;
