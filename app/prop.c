@@ -1,9 +1,3 @@
-/* Copyright (C) 2022 Guarnerix Inc dba Liquidaty - All Rights Reserved
- * Unauthorized copying of this file, via any medium is strictly prohibited
- * Proprietary and confidential
- * Written by Matt Wong <matt@guarnerix.com>
- */
-
 /*
   for a given file, edits properties saved in ZSV_CACHE_DIR/<filepath>/props.json
 */
