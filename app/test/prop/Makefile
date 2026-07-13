@@ -1,8 +1,3 @@
-## Copyright (C) 2022 Guarnerix Inc dba Liquidaty - All Rights Reserved
-## Unauthorized copying of this file, via any medium is strictly prohibited
-## Proprietary and confidential
-##
-
 THIS_MAKEFILE_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 THIS_MAKEFILE := $(lastword $(MAKEFILE_LIST))
 
