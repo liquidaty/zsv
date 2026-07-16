@@ -69,7 +69,6 @@ else
   ./configure \
     --prefix="$PREFIX" \
     --disable-termcap
-  # --enable-jq
 fi
 
 if [ "$RUN_TESTS" = true ]; then
