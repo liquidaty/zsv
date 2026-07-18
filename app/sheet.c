@@ -1328,20 +1328,33 @@ const char *display_cell(struct zsvsheet_screen_buffer *buff, size_t data_row, s
 
     // convert the substring to wide characters
     wchar_t wsubstring[256]; // Ensure this buffer is large enough
+    const size_t wsubstring_size = sizeof(wsubstring) / sizeof(wchar_t);
 #if defined(WIN32) || defined(_WIN32)
     // windows does not have mbsnrtowcs
     char *p = (char *)str;
     char tmp_ch = p[nbytes];
     p[nbytes] = '\0';
-    size_t wlen = MultiByteToWideChar(CP_UTF8, 0, p, -1, wsubstring, sizeof(wsubstring) / sizeof(wchar_t));
+    size_t wlen = MultiByteToWideChar(CP_UTF8, 0, p, -1, wsubstring, wsubstring_size);
     p[nbytes] = tmp_ch;
 #else
     const char *p = str;
-    size_t wlen = mbsnrtowcs(wsubstring, &p, nbytes, sizeof(wsubstring) / sizeof(wchar_t), NULL);
+    size_t wlen = mbsnrtowcs(wsubstring, &p, nbytes, wsubstring_size, NULL);
 #endif
+
+    // IF an error occurs (e.g., Musl 1.2.6 strict POSIX compliance or invalid UTF-8)
     if (wlen == (size_t)-1) {
-      fprintf(stderr, "Unable to convert to wide chars: %s\n", str);
-      goto out;
+      if (p > str) {
+        // Characters were successfully processed up to the error boundary.
+        // Measure what we actually managed to decode into the buffer.
+        wlen = wcslen(wsubstring);
+      } else {
+        // Hard failure at byte 0. Print an error message and exit early.
+        fprintf(stderr, "Unable to convert to wide chars: %s\n", str);
+        goto out;
+      }
+    } else if (wlen < wsubstring_size) {
+      // Clean success path: ensure the wide string is null terminated
+      wsubstring[wlen] = L'\0';
     }
 
     // move to the desired position
