@@ -595,7 +595,7 @@ jobs:
   ci-musl:
     needs: [tag, clang-format, cppcheck, shellcheck]
     runs-on: ubuntu-latest
-    container: alpine:3.22
+    container: alpine:latest
     timeout-minutes: 15
 
     outputs:
@@ -607,7 +607,10 @@ jobs:
     steps:
     - name: Set up dependencies
       shell: sh
-      run: apk add bash gcc make musl-dev ncurses-dev ncurses-static tmux file sqlite curl zip wget tar git
+      run: |
+        apk update
+        apk add bash make musl-dev ncurses-dev ncurses-static tmux file sqlite curl zip wget tar git
+        apk add gcc=14.2.0-r6 --repository=https://dl-cdn.alpinelinux.org/alpine/v3.22/main
 
     - name: Checkout
       uses: actions/checkout@v7
