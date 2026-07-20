@@ -227,6 +227,14 @@ enum zsv_status zsv_next_row(zsv_parser parser) {
       return zsv_status_row;
     }
   }
+#ifdef ZSV_EXTRAS
+  if (VERY_UNLIKELY(parser->pull.stat == zsv_status_max_rows_read)) {
+    parser->pull.now = 0;
+    parser->row.used = parser->pull.row_used;
+    parser->pull.stat = zsv_status_done;
+    return zsv_status_row;
+  }
+#endif
   return parser->pull.stat;
 }
 
