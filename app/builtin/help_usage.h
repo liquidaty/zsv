@@ -2,7 +2,7 @@ static const char *usage[] = {
   ZSV_USAGE_PROG ": streaming csv processor",
   "",
   "Usage:",
-  "  " ZSV_USAGE_PROG " version: display version info (and if applicable, extension info)",
+  "  " ZSV_USAGE_PROG " version                          : display version info (and if applicable, extension info)",
 #ifndef __EMSCRIPTEN__
   "  " ZSV_USAGE_PROG " (un)register [<extension_id>]    : (un)register an extension",
   "      Registration info is saved in zsv.ini located in a directory determined as:",
