@@ -48,11 +48,20 @@
 #else
 #  include <fcntl.h>
 #  include <unistd.h>
-#  if defined(__unix__) || defined(__APPLE__)
+#  if defined(__unix__) || defined(__APPLE__) || defined(__wasi__)
 #    define TOONW_FSEEK(fp, off) (fseeko((fp), (off_t)(off), SEEK_SET))
 #  else
 #    define TOONW_FSEEK(fp, off) (fseek((fp), (long)(off), SEEK_SET))
 #  endif
+#endif
+
+/* wasi has no temp directory concept and so no tmpfile(); there, a caller that
+ * needs arrays larger than opts.max_buffer_size must supply get_temp_filename */
+#if defined(__wasi__)
+#  include <errno.h>
+#  define TOONW_TMPFILE() (errno = ENOSYS, (FILE *)NULL)
+#else
+#  define TOONW_TMPFILE() tmpfile()
 #endif
 
 /* Open a spill temp file by name, failing if it already exists (O_EXCL) -- the
@@ -189,7 +198,7 @@ static int toonw_spill_open(toonw_store *s) {
     }
     s->fp = toonw_fopen_excl(s->tmpname);
   } else {
-    s->fp = tmpfile();
+    s->fp = TOONW_TMPFILE();
   }
   if (!s->fp) {
     s->err = toonwriter_status_io_error;

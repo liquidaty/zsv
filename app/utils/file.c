@@ -60,8 +60,8 @@ char *zsv_get_temp_filename(const char *prefix) {
     const char *msg = strerror(errno);
     fprintf(stderr, "%s%c%s: %s\n", tmpdir, FILESLASH, prefix, msg ? msg : "Unknown error");
   } else {
-    int fd = mkstemp(s);
-    if (fd > 0) {
+    int fd = zsv_mkstemp(s);
+    if (fd >= 0) { // 0 is a legal descriptor
       close(fd);
       return s;
     }
@@ -98,34 +98,72 @@ FILE *zsv_tmpfile(const char *prefix, char **filename, const char *mode) {
  * temp_filename and bak are set as return values
  * caller must free temp_filename
  *
+ * On wasm this is unsupported: wasi has no file descriptor duplication
+ * (no dup()/dup2())
+ *
  * @param old_fd file descriptor of file to dupe e.g. fileno(stdout);
- * @return fd needed to pass on to zsv_redirect_file_from_temp
+ * @return fd needed to pass on to zsv_redirect_file_from_temp, or -1 on error
  */
 #if defined(_WIN32) || defined(__FreeBSD__)
 #include <sys/stat.h> // S_IRUSR S_IWUSR
 #endif
 
 int zsv_redirect_file_to_temp(FILE *f, const char *tempfile_prefix, char **temp_filename) {
-  int new_fd;
+  *temp_filename = NULL;
+#ifdef __wasi__
+  (void)f;
+  (void)tempfile_prefix;
+  errno = ENOTSUP;
+  return -1;
+#else
+  int e;
+  int new_fd = -1;
   int old_fd = fileno(f);
+  if (old_fd < 0)
+    return -1;
   fflush(f);
   int bak = dup(old_fd);
-  *temp_filename = zsv_get_temp_filename(tempfile_prefix);
+  if (bak < 0)
+    return -1;
 
-  new_fd = open(*temp_filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
+  // zsv_get_temp_filename() already created the file, so reopen without O_EXCL
+  if (!(*temp_filename = zsv_get_temp_filename(tempfile_prefix)) ||
+      (new_fd = open(*temp_filename, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR)) < 0 || dup2(new_fd, old_fd) < 0)
+    goto cleanup;
 
-  dup2(new_fd, old_fd);
   close(new_fd);
   return bak;
+
+cleanup:
+  e = errno;
+  if (new_fd >= 0)
+    close(new_fd);
+  if (*temp_filename) {
+    zsv_remove(*temp_filename); // created by zsv_get_temp_filename(); nobody else can remove it now
+    free(*temp_filename);
+    *temp_filename = NULL;
+  }
+  close(bak);
+  errno = e;
+  return -1;
+#endif
 }
 
 /**
  * Restore a FILE * that was redirected by zsv_redirect_file_to_temp()
  */
 void zsv_redirect_file_from_temp(FILE *f, int bak, int old_fd) {
+#ifdef __wasi__
+  (void)f;
+  (void)bak;
+  (void)old_fd;
+#else
+  if (bak < 0) // zsv_redirect_file_to_temp() failed; nothing was redirected
+    return;
   fflush(f);
   dup2(bak, old_fd);
   close(bak);
+#endif
 }
 
 #if defined(_WIN32) || defined(WIN32) || defined(WIN)

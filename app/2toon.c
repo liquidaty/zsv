@@ -537,6 +537,14 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         err = data.err;
       }
     }
+    // toonwriter's error is sticky and silent: without this check an I/O
+    // failure (e.g. an array too big to hold in memory, whose spill to a temp
+    // file failed) exits 0 having written nothing
+    if (data.toonw && toonwriter_error(data.toonw) != toonwriter_status_ok) {
+      fprintf(stderr, "%s: TOON output failed (error %i)\n", APPNAME, (int)toonwriter_error(data.toonw));
+      if (err == zsv_status_ok)
+        err = zsv_status_error;
+    }
     toonwriter_delete(data.toonw);
   }
 

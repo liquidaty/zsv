@@ -23,6 +23,18 @@ char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_p
 #endif
 
 /**
+ * zsv_mkstemp(): same as normal mkstemp(), which wasi-libc does not have
+ * (wasm has no temp directory concept). Creates and opens a file whose name is
+ * `tmpl` with its trailing 'X's (at least 6) replaced; `tmpl` is modified in
+ * place. Returns an open fd, or -1 with errno set.
+ */
+#ifndef __wasi__
+#define zsv_mkstemp mkstemp
+#else
+int zsv_mkstemp(char *tmpl);
+#endif
+
+/**
  * zsv_remove(): same as normal remove()
  but for files only, and on Win it also works with long filenames
  */

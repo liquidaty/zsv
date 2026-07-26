@@ -241,9 +241,16 @@ size_t zsv_get_executable_path(char *buff, size_t bufflen) {
 #elif defined(__linux__) || defined(__EMSCRIPTEN__)
 #include <unistd.h>
 size_t zsv_get_executable_path(char *buff, size_t buffsize) {
-  buffsize = readlink("/proc/self/exe", buff, buffsize - 1);
-  buff[buffsize] = '\0';
-  return buffsize;
+  // readlink() returns -1 on failure; assigning that to a size_t before using
+  // it as an index would write far out of bounds
+  ssize_t n = buffsize ? readlink("/proc/self/exe", buff, buffsize - 1) : -1;
+  if (n < 0) {
+    if (buffsize)
+      *buff = '\0';
+    return 0;
+  }
+  buff[n] = '\0';
+  return (size_t)n;
 }
 #elif defined(__FreeBSD__)
 #include <sys/stat.h>
@@ -254,12 +261,24 @@ size_t zsv_get_executable_path(char *buff, size_t buffsize) {
   mib[1] = KERN_PROC;
   mib[2] = KERN_PROC_PATHNAME;
   mib[3] = -1;
-  sysctl(mib, 4, buff, &buffsize, NULL, 0);
-  buff[buffsize] = '\0';
-  return buffsize;
+  size_t len = buffsize;
+  // on failure len is left at the input size, so indexing with it would write
+  // one past the end
+  if (!buffsize || sysctl(mib, 4, buff, &len, NULL, 0) || len >= buffsize) {
+    if (buffsize)
+      *buff = '\0';
+    return 0;
+  }
+  buff[len] = '\0';
+  return len;
 }
 #else
-// TODO: Add support for this OS!
+// no way to locate the running image (e.g. wasi, where the module has no path)
+size_t zsv_get_executable_path(char *buff, size_t buffsize) {
+  if (buffsize)
+    *buff = '\0';
+  return 0;
+}
 #endif /* end of: #if defined(_WIN32) */
 
 /**

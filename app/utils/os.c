@@ -27,6 +27,38 @@ FILE *zsv_fopen(const char *fname, const char *mode) {
 }
 #endif
 
+#ifdef __wasi__
+#include <fcntl.h>
+#include <stdlib.h> // arc4random_uniform (declared under _GNU_SOURCE, which the build sets)
+#include <string.h>
+#include <sys/stat.h> // S_IRUSR S_IWUSR
+
+#define ZSV_MKSTEMP_MIN_X 6
+#define ZSV_MKSTEMP_TRIES 100
+
+int zsv_mkstemp(char *tmpl) {
+  static const char charset[] = "abcdefghijklmnopqrstuvwxyz0123456789";
+  size_t len = strlen(tmpl);
+  size_t x_count = 0;
+  while (x_count < len && tmpl[len - x_count - 1] == 'X')
+    x_count++;
+  if (x_count < ZSV_MKSTEMP_MIN_X) {
+    errno = EINVAL;
+    return -1;
+  }
+  // O_EXCL is what makes this safe; the CSPRNG only keeps collisions rare
+  for (unsigned tries = 0; tries < ZSV_MKSTEMP_TRIES; tries++) {
+    for (size_t i = len - x_count; i < len; i++)
+      tmpl[i] = charset[arc4random_uniform(sizeof(charset) - 1)];
+    int fd = open(tmpl, O_RDWR | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
+    if (fd >= 0 || errno != EEXIST)
+      return fd;
+  }
+  errno = EEXIST;
+  return -1;
+}
+#endif
+
 #ifndef _WIN32
 
 void zsv_perror(const char *s) {

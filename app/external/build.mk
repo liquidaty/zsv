@@ -21,6 +21,14 @@ ifneq ($(CONFIGURE_HOST),)
   PCRE2_CONFIG_OPTIIONS+=--host=${CONFIGURE_HOST}
 endif
 
+# Both settings below are deliberately unconditional rather than wasi-gated:
+# only libpcre2-8 is ever consumed, so skipping pcre2grep/pcre2test (bin_ and
+# noinst_ PROGRAMS) is right for every target, and it is what lets wasi past
+# pcre2test's setrlimit use. --disable-pcre2grep-callout-fork is separately
+# needed because configure aborts outright without sys/wait.h, which wasi-libc
+# does not have; on every other target it only drops an unbuilt binary's feature.
+# Note: clearing noinst_PROGRAMS also drops pcre2_dftables, so this build cannot
+# be combined with --enable-rebuild-chartables (the shipped tables are used).
 ${BUILD_DIR}-external/pcre2/lib/libpcre2-8.a:
 	@mkdir -p ${BUILD_DIR}-external/pcre2
 	@cd ${BUILD_DIR}-external/pcre2 && \
@@ -29,8 +37,9 @@ ${BUILD_DIR}-external/pcre2/lib/libpcre2-8.a:
 	CFLAGS="${PCRE2_CFLAGS}" ./configure ${PCRE2_CONFIG_OPTIIONS} \
 	--prefix=${BUILD_DIR}-external/pcre2 \
 	--enable-static=yes \
-	--enable-shared=no && \
-	${MAKE} install
+	--enable-shared=no \
+	--disable-pcre2grep-callout-fork && \
+	${MAKE} install bin_PROGRAMS= noinst_PROGRAMS=
 
 # PDCurses (Windows/MinGW console library) for the 'sheet' feature: untar the
 # vendored source and build the static wincon backend, mirroring pcre2 above.

@@ -682,8 +682,16 @@ static void zsv_compare_data_free(struct zsv_compare_data *data) {
   } else if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
 #ifndef ZSV_NO_TOON
     if (data->writer.toon) {
-      if (data->writer.handle.toonw)
+      if (data->writer.handle.toonw) {
+        // sticky and otherwise silent: an I/O failure (e.g. a failed spill of an
+        // oversized array to a temp file) would exit 0 having written nothing
+        if (toonwriter_error(data->writer.handle.toonw) != toonwriter_status_ok) {
+          fprintf(stderr, "TOON output failed (error %i)\n", (int)toonwriter_error(data->writer.handle.toonw));
+          if (data->status == zsv_compare_status_ok)
+            data->status = zsv_compare_status_error;
+        }
         toonwriter_delete(data->writer.handle.toonw);
+      }
     } else
 #endif
       if (data->writer.handle.jsw)

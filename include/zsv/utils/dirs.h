@@ -34,6 +34,7 @@ size_t zsv_get_config_dir(char *buff, size_t buffsize, const char *prefix);
 
 /**
  * Get the path of the current executable
+ * @return length written to buff, or 0 if the path could not be determined
  */
 size_t zsv_get_executable_path(char *buff, size_t buffsize);
 
