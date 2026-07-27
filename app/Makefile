@@ -159,7 +159,7 @@ ifeq ($(WIN),0)
     WASI_EMULATED:=signal mman process-clocks getpid
     WASI_EMULATED_UC:=$(shell echo '${WASI_EMULATED}' | tr 'a-z-' 'A-Z_')
     CFLAGS+= $(addprefix -D_WASI_EMULATED_,${WASI_EMULATED_UC})
-    # appended to MORE_LIBS below, after the libs that may draw on them
+    # consumed by LDLIBS_LAST below, which the link rules put after every archive
     WASI_LIBS=$(addprefix -lwasi-emulated-,${WASI_EMULATED})
     # wasi-sdk defaults to a 64KB stack, which 2tsv's 64KB output buffer alone
     # overflows; --stack-first then makes any future overflow trap instead of
@@ -401,9 +401,12 @@ OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${BUILD_DIR}/objs/utils/json.o ${SQLITE
 MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -I${JQ_INCLUDE_DIR} ${SQLITE_EXT_INCLUDE}
 MORE_LIBS+=${JQ_LIB} ${LDFLAGS_JQ}
 
-# last, so every archive that might draw on the wasi-libc emulation shims
-# precedes them (empty off wasi-sdk)
-MORE_LIBS+=${WASI_LIBS}
+# Appended after everything else on the link line, so every archive that might
+# draw on the wasi-libc emulation shims precedes them (a static archive must
+# follow its users). MORE_LIBS is not late enough: target-specific
+# `MORE_LIBS+=` appends below (pcre2, PDCurses) land after this file's global
+# appends. Empty off wasi-sdk.
+LDLIBS_LAST=${WASI_LIBS}
 
 help:
 	@echo "To build: ${MAKE} [DEBUG=1] [STATIC_BUILD=1] [clean] [clean-all] [BINDIR=${BINDIR}] [JQ_PREFIX=/usr/local] <install|all|install-util-lib|test>"
@@ -538,7 +541,7 @@ ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8pro
 
 ${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${LIBZSV_BUILD} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${MORE_OBJECTS} ${SQL_INTERNAL_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBZSV_BUILD_DIR} ${LIBZSV_L} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBZSV_BUILD_DIR} ${LIBZSV_L} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS} ${LDLIBS_LAST}
 	@echo Built $@
 
 cli_internal.h.in: ${THIS_MAKEFILE_DIR}/../include/zsv/ext/implementation_private.h
@@ -561,13 +564,20 @@ ${SQLITE_EXT}: ${SQLITE_SRC}
 # $@ must be removed first: without that, re-extracting over an existing tree
 # moves the new tree *inside* the old one, leaving a stale unpatched jq in place.
 # `cd && patch -p1` rather than `patch -d`, which busybox patch does not support.
+# `-i $$p </dev/null` rather than feeding the patch on stdin: on a context
+# mismatch patch prompts for a file name, and reading that answer from the patch
+# itself leaves a silently half-patched tree; with stdin at EOF it fails instead.
+# touch: tar restores the archive's own (2018) mtime, so without it $@ is always
+# older than its prerequisites and every make re-extracts jq -- which, since
+# ${JQ_LIB} is a prerequisite of every util object, rebuilds the whole app.
 ${JQ_SRC}: ${JQ_TARBALL} ${JQ_PATCHES}
 	@rm -rf $@ $@-tmp
 	@mkdir -p $@-tmp
 	cd $@-tmp && tar xf ${JQ_TARBALL}
-	for p in ${JQ_PATCHES}; do (cd $@-tmp/jq-1.6 && patch -p1) < "$$p" || exit 1; done
+	for p in ${JQ_PATCHES}; do (cd $@-tmp/jq-1.6 && patch -p1 -i "$$p" < /dev/null) || exit 1; done
 	mv $@-tmp/jq-1.6 $@
 	rm -rf $@-tmp
+	@touch $@
 
 lib-jq: ${JQ_LIB}
 	@echo "Using jq library ${JQ_LIB}"
@@ -773,7 +783,7 @@ ${CLI_OBJ_PFX}sheet.o ${STANDALONE_PFX}sheet${EXE}: DEPFLAGS=-MMD -MP -MT $@ -MF
 
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_BUILD} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${PREPEND_INCLUDE} ${CFLAGS} ${DEPFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${BUILD_DIR}/lib ${LIBZSV_L} ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
+	${CC} ${PREPEND_INCLUDE} ${CFLAGS} ${DEPFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${BUILD_DIR}/lib ${LIBZSV_L} ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS} ${STATIC_LIB_FLAGS} ${LDLIBS_LAST}
 
 ${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}-external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`
