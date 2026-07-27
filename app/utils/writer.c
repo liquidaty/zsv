@@ -106,7 +106,9 @@ struct zsv_output_buff {
   size_t used;
   uint64_t written;
   unsigned char close_on_delete : 1;
-  unsigned char _ : 7;
+  unsigned char err : 1;   // sticky: a write reported short. See zsv_output_buff_write()
+  unsigned char stdio : 1; // `write` is fwrite and `stream` is a FILE*, so ferror() applies
+  unsigned char _ : 5;
 };
 
 struct zsv_writer_data {
@@ -133,10 +135,23 @@ struct zsv_writer_data {
 
 #include <unistd.h> // write
 
+/* `write` has fwrite() semantics: it returns the number of items written, so a
+ * short write returns < 1 for our single-item calls. Latch that in `err` --
+ * without it an ENOSPC/EPIPE/EBADF is invisible and every command built on this
+ * writer exits 0 having emitted nothing. `err` is sticky and reported by
+ * zsv_writer_flush()/zsv_writer_delete(), whose signatures already carry a
+ * status. `written` counts bytes handed to `write`, so it is left alone. */
 static inline void zsv_output_buff_flush(struct zsv_output_buff *b) {
-  b->write(b->buff, b->used, 1, b->stream);
-  b->written += b->used;
-  b->used = 0;
+  if (b->used) {
+    if (b->write(b->buff, b->used, 1, b->stream) != 1)
+      b->err = 1;
+    b->written += b->used;
+    b->used = 0;
+  }
+  // an fwrite smaller than stdio's own buffer succeeds now and fails later, so
+  // a short write is not on its own sufficient to detect a broken sink
+  if (b->stdio && b->stream && ferror((FILE *)b->stream))
+    b->err = 1;
 }
 
 static inline void zsv_output_buff_write(struct zsv_output_buff *b, const unsigned char *s, size_t n) {
@@ -144,7 +159,8 @@ static inline void zsv_output_buff_write(struct zsv_output_buff *b, const unsign
     if (n + b->used > ZSV_OUTPUT_BUFF_SIZE) {
       zsv_output_buff_flush(b);
       if (n > ZSV_OUTPUT_BUFF_SIZE) { // n too big, so write directly
-        b->write(s, n, 1, b->stream);
+        if (b->write(s, n, 1, b->stream) != 1)
+          b->err = 1;
         b->written += n;
         return;
       }
@@ -185,6 +201,7 @@ zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
     if (!opts) {
       w->out.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))fwrite;
       w->out.stream = stdout;
+      w->out.stdio = 1;
     } else {
       if (opts->output_path) {
         if (!(w->out.stream = zsv_fopen(opts->output_path, "wb"))) {
@@ -193,12 +210,14 @@ zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
         }
         w->out.close_on_delete = 1;
         w->out.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))fwrite;
+        w->out.stdio = 1;
       } else if (opts->write) {
         w->out.write = opts->write;
         w->out.stream = opts->stream;
       } else {
         w->out.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))fwrite;
         w->out.stream = opts->stream ? opts->stream : stdout;
+        w->out.stdio = 1;
       }
 
       w->with_bom = opts->with_bom;
@@ -225,7 +244,7 @@ enum zsv_writer_status zsv_writer_flush(zsv_csv_writer w) {
     return zsv_writer_status_missing_handle;
 
   zsv_output_buff_flush(&w->out);
-  return zsv_writer_status_ok;
+  return w->out.err ? zsv_writer_status_error : zsv_writer_status_ok;
 }
 
 enum zsv_writer_status zsv_writer_delete(zsv_csv_writer w) {
@@ -238,17 +257,29 @@ enum zsv_writer_status zsv_writer_delete(zsv_csv_writer w) {
   if (w->out.stream && w->out.write && w->out.buff)
     zsv_output_buff_flush(&w->out);
 
+  // for a stream we do not own (typically stdout) nothing else will report a
+  // failed write; a stream we do own is covered by fclose() below
+  if (w->out.stdio && w->out.stream && !w->out.close_on_delete) {
+    if (fflush((FILE *)w->out.stream) || ferror((FILE *)w->out.stream))
+      w->out.err = 1;
+  }
+
   if (w->on_delete)
     w->on_delete(w->on_delete_ctx);
 
   if (w->out.buff)
     free(w->out.buff);
 
-  if (w->out.close_on_delete && w->out.stream)
-    fclose(w->out.stream);
+  // fclose reports failures that only surface on the final write of an
+  // fwrite-backed stream we own
+  int err = w->out.err;
+  if (w->out.close_on_delete && w->out.stream) {
+    if (fclose(w->out.stream))
+      err = 1;
+  }
 
   free(w);
-  return zsv_writer_status_ok;
+  return err ? zsv_writer_status_error : zsv_writer_status_ok;
 }
 
 static inline enum zsv_writer_status zsv_writer_cell_aux(zsv_csv_writer w, const unsigned char *s, size_t len,
