@@ -88,9 +88,18 @@ test-parallel-2: $(COUNT_EXE) ../worldcitiespop_mil.csv
 	@${CMP} ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel && ${TEST_PASS} || ${TEST_FAIL}
 	@rm -f ${TMP_DIR}/$@.serial.tmp ${TMP_DIR}/$@.serial ${TMP_DIR}/$@.parallel.tmp ${TMP_DIR}/$@.parallel
 
+# patch, not `git apply`: the latter resolves the paths in the diff relative to
+# the repository root, so it only works inside a checkout -- in the Docker image,
+# which has no .git (.dockerignore excludes it), it failed with "No such file or
+# directory". The file to patch is named explicitly, so neither the paths in the
+# diff nor the value of TMP_DIR matter. -F0 is required to match `git apply`'s
+# strictness: patch defaults to 2 lines of fuzz and would otherwise still apply
+# this hunk after the context had drifted, silently producing a fixture that no
+# longer exercises the chunk boundary it was built for. </dev/null makes any
+# prompt (e.g. a reversed patch) fail rather than hang.
 ${TMP_DIR}/chunk_break.csv: ../worldcitiespop_mil.csv
 	@head -100000 ../worldcitiespop_mil.csv > ${TMP_DIR}/chunk_break.csv.tmp
-	@git apply --ignore-whitespace chunk_break.diff
+	@patch -l -F0 ${TMP_DIR}/chunk_break.csv.tmp chunk_break.diff < /dev/null
 	@mv ${TMP_DIR}/chunk_break.csv.tmp ${TMP_DIR}/chunk_break.csv
 
 ${TMP_DIR}/chunk_clean.csv: ${TMP_DIR}/chunk_break.csv

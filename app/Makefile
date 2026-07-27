@@ -152,6 +152,22 @@ ifeq ($(WIN),0)
       LDFLAGS += -s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2
     endif
   endif
+  ifneq ($(findstring wasm32-wasi,$(CC)),) # wasi-sdk
+    # wasm has no signals, mmap, process CPU clocks or getpid. wasi-libc ships
+    # emulation for each, gated on a -D<UPPERCASE> and a matching -l<lowercase>.
+    # := so the tr subshell runs once, not on every expansion of CFLAGS
+    WASI_EMULATED:=signal mman process-clocks getpid
+    WASI_EMULATED_UC:=$(shell echo '${WASI_EMULATED}' | tr 'a-z-' 'A-Z_')
+    CFLAGS+= $(addprefix -D_WASI_EMULATED_,${WASI_EMULATED_UC})
+    # consumed by LDLIBS_LAST below, which the link rules put after every archive
+    WASI_LIBS=$(addprefix -lwasi-emulated-,${WASI_EMULATED})
+    # wasi-sdk defaults to a 64KB stack, which 2tsv's 64KB output buffer alone
+    # overflows; --stack-first then makes any future overflow trap instead of
+    # silently overwriting the data segment
+    LDFLAGS+= -Wl,-z,stack-size=262144 -Wl,--stack-first
+    # wasi-libc's default printf traps on %Lf (writer.c's zsv_writer_cell_Lf)
+    WASI_LIBS+= -lc-printscan-long-double
+  endif
 else
   BUILD_SUBDIR=win/${DBG_SUBDIR}
   EXE=.exe
@@ -328,6 +344,7 @@ CFLAGS+=${YAJL_HELPER_INCLUDE} ${YAJL_INCLUDE}
 
 # jq
 JQ_TARBALL=${THIS_MAKEFILE_DIR}/external/jq-1.6.tar.gz
+JQ_PATCHES=${THIS_MAKEFILE_DIR}/external/jq-1.6-wasi.patch
 JQ_SRC=${BUILD_DIR}-external/jq-src
 
 JQ_PREFIX ?=
@@ -371,7 +388,9 @@ UTF8PROC_OBJECT=${BUILD_DIR}-external/utf8proc-2.11.3/utf8proc.o
 CFLAGS+= -I${UTF8PROC_INCLUDE} -DUTF8PROC -DUTF8PROC_STATIC
 
 # sqlite3
-SQLITE_SRC=${THIS_MAKEFILE_DIR}/external/sqlite3/sqlite3*.c
+# headers too: the amalgamation and the sqlite3_wasi.h shim are #included, not compiled
+SQLITE_SRC=$(wildcard ${THIS_MAKEFILE_DIR}/external/sqlite3/sqlite3*.c) \
+           $(wildcard ${THIS_MAKEFILE_DIR}/external/sqlite3/sqlite3*.h)
 SQLITE_EXT=${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o
 SQLITE_EXT_INCLUDE=-I${THIS_MAKEFILE_DIR}/external/sqlite3
 
@@ -381,6 +400,13 @@ SQL_INTERNAL_OBJECT=${BUILD_DIR}/objs/sql_internal.o
 OBJECTS+= ${YAJL_OBJ} ${YAJL_HELPER_OBJ} ${BUILD_DIR}/objs/utils/json.o ${SQLITE_EXT}
 MORE_SOURCE+= ${YAJL_INCLUDE} ${YAJL_HELPER_INCLUDE} -I${JQ_INCLUDE_DIR} ${SQLITE_EXT_INCLUDE}
 MORE_LIBS+=${JQ_LIB} ${LDFLAGS_JQ}
+
+# Appended after everything else on the link line, so every archive that might
+# draw on the wasi-libc emulation shims precedes them (a static archive must
+# follow its users). MORE_LIBS is not late enough: target-specific
+# `MORE_LIBS+=` appends below (pcre2, PDCurses) land after this file's global
+# appends. Empty off wasi-sdk.
+LDLIBS_LAST=${WASI_LIBS}
 
 help:
 	@echo "To build: ${MAKE} [DEBUG=1] [STATIC_BUILD=1] [clean] [clean-all] [BINDIR=${BINDIR}] [JQ_PREFIX=/usr/local] <install|all|install-util-lib|test>"
@@ -515,7 +541,7 @@ ${CLI_APP_OBJECT} ${CLI_OBJECTS}: ${CLI_OBJ_PFX}%.o: %.c ${UTF8PROC_SRC}/utf8pro
 
 ${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${LIBZSV_BUILD} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} cli_ini.c ${INIH_OBJECT} ${MORE_OBJECTS} ${SQL_INTERNAL_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBZSV_BUILD_DIR} ${LIBZSV_L} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
+	${CC} ${CFLAGS} -I${INCLUDE_DIR} -o $@ ${CLI_APP_OBJECT} ${CLI_OBJECTS} ${OBJECTS} ${UTF8PROC_OBJECT} ${INIH_OBJECT} -L${LIBZSV_BUILD_DIR} ${LIBZSV_L} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_OBJECTS} ${MORE_SOURCE} ${MORE_LIBS} ${STATIC_LIB_FLAGS} ${LDLIBS_LAST}
 	@echo Built $@
 
 cli_internal.h.in: ${THIS_MAKEFILE_DIR}/../include/zsv/ext/implementation_private.h
@@ -534,12 +560,24 @@ ${SQLITE_EXT}: ${SQLITE_SRC}
 
 # ${JQ_INCLUDE_DIR}: ${JQ_LIB}
 
-${JQ_SRC}: ${JQ_TARBALL}
-	@rm -rf $@-tmp
+# the patches are portability-only and guarded per target, so apply unconditionally.
+# $@ must be removed first: without that, re-extracting over an existing tree
+# moves the new tree *inside* the old one, leaving a stale unpatched jq in place.
+# `cd && patch -p1` rather than `patch -d`, which busybox patch does not support.
+# `-i $$p </dev/null` rather than feeding the patch on stdin: on a context
+# mismatch patch prompts for a file name, and reading that answer from the patch
+# itself leaves a silently half-patched tree; with stdin at EOF it fails instead.
+# touch: tar restores the archive's own (2018) mtime, so without it $@ is always
+# older than its prerequisites and every make re-extracts jq -- which, since
+# ${JQ_LIB} is a prerequisite of every util object, rebuilds the whole app.
+${JQ_SRC}: ${JQ_TARBALL} ${JQ_PATCHES}
+	@rm -rf $@ $@-tmp
 	@mkdir -p $@-tmp
 	cd $@-tmp && tar xf ${JQ_TARBALL}
+	for p in ${JQ_PATCHES}; do (cd $@-tmp/jq-1.6 && patch -p1 -i "$$p" < /dev/null) || exit 1; done
 	mv $@-tmp/jq-1.6 $@
 	rm -rf $@-tmp
+	@touch $@
 
 lib-jq: ${JQ_LIB}
 	@echo "Using jq library ${JQ_LIB}"
@@ -745,7 +783,7 @@ ${CLI_OBJ_PFX}sheet.o ${STANDALONE_PFX}sheet${EXE}: DEPFLAGS=-MMD -MP -MT $@ -MF
 
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_BUILD} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`
-	${CC} ${PREPEND_INCLUDE} ${CFLAGS} ${DEPFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${BUILD_DIR}/lib ${LIBZSV_L} ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS} ${STATIC_LIB_FLAGS}
+	${CC} ${PREPEND_INCLUDE} ${CFLAGS} ${DEPFLAGS} -I${INCLUDE_DIR} -o $@ $< ${OBJECTS} ${MORE_OBJECTS} ${MORE_SOURCE} -L${BUILD_DIR}/lib ${LIBZSV_L} ${UTF8PROC_OBJECT} ${LDFLAGS} ${LDFLAGS_OPT} ${MORE_LIBS} ${STATIC_LIB_FLAGS} ${LDLIBS_LAST}
 
 ${BUILD_DIR}-external/sqlite3/sqlite3_and_csv_vtab.o: ${BUILD_DIR}-external/%.o : external/%.c
 	@mkdir -p `dirname "$@"`

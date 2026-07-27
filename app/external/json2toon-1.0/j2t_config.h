@@ -25,7 +25,9 @@
 #if defined(_WIN32)
 #  define J2T_FSEEK(fp, off) (_fseeki64((fp), (long long)(off), SEEK_SET))
 #  define J2T_FTELL(fp)      ((int64_t)_ftelli64(fp))
-#elif defined(__unix__) || defined(__APPLE__)
+/* __wasi__ implies neither __unix__ nor __APPLE__, and wasm32's `long` is
+ * 32-bit, so without it here spills would be capped at 2 GiB */
+#elif defined(__unix__) || defined(__APPLE__) || defined(__wasi__)
 #  define J2T_FSEEK(fp, off) (fseeko((fp), (off_t)(off), SEEK_SET))
 #  define J2T_FTELL(fp)      ((int64_t)ftello(fp))
 #else

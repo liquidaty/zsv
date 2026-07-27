@@ -1,13 +1,13 @@
 struct zsvsheet_errors_data {
   struct zsvsheet_ui_buffer *uib;
   size_t rows_fetched;
-  const char *row_data[1];
+  const unsigned char *row_data[1]; // see the note in help.c: must match the read-back type
 };
 
 const unsigned char **zsvsheet_errors_header(void *d) {
   struct zsvsheet_errors_data *data = d;
-  data->row_data[0] = "Error";
-  return (const unsigned char **)data->row_data;
+  data->row_data[0] = (const unsigned char *)"Error";
+  return data->row_data;
 }
 
 const unsigned char *zsvsheet_errors_status(void *_) {
@@ -18,10 +18,10 @@ const unsigned char *zsvsheet_errors_status(void *_) {
 const unsigned char **zsvsheet_errors_row(void *d) {
   struct zsvsheet_errors_data *data = d;
   while (data->rows_fetched < data->uib->parse_errs.count) {
-    data->row_data[0] = data->uib->parse_errs.errors[data->rows_fetched];
+    data->row_data[0] = (const unsigned char *)data->uib->parse_errs.errors[data->rows_fetched];
     data->rows_fetched++;
     if (data->row_data[0] && *data->row_data[0])
-      return (const unsigned char **)data->row_data;
+      return data->row_data;
   }
   return NULL;
 }

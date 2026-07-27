@@ -23,6 +23,7 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/mem.h>
 #include <zsv/utils/string.h>
+#include <zsv/utils/file.h>
 
 struct zsv_2toon_header {
   struct zsv_2toon_header *next;
@@ -508,11 +509,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       out = stdout;
     if (data.from_json) {
       size_t off = 0;
-      int rc = json2toon_convert_file(opts.stream, out, NULL, &off);
+      int rc = json2toon_convert_file(
+        opts.stream, out, &(const json2toon_options){.get_temp_filename = zsv_get_temp_filename_excl}, &off);
       if (rc != JSON2TOON_OK)
         fprintf(stderr, "%s: JSON to TOON conversion failed at byte %zu: %s\n", APPNAME, off, json2toon_strerror(rc)),
           err = zsv_status_error;
-    } else if (!(data.toonw = toonwriter_new(out, NULL)))
+    } else if (!(data.toonw =
+                   toonwriter_new(out, &(struct toonwriter_opts){.get_temp_filename = zsv_get_temp_filename_excl})))
       err = zsv_status_error;
     else {
       if (data.compact)
@@ -537,13 +540,39 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         err = data.err;
       }
     }
+    // toonwriter's error is sticky and silent: without this check an I/O
+    // failure (a short write to `out`, or an array too big to hold in memory
+    // whose spill to a temp file failed) exits 0 having written nothing or a
+    // truncated document. Flush first so the tail is included.
+    if (data.toonw)
+      toonwriter_flush(data.toonw);
+    if (data.toonw && toonwriter_error(data.toonw) != toonwriter_status_ok) {
+      fprintf(stderr, "%s: TOON output failed (error %i)\n", APPNAME, (int)toonwriter_error(data.toonw));
+      if (err == zsv_status_ok)
+        err = zsv_status_error;
+    }
     toonwriter_delete(data.toonw);
   }
 
   zsv_2toon_cleanup(&data);
   if (opts.stream && opts.stream != stdin)
     fclose(opts.stream);
-  if (out && out != stdout)
-    fclose(out);
+  // a short write surfaces only here; without this the final block is silently
+  // dropped and the process still exits 0. ferror() as well as fflush(): a write
+  // that already failed leaves nothing buffered, so fflush() alone returns 0.
+  if (out) {
+    int failed = fflush(out);
+    int bad = failed || ferror(out);
+    if (out != stdout && fclose(out))
+      failed = bad = 1;
+    if (bad) {
+      if (failed)
+        perror(APPNAME);
+      else
+        fprintf(stderr, "%s: error writing output\n", APPNAME); // errno may be stale
+      if (err == zsv_status_ok)
+        err = zsv_status_error;
+    }
+  }
   return err;
 }

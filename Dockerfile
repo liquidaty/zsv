@@ -4,7 +4,11 @@ LABEL maintainer="Liquidaty"
 LABEL url="https://github.com/liquidaty/zsv"
 LABEL org.opencontainers.image.description="zsv: tabular data swiss-army knife CLI + world's fastest (simd) CSV parser"
 
-RUN apk add bash gcc make musl-dev ncurses-dev ncurses-static tmux file sqlite curl zip
+# patch: applied to the vendored jq source by app/Makefile's ${JQ_SRC} rule, and
+# to a test fixture by app/test/parallel/Makefile (this image runs the tests).
+# Alpine ships neither a patch package nor a busybox patch applet by default.
+# It is already in the ci.yml alpine job's apk list.
+RUN apk add bash gcc make musl-dev ncurses-dev ncurses-static tmux file sqlite curl zip patch
 
 WORKDIR /zsv
 COPY . .

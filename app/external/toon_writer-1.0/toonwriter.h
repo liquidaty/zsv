@@ -38,7 +38,7 @@ extern "C" {
     toonwriter_status_misconfiguration,
     toonwriter_status_unrecognized_variant_type,
     toonwriter_status_invalid_end,
-    toonwriter_status_io_error // spill temp-file create/read/write failure
+    toonwriter_status_io_error // spill temp-file or output-sink read/write failure
   };
 
   struct toonwriter_data;
@@ -62,7 +62,9 @@ extern "C" {
 
   // current sticky error (toonwriter_status_ok if none). Once set, write calls
   // become no-ops. Useful for callers (e.g. write_raw) whose return value is not
-  // a status, or to check after a batch of writes.
+  // a status, or to check after a batch of writes. Covers output-sink write
+  // failures as well as capture/spill ones, so call toonwriter_flush() first if
+  // the tail of the output has not yet been pushed to the sink.
   enum toonwriter_status toonwriter_error(toonwriter_handle h);
 
   int toonwriter_start_object(toonwriter_handle h);

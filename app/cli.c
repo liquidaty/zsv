@@ -564,8 +564,7 @@ static const char *extension_cmd_from_arg(const char *arg) {
 #define ZSV_CLI_MAIN main
 #endif
 
-ZSV_CLI_EXPORT
-int ZSV_CLI_MAIN(int argc, const char *argv[]) {
+static int zsv_cli_run(int argc, const char *argv[]) {
   const char *prog = getenv("ZSV_PROG_NAME");
   zsv_set_prog_name(prog && *prog ? prog : argv[0]);
   const char **alt_argv = NULL;
@@ -637,6 +636,25 @@ int ZSV_CLI_MAIN(int argc, const char *argv[]) {
 
   free(alt_argv);
   return err;
+}
+
+ZSV_CLI_EXPORT
+int ZSV_CLI_MAIN(int argc, const char *argv[]) {
+  int rc = zsv_cli_run(argc, argv);
+  // stdout is the default sink for nearly every subcommand, and a write to it
+  // that fails (full disk, closed descriptor, broken pipe) is not visible to the
+  // subcommand: stdio buffers it, so the failure surfaces only at this final
+  // flush. Without this, `zsv select big.csv > /full/disk` exits 0 having
+  // emitted nothing. EPIPE is excluded -- exiting non-zero for `| head` would
+  // be wrong, and the shell already reports the signal.
+  if (fflush(stdout) || ferror(stdout)) {
+    if (errno != EPIPE) {
+      perror(zsv_prog_name());
+      if (!rc)
+        rc = 1;
+    }
+  }
+  return rc;
 }
 
 // extensions

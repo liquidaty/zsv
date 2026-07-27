@@ -130,7 +130,8 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
 
 #ifdef ZSV_PARALLEL_TEMPFILE
   cdata->tmp_output_filename = zsv_get_temp_filename("zsl");
-  writer_opts.stream = fopen(cdata->tmp_output_filename, "wb");
+  // fopen(NULL, ...) is undefined; the !writer_opts.stream check below reports it
+  writer_opts.stream = cdata->tmp_output_filename ? fopen(cdata->tmp_output_filename, "wb") : NULL;
 #else
   if (!(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ)) &&
       !(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ / 2)) &&
@@ -174,12 +175,15 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
 #endif
   fflush(stream);
   fclose(stream);
-  zsv_writer_delete(data.csv_writer);
+  // a failed write to the chunk's temp output (e.g. disk full during a memfile
+  // spill) means the merged output would be silently truncated
+  enum zsv_writer_status wstat = zsv_writer_delete(data.csv_writer);
 #ifdef ZSV_PARALLEL_TEMPFILE
-  fclose(writer_opts.stream);
+  if (fclose(writer_opts.stream) && wstat == zsv_writer_status_ok)
+    wstat = zsv_writer_status_error;
 #endif
   cdata->actual_next_row_start = data.next_row_start + cdata->start_offset;
-  cdata->status = zsv_status_ok;
+  cdata->status = wstat == zsv_writer_status_ok ? zsv_status_ok : zsv_status_error;
   return NULL;
 }
 
@@ -451,11 +455,13 @@ static void zsv_select_header_row(void *ctx) {
   zsv_select_header_finish(data);
 }
 
-static void zsv_select_cleanup(struct zsv_select_data *data) {
+static enum zsv_status zsv_select_cleanup(struct zsv_select_data *data) {
+  enum zsv_status stat = zsv_status_ok;
   if (data->opts->stream && data->opts->stream != stdin)
     fclose(data->opts->stream);
 
-  zsv_writer_delete(data->csv_writer);
+  if (data->csv_writer && zsv_writer_delete(data->csv_writer) != zsv_writer_status_ok)
+    stat = zsv_status_error;
   zsv_select_search_str_delete(data->search_strings);
   zsv_select_renames_delete(data->renames);
 #ifdef HAVE_PCRE2_8
@@ -482,6 +488,7 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
   if (data->run_in_parallel)
     zsv_parallel_data_delete(data->parallel_data);
 #endif
+  return stat;
 }
 
 #define ARG_require_val(tgt, conv_func)                                                                                \
@@ -536,6 +543,12 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
     struct zsv_chunk_data *c = &data->parallel_data->chunk_data[i];
     if (c->skip)
       continue;
+    if (c->status != zsv_status_ok) {
+      // a worker that failed to set up left tmp_output_filename / tmp_f NULL,
+      // which both arms below would then dereference
+      status = zsv_status_error;
+      break;
+    }
 #ifdef ZSV_PARALLEL_TEMPFILE
     int in_fd = open(c->tmp_output_filename, O_RDONLY);
     if (in_fd < 0) {
@@ -813,8 +826,12 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
 #ifndef ZSV_NO_PARALLEL
     if (data.run_in_parallel) {
-      // explicitly flush and delete main writer before merge which uses raw fd
-      zsv_writer_delete(data.csv_writer);
+      // explicitly flush and delete main writer before merge which uses raw fd.
+      // stdout failures are reported once, by the seam in cli.c; escalate here
+      // only for -o output, which nothing else covers
+      if (data.csv_writer && zsv_writer_delete(data.csv_writer) != zsv_writer_status_ok && data.output_filename &&
+          stat == zsv_status_ok)
+        stat = zsv_printerr(1, "Error writing %s", data.output_filename);
       data.csv_writer = NULL;
       if (zsv_merge_worker_outputs(&data, writer_opts.stream) != 0)
         stat = zsv_status_error;
@@ -834,8 +851,15 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
 zsv_select_main_done:
   free(preview_buff);
-  zsv_select_cleanup(&data);
-  if (writer_opts.stream && writer_opts.stream != stdout)
-    fclose(writer_opts.stream);
+  // a writer error against stdout is reported once, by the seam in cli.c
+  // (which also excludes EPIPE); escalate here only for -o output
+  if (zsv_select_cleanup(&data) != zsv_status_ok && data.output_filename && stat == zsv_status_ok)
+    stat = zsv_printerr(1, "Error writing %s", data.output_filename);
+  if (writer_opts.stream && writer_opts.stream != stdout) {
+    // catches what only surfaces at close, e.g. the last buffered block hitting
+    // a full disk
+    if (fclose(writer_opts.stream) && data.output_filename && stat == zsv_status_ok)
+      stat = zsv_printerr(1, "Error writing %s", data.output_filename);
+  }
   return stat;
 }

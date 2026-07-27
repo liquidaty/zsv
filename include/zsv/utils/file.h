@@ -20,12 +20,32 @@
 #endif
 #endif // LINEEND
 /**
- * Get a temp file name. The returned value, if any, will have been allocated
- * on the heap, and the caller should `free()`
+ * Get a temp file name. The file is created (empty, mode 0600); the returned
+ * value, if any, will have been allocated on the heap, and the caller should
+ * `free()`.
+ *
+ * On POSIX the directory is `$TMPDIR`, falling back to the current directory
+ * when it is unset, empty, or unusable (a fallback warns on stderr). On Windows
+ * it is `GetTempPath()` (TMP/TEMP/USERPROFILE) with no fallback.
  *
  * @param prefix string with which the resulting file name will be prefixed
  */
 char *zsv_get_temp_filename(const char *prefix);
+
+/**
+ * Get a temp file name for a caller that creates the file itself with
+ * exclusive-create semantics (`O_CREAT|O_EXCL`), such as the toonwriter /
+ * json2toon spill store. Same as `zsv_get_temp_filename()` except the
+ * placeholder file it creates is removed, so the caller's create succeeds.
+ * The caller's `O_EXCL` still fails closed, so hijacking the path means
+ * guessing the name within that window -- which is `mkstemp`-random on POSIX,
+ * but only weakly unpredictable on Windows, where `GetTempFileName()` derives
+ * it from the system time.
+ *
+ * @param prefix truncated to the 3 chars `zsv_get_temp_filename()` accepts,
+ *               so a library's longer fixed prefix is safe to pass through
+ */
+char *zsv_get_temp_filename_excl(const char *prefix);
 
 /**
  *  Replacement for tmpfile().

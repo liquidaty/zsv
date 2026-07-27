@@ -150,10 +150,11 @@ struct zsv_compare_data {
     unsigned char include_unchanged_rows : 1; // default on; cleared by --only-changed-rows
     unsigned char include_tolerated : 1;      // --include-tolerated
     unsigned char redline_render : 1;         // --redline: render the redline JSON to a document
+    unsigned char closed : 1;                 // zsv_compare_writer_close() has run
 #ifndef ZSV_NO_TOON
     unsigned char toon : 1; // --toon (or AI_AGENT default): emit TOON via handle.toonw
 #endif
-    unsigned char _ : 2;
+    unsigned char _ : 1;
 
     const char *output_path; // -o <file>: destination for the --redline rendered document
     FILE *tmp;               // temp file holding the redline JSON while --redline renders it
