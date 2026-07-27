@@ -214,6 +214,12 @@ zsv_csv_writer zsv_writer_new(struct zsv_csv_writer_options *opts) {
       } else if (opts->write) {
         w->out.write = opts->write;
         w->out.stream = opts->stream;
+        // zsv_writer_get_default_opts() pre-fills write with fwrite, so most
+        // commands land here even when the sink is plain stdio (e.g. select's
+        // `-o file` sets opts->stream = fopen(...)); without this the
+        // ferror()/fflush() checks in flush/delete never run for them
+        if (opts->write == (size_t(*)(const void *restrict, size_t, size_t, void *restrict))fwrite)
+          w->out.stdio = 1;
       } else {
         w->out.write = (size_t(*)(const void *restrict, size_t, size_t, void *restrict))fwrite;
         w->out.stream = opts->stream ? opts->stream : stdout;

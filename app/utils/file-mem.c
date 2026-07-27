@@ -33,6 +33,12 @@ zsv_memfile *zsv_memfile_open(size_t buffersize) {
   return zfm;
 }
 
+/**
+ * fwrite() semantics: returns the number of complete items written, not bytes.
+ * zsv_writer's output buffer calls this as write(buff, len, 1, stream) and
+ * treats any return != nitems as a failed write, so returning a byte count
+ * here would flag every successful flush as an error.
+ */
 size_t zsv_memfile_write(const void *data, size_t sz, size_t n, zsv_memfile *zfm) {
   if (!zfm || !zfm->write_mode) {
     errno = EPERM; // Operation not permitted
@@ -66,7 +72,7 @@ size_t zsv_memfile_write(const void *data, size_t sz, size_t n, zsv_memfile *zfm
       zfm->tmp_f = zsv_tmpfile("zfm", &zfm->tmp_fn, "wb+");
       if (!zfm->tmp_f) {
         perror("Failed to create temporary file");
-        return written_total; // Return what was successfully written to memory
+        return written_total / sz; // complete items that landed in memory
       }
     }
   }
@@ -79,7 +85,7 @@ size_t zsv_memfile_write(const void *data, size_t sz, size_t n, zsv_memfile *zfm
     written_total += written_to_disk;
   }
 
-  return written_total;
+  return written_total / sz;
 }
 
 /**
