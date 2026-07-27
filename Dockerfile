@@ -8,10 +8,19 @@ LABEL org.opencontainers.image.description="zsv: tabular data swiss-army knife C
 # to a test fixture by app/test/parallel/Makefile (this image runs the tests).
 # Alpine ships neither a patch package nor a busybox patch applet by default.
 # It is already in the ci.yml alpine job's apk list.
-RUN apk add bash gcc make musl-dev ncurses-dev ncurses-static tmux file sqlite curl zip patch
+RUN apk update && apk add bash make musl-dev ncurses-dev ncurses-static tmux file sqlite curl zip git patch
+
+# GCC 15 onwards causes failure due to the default strict aliasing rules in the compiler.
+# GCC 14 is the last version that works with zsv, so we need to install it from the v3.22 repository. 
+RUN apk add gcc=14.2.0-r6 --repository=https://dl-cdn.alpinelinux.org/alpine/v3.22/main
 
 WORKDIR /zsv
 COPY . .
+
+# For some reason, the diff file is not being applied correctly in the docker build context.
+# git apply on local docker build fails to resolve the full path for parallel tests.
+# So, we need to remove the prefix to make paths relative in the diff file before applying it.
+RUN sed "s|app/test/parallel/||" -i app/test/parallel/chunk_break.diff
 
 RUN mkdir /usr/local/etc
 
