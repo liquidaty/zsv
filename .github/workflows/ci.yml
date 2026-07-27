@@ -609,7 +609,7 @@ jobs:
       shell: sh
       run: |
         apk update
-        apk add bash make musl-dev ncurses-dev ncurses-static tmux file sqlite curl zip wget tar git
+        apk add bash make musl-dev ncurses-dev ncurses-static tmux file sqlite curl zip wget tar git patch
         apk add gcc=14.2.0-r6 --repository=https://dl-cdn.alpinelinux.org/alpine/v3.22/main
 
     - name: Checkout
@@ -767,7 +767,7 @@ jobs:
       uses: mymindstorm/setup-emsdk@v16
 
     - name: Set up NodeJS
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v7
 
     - name: Test
       env:

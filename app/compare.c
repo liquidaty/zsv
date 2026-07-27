@@ -27,6 +27,7 @@ extern sqlite3_module CsvModule;
 #include <zsv/utils/string.h>
 #include <zsv/utils/writer.h>
 #ifndef ZSV_NO_TOON
+#include <zsv/utils/file.h>
 #include <zsv/utils/output.h>
 #endif
 
@@ -494,7 +495,9 @@ static void zsv_compare_output_begin(struct zsv_compare_data *data) {
   if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
 #ifndef ZSV_NO_TOON
     if (data->writer.toon) {
-      if (!(data->writer.j2t = json2toon_new(zsv_compare_toon_sink, stdout, NULL)) ||
+      if (!(data->writer.j2t =
+              json2toon_new(zsv_compare_toon_sink, stdout,
+                            &(const json2toon_options){.get_temp_filename = zsv_get_temp_filename_excl})) ||
           !(data->writer.handle.jsw = jsonwriter_new_stream(zsv_compare_j2t_feed, data->writer.j2t)))
         data->status = zsv_compare_status_memory;
     } else
@@ -508,7 +511,8 @@ static void zsv_compare_output_begin(struct zsv_compare_data *data) {
     int ok;
 #ifndef ZSV_NO_TOON
     if (data->writer.toon)
-      ok = (data->writer.handle.toonw = toonwriter_new(stdout, NULL)) != NULL;
+      ok = (data->writer.handle.toonw = toonwriter_new(
+              stdout, &(struct toonwriter_opts){.get_temp_filename = zsv_get_temp_filename_excl})) != NULL;
     else
 #endif
     {
@@ -665,33 +669,91 @@ static enum zsv_compare_status zsv_compare_init_sorted(struct zsv_compare_data *
   return zsv_compare_status_error;
 }
 
-static void zsv_compare_data_free(struct zsv_compare_data *data) {
-  zsv_compare_redline_free(data->redline, data->input_count, data->output_colcount);
-  data->redline = NULL;
+/**
+ * Close and delete the output writer, recording any output failure in
+ * data->status. Idempotent (handles are cleared), and separate from
+ * zsv_compare_data_free() so the caller can observe the status *before* it
+ * latches an exit code: an output error surfaces only when the writer is torn
+ * down, which is otherwise after that point.
+ */
+static void zsv_compare_writer_close(struct zsv_compare_data *data) {
+  if (data->writer.closed) // called again from zsv_compare_data_free()
+    return;
+  data->writer.closed = 1;
   if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON_REDLINE) {
     // redline always writes JSON via jsw; delete it first so its buffer flushes,
     // then (for TOON) finish/flush the JSON->TOON conversion to stdout.
-    if (data->writer.handle.jsw)
+    if (data->writer.handle.jsw) {
       jsonwriter_delete(data->writer.handle.jsw);
+      data->writer.handle.jsw = NULL;
+    }
 #ifndef ZSV_NO_TOON
     if (data->writer.j2t) {
-      json2toon_finish(data->writer.j2t);
+      // otherwise a spill or sink failure yields a well-formed but truncated
+      // document with a success status
+      int rc = json2toon_finish(data->writer.j2t);
+      if (rc != JSON2TOON_OK) {
+        fprintf(stderr, "TOON output failed at byte %zu: %s\n", json2toon_error_offset(data->writer.j2t),
+                json2toon_strerror(rc));
+        if (data->status == zsv_compare_status_ok)
+          data->status = zsv_compare_status_error;
+      }
       json2toon_delete(data->writer.j2t);
+      data->writer.j2t = NULL;
     }
 #endif
   } else if (data->writer.type == ZSV_COMPARE_OUTPUT_TYPE_JSON) {
 #ifndef ZSV_NO_TOON
     if (data->writer.toon) {
-      if (data->writer.handle.toonw)
+      if (data->writer.handle.toonw) {
+        // sticky and otherwise silent: an I/O failure (a short write to stdout,
+        // or a failed spill of an oversized array to a temp file) would exit 0
+        // having written nothing or a truncated document. Flush first so the
+        // tail is included.
+        toonwriter_flush(data->writer.handle.toonw);
+        if (toonwriter_error(data->writer.handle.toonw) != toonwriter_status_ok) {
+          fprintf(stderr, "TOON output failed (error %i)\n", (int)toonwriter_error(data->writer.handle.toonw));
+          if (data->status == zsv_compare_status_ok)
+            data->status = zsv_compare_status_error;
+        }
         toonwriter_delete(data->writer.handle.toonw);
+        data->writer.handle.toonw = NULL;
+      }
     } else
 #endif
-      if (data->writer.handle.jsw)
+      if (data->writer.handle.jsw) {
       jsonwriter_delete(data->writer.handle.jsw);
-  } else
+      data->writer.handle.jsw = NULL;
+    }
+  } else if (data->writer.handle.csv) {
     zsv_writer_delete(data->writer.handle.csv);
-  if (data->writer.tmp) /* --redline scratch (closed here on every path) */
+    data->writer.handle.csv = NULL;
+  }
+  if (data->writer.tmp) { /* --redline scratch (closed here on every path) */
     fclose(data->writer.tmp);
+    data->writer.tmp = NULL;
+  }
+  // Every writer above emits to stdout; without this a full disk or a closed
+  // descriptor exits 0 having emitted nothing or a truncated document.
+  // ferror() as well as fflush(): a write that already failed leaves the buffer
+  // drained (and a block >= BUFSIZ bypasses the buffer entirely), so by exit
+  // there is often nothing left to flush and fflush() alone returns 0.
+  int flush_failed = fflush(stdout);
+  if (flush_failed || ferror(stdout)) {
+    if (flush_failed)
+      perror(APPNAME);
+    else
+      fprintf(stderr, "%s: error writing to stdout\n", APPNAME); // errno may be stale
+    clearerr(stdout);
+    if (data->status == zsv_compare_status_ok)
+      data->status = zsv_compare_status_error;
+  }
+}
+
+static void zsv_compare_data_free(struct zsv_compare_data *data) {
+  zsv_compare_redline_free(data->redline, data->input_count, data->output_colcount);
+  data->redline = NULL;
+  zsv_compare_writer_close(data); // no-op if the caller already closed it
 
   for (unsigned i = 0; i < data->input_count; i++)
     zsv_compare_input_free(&data->inputs[i]);
@@ -1350,6 +1412,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     if (started)
       data->output_end(data);
   }
+
+  // must precede the exit-code latch below: an output failure (short write,
+  // failed TOON spill) is only detected when the writer is closed
+  zsv_compare_writer_close(data);
 
   err = data->status == zsv_compare_status_ok ? 0 : 1;
 

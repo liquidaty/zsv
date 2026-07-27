@@ -48,11 +48,20 @@
 #else
 #  include <fcntl.h>
 #  include <unistd.h>
-#  if defined(__unix__) || defined(__APPLE__)
+#  if defined(__unix__) || defined(__APPLE__) || defined(__wasi__)
 #    define TOONW_FSEEK(fp, off) (fseeko((fp), (off_t)(off), SEEK_SET))
 #  else
 #    define TOONW_FSEEK(fp, off) (fseek((fp), (long)(off), SEEK_SET))
 #  endif
+#endif
+
+/* wasi has no temp directory concept and so no tmpfile(); there, a caller that
+ * needs arrays larger than opts.max_buffer_size must supply get_temp_filename */
+#if defined(__wasi__)
+#  include <errno.h>
+#  define TOONW_TMPFILE() (errno = ENOSYS, (FILE *)NULL)
+#else
+#  define TOONW_TMPFILE() tmpfile()
 #endif
 
 /* Open a spill temp file by name, failing if it already exists (O_EXCL) -- the
@@ -188,8 +197,12 @@ static int toonw_spill_open(toonw_store *s) {
       return -1;
     }
     s->fp = toonw_fopen_excl(s->tmpname);
+    if (!s->fp) { /* we never created it; do not remove() a path we do not own */
+      free(s->tmpname);
+      s->tmpname = NULL;
+    }
   } else {
-    s->fp = tmpfile();
+    s->fp = TOONW_TMPFILE();
   }
   if (!s->fp) {
     s->err = toonwriter_status_io_error;
@@ -1287,6 +1300,11 @@ void toonwriter_flush(toonwriter_handle h) {
 }
 
 enum toonwriter_status toonwriter_error(toonwriter_handle h) {
+  /* a short write to the output sink is tracked on `out`, separately from the
+   * capture/store errors that set `h->err`; fold it in so callers see a single
+   * sticky status. Flush first (toonwriter_flush) to include the tail. */
+  if (!h->err && h->out.err)
+    h->err = toonwriter_status_io_error;
   return (enum toonwriter_status)h->err;
 }
 

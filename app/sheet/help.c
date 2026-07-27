@@ -1,14 +1,17 @@
 struct zsvsheet_help_data {
   size_t rows_fetched;
-  const char *row_data[3];
+  // element type must match how the consumer reads it back: casting the array
+  // to `const unsigned char **` and loading through that is a strict-aliasing
+  // violation, and gcc 15 at -O3 -fwhole-program drops the stores below
+  const unsigned char *row_data[3];
 };
 
 const unsigned char **zsvsheet_get_help_header(void *d) {
   struct zsvsheet_help_data *data = d;
-  data->row_data[0] = "Key(s)";
-  data->row_data[1] = "Action";
-  data->row_data[2] = "Description";
-  return (const unsigned char **)data->row_data;
+  data->row_data[0] = (const unsigned char *)"Key(s)";
+  data->row_data[1] = (const unsigned char *)"Action";
+  data->row_data[2] = (const unsigned char *)"Description";
+  return data->row_data;
 }
 
 const unsigned char *zsvsheet_get_help_status(void *_) {
@@ -28,10 +31,10 @@ const unsigned char **zsvsheet_get_help_row(void *d) {
     if (proc == NULL || kb->hidden)
       continue;
 
-    data->row_data[0] = zsvsheet_key_binding_ch_name(kb);
-    data->row_data[1] = proc->name;
-    data->row_data[2] = proc->description;
-    return (const unsigned char **)data->row_data;
+    data->row_data[0] = (const unsigned char *)zsvsheet_key_binding_ch_name(kb);
+    data->row_data[1] = (const unsigned char *)proc->name;
+    data->row_data[2] = (const unsigned char *)proc->description;
+    return data->row_data;
   }
 }
 

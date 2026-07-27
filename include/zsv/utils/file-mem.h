@@ -9,6 +9,7 @@ typedef struct zsv_memfile zsv_memfile;
 
 // Public API Functions
 zsv_memfile *zsv_memfile_open(size_t buffsz);
+// fwrite() semantics: returns the number of complete items written (n on full success)
 size_t zsv_memfile_write(const void *data, size_t sz, size_t n, zsv_memfile *zfm);
 int zsv_memfile_rewind(zsv_memfile *zfm);
 size_t zsv_memfile_read(void *buffer, size_t size, size_t nitems, zsv_memfile *zfm);

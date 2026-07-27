@@ -84,6 +84,9 @@ ifneq ($(ZSV_NO_PARALLEL),1)
   TESTS+=test-parallel
 endif
 TESTS+=test-check
+ifneq ($(ZSV_EXTRAS),)
+  TESTS+=test-limit-rows-pull
+endif
 TESTS+=test-rename-select
 TESTS+=test-quoted-nonstandard
 TESTS+=test-tab-auto-recognize
@@ -274,6 +277,16 @@ test-vuln-cve-underflow: ${TMP_DIR}/test_vuln_cve_underflow
 ${TMP_DIR}/test_vuln_cve_underflow: test_vuln_cve_underflow.c ${BUILD_DIR}/lib/libzsv.a
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} -I../../include test_vuln_cve_underflow.c -L${BUILD_DIR}/lib -lzsv -o $@
+
+ifneq ($(ZSV_EXTRAS),)
+  test-limit-rows-pull: ${TMP_DIR}/test_limit_rows_pull
+	@${TEST_INIT}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
+
+  ${TMP_DIR}/test_limit_rows_pull: test_limit_rows_pull.c ${BUILD_DIR}/lib/libzsv.a
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} -I../../include test_limit_rows_pull.c -L${BUILD_DIR}/lib -lzsv -o $@
+endif
 
 # -----------------------------------------------------------------------------
 # Sanitizer-driven reproduction of the integer-underflow investigation.

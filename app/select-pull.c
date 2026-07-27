@@ -585,11 +585,11 @@ static void zsv_select_usage(void) {
   zsv_print_usage(zsv_select_usage_msg);
 }
 
-static void zsv_select_cleanup(struct zsv_select_data *data) {
+static enum zsv_writer_status zsv_select_cleanup(struct zsv_select_data *data) {
   if (data->opts->stream && data->opts->stream != stdin)
     fclose(data->opts->stream);
 
-  zsv_writer_delete(data->csv_writer);
+  enum zsv_writer_status wstat = zsv_writer_delete(data->csv_writer);
   zsv_select_search_str_delete(data->search_strings);
 
   if (data->distinct == ZSV_SELECT_DISTINCT_MERGE) {
@@ -607,6 +607,7 @@ static void zsv_select_cleanup(struct zsv_select_data *data) {
   free(data->header_names);
 
   // free(data->fixed.offsets);
+  return wstat;
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *opts,
@@ -808,8 +809,17 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       }
     }
   }
-  zsv_select_cleanup(&data);
-  if (writer_opts.stream && writer_opts.stream != stdout)
-    fclose(writer_opts.stream);
+  // a writer error against stdout is reported once, by the seam in cli.c;
+  // escalate here only for -o output, which nothing else covers. Comparing to
+  // _error (not != _ok) skips the missing-handle case, already counted in stat
+  char to_stdout = !writer_opts.stream || writer_opts.stream == stdout;
+  if (zsv_select_cleanup(&data) == zsv_writer_status_error && !to_stdout && stat == zsv_status_ok)
+    stat = zsv_printerr(1, "Error writing output");
+  if (writer_opts.stream && writer_opts.stream != stdout) {
+    // catches what only surfaces at close, e.g. the last buffered block
+    // hitting a full disk
+    if (fclose(writer_opts.stream) && stat == zsv_status_ok)
+      stat = zsv_printerr(1, "Error writing output");
+  }
   return stat;
 }
