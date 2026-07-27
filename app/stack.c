@@ -157,10 +157,10 @@ static void zsv_stack_input_files_delete(struct zsv_stack_input_file *list) {
   }
 }
 
-static void zsv_stack_cleanup(struct zsv_stack_data *data) {
+static enum zsv_writer_status zsv_stack_cleanup(struct zsv_stack_data *data) {
   zsv_stack_input_files_delete(data->inputs);
   zsv_stack_colname_tree_delete(&data->colnames);
-  zsv_writer_delete(data->csv_writer);
+  return zsv_writer_delete(data->csv_writer);
 }
 
 static struct zsv_stack_colname *zsv_stack_colname_get_or_add(struct zsv_cell c, unsigned occurrence,
@@ -401,10 +401,23 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     }
   }
   err = data.err;
-  zsv_stack_cleanup(&data);
+  // a writer error against stdout is reported once, by the seam in cli.c;
+  // escalate here only for -o output, which nothing else covers. Comparing to
+  // _error (not != _ok) skips the missing-handle case, already counted in err
+  char to_stdout = !writer_opts.stream || writer_opts.stream == stdout;
+  if (zsv_stack_cleanup(&data) == zsv_writer_status_error && !to_stdout && !err) {
+    fprintf(stderr, "Error writing output\n");
+    err = 1;
+  }
 
-  if (writer_opts.stream && writer_opts.stream != stdout)
-    fclose(writer_opts.stream);
+  if (writer_opts.stream && writer_opts.stream != stdout) {
+    // catches what only surfaces at close, e.g. the last buffered block
+    // hitting a full disk
+    if (fclose(writer_opts.stream) && !err) {
+      fprintf(stderr, "Error writing output\n");
+      err = 1;
+    }
+  }
 
   return err;
 }

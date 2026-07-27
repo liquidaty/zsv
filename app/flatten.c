@@ -730,7 +730,7 @@ static struct flatten_agg_col *flatten_agg_col_new(const char *arg, int *err) {
   return e;
 }
 
-static void flatten_cleanup(struct flatten_data *data) {
+static enum zsv_writer_status flatten_cleanup(struct flatten_data *data) {
   flatten_agg_cols_delete(&data->agg_output_cols);
 
   if (data->in && data->in != stdin)
@@ -750,14 +750,19 @@ static void flatten_cleanup(struct flatten_data *data) {
   }
 
   FREEIF(data->agg_output_cols_vector);
-  zsv_writer_delete(data->csv_writer);
-  if (data->out && data->out != stdout)
-    fclose(data->out);
+  enum zsv_writer_status wstat = zsv_writer_delete(data->csv_writer);
+  if (data->out && data->out != stdout) {
+    // catches what only surfaces at close, e.g. the last buffered block
+    // hitting a full disk
+    if (fclose(data->out) && wstat == zsv_writer_status_ok)
+      wstat = zsv_writer_status_error;
+  }
 
   if (data->jsw)
     jsonwriter_delete(data->jsw);
   if (data->memfile)
     memfile_close(data->memfile);
+  return wstat;
 }
 
 int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *optsp,
@@ -944,7 +949,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     zsv_delete(parser);
     output_current_row(&data);
   }
-  flatten_cleanup(&data);
+  // a writer error against stdout is reported once, by the seam in cli.c;
+  // escalate here only for -o output, which nothing else covers. Comparing to
+  // _error (not != _ok) skips the missing-handle case, already counted in err
+  if (flatten_cleanup(&data) == zsv_writer_status_error && data.output_filename && !err)
+    err = zsv_printerr(1, "Error writing %s", data.output_filename);
 
   if (in && in != stdin)
     fclose(in);
