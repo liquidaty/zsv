@@ -265,14 +265,14 @@ size_t zsv_get_executable_path(char *buff, size_t buffsize) {
   mib[3] = -1;
   size_t len = buffsize;
   // on failure len is left at the input size, so indexing with it would write
-  // one past the end
-  if (!buffsize || sysctl(mib, 4, buff, &len, NULL, 0) || len >= buffsize) {
+  // one past the end; on success it counts the terminating NUL the kernel wrote
+  if (!buffsize || sysctl(mib, 4, buff, &len, NULL, 0) || !len || len > buffsize) {
     if (buffsize)
       *buff = '\0';
     return 0;
   }
-  buff[len] = '\0';
-  return len;
+  buff[len - 1] = '\0'; // already true; keep the invariant explicit
+  return len - 1;       // match the other platforms: strlen, excluding the NUL
 }
 #else
 // no way to locate the running image (e.g. wasi, where the module has no path)

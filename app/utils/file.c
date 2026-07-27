@@ -70,8 +70,9 @@ char *zsv_get_temp_filename(const char *prefix) {
     char *s = NULL;
     asprintf(&s, "%s%c%sXXXXXXXX", dir, FILESLASH, prefix);
     if (!s) {
-      const char *msg = strerror(errno);
-      fprintf(stderr, "%s%c%s: %s\n", dir, FILESLASH, prefix, msg ? msg : "Unknown error");
+      // asprintf() is not guaranteed to set errno, so don't report a stale one;
+      // allocation failure is the only way it fails
+      fprintf(stderr, "%s%c%s: out of memory\n", dir, FILESLASH, prefix);
       return NULL;
     }
     int fd = zsv_mkstemp(s);
@@ -100,6 +101,9 @@ char *zsv_get_temp_filename(const char *prefix) {
  * `O_CREAT|O_EXCL`; see zsv/utils/file.h
  */
 char *zsv_get_temp_filename_excl(const char *prefix) {
+  // truncate the prefix to 3 chars: the Windows implementation's
+  // GetTempFileName() ignores anything longer (and warns); truncating keeps
+  // the resulting names consistent across platforms
   char pfx[4];
   size_t n = prefix ? strlen(prefix) : 0;
   if (n > sizeof(pfx) - 1)
