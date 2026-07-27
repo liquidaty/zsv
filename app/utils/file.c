@@ -6,6 +6,11 @@
  * https://opensource.org/licenses/MIT
  */
 
+// must precede every include: asprintf() below is hidden behind _GNU_SOURCE.
+// app/Makefile passes -D_GNU_SOURCE today, but relying on that leaves the file
+// uncompilable on its own; see the same note in os.c
+#define _GNU_SOURCE 1
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -51,26 +56,67 @@ char *zsv_get_temp_filename(const char *prefix) {
 #else
 
 char *zsv_get_temp_filename(const char *prefix) {
-  char *s = NULL;
-  char *tmpdir = getenv("TMPDIR");
-  if (!tmpdir)
-    tmpdir = ".";
-  asprintf(&s, "%s/%sXXXXXXXX", tmpdir, prefix);
-  if (!s) {
-    const char *msg = strerror(errno);
-    fprintf(stderr, "%s%c%s: %s\n", tmpdir, FILESLASH, prefix, msg ? msg : "Unknown error");
-  } else {
+  const char *tmpdir = getenv("TMPDIR");
+  if (tmpdir && !*tmpdir) // TMPDIR= is not a directory; treat it as unset
+    tmpdir = NULL;
+  if (!prefix)
+    prefix = "";
+  // Try $TMPDIR, then the current directory. The fallback matters on wasi,
+  // where an inherited TMPDIR is an absolute host path that is almost never
+  // among the preopened directories, so every temp file would otherwise fail;
+  // "." is already this function's behavior when TMPDIR is unset.
+  for (unsigned i = 0; i < 2; i++) {
+    const char *dir = (i == 0 && tmpdir) ? tmpdir : ".";
+    char *s = NULL;
+    asprintf(&s, "%s%c%sXXXXXXXX", dir, FILESLASH, prefix);
+    if (!s) {
+      const char *msg = strerror(errno);
+      fprintf(stderr, "%s%c%s: %s\n", dir, FILESLASH, prefix, msg ? msg : "Unknown error");
+      return NULL;
+    }
     int fd = zsv_mkstemp(s);
     if (fd >= 0) { // 0 is a legal descriptor
       close(fd);
       return s;
     }
+    int e = errno; // free() may clobber it before we return
     free(s);
+    errno = e;
+    if (!tmpdir) // the fallback is what we just tried
+      break;
+    // not silent: the retry can put a large spill file somewhere unexpected.
+    // Warned per occurrence rather than once -- a plain `static` flag would be a
+    // data race, since parallel select reaches this from its worker threads.
+    if (i == 0)
+      fprintf(stderr, "Warning: $TMPDIR (%s) is not usable; trying the current directory\n", tmpdir);
   }
   return NULL;
 }
 
 #endif
+
+/**
+ * Get a temp file name for a caller that creates the file itself with
+ * `O_CREAT|O_EXCL`; see zsv/utils/file.h
+ */
+char *zsv_get_temp_filename_excl(const char *prefix) {
+  char pfx[4];
+  size_t n = prefix ? strlen(prefix) : 0;
+  if (n > sizeof(pfx) - 1)
+    n = sizeof(pfx) - 1;
+  if (n)
+    memcpy(pfx, prefix, n);
+  pfx[n] = '\0';
+
+  char *fn = zsv_get_temp_filename(pfx);
+  if (fn && zsv_remove(fn)) {
+    int e = errno;
+    free(fn);
+    errno = e;
+    return NULL;
+  }
+  return fn;
+}
 
 /**
  *  Replacement for tmpfile().
@@ -88,7 +134,10 @@ FILE *zsv_tmpfile(const char *prefix, char **filename, const char *mode) {
     }
   }
   int e = errno;
+  if (fn)
+    zsv_remove(fn); // zsv_get_temp_filename() created it; do not orphan it
   free(fn);
+  *filename = NULL; // set with the return value on every path
   errno = e;
   return NULL;
 }

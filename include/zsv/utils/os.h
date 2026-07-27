@@ -9,6 +9,10 @@
 #ifndef ZSV_OS_H
 #define ZSV_OS_H
 
+// the macros below expand to fopen()/remove(); a consumer including only this
+// header would otherwise get an implicit declaration
+#include <stdio.h>
+
 void zsv_perror(const char *);
 
 /**
@@ -17,7 +21,6 @@ void zsv_perror(const char *);
 #ifndef _WIN32
 #define zsv_fopen fopen
 #else
-#include <stdio.h>
 FILE *zsv_fopen(const char *fname, const char *mode);
 char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_prefix);
 #endif
@@ -27,12 +30,12 @@ char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_p
  * (wasm has no temp directory concept). Creates and opens a file whose name is
  * `tmpl` with its trailing 'X's (at least 6) replaced; `tmpl` is modified in
  * place. Returns an open fd, or -1 with errno set.
+ *
+ * A function rather than a macro aliasing mkstemp(): glibc hides mkstemp()
+ * under -std=cNN, so a macro would leave this header un-self-sufficient for a
+ * consumer that has not set a feature-test macro.
  */
-#ifndef __wasi__
-#define zsv_mkstemp mkstemp
-#else
 int zsv_mkstemp(char *tmpl);
-#endif
 
 /**
  * zsv_remove(): same as normal remove()
@@ -41,7 +44,6 @@ int zsv_mkstemp(char *tmpl);
 #ifndef _WIN32
 #define zsv_remove remove
 #else
-#include <stdio.h>
 int zsv_remove_winlp(const char *path_utf8);
 #define zsv_remove zsv_remove_winlp
 #endif

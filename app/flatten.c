@@ -888,8 +888,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     in = data.in;
   else {
     tmp_fn = zsv_get_temp_filename("zfl");
-    if (tmp_fn) {
-      FILE *tmp_f = fopen(tmp_fn, "w+b");
+    // without these checks a temp file that cannot be created or opened skips
+    // the whole first pass, emitting nothing and exiting 0
+    FILE *tmp_f = tmp_fn ? fopen(tmp_fn, "w+b") : NULL;
+    if (!tmp_f) {
+      err = data.cancelled = tmp_fn ? zsv_printerr(1, "Unable to open temporary file %s", tmp_fn)
+                                    : zsv_printerr(1, "Unable to create temporary file");
+    } else {
       opts.cell_handler = flatten_cell1;
       opts.row_handler = flatten_row1;
       opts.stream = data.in;
@@ -906,7 +911,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
           ;
         zsv_finish(handle);
         zsv_delete(handle);
-        fflush(tmp_f);
+        if (fflush(tmp_f))
+          err = data.cancelled = zsv_printerr(1, "Unable to write to temporary file %s", tmp_fn);
         rewind(tmp_f);
       }
       in = tmp_f;

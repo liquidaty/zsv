@@ -130,7 +130,8 @@ static void *zsv_select_process_chunk_internal(struct zsv_chunk_data *cdata) {
 
 #ifdef ZSV_PARALLEL_TEMPFILE
   cdata->tmp_output_filename = zsv_get_temp_filename("zsl");
-  writer_opts.stream = fopen(cdata->tmp_output_filename, "wb");
+  // fopen(NULL, ...) is undefined; the !writer_opts.stream check below reports it
+  writer_opts.stream = cdata->tmp_output_filename ? fopen(cdata->tmp_output_filename, "wb") : NULL;
 #else
   if (!(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ)) &&
       !(cdata->tmp_f = zsv_memfile_open(ZSV_SELECT_PARALLEL_BUFFER_SZ / 2)) &&
@@ -536,6 +537,12 @@ static int zsv_merge_worker_outputs(struct zsv_select_data *data, FILE *dest_str
     struct zsv_chunk_data *c = &data->parallel_data->chunk_data[i];
     if (c->skip)
       continue;
+    if (c->status != zsv_status_ok) {
+      // a worker that failed to set up left tmp_output_filename / tmp_f NULL,
+      // which both arms below would then dereference
+      status = zsv_status_error;
+      break;
+    }
 #ifdef ZSV_PARALLEL_TEMPFILE
     int in_fd = open(c->tmp_output_filename, O_RDONLY);
     if (in_fd < 0) {

@@ -197,6 +197,10 @@ static int toonw_spill_open(toonw_store *s) {
       return -1;
     }
     s->fp = toonw_fopen_excl(s->tmpname);
+    if (!s->fp) { /* we never created it; do not remove() a path we do not own */
+      free(s->tmpname);
+      s->tmpname = NULL;
+    }
   } else {
     s->fp = TOONW_TMPFILE();
   }
@@ -1296,6 +1300,11 @@ void toonwriter_flush(toonwriter_handle h) {
 }
 
 enum toonwriter_status toonwriter_error(toonwriter_handle h) {
+  /* a short write to the output sink is tracked on `out`, separately from the
+   * capture/store errors that set `h->err`; fold it in so callers see a single
+   * sticky status. Flush first (toonwriter_flush) to include the tail. */
+  if (!h->err && h->out.err)
+    h->err = toonwriter_status_io_error;
   return (enum toonwriter_status)h->err;
 }
 

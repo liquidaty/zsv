@@ -233,7 +233,9 @@ size_t zsv_get_executable_path(char *buff, size_t bufflen) {
       memcpy(buff, real, bufflen);
       buff[bufflen] = '\0';
     } else
-      bufflen = pathlen;
+      // _NSGetExecutablePath sets pathlen only when it fails (buffer too small);
+      // on success it is still the input size, not the length of the path
+      bufflen = strlen(buff);
     return bufflen;
   }
   return 0;
