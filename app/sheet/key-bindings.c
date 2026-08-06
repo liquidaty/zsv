@@ -65,6 +65,11 @@ struct zsvsheet_key_binding *zsvsheet_get_key_binding(size_t i) {
 }
 
 struct zsvsheet_key_binding *zsvsheet_find_key_binding(int ch) {
+  // ch 0 means "no key" -- both for unused (zeroed) slots and for command-only
+  // procedures. Without this guard, Ctrl-Space (which getch() reports as 0) would
+  // fire whichever such entry comes first.
+  if (!ch)
+    return NULL;
   for (int i = 0; i < MAX_KEY_BINDINGS; ++i) {
     if (key_bindings[i].ch == ch)
       return &key_bindings[i];
@@ -124,7 +129,14 @@ zsvsheet_status zsvsheet_vim_g_key_binding_dmux_handler(struct zsvsheet_key_bind
 
 /* clang-format off */
 struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
-  { .ch = 'q',                 .proc_id = zsvsheet_builtin_proc_quit,          },
+  /* Quit is command-only, so it cannot be hit by accident. ch_name is what the help
+     screen shows in its "Key(s)" column; it must stay in sync with the "q" alias on
+     the quit row of builtin_procedures[] in sheet.c, which is what ':q' resolves through. */
+  {
+    .ch = '\0',
+    .ch_name = ":q",
+    .proc_id = zsvsheet_builtin_proc_quit,
+  },
 
   { .ch = 27,                  .proc_id = zsvsheet_builtin_proc_escape,        },
   {

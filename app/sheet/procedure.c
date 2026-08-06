@@ -15,6 +15,7 @@
 struct zsvsheet_procedure {
   zsvsheet_proc_id_t id;
   const char *name;
+  const char *alias; // optional short form accepted at the prompt, e.g. "q" for "quit"
   const char *description;
   zsvsheet_proc_fn handler;
 };
@@ -43,10 +44,29 @@ struct zsvsheet_procedure *zsvsheet_find_procedure_by_name(const char *name) {
     return NULL;
   for (int i = 0; i < MAX_PROCEDURES; ++i) {
     proc = &procedure_lookup[i];
-    if (is_valid_proc_id(proc->id) && proc->name && !strcmp(name, proc->name))
+    if (!is_valid_proc_id(proc->id))
+      continue;
+    if ((proc->name && !strcmp(name, proc->name)) || (proc->alias && !strcmp(name, proc->alias)))
       return proc;
   }
   return NULL;
+}
+
+/* Cycle through command names for prompt completion. Aliases are deliberately
+ * excluded: completing "q" to "q" would look like a no-op keypress. */
+const char *zsvsheet_proc_name_complete(const char *prefix, size_t prefix_len, const char *after) {
+  const char *first = NULL, *next = NULL;
+  for (int i = 0; i < MAX_PROCEDURES; ++i) {
+    const struct zsvsheet_procedure *proc = &procedure_lookup[i];
+    const char *name = proc->name;
+    if (!is_valid_proc_id(proc->id) || !name || strncmp(name, prefix, prefix_len))
+      continue;
+    if (!first || strcmp(name, first) < 0)
+      first = name;
+    if (after && strcmp(name, after) > 0 && (!next || strcmp(name, next) < 0))
+      next = name;
+  }
+  return next ? next : first;
 }
 
 static zsvsheet_proc_id_t zsvsheet_generate_proc_id(void) {
@@ -78,7 +98,8 @@ zsvsheet_status zsvsheet_proc_invoke_from_keypress(zsvsheet_proc_id_t proc_id, i
   return zsvsheet_proc_invoke(proc_id, &context);
 }
 
-zsvsheet_status zsvsheet_proc_invoke_from_command(const char *command, struct zsvsheet_proc_context *context) {
+zsvsheet_status zsvsheet_proc_invoke_from_command(const char *command, struct zsvsheet_proc_context *context,
+                                                  char *unrecognized) {
   char *toks[10] = {0};
   char tokbuf[1024];
   struct zsvsheet_lexer lexer;
@@ -86,6 +107,8 @@ zsvsheet_status zsvsheet_proc_invoke_from_command(const char *command, struct zs
   struct zsvsheet_procedure *proc;
 
   proc_debug("invoke from command: %s\n", command);
+  if (unrecognized)
+    *unrecognized = 1; // cleared once a procedure is found; every `goto out` leaves it set
   zsvsheet_lexer_init(&lexer, command, tokbuf, sizeof(tokbuf), toks, sizeof(toks) / sizeof(toks[0]));
 
   if (zsvsheet_lexer_parse(&lexer) != zsvsheet_lexer_status_ok)
@@ -101,6 +124,8 @@ zsvsheet_status zsvsheet_proc_invoke_from_command(const char *command, struct zs
   /* Prototypes can be added to procedures to specify what exact arguments they
    * take. Here the arguments could be validated and typechecked against the
    * prototype. For now we just pass the parameters as they are */
+  if (unrecognized)
+    *unrecognized = 0;
   context->proc_id = proc->id;
   context->num_params = lexer.num_toks - 1;
   for (int i = 0; i < context->num_params; ++i)
@@ -121,9 +146,10 @@ static zsvsheet_proc_id_t zsvsheet_do_register_proc(struct zsvsheet_procedure *p
   return proc->id;
 }
 
-zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name, const char *description,
-                                                  zsvsheet_proc_fn handler) {
-  struct zsvsheet_procedure procedure = {.id = id, .name = name, .description = description, .handler = handler};
+zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name, const char *alias,
+                                                  const char *description, zsvsheet_proc_fn handler) {
+  struct zsvsheet_procedure procedure = {
+    .id = id, .name = name, .alias = alias, .description = description, .handler = handler};
   return zsvsheet_do_register_proc(&procedure);
 }
 

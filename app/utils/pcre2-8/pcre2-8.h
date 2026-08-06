@@ -10,17 +10,37 @@
 typedef struct zsv_pcre2_handle regex_handle_t;
 
 /**
+ * @brief Compile-time flags. These are translated to their PCRE2 equivalents
+ * inside this module so that callers need not include <pcre2.h>.
+ */
+#define ZSV_PCRE2_8_CASELESS 1u // case-insensitive matching (PCRE2_CASELESS)
+
+/**
  * @brief Compiles a regex pattern into a handle for matching.
  *
  * This function automatically enables PCRE2_UTF, PCRE2_MULTILINE,
  * and PCRE2_NEWLINE_NUL. This configures the multiline anchors (^ and $)
  * to use '\0' (NULL) as the line delimiter.
  *
+ * On failure the diagnostic is printed to stderr. Callers that own the terminal
+ * (e.g. a curses UI), or that want flags, must use zsv_pcre2_8_new_ex().
+ *
  * @param pattern The null-terminated, UTF-8 encoded regex pattern.
- * @param options Additional PCRE2_COMPILE_... options to be OR'd in.
  * @return A pointer to a handle, or NULL on compilation error.
  */
-regex_handle_t *zsv_pcre2_8_new(const char *pattern, uint32_t options);
+regex_handle_t *zsv_pcre2_8_new(const char *pattern);
+
+/**
+ * @brief Same as zsv_pcre2_8_new(), but takes flags and reports instead of printing.
+ *
+ * @param flags Zero or more ZSV_PCRE2_8_* flags, OR'd together. These are NOT
+ *              PCRE2_* constants; they are translated internally.
+ * @param errbuf If non-NULL, the diagnostic is written here (always
+ *               null-terminated, truncated to fit) and nothing is printed.
+ * @param errbuflen Size of errbuf in bytes; ignored if errbuf is NULL.
+ * @return A pointer to a handle, or NULL on compilation error.
+ */
+regex_handle_t *zsv_pcre2_8_new_ex(const char *pattern, uint32_t flags, char *errbuf, size_t errbuflen);
 
 /**
  * @brief Matches a compiled regex handle against a subject string.

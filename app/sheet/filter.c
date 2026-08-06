@@ -5,23 +5,16 @@
 #include <zsv/ext/sheet.h>
 #include "transformation.h"
 #include "handlers_internal.h"
-
-#ifdef HAVE_PCRE2_8
-#include "../utils/pcre2-8/pcre2-8.h"
-#endif
+#include "pattern.h"
 
 struct filtered_file_ctx {
-  char *filter;
-  size_t filter_len;
-#ifdef HAVE_PCRE2_8
-  regex_handle_t *regex;
-#endif
+  struct zsvsheet_pattern pattern;
   size_t row_num; // 1-based row number (1 = header row, 2 = first data row)
   size_t passed;
   size_t single_row_ix_plus_1;
   unsigned char seen_header : 1;
   unsigned char has_row_num : 1;
-  unsigned char _ : 7;
+  unsigned char _ : 6;
 };
 
 // zsvsheet_nullify_row_buff: return 1 if row has overwrite
@@ -64,37 +57,24 @@ static void zsvsheet_save_filtered_file_row_handler(zsvsheet_transformation trn)
     }
     int have_overwrite = single_row_ix_plus_1 ? 0 : zsvsheet_nullify_row_buff(parser);
     if (have_overwrite || single_row_ix_plus_1) {
-      // we need to do this cell by cell
+      // Cell by cell. Note the surviving semantics: every non-empty cell in range
+      // must match. For a single-column filter that is one cell, so it means what
+      // it should; for the have_overwrite case it is stricter than the whole-span
+      // branch below. Left as-is -- changing it is not part of this change.
       for (unsigned int i = start_ix; i < col_count; i++) {
         struct zsv_cell cell = zsv_get_cell(parser, i);
-        const unsigned char *start = cell.str;
-        const unsigned char *end = cell.str + cell.len;
-        if (cell.len) {
-#ifdef HAVE_PCRE2_8
-          if (ctx->regex) {
-            if (!zsv_pcre2_8_match(ctx->regex, start, end - start))
-              return; // no match: don't save this row
-          } else
-#endif
-            if (!memmem(start, end - start, ctx->filter, ctx->filter_len))
-            return; // no match: don't save this row
-        }
+        if (cell.len && !zsvsheet_pattern_match(&ctx->pattern, cell.str, cell.len))
+          return; // no match: don't save this row
       }
     } else {
+      // The cells were NUL-separated by zsvsheet_nullify_row_buff() above, and the
+      // regex was compiled with '\0' as the newline, so ^ and $ still anchor per cell
       struct zsv_cell first_cell = zsv_get_cell(parser, 0);
       struct zsv_cell last_cell = zsv_get_cell(parser, col_count - 1);
       const unsigned char *start = first_cell.str;
       const unsigned char *end = last_cell.str + last_cell.len;
-      if (end > start) {
-#ifdef HAVE_PCRE2_8
-        if (ctx->regex) {
-          if (!zsv_pcre2_8_match(ctx->regex, start, end - start))
-            return; // no match: don't save this row
-        } else
-#endif
-          if (!memmem(start, end - start, ctx->filter, ctx->filter_len))
-          return; // no match: don't save this row
-      }
+      if (end > start && !zsvsheet_pattern_match(&ctx->pattern, start, (size_t)(end - start)))
+        return; // no match: don't save this row
     }
   } else {
     struct zsv_cell first_cell = zsv_get_cell(parser, 0);
@@ -127,7 +107,9 @@ static void zsvsheet_filter_file_on_done(zsvsheet_transformation trn) {
   struct filtered_file_ctx *ctx = zsvsheet_transformation_user_context(trn);
   struct zsvsheet_ui_buffer *uib = trn->ui_buffer;
 
-  if (uib) { // NULL when the transformation failed before a buffer was attached
+  // uib is NULL when the transformation failed before a buffer was attached, and
+  // ctx is NULL when it failed before the context was even copied
+  if (uib && ctx) {
     char *status;
     if (asprintf(&status, "(%zu filtered rows) ", ctx->passed ? ctx->passed - 1 : 0) == -1)
       status = NULL; // asprintf leaves its output indeterminate on failure
@@ -140,31 +122,36 @@ static void zsvsheet_filter_file_on_done(zsvsheet_transformation trn) {
 
     free(old_status);
   }
-#ifdef HAVE_PCRE2_8
-  zsv_pcre2_8_delete(ctx->regex);
-#endif
-  free(ctx->filter);
+  if (ctx)
+    zsvsheet_pattern_free(&ctx->pattern);
 }
 
+// On a bad pattern, writes the reason to errbuf (which must be non-empty) and
+// returns non-ok without starting a transformation
 static enum zsvsheet_status zsvsheet_filter_file(zsvsheet_proc_context_t proc_ctx, const char *row_filter,
-                                                 size_t single_row_ix_plus_1) {
-  struct filtered_file_ctx ctx = {
-    .seen_header = 0,
-    .row_num = 0,
-    .passed = 0,
-    .has_row_num = 0,
-    .filter = strdup(row_filter),
-    .filter_len = strlen(row_filter),
-#ifdef HAVE_PCRE2_8
-    .regex = row_filter && *row_filter == '/' && row_filter[1] ? zsv_pcre2_8_new(row_filter + 1, 0) : NULL,
-    .single_row_ix_plus_1 = single_row_ix_plus_1,
-#endif
-  };
+                                                 size_t single_row_ix_plus_1, char *errbuf, size_t errbuflen) {
+  struct filtered_file_ctx ctx = {.single_row_ix_plus_1 = single_row_ix_plus_1};
+  enum zsvsheet_pattern_status pstat = zsvsheet_pattern_parse(&ctx.pattern, row_filter, errbuf, errbuflen);
+  if (pstat != zsvsheet_pattern_status_ok) {
+    // Keep the guard rather than folding this into zsvsheet_pattern_status_message():
+    // this site normalizes *into* errbuf, and that helper returns errbuf itself when
+    // errbuf is non-empty, so calling it unguarded would alias the snprintf destination
+    if (errbuf && errbuflen && !*errbuf)
+      snprintf(errbuf, errbuflen, "%s", zsvsheet_pattern_status_text(pstat));
+    return pstat == zsvsheet_pattern_status_memory ? zsvsheet_status_memory : zsvsheet_status_error;
+  }
+
   struct zsvsheet_buffer_transformation_opts opts = {
     .user_context = zsv_memdup(&ctx, sizeof(ctx)),
     .row_handler = zsvsheet_save_filtered_file_row_handler,
     .on_done = zsvsheet_filter_file_on_done,
   };
+  if (!opts.user_context) { // the row handler would dereference it on every row
+    zsvsheet_pattern_free(&ctx.pattern);
+    if (errbuf && errbuflen)
+      snprintf(errbuf, errbuflen, "Out of memory");
+    return zsvsheet_status_memory;
+  }
 
   return zsvsheet_push_transformation(proc_ctx, opts);
 }

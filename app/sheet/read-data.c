@@ -17,26 +17,23 @@
 #include <zsv/utils/file.h>
 
 // zsvsheet_found_in_row: return 0 if not found, else 1-based index of column
-static size_t zsvsheet_found_in_row(zsv_parser parser, size_t col_start, size_t col_count, const char *target,
-                                    size_t target_len, size_t specified_column_plus_1,
-                                    char find_exact // not yet implemented
-) {
+static size_t zsvsheet_found_in_row(zsv_parser parser, size_t col_start, size_t col_count,
+                                    const struct zsvsheet_pattern *pattern, size_t specified_column_plus_1) {
   if (col_start >= col_count)
     return 0;
 
+  // cheap reject before matching cell by cell (a no-op for a regex)
   struct zsv_cell first_cell = zsv_get_cell(parser, col_start);
   struct zsv_cell last_cell = zsv_get_cell(parser, col_count - 1);
+  if (!zsvsheet_pattern_span_might_match(pattern, first_cell.str,
+                                         (size_t)(last_cell.str - first_cell.str) + last_cell.len))
+    return 0;
 
-  if (memmem(first_cell.str, last_cell.str - first_cell.str + last_cell.len, target, target_len)) {
-    for (size_t i = col_start; i < col_count; i++) {
-      if (specified_column_plus_1 == 0 || i + 1 == specified_column_plus_1) {
-        struct zsv_cell c = zsv_get_cell(parser, i);
-        if (find_exact) {
-          if (c.len == target_len && !memcmp(c.str, target, c.len))
-            return i + 1;
-        } else if (memmem(c.str, c.len, target, target_len))
-          return i + 1;
-      }
+  for (size_t i = col_start; i < col_count; i++) {
+    if (specified_column_plus_1 == 0 || i + 1 == specified_column_plus_1) {
+      struct zsv_cell c = zsv_get_cell(parser, i);
+      if (zsvsheet_pattern_match(pattern, c.str, c.len))
+        return i + 1;
     }
   }
   return 0;
@@ -155,7 +152,6 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
   size_t rows_read = header_span;
 
-  size_t find_len = zsvsheet_opts->find ? strlen(zsvsheet_opts->find) : 0;
   size_t rows_searched = 0;
   zsvsheet_screen_buffer_t buffer = uibuff ? uibuff->buffer : NULL;
   if (uibuff && uibuff->has_row_num)
@@ -230,9 +226,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
     if (zsvsheet_opts->find) { // find the next occurrence
       rows_searched++;
-      size_t colIndexPlus1 =
-        zsvsheet_found_in_row(parser, zsvsheet_opts->found_colnum, col_count, zsvsheet_opts->find, find_len,
-                              zsvsheet_opts->find_specified_column_plus_1, zsvsheet_opts->find_exact);
+      size_t colIndexPlus1 = zsvsheet_found_in_row(parser, zsvsheet_opts->found_colnum, col_count, zsvsheet_opts->find,
+                                                   zsvsheet_opts->find_specified_column_plus_1);
       if (colIndexPlus1) {
         zsvsheet_opts->found_rownum = rows_searched + start_row;
         zsvsheet_opts->found_colnum = colIndexPlus1 - 1;
@@ -336,11 +331,10 @@ static void *get_data_index(void *gdi) {
 // found_rownum/found_colnum in buffer coords (these buffers have no row-number column).
 static void zsvsheet_find_next_in_buffer(struct zsvsheet_ui_buffer *uib, struct zsvsheet_opts *zsvsheet_opts,
                                          size_t header_span) {
-  const char *needle = zsvsheet_opts->find;
-  if (!needle)
+  const struct zsvsheet_pattern *pattern = zsvsheet_opts->find;
+  if (!pattern)
     return;
   zsvsheet_screen_buffer_t buffer = uib->buffer;
-  size_t needle_len = strlen(needle);
   size_t row_count = uib->dimensions.row_count;
   size_t col_count = uib->dimensions.col_count;
   size_t from_row = uib->input_offset.row + uib->buff_offset.row + uib->cursor_row;
@@ -354,9 +348,7 @@ static void zsvsheet_find_next_in_buffer(struct zsvsheet_ui_buffer *uib, struct 
       const unsigned char *cell = zsvsheet_screen_buffer_cell_display(buffer, r, c);
       if (!cell)
         continue;
-      size_t cell_len = strlen((const char *)cell);
-      if (zsvsheet_opts->find_exact ? (cell_len == needle_len && !memcmp(cell, needle, needle_len))
-                                    : (memmem(cell, cell_len, needle, needle_len) != NULL)) {
+      if (zsvsheet_pattern_match(pattern, cell, strlen((const char *)cell))) {
         zsvsheet_opts->found_rownum = r;
         zsvsheet_opts->found_colnum = c;
         return;
@@ -378,6 +370,5 @@ static size_t zsvsheet_find_next(struct zsvsheet_ui_buffer *uib, struct zsvsheet
       start_row--;
     read_data(&uib, NULL, start_row, 0, header_span, zsvsheet_opts, custom_prop_handler);
   }
-  zsvsheet_opts->find = NULL;
   return zsvsheet_opts->found_rownum;
 }

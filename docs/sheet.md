@@ -46,7 +46,6 @@ Current features:
   - emacs-like key bindings are still experimental
   - both vim- and emacs- key bindings can be improved
 - Search: find or filter, by literal text or regex (PCRE2 syntax)
-  - Currently, regex only supported in filter (will soon be supported via find)
 - SQL: filter by sql expression
 - Large files: quickly opens large files with background indexing after which
   full file can be navigated
@@ -58,9 +57,13 @@ Current features:
 
 Other features under current consideration or plan:
 
-- Add regex option to `find`
-- Make it harder to accidentally quit (Ctrl-Q or Shift-Q or :q instead of just q?)
-- Command history, autocomplete, basic edit operations etc
+- Command history and basic edit operations (Tab-completion of commands is
+  already supported)
+- Make status-bar messages persist until the next keypress. Today the main loop
+  clears the status on every poll, so an error (a bad regex, an unknown command,
+  "Not found") is shown for only about 0.2 seconds
+- Accept non-ASCII input at prompts; they currently take single printable bytes,
+  so a UTF-8 search term cannot be typed even though the parser handles UTF-8
 - Reorder/remove column(s) or row(s)
 - Adjustable column width
 - Further performance optimizations
@@ -93,7 +96,7 @@ Press `?` to see a list of commands:
 
 | Key(s)         | Action     | Description                                         |
 | -------------- | ---------- | --------------------------------------------------- |
-| q              | quit       | Exit the application                                |
+| :q             | quit       | Exit the application (also `:quit`)                 |
 | <esc>          | escape     | Leave the current view or cancel a…                 |
 | ^              | first      | Jump to the first column                            |
 | $              | last       | Jump to the last column                             |
@@ -179,7 +182,17 @@ src="https://github.com/user-attachments/assets/4c21ff11-f7f9-4182-a73d-531c41fa
 
 ## Closing a buffer or the application
 
-Press `Esc` to close the current buffer, and `q` to close the application
+Press `Esc` to close the current buffer, and type `:q` (or `:quit`) followed by
+Enter to close the application. Quitting is deliberately a command rather than a
+single keystroke, so it cannot happen by accident.
+
+## Commands and Tab completion
+
+Press `:` to enter a command. Pressing Tab cycles alphabetically through the
+commands matching what you have typed so far, wrapping around at the end; with
+nothing typed it cycles through every command. For example, `:` then `p` then
+Tab yields `pagedown`, `pageup`, `pivot`, `pivotexpr`, and back to `pagedown`.
+Editing the text restarts the cycle from the new prefix.
 
 ## Navigation
 
@@ -187,16 +200,48 @@ Use arrow keys to move one row or column at a time, or `Shift-right`,
 `Shirt-left`, `G` or `g g` to move to the last column, the first column, the
 last row or the first row, respectively
 
-## Find (exact+contains)
+## Search syntax
 
-Press `/` and enter some test to find the next cell containing that exact text.
-Press `n` to find again.
+`find` and `filter` take the same search syntax:
 
-## Filter (exact+contains or regex)
+| You type   | Meaning                                                          |
+| ---------- | ---------------------------------------------------------------- |
+| `abc`      | literal: cells containing `abc`                                  |
+| `/ab[Cc]`  | regular expression `ab[Cc]` (PCRE2 syntax)                       |
+| `/ab[Cc]/` | the same; the closing slash is optional                          |
+| `/abc/i`   | regular expression `abc`, case-insensitive                       |
+| `\/abc`    | literal: cells containing `/abc`                                  |
+
+A leading slash starts a regular expression. A trailing slash closes it only
+when every character after that slash is a flag letter — so `/http://x` is the
+one regular expression `http://x`, not `http:/` with flags. `i`
+(case-insensitive) is the only flag; an unrecognized letter, including an
+uppercase `I`, means the slash was not a delimiter. To match a pattern that
+really does end in a slash plus a flag letter, escape the slash: `/a\/i` is the
+regular expression `a\/i` and matches `a/i`.
+
+A `\/` escape is recognized only at the very start; elsewhere a backslash is
+passed through to the pattern (or matched literally). An empty regular
+expression (`/` or `//`) would match every cell, so it is rejected rather than
+run.
+
+Note that a regular expression is matched against each cell on its own, so `^`
+and `$` anchor to the start and end of a cell.
+
+When entering a search via a command rather than a prompt (`:filter …`), give it
+unquoted and without spaces: the command lexer rejects backslash escapes inside
+quotes, and splits on spaces. `\/abc` typed at the `f` prompt works; `:filter
+"\/abc"` does not.
+
+## Find
+
+Press `/` and enter a search value to find the next matching cell. Press `n` to
+find again.
+
+## Filter
 
 Press `f` or `F` to apply a global filter, or a filter on only the current
-column, respectively. If the search value starts with a slash (`/`), the string
-following the slash is treated as a regular expression.
+column, respectively.
 
 For example, running a filter of `/^Dö[nm]` on worldcitiespop_mil.csv:
 

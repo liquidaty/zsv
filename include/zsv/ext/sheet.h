@@ -31,7 +31,9 @@ struct zsvsheet_buffer_transformation_opts {
   /**
    * Caller supplied context; can be retrieved with ext_sheet_transformation_user_context(trn).
    *
-   * This is free'd by the library after on_done is called unless it is NULL.
+   * This is free'd by the library after on_done is called unless it is NULL. That holds
+   * for every outcome, including zsvsheet_status_busy -- so a caller that retries must
+   * build a fresh context rather than reuse the opts it just passed.
    */
   void *user_context;
   /**
@@ -61,6 +63,11 @@ struct zsvsheet_buffer_transformation_opts {
    * For small input files this may be executed in the main thread, for larger ones
    * it will be done in a background thread. So if an operation done inside this handler
    * can take a long time even on small inputs then it could block the main thread.
+   *
+   * Called exactly once. If the transformation failed before it was created, trn is
+   * a stub: its parser, writer, filename and buffer are all NULL, and
+   * ext_sheet_transformation_user_context(trn) may itself be NULL. So this handler
+   * must not dereference anything it did not itself allocate.
    */
   void (*on_done)(zsvsheet_transformation trn);
 };
