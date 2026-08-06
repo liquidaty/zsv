@@ -102,20 +102,30 @@ typedef zsvsheet_status (*zsvsheet_proc_fn)(struct zsvsheet_proc_context *ctx);
 zsvsheet_status zsvsheet_proc_invoke_from_keypress(zsvsheet_proc_id_t proc_id, int ch, void *subcommand_context);
 
 /* Invoke a procedure based on subcommand/script statement. For script support
- * this is likely too simple but its a nice simple API subcommand.  */
-zsvsheet_status zsvsheet_proc_invoke_from_command(const char *command, struct zsvsheet_proc_context *context);
+ * this is likely too simple but its a nice simple API subcommand.
+ * @param unrecognized if non-NULL, set to 1 when `command` could not be lexed or
+ *        names no known procedure -- as opposed to a procedure that ran and failed,
+ *        which the procedure itself is responsible for reporting */
+zsvsheet_status zsvsheet_proc_invoke_from_command(const char *command, struct zsvsheet_proc_context *context,
+                                                  char *unrecognized);
 
 /* Base proc invocation function */
 zsvsheet_status zsvsheet_proc_invoke(zsvsheet_proc_id_t proc_id, struct zsvsheet_proc_context *ctx);
 
-/* Register builtin procedure with fixed id */
-zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name, const char *description,
-                                                  zsvsheet_proc_fn handler);
+/* Register builtin procedure with fixed id. `alias` is an optional short form
+ * (e.g. "q" for "quit") also accepted at the prompt; NULL for none */
+zsvsheet_proc_id_t zsvsheet_register_builtin_proc(zsvsheet_proc_id_t id, const char *name, const char *alias,
+                                                  const char *description, zsvsheet_proc_fn handler);
 
 /* Dynamically register a procedure, returns a positive id or negative error */
 zsvsheet_proc_id_t zsvsheet_register_proc(const char *name, const char *description, zsvsheet_proc_fn handler);
 
-/* Find procedure by name */
+/* Find procedure by name or alias */
 struct zsvsheet_procedure *zsvsheet_find_procedure_by_name(const char *name);
+
+/* Alphabetically-next command name beginning with prefix[0, prefix_len) that sorts
+ * strictly after `after`; wraps to the first such name when `after` is NULL or is
+ * the last match. NULL if no name matches the prefix. */
+const char *zsvsheet_proc_name_complete(const char *prefix, size_t prefix_len, const char *after);
 
 #endif /* ZSVSHEET_PROCEDURE_H */

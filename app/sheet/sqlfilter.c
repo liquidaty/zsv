@@ -61,7 +61,6 @@ static zsvsheet_status zsvsheet_sqlfilter_handler(struct zsvsheet_proc_context *
     return zsvsheet_status_ok;
   }
 
-  char *selected_cell_str_dup = NULL;
   switch (ctx->proc_id) {
   case zsvsheet_builtin_proc_sqlfilter:
     zsvsheet_ext_prompt(ctx, result_buffer, sizeof(result_buffer), "Enter SQL expr to filter by");
@@ -128,17 +127,6 @@ static zsvsheet_status zsvsheet_sqlfilter_handler(struct zsvsheet_proc_context *
           while (!zsvsheet_ui_buffer_index_ready(buff, 0))
             napms(200); // sleep for 200ms, then check index again
           // TO DO: fix this if there is no data!
-
-          if (selected_cell_str_dup) {
-            struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
-            struct zsvsheet_display_info *di = &state->display_info;
-            zsvsheet_check_buffer_worker_updates(buff, di->dimensions, NULL);
-            zsvsheet_handle_find_next(di, buff, selected_cell_str_dup,
-                                      1, // find value in first column
-                                      1, // exact
-                                      1, // header_span
-                                      di->dimensions, &di->update_buffer, NULL);
-          }
         }
       }
     }
@@ -151,6 +139,5 @@ static zsvsheet_status zsvsheet_sqlfilter_handler(struct zsvsheet_proc_context *
   if (sql_str)
     sqlite3_free(sqlite3_str_finish(sql_str));
   sqlfilter_data_delete(sqlfd);
-  free(selected_cell_str_dup);
   return zst;
 }

@@ -30,12 +30,12 @@ MATCHED=false
 cleanup() {
   if $MATCHED; then
     if [ -z "$STAGE" ]; then
-      $TMUX_CMD send-keys -t "$TARGET" "q"
+      $TMUX_CMD send-keys -t "$TARGET" ":q" Enter
     fi
     exit 0
   fi
 
-  $TMUX_CMD send-keys -t "$TARGET" "q"
+  $TMUX_CMD send-keys -t "$TARGET" ":q" Enter
   echo 'Incorrect output:'
   cat "$CAPTURED_OUTPUT"
   echo 'Expected output:'

@@ -22,7 +22,7 @@ static void zsv_select_add_regex(struct zsv_select_data *data, const char *patte
   if (pattern && *pattern) {
     struct zsv_select_regex *sr = calloc(1, sizeof(*sr));
     sr->pattern = pattern;
-    sr->regex = zsv_pcre2_8_new(pattern, 0);
+    sr->regex = zsv_pcre2_8_new(pattern);
     if (sr->regex) {
       sr->next = data->search_regexs;
       data->search_regexs = sr;
@@ -50,7 +50,7 @@ static struct zsv_select_regex *zsv_select_regexs_dup(struct zsv_select_regex *s
 
     // FULL RECOMPILE: Call the standard new() function.
     // This creates a fresh pcre2_code AND a fresh match_data buffer.
-    new_node->regex = zsv_pcre2_8_new(src->pattern, 0);
+    new_node->regex = zsv_pcre2_8_new(src->pattern);
 
     *tail = new_node;
     tail = &new_node->next;

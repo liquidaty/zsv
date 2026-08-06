@@ -8,7 +8,9 @@ static void zsvsheet_key_handlers_delete(struct zsvsheet_key_data **root, struct
     free(e);
   }
   *root = NULL;
-  *nextp = &(*root)->next;
+  // the list is empty again, so the tail is the root pointer itself -- matching how
+  // the caller initializes it. Taking &(*root)->next here would dereference NULL.
+  *nextp = root;
 }
 
 struct zsvsheet_key_data *zsvsheet_get_registered_key_handler(int ch, const char *long_name,

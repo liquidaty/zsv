@@ -1381,6 +1381,14 @@ test-sheet: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv test-she
 test-sheet-cleanup:
 	@rm -f tmux-*.log
 
+# The '/'-prefixed regex syntax needs pcre2; without it a spec is reported as
+# unsupported, so gate these the same way test-sheet-filter-this-regex is gated
+ifeq ($(HAVE_PCRE2_8),1)
+  SHEET_REGEX_TESTS=test-sheet-regex-find test-sheet-regex-delim test-sheet-regex-find-help test-sheet-regex-filter
+else
+  SHEET_REGEX_TESTS=
+endif
+
 test-sheet-all: \
 	test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 \
 	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-15 test-sheet-16 test-sheet-17 \
@@ -1391,7 +1399,15 @@ test-sheet-all: \
 	test-sheet-pivot-V \
 	test-sheet-sqlfilter-1 \
 	test-sheet-sqlfilter-dupcol \
-	test-sheet-errors-1
+	test-sheet-errors-1 \
+	test-sheet-filter-this \
+	test-sheet-quit \
+	test-sheet-quit-alias \
+	test-sheet-tab-complete \
+	test-sheet-pivot-exact \
+	test-sheet-find-blank-rows \
+	test-sheet-reload-blank-rows \
+	${SHEET_REGEX_TESTS}
 	@rm -f tmux-*.log zSE*
 	@(for SESSION in $^; do ! tmux -L "$$SESSION" kill-server 2>/dev/null || true; done && ${TEST_PASS} || ${TEST_FAIL})
 
@@ -1775,6 +1791,181 @@ test-sheet-filter-this-regex: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	tmux -L $@ send-keys -t $@ ESCAPE ":filtercol" ENTER "/^mx" ENTER && \
 	${EXPECT} $@ filterregex && \
 	${TEST_PASS} || ${TEST_FAIL})
+
+WAIT_FOR_EXIT=../../scripts/test-wait-for-exit.sh
+
+
+# After building a pivot table, sheet moves the cursor to the group matching the
+# cell it was on, matching the whole cell rather than a substring. 'us' is a strict
+# substring of the earlier group 'aus', so a substring match would stop on 'aus'.
+test-sheet-pivot-exact: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'Country,City\naus,sydney\nus,boston\naus,perth\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "l" "j" && \
+	${EXPECT} $@ on-us && \
+	tmux -L $@ send-keys -t $@ "v" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# Fixture for the regex find/filter tests. Its first column is deliberately NOT
+# named "Row #", so sheet injects its own row-number column; that offset is what
+# makes find-next resume at the cell after the cursor instead of re-matching it.
+SHEET_REGEX_CSV=printf 'Row,Value\n1,xabc\n2,abc\n3,ABC\n4,/abc\n'
+
+# 'q' no longer quits -- only the :quit command does. Sending "q" "G" together
+# proves it: if 'q' still quit, there would be no session left to process the G.
+# Ctrl-Space is checked the same way: getch() reports it as 0, which is also the
+# "no key" marker on every command-only binding, quit's included. Note this stage is
+# only a strong check while quit is the first ch==0 entry in the vim table -- it
+# detects Ctrl-Space firing *quit*, not Ctrl-Space firing some other keyless command.
+test-sheet-quit: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${SHEET_REGEX_CSV} > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "q" "G" && \
+	${EXPECT} $@ after-q && \
+	tmux -L $@ send-keys -t $@ C-Space "g" "g" && \
+	${EXPECT} $@ after-ctrl-space && \
+	tmux -L $@ send-keys -t $@ ":quit" ENTER && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# ':q' is an alias for ':quit'
+test-sheet-quit-alias: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${SHEET_REGEX_CSV} > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":q" ENTER && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# Tab cycles alphabetically through the command names matching what has been typed.
+# The expected order assumes no extension has registered a 'p...' command.
+test-sheet-tab-complete: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${SHEET_REGEX_CSV} > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":" "p" Tab && \
+	${EXPECT} $@ pagedown && \
+	tmux -L $@ send-keys -t $@ Tab && \
+	${EXPECT} $@ pageup && \
+	tmux -L $@ send-keys -t $@ ESCAPE && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# find: '/'-prefixed values are regexes; '\/' escapes a leading literal slash.
+# Each stage is chosen so the literal reading gives a different answer: '^abc'
+# skips xabc, '/^abc$/i' can only reach ABC because of the flag, and '\/abc'
+# reaches a cell no regex stage did.
+# The last three stages check that a pattern that fails to compile is reported and
+# then *ignored*: the previous pattern must survive, so the following 'n' advances
+# from xabc to abc rather than doing nothing.
+test-sheet-regex-find: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${SHEET_REGEX_CSV} > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "/" '/^abc' ENTER && \
+	${EXPECT} $@ anchored && \
+	tmux -L $@ send-keys -t $@ "/" '/^abc$$/i' ENTER && \
+	${EXPECT} $@ caseless && \
+	tmux -L $@ send-keys -t $@ "/" '\/abc' ENTER && \
+	${EXPECT} $@ literal-slash && \
+	tmux -L $@ send-keys -t $@ "g" "g" "/" '/abc' ENTER && \
+	${EXPECT} $@ unanchored && \
+	tmux -L $@ send-keys -t $@ "/" '/[' ENTER "n" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# The closing '/' is only a delimiter when every byte after it is a flag letter.
+# In '/x/y' it is not, so the pattern is 'x/y' and the cursor lands on row 2; were
+# the trailing bytes not checked it would be 'x' and land on row 1.
+# '/a\/i' is the converse: the slash IS followed by a flag letter but is escaped,
+# so the pattern is 'a\/i' and matches 'a/i'. Ignoring the escape would truncate it
+# to the uncompilable 'a\' and the cursor would not move at all.
+test-sheet-regex-delim: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'Row,Value\n1,x\n2,x/y\n3,a/i\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "/" '/x/y' ENTER && \
+	${EXPECT} $@ unterminated && \
+	tmux -L $@ send-keys -t $@ "/" '/a\/i' ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# find over a static (in-memory) buffer takes a different code path than find over
+# a file, so exercise the regex there too
+test-sheet-regex-find-help: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${SHEET_REGEX_CSV} > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "?" && \
+	${EXPECT} $@ help && \
+	tmux -L $@ send-keys -t $@ "/" '/^next$$' ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# filter takes the same syntax as find. The last stage rejects an empty regex: were
+# it compiled it would match every cell, so the view would become a 4-row filtered
+# buffer instead of staying on the unfiltered one. The trailing G orders the check
+# after the filter attempt rather than racing it.
+test-sheet-regex-filter: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${SHEET_REGEX_CSV} > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "f" '/^abc$$/i' ENTER && \
+	${EXPECT} $@ caseless && \
+	tmux -L $@ send-keys -t $@ ESCAPE "f" '\/abc' ENTER && \
+	${EXPECT} $@ literal && \
+	tmux -L $@ send-keys -t $@ ESCAPE "f" "/" ENTER "G" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# A blank row is data, not an "empty header row". find seeks via the row index and
+# resumes parsing mid-file, where zsv would otherwise drop leading blank rows -- which
+# used to make every reported row number short by the number dropped, landing the cursor
+# that many rows above the match. Two blank rows here, so the pre-fix offset is two.
+test-sheet-find-blank-rows: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(printf 'h0,h1,h2\n,,\n,,\n'; printf 'r%s,s%s,t%s\n' 1 1 1; printf 'x,y,166UNIQ\n'; \
+	  for i in 2 3 4 5 6 7 8 9 10; do printf 'r%s,s%s,t%s\n' $$i $$i $$i; done) > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 100 -y 10 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "/" "166UNIQ" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# Reloading the buffer mid-file must not lose blank rows, and must not leave the
+# previous occupant's cells behind. Needs a file larger than the 1024-row screen
+# buffer so that G then gg actually forces a reload through the row index.
+test-sheet-reload-blank-rows: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{print "id,val"; print ","; print ","; for(i=3;i<=4000;i++) printf "%d,R%d\n", i, i}' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 60 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "G" && \
+	${EXPECT} $@ bottom && \
+	tmux -L $@ send-keys -t $@ "g" "g" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 benchmark-sheet-index: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}

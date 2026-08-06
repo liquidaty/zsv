@@ -120,7 +120,11 @@ enum zsv_status zsvsheet_transformation_new(struct zsvsheet_transformation_opts 
   *out = trn;
   return zst;
 
-free: // reverse-acquisition order: the writer's delete-time flush writes through trn
+// reverse-acquisition order: the writer's delete-time flush writes through trn. Note this
+// closes only the *output* temp file, never opts.zsv_opts.stream: on failure the input is
+// still the caller's to close, which is what keeps zsvsheet_push_transformation's error
+// path from double-closing it
+free:
   if (temp_file_writer)
     zsv_writer_delete(temp_file_writer); // on_delete tears down ctx
   else
@@ -243,15 +247,23 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
   enum zsvsheet_status stat = zsvsheet_status_error;
   struct zsvsheet_buffer_info_internal info = zsvsheet_buffer_info_internal(buff);
   struct zsv_index *index = NULL;
+  // declared here, not at first use, so `goto error` from the checks below can test it
+  struct zsv_opts zopts = {0};
 
   // TODO: Starting a second transformation before the first ends works, but if the second is faster
   //       than the first then it can end prematurely and read a partially written row.
   //       We could override the input stream reader to wait for more data when it sees EOF
-  if (info.write_in_progress && !info.write_done)
-    return zsvsheet_status_busy;
+  // These two exit via `error:` rather than returning: user_context belongs to on_done,
+  // which zsv/ext/sheet.h promises runs exactly once before the library frees it
+  if (info.write_in_progress && !info.write_done) {
+    stat = zsvsheet_status_busy;
+    goto error;
+  }
 
-  if (!(index = zsv_index_new()))
-    return zsvsheet_status_memory;
+  if (!(index = zsv_index_new())) {
+    stat = zsvsheet_status_memory;
+    goto error;
+  }
 
   if (!filename) {
     // static/in-memory buffer (e.g. help): materialize its contents to a temp CSV to transform
@@ -268,7 +280,7 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
     .ui_buffer = NULL,
     .index = index,
   };
-  struct zsv_opts zopts = zsvsheet_buffer_get_zsv_opts(buff);
+  zopts = zsvsheet_buffer_get_zsv_opts(buff);
 
   zopts.ctx = opts.user_context;
   zopts.row_handler = (void (*)(void *))opts.row_handler;
@@ -360,13 +372,22 @@ error:
     free(owned_input);
   }
 
-  if (trn && trn->on_done)
-    trn->on_done(trn);
   if (trn) {
+    if (trn->on_done)
+      trn->on_done(trn);
     zsvsheet_transformation_delete(trn); // frees user_context; may stage rows into index via the writer teardown
   } else {
-    free(opts.user_context); // on_done needs a trn; at least reclaim the context itself
-    if (zopts.stream)        // ownership never reached the transformation
+    // The transformation was never created, but on_done owns whatever is inside
+    // user_context (for the filter, a compiled regex), and zsv/ext/sheet.h promises
+    // it runs before the free. Give it a stub handle: everything but user_context
+    // is NULL, which is the contract documented there.
+    if (opts.on_done) {
+      struct zsvsheet_transformation stub = {0};
+      stub.user_context = opts.user_context;
+      opts.on_done(&stub);
+    }
+    free(opts.user_context);
+    if (zopts.stream) // ownership never reached the transformation
       fclose(zopts.stream);
   }
   zsv_index_delete(index); // only after the delete above, which writes into it
