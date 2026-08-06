@@ -255,10 +255,12 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       rownum_column_offset = 1;
     }
 
-    for (size_t i = start_col; i < col_count && i + rownum_column_offset < zsvsheet_screen_buffer_cols(buffer); i++) {
-      struct zsv_cell c = zsv_get_cell(parser, i);
-      if (c.len)
-        zsvsheet_screen_buffer_write_cell_w_len(buffer, rows_read, i + rownum_column_offset, c.str, c.len);
+    // Write every cell across the buffer's width, including empty and missing ones:
+    // this buffer row may still hold a longer row from a previous load, and an
+    // unwritten cell would keep showing that stale content
+    for (size_t i = start_col; i + rownum_column_offset < zsvsheet_screen_buffer_cols(buffer); i++) {
+      struct zsv_cell c = i < col_count ? zsv_get_cell(parser, i) : (struct zsv_cell){0};
+      zsvsheet_screen_buffer_write_cell_w_len(buffer, rows_read, i + rownum_column_offset, c.str, c.len);
     }
 
     rows_read++;

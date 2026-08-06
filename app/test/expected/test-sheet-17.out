@@ -17,7 +17,7 @@ Row #     Country   City      AccentCit Region    Populatio Latitude  Longitude
 16        ad        aubinya   Aubinyà   06                  42.45     1.5
 17        mm        kiosong   Kiosöng   11                  22.583333 97.05
 18        tr        donencay  Dönençay  28                  40.266667 38.583333
-19        it        roncaglia Roncaglia 05        2085      45.05     9.8
+19        it        roncaglia Roncaglia 05                  45.05     9.8
 20        ml        kourmouss Kourmouss 04                  14.75     -5.033333
 21        id        lamogo    Lamogo    38                  -4.3945   119.9028
 22        ad        casas vil Casas Vil 03                  42.533333 1.5666667
@@ -45,6 +45,6 @@ Row #     Country   City      AccentCit Region    Populatio Latitude  Longitude
 44        ad        juverri   Juverri   06                  42.433333 1.5
 45        ua        arginchik Arginchik 11                  45.237894 34.648083
 46        il        ezuz      Ezuz      01                  30.792445 34.472671
-47        ad        l'aldosa  L'Aldosa  02        2822      42.583333 1.6333333
+47        ad        l'aldosa  L'Aldosa  02                  42.583333 1.6333333
 48        kh        phumi tra Phumi Tra 06                  10.866666 104.68333
 ? for help 1

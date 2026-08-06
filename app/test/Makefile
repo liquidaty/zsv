@@ -1406,6 +1406,7 @@ test-sheet-all: \
 	test-sheet-tab-complete \
 	test-sheet-pivot-exact \
 	test-sheet-find-blank-rows \
+	test-sheet-reload-blank-rows \
 	${SHEET_REGEX_TESTS}
 	@rm -f tmux-*.log zSE*
 	@(for SESSION in $^; do ! tmux -L "$$SESSION" kill-server 2>/dev/null || true; done && ${TEST_PASS} || ${TEST_FAIL})
@@ -1949,6 +1950,21 @@ test-sheet-find-blank-rows: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ new-session -x 100 -y 10 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ "/" "166UNIQ" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# Reloading the buffer mid-file must not lose blank rows, and must not leave the
+# previous occupant's cells behind. Needs a file larger than the 1024-row screen
+# buffer so that G then gg actually forces a reload through the row index.
+test-sheet-reload-blank-rows: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{print "id,val"; print ","; print ","; for(i=3;i<=4000;i++) printf "%d,R%d\n", i, i}' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 60 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "G" && \
+	${EXPECT} $@ bottom && \
+	tmux -L $@ send-keys -t $@ "g" "g" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 benchmark-sheet-index: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
