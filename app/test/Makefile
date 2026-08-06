@@ -1405,6 +1405,7 @@ test-sheet-all: \
 	test-sheet-quit-alias \
 	test-sheet-tab-complete \
 	test-sheet-pivot-exact \
+	test-sheet-find-blank-rows \
 	${SHEET_REGEX_TESTS}
 	@rm -f tmux-*.log zSE*
 	@(for SESSION in $^; do ! tmux -L "$$SESSION" kill-server 2>/dev/null || true; done && ${TEST_PASS} || ${TEST_FAIL})
@@ -1933,6 +1934,21 @@ test-sheet-regex-filter: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ send-keys -t $@ ESCAPE "f" '\/abc' ENTER && \
 	${EXPECT} $@ literal && \
 	tmux -L $@ send-keys -t $@ ESCAPE "f" "/" ENTER "G" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# A blank row is data, not an "empty header row". find seeks via the row index and
+# resumes parsing mid-file, where zsv would otherwise drop leading blank rows -- which
+# used to make every reported row number short by the number dropped, landing the cursor
+# that many rows above the match. Two blank rows here, so the pre-fix offset is two.
+test-sheet-find-blank-rows: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(printf 'h0,h1,h2\n,,\n,,\n'; printf 'r%s,s%s,t%s\n' 1 1 1; printf 'x,y,166UNIQ\n'; \
+	  for i in 2 3 4 5 6 7 8 9 10; do printf 'r%s,s%s,t%s\n' $$i $$i $$i; done) > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 100 -y 10 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "/" "166UNIQ" ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 benchmark-sheet-index: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}

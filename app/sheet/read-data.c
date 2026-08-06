@@ -133,6 +133,11 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     if (zsvsheet_ui_buffer_index_ready(uibuff, 1)) {
       opts.header_span = 0;
       opts.rows_to_ignore = 0;
+      // We resume mid-file, not at a header, so a blank row here is data, not an
+      // empty header row. Without this the parser silently drops leading blank
+      // rows and every row number reported from this pass is short by the number
+      // it dropped -- see the same fix for mid-file workers in app/count.c
+      opts.keep_empty_header_rows = 1;
 
       zst = zsv_index_seek_row(uibuff->index, &opts, start_row);
 
