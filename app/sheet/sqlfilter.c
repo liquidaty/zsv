@@ -105,8 +105,9 @@ static zsvsheet_status zsvsheet_sqlfilter_handler(struct zsvsheet_proc_context *
       else
         zsvsheet_ui_buffer_set_status(buff, "Unknown error");
     } else {
-      if (add_row_num)
-        sqlite3_str_appendf(sql_str, "select ROWID as %Q, * from data where %s", ZSVSHEET_ROWNUM_HEADER, expr);
+      if (add_row_num) // rowid spelling via helper: a data column named rowid would shadow it
+        sqlite3_str_appendf(sql_str, "select %s as %Q, * from data where %s", zsvsheet_sql_rowid_ref(zdb->db),
+                            ZSVSHEET_ROWNUM_HEADER, expr);
       else
         sqlite3_str_appendf(sql_str, "select * from data where %s", expr);
 

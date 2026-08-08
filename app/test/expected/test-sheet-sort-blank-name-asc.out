@@ -1,0 +1,25 @@
+Row #                     name                      val
+7                         1,234                     4
+2                         Apple
+1                         banana                    10
+4                         cherry                    9.5
+5                         date
+8                         ee                        7
+6                         fig                       1e2
+9                         grape                     pear
+3                         zebra                     -3
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Sorted by name (ascending) 7

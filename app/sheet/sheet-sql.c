@@ -116,6 +116,35 @@ const char *check_select_expression_result_str(enum check_select_expression_resu
   return NULL;
 }
 
+/* The sheet's derived-buffer queries reference the CSV vtab's implicit rowid,
+ * but a declared column literally named rowid/_rowid_/oid (any case) shadows
+ * its own spelling -- the qualified form included. Return the first spelling
+ * no column of `data` shadows, as a string literal. Never NULL: on a triple
+ * shadow (pathological) or prepare failure, fall back to "ROWID" -- the
+ * deterministic pre-helper behavior. Column names are post-dedupe, so only a
+ * genuine first-occurrence shadow blocks a spelling. */
+static const char *zsvsheet_sql_rowid_ref(sqlite3 *db) {
+  static const char *const spellings[] = {"ROWID", "_ROWID_", "OID"};
+  const size_t n_spellings = sizeof(spellings) / sizeof(*spellings);
+  char shadowed[sizeof(spellings) / sizeof(*spellings)] = {0};
+  sqlite3_stmt *stmt = NULL;
+  if (sqlite3_prepare_v2(db, "select * from data limit 0", -1, &stmt, NULL) == SQLITE_OK) {
+    int col_count = sqlite3_column_count(stmt); // >= 0 per sqlite3 API
+    for (int i = 0; i < col_count; i++) {
+      const char *cn = sqlite3_column_name(stmt, i);
+      for (size_t j = 0; cn && j < n_spellings; j++)
+        if (!sqlite3_stricmp(cn, spellings[j]))
+          shadowed[j] = 1;
+    }
+  }
+  if (stmt)
+    sqlite3_finalize(stmt);
+  for (size_t j = 0; j < n_spellings; j++)
+    if (!shadowed[j])
+      return spellings[j];
+  return spellings[0];
+}
+
 static int is_str_empty(const char *s) {
   if (!s)
     return 1;

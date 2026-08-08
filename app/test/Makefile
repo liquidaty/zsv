@@ -1397,8 +1397,25 @@ test-sheet-all: \
 	test-sheet-prop-cmd-opt \
 	test-sheet-pivot-1 \
 	test-sheet-pivot-V \
+	test-sheet-pivot-rowid \
 	test-sheet-sqlfilter-1 \
 	test-sheet-sqlfilter-dupcol \
+	test-sheet-sqlfilter-rowid \
+	test-sheet-sort-1 \
+	test-sheet-sort-2 \
+	test-sheet-sort-3 \
+	test-sheet-sort-4 \
+	test-sheet-sort-expr-invalid \
+	test-sheet-sort-blank \
+	test-sheet-sort-rownum \
+	test-sheet-sort-err \
+	test-sheet-sort-bang \
+	test-sheet-sort-f \
+	test-sheet-sort-n \
+	test-sheet-sort-ambig \
+	test-sheet-sort-rowidshadow \
+	test-sheet-sort-tripleshadow \
+	test-sheet-sort-chain \
 	test-sheet-errors-1 \
 	test-sheet-filter-this \
 	test-sheet-quit \
@@ -1675,7 +1692,7 @@ test-sheet-prop-cmd-opt: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${BUILD_DIR}/bin/zsv_p
 #	@tmux send-keys -t $@ "q"
 #	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || (echo 'Incorrect output:' && cat ${TMP_DIR}/$@.out && ${TEST_FAIL})
 
-test-sheet-pivot: test-sheet-pivot-1 test-sheet-pivot-V
+test-sheet-pivot: test-sheet-pivot-1 test-sheet-pivot-V test-sheet-pivot-rowid
 
 test-sheet-pivot-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	@${TEST_INIT}
@@ -1703,7 +1720,33 @@ test-sheet-pivot-V: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	${EXPECT} $@ drilldown && \
 	${TEST_PASS} || ${TEST_FAIL})
 
-test-sheet-sqlfilter: test-sheet-sqlfilter-1 test-sheet-sqlfilter-dupcol
+test-sheet-sqlfilter: test-sheet-sqlfilter-1 test-sheet-sqlfilter-dupcol test-sheet-sqlfilter-rowid
+
+# `where` on a file whose data column is literally named rowid: the synthesized
+# Row # must be positional (1,2,3), not the shadowing column's values (7,3,5) --
+# an unshadowed rowid spelling is chosen by zsvsheet_sql_rowid_ref()
+test-sheet-sqlfilter-rowid: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'rowid,v\n7,a\n3,b\n5,c\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":where" ENTER "v like '%'" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# pivot drill-down on the same shadowed file: Row # positional likewise
+test-sheet-pivot-rowid: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'rowid,v\n7,a\n3,b\n5,c\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 25 -d -s "$@" "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "l" "l" "v" && \
+	${EXPECT} $@ groups && \
+	tmux -L $@ send-keys -t $@ ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 # Exercises the capability sqlfilter's dedupe-on enables: a file whose header
 # repeats a column name can still be filtered in sheet. The initial view shows the
@@ -1734,6 +1777,260 @@ test-sheet-sqlfilter-1: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	tmux -L $@ send-keys -t $@ ":where" ENTER "City = -1" ENTER && \
 	${EXPECT} $@ noresults && \
 	${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-sort: test-sheet-sort-1 test-sheet-sort-2 test-sheet-sort-3 test-sheet-sort-4 \
+	test-sheet-sort-expr-invalid test-sheet-sort-blank test-sheet-sort-rownum test-sheet-sort-err \
+	test-sheet-sort-bang test-sheet-sort-f test-sheet-sort-n test-sheet-sort-ambig \
+	test-sheet-sort-rowidshadow test-sheet-sort-tripleshadow test-sheet-sort-chain
+
+# :sort! is an alias for sortdesc; the in-recipe cmp asserts its screen is
+# byte-identical to the sortdesc-by-key fixture (test-sheet-sort-2.out)
+test-sheet-sort-bang: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	export EXPECT_TIMEOUT=20 && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ ":sort! Country" ENTER && \
+	${EXPECT} $@ && \
+	cmp expected/$@.out expected/test-sheet-sort-2.out && ${TEST_PASS} || ${TEST_FAIL})
+
+# :sort <col> f -- float semantics: cast-only, no grouping; cells without a
+# leading decimal float cast to 0.0 and sort inline at 0.0, ties (the 0.0
+# group) in original order via the ROWID tiebreak
+test-sheet-sort-f: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'name,val\na,-5\nb,.5\nc,+2\nd,3.7\ne,10\nf,1e3\ng,apple\nh,zebra\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":sort val f" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# :sort n with the cursor on a column (no column named n exists): leading-
+# integer semantics -- no-leading-number cells first in original order, then
+# by leading integer value ('12abc' reads 12, '3.7' reads 3, '1e3' reads 1;
+# 'item12' and '.5' have no leading number)
+test-sheet-sort-n: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'name,val\na,12abc\nb,3.7\nc,1e3\nd,-5\ne,+2\nf,item12\ng,.5\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "l" "l" ":sort n" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# flag-vs-column ambiguity: with a real column named n, ':sort n' sorts that
+# column (leftmost flag-shaped token that resolves takes the column slot);
+# ':sort v n' sorts column v with integer semantics (the doc-taught form: a
+# flag-shaped token must NOT steal a slot already taken by an earlier column
+# token, even one not yet resolved); ':sort n f' sorts column n with float
+# semantics
+test-sheet-sort-ambig: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'n,v\n5,x\nzz,y\n.5,z\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":sort n" ENTER && \
+	${EXPECT} $@ coln && \
+	tmux -L $@ send-keys -t $@ ESCAPE ":sort v n" ENTER && \
+	${EXPECT} $@ vn && \
+	tmux -L $@ send-keys -t $@ ESCAPE ":sort n f" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# regression test for the rowid-shadow fix: with a data column literally named
+# `rowid`, sort's Row # projection and stability tiebreak use an unshadowed
+# rowid spelling, so both stay positional -- within the v='b' tie the rows
+# keep original order (Row # 1 then 2) and Row # shows positions (3,1,2), not
+# the shadowing column's values
+test-sheet-sort-rowidshadow: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'rowid,v\n9,b\n2,b\n7,a\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":sort v" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# fallback branch of zsvsheet_sql_rowid_ref(): with columns rowid AND _rowid_
+# AND oid, every spelling is shadowed and the helper falls back to "ROWID", so
+# the tiebreak binds to the data column: within the v='b' tie the rows order
+# 2-before-9 (by that column), NOT the positional/stable 9-before-2, and Row #
+# shows the column's values. This is also the suite's discriminating test for
+# the `, <rid> asc` tiebreak clause itself (see SELF-CERT T7): drop the clause
+# and the b-tie reverts to stable original order
+test-sheet-sort-tripleshadow: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'rowid,_rowid_,oid,v\n9,9,9,b\n2,2,2,b\n7,7,7,a\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":sort v" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# chained sorts are true secondary sorts: sort by a, then by b -- within the
+# b='x' tie the a-order (2 before 3) is preserved. This PINS the behavior but
+# does not isolate the rowid tiebreak clause: the sorter is observed-stable in
+# every reachable configuration, so the same output appears without it (see
+# SELF-CERT for the recorded skip); the tiebreak's presence is instead
+# discriminated by test-sheet-sort-tripleshadow's shadowed-column tie order
+test-sheet-sort-chain: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'a,b\n3,x\n1,y\n2,x\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":sort a" ENTER && \
+	${EXPECT} $@ sorta && \
+	tmux -L $@ send-keys -t $@ ":sort b" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# a data column named `row #` (not detected as the row-number column: the match
+# is exact, so lowercase differs) must not capture a default-position sort: 'O'
+# on the synthesized Row # orders by ROWID, not by the same-named data column
+test-sheet-sort-rownum: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'row #,v\n7,a\n3,b\n5,c\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "O" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# 'l' moves the cursor to Country; 'o' sorts ascending by it. The Row # column
+# shows original row numbers, confirming rows were reordered, not renumbered.
+test-sheet-sort-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	export EXPECT_TIMEOUT=20 && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ "l" "o" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# same column, 'O': descending
+test-sheet-sort-2: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	export EXPECT_TIMEOUT=20 && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ "l" "O" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# 'O' with the cursor at the default position (column 0, Row #) yields descending
+# row-number order (ascending would just reproduce the unsorted screen and assert
+# nothing); :sort "Row #" desc must behave identically (same key resolution)
+test-sheet-sort-3: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	export EXPECT_TIMEOUT=20 && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ "O" && \
+	${EXPECT} $@ keydesc && \
+	tmux -L $@ send-keys -t $@ ESCAPE ':sort "Row #" desc' ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# :sort <col> desc params path; the name is matched case-insensitively and the
+# status bar shows the canonical column name (Country, not COUNTRY)
+test-sheet-sort-4: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	export EXPECT_TIMEOUT=20 && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ ":sort COUNTRY desc" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# invalid SQL via :sortexpr: error in the status bar, buffer unchanged
+test-sheet-sort-expr-invalid: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ ":sortexpr" ENTER "this is invalid" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# numeric-aware ordering and blanks-last in both directions, on a column mixing
+# numbers, scientific notation, negatives, an empty cell and a whitespace-only
+# cell; a text value in a numeric column ('pear') grouping after the numbers;
+# a text sort where '1,234' (numeric prefix) and 'ee' (numeric charset,
+# no digit) must sort as text; a valid :sortexpr with arguments (params-join +
+# direction split); a sort of an already-sorted buffer (has_row_num path) by
+# its Row # column, restoring the original order; and finally a sort of that
+# buffer by a data column (has_row_num with cursor ordinal > 0)
+test-sheet-sort-blank: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'name,val\nbanana,10\nApple,\nzebra,-3\ncherry,9.5\ndate, \nfig,1e2\n"1,234",4\nee,7\ngrape,pear\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 25 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "l" "l" "o" && \
+	${EXPECT} $@ asc && \
+	tmux -L $@ send-keys -t $@ ESCAPE "l" "l" "O" && \
+	${EXPECT} $@ desc && \
+	tmux -L $@ send-keys -t $@ ESCAPE "^" "l" "o" && \
+	${EXPECT} $@ name-asc && \
+	tmux -L $@ send-keys -t $@ ESCAPE ":sortexpr length(name) desc" ENTER && \
+	${EXPECT} $@ expr && \
+	tmux -L $@ send-keys -t $@ "o" && \
+	${EXPECT} $@ rownum && \
+	tmux -L $@ send-keys -t $@ "l" "l" "O" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# error paths: unknown column; a second bare token when the column slot is
+# already taken (both ':sort Country up' and ':sort Country City' -- these
+# usage errors now occur AFTER db creation, so they exercise the goto-cleanup
+# ladder and are part of the leaks run); too many params; empty after-strip
+# expression; a trailing `desc` not preceded by whitespace (must NOT be split
+# off: the expression is passed through and rejected as SQL); and sort on a
+# buffer with no backing data file (the help screen -- scrolled to its end
+# first, which also asserts the sortdesc/sortexpr help rows that fall below
+# the 40-row capture of test-sheet-14)
+test-sheet-sort-err: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ ":sort nosuchcol" ENTER && \
+	${EXPECT} $@ badcol && \
+	tmux -L $@ send-keys -t $@ ":sort Country up" ENTER && \
+	${EXPECT} $@ baddir && \
+	tmux -L $@ send-keys -t $@ ":sortdesc Country up" ENTER && \
+	${EXPECT} $@ baddir2 && \
+	tmux -L $@ send-keys -t $@ ":sort Country asc extra" ENTER && \
+	${EXPECT} $@ toomany && \
+	tmux -L $@ send-keys -t $@ ":sort Country City" ENTER && \
+	${EXPECT} $@ twocol && \
+	tmux -L $@ send-keys -t $@ ":sort n f n asc" ENTER && \
+	${EXPECT} $@ fourparam && \
+	tmux -L $@ send-keys -t $@ ":sortexpr asc" ENTER && \
+	${EXPECT} $@ usage && \
+	tmux -L $@ send-keys -t $@ ":sortexpr Latitude+0desc" ENTER && \
+	${EXPECT} $@ nosplit && \
+	tmux -L $@ send-keys -t $@ "?" && \
+	${EXPECT} $@ help && \
+	tmux -L $@ send-keys -t $@ "G" && \
+	${EXPECT} $@ helpend && \
+	tmux -L $@ send-keys -t $@ "o" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-errors: test-sheet-errors-1
 

@@ -1,0 +1,5 @@
+Key(s)                    Action                    Description
+o                         sort                      Sort rows by the column u
+O                         sortdesc                  (alias: sort!) Sort rows
+                          sortexpr                  Sort rows by SQL expressi
+Sort only available for tabular data buffers

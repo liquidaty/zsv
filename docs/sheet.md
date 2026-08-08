@@ -47,6 +47,7 @@ Current features:
   - both vim- and emacs- key bindings can be improved
 - Search: find or filter, by literal text or regex (PCRE2 syntax)
 - SQL: filter by sql expression
+- Sort: by any column (numeric-aware) or by a SQL expression
 - Large files: quickly opens large files with background indexing after which
   full file can be navigated
 - Pivot: generate pivot tables based on unique values or a user-provided SQL
@@ -130,6 +131,9 @@ Press `?` to see a list of commands:
 | v              | pivot      | Group rows by the column under the…                 |
 | V              | pivotexpr  | Group rows with group-by SQL expre…                 |
 |                | where      | Filter by sql expression                            |
+| o              | sort       | Sort rows by the column under the …                 |
+| O              | sortdesc   | (alias: sort!) Sort rows…                           |
+|                | sortexpr   | Sort rows by SQL expression                         |
 
 # Quick usage guide
 
@@ -243,6 +247,9 @@ find again.
 Press `f` or `F` to apply a global filter, or a filter on only the current
 column, respectively.
 
+A filtered buffer's `Row #` column shows original row positions, including for
+`:where` on files with a column named `rowid` (same rule as under Sort below).
+
 For example, running a filter of `/^Dö[nm]` on worldcitiespop_mil.csv:
 
 <img width="823" height="350" alt="image"
@@ -277,6 +284,9 @@ src="https://github.com/user-attachments/assets/f28118cc-9e31-4c5a-b0f5-75ef8fb2
 src="https://github.com/user-attachments/assets/43f1b97f-01d1-4222-a08d-1499f96725df"
 />
 
+A drill-down buffer's `Row #` column shows original row positions, including
+for files with a column named `rowid` (same rule as under Sort below).
+
 ### Custom values / expression
 
 Press `V` to generate a pivot table based on a custom SQL expression. For
@@ -286,6 +296,102 @@ example, after loading worldcitiespop_mil.csv and pressing `V`, then entering
 <img width="643" height="91" alt="image"
 src="https://github.com/user-attachments/assets/6379d227-a796-43f9-93bf-8f98d3d0cf48"
 />
+
+## Sort
+
+Press `o` to sort rows ascending by the column under the cursor, or `O` to sort
+descending. Sorting opens the sorted data as a new buffer (press `Esc` to return
+to the unsorted view); the `Row #` column keeps the original row numbers, so
+with the cursor on `Row #` (the default position), `o`/`O` orders by original
+row number. The same is available as a command:
+`:sort [<column>] [asc|desc] [n|f]`, where `<column>` is matched
+case-insensitively (quote names containing spaces, e.g. `:sort "Row #" desc`)
+and defaults to the column under the cursor. `:sortdesc` (alias `:sort!`, as in
+vim) accepts the same arguments; it only differs in its default direction, so
+an explicit `asc` overrides it.
+
+Argument grammar: `asc` and `desc` are reserved words, never column names (a
+column literally named `asc` is reachable only via the cursor keys), and the
+last one given wins. A token made only of the letters `n`/`f` (any case) names
+a column when the column slot is still empty and such a column exists —
+leftmost wins — and otherwise sets the sort flags below. So with a column named
+`n`, `:sort Country n` sorts Country with integer semantics while
+`:sort n Country` is a usage error (`n` took the column slot), and `:sort n n`
+is the explicit column-then-flag escape hatch. When flags combine, `f` beats
+`n`.
+
+Column sorts without a flag use the following policy:
+
+- Cells that are empty, whitespace-only, or missing (short row) always sort
+  last, regardless of direction (spreadsheet convention).
+- Numeric-looking cells (after trimming, only chars `[0-9.eE+-]` and at least
+  one digit) sort numerically as a group before text (after text when
+  descending, i.e. descending is the exact reverse of ascending among
+  non-blanks).
+- Everything else sorts as text, leading/trailing whitespace ignored, with
+  ASCII-only case folding (`COLLATE NOCASE` does not fold non-ASCII; documented
+  limitation).
+- Locale formats are not parsed: `1,234` and `$50` sort as text, not numbers.
+
+### Numeric sort flags: `n` and `f`
+
+- `n` — leading-integer sort, like vim's `:sort n` except the number must
+  start the cell (embedded numbers are not extracted: vim reads `item12` as
+  12, here it has no leading number). Cells with no leading number sort first
+  when ascending — and last when descending, unlike the blank-cell rule above,
+  which holds regardless of direction — in original order either way; the rest
+  sort by the integer value of their leading digits (`12abc` reads 12, `3.7` reads 3, `1e3` reads 1, `-5` and `+2` read
+  signed). `.5` has no leading digit, so it lands in the no-number group —
+  first in original order, not "0" — while `0x10` has a leading digit and
+  lands in the integer group with value 0. Integers at or beyond 2^63
+  saturate and tie, deterministically in original order.
+- `f` — float sort by `CAST` to REAL: token-for-token equal to vim 9.1's
+  `:sort f` on ordinary decimal tokens (`-5`, `.5`, `+2`, `3.7`, `10`, `1e3`,
+  non-numerics), where every cell without a leading decimal float counts as
+  0.0 and sorts inline at 0.0. Divergence from vim on strtod extensions: vim
+  parses `0x10` as 16.0, `inf` as infinity and `nan` specially, while here
+  all three cast to 0.0. `1e400` overflows to infinity and sorts largest.
+- Ties under both flags keep original row order in **both** directions —
+  deliberately unlike vim, whose `:sort! n` reverses ties along with
+  everything else.
+- The status bar distinguishes the flags: `(ascending, integer)` for `n`,
+  `(ascending, float)` for `f`.
+- `:sortexpr` takes no flags; a trailing junk token simply fails to prepare
+  and reports a SQL error in the status bar.
+
+### Stability and chained sorts
+
+Sorts are guaranteed stable: equal-key rows keep their original relative order
+(a rowid tiebreak, using whichever rowid spelling the file's columns do not
+shadow — see the note below — SQLite's sorter happens to behave stably in
+every configuration `sheet` can reach, but that behavior is undocumented, so
+it is pinned explicitly). Because a sorted buffer's row identity *is* the previous
+sort's row order, sorting a sorted buffer is a true secondary sort: sort by A,
+then by B, and rows tied on B stay in A-order.
+
+Notes and limitations:
+
+- If the file has duplicate header names, `:sort` takes the deduplicated name
+  as shown by SQL (e.g. `a_2` for the second `a`), matching `:where` behavior.
+- Row numbers and the stability tiebreak are positional even when the file has
+  a column literally named `rowid` (or `_rowid_`/`oid`, any case): the implicit
+  SQLite rowid is referenced by whichever of its three spellings the file's
+  columns do not shadow. Only a file declaring all three at once falls back to
+  the shadowed `rowid` column — deterministic, but no longer positional.
+- Each sort writes a full-size temporary copy of the data (deleted when its
+  buffer closes) and blocks the UI until complete, like `:where` and pivot.
+
+### Sort by SQL expression
+
+`:sortexpr <SQL expression> [asc|desc]` sorts by an arbitrary SQL expression,
+e.g. `:sortexpr length(City) desc`. Unlike column sorts, the direction applies
+to the raw expression only — the blank-last/numeric-first policy above is *not*
+applied, since the expression itself defines the ordering. When typed with
+arguments after `:sortexpr`, the command lexer consumes `"` quoting and
+collapses whitespace runs, so double-quoted identifiers and doubled spaces
+inside `'...'` string literals do not survive; enter the expression at the bare
+`:sortexpr` prompt for those (single quotes are not special to the lexer, so
+`'New York'` survives either way).
 
 ## Viewing / clearing errors
 
