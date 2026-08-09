@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 Liquidaty and zsv contributors. All rights
+ * Copyright (C) Liquidaty and zsv contributors. All rights
  * reserved.  This file is part of zsv/lib, distributed under the
  * license defined at https://opensource.org/licenses/MIT
  *
