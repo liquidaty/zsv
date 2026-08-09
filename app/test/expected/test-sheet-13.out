@@ -36,5 +36,5 @@ V                         pivotexpr                 Group rows with group-by
                           errors                    Show errors (if any)
                           errors-clear              Clear any/all errors
                           compare                   Highlight differences bet
-
+o                         sort                      Sort rows by the column u
 <esc> to exit help Key(s)

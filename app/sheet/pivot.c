@@ -143,8 +143,8 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
     else if (zdb->rc == SQLITE_OK && zsv_sqlite3_add_csv_no_dq(zdb, pd->data_filename, NULL, NULL) == SQLITE_OK) {
       if (zsvsheet_buffer_info(buff).has_row_num)
         sqlite3_str_appendf(sql_str, "select *");
-      else
-        sqlite3_str_appendf(sql_str, "select rowid as [Row #], *");
+      else // rowid spelling via helper: a data column named rowid would shadow it
+        sqlite3_str_appendf(sql_str, "select %s as [Row #], *", zsvsheet_sql_rowid_ref(zdb->db));
       if (pd->column_name_expr)
         sqlite3_str_appendf(sql_str, " from data where \"%w\" = %Q", pd->value_sql, pr->value);
       else

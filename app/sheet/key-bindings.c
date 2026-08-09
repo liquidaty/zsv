@@ -212,6 +212,15 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
     .ch_name = "",
     .proc_id = zsvsheet_builtin_proc_compare,
   },
+  /* appended after the compare block so existing help-screen row numbers
+     (asserted by test-sheet-20) do not shift */
+  { .ch = 'o',                 .proc_id = zsvsheet_builtin_proc_sort_cur_col,  },
+  { .ch = 'O',                 .proc_id = zsvsheet_builtin_proc_sort_cur_col_desc, },
+  {
+    .ch = '\0',
+    .ch_name = "",
+    .proc_id = zsvsheet_builtin_proc_sort_expr,
+  },
   { .ch = -1                                                                   }
 };
 /* clang-format on */
@@ -298,6 +307,15 @@ struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
     .ch = '\0',
     .ch_name = "",
     .proc_id = zsvsheet_builtin_proc_compare,
+  },
+  /* appended after the compare block so existing help-screen row numbers
+     (asserted by test-sheet-20) do not shift */
+  { .ch = 'o',                    .proc_id = zsvsheet_builtin_proc_sort_cur_col,  },
+  { .ch = 'O',                    .proc_id = zsvsheet_builtin_proc_sort_cur_col_desc, },
+  {
+    .ch = '\0',
+    .ch_name = "",
+    .proc_id = zsvsheet_builtin_proc_sort_expr,
   },
 
   { .ch = -1                                                          }

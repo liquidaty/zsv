@@ -961,6 +961,7 @@ out:
 
 #include "sheet/pivot.c"
 #include "sheet/sqlfilter.c"
+#include "sheet/sort.c"
 #include "sheet/newline_handler.c"
 
 static zsvsheet_status zsvsheet_compare_handler(struct zsvsheet_proc_context *ctx) {
@@ -1159,6 +1160,9 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_errors,           "errors",         NULL, "Show errors (if any)",                                            zsvsheet_errors_handler },
   { zsvsheet_builtin_proc_errors_clear,     "errors-clear",   NULL, "Clear any/all errors",                                            zsvsheet_errors_handler },
   { zsvsheet_builtin_proc_compare,          "compare",        NULL, "Highlight differences between two column ranges",                 zsvsheet_compare_handler },
+  { zsvsheet_builtin_proc_sort_cur_col,     "sort",           NULL, "Sort rows by the column under the cursor (or :sort <col> [asc|desc])", zsvsheet_sort_handler },
+  { zsvsheet_builtin_proc_sort_cur_col_desc, "sortdesc",      "sort!", "(alias: sort!) Sort rows descending by the column under the cursor", zsvsheet_sort_handler },
+  { zsvsheet_builtin_proc_sort_expr,        "sortexpr",       NULL, "Sort rows by SQL expression",                                     zsvsheet_sort_handler },
   { -1, NULL, NULL, NULL, NULL }
 };
 /* clang-format on */
