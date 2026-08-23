@@ -111,11 +111,14 @@ TESTS+=test-unrecognized-option
 # into the select/sql aggregates on native builds only. Left empty under emcc.
 STDIN_FILENAME_SELECT_TESTS=test-stdin-filename-%
 STDIN_FILENAME_SQL_TESTS=test-stdin-filename-sql
+# --sample-size pipes input via stdin and uses a FIFO; same native-only wiring
+TESTS+=test-sample-select
 endif
 
 # Security regression test - only run when not cross-compiling
 ifneq ($(CROSS_COMPILING),1)
   TESTS+=test-vuln-cve-underflow
+  TESTS+=test-rng # host-compiled reference-vector check of zsv/utils/rng
   # ASan-instrumented regression for the zsv_finish->cell_dl OOB. Skipped
   # if SAN_CC (clang+sanitizers) is unavailable; build target itself runs
   # the sanitizer.
@@ -523,18 +526,18 @@ test-count test-count-pull: test-% : test-1-% test-2-%
 
 ifeq ($(ZSV_NO_PARALLEL),1)
   ifeq ($(HAVE_PCRE2_8),1)
-    HELP_SELECT_LINES=45
+    HELP_SELECT_LINES=52
     HELP_COUNT_LINES=6
   else
-    HELP_SELECT_LINES=43
+    HELP_SELECT_LINES=50
     HELP_COUNT_LINES=6
   endif
 else
   ifeq ($(HAVE_PCRE2_8),1)
-    HELP_SELECT_LINES=47
+    HELP_SELECT_LINES=54
     HELP_COUNT_LINES=8
   else
-    HELP_SELECT_LINES=46
+    HELP_SELECT_LINES=53
     HELP_COUNT_LINES=8
   endif
 endif
@@ -653,6 +656,90 @@ test-rename-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@printf 'KEEP\n' > ${TMP_DIR}/$@-okeep.csv; ${PREFIX} $< --rename '#9=x' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-okeep.csv >/dev/null 2>&1; g=`cat ${TMP_DIR}/$@-okeep.csv 2>/dev/null`; [ "$$g" = "KEEP" ] && ${TEST_PASS} || ${TEST_FAIL}
 # F1b: a successful --rename with -o still writes the file with the renamed header
 	@rm -f ${TMP_DIR}/$@-ook.csv; ${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-ook.csv >/dev/null 2>&1; h=`head -1 ${TMP_DIR}/$@-ook.csv 2>/dev/null`; [ "$$h" = "id,full_name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+
+# --sample-size: n rows chosen uniformly at random, in input order, from the rows passing -D/-H/-s.
+# A regular file (or stdin redirected from one) is counted then sampled (Algorithm S); a pipe is
+# reservoir-sampled (Algorithm R), so the two yield different samples for the same --seed and have
+# separate fixtures. Input rows are `id,x` with id == data row number, so order/subset checks are shell
+test-sample-select: ${BUILD_DIR}/bin/zsv_select${EXE}
+	@${TEST_INIT}
+	@(echo id,val; seq 1 100 | sed 's/$$/,x/') > ${TMP_DIR}/$@.csv
+	@${PREFIX} $< --sample-size 5 --seed 42 ${TMP_DIR}/$@.csv ${REDIRECT} ${TMP_DIR}/$@-file.out
+	@${CMP} ${TMP_DIR}/$@-file.out expected/$@-file.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --sample-size 5 --seed 42 < ${TMP_DIR}/$@.csv ${REDIRECT} ${TMP_DIR}/$@-redirect.out
+	@${CMP} ${TMP_DIR}/$@-redirect.out expected/$@-file.out && ${TEST_PASS} || ${TEST_FAIL}
+	@cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --sample-size 5 --seed 42 ${REDIRECT} ${TMP_DIR}/$@-pipe.out
+	@${CMP} ${TMP_DIR}/$@-pipe.out expected/$@-pipe.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< -s 7 --sample-size 3 --seed 1 ${TMP_DIR}/$@.csv ${REDIRECT} ${TMP_DIR}/$@-search-file.out
+	@${CMP} ${TMP_DIR}/$@-search-file.out expected/$@-search-file.out && ${TEST_PASS} || ${TEST_FAIL}
+	@cat ${TMP_DIR}/$@.csv | ${PREFIX} $< -s 7 --sample-size 3 --seed 1 ${REDIRECT} ${TMP_DIR}/$@-search-pipe.out
+	@${CMP} ${TMP_DIR}/$@-search-pipe.out expected/$@-search-pipe.out && ${TEST_PASS} || ${TEST_FAIL}
+# -N reports the original row number on both paths: every data line is "<id>,<id>,x"
+	@c=`${PREFIX} $< -N --sample-size 7 ${TMP_DIR}/$@.csv | tail -n +2 | awk -F, '$$1==$$2' | wc -l`; [ "$$c" -eq 7 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@c=`cat ${TMP_DIR}/$@.csv | ${PREFIX} $< -N --sample-size 7 | tail -n +2 | awk -F, '$$1==$$2' | wc -l`; [ "$$c" -eq 7 ] && ${TEST_PASS} || ${TEST_FAIL}
+# properties (unseeded): exact count, header, strictly increasing ids, every line present in the input
+	@f=0; for in in "${TMP_DIR}/$@.csv" "-"; do \
+	  if [ "$$in" = "-" ]; then cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --sample-size 7 > ${TMP_DIR}/$@-prop.out; \
+	  else ${PREFIX} $< --sample-size 7 $$in > ${TMP_DIR}/$@-prop.out; fi; \
+	  [ `wc -l < ${TMP_DIR}/$@-prop.out` -eq 8 ] && ${TEST_PASS} || { ${TEST_FAIL}; f=1; }; \
+	  [ "`head -1 ${TMP_DIR}/$@-prop.out`" = "id,val" ] && ${TEST_PASS} || { ${TEST_FAIL}; f=1; }; \
+	  tail -n +2 ${TMP_DIR}/$@-prop.out | cut -d, -f1 | awk 'NR>1 && $$1<=p {exit 1} {p=$$1}' && ${TEST_PASS} || { ${TEST_FAIL}; f=1; }; \
+	  grep -vFxf ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-prop.out | grep -q . && { ${TEST_FAIL}; f=1; } || ${TEST_PASS}; \
+	done; [ $$f -eq 0 ]
+# n >= N: identical to the input, on both paths; header-only input: header only
+	@${PREFIX} $< --sample-size 1000 ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-all-file.out; ${CMP} ${TMP_DIR}/$@-all-file.out ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL}
+	@cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --sample-size 1000 > ${TMP_DIR}/$@-all-pipe.out; ${CMP} ${TMP_DIR}/$@-all-pipe.out ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`printf 'a,b\n' | ${PREFIX} $< --sample-size 3`; [ "$$h" = "a,b" ] && ${TEST_PASS} || ${TEST_FAIL}
+# a stream handed over already positioned past byte 0 is counted from that position, not rewound to 0
+# (seeded, n < N: a count pass that rewound to byte 0 would count a different population and pick different rows)
+	@tail -c +13 ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-pos.csv; ${PREFIX} $< --sample-size 5 --seed 3 ${TMP_DIR}/$@-pos.csv > ${TMP_DIR}/$@-pos.exp; { dd bs=1 count=12 >/dev/null 2>&1; ${PREFIX} $< --sample-size 5 --seed 3; } < ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-pos.out; ${CMP} ${TMP_DIR}/$@-pos.out ${TMP_DIR}/$@-pos.exp && [ `wc -l < ${TMP_DIR}/$@-pos.out` -eq 6 ] && ${TEST_PASS} || ${TEST_FAIL}
+# -D and -H bound the population on both paths (-H 5 with -D 3 leaves rows 4 and 5)
+	@c=`${PREFIX} $< -D 90 --sample-size 20 ${TMP_DIR}/$@.csv | tail -n +2 | awk -F, '$$1>90' | wc -l`; [ "$$c" -eq 10 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@c=`cat ${TMP_DIR}/$@.csv | ${PREFIX} $< -D 90 --sample-size 20 | tail -n +2 | awk -F, '$$1>90' | wc -l`; [ "$$c" -eq 10 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@c=`${PREFIX} $< -H 10 --sample-size 20 ${TMP_DIR}/$@.csv | tail -n +2 | awk -F, '$$1<=10' | wc -l`; [ "$$c" -eq 10 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@c=`cat ${TMP_DIR}/$@.csv | ${PREFIX} $< -H 10 --sample-size 20 | tail -n +2 | awk -F, '$$1<=10' | wc -l`; [ "$$c" -eq 10 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@r=`cat ${TMP_DIR}/$@.csv | ${PREFIX} $< -D 3 -H 5 --sample-size 5 | tail -n +2 | cut -d, -f1 | tr '\n' ' '`; [ "$$r" = "4 5 " ] && ${TEST_PASS} || ${TEST_FAIL}
+# -H counts rows read, so -D past the -H limit leaves nothing (applies to plain select too)
+	@r=`${PREFIX} $< -D 5 -H 3 ${TMP_DIR}/$@.csv | wc -l`; [ "$$r" -eq 1 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@r=`cat ${TMP_DIR}/$@.csv | ${PREFIX} $< -D 5 -H 3 --sample-size 5 | wc -l`; [ "$$r" -eq 1 ] && ${TEST_PASS} || ${TEST_FAIL}
+# parses that stop early without error (-L, --parser fast on non-standard input) must behave as plain select: same rows, exit 0
+	@${PREFIX} $< -L 4 ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-L.exp; ${PREFIX} $< -L 4 --sample-size 100 ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-L-file.out; ${CMP} ${TMP_DIR}/$@-L-file.out ${TMP_DIR}/$@-L.exp && ${TEST_PASS} || ${TEST_FAIL}
+	@cat ${TMP_DIR}/$@.csv | ${PREFIX} $< -L 4 --sample-size 100 > ${TMP_DIR}/$@-L-pipe.out; ${CMP} ${TMP_DIR}/$@-L-pipe.out ${TMP_DIR}/$@-L.exp && ${TEST_PASS} || ${TEST_FAIL}
+	@printf 'a,b\n1,2\n3,4\nx"y,5\n6,7\n' > ${TMP_DIR}/$@-ns.csv
+	@${PREFIX} $< --parser fast ${TMP_DIR}/$@-ns.csv > ${TMP_DIR}/$@-ns.exp 2>/dev/null; ${PREFIX} $< --parser fast --sample-size 10 ${TMP_DIR}/$@-ns.csv > ${TMP_DIR}/$@-ns-file.out 2>/dev/null; rc=$$?; [ "$$rc" -eq 0 ] && ${CMP} ${TMP_DIR}/$@-ns-file.out ${TMP_DIR}/$@-ns.exp && ${TEST_PASS} || ${TEST_FAIL}
+	@cat ${TMP_DIR}/$@-ns.csv | ${PREFIX} $< --parser fast --sample-size 10 > ${TMP_DIR}/$@-ns-pipe.out 2>/dev/null; ${CMP} ${TMP_DIR}/$@-ns-pipe.out ${TMP_DIR}/$@-ns.exp && ${TEST_PASS} || ${TEST_FAIL}
+# -H now bounds rows read for the other samplers too (previously -H 5 --sample-every 3 emitted row 7)
+	@r=`${PREFIX} $< -H 5 --sample-every 3 ${TMP_DIR}/$@.csv | tail -n +2 | cut -d, -f1 | tr '\n' ' '`; [ "$$r" = "1 4 " ] && ${TEST_PASS} || ${TEST_FAIL}
+# reservoir replay is byte-identical to a plain pass for quoted, multi-line and whitespace-cleaned cells
+	@printf 'a,b,c\n" x ","line1\nline2",z\n"q""uote", y \n,\n1\n' > ${TMP_DIR}/$@-q.csv
+	@${PREFIX} $< ${TMP_DIR}/$@-q.csv > ${TMP_DIR}/$@-q.exp; cat ${TMP_DIR}/$@-q.csv | ${PREFIX} $< --sample-size 10 > ${TMP_DIR}/$@-q.out; ${CMP} ${TMP_DIR}/$@-q.out ${TMP_DIR}/$@-q.exp && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< -w ${TMP_DIR}/$@-q.csv > ${TMP_DIR}/$@-qw.exp; cat ${TMP_DIR}/$@-q.csv | ${PREFIX} $< -w --sample-size 10 > ${TMP_DIR}/$@-qw.out; ${CMP} ${TMP_DIR}/$@-qw.out ${TMP_DIR}/$@-qw.exp && ${TEST_PASS} || ${TEST_FAIL}
+# column selection and --no-header compose with sampling
+	@c=`cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --no-header -n --sample-size 5 -- 2 | grep -cx x`; [ "$$c" -eq 5 ] && ${TEST_PASS} || ${TEST_FAIL}
+# --seed is reproducible, for --sample-pct too
+	@${PREFIX} $< --sample-pct 30 --seed 7 ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-pct1.out; ${PREFIX} $< --sample-pct 30 --seed 7 ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-pct2.out; ${CMP} ${TMP_DIR}/$@-pct1.out ${TMP_DIR}/$@-pct2.out && [ `wc -l < ${TMP_DIR}/$@-pct1.out` -gt 1 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${PREFIX} $< --sample-pct 30 --seed 8 ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-pct3.out; cmp -s ${TMP_DIR}/$@-pct1.out ${TMP_DIR}/$@-pct3.out && ${TEST_FAIL} || ${TEST_PASS}
+	@cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --sample-size 5 --seed 8 > ${TMP_DIR}/$@-seed8.out; cmp -s ${TMP_DIR}/$@-seed8.out expected/$@-pipe.out && ${TEST_FAIL} || ${TEST_PASS}
+# a FIFO has a path but is not rewindable: must take the reservoir path rather than draining it in a count pass
+	@if command -v mkfifo >/dev/null 2>&1; then rm -f ${TMP_DIR}/$@.fifo; mkfifo ${TMP_DIR}/$@.fifo; (cat ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@.fifo &); c=`${PREFIX} $< --sample-size 5 ${TMP_DIR}/$@.fifo | wc -l`; rm -f ${TMP_DIR}/$@.fifo; [ "$$c" -eq 6 ] && ${TEST_PASS} || ${TEST_FAIL}; fi
+# a --sample-size far beyond the input must not reserve memory for it up front
+	@c=`cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --sample-size 1000000000000 | wc -l`; [ "$$c" -eq 101 ] && ${TEST_PASS} || ${TEST_FAIL}
+# errors: non-zero exit (< 128), nothing on stdout
+	@f=0; for a in "--sample-size 0" "--sample-size x" "--sample-size 5 -j 2" "--seed 1" "--sample-size 3 --sample-every 2" "--sample-size 3 --sample-pct 5" "--seed 1x --sample-size 3"; do \
+	  ${RC_PREFIX} $< $$a ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-err.out 2>/dev/null; rc=$$?; \
+	  [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && [ ! -s ${TMP_DIR}/$@-err.out ] && ${TEST_PASS} || { ${TEST_FAIL}; f=1; }; \
+	done; [ $$f -eq 0 ]
+# the raw-row fast path must not truncate rows wider than 256 columns
+	@awk 'BEGIN{for(r=0;r<2;r++){for(i=1;i<=300;i++)printf "%s%d", (i>1?",":""), r*1000+i; print ""}}' > ${TMP_DIR}/$@-wide.csv
+	@c=`${PREFIX} $< -W ${TMP_DIR}/$@-wide.csv | tail -1 | tr ',' '\n' | wc -l`; [ "$$c" -eq 300 ] && ${TEST_PASS} || ${TEST_FAIL}
+
+test-rng: ${TMP_DIR}/test_rng
+	@${TEST_INIT}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
+
+${TMP_DIR}/test_rng: test_rng.c ../utils/rng.c
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -I../../include test_rng.c ../utils/rng.c -o $@
 
 test-quotebuff-select test-quotebuff-select-pull: test-quotebuff-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}

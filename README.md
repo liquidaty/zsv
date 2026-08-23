@@ -273,7 +273,8 @@ needs.
 - `count`: print the number of rows
 - `select`: re-shape CSV by skipping leading garbage, combining header rows into
   a single header, selecting or excluding specified columns, removing duplicate
-  columns, sampling, converting from fixed-width input, searching and more
+  columns, sampling (every nth row, a percentage, or a fixed number of random
+  rows), converting from fixed-width input, searching and more
 - `desc`: provide a quick description of your table data
 - `sql`: treat one or more CSV files like database tables and query with SQL
 - `pretty`: format for console (fixed-width) display, or convert to markdown
