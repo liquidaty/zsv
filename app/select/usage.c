@@ -19,7 +19,8 @@ const char *zsv_select_usage_msg[] = {
 #ifndef ZSV_CLI
   "  -v,--verbose                 : verbose output",
 #endif
-  "  -H,--head <n>                : (head) only process the first n data rows of input (before -D is applied; n = 0 is treated as 1)",
+  "  -H,--head <n>                : (head) only process the first n data rows of input (before -D is applied; n = 0 is "
+  "treated as 1)",
   "  --skip-data <n>              : skip the specified number of data rows",
   "  --no-header                  : do not output header row",
   "  --prepend-header <value>     : prepend each column header with the given text <value>",

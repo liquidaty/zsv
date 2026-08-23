@@ -240,7 +240,7 @@ int zsv_file_exists(const char *filename) {
 
 #include <sys/stat.h>
 #ifndef S_ISREG // MSVC CRT lacks the POSIX macro
-#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
+#define S_ISREG(m) (((m)&S_IFMT) == S_IFREG)
 #endif
 int zsv_file_is_regular(FILE *f) {
   struct stat st;
