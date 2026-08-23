@@ -224,7 +224,7 @@ endif
 THIS_LIB_BASE:=$(shell cd .. && pwd)
 INCLUDE_DIR:=${THIS_LIB_BASE}/include
 BUILD_DIR:=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
-UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index chunk appname
+UTILS1=writer file err signal mem clock arg dl string dirs prop cache jq os index chunk appname rng
 
 ZSV_EXTRAS ?=
 
@@ -770,16 +770,18 @@ ${CLI} ${STANDALONE_PFX}pretty${EXE}: MORE_LIBS+=${LDFLAGS_TERMCAP}
 ${CLI} ${STANDALONE_PFX}sheet${EXE} ${STANDALONE_PFX}sql${EXE}: ${SQL_INTERNAL_OBJECT}
 ${CLI} ${STANDALONE_PFX}sheet${EXE} ${STANDALONE_PFX}sql${EXE}: MORE_OBJECTS+=${SQL_INTERNAL_OBJECT}
 
-# Dependency tracking for the sheet unity build: sheet.c #includes ~20 sheet/*.c
-# sources, but the compile rules list only sheet.c as a prerequisite, so edits to
-# the included files would otherwise not trigger a rebuild (stale binary). -MMD
-# records every #included user file (including the .c files), -MP adds phony
-# targets so a later-removed include does not break the build, and -MT/-MF name
-# the rule target and the depfile. DEPFLAGS is set only on the two sheet targets,
-# so it expands to nothing for every other command; the depfiles live under
-# ${BUILD_DIR} and are removed by `make clean`.
-${CLI_OBJ_PFX}sheet.o ${STANDALONE_PFX}sheet${EXE}: DEPFLAGS=-MMD -MP -MT $@ -MF $@.d
--include ${CLI_OBJ_PFX}sheet.o.d ${STANDALONE_PFX}sheet${EXE}.d
+# Dependency tracking for the sheet and select unity builds: sheet.c #includes ~20
+# sheet/*.c sources and select.c #includes select/*.c, but the compile rules list
+# only the top-level .c as a prerequisite, so edits to the included files would
+# otherwise not trigger a rebuild (stale binary). -MMD records every #included
+# user file (including the .c files), -MP adds phony targets so a later-removed
+# include does not break the build, and -MT/-MF name the rule target and the
+# depfile. DEPFLAGS is set only on these targets, so it expands to nothing for
+# every other command; the depfiles live under ${BUILD_DIR} and are removed by
+# `make clean`.
+UNITY_TARGETS=${CLI_OBJ_PFX}sheet.o ${STANDALONE_PFX}sheet${EXE} ${CLI_OBJ_PFX}select.o ${STANDALONE_PFX}select${EXE}
+${UNITY_TARGETS}: DEPFLAGS=-MMD -MP -MT $@ -MF $@.d
+-include $(addsuffix .d,${UNITY_TARGETS})
 
 ${STANDALONE_PFX}%${EXE}: %.c ${OBJECTS} ${MORE_OBJECTS} ${LIBZSV_BUILD} ${UTF8PROC_OBJECT}
 	@mkdir -p `dirname "$@"`

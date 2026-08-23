@@ -58,6 +58,7 @@ static int zsv_dir_foreach_to_json(struct zsv_foreach_dirent_handle *h, size_t d
                     if (zsv_jq_parse(ctx->zjq, txt_js ? txt_js : (const unsigned char *)"null",
                                      txt_js ? strlen((const char *)txt_js) : 4))
                       ctx->err = 1;
+                    free(txt_js);
                   }
                 }
                 break;

@@ -3,6 +3,7 @@
 #ifndef ZSV_NO_PARALLEL
 #include "parallel.h"
 #endif
+#include "sample.h"
 
 #define ZSV_SELECT_MAX_COLS_DEFAULT 1024
 #define ZSV_SELECT_MAX_COLS_DEFAULT_S "1024"
@@ -75,9 +76,9 @@ struct zsv_select_data {
 
   char embedded_lineend;
 
-  double sample_pct;
-
-  unsigned sample_every_n;
+  double sample_pct;               // --sample-pct
+  unsigned sample_every_n;         // --sample-every
+  struct zsv_select_sample sample; // --sample-size, --seed
 
   size_t data_rows_limit;
   size_t skip_data_rows;
@@ -113,7 +114,6 @@ struct zsv_select_data {
   unsigned char use_header_indexes : 1;
   unsigned char no_trim_whitespace : 1;
   unsigned char cancelled : 1;
-  unsigned char skip_this_row : 1;
   unsigned char verbose : 1;
   unsigned char clean_white : 1;
   unsigned char prepend_line_number : 1;
@@ -126,7 +126,7 @@ struct zsv_select_data {
   unsigned char no_header : 1;       // --no-header
   unsigned char run_in_parallel : 1; // Flag if parallel mode is active
   unsigned char header_failed : 1;   // a header-phase error occurred; propagate a non-zero exit status
-  unsigned char _ : 1;               // padding
+  unsigned char _ : 2;               // padding
 };
 
 enum zsv_select_column_index_selection_type {

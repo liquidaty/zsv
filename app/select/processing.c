@@ -105,3 +105,51 @@ static inline char zsv_select_row_search_hit(struct zsv_select_data *data) {
   }
   return 0;
 }
+
+// zsv_select_output_cell(): the i-th output cell after cleaning and --merge fallback.
+// The returned bytes live in the parser's row buffer and stay valid only until the
+// next cell is cleaned, so callers that retain them must copy before advancing
+static inline struct zsv_cell zsv_select_output_cell(struct zsv_select_data *data, unsigned int i) {
+  struct zsv_cell cell = zsv_get_cell(data->parser, data->out2in[i].ix);
+  if (UNLIKELY(data->any_clean != 0)) {
+    // leading/trailing white may have been converted to NULL for regex search
+    while (cell.len && *cell.str == '\0')
+      cell.str++, cell.len--;
+    while (cell.len && cell.str[cell.len - 1] == '\0')
+      cell.len--;
+    cell.str = zsv_select_cell_clean(data, cell.str, &cell.quoted, &cell.len);
+  }
+  if (VERY_UNLIKELY(data->distinct == ZSV_SELECT_DISTINCT_MERGE) && UNLIKELY(cell.len == 0)) {
+    for (struct zsv_select_uint_list *ix = data->out2in[i].merge.indexes; ix; ix = ix->next) {
+      cell = zsv_get_cell(data->parser, ix->value);
+      if (cell.len) {
+        if (UNLIKELY(data->any_clean != 0))
+          cell.str = zsv_select_cell_clean(data, cell.str, &cell.quoted, &cell.len);
+        if (cell.len)
+          break;
+      }
+    }
+  }
+  return cell;
+}
+
+// zsv_select_row_in_population(): advance per-row state (row count, -D countdown) and
+// report whether this data row is in the population select operates on, i.e. it survived
+// -D and matched -s/--regex-search. Shared by the plain, sampling and counting row
+// handlers so they cannot enumerate different row sets
+static inline char zsv_select_row_in_population(struct zsv_select_data *data) {
+  data->data_row_count++;
+  if (UNLIKELY(data->skip_data_rows)) {
+    data->skip_data_rows--;
+    return 0;
+  }
+  return zsv_select_row_search_hit(data);
+}
+
+// zsv_select_row_limit(): apply -H after each data row, whether or not it was output
+static inline void zsv_select_row_limit(struct zsv_select_data *data) {
+  if (UNLIKELY(data->data_rows_limit > 0) && data->data_row_count + 1 >= data->data_rows_limit)
+    data->cancelled = 1;
+  if (UNLIKELY(data->verbose) && data->data_row_count % 25000 == 0)
+    fprintf(stderr, "Processed %zu rows\n", data->data_row_count);
+}

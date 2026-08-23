@@ -64,6 +64,12 @@ FILE *zsv_tmpfile(const char *prefix, char **filename, const char *mode);
 int zsv_file_exists(const char *filename);
 
 /**
+ * Check whether an open stream is a regular file (as opposed to a pipe, FIFO,
+ * terminal or other non-seekable source). Returns 0 if it cannot be determined
+ */
+int zsv_file_is_regular(FILE *f);
+
+/**
  * Check if a file exists and is readable (with fopen + "rb")
  *
  * @param filename

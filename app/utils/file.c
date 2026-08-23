@@ -238,6 +238,15 @@ int zsv_file_exists(const char *filename) {
 }
 #endif
 
+#include <sys/stat.h>
+#ifndef S_ISREG // MSVC CRT lacks the POSIX macro
+#define S_ISREG(m) (((m)&S_IFMT) == S_IFREG)
+#endif
+int zsv_file_is_regular(FILE *f) {
+  struct stat st;
+  return f && fstat(fileno(f), &st) == 0 && S_ISREG(st.st_mode);
+}
+
 /**
  * Copy a file, given source and destination paths
  * On error, output error message and return non-zero

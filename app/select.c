@@ -7,16 +7,13 @@
 
 #include <stdio.h>
 #include <assert.h>
-#ifdef _WIN32
-#define _CRT_RAND_S /* for random number generator, used when sampling. must come before including stdlib.h */
-#else
+#ifndef _WIN32
 #include <sys/types.h> // off_t
 #endif
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <ctype.h>
-#include <time.h>
 #include <stdarg.h>
 
 // Added for pthreads and parallel I/O management
@@ -34,11 +31,11 @@
 #include <zsv/utils/arg.h>
 #include <zsv/utils/os.h>
 #include <zsv/utils/file.h>
+#include <zsv/utils/rng.h>
 #include "utils/chunk.h"
 
 #include "select/internal.h" // various defines and structs
 #include "select/usage.c"    // zsv_select_usage()
-#include "select/rand.c"     // demo_random_bw_1_and_100()
 #include "select/fixed.c"    // auto_detect_fixed_column_sizes()
 #include "utils/cat.c"
 
@@ -48,7 +45,8 @@
 // struct zsv_select_regex, zsv_select_add_regex(), zsv_select_regexs_delete()
 #include "select/regex.c"
 
-// zsv_select_cell_clean(), zsv_select_row_search_hit()
+// zsv_select_cell_clean(), zsv_select_row_search_hit(), zsv_select_output_cell(),
+// zsv_select_row_in_population(), zsv_select_row_limit()
 #include "select/processing.c"
 
 // zsv_select_add_exclusion(), zsv_select_get_header_name(),
@@ -199,9 +197,10 @@ static void zsv_select_output_data_row(struct zsv_select_data *data) {
 
   /* Fast path: when no per-cell transforms are needed and cells don't
    * require quoting checks, write the entire row in one call. */
-  if (LIKELY(!data->prepend_line_number && !data->any_clean && data->distinct != ZSV_SELECT_DISTINCT_MERGE)) {
+  if (LIKELY(!data->prepend_line_number && !data->any_clean && data->distinct != ZSV_SELECT_DISTINCT_MERGE) &&
+      LIKELY(cnt <= 256)) {
     struct zsv_cell row_cells[256]; /* stack-allocated; 256 cols max */
-    unsigned int n = cnt < 256 ? cnt : 256;
+    unsigned int n = cnt;
     int all_raw = 1;
     for (unsigned int i = 0; i < n; i++) {
       row_cells[i] = zsv_get_cell(data->parser, data->out2in[i].ix);
@@ -220,73 +219,35 @@ static void zsv_select_output_data_row(struct zsv_select_data *data) {
     zsv_writer_cell_zu(data->csv_writer, first, data->data_row_count);
     first = 0;
   }
-
-  /* print data row */
-  for (unsigned int i = 0; i < cnt; i++) { // for each output column
-    unsigned int in_ix = data->out2in[i].ix;
-    struct zsv_cell cell = zsv_get_cell(data->parser, in_ix);
-    if (UNLIKELY(data->any_clean != 0)) {
-      // leading/trailing white may have been converted to NULL for regex search
-      while (cell.len && *cell.str == '\0')
-        cell.str++, cell.len--;
-      while (cell.len && cell.str[cell.len - 1] == '\0')
-        cell.len--;
-      cell.str = zsv_select_cell_clean(data, cell.str, &cell.quoted, &cell.len);
-    }
-    if (VERY_UNLIKELY(data->distinct == ZSV_SELECT_DISTINCT_MERGE)) {
-      if (UNLIKELY(cell.len == 0)) {
-        for (struct zsv_select_uint_list *ix = data->out2in[i].merge.indexes; ix; ix = ix->next) {
-          unsigned int m_ix = ix->value;
-          cell = zsv_get_cell(data->parser, m_ix);
-          if (cell.len) {
-            if (UNLIKELY(data->any_clean != 0))
-              cell.str = zsv_select_cell_clean(data, cell.str, &cell.quoted, &cell.len);
-            if (cell.len)
-              break;
-          }
-        }
-      }
-    }
+  for (unsigned int i = 0; i < cnt; i++) {
+    struct zsv_cell cell = zsv_select_output_cell(data, i);
     zsv_writer_cell(data->csv_writer, first, cell.str, cell.len, cell.quoted);
     first = 0;
   }
 }
+
+// zsv_select_data_row_sample(), zsv_select_sample_*(): --sample-size. Included here, after
+// zsv_select_output_data_row(), which the sampling row handler emits through
+#include "select/sample.c"
 
 static void zsv_select_data_row(void *ctx) {
   struct zsv_select_data *data = ctx;
   if (UNLIKELY(zsv_cell_count(data->parser) == 0 || data->cancelled))
     return;
 
-  data->data_row_count++;
-
-  // check if we should skip this row
-  data->skip_this_row = 0;
-  if (UNLIKELY(data->skip_data_rows)) {
-    data->skip_data_rows--;
-    data->skip_this_row = 1;
-  } else if (UNLIKELY(data->sample_every_n || data->sample_pct)) {
-    data->skip_this_row = 1;
-    if (data->sample_every_n && data->data_row_count % data->sample_every_n == 1)
-      data->skip_this_row = 0;
-    if (data->sample_pct && demo_random_bw_1_and_100() <= data->sample_pct)
-      data->skip_this_row = 0;
-  }
-
-  if (LIKELY(!data->skip_this_row)) {
-    // if we have a search filter, check that
-    char skip = 0;
-    skip = !zsv_select_row_search_hit(data);
-    if (!skip) {
-
-      // print the data row
-      zsv_select_output_data_row(data);
-      if (UNLIKELY(data->data_rows_limit > 0))
-        if (data->data_row_count + 1 >= data->data_rows_limit)
-          data->cancelled = 1;
+  if (LIKELY(zsv_select_row_in_population(data))) {
+    char output = 1;
+    if (UNLIKELY(data->sample_every_n || data->sample_pct != 0)) {
+      output = 0;
+      if (data->sample_every_n && data->data_row_count % data->sample_every_n == 1)
+        output = 1;
+      if (data->sample_pct != 0 && zsv_rng_below(&data->sample.rng, 1000000) < data->sample.pct_threshold)
+        output = 1;
     }
+    if (LIKELY(output))
+      zsv_select_output_data_row(data);
   }
-  if (data->data_row_count % 25000 == 0 && data->verbose)
-    fprintf(stderr, "Processed %zu rows\n", data->data_row_count);
+  zsv_select_row_limit(data);
 }
 
 static void zsv_select_print_header_row(struct zsv_select_data *data) {
@@ -422,7 +383,7 @@ static void zsv_select_header_finish(struct zsv_select_data *data) {
   {
     // no parallelization
     zsv_select_print_header_row(data);
-    zsv_set_row_handler(data->parser, zsv_select_data_row);
+    zsv_set_row_handler(data->parser, data->sample.size ? zsv_select_data_row_sample : zsv_select_data_row);
   }
 }
 
@@ -462,6 +423,7 @@ static enum zsv_status zsv_select_cleanup(struct zsv_select_data *data) {
 
   if (data->csv_writer && zsv_writer_delete(data->csv_writer) != zsv_writer_status_ok)
     stat = zsv_status_error;
+  zsv_select_sample_free(&data->sample);
   zsv_select_search_str_delete(data->search_strings);
   zsv_select_renames_delete(data->renames);
 #ifdef HAVE_PCRE2_8
@@ -674,7 +636,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       ARG_require_val(data.sample_every_n, atoi);
     else if (!strcmp(arg, "--sample-pct"))
       ARG_require_val(data.sample_pct, atof);
-    else if (!strcmp(arg, "--prepend-header")) {
+    else if (!strcmp(arg, "--sample-size") || !strcmp(arg, "--seed")) {
+      const char *v;
+      ARG_require_val(v, (const char *));
+      stat = zsv_select_sample_arg(&data, arg, v);
+    } else if (!strcmp(arg, "--prepend-header")) {
       int err = 0;
       data.prepend_header = zsv_next_arg(++arg_i, argc, argv, &err);
       if (err)
@@ -729,8 +695,6 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     writer_opts.stream = NULL; // opened later, in header_finish, once the header validates (F1b)
   else if (!writer_opts.stream)
     writer_opts.stream = stdout;
-  if (data.sample_pct)
-    srand(time(0));
   if (data.use_header_indexes && (stat = zsv_select_check_exclusions_are_indexes(&data)))
     goto zsv_select_main_done;
 
@@ -756,6 +720,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     data.opts->stream = stdin;
 #endif
   }
+  if (stat == zsv_status_ok && (data.sample.size || data.sample_pct != 0 || data.sample.have_seed))
+    stat = zsv_select_sample_init(&data);
+  if (stat != zsv_status_ok)
+    goto zsv_select_main_done;
 
   // auto-fixed column detection
   if (data.fixed.autodetect) { // fixed-auto flag
@@ -807,7 +775,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     zsv_handle_ctrl_c_signal();
 
     enum zsv_status p_stat = zsv_status_ok;
-    if (preview_buff_len)
+    if (data.sample.size && !data.sample.reservoir && !data.cancelled)
+      p_stat = stat = zsv_select_sample_count(&data, preview_buff_len);
+    if (p_stat == zsv_status_ok && preview_buff_len)
       p_stat = zsv_parse_bytes(data.parser, preview_buff, preview_buff_len);
 
     while (p_stat == zsv_status_ok && !zsv_signal_interrupted && !data.cancelled)
@@ -821,6 +791,18 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       if (data.run_in_parallel && !data.next_row_start)
         data.next_row_start = zsv_cum_scanned_length(data.parser) + 1;
 #endif
+    }
+    // the sample is complete at end of input or at the -H limit, but not after an interrupt
+    // or a failure: a partial reservoir is not a uniform sample
+    if (data.sample.size && data.csv_writer && !data.sample.failed && !zsv_signal_interrupted &&
+        zsv_select_parse_stopped_ok(p_stat)) {
+      if (data.sample.reservoir) {
+        enum zsv_status fstat_ = zsv_select_sample_flush(&data);
+        if (fstat_ != zsv_status_ok && stat == zsv_status_ok)
+          stat = fstat_;
+      } else if (data.sample.want_remaining)
+        fprintf(stderr, "Warning: input changed between passes; %zu fewer rows sampled than requested\n",
+                data.sample.want_remaining);
     }
     zsv_delete(data.parser);
 
@@ -842,6 +824,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   // a header-phase error (bad column selector or --rename) must yield a non-zero exit status
   if (data.header_failed && stat == zsv_status_ok)
     stat = zsv_status_error;
+  if (data.sample.failed && stat == zsv_status_ok)
+    stat = zsv_printerr(1, "Out of memory while sampling");
 
   // empty input: no header row was parsed, so header_finish never opened the deferred -o file.
   // preserve the historical behavior of emitting an (empty) output file.

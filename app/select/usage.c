@@ -19,7 +19,8 @@ const char *zsv_select_usage_msg[] = {
 #ifndef ZSV_CLI
   "  -v,--verbose                 : verbose output",
 #endif
-  "  -H,--head <n>                : (head) only process the first n rows of input data (including header)",
+  "  -H,--head <n>                : (head) only process the first n data rows of input (before -D is applied; n = 0 is "
+  "treated as 1)",
   "  --skip-data <n>              : skip the specified number of data rows",
   "  --no-header                  : do not output header row",
   "  --prepend-header <value>     : prepend each column header with the given text <value>",
@@ -34,7 +35,14 @@ const char *zsv_select_usage_msg[] = {
   // TO DO: " -s,--search /<pattern>/modifiers: search on regex pattern; modifiers include 'g' (global) and 'i'
   // (case-insensitive)",
   "  --sample-every <num_of_rows> : output a sample consisting of the first row, then every nth row",
-  "  --sample-pct <percentage>    : output a randomly-selected sample (32 bits of randomness) of n%% of input rows",
+  "  --sample-pct <percentage>    : output a randomly-selected sample of n% of input rows",
+  "  --sample-size <n>            : output n rows (fewer if the input has fewer) chosen uniformly at random,",
+  "                                 in input order, from the rows that pass -D, -H and any search. A file",
+  "                                 is read twice (count, then select) using no extra memory; a pipe or",
+  "                                 other non-rewindable input (or any input with overwrites applied) is",
+  "                                 read once, holding n rows in memory, and yields a different sample",
+  "                                 for the same --seed",
+  "  --seed <n>                   : seed for --sample-size / --sample-pct, for reproducible output",
   "  --distinct                   : skip subsequent occurrences of columns with the same name",
   "  --merge                      : merge subsequent occurrences of columns with the same name",
   "                                 outputting first non-null value",
