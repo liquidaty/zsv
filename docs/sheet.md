@@ -45,7 +45,7 @@ Current features:
 - vim-like key bindings
   - emacs-like key bindings are still experimental
   - both vim- and emacs- key bindings can be improved
-- Search: find or filter, by literal text or regex (PCRE2 syntax)
+- Search: find or filter, by literal text (ignoring case) or regex (PCRE2 syntax)
 - SQL: filter by sql expression
 - Sort: by any column (numeric-aware) or by a SQL expression
 - Large files: quickly opens large files with background indexing after which
@@ -63,8 +63,9 @@ Other features under current consideration or plan:
 - Make status-bar messages persist until the next keypress. Today the main loop
   clears the status on every poll, so an error (a bad regex, an unknown command,
   "Not found") is shown for only about 0.2 seconds
-- Accept non-ASCII input at prompts; they currently take single printable bytes,
-  so a UTF-8 search term cannot be typed even though the parser handles UTF-8
+- Accept non-ASCII input at prompts on Windows: PDCurses delivers a typed
+  character as a UTF-16 code unit, which is not decoded yet, so such input is
+  dropped there
 - Reorder/remove column(s) or row(s)
 - Adjustable column width
 - Further performance optimizations
@@ -117,13 +118,13 @@ Press `?` to see a list of commands:
 | <page down>    | pageup     | Move up one page                                    |
 | g g            | top        | Jump to the first row                               |
 | G              | bottom     | Jump to the last row (nG for specific row e.g. 10G) |
-| /              | find       | Set a search term and jump to the …                 |
-| n              | next       | Jump to the next search result                      |
+| /              | find       | Find a cell (any case); /re = regex; /re/i…         |
+| n              | next       | Find the next match                                 |
 | \|             | gotocolumn | Find a column by name and jump to the first match   |
 | \\             | gotocolumnnext | Jump to the next column matching the find-column term |
 | e              | open       | Open another CSV file                               |
-| f              | filter     | Filter by specified text                            |
-| F              | filtercol  | Filter by specified text only in c…                 |
+| f              | filter     | Filter rows (any case); /re = regex; /re/i…         |
+| F              | filtercol  | Filter on this column                               |
 | :              | subcommand | Editor subcommand                                   |
 | ?              | help       | Display a list of actions and key-…                 |
 | ^J             | <Enter>    | Follow hyperlink (if any)                           |
@@ -208,13 +209,29 @@ last row or the first row, respectively
 
 `find` and `filter` take the same search syntax:
 
-| You type   | Meaning                                                          |
-| ---------- | ---------------------------------------------------------------- |
-| `abc`      | literal: cells containing `abc`                                  |
-| `/ab[Cc]`  | regular expression `ab[Cc]` (PCRE2 syntax)                       |
-| `/ab[Cc]/` | the same; the closing slash is optional                          |
-| `/abc/i`   | regular expression `abc`, case-insensitive                       |
-| `\/abc`    | literal: cells containing `/abc`                                  |
+| You type   | Meaning                                                                     |
+| ---------- | --------------------------------------------------------------------------- |
+| `abc`      | literal, ignoring case: cells containing `abc`, `ABC`, `Abc`, ...           |
+| `/abc`     | regular expression `abc` (PCRE2 syntax), case-sensitive: how to match exact case |
+| `/ab[Cc]/` | regular expression `ab[Cc]`; the closing slash is optional                  |
+| `/abc/i`   | regular expression `abc`, ignoring case                                     |
+| `\/abc`    | literal, ignoring case: cells containing `/abc`                             |
+
+A literal ignores case on both sides using Unicode simple case mapping, so
+`dömitz` finds `DÖMITZ` and `москва` finds `МОСКВА`. This is per-code-point
+mapping only: `ss` does not find `ß`, final sigma `ς` is distinct from `σ`, and a
+decomposed `o` + combining diaeresis does not match the precomposed `ö`. `I`
+folds to `i` (Unicode default, not the Turkish rule); `İ` (U+0130) and the Kelvin
+sign `K` (U+212A) fold to `i` and `k`.
+
+Regular expressions never use this rule: they are case-sensitive unless you add
+`/i`. That also makes them the way to match a literal in exact case: `/US` finds
+`AUSTRIA` but not `Austria`. Escape regex metacharacters when doing so (`/a\.b`, or
+`/\Qa.b\E`). A case-sensitive regular expression that matches nothing says so in
+the status bar, with a reminder that `/i` ignores case.
+
+The find and filter prompts repeat this summary, e.g. `Find (any case; /re =
+regex, exact case):`.
 
 A leading slash starts a regular expression. A trailing slash closes it only
 when every character after that slash is a flag letter — so `/http://x` is the
@@ -240,12 +257,14 @@ quotes, and splits on spaces. `\/abc` typed at the `f` prompt works; `:filter
 ## Find
 
 Press `/` and enter a search value to find the next matching cell. Press `n` to
-find again.
+find again. Matching ignores case unless you use a regular expression; see
+[Search syntax](#search-syntax).
 
 ## Filter
 
 Press `f` or `F` to apply a global filter, or a filter on only the current
-column, respectively.
+column, respectively. Matching ignores case unless you use a regular expression;
+see [Search syntax](#search-syntax).
 
 A filtered buffer's `Row #` column shows original row positions, including for
 `:where` on files with a column named `rowid` (same rule as under Sort below).

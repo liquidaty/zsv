@@ -2,17 +2,18 @@
 #define ZSVSHEET_PATTERN_H
 
 #include <stddef.h>
+#include <stdint.h>
 #include "../utils/pcre2-8/pcre2-8.h"
 
 /**
  * A search or filter pattern entered by the user.
  *
  * Syntax accepted by zsvsheet_pattern_parse():
- *   abc        literal substring
+ *   abc        literal substring, ignoring case (Unicode simple case mapping)
  *   \/abc      literal substring "/abc" (the escape is recognized only at offset 0)
- *   /ab[Cc]    regex, unterminated
+ *   /ab[Cc]    regex, unterminated; case-sensitive, so also how a literal is matched in exact case
  *   /ab[Cc]/   regex, terminated
- *   /abc/i     regex, case-insensitive; `i` is the only flag
+ *   /abc/i     regex, ignoring case; `i` is the only flag
  *   /a\/i      regex "a\/i" -- the escaped slash is not a terminator, so this is
  *              how a pattern ending in "/<flag letter>" is written
  * An empty regex would match every cell, so it is rejected rather than accepted.
@@ -23,10 +24,15 @@
 struct zsvsheet_pattern {
   const char *literal; // NULL iff this is a regex; may point into `owned`
   size_t literal_len;
-  char *owned;           // NULL when `literal` is borrowed from the caller
-  regex_handle_t *regex; // NULL iff this is a literal
-  unsigned char exact : 1;
-  unsigned char _ : 7;
+  char *owned;                 // NULL when `literal` is borrowed from the caller
+  regex_handle_t *regex;       // NULL iff this is a literal
+  int32_t *fold;               // zsv_strfold() of `literal` when a caseless scan is needed, else NULL
+  size_t fold_len;             // code points in `fold`; 0 iff fold == NULL
+  unsigned char exact : 1;     // whole-cell match (literal only)
+  unsigned char caseless : 1;  // regex compiled with /i (a literal always ignores case)
+  unsigned char ascii : 1;     // `fold` (when set) is pure ASCII: the byte-scanning kernel applies
+  unsigned char malformed : 1; // `fold` has a byte that is not UTF-8: skip the row-span pre-filter
+  unsigned char _ : 4;
 };
 
 enum zsvsheet_pattern_status {
@@ -46,8 +52,8 @@ enum zsvsheet_pattern_status zsvsheet_pattern_parse(struct zsvsheet_pattern *p, 
                                                     size_t errbuflen);
 
 /**
- * Build a literal pattern that borrows `s`, which must outlive *p. No allocation,
- * so this cannot fail.
+ * Build a case-sensitive literal pattern that borrows `s`, which must outlive *p.
+ * No allocation, so this cannot fail.
  * @param exact if non-zero, match the whole cell rather than a substring
  */
 void zsvsheet_pattern_literal(struct zsvsheet_pattern *p, const char *s, char exact);
@@ -75,6 +81,12 @@ int zsvsheet_pattern_is_set(const struct zsvsheet_pattern *p);
  * Release *p and re-zero it, so calling this twice is safe
  */
 void zsvsheet_pattern_free(struct zsvsheet_pattern *p);
+
+/**
+ * @return the status-bar message for a search that matched nothing; for a
+ *         case-sensitive regex it also says how to ignore case
+ */
+const char *zsvsheet_pattern_not_found_text(const struct zsvsheet_pattern *p);
 
 /**
  * @return a status-bar message for a non-ok status

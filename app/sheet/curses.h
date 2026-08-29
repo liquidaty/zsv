@@ -17,3 +17,12 @@
 #error Cannot find ncurses include file!
 #endif
 #endif
+
+// How getch() delivers a typed non-ASCII character: ncurses returns its UTF-8
+// bytes one call at a time; PDCurses (wincon/pdckbd.c) returns a UTF-16 code
+// unit, which no caller here decodes yet, so such input is dropped there
+#if defined(HAVE_PDCURSES) && !defined(HAVE_NCURSESW) && !defined(HAVE_NCURSES)
+#define ZSVSHEET_GETCH_UTF8_BYTES 0
+#else
+#define ZSVSHEET_GETCH_UTF8_BYTES 1
+#endif

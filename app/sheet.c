@@ -32,6 +32,7 @@
 
 #include "../include/zsv/ext/sheet.h"
 #include "../include/zsv/utils/string.h"
+#include "../include/zsv/utils/utf8.h"
 #include "sheet/sheet_internal.h"
 #include "sheet/pattern.c"
 #include "sheet/screen_buffer.c"
@@ -196,9 +197,39 @@ static void reset_numeric_input(struct zsvsheet_sheet_context *state) {
 }
 
 // isprint() is only defined for EOF and values representable as unsigned char;
-// getch() also returns ERR and KEY_* codes well above UCHAR_MAX
+// getch() also returns ERR and KEY_* codes well above UCHAR_MAX. Bytes >= 0x80
+// are UTF-8 input where getch() delivers that (see curses.h).
 static int zsvsheet_ch_is_print(int ch) {
-  return ch >= 0 && ch <= 0xff && isprint(ch);
+  return ch >= 0 && ch <= 0xff && ((ZSVSHEET_GETCH_UTF8_BYTES && ch >= 0x80) || isprint(ch));
+}
+
+// Append one getch() byte to buff[0, idx) and echo it. A UTF-8 code point is never
+// split at the end of the buffer: a lead byte is taken only if its whole sequence
+// fits, a continuation byte only if it continues an incomplete trailing sequence.
+// Returns the new length.
+static size_t prompt_append(char *buff, size_t idx, size_t buffsize, int ch) {
+  int need = ZSVSHEET_GETCH_UTF8_BYTES ? ZSV_UTF8_CHARLEN(ch) : 1; // -1: continuation (or invalid) byte
+  if (need < 0) {
+    size_t lead = idx; // index after the lead byte of the trailing sequence
+    while (lead > 0 && ZSV_UTF8_SUBSEQUENT_CHAR_OK((unsigned char)buff[lead - 1]))
+      lead--;
+    if (lead == 0 || (int)(idx - lead + 1) >= ZSV_UTF8_CHARLEN((unsigned char)buff[lead - 1]))
+      return idx; // stray continuation byte, or the sequence is already complete
+    need = 1;
+  }
+  if (idx + (size_t)need > buffsize - 1)
+    return idx;
+  buff[idx++] = (char)ch;
+  buff[idx] = '\0';
+  addch(ch); // ncursesw assembles the character once its last byte arrives
+  return idx;
+}
+
+// Redraw the text shown after the prompt, leaving the cursor at its end
+static void prompt_redraw(int y, int x, const char *buff) {
+  move(y, x);
+  clrtoeol();
+  mvprintw(y, x, "%s", buff);
 }
 
 // Replace the prompt's edit buffer and the text shown after the prompt.
@@ -211,10 +242,18 @@ static size_t prompt_set_text(char *buff, size_t buffsize, int y, int x, const c
     n = buffsize - 1;
   memcpy(buff, text, n);
   buff[n] = '\0';
-  move(y, x);
-  clrtoeol();
-  mvprintw(y, x, "%s", buff);
+  prompt_redraw(y, x, buff);
   return n;
+}
+
+// Erase the last code point of buff[0, idx) and redraw. Returns the new length.
+// UTF-8 aware on every backend: prompt_set_text() can insert a UTF-8 column name.
+static size_t prompt_backspace(char *buff, size_t idx, int y, int x) {
+  while (idx > 0 && ZSV_UTF8_SUBSEQUENT_CHAR_OK((unsigned char)buff[--idx]))
+    ; // skip UTF-8 continuation bytes back to the lead byte
+  buff[idx] = '\0';
+  prompt_redraw(y, x, buff);
+  return idx;
 }
 
 // Longest command-name prefix Tab will complete. Anything longer cannot match.
@@ -278,23 +317,11 @@ static void get_subcommand(const char *prompt, char *buff, size_t buffsize, int 
       comp_active = 1;
       continue;
     } else if (ch == ZSVSHEET_CTRL('A')) {
-      while (idx > 0) {
-        idx--;
-        buff[idx] = '\0';
-        mvwdelch(stdscr, y, x + (int)idx); // Move cursor back to start
-      }
+      idx = prompt_set_text(buff, buffsize, y, x, "");
     } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') { // BACKSPACE key
-      if (idx > 0) {
-        idx--;
-        buff[idx] = '\0';
-        mvwdelch(stdscr, y, x + (int)idx); // Move cursor back and delete character
-      }
+      idx = prompt_backspace(buff, idx, y, x);
     } else if (zsvsheet_ch_is_print(ch)) { // Printable character
-      if (idx < buffsize - 1) {
-        buff[idx++] = ch;
-        buff[idx] = '\0';
-        addch(ch); // Echo the character
-      }
+      idx = prompt_append(buff, idx, buffsize, ch);
     } else
       continue;      // Ignore other keys, and leave any completion cycle running
     comp_active = 0; // the input was edited, so re-read the prefix on the next Tab
@@ -342,41 +369,15 @@ static void get_subcommand_with_columns(const char *prompt, char *buff, size_t b
       else
         sel = (sel - 1 + (int)col_count) % (int)col_count;
 
-      // Clear current input on screen
-      for (size_t i = 0; i < idx; i++)
-        mvwdelch(stdscr, y, x + (int)i);
-      move(y, x);
-      clrtoeol();
-
-      // Fill buffer with selected column name
-      const char *name = col_names[sel];
-      size_t nlen = strlen(name);
-      if (nlen >= buffsize)
-        nlen = buffsize - 1;
-      memcpy(buff, name, nlen);
-      buff[nlen] = '\0';
-      idx = nlen;
-      mvprintw(y, x, "%s", buff);
+      idx = prompt_set_text(buff, buffsize, y, x, col_names[sel]);
     } else if (ch == ZSVSHEET_CTRL('A')) {
-      while (idx > 0) {
-        idx--;
-        buff[idx] = '\0';
-        mvwdelch(stdscr, y, x + (int)idx);
-      }
+      idx = prompt_set_text(buff, buffsize, y, x, "");
       sel = -1;
     } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
-      if (idx > 0) {
-        idx--;
-        buff[idx] = '\0';
-        mvwdelch(stdscr, y, x + (int)idx);
-      }
+      idx = prompt_backspace(buff, idx, y, x);
       sel = -1;
     } else if (zsvsheet_ch_is_print(ch)) {
-      if (idx < buffsize - 1) {
-        buff[idx++] = ch;
-        buff[idx] = '\0';
-        addch(ch);
-      }
+      idx = prompt_append(buff, idx, buffsize, ch);
       sel = -1;
     }
   }
@@ -656,30 +657,21 @@ static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di, struct z
     zsvsheet_move_hor_to(di, zsvsheet_opts.found_colnum + uib->rownum_col_offset);
     return 1;
   }
-  zsvsheet_priv_set_status(ddims, 1, "Not found");
+  zsvsheet_priv_set_status(ddims, 1, "%s", zsvsheet_pattern_not_found_text(pattern));
   return 0;
 }
 
-/* Scan column headers for the first case-insensitive substring match of
- * needle_lc (already lowercased, length needle_len). Scanning begins at column
- * start_col and wraps around so every column is examined exactly once.
+/* Scan column headers for the first case-insensitive substring match of a
+ * needle folded by zsv_strfold(). Scanning begins at column start_col and wraps
+ * around so every column is examined exactly once.
  * Returns 1 + the matching column index, or 0 if no column matches. */
-static size_t zsvsheet_find_column_match(zsvsheet_screen_buffer_t buffer, size_t colcount,
-                                         const unsigned char *needle_lc, size_t needle_len, size_t start_col) {
+static size_t zsvsheet_find_column_match(zsvsheet_screen_buffer_t buffer, size_t colcount, const int32_t *fold,
+                                         size_t fold_len, char ascii, size_t start_col) {
   for (size_t n = 0; n < colcount; n++) {
     size_t i = (start_col + n) % colcount;
     const unsigned char *colname = zsvsheet_screen_buffer_cell_display(buffer, 0, i);
-    if (colname && *colname) {
-      int err;
-      size_t colname_len_lc = strlen((const char *)colname);
-      unsigned char *colname_lc = zsv_strtolowercase_w_err(colname, &colname_len_lc, &err);
-      size_t found = 0; // if matched, will equal 1 + column index
-      if (colname_lc && colname_len_lc > 0 && memmem(colname_lc, colname_len_lc, needle_lc, needle_len))
-        found = i + 1;
-      free(colname_lc);
-      if (found)
-        return found;
-    }
+    if (colname && zsv_strcasestr_folded(colname, strlen((const char *)colname), fold, fold_len, ascii))
+      return i + 1;
   }
   return 0;
 }
@@ -707,10 +699,10 @@ static zsvsheet_status zsvsheet_goto_column(struct zsvsheet_sheet_context *state
   if (!state->goto_column)
     return zsvsheet_status_ok;
 
-  size_t len_lc = strlen(state->goto_column);
-  int err;
-  unsigned char *find_lc = zsv_strtolowercase_w_err((const unsigned char *)state->goto_column, &len_lc, &err);
-  if (find_lc && len_lc) {
+  size_t fold_len;
+  unsigned flags;
+  int32_t *fold = zsv_strfold((const unsigned char *)state->goto_column, strlen(state->goto_column), &fold_len, &flags);
+  if (fold && fold_len) {
     zsvsheet_screen_buffer_t buffer = current_ui_buffer->buffer;
     size_t colcount = zsvsheet_screen_buffer_cols(buffer);
     if (colcount > 0) {
@@ -721,14 +713,15 @@ static zsvsheet_status zsvsheet_goto_column(struct zsvsheet_sheet_context *state
         size_t current_col = current_ui_buffer->buff_offset.col + current_ui_buffer->cursor_col;
         start_col = (current_col + 1) % colcount;
       }
-      size_t found = zsvsheet_find_column_match(buffer, colcount, find_lc, len_lc, start_col);
+      size_t found =
+        zsvsheet_find_column_match(buffer, colcount, fold, fold_len, (flags & ZSV_STRFOLD_ASCII) != 0, start_col);
       if (found)
         zsvsheet_move_hor_to(di, found - 1);
       else
         zsvsheet_priv_set_status(di->dimensions, 1, "Column not found");
     }
   }
-  free(find_lc);
+  free(fold);
   return zsvsheet_status_ok;
 }
 
@@ -743,7 +736,8 @@ static zsvsheet_status zsvsheet_find(struct zsvsheet_sheet_context *state, bool 
     char prompt_buffer[256] = {0};
     char errbuf[256];
     int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
-    get_subcommand("Find", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, NULL, 0);
+    get_subcommand("Find (any case; /re = regex, exact case)", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row,
+                   NULL, 0);
     if (*prompt_buffer == '\0')
       return zsvsheet_status_ok;
 
@@ -835,9 +829,11 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
     if (!ctx->invocation.interactive)
       return zsvsheet_status_error;
     if (single_column)
-      get_subcommand("Filter (this column)", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, NULL, 0);
+      get_subcommand("Filter this column (any case; /re = regex)", prompt_buffer, sizeof(prompt_buffer),
+                     prompt_footer_row, NULL, 0);
     else
-      get_subcommand("Filter", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, NULL, 0);
+      get_subcommand("Filter (any case; /re = regex, exact case)", prompt_buffer, sizeof(prompt_buffer),
+                     prompt_footer_row, NULL, 0);
     if (*prompt_buffer == '\0')
       return zsvsheet_status_ok;
     filter = prompt_buffer;
@@ -1143,14 +1139,14 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_move_down,        "down",           NULL, "Move down one row",                                               zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_move_left,        "left",           NULL, "Move left one column",                                            zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_move_right,       "right",          NULL, "Move right one column",                                           zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_find,             "find",           NULL, "Set a search term and jump to the first result after the cursor", zsvsheet_builtin_proc_handler },
-  { zsvsheet_builtin_proc_find_next,        "next",           NULL, "Jump to the next search result",                                  zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_find,             "find",           NULL, "Find a cell (any case); /re = regex; /re/i = regex, any case",    zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_find_next,        "next",           NULL, "Find the next match",                                             zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_goto_column,      "gotocolumn",     NULL, "Find a column by name and jump to the first match",               zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_goto_column_next, "gotocolumnnext", NULL, "Jump to the next column matching the find-column term",           zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_resize,           "resize",         NULL, "Resize the layout to fit new terminal dimensions",                zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_open_file,        "open",           NULL, "Open another CSV file",                                           zsvsheet_open_file_handler },
-  { zsvsheet_builtin_proc_filter,           "filter",         NULL, "Filter by specified text",                                        zsvsheet_filter_handler },
-  { zsvsheet_builtin_proc_filter_this,      "filtercol",      NULL, "Filter by specified text only in current column",                 zsvsheet_filter_handler },
+  { zsvsheet_builtin_proc_filter,           "filter",         NULL, "Filter rows (any case); /re = regex; /re/i = regex, any case",    zsvsheet_filter_handler },
+  { zsvsheet_builtin_proc_filter_this,      "filtercol",      NULL, "Filter on this column",                                           zsvsheet_filter_handler },
   { zsvsheet_builtin_proc_sqlfilter,        "where",          NULL, "Filter by sql expression",                                        zsvsheet_sqlfilter_handler },
   { zsvsheet_builtin_proc_subcommand,       "subcommand",     NULL, "Editor subcommand",                                               zsvsheet_subcommand_handler },
   { zsvsheet_builtin_proc_help,             "help",           NULL, "Display a list of actions and key-bindings",                      zsvsheet_help_handler },

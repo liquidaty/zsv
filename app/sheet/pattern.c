@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <zsv/utils/string.h>
 #include "pattern.h"
 
 #if defined(WIN32) || defined(_WIN32)
@@ -28,16 +29,36 @@ static size_t zsvsheet_pattern_last_unescaped_slash(const char *s, size_t len) {
 }
 #endif
 
-// Take ownership of a copy of s. On failure literal/literal_len keep the zeroed
-// values the caller's memset left, so the pair is never half-set.
+// Take ownership of a copy of s, folded for the caseless scan every typed literal gets.
+// On failure *p owns nothing and literal/literal_len keep the zeroed values the
+// caller's memset left, so the pair is never half-set.
 static enum zsvsheet_pattern_status zsvsheet_pattern_own_literal(struct zsvsheet_pattern *p, const char *s) {
   size_t len = strlen(s);
+  unsigned flags;
   if (!(p->owned = malloc(len + 1)))
     return zsvsheet_pattern_status_memory;
   memcpy(p->owned, s, len + 1);
   p->literal = p->owned;
   p->literal_len = len;
+  if (!(p->fold = zsv_strfold((const unsigned char *)s, len, &p->fold_len, &flags))) {
+    zsvsheet_pattern_free(p);
+    return zsvsheet_pattern_status_memory;
+  }
+  p->ascii = (flags & ZSV_STRFOLD_ASCII) != 0;
+  p->malformed = (flags & ZSV_STRFOLD_MALFORMED) != 0;
+  if (flags & ZSV_STRFOLD_EXACT) { // no case variants exist: memmem gives the same answer, faster
+    free(p->fold);
+    p->fold = NULL;
+    p->fold_len = 0;
+  }
   return zsvsheet_pattern_status_ok;
+}
+
+// Substring test for a literal, routed by whether case matters
+static int zsvsheet_pattern_contains(const struct zsvsheet_pattern *p, const unsigned char *s, size_t len) {
+  if (p->fold)
+    return zsv_strcasestr_folded(s, len, p->fold, p->fold_len, p->ascii);
+  return memmem(s, len, p->literal, p->literal_len) != NULL;
 }
 
 void zsvsheet_pattern_literal(struct zsvsheet_pattern *p, const char *s, char exact) {
@@ -82,6 +103,7 @@ enum zsvsheet_pattern_status zsvsheet_pattern_parse(struct zsvsheet_pattern *p, 
   }
   if (body_len == 0) // an empty regex matches every cell; that is never what was meant
     return zsvsheet_pattern_status_empty;
+  p->caseless = (flags & ZSV_PCRE2_8_CASELESS) != 0;
 
   char *re = malloc(body_len + 1);
   if (!re)
@@ -107,15 +129,15 @@ int zsvsheet_pattern_match(const struct zsvsheet_pattern *p, const unsigned char
     return 0;
   if (p->exact)
     return len == p->literal_len && !memcmp(s, p->literal, len);
-  return memmem(s, len, p->literal, p->literal_len) != NULL;
+  return zsvsheet_pattern_contains(p, s, len);
 }
 
 int zsvsheet_pattern_span_might_match(const struct zsvsheet_pattern *p, const unsigned char *s, size_t len) {
-  if (!p->literal) // only a literal can be ruled out without matching cell by cell
+  if (!p->literal || p->malformed) // only a well-formed literal can be ruled out without matching cell by cell
     return 1;
   if (!p->literal_len || !s || !len)
     return 0;
-  return memmem(s, len, p->literal, p->literal_len) != NULL;
+  return zsvsheet_pattern_contains(p, s, len);
 }
 
 int zsvsheet_pattern_is_set(const struct zsvsheet_pattern *p) {
@@ -127,7 +149,12 @@ void zsvsheet_pattern_free(struct zsvsheet_pattern *p) {
   zsv_pcre2_8_delete(p->regex); // NULL-safe
 #endif
   free(p->owned);
+  free(p->fold);
   memset(p, 0, sizeof(*p));
+}
+
+const char *zsvsheet_pattern_not_found_text(const struct zsvsheet_pattern *p) {
+  return p->regex && !p->caseless ? "Not found (regex is case-sensitive; add /i to ignore case)" : "Not found";
 }
 
 const char *zsvsheet_pattern_status_text(enum zsvsheet_pattern_status status) {

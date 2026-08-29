@@ -48,6 +48,31 @@ int zsv_stricmp(const unsigned char *s1, const unsigned char *s2);
 int zsv_strincmp(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2);
 int zsv_strincmp_ascii(const unsigned char *s1, size_t len1, const unsigned char *s2, size_t len2);
 
+#define ZSV_STRFOLD_ASCII 1     // every folded code point is ASCII: zsv_strcasestr_folded() may byte-scan
+#define ZSV_STRFOLD_EXACT 2     // no code point has a case variant: a byte-exact search gives the same answer
+#define ZSV_STRFOLD_MALFORMED 4 // some byte was not valid UTF-8 and is matched byte-wise
+/**
+ * zsv_strfold(): lowercase s[0, len) into code points for zsv_strcasestr_folded()
+ * (Unicode simple case mapping via utf8proc; ASCII-only without it). A byte b that
+ * is not valid UTF-8 is stored as -1 - b, so it matches only that same byte where
+ * it is likewise not valid UTF-8.
+ *
+ * @param outlen receives the number of code points (0 on failure)
+ * @param flags  receives ZSV_STRFOLD_* bits (0 on failure)
+ * @returns      newly-allocated array; caller must free(). NULL on allocation failure
+ */
+int32_t *zsv_strfold(const unsigned char *s, size_t len, size_t *outlen, unsigned *flags);
+
+/**
+ * zsv_strcasestr_folded(): case-insensitive substring test against a needle from zsv_strfold().
+ * The haystack is folded on the fly by the same mapping; nothing is allocated.
+ *
+ * @param ascii  non-zero iff zsv_strfold() reported ZSV_STRFOLD_ASCII; selects the byte-scanning kernel
+ * @returns      non-zero if hay[0, len) contains the needle (an empty needle is found everywhere).
+ *               Cost is O(len * fold_len) in the worst case and O(len) for a typical short needle
+ */
+int zsv_strcasestr_folded(const unsigned char *hay, size_t len, const int32_t *fold, size_t fold_len, char ascii);
+
 #define ZSV_STRWHITE_FLAG_NO_EMBEDDED_NEWLINE 1
 /**
  * zsv_strwhite(): convert consecutive white to single space
