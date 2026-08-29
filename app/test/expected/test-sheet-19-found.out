@@ -1,5 +1,5 @@
 Key(s)                    Action                    Description
+/                         find                      Find a cell (any case); /
 n                         next                      Find the next match
 |                         gotocolumn                Find a column by name and
-\                         gotocolumnnext            Jump to the next column m
-<esc> to exit help next
+<esc> to exit help find

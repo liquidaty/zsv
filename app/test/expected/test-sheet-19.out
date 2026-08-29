@@ -1,5 +1,5 @@
 Key(s)                    Action                    Description
-/                         find                      Set a search term and jum
-n                         next                      Jump to the next search r
+/                         find                      Find a cell (any case); /
+n                         next                      Find the next match
 |                         gotocolumn                Find a column by name and
-<esc> to exit help find
+<esc> to exit help Find a cell (any case); /re = regex; /re/i = regex, any case

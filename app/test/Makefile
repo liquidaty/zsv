@@ -119,6 +119,7 @@ endif
 ifneq ($(CROSS_COMPILING),1)
   TESTS+=test-vuln-cve-underflow
   TESTS+=test-rng # host-compiled reference-vector check of zsv/utils/rng
+  TESTS+=test-strcasestr # host-compiled unit test of the caseless UTF-8 search in zsv/utils/string
   # ASan-instrumented regression for the zsv_finish->cell_dl OOB. Skipped
   # if SAN_CC (clang+sanitizers) is unavailable; build target itself runs
   # the sanitizer.
@@ -740,6 +741,22 @@ test-rng: ${TMP_DIR}/test_rng
 ${TMP_DIR}/test_rng: test_rng.c ../utils/rng.c
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -I../../include test_rng.c ../utils/rng.c -o $@
+
+test-strcasestr: ${TMP_DIR}/test_strcasestr
+	@${TEST_INIT}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
+
+# string.c is built standalone (no libzsv) with the utf8proc the app links; the parent
+# Makefile extracts it, so delegate on a clean tree as the zsv_% rule does
+UTF8PROC_SRC=$(realpath ..)/external/utf8proc-2.11.3
+${UTF8PROC_SRC}/utf8proc.c:
+	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+
+${TMP_DIR}/test_strcasestr: test_strcasestr.c ../utils/string.c ${UTF8PROC_SRC}/utf8proc.c
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -I../../include -I${UTF8PROC_SRC} -DUTF8PROC_STATIC \
+	  -DZSV_UTILS_STRING_STANDALONE -DZSV_STRING_LIB_ONLY \
+	  test_strcasestr.c ../utils/string.c ${UTF8PROC_SRC}/utf8proc.c -o $@
 
 test-quotebuff-select test-quotebuff-select-pull: test-quotebuff-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -1471,7 +1488,8 @@ test-sheet-cleanup:
 # The '/'-prefixed regex syntax needs pcre2; without it a spec is reported as
 # unsupported, so gate these the same way test-sheet-filter-this-regex is gated
 ifeq ($(HAVE_PCRE2_8),1)
-  SHEET_REGEX_TESTS=test-sheet-regex-find test-sheet-regex-delim test-sheet-regex-find-help test-sheet-regex-filter
+  SHEET_REGEX_TESTS=test-sheet-regex-find test-sheet-regex-delim test-sheet-regex-find-help test-sheet-regex-filter \
+	test-sheet-caseless-regex
 else
   SHEET_REGEX_TESTS=
 endif
@@ -1481,6 +1499,7 @@ test-sheet-all: \
 	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-15 test-sheet-16 test-sheet-17 \
 	test-sheet-18 test-sheet-19 test-sheet-20 \
 	test-sheet-subcommand \
+	test-sheet-caseless-find test-sheet-caseless-filter test-sheet-caseless-find-file \
 	test-sheet-prop-cmd-opt \
 	test-sheet-pivot-1 \
 	test-sheet-pivot-V \
@@ -1695,6 +1714,8 @@ test-sheet-18: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 # find works in the help screen just like in a regular sheet
+# The last stage parks the cursor on a Description cell: the footer must show the whole
+# 60-char find description after the 19-char help status, i.e. within 80 columns
 test-sheet-19: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
@@ -1704,6 +1725,8 @@ test-sheet-19: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS
 	tmux -L $@ send-keys -t $@ "?" && \
 	${EXPECT} $@ help && \
 	tmux -L $@ send-keys -t $@ "/" "find" ENTER && \
+	${EXPECT} $@ found && \
+	tmux -L $@ send-keys -t $@ "l" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 # filter works in the help screen (in-memory buffer materialized to a temp CSV)
@@ -2266,6 +2289,12 @@ test-sheet-regex-find: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	${EXPECT} $@ caseless && \
 	tmux -L $@ send-keys -t $@ "/" '\/abc' ENTER && \
 	${EXPECT} $@ literal-slash && \
+	tmux -L $@ send-keys -t $@ "g" "g" "/" 'abc' ENTER && \
+	${EXPECT} $@ caseless-1 && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ caseless-2 && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ caseless-3 && \
 	tmux -L $@ send-keys -t $@ "g" "g" "/" '/abc' ENTER && \
 	${EXPECT} $@ unanchored && \
 	tmux -L $@ send-keys -t $@ "/" '/[' ENTER "n" && \
@@ -2319,6 +2348,70 @@ test-sheet-regex-filter: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ send-keys -t $@ ESCAPE "f" '\/abc' ENTER && \
 	${EXPECT} $@ literal && \
 	tmux -L $@ send-keys -t $@ ESCAPE "f" "/" ENTER "G" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# Literal find/filter ignore case (Unicode simple case mapping); the prompt accepts
+# UTF-8 and Backspace erases a whole code point. Rows 4-6 hold the only non-ASCII
+# code points whose lowercase is ASCII (U+0130, U+212A), which the ASCII fast path
+# must still match. `tmux -u` sends the keys as UTF-8 regardless of the host locale.
+SHEET_CASE_CSV=printf 'Row,Value\n1,D\303\266mitz\n2,D\303\226MITZ\n3,d\303\266mitz\n4,\304\260stanbul\n5,istanbul\n6,\342\204\252elvin\n'
+
+test-sheet-caseless-find: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${SHEET_CASE_CSV} > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -u -L $@ new-session -x 80 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "/" 'dömitzö' BSpace ENTER && \
+	${EXPECT} $@ 1 && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ 2 && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ 3 && \
+	tmux -L $@ send-keys -t $@ "g" "g" "/" 'İSTANBUL' ENTER && \
+	${EXPECT} $@ 4 && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ 5 && \
+	tmux -L $@ send-keys -t $@ "/" 'kelvin' ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# Regexes stay case-sensitive, non-ASCII included: /DÖMITZ skips row 1 and lands on row 2;
+# /dömitz/i then finds row 3
+test-sheet-caseless-regex: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${SHEET_CASE_CSV} > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -u -L $@ new-session -x 80 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "/" '/DÖMITZ' ENTER && \
+	${EXPECT} $@ exact && \
+	tmux -L $@ send-keys -t $@ "/" '/dömitz/i' ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+test-sheet-caseless-filter: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@${SHEET_CASE_CSV} > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -u -L $@ new-session -x 80 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "f" 'DÖMITZ' ENTER && \
+	${EXPECT} $@ all && \
+	tmux -L $@ send-keys -t $@ ESCAPE "l" "l" "F" 'KELVIN' ENTER && \
+	${EXPECT} $@ col && \
+	tmux -L $@ send-keys -t $@ ESCAPE ":filter" ENTER 'istanbul' ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# The same through the data-file path (index + row-span pre-filter), not the static buffer
+test-sheet-caseless-find-file: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -u -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ "/" 'DÖNENÇAY' ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 # A blank row is data, not an "empty header row". find seeks via the row index and

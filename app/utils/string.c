@@ -131,6 +131,127 @@ int zsv_strincmp(const unsigned char *s1, size_t len1, const unsigned char *s2, 
 #endif
 }
 
+// Decode and lowercase the code point at s[0, len), len >= 1; return bytes consumed (>= 1).
+// `ascii` (the needle is ASCII) skips utf8proc: only U+0130 (-> i) and U+212A (-> k) can
+// still match, so they are recognized by byte sequence. A byte that starts no valid
+// sequence yields -1 - b, which only that same byte can equal.
+static inline size_t zsv_fold_next(const unsigned char *s, size_t len, int32_t *cp, char ascii) {
+  unsigned char b = s[0];
+  if (b < 0x80) {
+    *cp = (unsigned)(b - 'A') < 26u ? b | 0x20 : b;
+    return 1;
+  }
+  if (ascii) {
+    if (b == 0xC4 && len > 1 && s[1] == 0xB0) {
+      *cp = 'i';
+      return 2;
+    }
+    if (b == 0xE2 && len > 2 && s[1] == 0x84 && s[2] == 0xAA) {
+      *cp = 'k';
+      return 3;
+    }
+  }
+#ifndef NO_UTF8PROC
+  else {
+    utf8proc_int32_t c;
+    utf8proc_ssize_t n = utf8proc_iterate(s, (utf8proc_ssize_t)len, &c);
+    if (n > 0) {
+      *cp = utf8proc_tolower(c);
+      return (size_t)n;
+    }
+  }
+#endif
+  *cp = -1 - (int32_t)b;
+  return 1;
+}
+
+int32_t *zsv_strfold(const unsigned char *s, size_t len, size_t *outlen, unsigned *flags) {
+  *outlen = 0;
+  *flags = 0;
+  if (len > SIZE_MAX / sizeof(int32_t))
+    return NULL;
+  int32_t *fold = malloc((len ? len : 1) * sizeof(*fold)); // at most one code point per byte
+  if (!fold)
+    return NULL;
+  size_t n = 0;
+  unsigned f = ZSV_STRFOLD_ASCII | ZSV_STRFOLD_EXACT;
+  for (size_t i = 0; i < len; n++) {
+    i += zsv_fold_next(s + i, len - i, &fold[n], 0);
+    if (fold[n] < 0)
+      f = ZSV_STRFOLD_MALFORMED;
+    else if (fold[n] >= 0x80)
+      f &= ~(unsigned)(ZSV_STRFOLD_ASCII | ZSV_STRFOLD_EXACT);
+    else if ((unsigned)(fold[n] - 'a') < 26u)
+      f &= ~(unsigned)ZSV_STRFOLD_EXACT;
+  }
+  *outlen = n;
+  *flags = f;
+  return fold;
+}
+
+// Non-zero if the folded haystack starting at hay[i] begins with the whole needle
+static inline int zsv_fold_match_at(const unsigned char *hay, size_t len, size_t i, const int32_t *fold, size_t n,
+                                    char ascii) {
+  int32_t cp;
+  size_t j = 0;
+  for (; j < n && i < len; j++) {
+    i += zsv_fold_next(hay + i, len - i, &cp, ascii);
+    if (cp != fold[j])
+      break;
+  }
+  return j == n;
+}
+
+// Offset of the first c in s[from, len), else len
+static inline size_t zsv_memchr_pos(const unsigned char *s, size_t from, size_t len, unsigned char c) {
+  const unsigned char *p = memchr(s + from, c, len - from);
+  return p ? (size_t)(p - s) : len;
+}
+
+// ASCII kernel: a match can only start at a byte equal to the first code point, to its
+// other-case form, or to the lead byte of U+0130 / U+212A. One forward-only memchr()
+// cursor per candidate byte keeps the scan linear in len.
+static int zsv_strcasestr_ascii(const unsigned char *hay, size_t len, const int32_t *fold, size_t fold_len) {
+  unsigned char cand[3] = {(unsigned char)fold[0]};
+  size_t pos[3], nc = 1;
+  if ((unsigned)(fold[0] - 'a') < 26u) {
+    cand[nc++] = (unsigned char)(fold[0] ^ 0x20);
+    if (fold[0] == 'i')
+      cand[nc++] = 0xC4;
+    else if (fold[0] == 'k')
+      cand[nc++] = 0xE2;
+  }
+  for (size_t k = 0; k < nc; k++)
+    pos[k] = zsv_memchr_pos(hay, 0, len, cand[k]);
+  for (size_t i = 0; i + fold_len <= len; i++) {
+    size_t next = len;
+    for (size_t k = 0; k < nc; k++) {
+      if (pos[k] < i) // consumed; a cursor at len is exhausted and never refires
+        pos[k] = zsv_memchr_pos(hay, i, len, cand[k]);
+      if (pos[k] < next)
+        next = pos[k];
+    }
+    if ((i = next) + fold_len > len)
+      break;
+    if (zsv_fold_match_at(hay, len, i, fold, fold_len, 1))
+      return 1;
+  }
+  return 0;
+}
+
+int zsv_strcasestr_folded(const unsigned char *hay, size_t len, const int32_t *fold, size_t fold_len, char ascii) {
+  if (!fold_len)
+    return 1;
+  if (!hay || len < fold_len) // each code point is >= 1 byte, so fewer bytes than fold_len cannot match
+    return 0;
+  if (ascii)
+    return zsv_strcasestr_ascii(hay, len, fold, fold_len);
+  for (size_t i = 0; i + fold_len <= len; i++)
+    if (zsv_fold_match_at(hay, len, i, fold, fold_len, 0))
+      return 1;
+  return 0;
+}
+
 __attribute__((always_inline)) static inline const unsigned char *zsv_strtrim_left_inline(
   const char unsigned *restrict s, size_t *lenp) {
   utf8proc_ssize_t bytes_read;

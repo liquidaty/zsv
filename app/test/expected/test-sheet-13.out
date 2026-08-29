@@ -19,13 +19,13 @@ l                         right                     Move right one column
 <page down>               pageup                    Move up one page
 g g                       top                       Jump to the first row
 G                         bottom                    Jump to the last row (nG
-/                         find                      Set a search term and jum
-n                         next                      Jump to the next search r
+/                         find                      Find a cell (any case); /
+n                         next                      Find the next match
 |                         gotocolumn                Find a column by name and
 \                         gotocolumnnext            Jump to the next column m
 e                         open                      Open another CSV file
-f                         filter                    Filter by specified text
-F                         filtercol                 Filter by specified text
+f                         filter                    Filter rows (any case); /
+F                         filtercol                 Filter on this column
 :                         subcommand                Editor subcommand
 ?                         help                      Display a list of actions
 ^J                        <Enter>                   Follow hyperlink (if any)

@@ -1,5 +1,5 @@
 Row #               Key(s)              Action              Description
-26                  f                   filter              Filter by specified
-27                  F                   filtercol           Filter by specified
+26                  f                   filter              Filter rows (any ca
+27                  F                   filtercol           Filter on this colu
 34                                      where               Filter by sql expre
 (3 filtered rows) 26
