@@ -237,8 +237,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
         zsvsheet_opts->found_rownum = rows_searched + start_row;
         zsvsheet_opts->found_colnum = colIndexPlus1 - 1;
         break;
-      } else
-        zsvsheet_opts->found_colnum = 0; // next row search starts at beg of row
+      } else // next row: search from its first data cell, past a "Row #" the file carries
+        zsvsheet_opts->found_colnum = uibuff && uibuff->has_row_num ? 1 : 0;
       continue;
     }
 

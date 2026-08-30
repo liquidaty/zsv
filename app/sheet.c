@@ -649,12 +649,13 @@ static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di, struct z
   zsvsheet_opts.find = pattern;
   zsvsheet_opts.find_specified_column_plus_1 = specified_column_plus_1;
   zsvsheet_opts.found_rownum = 0;
-  zsvsheet_opts.found_colnum = uib->cursor_col + uib->buff_offset.col;
+  // parser-to-screen column offset: the screen leads with a row-number column,
+  // which a data file that carries its own "Row #" (filter/sort output) already counts
+  const size_t col_offset = uib->rownum_col_offset && !uib->has_row_num ? 1 : 0;
+  zsvsheet_opts.found_colnum = uib->cursor_col + uib->buff_offset.col + 1 - col_offset; // parser col after the cursor
   if (zsvsheet_find_next(uib, &zsvsheet_opts, header_span, custom_prop_handler) > 0) {
     *update_buffer = zsvsheet_goto_input_raw_row(uib, zsvsheet_opts.found_rownum, header_span, ddims, (size_t)-1);
-
-    // move to zsvsheet_opts->found_colnum, skipping the "Row #" column when the buffer has one
-    zsvsheet_move_hor_to(di, zsvsheet_opts.found_colnum + uib->rownum_col_offset);
+    zsvsheet_move_hor_to(di, zsvsheet_opts.found_colnum + col_offset);
     return 1;
   }
   zsvsheet_priv_set_status(ddims, 1, "%s", zsvsheet_pattern_not_found_text(pattern));
