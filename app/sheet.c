@@ -896,6 +896,7 @@ static zsvsheet_status zsvsheet_buffer_new_static(struct zsvsheet_proc_context *
     .data_filename = NULL,
     .no_rownum_col_offset = 1,
     .write_after_open = 0,
+    .transient = 1,
   };
   struct zsvsheet_ui_buffer *uib = NULL;
   zsvsheet_screen_buffer_t buffer;
@@ -1098,8 +1099,10 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
     return zsvsheet_move_hor_end(&state->display_info, false);
 
   case zsvsheet_builtin_proc_escape:
-    // current_ui_buffer is not the base/blank buffer
-    if (current_ui_buffer->prior) {
+    // never drop to the blank base by closing the last buffer the user opened;
+    // a transient view (help, errors) closes regardless. :q quits
+    if (current_ui_buffer->prior &&
+        (current_ui_buffer->prior != *state->display_info.ui_buffers.base || current_ui_buffer->transient)) {
       if (zsvsheet_ui_buffer_pop(state->display_info.ui_buffers.base, state->display_info.ui_buffers.current, NULL)) {
         state->display_info.update_buffer = 1;
       }
