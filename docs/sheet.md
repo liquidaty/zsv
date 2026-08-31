@@ -187,9 +187,12 @@ src="https://github.com/user-attachments/assets/4c21ff11-f7f9-4182-a73d-531c41fa
 
 ## Closing a buffer or the application
 
-Press `Esc` to close the current buffer, and type `:q` (or `:quit`) followed by
-Enter to close the application. Quitting is deliberately a command rather than a
-single keystroke, so it cannot happen by accident.
+Press `Esc` to close the current buffer (a filter, sort or pivot result, the help
+or errors view, ...) and return to the one beneath it. `Esc` never closes the
+last file or data buffer you opened, so it leaves that view in place; type `:q`
+(or `:quit`) followed by Enter to close the application. Quitting is
+deliberately a command rather than a single keystroke, so it cannot happen by
+accident.
 
 ## Commands and Tab completion
 

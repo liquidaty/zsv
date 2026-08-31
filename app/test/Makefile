@@ -1498,6 +1498,7 @@ test-sheet-all: \
 	test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 \
 	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-15 test-sheet-16 test-sheet-17 \
 	test-sheet-18 test-sheet-19 test-sheet-20 \
+	test-sheet-esc-last test-sheet-find-after-filter \
 	test-sheet-subcommand \
 	test-sheet-caseless-find test-sheet-caseless-filter test-sheet-caseless-find-file \
 	test-sheet-prop-cmd-opt \
@@ -1663,6 +1664,44 @@ test-sheet-14: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS
 	tmux -L $@ send-keys -t $@ "?" && \
 	${EXPECT} $@ help && \
 	tmux -L $@ send-keys -t $@ ESCAPE && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# <esc> never closes the last buffer the user opened (that would leave the blank
+# base view); it still closes a transient view such as help
+test-sheet-esc-last: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 40 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	tmux -L $@ send-keys -t $@ ESCAPE && \
+	${EXPECT} $@ esc && \
+	tmux -L $@ send-keys -t $@ "?" && \
+	${EXPECT} $@ help && \
+	tmux -L $@ send-keys -t $@ ESCAPE ESCAPE && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# find in a filtered buffer: its data file already carries "Row #", so the found
+# column must not be shifted right by one. The footer shows the cursor cell, so
+# each stage asserts the column: bar (C, not the last column so an off-by-one
+# cannot be masked by clamping), then n -> baz (B, not bar again), then qux (C).
+# Finally, from the top, /2 must NOT match the "Row #" cell of row 2 (no data
+# cell contains a digit), so the cursor stays on bar rather than jumping to 2
+test-sheet-find-after-filter: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B,C,D\nq,foo,bar,x\nw,baz,qux,y\ne,zzz,yyy,z\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "f" "ba" ENTER && \
+	${EXPECT} $@ filtered && \
+	tmux -L $@ send-keys -t $@ "/" "ba" ENTER && \
+	${EXPECT} $@ bar && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ baz && \
+	tmux -L $@ send-keys -t $@ "/" "qux" ENTER && \
+	${EXPECT} $@ qux && \
+	tmux -L $@ send-keys -t $@ "g" "g" "/" "2" ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-15: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}

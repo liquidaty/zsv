@@ -73,7 +73,10 @@ struct zsvsheet_ui_buffer {
   // restore on completion; cleared by whoever replaces (and frees) status
   // first, so the string is never freed twice
   unsigned char status_is_index_placeholder : 1;
-  unsigned char _ : 6;
+  // informational view (help, errors): <esc> may close it even when it is the
+  // only buffer above the blank base, unlike a buffer the user opened
+  unsigned char transient : 1;
+  unsigned char _ : 5;
 };
 
 int zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*start_func)(void *), void *arg) {
@@ -148,6 +151,7 @@ struct zsvsheet_ui_buffer_opts {
   struct zsv_opts zsv_opts; // options to use when opening this file
   char no_rownum_col_offset;
   char write_after_open;
+  char transient;
 };
 
 struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffer,
@@ -171,6 +175,7 @@ struct zsvsheet_ui_buffer *zsvsheet_ui_buffer_new(zsvsheet_screen_buffer_t buffe
       }
       uib->zsv_opts = uibopts->zsv_opts;
       uib->write_in_progress = uibopts->write_after_open;
+      uib->transient = uibopts->transient;
     }
   }
   return uib;
