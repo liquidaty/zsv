@@ -283,6 +283,34 @@ __attribute__((always_inline)) static inline void zsv_clear_cell(struct zsv_scan
   scanner->quoted = 0;
 }
 
+static int zsv_count_malformed(void *ctx, const unsigned char *s, size_t n, size_t offset) {
+  (void)s;
+  (void)n;
+  (void)offset;
+  ++*(size_t *)ctx;
+  return 0;
+}
+
+/* Apply the malformed-UTF8 policy to one cell and fire the per-cell handler.
+ * Callers gate on (malformed_utf8_replace || malformed_utf8_handler).
+ * malformed_utf8_replace holds negative sentinels in a plain char, which is
+ * unsigned on some targets (e.g. gcc/ARM Linux): compare via signed char.
+ * The handler is not fired for overflow cells (scanner->row.used is the index
+ * this cell is about to occupy), though replacement still applies to them. */
+static inline size_t zsv_cell_encode_utf8(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
+  signed char replace = (signed char)scanner->opts.malformed_utf8_replace;
+  char count_it = scanner->opts.malformed_utf8_handler != NULL && scanner->row.used < scanner->row.allocated;
+  size_t bad = 0;
+  if (replace) // a replacement char, or REMOVE (DO_NOT_REPLACE was normalized to 0 at init)
+    n = zsv_strencode(s, n, replace < 0 ? 0 : (unsigned char)replace, count_it ? zsv_count_malformed : NULL,
+                      &bad);
+  else if (count_it) // leave the bytes untouched, but still count
+    bad = zsv_strencode_validate(s, n, NULL, NULL);
+  if (bad && count_it)
+    scanner->opts.malformed_utf8_handler(scanner->opts.malformed_utf8_handler_ctx, scanner->row.used, bad);
+  return n;
+}
+
 // always_inline has a noticeable impact. do not remove without benchmarking!
 __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *scanner, unsigned char *s, size_t n) {
   // handle quoting
@@ -336,12 +364,8 @@ __attribute__((always_inline)) static inline void cell_dl(struct zsv_scanner *sc
     }
     // end quote handling
 
-    if (scanner->opts.malformed_utf8_replace) {
-      if (scanner->opts.malformed_utf8_replace < 0)
-        n = zsv_strencode(s, n, 0, NULL, NULL);
-      else
-        n = zsv_strencode(s, n, scanner->opts.malformed_utf8_replace, NULL, NULL);
-    }
+    if (scanner->opts.malformed_utf8_replace || scanner->opts.malformed_utf8_handler)
+      n = zsv_cell_encode_utf8(scanner, s, n);
   }
   if (UNLIKELY(scanner->opts.cell_handler != NULL))
     scanner->opts.cell_handler(scanner->opts.ctx, s, n);
@@ -674,7 +698,9 @@ static int zsv_scanner_init(struct zsv_scanner *scanner, struct zsv_opts *opts) 
   scanner->errprintf = opts->errprintf ? opts->errprintf : zsv_generic_fprintf;
   scanner->errf = opts->errf ? opts->errf : stderr;
   scanner->errclose = opts->errclose;
-  if (opts->malformed_utf8_replace == ZSV_MALFORMED_UTF8_DO_NOT_REPLACE)
+  // via signed char: the sentinel is negative and plain char is unsigned on
+  // some targets (e.g. gcc/ARM Linux), where a bare == -2 never matches
+  if ((signed char)opts->malformed_utf8_replace == ZSV_MALFORMED_UTF8_DO_NOT_REPLACE)
     opts->malformed_utf8_replace = 0;
   if (opts->buffsize < opts->max_row_size * 2)
     need_buff_size = opts->max_row_size * 2;

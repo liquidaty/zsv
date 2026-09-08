@@ -380,6 +380,18 @@ struct zsv_opts {
   struct zsv_opt_overwrite overwrite;
 
 #endif /* ZSV_EXTRAS */
+
+  /**
+   * optional handler invoked when a cell contains malformed UTF8, whatever
+   * `malformed_utf8_replace` says to do about it: called at most once per
+   * cell, with the cell's index in the current row and the number of
+   * malformed sequences scanned. Not invoked for cells past the row's cell
+   * limit (overflow), nor in fixed-width mode.
+   * Last in the struct so consumers built against the prior layout keep
+   * their field offsets (a size change still requires a rebuild)
+   */
+  void (*malformed_utf8_handler)(void *ctx, size_t cell_ix, size_t count);
+  void *malformed_utf8_handler_ctx;
 };
 
 #endif
