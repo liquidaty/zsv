@@ -76,7 +76,8 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
     if (!err && !filepath)
       err = zsv_rm_usage(stderr);
     else if (remove_file == 0 && remove_cache == 0)
-      err = fprintf(stderr, "Nothing to remove\n");
+      // not fprintf's byte count: that made the exit code the message length
+      err = zsv_printerr(1, "Nothing to remove");
 
     if (!err) {
       char ok = 1;
