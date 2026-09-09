@@ -27,7 +27,7 @@ const char *zsv_rm_usage_msg[] = {
   "Options:",
   "  -v,--verbose   : verbose output",
 #ifndef NO_STDIN
-  "  -f,--force     : do not prompt for confirmation",
+  "  -f,--force     : do not prompt for confirmation; a missing file is not an error",
 #endif
   "  -k,--keep      : do not remove related cache",
   "  -C,--cache     : only remove related cache (not the file)",

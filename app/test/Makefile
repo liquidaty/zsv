@@ -900,6 +900,10 @@ test-rm: ${BUILD_DIR}/bin/zsv_prop${EXE} ${BUILD_DIR}/bin/zsv_rm${EXE}
 	@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f >/dev/null
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_rm${EXE} ${TMP_DIR}/$@.csv -f ${REDIRECT} /dev/null
 	@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f 2>/dev/null && ${TEST_FAIL} || ${TEST_PASS}
+	@# -f forgives a missing file (exit 0); regression: unlink's -1 was once
+	@# compared against ENOENT, making this exit 255
+	@rm -f ${TMP_DIR}/$@-gone.csv
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_rm${EXE} ${TMP_DIR}/$@-gone.csv -f ${REDIRECT} /dev/null && ${TEST_PASS} || ${TEST_FAIL}
 
 test-mv: ${BUILD_DIR}/bin/zsv_prop${EXE} ${BUILD_DIR}/bin/zsv_mv${EXE}
 	@${TEST_INIT}
