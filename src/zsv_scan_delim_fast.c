@@ -89,12 +89,8 @@ __attribute__((noinline)) static void fast_store_cell_slow(struct zsv_scanner *s
       return;
     }
   }
-  if (scanner->opts.malformed_utf8_replace) {
-    if (scanner->opts.malformed_utf8_replace < 0)
-      n = zsv_strencode(s, n, 0, NULL, NULL);
-    else
-      n = zsv_strencode(s, n, scanner->opts.malformed_utf8_replace, NULL, NULL);
-  }
+  if (scanner->opts.malformed_utf8_replace || scanner->opts.malformed_utf8_handler)
+    n = zsv_cell_encode_utf8(scanner, s, n);
   if (UNLIKELY(scanner->opts.cell_handler != NULL))
     scanner->opts.cell_handler(scanner->opts.ctx, s, n);
   if (VERY_LIKELY(scanner->row.used < scanner->row.allocated)) {
@@ -270,7 +266,10 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
   int quote_char = scanner->opts.no_quotes > 0 ? -1 : '"';
 
   /* Pre-compute per-cell flags once, avoiding repeated field access in the hot loop. */
-  int need_slow = (scanner->needed_cols || scanner->opts.malformed_utf8_replace || scanner->opts.cell_handler) ? 1 : 0;
+  int need_slow = (scanner->needed_cols || scanner->opts.malformed_utf8_replace ||
+                   scanner->opts.malformed_utf8_handler || scanner->opts.cell_handler)
+                    ? 1
+                    : 0;
   unsigned char no_quotes = scanner->opts.no_quotes ? 1 : 0;
 
   size_t i = scanner->partial_row_length;

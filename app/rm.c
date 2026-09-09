@@ -14,6 +14,7 @@
 
 #include <zsv/utils/dirs.h>
 #include <zsv/utils/cache.h>
+#include <zsv/utils/os.h>
 
 /**
  * TO DO: add --orphaned option to remove all orphaned caches
@@ -26,7 +27,7 @@ const char *zsv_rm_usage_msg[] = {
   "Options:",
   "  -v,--verbose   : verbose output",
 #ifndef NO_STDIN
-  "  -f,--force     : do not prompt for confirmation",
+  "  -f,--force     : do not prompt for confirmation; a missing file is not an error",
 #endif
   "  -k,--keep      : do not remove related cache",
   "  -C,--cache     : only remove related cache (not the file)",
@@ -75,21 +76,28 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
     if (!err && !filepath)
       err = zsv_rm_usage(stderr);
     else if (remove_file == 0 && remove_cache == 0)
-      err = fprintf(stderr, "Nothing to remove\n");
+      // not fprintf's byte count: that made the exit code the message length
+      err = zsv_printerr(1, "Nothing to remove");
 
     if (!err) {
       char ok = 1;
 #ifndef NO_STDIN
       if (!force) {
         ok = 0;
-        if (!remove_file)
-          printf("Are you sure you want to remove the entire cache for the file %s?\n", filepath);
-        else
-          printf("Are you sure you want to remove the file %s%s?\n", filepath,
-                 remove_cache ? " and all of its cache contents" : "");
-        char buff[64];
-        if (fscanf(stdin, "%60s", buff) == 1 && strchr("Yy", buff[0]))
-          ok = 1;
+        if (!ZSV_STDIN_IS_TTY())
+          // no terminal to answer the prompt: a script would otherwise read
+          // the silent no-op as success
+          err = zsv_printerr(1, "refusing to remove without -f (no TTY)");
+        else {
+          if (!remove_file)
+            printf("Are you sure you want to remove the entire cache for the file %s?\n", filepath);
+          else
+            printf("Are you sure you want to remove the file %s%s?\n", filepath,
+                   remove_cache ? " and all of its cache contents" : "");
+          char buff[64];
+          if (fscanf(stdin, "%60s", buff) == 1 && strchr("Yy", buff[0]))
+            ok = 1;
+        }
       }
 #endif
       if (ok) {
@@ -98,7 +106,9 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
             fprintf(stderr, "Removing %s", filepath);
           err = unlink(filepath);
           if (err) {
-            if (err == ENOENT && force)
+            // unlink returns -1, never an errno value: -f could never
+            // actually forgive a missing file
+            if (errno == ENOENT && force)
               err = 0;
             else
               perror(filepath);

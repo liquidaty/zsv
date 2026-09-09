@@ -359,4 +359,17 @@ size_t zsv_strencode(unsigned char *s, size_t n, unsigned char replace,
                      int (*malformed_handler)(void *, const unsigned char *s, size_t n, size_t offset),
                      void *handler_ctx);
 
+/**
+ * Scan a string for malformed UTF8 without modifying it
+ * @param  s        input string (read-only)
+ * @param  n        length (in bytes) of input
+ * @param  callback optional callback invoked upon scanning malformed UTF8
+ * @param  ctx      context pointer passed to callback
+ * @return          number of malformed UTF8 sequences found
+ */
+ZSV_EXPORT
+size_t zsv_strencode_validate(const unsigned char *s, size_t n,
+                              int (*malformed_handler)(void *, const unsigned char *s, size_t n, size_t offset),
+                              void *handler_ctx);
+
 #endif

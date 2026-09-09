@@ -50,6 +50,17 @@ int zsv_remove_winlp(const char *path_utf8);
 
 int zsv_replace_file(const char *src, const char *dest);
 
+/**
+ * ZSV_STDIN_IS_TTY(): nonzero when stdin is an interactive terminal
+ */
+#ifndef _WIN32
+#include <unistd.h>
+#define ZSV_STDIN_IS_TTY() isatty(fileno(stdin))
+#else
+#include <io.h>
+#define ZSV_STDIN_IS_TTY() _isatty(_fileno(stdin))
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 
