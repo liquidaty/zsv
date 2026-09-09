@@ -106,7 +106,9 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
             fprintf(stderr, "Removing %s", filepath);
           err = unlink(filepath);
           if (err) {
-            if (err == ENOENT && force)
+            // unlink returns -1, never an errno value: -f could never
+            // actually forgive a missing file
+            if (errno == ENOENT && force)
               err = 0;
             else
               perror(filepath);
