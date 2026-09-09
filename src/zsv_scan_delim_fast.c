@@ -268,8 +268,8 @@ static enum zsv_status zsv_scan_delim_fast(struct zsv_scanner *scanner, unsigned
   /* Pre-compute per-cell flags once, avoiding repeated field access in the hot loop. */
   int need_slow = (scanner->needed_cols || scanner->opts.malformed_utf8_replace ||
                    scanner->opts.malformed_utf8_handler || scanner->opts.cell_handler)
-                      ? 1
-                      : 0;
+                    ? 1
+                    : 0;
   unsigned char no_quotes = scanner->opts.no_quotes ? 1 : 0;
 
   size_t i = scanner->partial_row_length;
