@@ -129,6 +129,17 @@
     }
 
     var Module = {
+      preRun: [
+        () => { // Set environment variables
+          ENV.ZSV_PROG_NAME = 'zsv';
+        },
+        () => { // Create a sample CSV file
+          const root = '/home/zsv';
+          FS.mkdir(root);
+          FS.chdir(root);
+          FS.writeFile('sample.csv', 'a,b,c\n1,2,3\n4,5,6\n7,8,9');
+        }
+      ],
       print: (() => {
         return (...args) => {
           const output = args.join(' ');
@@ -149,11 +160,6 @@
 
     Module['onRuntimeInitialized'] = () => {
       console.log('Initializing zsv playground, please wait...');
-
-      const root = '/home/zsv';
-      FS.mkdir(root);
-      FS.chdir(root);
-      FS.writeFile('sample.csv', 'a,b,c\n1,2,3\n4,5,6\n7,8,9');
 
       // Populate autocompletions
       populateMainFlagsAndSubcommands();
