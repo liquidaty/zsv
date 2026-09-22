@@ -2209,7 +2209,7 @@ test-sheet-errors-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TMP_DIR}/test-sheet-erro
 	${TEST_PASS} || ${TEST_FAIL})
 
 ifeq ($(HAVE_PCRE2_8),1)
-test-sheet-filter-this: test-sheet-filter-this-1 test-sheet-filter-this-regex
+test-sheet-filter-this: test-sheet-filter-this-1 test-sheet-filter-this-regex test-sheet-filter-this-regex-blank
 else
 test-sheet-filter-this: test-sheet-filter-this-1
 endif
@@ -2240,6 +2240,20 @@ test-sheet-filter-this-regex: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	${EXPECT} $@ filterregex && \
 	tmux -L $@ send-keys -t $@ ESCAPE ":filtercol" ENTER "/^mx" ENTER && \
 	${EXPECT} $@ filterregex && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+# A blank cell in the filtered column must fail a regex that can't match an empty
+# string (e.g. /[a-zA-Z]/), not be auto-included: h0 mixes non-blank alpha, blank,
+# and non-blank non-alpha values so all three outcomes are exercised at once.
+test-sheet-filter-this-regex-blank: ${BUILD_DIR}/bin/zsv_sheet${EXE}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'h0,h1\na,1\n,2\nb,3\n,4\n1,5\nc,6\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 12 -d -s "$@" "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "l" "F" "/[a-zA-Z]/" ENTER && \
+	${EXPECT} $@ filtered && \
 	${TEST_PASS} || ${TEST_FAIL})
 
 WAIT_FOR_EXIT=../../scripts/test-wait-for-exit.sh
