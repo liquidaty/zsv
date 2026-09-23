@@ -57,13 +57,17 @@ static void zsvsheet_save_filtered_file_row_handler(zsvsheet_transformation trn)
     }
     int have_overwrite = single_row_ix_plus_1 ? 0 : zsvsheet_nullify_row_buff(parser);
     if (have_overwrite || single_row_ix_plus_1) {
-      // Cell by cell. Note the surviving semantics: every non-empty cell in range
-      // must match. For a single-column filter that is one cell, so it means what
-      // it should; for the have_overwrite case it is stricter than the whole-span
-      // branch below. Left as-is -- changing it is not part of this change.
+      // Cell by cell. For a single-column filter the range is exactly one cell, and
+      // that cell must match even if blank (a blank cell should fail e.g. /[a-zA-Z]/).
+      // For the have_overwrite case (whole-row scan with an overwritten cell), blank
+      // cells are exempted so an unrelated blank column doesn't reject the row; every
+      // non-empty cell in range must still match.
       for (unsigned int i = start_ix; i < col_count; i++) {
         struct zsv_cell cell = zsv_get_cell(parser, i);
-        if (cell.len && !zsvsheet_pattern_match(&ctx->pattern, cell.str, cell.len))
+        if (single_row_ix_plus_1) {
+          if (!zsvsheet_pattern_match(&ctx->pattern, cell.str, cell.len))
+            return; // no match (including a blank cell): don't save this row
+        } else if (cell.len && !zsvsheet_pattern_match(&ctx->pattern, cell.str, cell.len))
           return; // no match: don't save this row
       }
     } else {
