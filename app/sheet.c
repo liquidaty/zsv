@@ -22,6 +22,7 @@
 #include <zsv.h>
 
 #include "sheet/curses.h"
+#include "sheet/terminal.h"
 
 #include <locale.h>
 #include <wchar.h>
@@ -189,6 +190,7 @@ struct zsvsheet_sheet_context {
   struct zsv_prop_handler *custom_prop_handler;
   struct zsvsheet_compare_opts compare;
   char edit_mode;                // keys type into cells (see zsvsheet_edit_mode_key)
+  char *clipboard;               // edit mode's <ctrl>c / <ctrl>v value (NULL: empty)
   size_t keypress_count;         // keys pressed so far
   size_t discard_offer_keypress; // the <esc> that offered to discard a modified buffer (0: none);
                                  // only the next key can accept, so it is on the same buffer
@@ -301,12 +303,25 @@ enum {
   ZSVSHEET_PROMPT_NAV_ENDS = 2,       // edit-mode navigation keys end input, as Enter does
 };
 
+// Append text, which the caller has checked fits, to buff[0, idx) as if typed and redraw. The
+// prompt edits one line, so control characters (such as line breaks) become spaces. Returns
+// the new length
+static size_t prompt_insert(char *buff, size_t idx, int y, int x, const char *text) {
+  for (const unsigned char *s = (const unsigned char *)text; *s; s++)
+    buff[idx++] = (char)(*s < 0x20 || *s == 0x7f ? ' ' : *s);
+  buff[idx] = '\0';
+  prompt_redraw(y, x, buff);
+  return idx;
+}
+
 // Read a line of input in the footer, starting from default_value (if non-NULL) and then
 // first_key (unless ZSVSHEET_NO_KEY) as if typed. flags: ZSVSHEET_PROMPT_*
+// clipboard: in edit mode, the clipboard: <ctrl>c copies the input to it and <ctrl>v inserts
+// it. Otherwise NULL, and <ctrl>c cancels as <esc> does (as in vim)
 // Returns the key that ended input: ZSVSHEET_KEY_ESC if cancelled (buff is then empty), else
 // Enter or, with ZSVSHEET_PROMPT_NAV_ENDS, a navigation key
 static int zsvsheet_prompt_edit(const char *prompt, char *buff, size_t buffsize, int footer_row,
-                                const char *default_value, int first_key, int flags) {
+                                const char *default_value, int first_key, int flags, char **clipboard) {
   if (!buffsize) // buffsize reaches here from extensions via zsvsheet_ext_prompt()
     return ZSVSHEET_KEY_ESC;
   *buff = '\0';
@@ -336,6 +351,8 @@ static int zsvsheet_prompt_edit(const char *prompt, char *buff, size_t buffsize,
   while (1) {
     ch = first_key != ZSVSHEET_NO_KEY ? first_key : getch();
     first_key = ZSVSHEET_NO_KEY;
+    if (ch == ZSVSHEET_KEY_COPY && !clipboard)
+      ch = ZSVSHEET_KEY_ESC;
     if (ch == ZSVSHEET_KEY_ESC) {
       buff[0] = '\0';
       return ch;
@@ -359,6 +376,24 @@ static int zsvsheet_prompt_edit(const char *prompt, char *buff, size_t buffsize,
       idx = prompt_set_text(buff, buffsize, y, x, match);
       comp_active = 1;
       continue;
+    } else if (clipboard && ch == ZSVSHEET_KEY_COPY) {
+      buff[idx] = '\0';
+      char *copy = strdup(buff);
+      if (!copy)
+        beep(); // out of memory: the clipboard keeps its value
+      else {
+        free(*clipboard);
+        *clipboard = copy;
+      }
+      continue;
+    } else if (clipboard && ch == ZSVSHEET_KEY_PASTE) {
+      // the input is one screen line, so a value that would not fit is not pasted
+      if (!*clipboard || idx + strlen(*clipboard) + 1 > buffsize ||
+          (size_t)x + idx + strlen(*clipboard) + 1 >= (size_t)getmaxx(stdscr)) {
+        beep();
+        continue;
+      }
+      idx = prompt_insert(buff, idx, y, x, *clipboard);
     } else if (ch == ZSVSHEET_CTRL('A')) {
       idx = prompt_set_text(buff, buffsize, y, x, "");
     } else if (zsvsheet_key_is_backspace(ch)) {
@@ -377,7 +412,7 @@ static int zsvsheet_prompt_edit(const char *prompt, char *buff, size_t buffsize,
 static char get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row, const char *default_value,
                            char complete_procs) {
   return zsvsheet_prompt_edit(prompt, buff, buffsize, footer_row, default_value, ZSVSHEET_NO_KEY,
-                              complete_procs ? ZSVSHEET_PROMPT_COMPLETE_PROCS : 0) != ZSVSHEET_KEY_ESC;
+                              complete_procs ? ZSVSHEET_PROMPT_COMPLETE_PROCS : 0, NULL) != ZSVSHEET_KEY_ESC;
 }
 
 // Column picker: like get_subcommand, but up/down arrows cycle through column names.
@@ -409,7 +444,7 @@ static void get_subcommand_with_columns(const char *prompt, char *buff, size_t b
 
   while (1) {
     ch = getch();
-    if (ch == ZSVSHEET_KEY_ESC) {
+    if (ch == ZSVSHEET_KEY_ESC || ch == ZSVSHEET_KEY_COPY) { // <ctrl>c cancels, as in vim
       buff[0] = '\0';
       break;
     } else if (zsvsheet_key_is_enter(ch)) {
@@ -488,6 +523,9 @@ size_t display_data_rowcount(struct zsvsheet_display_dimensions *dims) {
 }
 
 char zsvsheet_status_text[256] = {0};
+
+// what the user types to quit without saving changes
+#define ZSVSHEET_QUIT_CONFIRMATION "yes"
 
 // shown before the status while keys type into cells
 #define ZSVSHEET_EDIT_MODE_STATUS "-- EDIT -- "
@@ -1140,11 +1178,22 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
   case zsvsheet_builtin_proc_quit:
     for (const struct zsvsheet_ui_buffer *b = current_ui_buffer; b; b = b->prior) {
       if (b->modified) {
-        zsvsheet_ui_buffer_set_status(current_ui_buffer, "Unsaved changes: :w to save, or :q! to quit without saving");
+        char answer[16];
+        if (ctx->invocation.interactive) {
+          int footer_row = (int)(state->display_info.dimensions->rows - state->display_info.dimensions->footer_span);
+          get_subcommand("Type " ZSVSHEET_QUIT_CONFIRMATION " to quit without saving", answer, sizeof(answer),
+                         footer_row, NULL, 0);
+          if (!strcmp(answer, ZSVSHEET_QUIT_CONFIRMATION))
+            return zsvsheet_status_exit;
+        }
+        zsvsheet_ui_buffer_set_status(current_ui_buffer, "Not quit: :w saves, :q! quits without saving");
         return zsvsheet_status_ok;
       }
     }
     return zsvsheet_status_exit;
+  case zsvsheet_builtin_proc_quit_hint:
+    zsvsheet_ui_buffer_set_status(current_ui_buffer, "Type :q and press <Enter> to quit");
+    return zsvsheet_status_ok;
   case zsvsheet_builtin_proc_quit_force:
     return zsvsheet_status_exit;
   case zsvsheet_builtin_proc_resize:
@@ -1253,6 +1302,7 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_edit,             "cell",           NULL, "Edit the cell under the cursor (or :cell <value>)",               zsvsheet_edit_handler },
   { zsvsheet_builtin_proc_write,            "write",          "w",  "Save this buffer as CSV (or :w <file>)",                          zsvsheet_write_handler },
   { zsvsheet_builtin_proc_edit_mode,        "editmode",       NULL, "Type into cells as in a spreadsheet; <esc> leaves",               zsvsheet_edit_mode_handler },
+  { zsvsheet_builtin_proc_quit_hint,        "quithint",       NULL, "Show how to quit (in edit mode, <ctrl>c copies)",                 zsvsheet_builtin_proc_handler },
   { -1, NULL, NULL, NULL, NULL }
 };
 /* clang-format on */
@@ -1424,9 +1474,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   display_buffer_subtable(current_ui_buffer, header_span, &display_dims, &handler_state.compare,
                           handler_state.edit_mode);
 
-  ZSVSHEET_NO_FLOW_CONTROL(); // <ctrl>s saves in edit mode; must precede halfdelay() (see curses.h)
   // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
   halfdelay(2);
+  if (zsvsheet_keys_reach_app()) // after halfdelay(), which sets its own terminal mode
+    zsvsheet_ui_buffer_set_status(current_ui_buffer, "Unable to set up the terminal: <ctrl>c may quit");
 
   int ch;
   while (true) {
@@ -1472,10 +1523,30 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   endwin();
   zsvsheet_pattern_free(&handler_state.find);
   free(handler_state.goto_column);
+  free(handler_state.clipboard);
 zsvsheet_exit:
   zsvsheet_ui_buffers_delete(current_ui_buffer);
   zsvsheet_key_handlers_delete(&zsvsheet_key_handlers, &zsvsheet_next_key_handler);
   return err;
+}
+
+// Most bytes of a cell value that the screen draws: more than any screen row can show
+#define ZSVSHEET_CELL_SHOWN_MAX 1024
+
+// Copy src into dst (dstsz bytes) as one line to draw: line breaks become spaces, and a UTF-8
+// character that does not fit is left out whole. Returns dst. The value itself (in the screen
+// buffer) keeps its line breaks for copying and editing
+static char *zsvsheet_one_line(char *dst, size_t dstsz, const char *src) {
+  size_t len = strlen(src);
+  if (len > dstsz - 1) {
+    len = dstsz - 1;
+    while (len > 0 && ZSV_UTF8_SUBSEQUENT_CHAR_OK((unsigned char)src[len])) // don't split a character
+      len--;
+  }
+  for (size_t i = 0; i < len; i++)
+    dst[i] = src[i] == '\n' || src[i] == '\r' ? ' ' : src[i];
+  dst[len] = '\0';
+  return dst;
 }
 
 const char *display_cell(struct zsvsheet_screen_buffer *buff, size_t data_row, size_t data_col, int row, int col,
@@ -1485,25 +1556,24 @@ const char *display_cell(struct zsvsheet_screen_buffer *buff, size_t data_row, s
   int attrs = zsvsheet_screen_buffer_cell_attrs(buff, data_row, data_col);
   if (attrs)
     attron(attrs);
-  if (len == 0 || has_multibyte_char(str, len < cell_display_width ? len : cell_display_width) == 0)
-    mvprintw(row, col * cell_display_width, "%-*.*s", (int)cell_display_width, (int)cell_display_width - 1, str);
+  char shown[ZSVSHEET_CELL_SHOWN_MAX];
+  len = strlen(zsvsheet_one_line(shown, sizeof(shown), str ? str : ""));
+  if (len == 0 || has_multibyte_char(shown, len < cell_display_width ? len : cell_display_width) == 0)
+    mvprintw(row, col * cell_display_width, "%-*.*s", (int)cell_display_width, (int)cell_display_width - 1, shown);
   else {
     size_t used_width;
     int err = 0;
-    unsigned char *s = (unsigned char *)str;
+    unsigned char *s = (unsigned char *)shown;
     size_t nbytes = utf8_bytes_up_to_max_width_and_replace_newlines(s, len, cell_display_width - 2, &used_width, &err);
 
     // convert the substring to wide characters
     wchar_t wsubstring[256]; // Ensure this buffer is large enough
 #if defined(WIN32) || defined(_WIN32)
     // windows does not have mbsnrtowcs
-    char *p = (char *)str;
-    char tmp_ch = p[nbytes];
-    p[nbytes] = '\0';
-    size_t wlen = MultiByteToWideChar(CP_UTF8, 0, p, -1, wsubstring, sizeof(wsubstring) / sizeof(wchar_t));
-    p[nbytes] = tmp_ch;
+    shown[nbytes] = '\0';
+    size_t wlen = MultiByteToWideChar(CP_UTF8, 0, shown, -1, wsubstring, sizeof(wsubstring) / sizeof(wchar_t));
 #else
-    const char *p = str;
+    const char *p = shown;
     size_t wlen = mbsnrtowcs(wsubstring, &p, nbytes, sizeof(wsubstring) / sizeof(wchar_t), NULL);
 #endif
     if (wlen == (size_t)-1) {
@@ -1624,6 +1694,7 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
     zsvsheet_priv_set_status(ddims, 0, "? for help");
 
   if (cursor_value) {
+    char value_line[ZSVSHEET_CELL_SHOWN_MAX]; // the value on one line
     int footer_row = ddims->rows - ddims->footer_span;
     int footer_col = strlen(zsvsheet_status_text);
     size_t col_offset = ui_buffer->rownum_col_offset ? 1 : 0;
@@ -1634,11 +1705,13 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
       size_t paired_buf_col = paired_data_col + col_offset;
       const unsigned char *paired_val = zsvsheet_screen_buffer_cell_display(buffer, cursor_data_row, paired_buf_col);
       const char *pv = paired_val ? (const char *)paired_val : "";
-      char footer_buf[512];
-      snprintf(footer_buf, sizeof(footer_buf), "%s vs %s", cursor_value, pv);
+      char pv_line[ZSVSHEET_CELL_SHOWN_MAX], footer_buf[2 * ZSVSHEET_CELL_SHOWN_MAX + sizeof(" vs ")];
+      snprintf(footer_buf, sizeof(footer_buf), "%s vs %s",
+               zsvsheet_one_line(value_line, sizeof(value_line), cursor_value),
+               zsvsheet_one_line(pv_line, sizeof(pv_line), pv));
       zsvsheet_footer_print(footer_row, footer_col, footer_buf);
     } else {
-      zsvsheet_footer_print(footer_row, footer_col, cursor_value);
+      zsvsheet_footer_print(footer_row, footer_col, zsvsheet_one_line(value_line, sizeof(value_line), cursor_value));
     }
   }
 

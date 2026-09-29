@@ -1,5 +1,5 @@
 Key(s)                    Action                    Description
-:w                        write                     Save this buffer as CSV (
 :q!                       quit!                     Exit the application, dis
 :editmode                 editmode                  Type into cells as in a s
-Sort only available for tabular data buffers :editmode
+<ctrl>c                   quithint                  Show how to quit (in edit
+Sort only available for tabular data buffers <ctrl>c

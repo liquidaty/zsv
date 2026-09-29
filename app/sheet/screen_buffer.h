@@ -28,6 +28,9 @@ const unsigned char *zsvsheet_screen_buffer_cell_display(zsvsheet_screen_buffer_
 
 int zsvsheet_screen_buffer_cell_attrs(zsvsheet_screen_buffer_t buff, size_t row, size_t col);
 
+// Whether the cell's value was cut short when written because it exceeded max_cell_len
+int zsvsheet_screen_buffer_cell_is_cut(zsvsheet_screen_buffer_t buff, size_t row, size_t col);
+
 void zsvsheet_screen_buffer_delete(zsvsheet_screen_buffer_t);
 
 size_t zsvsheet_screen_buffer_cols(zsvsheet_screen_buffer_t);

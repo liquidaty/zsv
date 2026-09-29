@@ -100,6 +100,7 @@ Press `?` to see a list of commands:
 | -------------- | ---------- | --------------------------------------------------- |
 | :q             | quit       | Exit the application (also `:quit`)                 |
 | :q!            | quit!      | Exit, discarding unsaved changes                    |
+| <ctrl>c        | quithint   | Show how to quit (in edit mode, copy)               |
 | i              | cell       | Edit the cell under the cursor (or `:cell <value>`) |
 | :w             | write      | Save this buffer as CSV (or `:w <file>`)            |
 | :editmode      | editmode   | Type into cells as in a spreadsheet; `Esc` leaves   |
@@ -239,9 +240,18 @@ line starts with `-- EDIT --` while it is on.
 | arrow keys          | move                                | store the value, move      |
 | `Delete`, `Backspace` | clear the cell                    | (`Backspace`) delete the last character |
 | `Ctrl-S`            | save, as `:w` does                  |                            |
+| `Ctrl-C`            | copy the cell's value               | copy what has been typed   |
+| `Ctrl-V`            | paste into the cell                 | add the copied value       |
 | `Esc`               | leave edit mode                     | cancel; the cell is unchanged |
 
-Other keys, such as `Page Up`/`Page Down`, keep their usual actions. Digits and `:`
+The copied value stays within sheet; it is not the system clipboard, but your
+terminal's own paste types its text into the cell. Windows terminals usually keep
+`Ctrl-V` (and `Ctrl-C` while text is selected) for the system clipboard, so there
+`Ctrl-V` types the system clipboard's text. A cell too long for sheet to show in full (over 32767
+bytes) cannot be copied or edited with `F2` or `i`, and neither key edits a value that is longer than the
+screen line or has line breaks; use `:cell "<value>"` outside edit mode for those. Line breaks in a value pasted
+while typing become spaces, since typing edits one line. Other keys, such as
+`Page Up`/`Page Down`, keep their usual actions. Digits and `:`
 are typed into the cell, so leave edit mode with `Esc` to run a command. Store a
 value (`Enter`, `Tab` or an arrow key) before pressing `Ctrl-S`. `Alt` combinations,
 and function keys the terminal does not describe, arrive as `Esc` followed by
@@ -259,8 +269,12 @@ deliberately a command rather than a single keystroke, so it cannot happen by
 accident.
 
 A buffer with unsaved changes stays open on the first `Esc`; a second `Esc`
-immediately after closes it and discards the changes. `:q` is refused while any
-buffer has unsaved changes; `:w` saves them, and `:q!` quits without saving.
+immediately after closes it and discards the changes. While any buffer has unsaved
+changes, `:q` asks for confirmation and quits only if you type `yes` in full; `:w`
+saves the changes first, and `:q!` quits without asking.
+
+`Ctrl-C` does not quit: it shows how to, and cancels a prompt. `Ctrl-Z` suspends
+sheet to the shell as usual, and `Ctrl-\` still quits at once, without saving.
 
 ## Commands and Tab completion
 

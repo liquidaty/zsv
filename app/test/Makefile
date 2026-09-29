@@ -1564,6 +1564,15 @@ test-sheet-all: \
 	test-sheet-edit-mode \
 	test-sheet-edit-mode-saveas \
 	test-sheet-edit-mode-long \
+	test-sheet-edit-mode-no-boundary \
+	test-sheet-edit-mode-no-boundary-clear \
+	test-sheet-edit-cut-refused \
+	test-sheet-edit-mode-clipboard \
+	test-sheet-quit-confirm \
+	test-sheet-ctrl-c \
+	test-sheet-suspend \
+	test-sheet-quit-signal \
+	test-sheet-quit-signal-ignored \
 	${SHEET_ONLY_CRLF_TESTS} \
 	test-sheet-edit-help \
 	${SHEET_REGEX_TESTS}
@@ -2552,7 +2561,7 @@ test-sheet-edit-save: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	${EXPECT} $@ header && \
 	tmux -L $@ send-keys -t $@ ":w $@-copy.csv" Enter ":q" Enter && \
 	${EXPECT} $@ unsaved && \
-	tmux -L $@ send-keys -t $@ ":w" Enter && \
+	tmux -L $@ send-keys -t $@ Escape ":w" Enter && \
 	${EXPECT} $@ saved && \
 	tmux -L $@ send-keys -t $@ ":q" Enter && \
 	${WAIT_FOR_EXIT} $@ && \
@@ -2773,7 +2782,7 @@ test-sheet-edit-hardlink: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	${EXPECT} $@ bottom && \
 	tmux -L $@ send-keys -t $@ "g" "g" ":q" Enter && \
 	${EXPECT} $@ still-modified && \
-	tmux -L $@ send-keys -t $@ ":q!" Enter && \
+	tmux -L $@ send-keys -t $@ Escape ":q!" Enter && \
 	${WAIT_FOR_EXIT} $@ && \
 	awk 'BEGIN{print "id,val"; for(i=1;i<=3000;i++) printf "%d,R%d\n", i, i}' | cmp - ${TMP_DIR}/$@.csv && \
 	awk 'BEGIN{print "id,val"; for(i=1;i<=3000;i++) printf "%d,%s\n", i, (i==1 ? "LONGER-VALUE" : "R" i)}' | \
@@ -2822,18 +2831,89 @@ test-sheet-edit-mode: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	${WAIT_FOR_EXIT} $@ && \
 	printf 'A,B,C\n12,x,y\nt,,z\n\303\251,k,q\n' | cmp - ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
 
-# F2 cannot start from a value longer than the prompt line; the hint names :cell, which works outside edit mode
+# F2 cannot start from a value longer than the prompt line (the hint names :cell, which works
+# outside edit mode); a paste that would not fit the line is refused; a value the screen may
+# have cut short cannot be copied (whatever the bytes at the cut)
 test-sheet-edit-mode-long: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@awk 'BEGIN{printf "A\n"; for(i=0;i<100;i++) printf "x"; print ""}' > ${TMP_DIR}/$@.csv
+	@awk 'BEGIN{printf "A\n"; for(i=0;i<100;i++) printf "x"; print ""; for(i=0;i<33000;i++) printf "y"; print ""; \
+	  for(i=0;i<8200;i++) printf "\360\237\230\200"; print ""; \
+	  for(i=0;i<32762;i++) printf "z"; for(i=0;i<8;i++) printf "\223"; for(i=0;i<100;i++) printf "z"; print ""}' > ${TMP_DIR}/$@.csv
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
 	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ ":editmode" Enter Right F2 && \
 	${EXPECT} $@ refused && \
-	tmux -L $@ send-keys -t $@ Escape ":q" Enter && \
+	tmux -L $@ send-keys -t $@ C-c Down C-c && \
+	${EXPECT} $@ copy-too-long && \
+	tmux -L $@ send-keys -t $@ "a" C-v Enter && \
+	${EXPECT} $@ paste-too-long && \
+	tmux -L $@ send-keys -t $@ C-c && \
+	${EXPECT} $@ copy-utf8-cut && \
+	tmux -L $@ send-keys -t $@ Down C-c && \
+	${EXPECT} $@ copy-invalid-utf8-cut && \
+	tmux -L $@ send-keys -t $@ Escape ":q!" Enter && \
 	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# a value cut short with no character boundary to cut at (bytes that are not UTF-8) is still
+# known to be cut, so <ctrl>c refuses it and the <ctrl>v that follows has nothing to paste:
+# the buffer stays unmodified and :q quits without asking
+test-sheet-edit-mode-no-boundary: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{print "A,B"; for(i=0;i<33000;i++) printf "\200"; print ",x"}' > ${TMP_DIR}/$@.csv
+	@cp ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-orig.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv 2>/dev/null" && \
+	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q 'Row #' && break; sleep 0.1; done && \
+	tmux -L $@ send-keys -t $@ ":editmode" Enter Right C-c && \
+	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q 'Too long to copy' && break; sleep 0.1; done && \
+	tmux -L $@ capture-pane -p -t $@ | grep -q 'Too long to copy' && \
+	tmux -L $@ send-keys -t $@ Right C-v Escape ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	cmp ${TMP_DIR}/$@-orig.csv ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# clearing a cut cell whose shown prefix is empty (no character boundary to cut at) still
+# records the edit, so <ctrl>s writes the empty value
+test-sheet-edit-mode-no-boundary-clear: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{print "A,B"; for(i=0;i<33000;i++) printf "\200"; print ",x"}' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv 2>/dev/null" && \
+	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q 'Row #' && break; sleep 0.1; done && \
+	tmux -L $@ send-keys -t $@ ":editmode" Enter Right DC C-s && \
+	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q Saved && break; sleep 0.1; done && \
+	tmux -L $@ capture-pane -p -t $@ | grep -q Saved && \
+	tmux -L $@ send-keys -t $@ Escape ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf 'A,B\n,x\n' | cmp - ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# a cut cell whose shown prefix fits the edit prompt is still refused by F2 and by i, since
+# storing the prefix would drop the rest of the value
+test-sheet-edit-cut-refused: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{print "A,B"; printf "ab"; for(i=0;i<33000;i++) printf "\200"; print ",x"}' > ${TMP_DIR}/$@.csv
+	@cp ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-orig.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv 2>/dev/null" && \
+	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q 'Row #' && break; sleep 0.1; done && \
+	tmux -L $@ send-keys -t $@ "l" "i" && \
+	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q 'Too long to edit' && break; sleep 0.1; done && \
+	tmux -L $@ capture-pane -p -t $@ | grep -q 'Too long to edit' && \
+	tmux -L $@ send-keys -t $@ ":editmode" Enter Right C-c Left && \
+	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q 'Copied' && break; sleep 0.1; done && \
+	tmux -L $@ capture-pane -p -t $@ | grep -q 'Copied' && \
+	tmux -L $@ send-keys -t $@ F2 && \
+	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q 'EDIT.*Too long to edit' && break; sleep 0.1; done && \
+	tmux -L $@ capture-pane -p -t $@ | grep -q 'EDIT.*Too long to edit' && \
+	tmux -L $@ send-keys -t $@ Enter C-s && \
+	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q Saved && break; sleep 0.1; done && \
+	tmux -L $@ send-keys -t $@ Escape ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	cmp ${TMP_DIR}/$@-orig.csv ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
 
 # <ctrl>s in edit mode on a view without a file of its own asks for a name
 test-sheet-edit-mode-saveas: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
@@ -2852,6 +2932,121 @@ test-sheet-edit-mode-saveas: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ send-keys -t $@ Escape Escape ":q" Enter && \
 	${WAIT_FOR_EXIT} $@ && \
 	printf 'Row #,A,B\n2,2,W\n' | cmp - ${TMP_DIR}/$@-out.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# :q with unsaved changes quits only when "yes" is typed in full
+test-sheet-quit-confirm: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B\n1,x\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "l" "i" C-a "Q" Enter ":q" Enter && \
+	${EXPECT} $@ confirm && \
+	tmux -L $@ send-keys -t $@ "y" Enter && \
+	${EXPECT} $@ not-quit && \
+	tmux -L $@ send-keys -t $@ ":q" Enter "YES" Enter && \
+	${EXPECT} $@ not-quit && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${EXPECT} $@ confirm && \
+	tmux -L $@ send-keys -t $@ Escape && \
+	${EXPECT} $@ not-quit && \
+	tmux -L $@ send-keys -t $@ ":q" Enter "yes" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf 'A,B\n1,x\n' | cmp - ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# <ctrl>c does not quit: it says how to quit, and cancels a prompt
+test-sheet-ctrl-c: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B\n1,x\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ C-c && \
+	${EXPECT} $@ hint && \
+	tmux -L $@ send-keys -t $@ ":" "abc" && \
+	${EXPECT} $@ prompt && \
+	tmux -L $@ send-keys -t $@ C-c && \
+	${EXPECT} $@ hint && \
+	tmux -L $@ send-keys -t $@ ":compare" Enter && \
+	${EXPECT} $@ picker && \
+	tmux -L $@ send-keys -t $@ C-c && \
+	${EXPECT} $@ hint && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# edit mode: <ctrl>c copies the cell, <ctrl>v pastes into a cell (line breaks kept, though the
+# screen shows them as spaces) or, while typing, into the value (line breaks become spaces)
+test-sheet-edit-mode-clipboard: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B\n1,x\n2,y\n"\303\251\nb",w\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":editmode" Enter Right C-v && \
+	${EXPECT} $@ empty && \
+	tmux -L $@ send-keys -t $@ C-c && \
+	${EXPECT} $@ copied && \
+	tmux -L $@ send-keys -t $@ Right C-v && \
+	${EXPECT} $@ pasted && \
+	tmux -L $@ send-keys -t $@ Down "z" C-v && \
+	${EXPECT} $@ typing-paste && \
+	tmux -L $@ send-keys -t $@ "w" C-c Escape Left C-v C-s && \
+	${EXPECT} $@ typing-copy && \
+	tmux -L $@ send-keys -t $@ Down C-c Right C-v Up "z" C-v Enter C-s && \
+	${EXPECT} $@ multiline && \
+	tmux -L $@ send-keys -t $@ F2 && \
+	${EXPECT} $@ f2-multiline && \
+	tmux -L $@ send-keys -t $@ Escape ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf 'A,B\n1,1\nz1w,z\303\251 b\n"\303\251\nb","\303\251\nb"\n' | cmp - ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# <ctrl>\ quits at once and leaves the terminal usable (canonical input and echo back on), even
+# under a parent shell that does not restore the terminal itself
+test-sheet-quit-signal: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B\n1,x\n' > ${TMP_DIR}/$@.csv && rm -f ${TMP_DIR}/$@.stty
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && exec sh -c 'trap : QUIT; ${PREFIX} $< $@.csv; stty -a > $@.stty'" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ 'C-\' && \
+	${WAIT_FOR_EXIT} $@ && \
+	grep -Eq '(^| )icanon' ${TMP_DIR}/$@.stty && grep -Eq '(^| )echo( |$$)' ${TMP_DIR}/$@.stty && ${TEST_PASS} || ${TEST_FAIL})
+
+# a parent that ignores SIGQUIT keeps <ctrl>\ from ending sheet
+test-sheet-quit-signal-ignored: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B\n1,x\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && exec sh -c \"trap '' QUIT; exec ${PREFIX} $< $@.csv\"" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ 'C-\' C-c && \
+	${EXPECT} $@ still-running && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# <ctrl>z suspends to the shell (job control) and fg resumes, with keys still reaching the app
+test-sheet-suspend: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B\n1,x\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && PS1='$$ ' bash --norc --noprofile -i" && \
+	tmux -L $@ send-keys -t $@ "${PREFIX} $< $@.csv" Enter && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ C-z && \
+	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q Stopped && break; sleep 0.1; done && \
+	tmux -L $@ capture-pane -p -t $@ | grep -q Stopped && \
+	tmux -L $@ send-keys -t $@ "fg" Enter && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ C-c && \
+	${EXPECT} $@ hint && \
+	tmux -L $@ send-keys -t $@ ":q" Enter "exit" Enter && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 # a buffer without a file (help) saves its cells
 test-sheet-edit-help: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}

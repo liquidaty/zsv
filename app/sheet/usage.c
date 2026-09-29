@@ -21,7 +21,9 @@ const char *zsvsheet_usage_msg[] = {
   "  quits without saving. Saving over the opened file is refused when the file",
   "  would read back differently as CSV (e.g. tab-delimited, or opened with -R).",
   "  :editmode types keys into cells as in a spreadsheet (Enter, Tab and arrows",
-  "  store and move, F2 edits the current value, <ctrl>s saves, <esc> leaves).",
+  "  store and move, F2 edits the current value, <ctrl>c/<ctrl>v copy and paste,",
+  "  <ctrl>s saves, <esc> leaves). With unsaved changes, :q asks you to type yes.",
+  "  <ctrl>c does not quit; it shows how to.",
   "",
   NULL,
 };

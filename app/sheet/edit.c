@@ -433,13 +433,25 @@ static const char *zsvsheet_cell_value(struct zsvsheet_ui_buffer *uib, const str
   return value ? value : "";
 }
 
-// Whether the edit prompt, which edits one screen line, can start from `value`; if not, says so
+// the status can outlast edit mode, where ':' types a colon, so it says where :cell works
+#define ZSVSHEET_EDIT_TOO_LONG "Too long to edit here; use :cell \"<value>\" outside edit mode"
+
+// Whether the edit prompt, which edits one screen line, can start from `value`, the shown value
+// of the cell at pos; if not, says so
 static int zsvsheet_edit_prompt_fits(const struct zsvsheet_sheet_context *state, struct zsvsheet_ui_buffer *uib,
-                                     const char *value) {
+                                     const struct zsvsheet_cell_pos *pos, const char *value) {
+  if (zsvsheet_screen_buffer_cell_is_cut(uib->buffer, pos->buff_row, pos->screen_col)) {
+    // the prompt would start from a prefix, and storing it would drop the rest of the value
+    zsvsheet_ui_buffer_set_status(uib, ZSVSHEET_EDIT_TOO_LONG);
+    return 0;
+  }
+  if (strpbrk(value, "\r\n")) { // the prompt would show only its first line
+    zsvsheet_ui_buffer_set_status(uib, "Multi-line; use :cell \"<value>\" outside edit mode");
+    return 0;
+  }
   if (strlen(ZSVSHEET_EDIT_PROMPT) + 2 + strlen(value) + 1 < state->display_info.dimensions->columns)
     return 1; // ": " follows the prompt text
-  // the status can outlast edit mode, where ':' types a colon, so it says where :cell works
-  zsvsheet_ui_buffer_set_status(uib, "Too long to edit here; use :cell \"<value>\" outside edit mode");
+  zsvsheet_ui_buffer_set_status(uib, ZSVSHEET_EDIT_TOO_LONG);
   return 0;
 }
 
@@ -455,7 +467,9 @@ static void zsvsheet_modified_status(const struct zsvsheet_sheet_context *state,
 static int zsvsheet_set_cell(struct zsvsheet_sheet_context *state, struct zsvsheet_ui_buffer *uib,
                              const struct zsvsheet_cell_pos *pos, const char *value) {
   size_t len = strlen(value);
-  if (!strcmp(value, zsvsheet_cell_value(uib, pos))) // nothing to record, and nothing to commit later
+  // an unchanged value leaves nothing to record or commit; a cut cell shows only a prefix of its value
+  if (!zsvsheet_screen_buffer_cell_is_cut(uib->buffer, pos->buff_row, pos->screen_col) &&
+      !strcmp(value, zsvsheet_cell_value(uib, pos)))
     return 0;
   if (zsvsheet_ui_buffer_has_file(uib) &&
       zsvsheet_edits_set(&uib->edits, pos->raw_row, pos->col, (const unsigned char *)value, len)) {
@@ -499,7 +513,7 @@ static zsvsheet_status zsvsheet_edit_handler(struct zsvsheet_proc_context *ctx) 
     return zsvsheet_status_error;
   else {
     const char *current = zsvsheet_cell_value(uib, &pos);
-    if (!zsvsheet_edit_prompt_fits(state, uib, current))
+    if (!zsvsheet_edit_prompt_fits(state, uib, &pos, current))
       return zsvsheet_status_ok;
     int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
     if (!get_subcommand(ZSVSHEET_EDIT_PROMPT, prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, current, 0))
@@ -517,6 +531,34 @@ static zsvsheet_status zsvsheet_edit_mode_handler(struct zsvsheet_proc_context *
   return zsvsheet_status_ok;
 }
 
+// Edit mode's <ctrl>c (copy the cell under the cursor) and <ctrl>v (paste into it)
+static zsvsheet_status zsvsheet_edit_mode_clipboard(int ch, struct zsvsheet_sheet_context *state,
+                                                    struct zsvsheet_ui_buffer *uib) {
+  struct zsvsheet_cell_pos pos;
+  if (zsvsheet_cell_under_cursor(uib, &pos))
+    return zsvsheet_status_ok;
+  if (ch == ZSVSHEET_KEY_PASTE) {
+    if (!state->clipboard)
+      zsvsheet_ui_buffer_set_status(uib, "Nothing to paste; <ctrl>c copies a cell");
+    else
+      zsvsheet_set_cell(state, uib, &pos, state->clipboard); // a failure is in the status
+    return zsvsheet_status_ok;
+  }
+  if (zsvsheet_screen_buffer_cell_is_cut(uib->buffer, pos.buff_row, pos.screen_col)) { // only part is on screen
+    zsvsheet_ui_buffer_set_status(uib, "Too long to copy");
+    return zsvsheet_status_ok;
+  }
+  char *copy = strdup(zsvsheet_cell_value(uib, &pos));
+  if (!copy) {
+    zsvsheet_ui_buffer_set_status(uib, "Out of memory");
+    return zsvsheet_status_ok;
+  }
+  free(state->clipboard);
+  state->clipboard = copy;
+  zsvsheet_ui_buffer_set_status(uib, "Copied; <ctrl>v pastes");
+  return zsvsheet_status_ok;
+}
+
 // A key pressed in edit mode: printable keys type into the cell under the cursor, as in a
 // spreadsheet; other keys move or keep their usual bindings
 static zsvsheet_status zsvsheet_edit_mode_key(int ch, struct zsvsheet_sheet_context *state) {
@@ -529,6 +571,8 @@ static zsvsheet_status zsvsheet_edit_mode_key(int ch, struct zsvsheet_sheet_cont
   }
   if (ch == ZSVSHEET_CTRL('s'))
     return zsvsheet_proc_invoke_from_keypress(zsvsheet_builtin_proc_write, ch, state);
+  if (ch == ZSVSHEET_KEY_COPY || ch == ZSVSHEET_KEY_PASTE)
+    return zsvsheet_edit_mode_clipboard(ch, state, uib);
   zsvsheet_proc_id_t move = zsvsheet_edit_nav_proc(ch);
   if (move != ZSVSHEET_PROC_INVALID)
     return zsvsheet_proc_invoke_from_keypress(move, ch, state);
@@ -547,13 +591,13 @@ static zsvsheet_status zsvsheet_edit_mode_key(int ch, struct zsvsheet_sheet_cont
     return zsvsheet_status_ok;
   }
   const char *current = zsvsheet_cell_value(uib, &pos);
-  if (edit_current && !zsvsheet_edit_prompt_fits(state, uib, current))
+  if (edit_current && !zsvsheet_edit_prompt_fits(state, uib, &pos, current))
     return zsvsheet_status_ok;
   char value[ZSVSHEET_EDIT_PROMPT_SIZE];
   int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
   int end =
     zsvsheet_prompt_edit(ZSVSHEET_EDIT_PROMPT, value, sizeof(value), prompt_footer_row, edit_current ? current : NULL,
-                         replace ? ch : ZSVSHEET_NO_KEY, ZSVSHEET_PROMPT_NAV_ENDS);
+                         replace ? ch : ZSVSHEET_NO_KEY, ZSVSHEET_PROMPT_NAV_ENDS, &state->clipboard);
   if (end == ZSVSHEET_KEY_ESC) // cancelled: the cell keeps its value
     return zsvsheet_status_ok;
   if (zsvsheet_set_cell(state, uib, &pos, value)) // stay on the cell the status is about

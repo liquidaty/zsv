@@ -1,5 +1,5 @@
 Key(s)                    Action                    Description
-:w                        write                     Save this buffer as CSV (
 :q!                       quit!                     Exit the application, dis
 :editmode                 editmode                  Type into cells as in a s
-<esc> to exit help :editmode
+<ctrl>c                   quithint                  Show how to quit (in edit
+<esc> to exit help <ctrl>c

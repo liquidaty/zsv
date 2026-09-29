@@ -12,6 +12,8 @@
 #endif
 
 #define ZSVSHEET_KEY_ESC 27
+#define ZSVSHEET_KEY_COPY ZSVSHEET_CTRL('c')    // edit mode; elsewhere it shows how to quit
+#define ZSVSHEET_KEY_PASTE ZSVSHEET_CTRL('v')   // edit mode
 
 #if 0
 #define keyb_debug(...) fprintf(stderr, __VA_ARGS__)
@@ -239,6 +241,7 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
     .ch_name = ":editmode",
     .proc_id = zsvsheet_builtin_proc_edit_mode,
   },
+  { .ch = ZSVSHEET_KEY_COPY,   .proc_id = zsvsheet_builtin_proc_quit_hint,     },
   { .ch = -1                                                                   }
 };
 /* clang-format on */
@@ -290,7 +293,7 @@ struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
   { .ch = KEY_PPAGE,           .proc_id = zsvsheet_builtin_proc_pg_up,         },
 
   // TODO: find is ctrl-s in emacs, pressed again causes find next.
-  //       ZSVSHEET_NO_FLOW_CONTROL() (curses.h) lets ctrl-s reach the app.
+  //       zsvsheet_keys_reach_app() (terminal.h) lets ctrl-s reach the app.
   //{ .ch = ZSVSHEET_CTRL('s'),     .handler = zsvsheet_emacs_Cs_key_binding_dmux_handler, },
 
   { .ch = ZSVSHEET_CTRL('f'),     .handler = zsvsheet_emacs_Cf_key_binding_dmux_handler,  },
@@ -359,6 +362,7 @@ struct zsvsheet_ch_name zsvsheet_common_ch_names[] = {
   { .ch = KEY_LEFT,           .name = "<left>"          },
   { .ch = KEY_RIGHT,          .name = "<right>"         },
   { .ch = ZSVSHEET_CTRL('a'), .name = "<ctrl>a"         },
+  { .ch = ZSVSHEET_CTRL('c'), .name = "<ctrl>c"         },
   { .ch = ZSVSHEET_CTRL('d'), .name = "<ctrl>d"         },
   { .ch = ZSVSHEET_CTRL('e'), .name = "<ctrl>e"         },
   { .ch = ZSVSHEET_CTRL('f'), .name = "<ctrl>f"         },
