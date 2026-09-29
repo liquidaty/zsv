@@ -1561,6 +1561,9 @@ test-sheet-all: \
 	test-sheet-edit-utf8 \
 	test-sheet-edit-recommit \
 	test-sheet-edit-hardlink \
+	test-sheet-edit-mode \
+	test-sheet-edit-mode-saveas \
+	test-sheet-edit-mode-long \
 	${SHEET_ONLY_CRLF_TESTS} \
 	test-sheet-edit-help \
 	${SHEET_REGEX_TESTS}
@@ -2775,6 +2778,80 @@ test-sheet-edit-hardlink: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	awk 'BEGIN{print "id,val"; for(i=1;i<=3000;i++) printf "%d,R%d\n", i, i}' | cmp - ${TMP_DIR}/$@.csv && \
 	awk 'BEGIN{print "id,val"; for(i=1;i<=3000;i++) printf "%d,%s\n", i, (i==1 ? "LONGER-VALUE" : "R" i)}' | \
 	  cmp - ${TMP_DIR}/$@-link.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# edit mode: printable keys (digits too) type into the cell under the cursor; Enter (keypad
+# Enter too), Tab, Shift-Tab and arrows store and move; F2 edits the current value; Delete
+# clears; <esc> cancels typing, and otherwise leaves the mode; <ctrl>s saves. The status
+# names the key that saves in the current mode
+test-sheet-edit-mode: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B,C\n1,x,y\n2,"a,b",z\n3,p,q\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 8 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":editmode" Enter && \
+	${EXPECT} $@ on && \
+	tmux -L $@ send-keys -t $@ "/" && \
+	${EXPECT} $@ rownum && \
+	tmux -L $@ send-keys -t $@ Right "1" "2" Enter Tab "x" "y" "z" Enter && \
+	${EXPECT} $@ typed && \
+	tmux -L $@ send-keys -t $@ Up F2 BSpace "Z" Enter && \
+	${EXPECT} $@ f2 && \
+	tmux -L $@ send-keys -t $@ "k" Up DC && \
+	${EXPECT} $@ cleared && \
+	tmux -L $@ send-keys -t $@ Down "m" && \
+	${EXPECT} $@ typing && \
+	tmux -L $@ send-keys -t $@ Escape && \
+	${EXPECT} $@ cancelled && \
+	tmux -L $@ send-keys -t $@ BTab "7" Up && \
+	${EXPECT} $@ shift-tab && \
+	tmux -L $@ send-keys -t $@ "q" Right "r" Left Right BSpace Left "s" Down "é" Up "t" BTab && \
+	${EXPECT} $@ typed-nav && \
+	tmux -L $@ send-keys -t $@ C-s && \
+	${EXPECT} $@ saved && \
+	tmux -L $@ send-keys -t $@ Escape && \
+	${EXPECT} $@ left && \
+	tmux -L $@ send-keys -t $@ "k" && \
+	${EXPECT} $@ normal-keys && \
+	tmux -L $@ send-keys -t $@ ":editmode" Enter Right "u" KPEnter Escape && \
+	${EXPECT} $@ left-modified && \
+	tmux -L $@ send-keys -t $@ ":editmode" Enter && \
+	${EXPECT} $@ reentered && \
+	tmux -L $@ send-keys -t $@ Escape ":q!" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf 'A,B,C\n12,x,y\nt,,z\n\303\251,k,q\n' | cmp - ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# F2 cannot start from a value longer than the prompt line; the hint names :cell, which works outside edit mode
+test-sheet-edit-mode-long: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{printf "A\n"; for(i=0;i<100;i++) printf "x"; print ""}' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":editmode" Enter Right F2 && \
+	${EXPECT} $@ refused && \
+	tmux -L $@ send-keys -t $@ Escape ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# <ctrl>s in edit mode on a view without a file of its own asks for a name
+test-sheet-edit-mode-saveas: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B\n1,x\n2,y\n' > ${TMP_DIR}/$@.csv && rm -f ${TMP_DIR}/$@-out.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "f" "2" Enter && \
+	${EXPECT} $@ filtered && \
+	tmux -L $@ send-keys -t $@ ":editmode" Enter Right Right "W" Tab C-s && \
+	${EXPECT} $@ save-as && \
+	tmux -L $@ send-keys -t $@ "$@-out.csv" Enter && \
+	${EXPECT} $@ saved && \
+	tmux -L $@ send-keys -t $@ Escape Escape ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf 'Row #,A,B\n2,2,W\n' | cmp - ${TMP_DIR}/$@-out.csv && ${TEST_PASS} || ${TEST_FAIL})
 
 # a buffer without a file (help) saves its cells
 test-sheet-edit-help: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}

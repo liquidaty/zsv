@@ -1,5 +1,5 @@
 Key(s)                    Action                    Description
-i                         cell                      Edit the cell under the c
 :w                        write                     Save this buffer as CSV (
 :q!                       quit!                     Exit the application, dis
-Sort only available for tabular data buffers :q!
+:editmode                 editmode                  Type into cells as in a s
+Sort only available for tabular data buffers :editmode

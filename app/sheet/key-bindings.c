@@ -11,6 +11,8 @@
 /* clang-format on */
 #endif
 
+#define ZSVSHEET_KEY_ESC 27
+
 #if 0
 #define keyb_debug(...) fprintf(stderr, __VA_ARGS__)
 #else
@@ -138,7 +140,7 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
     .proc_id = zsvsheet_builtin_proc_quit,
   },
 
-  { .ch = 27,                  .proc_id = zsvsheet_builtin_proc_escape,        },
+  { .ch = ZSVSHEET_KEY_ESC,    .proc_id = zsvsheet_builtin_proc_escape,        },
   {
     .ch = KEY_RESIZE,
     .proc_id = zsvsheet_builtin_proc_resize,
@@ -232,6 +234,11 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
     .ch_name = ":q!",
     .proc_id = zsvsheet_builtin_proc_quit_force,
   },
+  {
+    .ch = '\0',
+    .ch_name = ":editmode",
+    .proc_id = zsvsheet_builtin_proc_edit_mode,
+  },
   { .ch = -1                                                                   }
 };
 /* clang-format on */
@@ -263,7 +270,7 @@ zsvsheet_status zsvsheet_emacs_Cs_key_binding_dmux_handler(struct zsvsheet_key_b
 
 /* clang-format off */
 struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
-  { .ch = 27,                  .proc_id = zsvsheet_builtin_proc_escape,        },
+  { .ch = ZSVSHEET_KEY_ESC,    .proc_id = zsvsheet_builtin_proc_escape,        },
   {
     .ch = KEY_RESIZE,
     .proc_id = zsvsheet_builtin_proc_resize,
@@ -283,8 +290,7 @@ struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
   { .ch = KEY_PPAGE,           .proc_id = zsvsheet_builtin_proc_pg_up,         },
 
   // TODO: find is ctrl-s in emacs, pressed again causes find next.
-  //       However, it is being captured by the shell. Figure out
-  //       how to prevent that, if emacs can we can do it too.
+  //       ZSVSHEET_NO_FLOW_CONTROL() (curses.h) lets ctrl-s reach the app.
   //{ .ch = ZSVSHEET_CTRL('s'),     .handler = zsvsheet_emacs_Cs_key_binding_dmux_handler, },
 
   { .ch = ZSVSHEET_CTRL('f'),     .handler = zsvsheet_emacs_Cf_key_binding_dmux_handler,  },
@@ -345,7 +351,7 @@ struct zsvsheet_ch_name {
 /* clang-format off */
 struct zsvsheet_ch_name zsvsheet_common_ch_names[] = {
   { .ch = KEY_RESIZE,         .name = "<resize>"        },
-  { .ch = 27,                 .name = "<esc>"           },
+  { .ch = ZSVSHEET_KEY_ESC,   .name = "<esc>"           },
   { .ch = KEY_SLEFT,          .name = "<shift><left>"   },
   { .ch = KEY_SRIGHT,         .name = "<shift><right>"  },
   { .ch = KEY_UP,             .name = "<up>"            },

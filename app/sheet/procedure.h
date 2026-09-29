@@ -48,7 +48,8 @@ enum {
   zsvsheet_builtin_proc_sort_expr,
   zsvsheet_builtin_proc_quit_force,
   zsvsheet_builtin_proc_edit,
-  zsvsheet_builtin_proc_write
+  zsvsheet_builtin_proc_write,
+  zsvsheet_builtin_proc_edit_mode
 };
 
 #define ZSVSHEET_PROC_INVALID 0

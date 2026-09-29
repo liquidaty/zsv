@@ -102,6 +102,7 @@ Press `?` to see a list of commands:
 | :q!            | quit!      | Exit, discarding unsaved changes                    |
 | i              | cell       | Edit the cell under the cursor (or `:cell <value>`) |
 | :w             | write      | Save this buffer as CSV (or `:w <file>`)            |
+| :editmode      | editmode   | Type into cells as in a spreadsheet; `Esc` leaves   |
 | <esc>          | escape     | Leave the current view or cancel a…                 |
 | ^              | first      | Jump to the first column                            |
 | $              | last       | Jump to the last column                             |
@@ -223,6 +224,30 @@ A save is refused, and the file is left as it was, when:
 - a row has more columns than the parser keeps (`--max-column-count`) or is
   longer than `--max-row-size`, so values would be lost
 - a filter or sort result is still being computed
+
+## Edit mode
+
+`:editmode` makes the keyboard type into cells, as in a spreadsheet. The status
+line starts with `-- EDIT --` while it is on.
+
+| Key                 | Not typing                          | Typing                     |
+| ------------------- | ----------------------------------- | -------------------------- |
+| a printable key     | replace the cell's value, start typing | add the character       |
+| `F2`                | edit the cell's current value       |                            |
+| `Enter`             | move down                           | store the value, move down |
+| `Tab`, `Shift-Tab`  | move right, left                    | store the value, move      |
+| arrow keys          | move                                | store the value, move      |
+| `Delete`, `Backspace` | clear the cell                    | (`Backspace`) delete the last character |
+| `Ctrl-S`            | save, as `:w` does                  |                            |
+| `Esc`               | leave edit mode                     | cancel; the cell is unchanged |
+
+Other keys, such as `Page Up`/`Page Down`, keep their usual actions. Digits and `:`
+are typed into the cell, so leave edit mode with `Esc` to run a command. Store a
+value (`Enter`, `Tab` or an arrow key) before pressing `Ctrl-S`. `Alt` combinations,
+and function keys the terminal does not describe, arrive as `Esc` followed by
+characters: while typing, the `Esc` cancels the edit and the characters start a new
+value; otherwise the `Esc` leaves edit mode and the characters act as ordinary keys
+(`Alt-f`, for example, then opens the filter prompt).
 
 ## Closing a buffer or the application
 

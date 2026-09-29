@@ -10,6 +10,12 @@
 // Size of the edit prompt's buffer: a value may be one byte shorter
 #define ZSVSHEET_EDIT_PROMPT_SIZE 4096
 
+// Text of the edit prompt
+#define ZSVSHEET_EDIT_PROMPT "Edit"
+
+// In edit mode, the key that edits the cell's current value rather than replacing it
+#define ZSVSHEET_KEY_EDIT_CURRENT KEY_F(2)
+
 // Suffix zsv_mkstemp() replaces to name the temp file a save writes beside its target
 #define ZSVSHEET_SAVE_TEMP_SUFFIX ".XXXXXX"
 
@@ -395,27 +401,94 @@ static int zsvsheet_ui_buffer_save(struct zsvsheet_ui_buffer *uib, const char *t
   return rc;
 }
 
+// The cell under the cursor, as buffer and raw input coordinates
+struct zsvsheet_cell_pos {
+  size_t buff_row;   // row in the screen buffer: 0 is the header
+  size_t raw_row;    // row in the input: 0 is the header
+  size_t screen_col; // column in the screen buffer
+  size_t col;        // data column
+};
+
+// Find the cell under the cursor. Returns 0 if it can be edited, else -1 (after saying why
+// in the status if the reason is not obvious, e.g. the row-number column)
+static int zsvsheet_cell_under_cursor(struct zsvsheet_ui_buffer *uib, struct zsvsheet_cell_pos *pos) {
+  // buffer row 0 is the header (raw row 0); buffer row b >= 1 is raw row input_offset.row + b
+  pos->buff_row = uib->cursor_row ? uib->buff_offset.row + uib->cursor_row : 0;
+  pos->raw_row = pos->buff_row ? uib->input_offset.row + pos->buff_row : 0;
+  pos->screen_col = uib->buff_offset.col + uib->cursor_col;
+  // row numbers (sheet's own column, or the "Row #" a derived view's file carries) are not data
+  const size_t col_offset = zsvsheet_ui_buffer_data_col_offset(uib);
+  if (pos->screen_col < col_offset + uib->has_row_num) {
+    zsvsheet_ui_buffer_set_status(uib, "Row numbers cannot be edited");
+    return -1;
+  }
+  pos->col = pos->screen_col - col_offset;
+  if (pos->buff_row >= uib->buff_used_rows || pos->col >= uib->dimensions.col_count)
+    return -1; // no cell under the cursor, e.g. the blank start screen
+  return 0;
+}
+
+static const char *zsvsheet_cell_value(struct zsvsheet_ui_buffer *uib, const struct zsvsheet_cell_pos *pos) {
+  const char *value = (const char *)zsvsheet_screen_buffer_cell_display(uib->buffer, pos->buff_row, pos->screen_col);
+  return value ? value : "";
+}
+
+// Whether the edit prompt, which edits one screen line, can start from `value`; if not, says so
+static int zsvsheet_edit_prompt_fits(const struct zsvsheet_sheet_context *state, struct zsvsheet_ui_buffer *uib,
+                                     const char *value) {
+  if (strlen(ZSVSHEET_EDIT_PROMPT) + 2 + strlen(value) + 1 < state->display_info.dimensions->columns)
+    return 1; // ": " follows the prompt text
+  // the status can outlast edit mode, where ':' types a colon, so it says where :cell works
+  zsvsheet_ui_buffer_set_status(uib, "Too long to edit here; use :cell \"<value>\" outside edit mode");
+  return 0;
+}
+
+// For a modified buffer, a status naming the key that saves in the current mode (in edit
+// mode ':' types a colon, and outside it <ctrl>s is unbound)
+static void zsvsheet_modified_status(const struct zsvsheet_sheet_context *state, struct zsvsheet_ui_buffer *uib) {
+  if (uib->modified)
+    zsvsheet_ui_buffer_set_status(uib, state->edit_mode ? "Modified; <ctrl>s to save" : "Modified; :w to save");
+}
+
+// Set the cell at pos to value, recording it as an edit. Returns 0, or -1 (after setting
+// the status) if the value could not be kept
+static int zsvsheet_set_cell(struct zsvsheet_sheet_context *state, struct zsvsheet_ui_buffer *uib,
+                             const struct zsvsheet_cell_pos *pos, const char *value) {
+  size_t len = strlen(value);
+  if (!strcmp(value, zsvsheet_cell_value(uib, pos))) // nothing to record, and nothing to commit later
+    return 0;
+  if (zsvsheet_ui_buffer_has_file(uib) &&
+      zsvsheet_edits_set(&uib->edits, pos->raw_row, pos->col, (const unsigned char *)value, len)) {
+    zsvsheet_ui_buffer_set_status(uib, "Out of memory");
+    return -1;
+  }
+  enum zsvsheet_priv_status wstat = zsvsheet_screen_buffer_write_cell_w_len(uib->buffer, pos->buff_row, pos->screen_col,
+                                                                            (const unsigned char *)value, len);
+  if (wstat != zsvsheet_priv_status_ok && !zsvsheet_ui_buffer_has_file(uib)) { // the screen buffer is the only copy
+    zsvsheet_ui_buffer_set_status(uib, "Out of memory");
+    return -1;
+  }
+  if (wstat != zsvsheet_priv_status_ok && pos->buff_row) // a reload shows the recorded edit (and leaves the header row)
+    state->display_info.update_buffer = 1;
+  uib->modified = 1;
+  if (wstat != zsvsheet_priv_status_ok && !pos->buff_row)
+    zsvsheet_ui_buffer_set_status(uib, "Out of memory: the edit is kept but not shown");
+  else
+    zsvsheet_modified_status(state, uib);
+  if (state->compare.active)
+    zsvsheet_apply_compare_attrs(uib, &state->compare);
+  return 0;
+}
+
 static zsvsheet_status zsvsheet_edit_handler(struct zsvsheet_proc_context *ctx) {
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_display_info *di = &state->display_info;
   struct zsvsheet_ui_buffer *uib = *di->ui_buffers.current;
-
-  // buffer row 0 is the header (raw row 0); buffer row b >= 1 is raw row input_offset.row + b
-  const size_t buff_row = uib->cursor_row ? uib->buff_offset.row + uib->cursor_row : 0;
-  const size_t raw_row = buff_row ? uib->input_offset.row + buff_row : 0;
-  const size_t screen_col = uib->buff_offset.col + uib->cursor_col;
-  // row numbers (sheet's own column, or the "Row #" a derived view's file carries) are not data
-  const size_t col_offset = zsvsheet_ui_buffer_data_col_offset(uib);
-  if (screen_col < col_offset + uib->has_row_num) {
-    zsvsheet_ui_buffer_set_status(uib, "Row numbers cannot be edited");
+  struct zsvsheet_cell_pos pos;
+  if (zsvsheet_cell_under_cursor(uib, &pos))
     return zsvsheet_status_ok;
-  }
-  const size_t col = screen_col - col_offset;
-  if (buff_row >= uib->buff_used_rows || col >= uib->dimensions.col_count)
-    return zsvsheet_status_ok; // no cell under the cursor, e.g. the blank start screen
 
   char prompt_buffer[ZSVSHEET_EDIT_PROMPT_SIZE];
-  const char *current = (const char *)zsvsheet_screen_buffer_cell_display(uib->buffer, buff_row, screen_col);
   const char *value;
   if (ctx->num_params > 1) {
     zsvsheet_ui_buffer_set_status(uib, "Quote a value that contains spaces, e.g. :cell \"a b\"");
@@ -425,41 +498,67 @@ static zsvsheet_status zsvsheet_edit_handler(struct zsvsheet_proc_context *ctx) 
   else if (!ctx->invocation.interactive)
     return zsvsheet_status_error;
   else {
-    const char *prompt = "Edit";
-    // the prompt edits a single screen line: ": " follows the prompt text
-    if (current && strlen(prompt) + 2 + strlen(current) + 1 >= di->dimensions->columns) {
-      zsvsheet_ui_buffer_set_status(uib, "Value too long to edit here; use :cell \"<new value>\"");
+    const char *current = zsvsheet_cell_value(uib, &pos);
+    if (!zsvsheet_edit_prompt_fits(state, uib, current))
       return zsvsheet_status_ok;
-    }
     int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
-    if (!get_subcommand(prompt, prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, current, 0))
+    if (!get_subcommand(ZSVSHEET_EDIT_PROMPT, prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, current, 0))
       return zsvsheet_status_ok; // cancelled
     value = prompt_buffer;
   }
-
-  size_t len = strlen(value);
-  if (!strcmp(value, current ? current : "")) // nothing to record, and nothing to commit later
-    return zsvsheet_status_ok;
-  if (zsvsheet_ui_buffer_has_file(uib) &&
-      zsvsheet_edits_set(&uib->edits, raw_row, col, (const unsigned char *)value, len)) {
-    zsvsheet_ui_buffer_set_status(uib, "Out of memory");
-    return zsvsheet_status_ok;
-  }
-  enum zsvsheet_priv_status wstat =
-    zsvsheet_screen_buffer_write_cell_w_len(uib->buffer, buff_row, screen_col, (const unsigned char *)value, len);
-  if (wstat != zsvsheet_priv_status_ok && !zsvsheet_ui_buffer_has_file(uib)) { // the screen buffer is the only copy
-    zsvsheet_ui_buffer_set_status(uib, "Out of memory");
-    return zsvsheet_status_ok;
-  }
-  if (wstat != zsvsheet_priv_status_ok && buff_row) // a reload shows the recorded edit (and leaves the header row)
-    di->update_buffer = 1;
-  uib->modified = 1;
-  zsvsheet_ui_buffer_set_status(uib, wstat == zsvsheet_priv_status_ok || buff_row
-                                       ? "Modified; :w to save"
-                                       : "Out of memory: the edit is kept but not shown");
-  if (state->compare.active)
-    zsvsheet_apply_compare_attrs(uib, &state->compare);
+  zsvsheet_set_cell(state, uib, &pos, value); // a failure is in the status
   return zsvsheet_status_ok;
+}
+
+static zsvsheet_status zsvsheet_edit_mode_handler(struct zsvsheet_proc_context *ctx) {
+  struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
+  state->edit_mode = 1;
+  zsvsheet_modified_status(state, *state->display_info.ui_buffers.current);
+  return zsvsheet_status_ok;
+}
+
+// A key pressed in edit mode: printable keys type into the cell under the cursor, as in a
+// spreadsheet; other keys move or keep their usual bindings
+static zsvsheet_status zsvsheet_edit_mode_key(int ch, struct zsvsheet_sheet_context *state) {
+  struct zsvsheet_display_info *di = &state->display_info;
+  struct zsvsheet_ui_buffer *uib = *di->ui_buffers.current;
+  if (ch == ZSVSHEET_KEY_ESC) {
+    state->edit_mode = 0;
+    zsvsheet_modified_status(state, uib);
+    return zsvsheet_status_ok;
+  }
+  if (ch == ZSVSHEET_CTRL('s'))
+    return zsvsheet_proc_invoke_from_keypress(zsvsheet_builtin_proc_write, ch, state);
+  zsvsheet_proc_id_t move = zsvsheet_edit_nav_proc(ch);
+  if (move != ZSVSHEET_PROC_INVALID)
+    return zsvsheet_proc_invoke_from_keypress(move, ch, state);
+
+  const int edit_current = ch == ZSVSHEET_KEY_EDIT_CURRENT;
+  const int replace = zsvsheet_ch_is_print(ch); // the key starts the new value
+  const int clear = ch == KEY_DC || zsvsheet_key_is_backspace(ch);
+  if (!edit_current && !replace && !clear)
+    return zsvsheet_key_press(ch, state); // e.g. page keys: their usual bindings
+
+  struct zsvsheet_cell_pos pos;
+  if (zsvsheet_cell_under_cursor(uib, &pos))
+    return zsvsheet_status_ok; // the key is used up either way
+  if (clear) {
+    zsvsheet_set_cell(state, uib, &pos, ""); // a failure is in the status
+    return zsvsheet_status_ok;
+  }
+  const char *current = zsvsheet_cell_value(uib, &pos);
+  if (edit_current && !zsvsheet_edit_prompt_fits(state, uib, current))
+    return zsvsheet_status_ok;
+  char value[ZSVSHEET_EDIT_PROMPT_SIZE];
+  int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
+  int end =
+    zsvsheet_prompt_edit(ZSVSHEET_EDIT_PROMPT, value, sizeof(value), prompt_footer_row, edit_current ? current : NULL,
+                         replace ? ch : ZSVSHEET_NO_KEY, ZSVSHEET_PROMPT_NAV_ENDS);
+  if (end == ZSVSHEET_KEY_ESC) // cancelled: the cell keeps its value
+    return zsvsheet_status_ok;
+  if (zsvsheet_set_cell(state, uib, &pos, value)) // stay on the cell the status is about
+    return zsvsheet_status_ok;
+  return zsvsheet_proc_invoke_from_keypress(zsvsheet_edit_nav_proc(end), end, state);
 }
 
 static zsvsheet_status zsvsheet_write_handler(struct zsvsheet_proc_context *ctx) {

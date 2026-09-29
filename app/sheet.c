@@ -165,7 +165,8 @@ static size_t zsvsheet_cell_display_width(struct zsvsheet_ui_buffer *ui_buffer,
 }
 
 static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t input_header_span,
-                                    struct zsvsheet_display_dimensions *ddims, const struct zsvsheet_compare_opts *cmp);
+                                    struct zsvsheet_display_dimensions *ddims, const struct zsvsheet_compare_opts *cmp,
+                                    char edit_mode);
 
 static void zsvsheet_priv_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt,
                                      ...);
@@ -187,6 +188,7 @@ struct zsvsheet_sheet_context {
   size_t numeric_input;
   struct zsv_prop_handler *custom_prop_handler;
   struct zsvsheet_compare_opts compare;
+  char edit_mode;                // keys type into cells (see zsvsheet_edit_mode_key)
   size_t keypress_count;         // keys pressed so far
   size_t discard_offer_keypress; // the <esc> that offered to discard a modified buffer (0: none);
                                  // only the next key can accept, so it is on the same buffer
@@ -263,13 +265,50 @@ static size_t prompt_backspace(char *buff, size_t idx, int y, int x) {
 // Longest command-name prefix Tab will complete. Anything longer cannot match.
 #define ZSVSHEET_COMPLETE_MAX_PREFIX 64
 
-// complete_procs: if non-zero, Tab cycles through command names matching what has
-// been typed so far
-// Returns 1 if the input was entered (possibly empty), 0 if cancelled with <esc>
-static char get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row, const char *default_value,
-                           char complete_procs) {
+#define ZSVSHEET_NO_KEY (-1) // no key: zsvsheet_prompt_edit() reads every key from the keyboard
+
+static int zsvsheet_key_is_enter(int ch) {
+  return ch == '\n' || ch == '\r' || ch == ZSVSHEET_KEY_PAD_ENTER;
+}
+
+static int zsvsheet_key_is_backspace(int ch) {
+  return ch == KEY_BACKSPACE || ch == 127 || ch == '\b';
+}
+
+// The move procedure an edit-mode navigation key runs, or ZSVSHEET_PROC_INVALID if it is not one. The same
+// keys end typing in edit mode, which then stores the value and makes the move
+static zsvsheet_proc_id_t zsvsheet_edit_nav_proc(int ch) {
+  if (zsvsheet_key_is_enter(ch))
+    return zsvsheet_builtin_proc_move_down;
+  switch (ch) {
+  case KEY_DOWN:
+    return zsvsheet_builtin_proc_move_down;
+  case KEY_UP:
+    return zsvsheet_builtin_proc_move_up;
+  case '\t':
+  case KEY_RIGHT:
+    return zsvsheet_builtin_proc_move_right;
+  case KEY_BTAB:
+  case KEY_LEFT:
+    return zsvsheet_builtin_proc_move_left;
+  default:
+    return ZSVSHEET_PROC_INVALID;
+  }
+}
+
+enum {
+  ZSVSHEET_PROMPT_COMPLETE_PROCS = 1, // Tab cycles through command names matching what has been typed so far
+  ZSVSHEET_PROMPT_NAV_ENDS = 2,       // edit-mode navigation keys end input, as Enter does
+};
+
+// Read a line of input in the footer, starting from default_value (if non-NULL) and then
+// first_key (unless ZSVSHEET_NO_KEY) as if typed. flags: ZSVSHEET_PROMPT_*
+// Returns the key that ended input: ZSVSHEET_KEY_ESC if cancelled (buff is then empty), else
+// Enter or, with ZSVSHEET_PROMPT_NAV_ENDS, a navigation key
+static int zsvsheet_prompt_edit(const char *prompt, char *buff, size_t buffsize, int footer_row,
+                                const char *default_value, int first_key, int flags) {
   if (!buffsize) // buffsize reaches here from extensions via zsvsheet_ext_prompt()
-    return 0;
+    return ZSVSHEET_KEY_ESC;
   *buff = '\0';
 
   // this is a hack to blank-out the currently-selected cell value
@@ -295,14 +334,16 @@ static char get_subcommand(const char *prompt, char *buff, size_t buffsize, int 
   char comp_active = 0;
 
   while (1) {
-    ch = getch();     // Read a character from the user
-    if (ch == 27) {   // escape
-      buff[0] = '\0'; // Clear buffer & exit
-      return 0;
-    } else if (ch == '\n' || ch == '\r') { // ENTER key
-      buff[idx] = '\0';                    // Null-terminate the string
-      return 1;
-    } else if (ch == '\t' && complete_procs) {
+    ch = first_key != ZSVSHEET_NO_KEY ? first_key : getch();
+    first_key = ZSVSHEET_NO_KEY;
+    if (ch == ZSVSHEET_KEY_ESC) {
+      buff[0] = '\0';
+      return ch;
+    } else if (zsvsheet_key_is_enter(ch) ||
+               ((flags & ZSVSHEET_PROMPT_NAV_ENDS) && zsvsheet_edit_nav_proc(ch) != ZSVSHEET_PROC_INVALID)) {
+      buff[idx] = '\0';
+      return ch;
+    } else if (ch == '\t' && (flags & ZSVSHEET_PROMPT_COMPLETE_PROCS)) {
       const char *after = NULL;
       if (comp_active)
         after = buff; // cycle to the name after the one now shown
@@ -320,7 +361,7 @@ static char get_subcommand(const char *prompt, char *buff, size_t buffsize, int 
       continue;
     } else if (ch == ZSVSHEET_CTRL('A')) {
       idx = prompt_set_text(buff, buffsize, y, x, "");
-    } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') { // BACKSPACE key
+    } else if (zsvsheet_key_is_backspace(ch)) {
       idx = prompt_backspace(buff, idx, y, x);
     } else if (zsvsheet_ch_is_print(ch)) { // Printable character
       idx = prompt_append(buff, idx, buffsize, ch);
@@ -328,6 +369,15 @@ static char get_subcommand(const char *prompt, char *buff, size_t buffsize, int 
       continue;      // Ignore other keys, and leave any completion cycle running
     comp_active = 0; // the input was edited, so re-read the prefix on the next Tab
   }
+}
+
+// complete_procs: if non-zero, Tab cycles through command names matching what has
+// been typed so far
+// Returns 1 if the input was entered (possibly empty), 0 if cancelled with <esc>
+static char get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row, const char *default_value,
+                           char complete_procs) {
+  return zsvsheet_prompt_edit(prompt, buff, buffsize, footer_row, default_value, ZSVSHEET_NO_KEY,
+                              complete_procs ? ZSVSHEET_PROMPT_COMPLETE_PROCS : 0) != ZSVSHEET_KEY_ESC;
 }
 
 // Column picker: like get_subcommand, but up/down arrows cycle through column names.
@@ -359,10 +409,10 @@ static void get_subcommand_with_columns(const char *prompt, char *buff, size_t b
 
   while (1) {
     ch = getch();
-    if (ch == 27) {
+    if (ch == ZSVSHEET_KEY_ESC) {
       buff[0] = '\0';
       break;
-    } else if (ch == '\n' || ch == '\r') {
+    } else if (zsvsheet_key_is_enter(ch)) {
       buff[idx] = '\0';
       break;
     } else if ((ch == KEY_DOWN || ch == KEY_UP) && col_count > 0) {
@@ -375,7 +425,7 @@ static void get_subcommand_with_columns(const char *prompt, char *buff, size_t b
     } else if (ch == ZSVSHEET_CTRL('A')) {
       idx = prompt_set_text(buff, buffsize, y, x, "");
       sel = -1;
-    } else if (ch == KEY_BACKSPACE || ch == 127 || ch == '\b') {
+    } else if (zsvsheet_key_is_backspace(ch)) {
       idx = prompt_backspace(buff, idx, y, x);
       sel = -1;
     } else if (zsvsheet_ch_is_print(ch)) {
@@ -438,6 +488,9 @@ size_t display_data_rowcount(struct zsvsheet_display_dimensions *dims) {
 }
 
 char zsvsheet_status_text[256] = {0};
+
+// shown before the status while keys type into cells
+#define ZSVSHEET_EDIT_MODE_STATUS "-- EDIT -- "
 static void zsvsheet_display_status_text(const struct zsvsheet_display_dimensions *ddims) {
   // clear the entire line
   mvprintw(ddims->rows - ddims->footer_span, 0, "%-*s", (int)sizeof(zsvsheet_status_text), "");
@@ -446,6 +499,19 @@ static void zsvsheet_display_status_text(const struct zsvsheet_display_dimension
   attron(A_REVERSE);
   mvprintw(ddims->rows - ddims->footer_span, 0, "%s", zsvsheet_status_text);
   attroff(A_REVERSE);
+}
+
+// Put prefix before the status text (truncating the status to fit) and redisplay it
+static void zsvsheet_status_prefix(const struct zsvsheet_display_dimensions *ddims, const char *prefix) {
+  size_t plen = strlen(prefix), len = strlen(zsvsheet_status_text);
+  if (plen >= sizeof(zsvsheet_status_text))
+    plen = sizeof(zsvsheet_status_text) - 1;
+  if (plen + len >= sizeof(zsvsheet_status_text))
+    len = sizeof(zsvsheet_status_text) - 1 - plen;
+  memmove(zsvsheet_status_text + plen, zsvsheet_status_text, len);
+  memcpy(zsvsheet_status_text, prefix, plen);
+  zsvsheet_status_text[plen + len] = '\0';
+  zsvsheet_display_status_text(ddims);
 }
 
 static void zsvsheet_priv_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt,
@@ -503,8 +569,8 @@ static zsvsheet_status zsvsheet_move_page(struct zsvsheet_display_info *di, bool
     }
   }
 
-  di->update_buffer = zsvsheet_goto_input_raw_row(current_ui_buffer, target, di->header_span, di->dimensions,
-                                                  current_ui_buffer->cursor_row);
+  di->update_buffer |= zsvsheet_goto_input_raw_row(current_ui_buffer, target, di->header_span, di->dimensions,
+                                                   current_ui_buffer->cursor_row);
   return zsvsheet_status_ok;
 }
 
@@ -516,7 +582,7 @@ static zsvsheet_status zsvsheet_move_ver(struct zsvsheet_display_info *di, bool 
                                        current_ui_buffer->cursor_row);
   if (up) {
     if (current > di->header_span) {
-      di->update_buffer =
+      di->update_buffer |=
         zsvsheet_goto_input_raw_row(current_ui_buffer, current - 1, di->header_span, di->dimensions,
                                     current_ui_buffer->cursor_row > 0 ? current_ui_buffer->cursor_row - 1 : 0);
     } else if (current_ui_buffer->cursor_row > 0) {
@@ -525,8 +591,8 @@ static zsvsheet_status zsvsheet_move_ver(struct zsvsheet_display_info *di, bool 
   } else {
     if (current >= current_ui_buffer->dimensions.row_count - 1)
       return zsvsheet_status_ok;
-    di->update_buffer = zsvsheet_goto_input_raw_row(current_ui_buffer, current + 1, di->header_span, di->dimensions,
-                                                    current_ui_buffer->cursor_row + 1);
+    di->update_buffer |= zsvsheet_goto_input_raw_row(current_ui_buffer, current + 1, di->header_span, di->dimensions,
+                                                     current_ui_buffer->cursor_row + 1);
   }
   return zsvsheet_status_ok;
 }
@@ -608,7 +674,7 @@ static zsvsheet_status zsvsheet_move_ver_to_row(struct zsvsheet_display_info *di
   if (final_cursor_position < di->header_span)
     final_cursor_position = di->header_span;
 
-  di->update_buffer =
+  di->update_buffer |=
     zsvsheet_goto_input_raw_row(current_ui_buffer, target_row, di->header_span, di->dimensions, final_cursor_position);
   return zsvsheet_status_ok;
 }
@@ -1186,6 +1252,7 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_sort_expr,        "sortexpr",       NULL, "Sort rows by SQL expression",                                     zsvsheet_sort_handler },
   { zsvsheet_builtin_proc_edit,             "cell",           NULL, "Edit the cell under the cursor (or :cell <value>)",               zsvsheet_edit_handler },
   { zsvsheet_builtin_proc_write,            "write",          "w",  "Save this buffer as CSV (or :w <file>)",                          zsvsheet_write_handler },
+  { zsvsheet_builtin_proc_edit_mode,        "editmode",       NULL, "Type into cells as in a spreadsheet; <esc> leaves",               zsvsheet_edit_mode_handler },
   { -1, NULL, NULL, NULL, NULL }
 };
 /* clang-format on */
@@ -1354,8 +1421,10 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #endif
 
   zsvsheet_check_buffer_worker_updates(current_ui_buffer, &display_dims, &handler_state);
-  display_buffer_subtable(current_ui_buffer, header_span, &display_dims, &handler_state.compare);
+  display_buffer_subtable(current_ui_buffer, header_span, &display_dims, &handler_state.compare,
+                          handler_state.edit_mode);
 
+  ZSVSHEET_NO_FLOW_CONTROL(); // <ctrl>s saves in edit mode; must precede halfdelay() (see curses.h)
   // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
   halfdelay(2);
 
@@ -1368,12 +1437,13 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
     if (ch != ERR) {
       handler_state.keypress_count++;
-      if (isdigit(ch)) {
+      if (!handler_state.edit_mode && isdigit(ch)) { // in edit mode, digits are typed into cells
         update_numeric_input(ch, &handler_state);
         continue;
       }
 
-      status = zsvsheet_key_press(ch, &handler_state);
+      status =
+        handler_state.edit_mode ? zsvsheet_edit_mode_key(ch, &handler_state) : zsvsheet_key_press(ch, &handler_state);
       reset_numeric_input(&handler_state);
 
       if (status == zsvsheet_status_exit)
@@ -1396,7 +1466,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         zsvsheet_apply_compare_attrs(ub, &handler_state.compare);
     }
 
-    display_buffer_subtable(ub, header_span, &display_dims, &handler_state.compare);
+    display_buffer_subtable(ub, header_span, &display_dims, &handler_state.compare, handler_state.edit_mode);
   }
 
   endwin();
@@ -1487,8 +1557,8 @@ static size_t zsvsheet_max_buffer_cols(struct zsvsheet_ui_buffer *ui_buffer) {
 }
 
 static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t input_header_span,
-                                    struct zsvsheet_display_dimensions *ddims,
-                                    const struct zsvsheet_compare_opts *cmp) {
+                                    struct zsvsheet_display_dimensions *ddims, const struct zsvsheet_compare_opts *cmp,
+                                    char edit_mode) {
   struct zsvsheet_screen_buffer *buffer = ui_buffer->buffer;
   size_t start_row = ui_buffer->buff_offset.row;
   size_t buffer_used_row_count = ui_buffer->buff_used_rows;
@@ -1545,7 +1615,10 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
     }
   }
 
-  if (ui_buffer->parse_errs.count > 0)
+  if (edit_mode) { // '?' and ':' type into cells here
+    zsvsheet_priv_set_status(ddims, 0, "<esc> leaves edit mode, <ctrl>s saves");
+    zsvsheet_status_prefix(ddims, ZSVSHEET_EDIT_MODE_STATUS);
+  } else if (ui_buffer->parse_errs.count > 0)
     zsvsheet_priv_set_status(ddims, 0, "? for help, :errors for errors");
   else
     zsvsheet_priv_set_status(ddims, 0, "? for help");
