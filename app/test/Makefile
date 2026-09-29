@@ -2299,6 +2299,7 @@ test-sheet-filter-this-regex-blank: ${BUILD_DIR}/bin/zsv_sheet${EXE}
 	${TEST_PASS} || ${TEST_FAIL})
 
 WAIT_FOR_EXIT=../../scripts/test-wait-for-exit.sh
+TYPE_COMMAND=../../scripts/test-type-command.sh
 
 
 # After building a pivot table, sheet moves the cursor to the group matching the
@@ -3064,21 +3065,19 @@ test-sheet-suspend: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@printf 'A,B\n1,x\n' > ${TMP_DIR}/$@.csv
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
-	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && exec env PS1='$$ ' sh -i" && \
-	tmux -L $@ send-keys -t $@ "${PREFIX} $< $@.csv" Enter && \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && exec env PS1='$$ ' SHEET='${PREFIX} $<' sh -i" && \
+	${TYPE_COMMAND} $@ '$$SHEET $@.csv' && \
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ C-z && \
-	for i in $$(seq 50); do [ "$$(tmux -L $@ capture-pane -p -t $@ | grep -v '^$$' | tail -1)" = '$$' ] && break; sleep 0.1; done && \
-	tmux -L $@ send-keys -t $@ "[ \$$? -gt 128 ] && echo SUSP''ENDED" Enter && \
+	${TYPE_COMMAND} $@ '[ $$? -gt 128 ] && echo SUSP""ENDED' && \
 	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q SUSPENDED && break; sleep 0.1; done && \
 	tmux -L $@ capture-pane -p -t $@ | grep -q SUSPENDED && \
-	tmux -L $@ send-keys -t $@ "fg" Enter && \
+	${TYPE_COMMAND} $@ fg && \
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ C-c && \
 	${EXPECT} $@ hint && \
 	tmux -L $@ send-keys -t $@ ":q" Enter && \
-	for i in $$(seq 50); do [ "$$(tmux -L $@ capture-pane -p -t $@ | grep -v '^$$' | tail -1)" = '$$' ] && break; sleep 0.1; done && \
-	tmux -L $@ send-keys -t $@ "exit" Enter && \
+	${TYPE_COMMAND} $@ exit && \
 	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 # a buffer without a file (help) saves its cells
