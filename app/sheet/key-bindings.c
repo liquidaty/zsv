@@ -12,8 +12,8 @@
 #endif
 
 #define ZSVSHEET_KEY_ESC 27
-#define ZSVSHEET_KEY_COPY ZSVSHEET_CTRL('c')    // edit mode; elsewhere it shows how to quit
-#define ZSVSHEET_KEY_PASTE ZSVSHEET_CTRL('v')   // edit mode
+#define ZSVSHEET_KEY_COPY ZSVSHEET_CTRL('c')  // edit mode; elsewhere it shows how to quit
+#define ZSVSHEET_KEY_PASTE ZSVSHEET_CTRL('v') // edit mode
 
 #if 0
 #define keyb_debug(...) fprintf(stderr, __VA_ARGS__)
