@@ -99,6 +99,9 @@ Press `?` to see a list of commands:
 | Key(s)         | Action     | Description                                         |
 | -------------- | ---------- | --------------------------------------------------- |
 | :q             | quit       | Exit the application (also `:quit`)                 |
+| :q!            | quit!      | Exit, discarding unsaved changes                    |
+| i              | cell       | Edit the cell under the cursor (or `:cell <value>`) |
+| :w             | write      | Save this buffer as CSV (or `:w <file>`)            |
 | <esc>          | escape     | Leave the current view or cancel a…                 |
 | ^              | first      | Jump to the first column                            |
 | $              | last       | Jump to the last column                             |
@@ -185,6 +188,42 @@ $ zsv sheet --header-row-span 2 -t noaa.tsv # open in sheet viewer; combine firs
 src="https://github.com/user-attachments/assets/4c21ff11-f7f9-4182-a73d-531c41fa9528"
 />
 
+## Editing and saving
+
+Press `i` to edit the cell under the cursor. The prompt starts with the current
+value; Enter stores the new value and `Esc` cancels. `:cell <value>` sets the cell
+without the prompt (quote a value that contains spaces: `:cell "a b"`). Header
+cells can be edited to rename a column; row numbers cannot.
+
+Any buffer can be edited: the file you opened, another file opened with `e`, a
+filter, sort or pivot result, or the help view. Filters, sorts, pivots and finds
+on an edited buffer see the edited values.
+
+`:w` saves the buffer to the file it was opened from; `:w <file>` saves it to
+another file. A filter, sort or pivot result prompts for a file name the first
+time, and later `:w` commands save to that file; the saved file includes the
+result's `Row #` column. The help view prompts every time. The file is written as
+CSV: comma-delimited, LF line ends, no byte order mark, and quotes only where a
+value needs them.
+
+The new file replaces the old one only once it is completely written. It keeps the
+old file's permission bits and, on Linux and macOS, its group. Where you do not
+belong to that group, the group gets no more access than others have. The saved
+file is owned by you, and other hard links to the old file keep the old contents.
+A file saved for the first time gets the permissions your system gives a new file
+(your umask). On Linux and macOS, saving through a symbolic link updates the file
+it points to; a link to a file that does not exist is refused.
+
+A save is refused, and the file is left as it was, when:
+- the file would not read back as the same data, for example a `.tsv` file, or a
+  file opened with options such as `-R`, `-t`, `--only-crlf` or
+  `--header-row-span`; save to a new `.csv` file instead
+- the file is read-only
+- another open view reads the same file, or whether it does cannot be determined
+- a row has more columns than the parser keeps (`--max-column-count`) or is
+  longer than `--max-row-size`, so values would be lost
+- a filter or sort result is still being computed
+
 ## Closing a buffer or the application
 
 Press `Esc` to close the current buffer (a filter, sort or pivot result, the help
@@ -193,6 +232,10 @@ last file or data buffer you opened, so it leaves that view in place; type `:q`
 (or `:quit`) followed by Enter to close the application. Quitting is
 deliberately a command rather than a single keystroke, so it cannot happen by
 accident.
+
+A buffer with unsaved changes stays open on the first `Esc`; a second `Esc`
+immediately after closes it and discards the changes. `:q` is refused while any
+buffer has unsaved changes; `:w` saves them, and `:q!` quits without saving.
 
 ## Commands and Tab completion
 

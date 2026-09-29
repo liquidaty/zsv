@@ -45,7 +45,10 @@ enum {
   zsvsheet_builtin_proc_compare,
   zsvsheet_builtin_proc_sort_cur_col,
   zsvsheet_builtin_proc_sort_cur_col_desc,
-  zsvsheet_builtin_proc_sort_expr
+  zsvsheet_builtin_proc_sort_expr,
+  zsvsheet_builtin_proc_quit_force,
+  zsvsheet_builtin_proc_edit,
+  zsvsheet_builtin_proc_write
 };
 
 #define ZSVSHEET_PROC_INVALID 0

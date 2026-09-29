@@ -83,6 +83,17 @@ enum zsv_status zsv_new_with_properties(struct zsv_opts *opts, struct zsv_prop_h
                                         const char *input_path, zsv_parser *handle_out);
 
 /**
+ * zsv_opts_load_properties(): merge into `opts` the saved properties and the
+ * extension-implied delimiter for `input_path`, exactly as zsv_new_with_properties()
+ * does before it creates the parser. Use it to learn how a file would be parsed.
+ * input_path may name a file that does not exist
+ *
+ * @return zsv_status_ok on success
+ */
+enum zsv_status zsv_opts_load_properties(struct zsv_opts *opts, struct zsv_prop_handler *custom_prop,
+                                         const char *input_path);
+
+/**
  * If you are building your own CLI and incorporating zsv CLI commands into it,
  * the `prop` command can be customized by providing your own function
  * for determining whether a file in the property cache is a property file,

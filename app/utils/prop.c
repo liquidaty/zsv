@@ -272,6 +272,34 @@ static char zsv_tab_ext_delim(const char *path) {
   return 0;
 }
 
+// the path whose properties apply: stdin input stands in for opts->stdin_filename, if set
+static const char *zsv_prop_input_path(const struct zsv_opts *opts, const char *input_path) {
+  if (opts->stdin_filename && (!input_path || !strcmp(input_path, "-")))
+    return opts->stdin_filename;
+  return input_path;
+}
+
+// zsv_opts_load_properties() for a path zsv_prop_input_path() has already resolved
+static enum zsv_status zsv_opts_load_properties_resolved(struct zsv_opts *opts,
+                                                         struct zsv_prop_handler *custom_prop_handler,
+                                                         const char *input_path) {
+  if (!input_path)
+    return zsv_status_ok;
+  struct zsv_file_properties fp = zsv_cache_load_props(input_path, opts, custom_prop_handler);
+  if (fp.stat != zsv_status_ok)
+    return fp.stat;
+  // Default to a tab delimiter for .tsv/.tab input unless one was set explicitly
+  // (via -t/-O) or by a saved property (either leaves delimiter non-zero here)
+  if (opts->delimiter == 0)
+    opts->delimiter = zsv_tab_ext_delim(input_path);
+  return zsv_status_ok;
+}
+
+enum zsv_status zsv_opts_load_properties(struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler,
+                                         const char *input_path) {
+  return zsv_opts_load_properties_resolved(opts, custom_prop_handler, zsv_prop_input_path(opts, input_path));
+}
+
 /**
  * zsv_new_with_properties(): use in lieu of zsv_new() to also merge zsv options
  * with any saved properties (such as rows_to_ignore or header_span) for the
@@ -284,21 +312,14 @@ static char zsv_tab_ext_delim(const char *path) {
 enum zsv_status zsv_new_with_properties(struct zsv_opts *opts, struct zsv_prop_handler *custom_prop_handler,
                                         const char *input_path, zsv_parser *handle_out) {
   *handle_out = NULL;
-  if (opts->stdin_filename && (!input_path || !strcmp(input_path, "-")))
-    input_path = opts->stdin_filename;
-  if (input_path) {
-    struct zsv_file_properties fp = zsv_cache_load_props(input_path, opts, custom_prop_handler);
-    if (fp.stat != zsv_status_ok)
-      return fp.stat;
-  }
+  input_path = zsv_prop_input_path(opts, input_path);
+  enum zsv_status stat = zsv_opts_load_properties_resolved(opts, custom_prop_handler, input_path);
+  if (stat != zsv_status_ok)
+    return stat;
 #ifdef ZSV_EXTRAS
   if (opts->overwrite_auto)
     zsv_overwrite_auto(opts, input_path);
 #endif
-  // Default to a tab delimiter for .tsv/.tab input unless one was set explicitly
-  // (via -t/-O) or by a saved property (either leaves delimiter non-zero here)
-  if (input_path && opts->delimiter == 0)
-    opts->delimiter = zsv_tab_ext_delim(input_path);
   if ((*handle_out = zsv_new(opts)))
     return zsv_status_ok;
   return zsv_status_memory;

@@ -1,0 +1,5 @@
+Row #                                       A                                           B
+1                                           Q                                           x
+
+
+Not saved: test-sheet-edit-symlink-dangling.csv links to a file that does not exist Q

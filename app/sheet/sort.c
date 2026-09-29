@@ -132,12 +132,10 @@ static zsvsheet_status zsvsheet_sort_handler(struct zsvsheet_proc_context *ctx) 
   const char add_row_num = !bd.has_row_num;
   const char *data_filename = NULL;
   if (buff)
-    data_filename = zsvsheet_buffer_data_filename(buff);
+    data_filename = zsvsheet_buffer_data_filename_for(buff, "Sort");
 
-  if (!data_filename) { // e.g. the help screen
-    zsvsheet_ui_buffer_set_status(buff, "Sort only available for tabular data buffers");
+  if (!data_filename) // e.g. the help screen
     return zsvsheet_status_ok;
-  }
 
   struct zsvsheet_buffer_info_internal binfo = zsvsheet_buffer_info_internal(buff);
   if (binfo.write_in_progress && !binfo.write_done)

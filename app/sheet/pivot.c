@@ -198,12 +198,10 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
   zsvsheet_buffer_t buff = zsvsheet_buffer_current(ctx);
   const char *data_filename = NULL;
   if (buff)
-    data_filename = zsvsheet_buffer_data_filename(buff);
+    data_filename = zsvsheet_buffer_data_filename_for(buff, "Pivot table");
 
-  if (!data_filename) { // TO DO: check that the underlying data is a tabular file and we know how to parse
-    zsvsheet_ui_buffer_set_status(buff, "Pivot table only available for tabular data buffers");
+  if (!data_filename) // TO DO: check that the underlying data is a tabular file and we know how to parse
     return zsvsheet_status_ok;
-  }
 
   char *selected_cell_str_dup = NULL;
   switch (ctx->proc_id) {

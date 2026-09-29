@@ -41,6 +41,38 @@ static size_t zsvsheet_found_in_row(zsv_parser parser, size_t col_start, size_t 
 
 static void *get_data_index(void *d);
 
+// Whether a file parsed with these (effective) options reads back unchanged from the
+// comma-delimited CSV that saving writes: no other delimiter, and nothing that skips,
+// adds, merges or rewrites rows or values as they are read
+static char zsvsheet_opts_plain_csv(const struct zsv_opts *o) {
+  return (!o->delimiter || o->delimiter == ',') && o->header_span <= 1 && !o->rows_to_ignore && !o->no_quotes &&
+         !o->insert_header_row && !o->max_rows && !o->keep_empty_header_rows && !o->malformed_utf8_replace &&
+         !o->overwrite_auto && !o->overwrite.open
+#ifndef ZSV_NO_ONLY_CRLF
+         && !o->only_crlf_rowend // saving writes LF row ends
+#endif
+    ;
+}
+
+// Show pending edits in data rows just loaded into the screen buffer, where buffer row
+// b >= 1 is raw row start_row + b. Buffer row 0, the header, is loaded only when the file
+// is opened and a reload leaves it (and any edit written to it) in place
+static enum zsvsheet_priv_status zsvsheet_ui_buffer_apply_edits(struct zsvsheet_ui_buffer *uib, size_t start_row,
+                                                                size_t rows_loaded) {
+  const struct zsvsheet_edits *e = &uib->edits;
+  const size_t col_offset = zsvsheet_ui_buffer_data_col_offset(uib);
+  const size_t cols = zsvsheet_screen_buffer_cols(uib->buffer);
+  enum zsvsheet_priv_status stat = zsvsheet_priv_status_ok;
+  for (size_t i = zsvsheet_edits_lower_bound(e, start_row + 1, 0);
+       i < e->count && e->items[i].row < start_row + rows_loaded && stat == zsvsheet_priv_status_ok; i++) {
+    const struct zsvsheet_cell_edit *c = &e->items[i];
+    if (c->col + col_offset < cols)
+      stat =
+        zsvsheet_screen_buffer_write_cell_w_len(uib->buffer, c->row - start_row, c->col + col_offset, c->value, c->len);
+  }
+  return stat;
+}
+
 static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char *filename, struct zsv_opts *optsp,
                                  struct zsv_prop_handler *custom_prop_handler, char *old_ui_status) {
   struct zsvsheet_index_opts *ixopts = calloc(1, sizeof(*ixopts));
@@ -180,6 +212,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       }
       *uibufferp = uibuff = tmp_uibuff;
       if (uibuff) {
+        uibuff->custom_prop_handler = custom_prop_handler;
+        uibuff->filename_plain_csv = zsvsheet_opts_plain_csv(&opts);
         uibuff->parse_errs = parse_errs;            // transfer errors
         memset(&parse_errs, 0, sizeof(parse_errs)); // prevent double-free
         // the index worker can outlive caller-owned uibopts strings, so from
@@ -264,6 +298,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
     }
 
     rows_read++;
+  }
+  if (uibuff && !zsvsheet_opts->find && zsvsheet_ui_buffer_apply_edits(uibuff, start_row, rows_read)) {
+    rc = -1;
+    goto done;
   }
   if (!uibuff) {
     rc = 0;
@@ -366,7 +404,7 @@ static void zsvsheet_find_next_in_buffer(struct zsvsheet_ui_buffer *uib, struct 
 
 static size_t zsvsheet_find_next(struct zsvsheet_ui_buffer *uib, struct zsvsheet_opts *zsvsheet_opts,
                                  size_t header_span, struct zsv_prop_handler *custom_prop_handler) {
-  if (!uib->data_filename && !uib->filename) // static buffer: no data file, scan screen buffer
+  if (!zsvsheet_ui_buffer_has_file(uib)) // static buffer: no data file, scan screen buffer
     zsvsheet_find_next_in_buffer(uib, zsvsheet_opts, header_span);
   else {
     struct zsvsheet_rowcol *input_offset = &uib->input_offset;

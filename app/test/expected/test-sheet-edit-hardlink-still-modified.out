@@ -1,0 +1,8 @@
+Row #                                       id                                          val
+1                                           1                                           LONGER-VALUE
+2                                           2                                           R2
+3                                           3                                           R3
+4                                           4                                           R4
+5                                           5                                           R5
+6                                           6                                           R6
+Unsaved changes: :w to save, or :q! to quit without saving LONGER-VALUE

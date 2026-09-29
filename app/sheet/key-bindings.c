@@ -221,6 +221,17 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
     .ch_name = "",
     .proc_id = zsvsheet_builtin_proc_sort_expr,
   },
+  { .ch = 'i',                 .proc_id = zsvsheet_builtin_proc_edit,          },
+  {
+    .ch = '\0',
+    .ch_name = ":w",
+    .proc_id = zsvsheet_builtin_proc_write,
+  },
+  {
+    .ch = '\0',
+    .ch_name = ":q!",
+    .proc_id = zsvsheet_builtin_proc_quit_force,
+  },
   { .ch = -1                                                                   }
 };
 /* clang-format on */

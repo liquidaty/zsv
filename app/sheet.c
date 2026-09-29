@@ -108,6 +108,7 @@ static int zsvsheet_parse_compare(const char *spec, struct zsvsheet_compare_opts
 }
 
 #include "sheet/utf8-width.c"
+#include "sheet/edits.c"
 #include "sheet/ui_buffer.c"
 #include "sheet/index.c"
 #include "sheet/read-data.c"
@@ -186,6 +187,9 @@ struct zsvsheet_sheet_context {
   size_t numeric_input;
   struct zsv_prop_handler *custom_prop_handler;
   struct zsvsheet_compare_opts compare;
+  size_t keypress_count;         // keys pressed so far
+  size_t discard_offer_keypress; // the <esc> that offered to discard a modified buffer (0: none);
+                                 // only the next key can accept, so it is on the same buffer
 };
 
 static void update_numeric_input(const int ch, struct zsvsheet_sheet_context *state) {
@@ -261,10 +265,11 @@ static size_t prompt_backspace(char *buff, size_t idx, int y, int x) {
 
 // complete_procs: if non-zero, Tab cycles through command names matching what has
 // been typed so far
-static void get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row, const char *default_value,
+// Returns 1 if the input was entered (possibly empty), 0 if cancelled with <esc>
+static char get_subcommand(const char *prompt, char *buff, size_t buffsize, int footer_row, const char *default_value,
                            char complete_procs) {
   if (!buffsize) // buffsize reaches here from extensions via zsvsheet_ext_prompt()
-    return;
+    return 0;
   *buff = '\0';
 
   // this is a hack to blank-out the currently-selected cell value
@@ -272,20 +277,17 @@ static void get_subcommand(const char *prompt, char *buff, size_t buffsize, int 
   for (int i = 0; i < max_screen_width; i++)
     mvprintw(footer_row, i, "%c", ' ');
 
-  if (default_value && *default_value)
-    mvprintw(footer_row, 0, "%s: %s", prompt, default_value);
-  else
-    mvprintw(footer_row, 0, "%s: ", prompt);
+  mvprintw(footer_row, 0, "%s: ", prompt);
 
   int ch;
   int y, x;
-  getyx(stdscr, y, x); // Get the current cursor position after the prompt
+  getyx(stdscr, y, x); // where the input starts: after the prompt, before any default value
   size_t idx = 0;
   if (default_value) {
     strncpy(buff, default_value, buffsize);
     buff[buffsize - 1] = '\0';
     idx = strlen(buff); // strlen(buff), not strlen(default_value): the copy is clamped
-    x -= (int)idx;
+    printw("%s", buff);
   }
 
   char comp_prefix[ZSVSHEET_COMPLETE_MAX_PREFIX]; // fixed while cycling; buff changes under us
@@ -293,13 +295,13 @@ static void get_subcommand(const char *prompt, char *buff, size_t buffsize, int 
   char comp_active = 0;
 
   while (1) {
-    ch = getch();                          // Read a character from the user
-    if (ch == 27) {                        // escape
-      buff[0] = '\0';                      // Clear buffer & exit
-      break;                               // Exit the loop
+    ch = getch();     // Read a character from the user
+    if (ch == 27) {   // escape
+      buff[0] = '\0'; // Clear buffer & exit
+      return 0;
     } else if (ch == '\n' || ch == '\r') { // ENTER key
       buff[idx] = '\0';                    // Null-terminate the string
-      break;                               // Exit the loop
+      return 1;
     } else if (ch == '\t' && complete_procs) {
       const char *after = NULL;
       if (comp_active)
@@ -465,6 +467,7 @@ static void zsvsheet_priv_set_status(const struct zsvsheet_display_dimensions *d
 #include "sheet/terminfo.c"
 #include "sheet/handlers_internal.h"
 #include "sheet/handlers.c"
+#include "sheet/edit.c"
 #include "sheet/file.c"
 #include "sheet/usage.c"
 #include "sheet/transformation.c"
@@ -645,6 +648,9 @@ static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di, struct z
                                       const struct zsvsheet_pattern *pattern, size_t specified_column_plus_1,
                                       size_t header_span, struct zsvsheet_display_dimensions *ddims, int *update_buffer,
                                       struct zsv_prop_handler *custom_prop_handler) {
+  // find reads the file, so it must hold the edits; the status says why if they could not be written
+  if (zsvsheet_ui_buffer_has_file(uib) && !zsvsheet_buffer_data_filename(uib))
+    return 0;
   struct zsvsheet_opts zsvsheet_opts = {0};
   zsvsheet_opts.find = pattern;
   zsvsheet_opts.find_specified_column_plus_1 = specified_column_plus_1;
@@ -684,7 +690,7 @@ static size_t zsvsheet_find_column_match(zsvsheet_screen_buffer_t buffer, size_t
 static zsvsheet_status zsvsheet_goto_column(struct zsvsheet_sheet_context *state, bool next) {
   struct zsvsheet_display_info *di = &state->display_info;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
-  if (!zsvsheet_buffer_data_filename(current_ui_buffer))
+  if (!zsvsheet_ui_buffer_has_file(current_ui_buffer))
     return zsvsheet_status_ok;
 
   if (!next) {
@@ -776,14 +782,14 @@ static zsvsheet_status zsvsheet_open_file_handler(struct zsvsheet_proc_context *
   UNUSED(ctx);
 
   if (ctx->num_params > 0) {
-    filename = strdup(ctx->params[0].u.string);
+    filename = ctx->params[0].u.string;
   } else {
     if (!ctx->invocation.interactive)
       return zsvsheet_status_error;
     get_subcommand("File to open", prompt_buffer, sizeof(prompt_buffer), prompt_footer_row, NULL, 0);
     if (*prompt_buffer == '\0')
       goto no_input;
-    filename = strdup(prompt_buffer);
+    filename = prompt_buffer; // opening the file copies its name
   }
 
   if ((err = zsvsheet_ui_buffer_open_file(filename, NULL, state->custom_prop_handler, di->ui_buffers.base,
@@ -1066,6 +1072,14 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
 
   switch (ctx->proc_id) {
   case zsvsheet_builtin_proc_quit:
+    for (const struct zsvsheet_ui_buffer *b = current_ui_buffer; b; b = b->prior) {
+      if (b->modified) {
+        zsvsheet_ui_buffer_set_status(current_ui_buffer, "Unsaved changes: :w to save, or :q! to quit without saving");
+        return zsvsheet_status_ok;
+      }
+    }
+    return zsvsheet_status_exit;
+  case zsvsheet_builtin_proc_quit_force:
     return zsvsheet_status_exit;
   case zsvsheet_builtin_proc_resize:
     *(state->display_info.dimensions) = get_display_dimensions(1, 1);
@@ -1104,6 +1118,12 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
     // a transient view (help, errors) closes regardless. :q quits
     if (current_ui_buffer->prior &&
         (current_ui_buffer->prior != *state->display_info.ui_buffers.base || current_ui_buffer->transient)) {
+      if (current_ui_buffer->modified &&
+          !(state->discard_offer_keypress && state->discard_offer_keypress + 1 == state->keypress_count)) {
+        state->discard_offer_keypress = state->keypress_count;
+        zsvsheet_ui_buffer_set_status(current_ui_buffer, "Unsaved changes: :w to save, or <esc> again to discard");
+        return zsvsheet_status_ok;
+      }
       if (zsvsheet_ui_buffer_pop(state->display_info.ui_buffers.base, state->display_info.ui_buffers.current, NULL)) {
         state->display_info.update_buffer = 1;
       }
@@ -1132,6 +1152,7 @@ struct builtin_proc_desc {
   zsvsheet_proc_fn handler;
 } builtin_procedures[] = {
   { zsvsheet_builtin_proc_quit,             "quit",           "q",  "Exit the application",                                            zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_quit_force,       "quit!",          "q!", "Exit the application, discarding unsaved changes",                zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_escape,           "escape",         NULL, "Leave the current view or cancel a subcommand",                   zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_move_bottom,      "bottom",         NULL, "Jump to the last row (nG for specific row e.g. 10G)",             zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_move_top,         "top",            NULL, "Jump to the first row",                                           zsvsheet_builtin_proc_handler },
@@ -1163,6 +1184,8 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_sort_cur_col,     "sort",           NULL, "Sort rows by the column under the cursor (or :sort <col> [asc|desc])", zsvsheet_sort_handler },
   { zsvsheet_builtin_proc_sort_cur_col_desc, "sortdesc",      "sort!", "(alias: sort!) Sort rows descending by the column under the cursor", zsvsheet_sort_handler },
   { zsvsheet_builtin_proc_sort_expr,        "sortexpr",       NULL, "Sort rows by SQL expression",                                     zsvsheet_sort_handler },
+  { zsvsheet_builtin_proc_edit,             "cell",           NULL, "Edit the cell under the cursor (or :cell <value>)",               zsvsheet_edit_handler },
+  { zsvsheet_builtin_proc_write,            "write",          "w",  "Save this buffer as CSV (or :w <file>)",                          zsvsheet_write_handler },
   { -1, NULL, NULL, NULL, NULL }
 };
 /* clang-format on */
@@ -1344,6 +1367,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     zsvsheet_priv_set_status(&display_dims, 1, "");
 
     if (ch != ERR) {
+      handler_state.keypress_count++;
       if (isdigit(ch)) {
         update_numeric_input(ch, &handler_state);
         continue;
@@ -1361,7 +1385,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
     struct zsvsheet_ui_buffer *ub = current_ui_buffer;
     zsvsheet_check_buffer_worker_updates(ub, &display_dims, &handler_state);
 
-    if (handler_state.display_info.update_buffer && zsvsheet_buffer_data_filename(ub)) {
+    if (handler_state.display_info.update_buffer && zsvsheet_ui_buffer_has_file(ub)) {
       struct zsvsheet_opts zsvsheet_opts = {0};
       if (read_data(&ub, NULL, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col, header_span,
                     &zsvsheet_opts, custom_prop_handler)) {

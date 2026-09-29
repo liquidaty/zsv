@@ -1,0 +1,5 @@
+Key(s)                    Action                    Description
+:q                        QUIT                      Exit the application
+<esc>                     escape                    Leave the current view or
+^                         first                     Jump to the first column
+Saved test-sheet-edit-help-out.csv QUIT

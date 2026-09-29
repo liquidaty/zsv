@@ -15,6 +15,12 @@ const char *zsvsheet_usage_msg[] = {
   "                      Ranges are auto-trimmed to avoid overlap.",
   "                      Also available interactively as :compare",
   "",
+  "Editing:",
+  "  i (or :cell <value>) edits the cell under the cursor; :w [file] saves the",
+  "  buffer as CSV (LF line ends, no BOM, quoting only where needed), and :q!",
+  "  quits without saving. Saving over the opened file is refused when the file",
+  "  would read back differently as CSV (e.g. tab-delimited, or opened with -R).",
+  "",
   NULL,
 };
 

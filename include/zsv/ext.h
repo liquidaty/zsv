@@ -224,7 +224,10 @@ struct zsv_ext_callbacks {
 
   /**
    * Get the data file associated with a buffer. This might not be the same as the filename,
-   * such as when the data has been filtered
+   * such as when the data has been filtered. Unsaved cell edits are first written to a new
+   * data file, so the file reflects them; the name can differ from an earlier call's, and
+   * an earlier name must not be used afterwards. Call from the thread that handles sheet
+   * commands. Returns NULL if writing the edits fails
    */
   const char *(*ext_sheet_buffer_data_filename)(zsvsheet_buffer_t);
 
@@ -276,7 +279,8 @@ struct zsv_ext_callbacks {
                                                      zsvsheet_status (*on_newline)(zsvsheet_proc_context_t));
 
   /**
-   * Get zsv_opts used to open the buffer's data file
+   * Get zsv_opts used to open the buffer's data file. Like ext_sheet_buffer_data_filename(),
+   * first writes unsaved cell edits to a new data file, whose options these are
    */
   struct zsv_opts (*ext_sheet_buffer_get_zsv_opts)(zsvsheet_buffer_t h);
 

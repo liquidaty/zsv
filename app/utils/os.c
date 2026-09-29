@@ -143,18 +143,22 @@ int zsv_replace_file(const char *src, const char *dst) {
     return save_errno;
   }
 
+  // src is removed only once every byte is known to be stored in dst
   char buffer[4096];
   size_t bytes_read;
-  while ((bytes_read = fread(buffer, 1, sizeof(buffer), fp_in)) > 0) {
-    if (fwrite(buffer, 1, bytes_read, fp_out) != bytes_read) {
-      fclose(fp_out);
-      fclose(fp_in);
-      return EOF;
-    }
-  }
-
-  fclose(fp_out);
+  errno = 0;
+  while (!save_errno && (bytes_read = fread(buffer, 1, sizeof(buffer), fp_in)) > 0)
+    if (fwrite(buffer, 1, bytes_read, fp_out) != bytes_read)
+      save_errno = errno ? errno : EIO;
+  if (!save_errno && ferror(fp_in))
+    save_errno = errno ? errno : EIO;
+  if (!save_errno && (fflush(fp_out) || zsv_fsync(fileno(fp_out))))
+    save_errno = errno ? errno : EIO;
+  if (fclose(fp_out) && !save_errno)
+    save_errno = errno ? errno : EIO;
   fclose(fp_in);
+  if (save_errno)
+    return save_errno;
 
   if (remove(src) != 0)
     return errno;
@@ -214,10 +218,19 @@ int zsv_replace_file(const char *src, const char *dest) {
   if (MoveFileExW(wsrc, wdest, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) // success
     return 0;
 
-  if (GetLastError() == 2)        // file not found, could be target. use simple rename
-    return _wrename(wsrc, wdest); // returns 0 on success
-
-  return 1; // fail
+  switch (GetLastError()) {
+  case ERROR_FILE_NOT_FOUND: // could be the target: use a simple rename
+    return _wrename(wsrc, wdest) ? errno : 0;
+  case ERROR_PATH_NOT_FOUND:
+    return ENOENT;
+  case ERROR_ACCESS_DENIED:
+    return EACCES;
+  case ERROR_SHARING_VIOLATION:
+  case ERROR_LOCK_VIOLATION:
+    return EBUSY;
+  default:
+    return EIO;
+  }
 }
 
 static void zsv_win_printLastError(void) {
@@ -240,6 +253,120 @@ void zsv_perror(const char *s) {
   zsv_win_printLastError();
 }
 
+#endif
+
+#include <string.h> // strdup
+
+#ifndef _WIN32
+#include <fcntl.h>
+#include <sys/stat.h>
+
+int zsv_fsync(int fd) {
+  return fsync(fd);
+}
+
+char *zsv_final_path(const char *path) {
+  char *resolved = realpath(path, NULL);
+  if (!resolved && errno == ENOENT) {
+    struct stat st;
+    if (!lstat(path, &st)) { // path is a link to nothing
+      errno = ENOENT;
+      return NULL;
+    }
+    resolved = strdup(path);
+  }
+  return resolved;
+}
+
+int zsv_same_file(const char *a, const char *b) {
+  struct stat sa, sb;
+  if (stat(a, &sa) || stat(b, &sb))
+    return errno == ENOENT || errno == ENOTDIR ? 0 : -1;
+  return sa.st_dev == sb.st_dev && sa.st_ino == sb.st_ino;
+}
+
+int zsv_copy_permissions(const char *from, const char *to) {
+  struct stat st, to_st;
+  if (stat(from, &st) || stat(to, &to_st))
+    return errno;
+  mode_t mode = st.st_mode & 0777;
+#ifndef __wasi__ // WASI has no file ownership
+  // only root can give the file to from's owner; the group can be kept where the caller belongs to it.
+  // Where it cannot, the group bits would apply to another group, so they are capped at the others' bits
+  if (to_st.st_gid != st.st_gid && chown(to, (uid_t)-1, st.st_gid))
+    mode = (mode & ~(mode_t)070) | (mode & ((mode & 07) << 3));
+#endif
+  return chmod(to, mode) ? errno : 0;
+}
+
+int zsv_create_new_file(const char *path) {
+  int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0666);
+  if (fd == -1)
+    return errno;
+  return close(fd) ? errno : 0;
+}
+#else
+#include <fcntl.h>
+#include <io.h>
+#include <sys/stat.h>
+
+int zsv_fsync(int fd) {
+  return _commit(fd);
+}
+
+char *zsv_final_path(const char *path) {
+  return strdup(path);
+}
+
+int zsv_copy_permissions(const char *from, const char *to) {
+  struct _stat st;
+  wchar_t wfrom[PATH_MAX], wto[PATH_MAX];
+  zsv_win_to_unicode(from, wfrom, ARRAY_SIZE(wfrom));
+  zsv_win_to_unicode(to, wto, ARRAY_SIZE(wto));
+  if (!*wfrom || !*wto)
+    return ENAMETOOLONG;
+  if (_wstat(wfrom, &st))
+    return errno;
+  return _wchmod(wto, st.st_mode & (_S_IREAD | _S_IWRITE)) ? errno : 0;
+}
+
+int zsv_create_new_file(const char *path) {
+  wchar_t wpath[PATH_MAX];
+  zsv_win_to_unicode(path, wpath, ARRAY_SIZE(wpath));
+  if (!*wpath)
+    return ENAMETOOLONG;
+  int fd = _wopen(wpath, _O_WRONLY | _O_CREAT | _O_EXCL, _S_IREAD | _S_IWRITE);
+  if (fd == -1)
+    return errno;
+  return _close(fd) ? errno : 0;
+}
+
+// fills *out with the volume serial number and file index that identify path's file:
+// 1 on success, 0 if the file does not exist, -1 if it cannot be examined
+static int zsv_win_file_id(const char *path, BY_HANDLE_FILE_INFORMATION *out) {
+  wchar_t wpath[PATH_MAX];
+  zsv_win_to_unicode(path, wpath, ARRAY_SIZE(wpath));
+  if (!*wpath)
+    return -1;
+  HANDLE h = CreateFileW(wpath, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+                         FILE_FLAG_BACKUP_SEMANTICS, NULL);
+  if (h == INVALID_HANDLE_VALUE) {
+    DWORD e = GetLastError();
+    return e == ERROR_FILE_NOT_FOUND || e == ERROR_PATH_NOT_FOUND ? 0 : -1;
+  }
+  BOOL ok = GetFileInformationByHandle(h, out);
+  CloseHandle(h);
+  return ok ? 1 : -1;
+}
+
+int zsv_same_file(const char *a, const char *b) {
+  BY_HANDLE_FILE_INFORMATION ia, ib;
+  int ra = zsv_win_file_id(a, &ia), rb = zsv_win_file_id(b, &ib);
+  if (ra < 0 || rb < 0)
+    return -1;
+  return ra && rb && ia.dwVolumeSerialNumber == ib.dwVolumeSerialNumber && ia.nFileIndexHigh == ib.nFileIndexHigh &&
+         ia.nFileIndexLow == ib.nFileIndexLow;
+}
 #endif
 
 unsigned int zsv_get_number_of_cores(void) {

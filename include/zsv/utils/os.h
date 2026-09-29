@@ -48,7 +48,47 @@ int zsv_remove_winlp(const char *path_utf8);
 #define zsv_remove zsv_remove_winlp
 #endif
 
+/**
+ * zsv_replace_file(): rename src over dest, copying across devices if needed.
+ * Returns 0, or an errno value
+ */
 int zsv_replace_file(const char *src, const char *dest);
+
+/**
+ * zsv_same_file(): whether both paths name the same file, by device and file id, so
+ * links and differently-spelled paths match. Returns 1 if they do, 0 if they do not
+ * (including when either does not exist), or -1 if that cannot be determined
+ */
+int zsv_same_file(const char *a, const char *b);
+
+/**
+ * zsv_copy_permissions(): give file `to` the permission bits of existing file `from`,
+ * and on POSIX its group. Where the group cannot be set, `to` gets no more group
+ * access than others have, so no other group gains access. Use before `to` replaces
+ * `from`. Returns 0, or an errno value
+ */
+int zsv_copy_permissions(const char *from, const char *to);
+
+/**
+ * zsv_create_new_file(): create an empty file at `path`, which must not exist, with
+ * the permissions the system gives a new file (umask, directory defaults). Returns 0,
+ * or an errno value (EEXIST if `path` exists)
+ */
+int zsv_create_new_file(const char *path);
+
+/**
+ * zsv_fsync(): flush a file descriptor's data to storage; 0 on success, else -1
+ * with errno set. A function for the reason zsv_mkstemp() is one
+ */
+int zsv_fsync(int fd);
+
+/**
+ * zsv_final_path(): the path of the file `path` names after following symbolic
+ * links, so that replacing it replaces that file rather than the link. A copy of
+ * `path` if it does not exist, or on Windows. Returns heap memory the caller frees,
+ * or NULL with errno set (ENOENT for a link to nothing)
+ */
+char *zsv_final_path(const char *path);
 
 /**
  * ZSV_STDIN_IS_TTY(): nonzero when stdin is an interactive terminal

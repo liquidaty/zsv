@@ -2,6 +2,7 @@
 #include <pthread.h>
 #include "../utils/index.h"
 #include "index.h"
+#include "edits.h"
 
 struct uib_parse_errs {
   size_t count;
@@ -60,6 +61,15 @@ struct zsvsheet_ui_buffer {
 
   struct uib_parse_errs parse_errs;
 
+  struct zsv_prop_handler *custom_prop_handler; // what read_data() parses this buffer's files with
+  struct zsvsheet_edits edits;                  // cell edits not yet in the data file
+
+  // main-thread state; not bit-fields, which would share a memory location with the
+  // flags below that workers write under the mutex
+  char modified;           // edited since last saved to filename (or since creation)
+  char filename_plain_csv; // filename, as parsed, is plain CSV: a save can rewrite it in place
+  char worker_active;      // worker_thread is running or not yet joined
+
   unsigned char index_ready : 1;
   unsigned char rownum_col_offset : 1;
   unsigned char index_started : 1;
@@ -67,7 +77,6 @@ struct zsvsheet_ui_buffer {
   unsigned char mutex_inited : 1;
   unsigned char write_in_progress : 1;
   unsigned char write_done : 1;
-  unsigned char worker_active : 1;
   unsigned char worker_cancelled : 1;
   // status is the "(building index) " placeholder the index worker must
   // restore on completion; cleared by whoever replaces (and frees) status
@@ -76,7 +85,7 @@ struct zsvsheet_ui_buffer {
   // informational view (help, errors): <esc> may close it even when it is the
   // only buffer above the blank base, unlike a buffer the user opened
   unsigned char transient : 1;
-  unsigned char _ : 5;
+  unsigned char _ : 6;
 };
 
 int zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*start_func)(void *), void *arg) {
@@ -100,6 +109,16 @@ void zsvsheet_ui_buffer_set_status(struct zsvsheet_ui_buffer *ub, const char *st
   pthread_mutex_unlock(&ub->mutex);
 }
 
+// Report a status for the buffer; formatted, and truncated to what the status line shows
+static void zsvsheet_ui_buffer_set_statusf(struct zsvsheet_ui_buffer *uib, const char *fmt, ...) {
+  char msg[256];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(msg, sizeof(msg), fmt, args);
+  va_end(args);
+  zsvsheet_ui_buffer_set_status(uib, msg);
+}
+
 int zsvsheet_ui_buffer_index_ready(struct zsvsheet_ui_buffer *ub, char skip_lock) {
   if (!skip_lock)
     pthread_mutex_lock(&ub->mutex);
@@ -117,15 +136,35 @@ void zsvsheet_ui_buffer_join_worker(struct zsvsheet_ui_buffer *ub) {
   ub->worker_active = 0;
 }
 
+// Cancel and join the buffer's worker, if any, leaving the buffer ready for another
+static void zsvsheet_ui_buffer_stop_worker(struct zsvsheet_ui_buffer *ub) {
+  if (ub->worker_active) {
+    pthread_mutex_lock(&ub->mutex);
+    ub->worker_cancelled = 1;
+    pthread_mutex_unlock(&ub->mutex);
+
+    zsvsheet_ui_buffer_join_worker(ub);
+
+    pthread_mutex_lock(&ub->mutex);
+    ub->worker_cancelled = 0;
+    pthread_mutex_unlock(&ub->mutex);
+  }
+}
+
+// Drop the buffer's index so the next read_data() builds a new one. Call with no worker running
+static void zsvsheet_ui_buffer_reset_index(struct zsvsheet_ui_buffer *ub) {
+  pthread_mutex_lock(&ub->mutex);
+  struct zsv_index *ix = ub->index;
+  ub->index = NULL;
+  ub->index_ready = 0;
+  ub->index_started = 0;
+  pthread_mutex_unlock(&ub->mutex);
+  zsv_index_delete(ix);
+}
+
 void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
   if (ub) {
-    if (ub->worker_active) {
-      pthread_mutex_lock(&ub->mutex);
-      ub->worker_cancelled = 1;
-      pthread_mutex_unlock(&ub->mutex);
-
-      zsvsheet_ui_buffer_join_worker(ub);
-    }
+    zsvsheet_ui_buffer_stop_worker(ub);
     if (ub->ext_on_close)
       ub->ext_on_close(ub->ext_ctx);
     zsvsheet_screen_buffer_delete(ub->buffer);
@@ -138,6 +177,7 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
     if (ub->data_filename)
       unlink(ub->data_filename);
     uib_parse_errs_clear(&ub->parse_errs);
+    zsvsheet_edits_clear(&ub->edits);
     free(ub->data_filename);
     free(ub->filename);
     free(ub);
@@ -274,6 +314,16 @@ int zsvsheet_ui_buffer_pop(struct zsvsheet_ui_buffer **base, struct zsvsheet_ui_
     return 1;
   }
   return 0;
+}
+
+// Whether the buffer's rows come from a file (else the screen buffer holds them all, e.g. help)
+static int zsvsheet_ui_buffer_has_file(const struct zsvsheet_ui_buffer *uib) {
+  return uib->data_filename || uib->filename;
+}
+
+// Screen columns that precede data column 0: 1 when sheet shows its own row-number column
+static size_t zsvsheet_ui_buffer_data_col_offset(const struct zsvsheet_ui_buffer *uib) {
+  return !uib->buffer->opts.no_rownum_column;
 }
 
 static const char *zsvsheet_ui_buffer_get_header(struct zsvsheet_ui_buffer *uib, size_t col) {
