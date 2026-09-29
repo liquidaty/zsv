@@ -121,6 +121,7 @@ ifneq ($(CROSS_COMPILING),1)
   TESTS+=test-rng # host-compiled reference-vector check of zsv/utils/rng
   TESTS+=test-strcasestr # host-compiled unit test of the caseless UTF-8 search in zsv/utils/string
   TESTS+=test-sheet-edits # host-compiled unit test of the sheet cell-edit container
+  TESTS+=test-args # host-compiled unit test of the common option matching in zsv/utils/arg
   # ASan-instrumented regression for the zsv_finish->cell_dl OOB. Skipped
   # if SAN_CC (clang+sanitizers) is unavailable; build target itself runs
   # the sanitizer.
@@ -750,6 +751,22 @@ test-sheet-edits: ${TMP_DIR}/test_sheet_edits
 ${TMP_DIR}/test_sheet_edits: test_sheet_edits.c ../sheet/edits.c ../sheet/edits.h
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} test_sheet_edits.c ../sheet/edits.c -o $@
+
+test-args: ${TMP_DIR}/test_args
+	@${TEST_INIT}
+	@$< 2>${TMP_DIR}/$@.err && ${TEST_PASS} || (cat ${TMP_DIR}/$@.err; ${TEST_FAIL})
+
+# under ASan and UBSan where SAN_CC can link them, so a read past an arg is a failure
+TEST_ARGS_SAN=-fsanitize=address,undefined -fno-sanitize-recover=all
+ifeq ($(shell printf 'int main(void){return 0;}\n' | ${SAN_CC} ${TEST_ARGS_SAN} -x c - -o /dev/null 2>/dev/null && echo yes),yes)
+TEST_ARGS_CC=${SAN_CC} ${TEST_ARGS_SAN} -g -std=gnu11 -fsigned-char
+else
+TEST_ARGS_CC=${CC} ${CFLAGS} ${CFLAGS_AUTO}
+endif
+
+${TMP_DIR}/test_args: test_args.c ../utils/arg.c ../../include/zsv/utils/arg.h
+	@mkdir -p ${TMP_DIR}
+	@${TEST_ARGS_CC} -DZSV_EXTRAS -I../../include test_args.c ../utils/arg.c -o $@
 
 test-strcasestr: ${TMP_DIR}/test_strcasestr
 	@${TEST_INIT}

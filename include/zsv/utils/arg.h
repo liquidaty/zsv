@@ -47,7 +47,11 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx);
 
 /**
  * Convert common command-line arguments to zsv_opts
- * Return new argc/argv values with processed args stripped out
+ * Return new argc/argv values with processed args stripped out, each arg
+ * matched by zsv_arg_to_opts(). Every arg is scanned, "--" and the values of
+ * the command's own options included, since only the command knows which args
+ * those are; a command that takes arbitrary option values calls
+ * zsv_arg_to_opts() from its own parser instead.
  * Initializes opts_out with `zsv_get_default_opts()`, then with
  * the below common options if present:
  *     -B,--buff-size <N>
@@ -56,11 +60,16 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx);
  *     -t,--tab-delim
  *     -O,--other-delim <C>
  *     -q,--no-quote
+ *     -R,--skip-head <n>: skip n initial rows
  *     -S,--keep-blank-headers: disable default behavior of ignoring leading blank rows
  *     -d,--header-row-span <n>: apply header depth (rowspan) of n
  *     --stdin-filename <path>: apply saved file properties associated with
  *         the given path to input read from stdin
  *     -v,--verbose
+ *     -u,--malformed-utf8-replacement <string>
+ *     -0,--header-row <header>
+ *     -1,--apply-overwrites, -L,--limit-rows <n> (ZSV_EXTRAS only)
+ *     --only-crlf (unless ZSV_NO_ONLY_CRLF), --parser <default|fast|compat>
  *
  * @param  argc      count of args to process
  * @param  argv      args to process
@@ -72,6 +81,30 @@ void zsv_set_default_completed_callback(zsv_completed_callback cb, void *ctx);
  */
 enum zsv_status zsv_args_to_opts(int argc, const char *argv[], int *argc_out, const char **argv_out,
                                  struct zsv_opts *opts_out);
+
+enum zsv_arg_match {
+  zsv_arg_none = 0, /* not a common option: the caller handles argv[*arg_i] */
+  zsv_arg_ok,       /* applied to opts */
+  zsv_arg_err       /* invalid, with the message on stderr */
+};
+
+/**
+ * Match argv[*arg_i] against the common options zsv_args_to_opts() handles and
+ * apply it to opts. For a command that parses its own args: call it where the
+ * command's own options fail to match, so the value of one of its options is
+ * never read as a common option.
+ *
+ * "-" (stdin), "--" and non-option args are zsv_arg_none. On zsv_arg_ok and
+ * zsv_arg_err, *arg_i is left at the last arg consumed (the option's value, if
+ * it takes one), so the caller's loop increment moves past it.
+ *
+ * @param  argc   count of args
+ * @param  argv   args
+ * @param  arg_i  index of the arg to match; updated as above
+ * @param  opts   options to update; the caller initializes them, e.g. with
+ *                zsv_get_default_opts()
+ */
+enum zsv_arg_match zsv_arg_to_opts(int argc, const char *argv[], int *arg_i, struct zsv_opts *opts);
 
 /**
  * Fetch the next arg, if it exists, else print an error message
