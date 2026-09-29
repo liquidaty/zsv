@@ -2880,7 +2880,7 @@ test-sheet-edit-mode-no-boundary: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV
 	@awk 'BEGIN{print "A,B"; for(i=0;i<33000;i++) printf "\200"; print ",x"}' > ${TMP_DIR}/$@.csv
 	@cp ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-orig.csv
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
-	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv 2>$@.err; echo exit=\$$? >> $@.err" && \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "exec sh -c 'cd ${TMP_DIR} && ${PREFIX} $< $@.csv 2>$@.err; echo exit=\$$? >> $@.err'" && \
 	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q 'Row #' && break; sleep 0.1; done && \
 	tmux -L $@ send-keys -t $@ ":editmode" Enter Right C-c && \
 	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q 'Too long to copy' && break; sleep 0.1; done && \
@@ -2896,7 +2896,7 @@ test-sheet-edit-mode-no-boundary-clear: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMIN
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@awk 'BEGIN{print "A,B"; for(i=0;i<33000;i++) printf "\200"; print ",x"}' > ${TMP_DIR}/$@.csv
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
-	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv 2>$@.err; echo exit=\$$? >> $@.err" && \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "exec sh -c 'cd ${TMP_DIR} && ${PREFIX} $< $@.csv 2>$@.err; echo exit=\$$? >> $@.err'" && \
 	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q 'Row #' && break; sleep 0.1; done && \
 	tmux -L $@ send-keys -t $@ ":editmode" Enter Right DC C-s && \
 	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q Saved && break; sleep 0.1; done && \
@@ -2913,7 +2913,7 @@ test-sheet-edit-cut-refused: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@awk 'BEGIN{print "A,B"; printf "ab"; for(i=0;i<33000;i++) printf "\200"; print ",x"}' > ${TMP_DIR}/$@.csv
 	@cp ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-orig.csv
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
-	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv 2>$@.err; echo exit=\$$? >> $@.err" && \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "exec sh -c 'cd ${TMP_DIR} && ${PREFIX} $< $@.csv 2>$@.err; echo exit=\$$? >> $@.err'" && \
 	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q 'Row #' && break; sleep 0.1; done && \
 	tmux -L $@ send-keys -t $@ "l" "i" && \
 	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q 'Too long to edit' && break; sleep 0.1; done && \
@@ -3057,23 +3057,28 @@ test-sheet-quit-signal-ignored: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ send-keys -t $@ ":q" Enter && \
 	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
-# <ctrl>z suspends to the shell (job control) and fg resumes, with keys still reaching the app
+# <ctrl>z suspends to the shell (job control) and fg resumes, with keys still reaching the app.
+# The shell is sh, which every platform has; a stopped job leaves $? above 128
 test-sheet-suspend: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@printf 'A,B\n1,x\n' > ${TMP_DIR}/$@.csv
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
-	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && PS1='$$ ' bash --norc --noprofile -i" && \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && exec env PS1='$$ ' sh -i" && \
 	tmux -L $@ send-keys -t $@ "${PREFIX} $< $@.csv" Enter && \
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ C-z && \
-	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q Stopped && break; sleep 0.1; done && \
-	tmux -L $@ capture-pane -p -t $@ | grep -q Stopped && \
+	for i in $$(seq 50); do [ "$$(tmux -L $@ capture-pane -p -t $@ | grep -v '^$$' | tail -1)" = '$$' ] && break; sleep 0.1; done && \
+	tmux -L $@ send-keys -t $@ "[ \$$? -gt 128 ] && echo SUSP''ENDED" Enter && \
+	for i in $$(seq 50); do tmux -L $@ capture-pane -p -t $@ | grep -q SUSPENDED && break; sleep 0.1; done && \
+	tmux -L $@ capture-pane -p -t $@ | grep -q SUSPENDED && \
 	tmux -L $@ send-keys -t $@ "fg" Enter && \
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ C-c && \
 	${EXPECT} $@ hint && \
-	tmux -L $@ send-keys -t $@ ":q" Enter "exit" Enter && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	for i in $$(seq 50); do [ "$$(tmux -L $@ capture-pane -p -t $@ | grep -v '^$$' | tail -1)" = '$$' ] && break; sleep 0.1; done && \
+	tmux -L $@ send-keys -t $@ "exit" Enter && \
 	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 # a buffer without a file (help) saves its cells
