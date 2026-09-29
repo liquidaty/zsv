@@ -1616,7 +1616,8 @@ static void zsvsheet_footer_print(int row, int col, const char *text) {
   if (wlen > 0)
     mvaddnwstr(row, col, wbuf, wlen);
 #else
-  mvprintw(row, col, "%s", text);
+  // not mvprintw: ncurses 6.3 printw formats text longer than the screen from a spent va_list
+  mvaddstr(row, col, text);
 #endif
 }
 
