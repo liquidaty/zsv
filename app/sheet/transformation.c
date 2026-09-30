@@ -221,18 +221,18 @@ static char *zsvsheet_buffer_to_temp_csv(struct zsvsheet_ui_buffer *uib) {
   char *tmpfn = zsv_get_temp_filename("zsvsheet_src_XXXXXXXX");
   if (!tmpfn)
     return NULL;
-  zsv_csv_writer writer = zsv_writer_new(&(struct zsv_csv_writer_options){.output_path = tmpfn});
-  enum zsv_writer_status wstat = writer ? zsv_writer_status_ok : zsv_writer_status_error;
-  size_t rows = uib->buff_used_rows, cols = uib->dimensions.col_count;
-  for (size_t r = 0; r < rows && wstat == zsv_writer_status_ok; r++)
-    for (size_t c = 0; c < cols && wstat == zsv_writer_status_ok; c++) {
-      const unsigned char *cell = zsvsheet_screen_buffer_cell_display(uib->buffer, r, c);
-      wstat = zsv_writer_cell(writer, c == 0, cell ? cell : (const unsigned char *)"",
-                              cell ? strlen((const char *)cell) : 0, 1);
-    }
-  zsv_writer_delete(writer); // NULL-safe
-  if (wstat == zsv_writer_status_ok)
+  char err[256];
+  FILE *f = zsv_fopen(tmpfn, "wb");
+  if (!f)
+    snprintf(err, sizeof(err), "%s", strerror(errno));
+  int failed = !f || zsvsheet_ui_buffer_export(uib, f, NULL, err, sizeof(err));
+  if (f && fclose(f) && !failed) {
+    snprintf(err, sizeof(err), "write failed: %s", strerror(errno));
+    failed = 1;
+  }
+  if (!failed)
     return tmpfn;
+  zsvsheet_ui_buffer_set_statusf(uib, "Unable to copy this view: %s", err);
   remove(tmpfn); // mkstemp created the file; drop it on any failure
   free(tmpfn);
   return NULL;
@@ -265,7 +265,10 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
     goto error;
   }
 
-  if (!filename) {
+  if (zsvsheet_ui_buffer_has_file(buff)) {
+    if (!filename) // writing its unsaved edits failed
+      goto error;
+  } else {
     // static/in-memory buffer (e.g. help): materialize its contents to a temp CSV to transform
     if (!(owned_input = zsvsheet_buffer_to_temp_csv(buff)))
       goto error;

@@ -1,0 +1,5 @@
+Row #                                       A                                           B
+1                                           Q                                           x
+
+
+Not saved: the file test-sheet-edit-symlink-to-tsv.csv links to would not read back as CSV Q

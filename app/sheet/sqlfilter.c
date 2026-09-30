@@ -54,12 +54,10 @@ static zsvsheet_status zsvsheet_sqlfilter_handler(struct zsvsheet_proc_context *
   const char add_row_num = !bd.has_row_num;
   const char *data_filename = NULL;
   if (buff)
-    data_filename = zsvsheet_buffer_data_filename(buff);
+    data_filename = zsvsheet_buffer_data_filename_for(buff, "SQL filter");
 
-  if (!data_filename) { // TO DO: check that the underlying data is a tabular file and we know how to parse
-    zsvsheet_ui_buffer_set_status(buff, "SQL filter only available for tabular data buffers");
+  if (!data_filename) // TO DO: check that the underlying data is a tabular file and we know how to parse
     return zsvsheet_status_ok;
-  }
 
   switch (ctx->proc_id) {
   case zsvsheet_builtin_proc_sqlfilter:

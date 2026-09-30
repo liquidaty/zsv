@@ -1,5 +1,5 @@
 Key(s)                    Action                    Description
-o                         sort                      Sort rows by the column u
-O                         sortdesc                  (alias: sort!) Sort rows
-                          sortexpr                  Sort rows by SQL expressi
-<esc> to exit help
+:q!                       quit!                     Exit the application, dis
+:editmode                 editmode                  Type into cells as in a s
+<ctrl>c                   quithint                  Show how to quit (in edit
+<esc> to exit help <ctrl>c

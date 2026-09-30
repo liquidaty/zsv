@@ -16,11 +16,17 @@ static inline size_t buffer_data_offset(zsvsheet_screen_buffer_t buff, size_t ro
   return row * buff->cols * buff->opts.cell_buff_len + col * buff->opts.cell_buff_len;
 }
 
-static void set_long_cell(zsvsheet_screen_buffer_t buff, size_t offset, char *heap) {
+// The last byte of a cell's slot: 0 for a value held in the slot, else one of these for a
+// value held on the heap
+enum {
+  ZSVSHEET_LONG_CELL = 1,
+  ZSVSHEET_LONG_CELL_CUT = 2, // the value was cut short at max_cell_len
+};
+
+static void set_long_cell(zsvsheet_screen_buffer_t buff, size_t offset, char *heap, char cut) {
   char **target = (char **)(buff->data + offset);
   *target = heap;
-  // set flag indicating that this is long cell
-  *(buff->data + offset + buff->opts.cell_buff_len - 1) = (char)1;
+  *(buff->data + offset + buff->opts.cell_buff_len - 1) = (char)(cut ? ZSVSHEET_LONG_CELL_CUT : ZSVSHEET_LONG_CELL);
 }
 
 static char *get_long_cell(zsvsheet_screen_buffer_t buff, size_t offset) {
@@ -153,24 +159,23 @@ enum zsvsheet_priv_status zsvsheet_screen_buffer_write_cell_w_len(zsvsheet_scree
     *(buff->data + offset + len) = '\0';
   } else {
     // we have a long cell
-    if (len > buff->opts.max_cell_len) {
+    char cut = len > buff->opts.max_cell_len;
+    if (cut) {
       len = buff->opts.max_cell_len;
       while (len > 0 && value[len] >= 128 && UTF8_NOT_FIRST_CHAR(value[len]))
         // we are in the middle of a multibyte char, so back up
         len--;
+      // input that is not UTF-8 may leave no character boundary (len 0): the cell then shows
+      // nothing, but is still stored as cut
     }
-    if (!len) // the only reason len could be 0 is if our input was not valid utf8, but check to make sure anyway
-      stat = zsvsheet_priv_status_utf8;
-    else {
-      char *value_copy = malloc(1 + len);
-      if (value_copy) {
-        memcpy(value_copy, value, len);
-        value_copy[len] = '\0';
-        set_long_cell(buff, offset, value_copy);
-        buff->long_cell_count++;
-      } else
-        stat = zsvsheet_priv_status_memory;
-    }
+    char *value_copy = malloc(1 + len);
+    if (value_copy) {
+      memcpy(value_copy, value, len);
+      value_copy[len] = '\0';
+      set_long_cell(buff, offset, value_copy, cut);
+      buff->long_cell_count++;
+    } else
+      stat = zsvsheet_priv_status_memory;
   }
   return stat;
 }
@@ -178,6 +183,12 @@ enum zsvsheet_priv_status zsvsheet_screen_buffer_write_cell_w_len(zsvsheet_scree
 enum zsvsheet_priv_status zsvsheet_screen_buffer_write_cell(zsvsheet_screen_buffer_t buff, size_t row, size_t col,
                                                             const unsigned char *value) {
   return zsvsheet_screen_buffer_write_cell_w_len(buff, row, col, value, strlen((void *)value));
+}
+
+int zsvsheet_screen_buffer_cell_is_cut(zsvsheet_screen_buffer_t buff, size_t row, size_t col) {
+  if (row >= buff->opts.rows || col >= buff->cols)
+    return 0;
+  return buff->data[buffer_data_offset(buff, row, col) + buff->opts.cell_buff_len - 1] == ZSVSHEET_LONG_CELL_CUT;
 }
 
 int zsvsheet_screen_buffer_cell_attrs(zsvsheet_screen_buffer_t buff, size_t row, size_t col) {

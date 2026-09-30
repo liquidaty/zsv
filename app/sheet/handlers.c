@@ -85,13 +85,32 @@ const char *zsvsheet_buffer_filename(zsvsheet_buffer_t h) {
 
 /**
  * Get the data file associated with a buffer. This might not be the same as the filename,
- * such as when the data has been filtered
+ * such as when the data has been filtered. Unsaved cell edits are first written to a new
+ * data file, so the file reflects them and the name can differ from an earlier call's.
+ * Returns NULL for a buffer without a file, or if writing the edits fails (the buffer
+ * status then says why)
  */
 const char *zsvsheet_buffer_data_filename(zsvsheet_buffer_t h) {
   struct zsvsheet_ui_buffer *uib = h;
-  if (uib)
-    return uib->data_filename ? uib->data_filename : uib->filename;
-  return NULL;
+  if (!uib)
+    return NULL;
+  char err[256];
+  if (zsvsheet_ui_buffer_commit_edits(uib, err, sizeof(err))) {
+    zsvsheet_ui_buffer_set_statusf(uib, "Edits not applied: %s", err);
+    return NULL;
+  }
+  return uib->data_filename ? uib->data_filename : uib->filename;
+}
+
+/**
+ * The data file for a command (named `what` in messages) that reads the buffer's rows, or
+ * NULL after setting a status that says why there is none
+ */
+static const char *zsvsheet_buffer_data_filename_for(zsvsheet_buffer_t h, const char *what) {
+  const char *filename = zsvsheet_buffer_data_filename(h);
+  if (!filename && !zsvsheet_ui_buffer_has_file(h)) // else the status already says why its edits were not applied
+    zsvsheet_ui_buffer_set_statusf(h, "%s only available for tabular data buffers", what);
+  return filename;
 }
 
 /**
@@ -155,10 +174,11 @@ void zsvsheet_buffer_set_cell_attrs(zsvsheet_buffer_t h,
   }
 }
 
-/** Get zsv_opts use to open the buffer's data file **/
+/** Get zsv_opts use to open the buffer's data file (after writing any unsaved edits to it) **/
 struct zsv_opts zsvsheet_buffer_get_zsv_opts(zsvsheet_buffer_t h) {
   if (h) {
     struct zsvsheet_ui_buffer *buff = h;
+    zsvsheet_buffer_data_filename(buff); // a commit replaces the data file and the options that read it
     return buff->zsv_opts;
   }
   struct zsv_opts opts = {0};

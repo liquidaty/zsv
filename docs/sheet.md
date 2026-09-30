@@ -99,6 +99,11 @@ Press `?` to see a list of commands:
 | Key(s)         | Action     | Description                                         |
 | -------------- | ---------- | --------------------------------------------------- |
 | :q             | quit       | Exit the application (also `:quit`)                 |
+| :q!            | quit!      | Exit, discarding unsaved changes                    |
+| <ctrl>c        | quithint   | Show how to quit (in edit mode, copy)               |
+| i              | cell       | Edit the cell under the cursor (or `:cell <value>`) |
+| :w             | write      | Save this buffer as CSV (or `:w <file>`)            |
+| :editmode      | editmode   | Type into cells as in a spreadsheet; `Esc` leaves   |
 | <esc>          | escape     | Leave the current view or cancel a…                 |
 | ^              | first      | Jump to the first column                            |
 | $              | last       | Jump to the last column                             |
@@ -185,6 +190,75 @@ $ zsv sheet --header-row-span 2 -t noaa.tsv # open in sheet viewer; combine firs
 src="https://github.com/user-attachments/assets/4c21ff11-f7f9-4182-a73d-531c41fa9528"
 />
 
+## Editing and saving
+
+Press `i` to edit the cell under the cursor. The prompt starts with the current
+value; Enter stores the new value and `Esc` cancels. `:cell <value>` sets the cell
+without the prompt (quote a value that contains spaces: `:cell "a b"`). Header
+cells can be edited to rename a column; row numbers cannot.
+
+Any buffer can be edited: the file you opened, another file opened with `e`, a
+filter, sort or pivot result, or the help view. Filters, sorts, pivots and finds
+on an edited buffer see the edited values.
+
+`:w` saves the buffer to the file it was opened from; `:w <file>` saves it to
+another file. A filter, sort or pivot result prompts for a file name the first
+time, and later `:w` commands save to that file; the saved file includes the
+result's `Row #` column. The help view prompts every time. The file is written as
+CSV: comma-delimited, LF line ends, no byte order mark, and quotes only where a
+value needs them.
+
+The new file replaces the old one only once it is completely written. It keeps the
+old file's permission bits and, on Linux and macOS, its group. Where you do not
+belong to that group, the group gets no more access than others have. The saved
+file is owned by you, and other hard links to the old file keep the old contents.
+A file saved for the first time gets the permissions your system gives a new file
+(your umask). On Linux and macOS, saving through a symbolic link updates the file
+it points to; a link to a file that does not exist is refused.
+
+A save is refused, and the file is left as it was, when:
+- the file would not read back as the same data, for example a `.tsv` file, or a
+  file opened with options such as `-R`, `-t`, `--only-crlf` or
+  `--header-row-span`; save to a new `.csv` file instead
+- the file is read-only
+- another open view reads the same file, or whether it does cannot be determined
+- a row has more columns than the parser keeps (`--max-column-count`) or is
+  longer than `--max-row-size`, so values would be lost
+- a filter or sort result is still being computed
+
+## Edit mode
+
+`:editmode` makes the keyboard type into cells, as in a spreadsheet. The status
+line starts with `-- EDIT --` while it is on.
+
+| Key                 | Not typing                          | Typing                     |
+| ------------------- | ----------------------------------- | -------------------------- |
+| a printable key     | replace the cell's value, start typing | add the character       |
+| `F2`                | edit the cell's current value       |                            |
+| `Enter`             | move down                           | store the value, move down |
+| `Tab`, `Shift-Tab`  | move right, left                    | store the value, move      |
+| arrow keys          | move                                | store the value, move      |
+| `Delete`, `Backspace` | clear the cell                    | (`Backspace`) delete the last character |
+| `Ctrl-S`            | save, as `:w` does                  |                            |
+| `Ctrl-C`            | copy the cell's value               | copy what has been typed   |
+| `Ctrl-V`            | paste into the cell                 | add the copied value       |
+| `Esc`               | leave edit mode                     | cancel; the cell is unchanged |
+
+The copied value stays within sheet; it is not the system clipboard, but your
+terminal's own paste types its text into the cell. Windows terminals usually keep
+`Ctrl-V` (and `Ctrl-C` while text is selected) for the system clipboard, so there
+`Ctrl-V` types the system clipboard's text. A cell too long for sheet to show in full (over 32767
+bytes) cannot be copied or edited with `F2` or `i`, and neither key edits a value that is longer than the
+screen line or has line breaks; use `:cell "<value>"` outside edit mode for those. Line breaks in a value pasted
+while typing become spaces, since typing edits one line. Other keys, such as
+`Page Up`/`Page Down`, keep their usual actions. Digits and `:`
+are typed into the cell, so leave edit mode with `Esc` to run a command. Store a
+value (`Enter`, `Tab` or an arrow key) before pressing `Ctrl-S`. `Alt` combinations,
+and function keys the terminal does not describe, arrive as `Esc` followed by
+characters: while typing, the `Esc` cancels the edit and the characters start a new
+value; otherwise the `Esc` leaves edit mode and the characters act as ordinary keys
+(`Alt-f`, for example, then opens the filter prompt).
+
 ## Closing a buffer or the application
 
 Press `Esc` to close the current buffer (a filter, sort or pivot result, the help
@@ -193,6 +267,14 @@ last file or data buffer you opened, so it leaves that view in place; type `:q`
 (or `:quit`) followed by Enter to close the application. Quitting is
 deliberately a command rather than a single keystroke, so it cannot happen by
 accident.
+
+A buffer with unsaved changes stays open on the first `Esc`; a second `Esc`
+immediately after closes it and discards the changes. While any buffer has unsaved
+changes, `:q` asks for confirmation and quits only if you type `yes` in full; `:w`
+saves the changes first, and `:q!` quits without asking.
+
+`Ctrl-C` does not quit: it shows how to, and cancels a prompt. `Ctrl-Z` suspends
+sheet to the shell as usual, and `Ctrl-\` still quits at once, without saving.
 
 ## Commands and Tab completion
 

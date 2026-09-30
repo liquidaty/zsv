@@ -19,6 +19,19 @@ struct zsvsheet_subcommand_context {
   char prompt[256];
 };
 
+/**
+ * Write a buffer's unsaved cell edits into the data file it reads (defined in edit.c).
+ * Returns 0, or -1 with the reason in err
+ */
+static int zsvsheet_ui_buffer_commit_edits(struct zsvsheet_ui_buffer *uib, char *err, size_t errsz);
+
+/**
+ * Write a buffer's rows, with unsaved edits applied, as CSV to out, indexing them in ix if
+ * non-NULL (defined in edit.c). Returns 0, or -1 with the reason in err
+ */
+static int zsvsheet_ui_buffer_export(struct zsvsheet_ui_buffer *uib, FILE *out, struct zsv_index *ix, char *err,
+                                     size_t errsz);
+
 struct zsvsheet_key_data {
   struct zsvsheet_key_data *next;
   int ch;          // from getch()
