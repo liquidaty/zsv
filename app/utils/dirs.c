@@ -178,7 +178,7 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
         if (zsv_mkdir(tmp
 #ifndef WIN32
                       ,
-                      S_IRWXU
+                      0777
 #endif
                       )) {
           if (errno == EEXIST)
@@ -199,7 +199,7 @@ int zsv_mkdirs(const char *path, char path_is_filename) {
     if (zsv_mkdir(tmp
 #ifndef WIN32
                   ,
-                  S_IRWXU
+                  0777
 #endif
                   )) {
       if (errno == EEXIST)

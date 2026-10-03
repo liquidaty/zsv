@@ -122,6 +122,9 @@ ifneq ($(CROSS_COMPILING),1)
   TESTS+=test-strcasestr # host-compiled unit test of the caseless UTF-8 search in zsv/utils/string
   TESTS+=test-sheet-edits # host-compiled unit test of the sheet cell-edit container
   TESTS+=test-args # host-compiled unit test of the common option matching in zsv/utils/arg
+  ifeq ($(WIN),0)
+    TESTS+=test-mkdirs # host-compiled check that zsv_mkdirs folders follow the umask (POSIX only)
+  endif
   # ASan-instrumented regression for the zsv_finish->cell_dl OOB. Skipped
   # if SAN_CC (clang+sanitizers) is unavailable; build target itself runs
   # the sanitizer.
@@ -767,6 +770,20 @@ endif
 ${TMP_DIR}/test_args: test_args.c ../utils/arg.c ../../include/zsv/utils/arg.h
 	@mkdir -p ${TMP_DIR}
 	@${TEST_ARGS_CC} -DZSV_EXTRAS -I../../include test_args.c ../utils/arg.c -o $@
+
+test-mkdirs: ${TMP_DIR}/test_mkdirs
+	@${TEST_INIT}
+	@rm -rf ${TMP_DIR}/$@ && mkdir -p ${TMP_DIR}/$@
+	@$< ${TMP_DIR}/$@ && ${TEST_PASS} || ${TEST_FAIL}
+
+# dirs.c is built standalone (no jq/yajl); its headers need the generated zsv.h,
+# which src/Makefile produces, so delegate on a clean tree
+../../include/zsv.h: ../../include/zsv.h.in
+	${MAKE} -C ../../src ../include/zsv.h CONFIGFILE=${CONFIGFILEPATH}
+
+${TMP_DIR}/test_mkdirs: test_mkdirs.c ../utils/dirs.c ../../include/zsv/utils/dirs.h ../../include/zsv.h
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -DZSV_NO_JQ -I../../include test_mkdirs.c ../utils/dirs.c -o $@
 
 test-strcasestr: ${TMP_DIR}/test_strcasestr
 	@${TEST_INIT}

@@ -86,7 +86,7 @@ int fsmkdir(const char *path) {
 #ifdef _WIN32
   return mkdir(path);
 #endif
-  return mkdir(path, S_IRWXU);
+  return mkdir(path, 0777);
 }
 
 EMSCRIPTEN_KEEPALIVE
