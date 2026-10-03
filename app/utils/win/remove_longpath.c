@@ -29,6 +29,13 @@ int windows_error_to_errno(DWORD windows_error_code) {
     return EBADF;
   case ERROR_INVALID_DATA:
     return EILSEQ; // Or EINVAL
+  case ERROR_NO_UNICODE_TRANSLATION:
+    return EILSEQ; // path is not valid UTF-8
+  case ERROR_FILENAME_EXCED_RANGE:
+    return ENAMETOOLONG;
+  case ERROR_NOT_ENOUGH_MEMORY:
+  case ERROR_OUTOFMEMORY:
+    return ENOMEM;
   case ERROR_INVALID_PARAMETER:
     return EINVAL;
   case ERROR_NEGATIVE_SEEK:
@@ -89,6 +96,10 @@ int zsv_remove_winlp(const char *path_utf8) {
         errno = rc = -1;
       }
     }
+  } else { // the path could not be converted, e.g. it is not UTF-8
+    int err = windows_error_to_errno(rc);
+    errno = err ? err : EIO;
+    rc = (DWORD)errno;
   }
 
   free(path_to_use);

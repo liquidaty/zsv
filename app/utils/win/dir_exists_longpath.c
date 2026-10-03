@@ -24,8 +24,8 @@ int zsv_dir_exists_winlp(const char *path_utf8) {
 
   wchar_t *path_to_use;
   DWORD rc = zsv_pathToPrefixedWidePath(path_utf8, &path_to_use);
-  if (rc)
-    return rc;
+  if (rc) // the path could not be converted: no directory has that name
+    return 0;
 
   // --- 3. Call GetFileAttributesW ---
   // fprintf(stderr, "Debug: Calling GetFileAttributesW with: %ls\n", path_to_use); // Debug print wide string

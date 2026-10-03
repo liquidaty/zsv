@@ -26,7 +26,10 @@ static char *slashes_to_backslashes_if_needed(const char *path, DWORD *rc) {
 // make sure we have "\\\\?\\" or "\\\\?\\UNC\\" prefix if/as necessary or requested
 // Note: We assume the input 'original_path' is UTF-8 encoded.
 // The returned path, if not NULL, will also be UTF-8 encoded.
-char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_prefix) {
+// Sets *err to 0, or to the Windows error code when a NULL return is a failure
+// (ERROR_NO_UNICODE_TRANSLATION if original_path is not valid UTF-8)
+static char *zsv_long_path_prefix(const char *original_path, unsigned char always_prefix, DWORD *err) {
+  *err = 0;
   if (original_path == NULL || original_path[0] == '\0') {
     return NULL; // Handle NULL or empty input
   }
@@ -39,20 +42,22 @@ char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_p
 
   // --- 1. Convert input UTF-8 path to wide char (UTF-16) ---
   int original_len_bytes = strlen(original_path);
-  int wide_len_needed = MultiByteToWideChar(CP_UTF8, 0, original_path, original_len_bytes, NULL, 0);
+  int wide_len_needed = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, original_path, original_len_bytes, NULL, 0);
   if (wide_len_needed == 0) {
     last_error = GetLastError();
-    fprintf(stderr, "zsv_ensureLongPathPrefix: MultiByteToWideChar (size check) failed: %lu\n", last_error);
+    if (last_error != ERROR_NO_UNICODE_TRANSLATION) // a path that is not UTF-8 is the caller's to report
+      fprintf(stderr, "zsv_ensureLongPathPrefix: MultiByteToWideChar (size check) failed: %lu\n", last_error);
     goto cleanup;
   }
 
   wide_original_path = (wchar_t *)malloc((wide_len_needed + 1) * sizeof(wchar_t));
   if (!wide_original_path) {
+    last_error = ERROR_OUTOFMEMORY;
     perror("zsv_ensureLongPathPrefix: malloc for wide_original_path failed");
     goto cleanup;
   }
-  int converted_chars =
-    MultiByteToWideChar(CP_UTF8, 0, original_path, original_len_bytes, wide_original_path, wide_len_needed);
+  int converted_chars = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, original_path, original_len_bytes,
+                                            wide_original_path, wide_len_needed);
   if (converted_chars == 0) {
     last_error = GetLastError();
     fprintf(stderr, "zsv_ensureLongPathPrefix: MultiByteToWideChar failed: %lu\n", last_error);
@@ -71,6 +76,7 @@ char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_p
 
   wide_full_path = (wchar_t *)malloc(full_path_len_needed_wchars * sizeof(wchar_t));
   if (!wide_full_path) {
+    last_error = ERROR_OUTOFMEMORY;
     perror("zsv_ensureLongPathPrefix: malloc for wide_full_path failed");
     goto cleanup;
   }
@@ -78,7 +84,7 @@ char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_p
   DWORD full_path_len_copied_wchars =
     GetFullPathNameW(wide_original_path, full_path_len_needed_wchars, wide_full_path, NULL);
   if (full_path_len_copied_wchars == 0 || full_path_len_copied_wchars >= full_path_len_needed_wchars) {
-    last_error = GetLastError();
+    last_error = full_path_len_copied_wchars ? ERROR_INSUFFICIENT_BUFFER : GetLastError();
     // Error or buffer too small (shouldn't happen with correct size check)
     fprintf(stderr, "zsv_ensureLongPathPrefix: GetFullPathNameW failed or buffer issue for '%ls': %lu\n",
             wide_original_path, last_error);
@@ -106,11 +112,16 @@ char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_p
   const wchar_t *prefix_unc = L"\\\\?\\UNC\\";
   const size_t prefix_std_len = 4; // wcslen(prefix_std)
   const size_t prefix_unc_len = 8; // wcslen(prefix_unc)
+  const wchar_t *prefix_dev = L"\\\\.\\";
+  const size_t prefix_dev_len = 4; // wcslen(prefix_dev)
 
   // --- 4. Check if the absolute path is already correctly prefixed ---
+  // GetFullPathNameW gives a device name such as NUL as \\.\NUL. A device-namespace
+  // path is not a UNC path and would not resolve if rewritten as \\?\UNC\.\NUL
   if (wcsncmp(wide_full_path, prefix_std, prefix_std_len) == 0 ||
-      wcsncmp(wide_full_path, prefix_unc, prefix_unc_len) == 0) {
-    // Already has a standard or UNC prefix.
+      wcsncmp(wide_full_path, prefix_unc, prefix_unc_len) == 0 ||
+      wcsncmp(wide_full_path, prefix_dev, prefix_dev_len) == 0) {
+    // Already has a standard, UNC or device prefix.
     // We still need to return it (converted back to UTF-8) because
     // prefixing *was* deemed necessary (long path or always_prefix=true).
     prefixed_wide_path = wide_full_path; // Use the existing full path
@@ -133,6 +144,7 @@ char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_p
       new_wide_size_wchars = prefix_unc_len + path_part_len + 1;
       prefixed_wide_path = (wchar_t *)malloc(new_wide_size_wchars * sizeof(wchar_t));
       if (!prefixed_wide_path) {
+        last_error = ERROR_OUTOFMEMORY;
         perror("zsv_ensureLongPathPrefix (UNC): malloc failed");
         goto cleanup;
       }
@@ -145,6 +157,7 @@ char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_p
       new_wide_size_wchars = prefix_std_len + absolute_path_wlen + 1;
       prefixed_wide_path = (wchar_t *)malloc(new_wide_size_wchars * sizeof(wchar_t));
       if (!prefixed_wide_path) {
+        last_error = ERROR_OUTOFMEMORY;
         perror("zsv_ensureLongPathPrefix (STD): malloc failed");
         goto cleanup;
       }
@@ -166,6 +179,7 @@ char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_p
 
     result_path_utf8 = (char *)malloc(utf8_len_needed); // Includes null terminator space
     if (!result_path_utf8) {
+      last_error = ERROR_OUTOFMEMORY;
       perror("zsv_ensureLongPathPrefix: malloc for final result_path_utf8 failed");
       goto cleanup;
     }
@@ -189,7 +203,13 @@ cleanup:
   free(prefixed_wide_path); // Safe to free NULL (will be NULL if no prefixing happened or on early exit)
 
   // Return the final UTF-8 path (which is NULL if no prefixing was needed or if an error occurred)
+  *err = last_error;
   return result_path_utf8;
+}
+
+char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_prefix) {
+  DWORD err;
+  return zsv_long_path_prefix(original_path, always_prefix, &err);
 }
 
 DWORD zsv_pathToPrefixedWidePath(const char *path_utf8, wchar_t **result) {
@@ -206,9 +226,12 @@ DWORD zsv_pathToPrefixedWidePath(const char *path_utf8, wchar_t **result) {
   DWORD error_code = 0;               // Holds error codes
 
   // --- 2. Add prefix
-  prefixed_utf8 = zsv_ensureLongPathPrefix(path_utf8, 1);
+  // A NULL return with no error means path_utf8 is empty; with an error, converting the
+  // unprefixed path would act on a different file than the caller named or fail obscurely
+  prefixed_utf8 = zsv_long_path_prefix(path_utf8, 1, &error_code);
+  if (error_code)
+    goto cleanup;
   // If prefixed_utf8 is not NULL, it's newly allocated (with correct prefix).
-  // If NULL, the path was short or already correctly prefixed.
 
   // Determine the final UTF-8 string to convert to wide char
   utf8_to_convert = prefixed_utf8 ? prefixed_utf8 : path_utf8;
