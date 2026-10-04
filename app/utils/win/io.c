@@ -5,6 +5,8 @@
 #include <string.h>         // For strlen, strcpy, strncpy
 #include <wchar.h>          // For wide character types and functions like wcslen, wcscpy
 
+#include "io.h"
+
 static char *slashes_to_backslashes_if_needed(const char *path, DWORD *rc) {
   char *tmp = NULL;
   if (strchr(path, '/')) {
@@ -99,7 +101,7 @@ static char *zsv_long_path_prefix(const char *original_path, unsigned char alway
   // --- 3. Check length of the ABSOLUTE path and always_prefix flag ---
   size_t absolute_path_wlen = wcslen(wide_full_path); // Use wcslen for clarity
 
-  if (absolute_path_wlen < MAX_PATH && !always_prefix) {
+  if (!ZSV_WIN_PATH_LEN_IS_LONG(absolute_path_wlen) && !always_prefix) {
     // Path is short, and we don't always prefix.
     // Return NULL as per the original function's contract for non-prefixing cases.
     goto cleanup; // result_path_utf8 is already NULL
@@ -210,6 +212,21 @@ cleanup:
 char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_prefix) {
   DWORD err;
   return zsv_long_path_prefix(original_path, always_prefix, &err);
+}
+
+int zsv_win_path_is_long(const char *path) {
+  if (strlen(path) >= MAX_PATH)
+    return 1;
+  // fewer than MAX_PATH bytes converts to fewer than MAX_PATH UTF-16 units. The
+  // ANSI code page is how fopen() reads the path (UTF-8 under zsv's manifest)
+  wchar_t wpath[MAX_PATH];
+  if (!MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, path, -1, wpath, MAX_PATH))
+    return 0;
+  // the exact length when the absolute path fits in MAX_PATH units with its NUL,
+  // else the size it needs, which exceeds MAX_PATH; 0 on failure
+  wchar_t full[MAX_PATH];
+  DWORD len = GetFullPathNameW(wpath, MAX_PATH, full, NULL);
+  return ZSV_WIN_PATH_LEN_IS_LONG(len);
 }
 
 DWORD zsv_pathToPrefixedWidePath(const char *path_utf8, wchar_t **result) {

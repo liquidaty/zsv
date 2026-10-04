@@ -1,6 +1,8 @@
 // Unit test for the zsv/utils/os file helpers zsv_replace_file(), zsv_create_new_file(),
 // zsv_copy_permissions() and zsv_same_file() on short paths, on paths longer than the
-// Windows MAX_PATH, and (on Windows) on names that are not valid UTF-8.
+// Windows MAX_PATH, and (on Windows) on names that are not valid UTF-8; and, on Windows,
+// of zsv_fopen(), zsv_mkdirs() and zsv_dir_exists() on relative paths whose absolute
+// form is longer than MAX_PATH.
 // Usage: test_replace_file <tmp dir>. Exit status is the number of failed checks.
 #include <errno.h>
 #include <stdio.h>
@@ -14,10 +16,14 @@
 #include <io.h>
 #include <wchar.h>
 #include "../utils/win/io.h"
+#include <zsv/utils/dirs.h>
 int zsv_dir_exists_winlp(const char *path_utf8); // win/dir_exists_longpath.c
 #define TEST_MKDIR(p) _mkdir(p)
 #define TEST_RMDIR(p) _rmdir(p)
 #define TEST_ABSPATH(p) _fullpath(NULL, p, 0)
+// a working directory this long leaves room for a short relative name whose absolute
+// form passes MAX_PATH, while staying under SetCurrentDirectory's limit
+#define TEST_DEEP_CWD_LEN 200
 #else
 #include <unistd.h>
 #define TEST_MKDIR(p) mkdir(p, 0777)
@@ -178,6 +184,93 @@ static void check_busy(const char *dir) {
   zsv_remove(dst);
 }
 
+// a relative path shorter than MAX_PATH whose absolute form is not: zsv_fopen()
+// must measure the absolute form, or fopen() fails on it where long paths are not
+// enabled system-wide
+static void check_relative_long(const char *dir) {
+  char cwd[TEST_PATH_MAX], deep[TEST_PATH_MAX], here[TEST_PATH_MAX], name[TEST_PATH_MAX];
+  size_t dir_len = strlen(dir);
+  if (dir_len + 2 >= TEST_DEEP_CWD_LEN) { // on stdout, which the test rule shows
+    printf("SKIP relative long-path check: %s is too long\n", dir);
+    return;
+  }
+  if (!_getcwd(cwd, sizeof(cwd))) {
+    CHECK(0, "cannot get the current directory: %s", strerror(errno));
+    return;
+  }
+  make_name(deep, sizeof(deep), dir, 'C', TEST_DEEP_CWD_LEN - dir_len - 1, "");
+  CHECK(TEST_MKDIR(deep) == 0 || errno == EEXIST, "cannot create %s: %s", deep, strerror(errno));
+  if (_chdir(deep)) {
+    CHECK(0, "cannot change to %s: %s", deep, strerror(errno));
+    TEST_RMDIR(deep);
+    return;
+  }
+  size_t here_len = _getcwd(here, sizeof(here)) ? strlen(here) : 0;
+  CHECK(here_len > 0 && here_len < MAX_PATH - 2, "unexpected current directory %s", here);
+  if (here_len > 0 && here_len < MAX_PATH - 2) {
+    // names whose absolute form here\name is MAX_PATH - 1 and MAX_PATH long
+    size_t at_limit = MAX_PATH - 1 - here_len - 1;
+    memset(name, 'r', at_limit + 1);
+    name[at_limit] = '\0';
+    CHECK(!zsv_win_path_is_long(name), "absolute length %d reported long", MAX_PATH - 1);
+    name[at_limit] = 'r';
+    name[at_limit + 1] = '\0';
+    CHECK(zsv_win_path_is_long(name), "absolute length %d reported short", MAX_PATH);
+    // GetFullPathNameW never reports exactly MAX_PATH, so pin the threshold itself
+    CHECK(ZSV_WIN_PATH_LEN_IS_LONG(MAX_PATH) && !ZSV_WIN_PATH_LEN_IS_LONG(MAX_PATH - 1),
+          "ZSV_WIN_PATH_LEN_IS_LONG threshold is not MAX_PATH");
+
+    // a name 20 past the limit: written, read back and removed through relative paths
+    memset(name, 'r', at_limit + 20);
+    memcpy(name + at_limit + 20, ".csv", sizeof(".csv"));
+    CHECK(strlen(name) < MAX_PATH, "relative name not short: %s", name);
+    zsv_remove(name); // left behind by an interrupted run
+    errno = EEXIST;
+    FILE *missing = zsv_fopen(name, "rb");
+    CHECK(!missing && errno == ENOENT, "opening a missing relative long path: want ENOENT, got %d (%s)", errno,
+          strerror(errno));
+    if (missing)
+      fclose(missing);
+    CHECK(write_file(name, "rel") == 0, "cannot write relative %s", name);
+    CHECK(file_is(name, "rel") == 1, "cannot read back relative %s", name);
+    // the long-path route keeps fopen()'s modes: "wx" refuses an existing file...
+    errno = 0;
+    FILE *excl = zsv_fopen(name, "wx");
+    CHECK(!excl && errno == EEXIST, "\"wx\" on an existing file: want EEXIST, got %d (%s)", errno, strerror(errno));
+    if (excl)
+      fclose(excl);
+    CHECK(file_is(name, "rel") == 1, "\"wx\" changed an existing file");
+    CHECK(zsv_remove(name) == 0, "cannot remove relative %s", name);
+    // ...and "r+" needs the file to exist
+    errno = 0;
+    FILE *update = zsv_fopen(name, "r+");
+    CHECK(!update && errno == ENOENT, "\"r+\" on a missing file: want ENOENT, got %d (%s)", errno, strerror(errno));
+    if (update)
+      fclose(update);
+    CHECK(!file_exists(name), "\"r+\" created a missing file");
+    // "wx" creates a missing file, and the stream it returns can be written
+    FILE *created = zsv_fopen(name, "wx");
+    CHECK(created != NULL, "\"wx\" on a missing file: %s", strerror(errno));
+    if (created) {
+      CHECK(fputs("x", created) >= 0, "cannot write the file \"wx\" created");
+      fclose(created);
+    }
+    CHECK(file_is(name, "x") == 1, "\"wx\" did not create the file with its content");
+    zsv_remove(name);
+
+    // the same for a directory: zsv_mkdirs() makes it, zsv_dir_exists() must find it
+    name[at_limit + 20] = '\0';
+    CHECK(zsv_mkdirs(name, 0) == 0, "cannot create relative directory %s", name);
+    CHECK(zsv_dir_exists(name) == 1, "relative directory %s not found", name);
+    wchar_t *wname = NULL;
+    CHECK(zsv_pathToPrefixedWidePath(name, &wname) == 0 && RemoveDirectoryW(wname),
+          "cannot remove relative directory %s", name);
+    free(wname);
+  }
+  CHECK(_chdir(cwd) == 0, "cannot change back to %s", cwd);
+  CHECK(TEST_RMDIR(deep) == 0, "cannot remove %s (files left behind?)", deep);
+}
+
 // GetFullPathNameW turns a device name into \\.\NUL, which needs no \\?\ prefix; read
 // as a UNC path it would become \\?\UNC\.\NUL, which Windows does not resolve
 static void check_device(void) {
@@ -235,9 +328,8 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Usage: %s <tmp dir>\n", argv[0]);
     return 1;
   }
-  // an absolute base, so that a path's length is the length Windows checks against
-  // MAX_PATH: a short relative path can resolve to one past it, which zsv_fopen()
-  // still sends to fopen()
+  // an absolute base, so that each path's length is the length Windows checks
+  // against MAX_PATH; check_relative_long() covers relative paths
   char *base = TEST_ABSPATH(argv[1]);
   CHECK(base != NULL, "cannot resolve %s: %s", argv[1], strerror(errno));
   if (!base)
@@ -256,6 +348,7 @@ int main(int argc, char *argv[]) {
   check_truncation(long_dir);
 #ifdef _WIN32
   check_device();
+  check_relative_long(dir);
   check_busy(dir);
   check_read_only(dir);
   check_invalid_utf8(dir);
