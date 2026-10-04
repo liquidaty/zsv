@@ -302,8 +302,7 @@ static inline size_t zsv_cell_encode_utf8(struct zsv_scanner *scanner, unsigned 
   char count_it = scanner->opts.malformed_utf8_handler != NULL && scanner->row.used < scanner->row.allocated;
   size_t bad = 0;
   if (replace) // a replacement char, or REMOVE (DO_NOT_REPLACE was normalized to 0 at init)
-    n = zsv_strencode(s, n, replace < 0 ? 0 : (unsigned char)replace, count_it ? zsv_count_malformed : NULL,
-                      &bad);
+    n = zsv_strencode(s, n, replace < 0 ? 0 : (unsigned char)replace, count_it ? zsv_count_malformed : NULL, &bad);
   else if (count_it) // leave the bytes untouched, but still count
     bad = zsv_strencode_validate(s, n, NULL, NULL);
   if (bad && count_it)
@@ -453,8 +452,8 @@ __attribute__((always_inline)) static inline enum zsv_status cell_and_row_dl(str
 #include <arm_neon.h>
 static inline zsv_mask_t movemask_pseudo(zsv_uc_vector v) {
   // see https://stackoverflow.com/questions/11870910/
-  static const uint8_t
-    __attribute__((aligned(16))) _powers[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
+  static const uint8_t __attribute__((aligned(16)))
+  _powers[16] = {1, 2, 4, 8, 16, 32, 64, 128, 1, 2, 4, 8, 16, 32, 64, 128};
   uint8x16_t mm_powers = vld1q_u8(_powers);
 
   // compute the mask from the input
