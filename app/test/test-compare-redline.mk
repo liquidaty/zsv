@@ -122,15 +122,15 @@ test-compare-redline-v2: ${BUILD_DIR}/bin/zsv_compare${EXE} ${BUILD_DIR}/bin/cli
 	[ -s ${TMP_DIR}/$@.mutexout5 ] && ${TEST_PASS} || ${TEST_FAIL})
 
 	@# TC-C1: canonical `zsv help compare redline` narrative matches the golden byte-for-byte
-	@(${BUILD_DIR}/bin/cli help compare redline > ${TMP_DIR}/$@.topicout1 2>&1 && \
+	@(${BUILD_DIR}/bin/cli${EXE} help compare redline > ${TMP_DIR}/$@.topicout1 2>&1 && \
 	${CMP} ${TMP_DIR}/$@.topicout1 expected/$@.redline && ${TEST_PASS} || ${TEST_FAIL})
 
 	@# TC-C2: canonical `zsv help compare redline-schema` JSON Schema matches the golden byte-for-byte
-	@(${BUILD_DIR}/bin/cli help compare redline-schema > ${TMP_DIR}/$@.topicout2 2>&1 && \
+	@(${BUILD_DIR}/bin/cli${EXE} help compare redline-schema > ${TMP_DIR}/$@.topicout2 2>&1 && \
 	${CMP} ${TMP_DIR}/$@.topicout2 expected/$@.redline-schema && ${TEST_PASS} || ${TEST_FAIL})
 
 	@# TC-C3: `zsv help compare` (no topic) lists both topics under their canonical names
-	@(${BUILD_DIR}/bin/cli help compare > ${TMP_DIR}/$@.helpcmp 2>&1 && \
+	@(${BUILD_DIR}/bin/cli${EXE} help compare > ${TMP_DIR}/$@.helpcmp 2>&1 && \
 	grep -qE 'redline +:' ${TMP_DIR}/$@.helpcmp && \
 	grep -q 'redline-schema' ${TMP_DIR}/$@.helpcmp && \
 	${TEST_PASS} || ${TEST_FAIL})
