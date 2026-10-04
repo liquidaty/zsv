@@ -789,7 +789,7 @@ ${TMP_DIR}/test_mkdirs: test_mkdirs.c ../utils/dirs.c ../../include/zsv/utils/di
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -DZSV_NO_JQ -I../../include test_mkdirs.c ../utils/dirs.c -o $@
 
-test-replace-file: ${TMP_DIR}/test_replace_file
+test-replace-file: ${TMP_DIR}/test_replace_file${EXE}
 	@${TEST_INIT}
 	@$< ${TMP_DIR} 2>${TMP_DIR}/$@.err && ${TEST_PASS} || (cat ${TMP_DIR}/$@.err; ${TEST_FAIL})
 
@@ -802,7 +802,7 @@ ifeq ($(WIN),1)
   TEST_REPLACE_FILE_DEP+=../utils/win/io.h ../utils/win/fopen_longpath.c ../utils/win/remove_longpath.c
 endif
 
-${TMP_DIR}/test_replace_file: ${TEST_REPLACE_FILE_SRC} ${TEST_REPLACE_FILE_DEP}
+${TMP_DIR}/test_replace_file${EXE}: ${TEST_REPLACE_FILE_SRC} ${TEST_REPLACE_FILE_DEP}
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -I../../include ${TEST_REPLACE_FILE_SRC} -o $@
 
