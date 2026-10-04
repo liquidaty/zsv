@@ -19,6 +19,7 @@
 #include <errno.h>
 
 #ifdef WIN32
+#include "win/io.h" // zsv_pathToPrefixedWidePath()
 #include "win/fopen_longpath.c"
 #include "win/remove_longpath.c"
 #endif
@@ -120,7 +121,7 @@ void zsv_perror(const char *s) {
   perror(s);
 }
 
-int zsv_replace_file(const char *src, const char *dst) {
+static int zsv_replace_file_posix(const char *src, const char *dst) {
   int save_errno = 0;
 
   if (rename(src, dst) == 0) {
@@ -166,6 +167,13 @@ int zsv_replace_file(const char *src, const char *dst) {
   return 0;
 }
 
+int zsv_replace_file(const char *src, const char *dst) {
+  int err = zsv_replace_file_posix(src, dst);
+  if (err)
+    errno = err; // the cleanup after a failed copy may have changed it
+  return err;
+}
+
 #else
 #include <windows.h>
 #include <strsafe.h>
@@ -209,28 +217,34 @@ void zsv_win_to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len) {
 
 #include <wchar.h>
 
+// the errno value for nonzero Windows error code e: EIO where there is no closer one
+static int zsv_win_errno(DWORD e) {
+  int err = windows_error_to_errno(e);
+  return err ? err : EIO;
+}
+
+// *wpath = UTF-8 path as an absolute, \\?\-prefixed wide path of any length, which the
+// caller frees. Returns 0, or an errno value (EILSEQ if path is not UTF-8) with *wpath NULL
+static int zsv_win_wide_path(const char *path, wchar_t **wpath) {
+  DWORD rc = zsv_pathToPrefixedWidePath(path, wpath);
+  return rc ? zsv_win_errno(rc) : 0;
+}
+
 int zsv_replace_file(const char *src, const char *dest) {
-  wchar_t wdest[PATH_MAX], wsrc[PATH_MAX];
-
-  zsv_win_to_unicode(dest, wdest, ARRAY_SIZE(wdest));
-  zsv_win_to_unicode(src, wsrc, ARRAY_SIZE(wsrc));
-
-  if (MoveFileExW(wsrc, wdest, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) // success
-    return 0;
-
-  switch (GetLastError()) {
-  case ERROR_FILE_NOT_FOUND: // could be the target: use a simple rename
-    return _wrename(wsrc, wdest) ? errno : 0;
-  case ERROR_PATH_NOT_FOUND:
-    return ENOENT;
-  case ERROR_ACCESS_DENIED:
-    return EACCES;
-  case ERROR_SHARING_VIOLATION:
-  case ERROR_LOCK_VIOLATION:
-    return EBUSY;
-  default:
-    return EIO;
+  wchar_t *wsrc = NULL, *wdest = NULL;
+  int err = zsv_win_wide_path(src, &wsrc);
+  if (!err)
+    err = zsv_win_wide_path(dest, &wdest);
+  if (!err && !MoveFileExW(wsrc, wdest, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+    DWORD e = GetLastError();
+    // the shared mapping gives EACCES; here a file another process holds open is EBUSY
+    err = e == ERROR_SHARING_VIOLATION || e == ERROR_LOCK_VIOLATION ? EBUSY : zsv_win_errno(e);
   }
+  free(wsrc);
+  free(wdest);
+  if (err)
+    errno = err;
+  return err;
 }
 
 static void zsv_win_printLastError(void) {
@@ -318,38 +332,48 @@ char *zsv_final_path(const char *path) {
   return strdup(path);
 }
 
+// Windows permission bits are the read-only attribute, which is what _wchmod() sets;
+// the Win32 calls take the \\?\-prefixed paths that the CRT's _wstat() may not
 int zsv_copy_permissions(const char *from, const char *to) {
-  struct _stat st;
-  wchar_t wfrom[PATH_MAX], wto[PATH_MAX];
-  zsv_win_to_unicode(from, wfrom, ARRAY_SIZE(wfrom));
-  zsv_win_to_unicode(to, wto, ARRAY_SIZE(wto));
-  if (!*wfrom || !*wto)
-    return ENAMETOOLONG;
-  if (_wstat(wfrom, &st))
-    return errno;
-  return _wchmod(wto, st.st_mode & (_S_IREAD | _S_IWRITE)) ? errno : 0;
+  wchar_t *wfrom = NULL, *wto = NULL;
+  int err = zsv_win_wide_path(from, &wfrom);
+  if (!err)
+    err = zsv_win_wide_path(to, &wto);
+  if (!err) {
+    DWORD from_attrs = GetFileAttributesW(wfrom);
+    DWORD to_attrs = from_attrs == INVALID_FILE_ATTRIBUTES ? from_attrs : GetFileAttributesW(wto);
+    if (to_attrs == INVALID_FILE_ATTRIBUTES || (((from_attrs ^ to_attrs) & FILE_ATTRIBUTE_READONLY) &&
+                                                !SetFileAttributesW(wto, to_attrs ^ FILE_ATTRIBUTE_READONLY)))
+      err = zsv_win_errno(GetLastError());
+  }
+  free(wfrom);
+  free(wto);
+  return err;
 }
 
 int zsv_create_new_file(const char *path) {
-  wchar_t wpath[PATH_MAX];
-  zsv_win_to_unicode(path, wpath, ARRAY_SIZE(wpath));
-  if (!*wpath)
-    return ENAMETOOLONG;
-  int fd = _wopen(wpath, _O_WRONLY | _O_CREAT | _O_EXCL, _S_IREAD | _S_IWRITE);
-  if (fd == -1)
-    return errno;
-  return _close(fd) ? errno : 0;
+  wchar_t *wpath = NULL;
+  int err = zsv_win_wide_path(path, &wpath);
+  if (!err) {
+    HANDLE h = CreateFileW(wpath, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE)
+      err = zsv_win_errno(GetLastError());
+    else if (!CloseHandle(h))
+      err = zsv_win_errno(GetLastError());
+  }
+  free(wpath);
+  return err;
 }
 
 // fills *out with the volume serial number and file index that identify path's file:
 // 1 on success, 0 if the file does not exist, -1 if it cannot be examined
 static int zsv_win_file_id(const char *path, BY_HANDLE_FILE_INFORMATION *out) {
-  wchar_t wpath[PATH_MAX];
-  zsv_win_to_unicode(path, wpath, ARRAY_SIZE(wpath));
-  if (!*wpath)
+  wchar_t *wpath = NULL;
+  if (zsv_win_wide_path(path, &wpath))
     return -1;
   HANDLE h = CreateFileW(wpath, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
                          FILE_FLAG_BACKUP_SEMANTICS, NULL);
+  free(wpath);
   if (h == INVALID_HANDLE_VALUE) {
     DWORD e = GetLastError();
     return e == ERROR_FILE_NOT_FOUND || e == ERROR_PATH_NOT_FOUND ? 0 : -1;

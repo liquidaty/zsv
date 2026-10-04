@@ -83,10 +83,9 @@ int ZSV_MAIN_NO_OPTIONS_FUNC(ZSV_COMMAND)(int argc, const char *argv[]) {
         perror((char *)dest_cache_dir);
         fprintf(stderr, "Use `mv --cache %s <destination>` to move or `rm --cache %s` to remove, then try again\n",
                 dest, dest);
-      } else if (move_file && (verbose ? fprintf(stderr, "Renaming files\n") : 1) && zsv_replace_file(source, dest)) {
-        err = errno;
-        fprintf(stderr, "%s -> %s: ", source, dest);
-        zsv_perror(NULL);
+      } else if (move_file && (verbose ? fprintf(stderr, "Renaming files\n") : 1) &&
+                 (err = zsv_replace_file(source, dest))) {
+        fprintf(stderr, "%s -> %s: %s\n", source, dest, strerror(err));
       } else if (zsv_dir_exists((const char *)source_cache_dir) && (verbose ? fprintf(stderr, "Moving caches\n") : 1) &&
                  rename( // rename(): not sure will work on Win with NFS dirs...
                    (char *)source_cache_dir, (char *)dest_cache_dir)) {

@@ -125,6 +125,10 @@ ifneq ($(CROSS_COMPILING),1)
   ifeq ($(WIN),0)
     TESTS+=test-mkdirs # host-compiled check that zsv_mkdirs folders follow the umask (POSIX only)
   endif
+  # under emcc the test runs in node's in-memory filesystem, where ${TMP_DIR} does not exist
+  ifneq ($(CCBN),emcc)
+    TESTS+=test-replace-file # host-compiled unit test of the zsv/utils/os file helpers, incl. Windows long paths
+  endif
   # ASan-instrumented regression for the zsv_finish->cell_dl OOB. Skipped
   # if SAN_CC (clang+sanitizers) is unavailable; build target itself runs
   # the sanitizer.
@@ -784,6 +788,23 @@ test-mkdirs: ${TMP_DIR}/test_mkdirs
 ${TMP_DIR}/test_mkdirs: test_mkdirs.c ../utils/dirs.c ../../include/zsv/utils/dirs.h ../../include/zsv.h
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -DZSV_NO_JQ -I../../include test_mkdirs.c ../utils/dirs.c -o $@
+
+test-replace-file: ${TMP_DIR}/test_replace_file${EXE}
+	@${TEST_INIT}
+	@$< ${TMP_DIR} 2>${TMP_DIR}/$@.err && ${TEST_PASS} || (cat ${TMP_DIR}/$@.err; ${TEST_FAIL})
+
+# on Windows os.c's long-path helpers call zsv_pathToPrefixedWidePath() from win/io.c,
+# and os.c #includes the other win/ sources, so they are prerequisites only
+TEST_REPLACE_FILE_SRC=test_replace_file.c ../utils/os.c
+TEST_REPLACE_FILE_DEP=../../include/zsv/utils/os.h
+ifeq ($(WIN),1)
+  TEST_REPLACE_FILE_SRC+=../utils/win/io.c ../utils/win/dir_exists_longpath.c
+  TEST_REPLACE_FILE_DEP+=../utils/win/io.h ../utils/win/fopen_longpath.c ../utils/win/remove_longpath.c
+endif
+
+${TMP_DIR}/test_replace_file${EXE}: ${TEST_REPLACE_FILE_SRC} ${TEST_REPLACE_FILE_DEP}
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -I../../include ${TEST_REPLACE_FILE_SRC} -o $@
 
 test-strcasestr: ${TMP_DIR}/test_strcasestr
 	@${TEST_INIT}

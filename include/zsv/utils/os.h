@@ -22,6 +22,7 @@ void zsv_perror(const char *);
 #define zsv_fopen fopen
 #else
 FILE *zsv_fopen(const char *fname, const char *mode);
+// NULL when original_path is empty, short and !always_prefix, not UTF-8, or on error
 char *zsv_ensureLongPathPrefix(const char *original_path, unsigned char always_prefix);
 #endif
 
@@ -50,7 +51,8 @@ int zsv_remove_winlp(const char *path_utf8);
 
 /**
  * zsv_replace_file(): rename src over dest, copying across devices if needed.
- * Returns 0, or an errno value
+ * Returns 0, or an errno value that errno is also set to. On Windows both paths
+ * are UTF-8 and may exceed MAX_PATH; a path that is not UTF-8 gives EILSEQ
  */
 int zsv_replace_file(const char *src, const char *dest);
 
@@ -64,15 +66,17 @@ int zsv_same_file(const char *a, const char *b);
 /**
  * zsv_copy_permissions(): give file `to` the permission bits of existing file `from`,
  * and on POSIX its group. Where the group cannot be set, `to` gets no more group
- * access than others have, so no other group gains access. Use before `to` replaces
- * `from`. Returns 0, or an errno value
+ * access than others have, so no other group gains access. On Windows the only bit
+ * is the read-only attribute. Use before `to` replaces `from`. Returns 0, or an
+ * errno value (on Windows, EILSEQ for a path that is not UTF-8)
  */
 int zsv_copy_permissions(const char *from, const char *to);
 
 /**
  * zsv_create_new_file(): create an empty file at `path`, which must not exist, with
  * the permissions the system gives a new file (umask, directory defaults). Returns 0,
- * or an errno value (EEXIST if `path` exists)
+ * or an errno value (EEXIST if `path` exists; on Windows, EILSEQ for a path that is
+ * not UTF-8)
  */
 int zsv_create_new_file(const char *path);
 
@@ -108,6 +112,8 @@ char *zsv_final_path(const char *path);
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 #endif
 
+// converts UTF-8 `path` into wbuf, cutting it off at PATH_MAX; wbuf is empty if the path
+// is not UTF-8. For short names such as a DLL's; file paths go through the long-path helpers
 void zsv_win_to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len);
 
 #endif // #ifdef _WIN32
