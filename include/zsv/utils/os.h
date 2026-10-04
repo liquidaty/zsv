@@ -15,6 +15,17 @@
 
 void zsv_perror(const char *);
 
+/*
+ * Path encoding on Windows: paths of MAX_PATH or more, and every path given to
+ * zsv_replace_file(), zsv_copy_permissions(), zsv_create_new_file() and
+ * zsv_same_file(), are read as UTF-8; shorter paths given to the CRT (fopen(),
+ * rename(), mkdir()) and to zsv_dir_exists() are read in the process ANSI code
+ * page. zsv's executables make the two agree by setting the ANSI code page to
+ * UTF-8 with an application manifest (app/win/utf8.manifest in the zsv sources),
+ * which Windows 10 1903 and later honor. A program that links these utilities
+ * needs the same manifest for non-ASCII names to work at every length
+ */
+
 /**
  * zsv_fopen(): same as normal fopen(), except on Win it also works with long filenames
  */

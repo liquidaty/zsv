@@ -269,6 +269,12 @@ ifeq ($(NO_MEMMEM),1)
   UTIL_A_OBJ_WIN=memmem
 endif
 
+# every Windows executable links the manifest that makes its code page UTF-8
+ifeq ($(WIN),1)
+  WIN_MANIFEST_OBJECT=${BUILD_DIR}/objs/win/utf8-manifest.o
+  OBJECTS+= ${WIN_MANIFEST_OBJECT}
+endif
+
 PROG_NAME ?= zsv
 ZSV=$(BINDIR)/$(PROG_NAME)${EXE}
 
@@ -505,6 +511,14 @@ ${CLEANS}: clean-%:
 .PHONY: all install cli build build-% clean clean-% test test-% lib-% check install-util-lib uninstall-util-lib clean-util-lib benchmark
 
 .SECONDARY: ${OBJECTS}
+
+# -I win: the .rc names utf8.manifest relative to its own directory. The WINDRES
+# check is here rather than at parse time so that `make clean` works with a
+# config.mk written before configure detected windres
+${WIN_MANIFEST_OBJECT}: win/utf8-manifest.rc win/utf8.manifest
+	$(if ${WINDRES},,$(error WINDRES is not set; re-run ./configure))
+	@mkdir -p `dirname "$@"`
+	${WINDRES} -I win -O coff $< -o $@
 
 .POSIX:
 .SUFFIXES:

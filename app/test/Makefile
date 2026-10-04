@@ -67,7 +67,7 @@ ifneq ($(ZSV_NO_TOON),1)
 endif
 TARGETS=$(addprefix ${BUILD_DIR}/bin/zsv_,$(addsuffix ${EXE},${SOURCES}))
 
-TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-2json-help test-paste test-flatten-2 test-flatten-dupcol
+TESTS=$(addprefix test-,${SOURCES}) test-blank-leading-rows test-rm test-mv test-mv-utf8 test-2json-help test-paste test-flatten-2 test-flatten-dupcol
 ifneq ($(ZSV_NO_TOON),1)
   TESTS+=test-2toon-help
 endif
@@ -977,6 +977,20 @@ test-mv: ${BUILD_DIR}/bin/zsv_prop${EXE} ${BUILD_DIR}/bin/zsv_mv${EXE}
 	@find ${TMP_DIR}/.zsv/data/$@.csv/props.json -type f >/dev/null
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_mv${EXE} ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-moved.csv ${REDIRECT} /dev/null
 	@find ${TMP_DIR}/.zsv/data/$@-moved.csv/props.json -type f >/dev/null && ${TEST_PASS} || ${TEST_FAIL}
+
+# non-ASCII names, one outside the Windows-1252 code page, reach zsv as UTF-8:
+# on Windows this needs the manifest that sets the process code page to UTF-8
+TEST_MV_UTF8_SRC=${TMP_DIR}/test-mv-utf8-é-日本.csv
+TEST_MV_UTF8_DST=${TMP_DIR}/test-mv-utf8-moved-日本.csv
+test-mv-utf8: ${BUILD_DIR}/bin/zsv_prop${EXE} ${BUILD_DIR}/bin/zsv_mv${EXE}
+	@${TEST_INIT}
+	@rm -rf "${TEST_MV_UTF8_SRC}" "${TEST_MV_UTF8_DST}" "${TMP_DIR}/.zsv/data/$(notdir ${TEST_MV_UTF8_SRC})" "${TMP_DIR}/.zsv/data/$(notdir ${TEST_MV_UTF8_DST})"
+	@echo 'hi' > "${TEST_MV_UTF8_SRC}"
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} "${TEST_MV_UTF8_SRC}" -R 1 -d 2 ${REDIRECT} /dev/null
+	@test -f "${TMP_DIR}/.zsv/data/$(notdir ${TEST_MV_UTF8_SRC})/props.json"
+	@${PREFIX} ${BUILD_DIR}/bin/zsv_mv${EXE} "${TEST_MV_UTF8_SRC}" "${TEST_MV_UTF8_DST}" ${REDIRECT} /dev/null
+	@(test -f "${TEST_MV_UTF8_DST}" && ! test -e "${TEST_MV_UTF8_SRC}" && \
+	  test -f "${TMP_DIR}/.zsv/data/$(notdir ${TEST_MV_UTF8_DST})/props.json") && ${TEST_PASS} || ${TEST_FAIL}
 
 test-blank-leading-rows: test-blank-leading-rows-1 test-blank-leading-rows-2 test-blank-leading-rows-3 test-blank-leading-rows-4
 

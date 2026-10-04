@@ -85,21 +85,17 @@ size_t zsv_get_config_dir(char *buff, size_t buffsize, const char *prefix) {
 int zsv_dir_exists(const char *path) {
 #ifdef WIN32
   if (strlen(path) >= MAX_PATH)
-    return zsv_dir_exists_winlp(path);
+    return zsv_dir_exists_winlp(path); // UTF-8, as for the other long-path helpers
 
-  // TO DO: support win long filepath prefix
+  // short paths are read in the ANSI code page, as fopen() and mkdir() read them:
+  // UTF-8 under zsv's manifest (Windows 10 1903+), the system code page before that
   // TO DO: work properly if dir exists but we don't have permission
   wchar_t wpath[MAX_PATH];
-  mbstowcs(wpath, path, MAX_PATH);
-
-  DWORD attrs = GetFileAttributesW(wpath);
-  if (attrs == INVALID_FILE_ATTRIBUTES)
-    // Could check GetLastError() to see if it's a permission issue vs. not-found
+  if (!MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, path, -1, wpath, MAX_PATH))
     return 0;
 
-  // If it has the directory attribute, it's presumably a directory
-  return (attrs & FILE_ATTRIBUTE_DIRECTORY) != 0;
-
+  DWORD attrs = GetFileAttributesW(wpath);
+  return attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY);
 #else
   struct stat path_stat;
   if (!stat(path, &path_stat))
