@@ -72,6 +72,7 @@ Some influential environment variables:
   MAKE                    gmake tool command [detected]
   AR                      archive command [detected]
   RANLIB                  ranlib archive indexer command [detected]
+  WINDRES                 Windows resource compiler, for mingw hosts [detected]
   CFLAGS                  C compiler flags [-Os -pipe ...]
   LDFLAGS                 Linker flags
 
@@ -101,6 +102,7 @@ trycc1 () { test -z "$CC" && cmdexists "$1" && ( "$1" --version | grep -i gcc ) 
 trycc2 () { test -z "$CC" && cmdexists "$1" && CC=$1 ; }
 tryar () { test -z "$AR" && cmdexists "$1" && AR=$1 ; }
 tryranlib () { test -z "$RANLIB" && cmdexists "$1" && RANLIB=$1 ; }
+trywindres () { test -z "$WINDRES" && cmdexists "$1" && WINDRES=$1 ; }
 tryawk () { test -z "$AWK" && "$1" 'function works () {return 0} BEGIN{exit works()}' && AWK=$1 ; }
 trymake() {
     if test -z "$MAKE" && cmdexists "$1" ; then
@@ -592,6 +594,19 @@ case "$host" in
     ;;
 esac
 
+#
+# Find windres, which compiles the application manifest every Windows executable
+# links (app/win/utf8-manifest.rc). A prefixed one (from the host triple, or from
+# CC as in x86_64-w64-mingw32-clang) targets the right machine; a bare windres
+# may default to another
+#
+if test "$MINGW" = "1" ; then
+    printf "checking for windres... "
+    for w in "$host-windres" "${CC%-*}-windres" windres; do trywindres "$w"; done
+    printf "%s\n" "$WINDRES"
+    test -n "$WINDRES" || fail "$0: cannot find windres"
+fi
+
 if test "$usepie" = "auto" ; then
     usepie=yes
 fi
@@ -999,6 +1014,7 @@ MAKE = $MAKE
 
 AR = $AR
 RANLIB = $RANLIB
+WINDRES = $WINDRES
 CFLAGS = $CFLAGS
 LDFLAGS = $LDFLAGS
 CFLAGS_STD = $CFLAGS_STD

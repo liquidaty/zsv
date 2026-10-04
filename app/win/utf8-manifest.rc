@@ -1,0 +1,6 @@
+// Application manifest linked into every zsv executable on Windows: it sets the
+// process ANSI code page to UTF-8 (Windows 10 1903 and later), so argv, the
+// environment and every char * path the CRT and Win32 "A" functions take are UTF-8.
+// 1 is CREATEPROCESS_MANIFEST_RESOURCE_ID and 24 is RT_MANIFEST, written as numbers
+// so that windres needs no Windows headers (llvm-windres has none to include)
+1 24 "utf8.manifest"

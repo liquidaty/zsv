@@ -85,6 +85,18 @@ if [ "$SKIP_BUILD" = false ]; then
   tree "$PREFIX"
   echo "[INF] Built successfully!"
 
+  # a Windows build that drops the manifest still links and runs, but reads
+  # non-ASCII arguments and paths in the ANSI code page rather than as UTF-8
+  case "$CC" in
+  *mingw*)
+    if ! LC_ALL=C grep -aq activeCodePage "$PREFIX/bin/zsv.exe"; then
+      echo "[ERR] $PREFIX/bin/zsv.exe has no UTF-8 code page manifest!"
+      exit 1
+    fi
+    echo "[INF] Verified UTF-8 code page manifest in zsv.exe"
+    ;;
+  esac
+
   mkdir -p "$ARTIFACT_DIR"
 
   if [ "$SKIP_ZIP_ARCHIVE" = false ]; then
