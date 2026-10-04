@@ -62,6 +62,7 @@ int zsv_mkdir(const char *path);
 
 /**
  * Make a directory, as well as any intermediate dirs
+ * On non-Windows, new dirs are created with mode 0777, less the process umask
  * return zero on success
  */
 int zsv_mkdirs(const char *path, char path_is_filename);
