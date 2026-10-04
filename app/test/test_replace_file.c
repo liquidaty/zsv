@@ -17,10 +17,12 @@
 int zsv_dir_exists_winlp(const char *path_utf8); // win/dir_exists_longpath.c
 #define TEST_MKDIR(p) _mkdir(p)
 #define TEST_RMDIR(p) _rmdir(p)
+#define TEST_ABSPATH(p) _fullpath(NULL, p, 0)
 #else
 #include <unistd.h>
 #define TEST_MKDIR(p) mkdir(p, 0777)
 #define TEST_RMDIR(p) rmdir(p)
+#define TEST_ABSPATH(p) realpath(p, NULL)
 #endif
 
 // length at which the fixed buffers zsv once converted Windows paths into cut a path off
@@ -233,8 +235,16 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Usage: %s <tmp dir>\n", argv[0]);
     return 1;
   }
+  // an absolute base, so that a path's length is the length Windows checks against
+  // MAX_PATH: a short relative path can resolve to one past it, which zsv_fopen()
+  // still sends to fopen()
+  char *base = TEST_ABSPATH(argv[1]);
+  CHECK(base != NULL, "cannot resolve %s: %s", argv[1], strerror(errno));
+  if (!base)
+    return failures;
   char dir[TEST_PATH_MAX], long_dir[TEST_PATH_MAX];
-  FORMAT_PATH(dir, "%s/test_replace_file.d", argv[1]);
+  FORMAT_PATH(dir, "%s/test_replace_file.d", base);
+  free(base);
   make_name(long_dir, sizeof(long_dir), dir, 'D', TEST_LONG_DIR_LEN, "");
   CHECK(TEST_MKDIR(dir) == 0 || errno == EEXIST, "cannot create %s: %s", dir, strerror(errno));
   CHECK(TEST_MKDIR(long_dir) == 0 || errno == EEXIST, "cannot create %s: %s", long_dir, strerror(errno));
