@@ -125,7 +125,10 @@ ifneq ($(CROSS_COMPILING),1)
   ifeq ($(WIN),0)
     TESTS+=test-mkdirs # host-compiled check that zsv_mkdirs folders follow the umask (POSIX only)
   endif
-  TESTS+=test-replace-file # host-compiled unit test of the zsv/utils/os file helpers, incl. Windows long paths
+  # under emcc the test runs in node's in-memory filesystem, where ${TMP_DIR} does not exist
+  ifneq ($(CCBN),emcc)
+    TESTS+=test-replace-file # host-compiled unit test of the zsv/utils/os file helpers, incl. Windows long paths
+  endif
   # ASan-instrumented regression for the zsv_finish->cell_dl OOB. Skipped
   # if SAN_CC (clang+sanitizers) is unavailable; build target itself runs
   # the sanitizer.
