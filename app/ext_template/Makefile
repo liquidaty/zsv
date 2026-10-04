@@ -12,10 +12,9 @@ CC ?= cc
 
 WIN=
 ifeq ($(WIN),)
-  WIN=0
-  ifneq ($(findstring w64,$(CC)),) # e.g. mingw64
-    WIN=1
-  endif
+  # MINGW = 1 in config.mk (configure's host check; not the environment, and a CC given
+  # on the command line does not undo it), or a w64 compiler
+  WIN=$(if $(and $(filter file,$(origin MINGW)),$(filter 1,$(MINGW))),1,$(if $(findstring w64,$(CC)),1,0))
 endif
 
 ifeq ($(DEBUG),1)
