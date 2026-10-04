@@ -84,7 +84,7 @@ size_t zsv_get_config_dir(char *buff, size_t buffsize, const char *prefix) {
 #endif
 int zsv_dir_exists(const char *path) {
 #ifdef WIN32
-  if (strlen(path) >= MAX_PATH)
+  if (zsv_win_path_is_long(path))
     return zsv_dir_exists_winlp(path); // UTF-8, as for the other long-path helpers
 
   // short paths are read in the ANSI code page, as fopen() and mkdir() read them:

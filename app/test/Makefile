@@ -822,18 +822,21 @@ test-replace-file: ${TMP_DIR}/test_replace_file${HOST_EXE}
 	@${TEST_INIT}
 	@$< ${TMP_DIR} 2>${TMP_DIR}/$@.err && ${TEST_PASS} || (cat ${TMP_DIR}/$@.err; ${TEST_FAIL})
 
-# on Windows os.c's long-path helpers call zsv_pathToPrefixedWidePath() from win/io.c,
-# and os.c #includes the other win/ sources, so they are prerequisites only
+# on Windows os.c's long-path helpers call functions in win/io.c, which dirs.c #includes
+# along with the other win/ helpers; os.c #includes the rest, so they are prerequisites only
 TEST_REPLACE_FILE_SRC=test_replace_file.c ../utils/os.c
 TEST_REPLACE_FILE_DEP=../../include/zsv/utils/os.h
 ifeq ($(WIN),1)
-  TEST_REPLACE_FILE_SRC+=../utils/win/io.c ../utils/win/dir_exists_longpath.c
-  TEST_REPLACE_FILE_DEP+=../utils/win/io.h ../utils/win/fopen_longpath.c ../utils/win/remove_longpath.c
+  # dirs.c, standalone as for test-mkdirs, #includes win/io.c and the long-path helpers
+  TEST_REPLACE_FILE_SRC+=../utils/dirs.c
+  TEST_REPLACE_FILE_DEP+=../utils/win/io.h ../utils/win/io.c ../utils/win/fopen_longpath.c \
+    ../utils/win/remove_longpath.c ../utils/win/dir_exists_longpath.c ../utils/win/mkdir_longpath.c \
+    ../../include/zsv/utils/dirs.h ../../include/zsv.h
 endif
 
 ${TMP_DIR}/test_replace_file${HOST_EXE}: ${TEST_REPLACE_FILE_SRC} ${TEST_REPLACE_FILE_DEP}
 	@mkdir -p ${TMP_DIR}
-	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -I../../include ${TEST_REPLACE_FILE_SRC} -o $@
+	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -DZSV_NO_JQ -I../../include ${TEST_REPLACE_FILE_SRC} -o $@
 
 test-strcasestr: ${TMP_DIR}/test_strcasestr${HOST_EXE}
 	@${TEST_INIT}

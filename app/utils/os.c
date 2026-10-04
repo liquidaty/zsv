@@ -29,7 +29,7 @@
  */
 #if defined(_WIN32) || defined(WIN32) || defined(WIN)
 FILE *zsv_fopen(const char *fname, const char *mode) {
-  if (strlen(fname) >= MAX_PATH)
+  if (zsv_win_path_is_long(fname))
     return zsv_fopen_longpath(fname, mode);
   return fopen(fname, mode);
 }
@@ -216,12 +216,6 @@ void zsv_win_to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len) {
 }
 
 #include <wchar.h>
-
-// the errno value for nonzero Windows error code e: EIO where there is no closer one
-static int zsv_win_errno(DWORD e) {
-  int err = windows_error_to_errno(e);
-  return err ? err : EIO;
-}
 
 // *wpath = UTF-8 path as an absolute, \\?\-prefixed wide path of any length, which the
 // caller frees. Returns 0, or an errno value (EILSEQ if path is not UTF-8) with *wpath NULL

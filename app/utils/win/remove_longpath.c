@@ -15,10 +15,16 @@ int windows_error_to_errno(DWORD windows_error_code) {
   case ERROR_FILE_NOT_FOUND:
     return ENOENT;
   case ERROR_PATH_NOT_FOUND:
+  case ERROR_BAD_NETPATH:
+  case ERROR_BAD_NET_NAME:
     return ENOENT;
   case ERROR_INVALID_DRIVE:
     return ENODEV; // Or ENOENT
 
+  case ERROR_INVALID_NAME:
+    return EINVAL;
+  case ERROR_LOCK_VIOLATION:
+    return EACCES; // as for a sharing violation
   case ERROR_ACCESS_DENIED:
     return EACCES;
   case ERROR_INVALID_ACCESS:
@@ -80,11 +86,9 @@ int zsv_remove_winlp(const char *path_utf8) {
 #ifndef NDEBUG
       fprintf(stderr, "Error deleting file '%ls': %lu\n", path_to_use, lastError);
 #endif
-      if (windows_error_to_errno(lastError)) {
-        rc = windows_error_to_errno(lastError);
-        errno = rc;
-      } else {
-        fprintf(stderr, "Unable to delete file '%ls': %lu\n", path_to_use, GetLastError());
+      int err = zsv_win_errno(lastError);
+      if (!windows_error_to_errno(lastError)) { // reported as EIO: say what it was
+        fprintf(stderr, "Unable to delete file '%ls': %lu\n", path_to_use, lastError);
         LPSTR messageBuffer = NULL;
         FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
                        NULL, lastError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
@@ -93,12 +97,12 @@ int zsv_remove_winlp(const char *path_utf8) {
           LocalFree(messageBuffer);
         } else
           fprintf(stderr, "Could not format error message for code %lu.\n", lastError);
-        errno = rc = -1;
       }
+      errno = err; // after the diagnostics, which may change it
+      rc = (DWORD)err;
     }
   } else { // the path could not be converted, e.g. it is not UTF-8
-    int err = windows_error_to_errno(rc);
-    errno = err ? err : EIO;
+    errno = zsv_win_errno(rc);
     rc = (DWORD)errno;
   }
 

@@ -10,16 +10,21 @@
 FILE *zsv_fopen_longpath(const char *utf8_path, const char *mode) {
   wchar_t *wide_path_prefixed;
   DWORD dwDesiredAccess = 0;
-  DWORD dwShareMode = FILE_SHARE_READ; // Example default
+  DWORD dwShareMode = FILE_SHARE_READ | FILE_SHARE_WRITE; // as the CRT's fopen() shares
   DWORD dwCreationDisposition = 0;
   int c_runtime_flags = 0;
-  if (zsv_pathToPrefixedWidePath(utf8_path, &wide_path_prefixed))
+  DWORD rc = zsv_pathToPrefixedWidePath(utf8_path, &wide_path_prefixed);
+  if (rc) {
+    errno = zsv_win_errno(rc); // like fopen(), which callers report with errno
     return NULL;
+  }
 
   // --- 2. Determine CreateFileW params and _open_osfhandle flags from mode string ---
   if (strchr(mode, 'w')) {
     dwDesiredAccess |= GENERIC_WRITE;
-    dwCreationDisposition = CREATE_ALWAYS; // Overwrite or create
+    // Overwrite or create; with 'x' (C11 "wx"), fail if the file exists, as UCRT's
+    // fopen() does (msvcrt's fopen() rejects 'x' with EINVAL)
+    dwCreationDisposition = strchr(mode, 'x') ? CREATE_NEW : CREATE_ALWAYS;
     c_runtime_flags |= _O_WRONLY;
   } else if (strchr(mode, 'a')) {
     dwDesiredAccess |= GENERIC_WRITE | FILE_APPEND_DATA; // Or just GENERIC_WRITE and seek later
@@ -34,10 +39,7 @@ FILE *zsv_fopen_longpath(const char *utf8_path, const char *mode) {
   if (strchr(mode, '+')) { // Read and write modes
     dwDesiredAccess |= GENERIC_READ | GENERIC_WRITE;
     c_runtime_flags &= ~(_O_RDONLY | _O_WRONLY); // Clear read/write only flags
-    c_runtime_flags |= _O_RDWR;
-    if (!strchr(mode, 'w')) {              // If it wasn't 'w+', it implies 'r+' or 'a+'
-      dwCreationDisposition = OPEN_ALWAYS; // Make sure it opens if exists
-    }
+    c_runtime_flags |= _O_RDWR;                  // the disposition stays: "r+" needs the file, "a+" creates it
   }
 
   if (strchr(mode, 'b')) {
@@ -50,24 +52,34 @@ FILE *zsv_fopen_longpath(const char *utf8_path, const char *mode) {
   HANDLE hFile = CreateFileW(wide_path_prefixed, dwDesiredAccess, dwShareMode,
                              NULL, // Default security attributes
                              dwCreationDisposition, FILE_ATTRIBUTE_NORMAL, NULL);
+  DWORD create_err = hFile == INVALID_HANDLE_VALUE ? GetLastError() : 0; // before free() can change it
 
   free(wide_path_prefixed); // Don't need the string anymore
 
   if (hFile == INVALID_HANDLE_VALUE) {
-    // Handle CreateFileW error (use GetLastError())
+    errno = zsv_win_errno(create_err);
     return NULL;
   }
 
   // --- 4. Convert HANDLE to C file descriptor ---
   int fd = _open_osfhandle((intptr_t)hFile, c_runtime_flags);
   if (fd == -1) {
-    // Handle _open_osfhandle error
+    // Handle _open_osfhandle error, which set errno
+    int err = errno;
     CloseHandle(hFile); // Crucial: Close handle if fd conversion fails!
+    errno = err;
     return NULL;
   }
 
   // --- 5. Convert file descriptor to FILE* stream ---
-  FILE *fp = _fdopen(fd, mode);
+  // without 'x': CREATE_NEW has applied it, and a CRT may reject it in _fdopen()
+  char fd_mode[8];
+  size_t n = 0;
+  for (const char *m = mode; *m && n < sizeof(fd_mode) - 1; m++)
+    if (*m != 'x')
+      fd_mode[n++] = *m;
+  fd_mode[n] = '\0';
+  FILE *fp = _fdopen(fd, fd_mode);
   if (fp == NULL) {
     // Handle _fdopen error
     // Note: If _fdopen fails, the C runtime might or might not have
@@ -75,7 +87,9 @@ FILE *zsv_fopen_longpath(const char *utf8_path, const char *mode) {
     // it might not have, but closing the original hFile here is risky
     // as _fdopen might have associated it. Usually, _close(fd) is
     // appropriate here IF _fdopen fails, as _close *should* release the handle.
+    int err = errno;
     _close(fd); // Close the C descriptor; this should close the underlying handle.
+    errno = err;
     return NULL;
   }
 
