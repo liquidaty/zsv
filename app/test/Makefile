@@ -43,6 +43,26 @@ else
   BUILD_SUBDIR=win/${DBG_SUBDIR}
   EXE=.exe
 endif
+# suffix the compiler gives a host-compiled test binary (test_*.c): mingw adds .exe
+# to the -o name, so the rule's target must carry it. Under emcc EXE names the
+# zsv_* wrappers, while these binaries keep their bare name
+HOST_EXE=$(if $(filter 1,${WIN}),.exe,)
+
+# WSL passes a Windows executable only the environment variables WSLENV names, so
+# the variables these tests set per command (VAR=x ${PREFIX} ...) are added to it
+ifeq ($(WIN),1)
+  export WSLENV:=$(if ${WSLENV},${WSLENV}:)SOURCE_DATE_EPOCH:AI_AGENT
+endif
+
+# Windows executables write stdout in text mode, ending each line in \r\n. A check
+# that compares a line of a program's output exactly passes it through STRIP_CR,
+# which on Windows drops the trailing \r (as CMP, diff --strip-trailing-cr there, does), so
+# there it cannot tell \r\n output from \n output. Elsewhere it changes nothing
+ifeq ($(WIN),1)
+  STRIP_CR=awk '{sub(/\r$$/,"")}1'
+else
+  STRIP_CR=cat
+endif
 
 export THIS_LIB_BASE=$(shell cd ../.. && pwd)
 CCBN=$(shell basename ${CC})
@@ -174,6 +194,10 @@ else
   REDIRECT=>
   REDIRECT1=>
   REDIRECT2=-o
+  ifeq ($(WIN),1)
+    # Windows programs end their output lines in \r\n
+    CMP ?= diff --strip-trailing-cr
+  endif
   CMP ?= cmp
   export CMP
 endif
@@ -283,20 +307,20 @@ test-check-2: ${BUILD_DIR}/bin/zsv_check${EXE}
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 # Security regression test for integer underflow vulnerability
-test-vuln-cve-underflow: ${TMP_DIR}/test_vuln_cve_underflow
+test-vuln-cve-underflow: ${TMP_DIR}/test_vuln_cve_underflow${HOST_EXE}
 	@${TEST_INIT}
 	@$< && ${TEST_PASS} || ${TEST_FAIL}
 
-${TMP_DIR}/test_vuln_cve_underflow: test_vuln_cve_underflow.c ${BUILD_DIR}/lib/libzsv.a
+${TMP_DIR}/test_vuln_cve_underflow${HOST_EXE}: test_vuln_cve_underflow.c ${BUILD_DIR}/lib/libzsv.a
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} -I../../include test_vuln_cve_underflow.c -L${BUILD_DIR}/lib -lzsv -o $@
 
 ifneq ($(ZSV_EXTRAS),)
-  test-limit-rows-pull: ${TMP_DIR}/test_limit_rows_pull
+  test-limit-rows-pull: ${TMP_DIR}/test_limit_rows_pull${HOST_EXE}
 	@${TEST_INIT}
 	@$< && ${TEST_PASS} || ${TEST_FAIL}
 
-  ${TMP_DIR}/test_limit_rows_pull: test_limit_rows_pull.c ${BUILD_DIR}/lib/libzsv.a
+  ${TMP_DIR}/test_limit_rows_pull${HOST_EXE}: test_limit_rows_pull.c ${BUILD_DIR}/lib/libzsv.a
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} -I../../include test_limit_rows_pull.c -L${BUILD_DIR}/lib -lzsv -o $@
 endif
@@ -405,11 +429,11 @@ test-vuln-sql-crossjoin: ${BUILD_DIR}/bin/zsv_sql${EXE}
 # used by `zsv sql` to sandbox uncontrolled user SQL (CodeQL cpp/sql-injection
 # defense-in-depth). Verifies SELECT/READ/FUNCTION/RECURSIVE are allowed and
 # every write/DDL/ATTACH action is denied.
-test-vuln-sql-readonly: ${TMP_DIR}/test_sql_authorizer
+test-vuln-sql-readonly: ${TMP_DIR}/test_sql_authorizer${HOST_EXE}
 	@${TEST_INIT}
-	@${TMP_DIR}/test_sql_authorizer && ${TEST_PASS} || ${TEST_FAIL}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
 
-${TMP_DIR}/test_sql_authorizer: test_sql_authorizer.c ../sql_authorizer.h
+${TMP_DIR}/test_sql_authorizer${HOST_EXE}: test_sql_authorizer.c ../sql_authorizer.h
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} -I.. test_sql_authorizer.c -o $@
 
@@ -596,10 +620,10 @@ test-stdin-filename-select test-stdin-filename-select-pull: test-stdin-filename-
 	@mkdir -p ${TMP_DIR}/$@
 	@printf 'Col,Type\nA,B\n1,x\n2,y\n' > ${TMP_DIR}/$@/data.csv
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@/file.csv -d 2 >/dev/null
-	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv < ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv - < ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv -d 1 < ${TMP_DIR}/$@/data.csv 2>/dev/null | head -1`; [ "$$h" = "Col,Type" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col,Type" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv < ${TMP_DIR}/$@/data.csv | head -1 | ${STRIP_CR}`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv - < ${TMP_DIR}/$@/data.csv | head -1 | ${STRIP_CR}`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv -d 1 < ${TMP_DIR}/$@/data.csv 2>/dev/null | head -1 | ${STRIP_CR}`; [ "$$h" = "Col,Type" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv ${TMP_DIR}/$@/data.csv | head -1 | ${STRIP_CR}`; [ "$$h" = "Col,Type" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${RC_PREFIX} $< --stdin-filename >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${RC_PREFIX} $< --stdin-filename - >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 
@@ -623,7 +647,7 @@ test-stdin-filename-sql: ${BUILD_DIR}/bin/zsv_sql${EXE} ${BUILD_DIR}/bin/zsv_pro
 	@mkdir -p ${TMP_DIR}/$@
 	@printf 'Col,Type\nA,B\n1,x\n2,y\n' > ${TMP_DIR}/$@/data.csv
 	@${PREFIX} ${BUILD_DIR}/bin/zsv_prop${EXE} ${TMP_DIR}/$@/file.csv -d 2 >/dev/null
-	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv - 'select * from data' < ${TMP_DIR}/$@/data.csv | head -1`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --stdin-filename ${TMP_DIR}/$@/file.csv - 'select * from data' < ${TMP_DIR}/$@/data.csv | head -1 | ${STRIP_CR}`; [ "$$h" = "Col A,Type B" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-merge-select test-merge-select-pull: test-merge-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -639,22 +663,22 @@ test-rename-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@printf 'id,name,amount\n1,a,10\n2,b,20\n' > ${TMP_DIR}/$@-r.csv
 	@printf 'id,,amount\n1,x,10\n2,y,20\n' > ${TMP_DIR}/$@-blank.csv
 	@printf 'id,name,name,amount\n1,a,b,10\n2,c,d,20\n' > ${TMP_DIR}/$@-dup.csv
-	@h=`${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv | head -1`; [ "$$h" = "id,full_name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@h=`${PREFIX} $< --rename '#3=amt' ${TMP_DIR}/$@-r.csv | head -1`; [ "$$h" = "id,name,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@h=`${PREFIX} $< --rename '#2=subtype' ${TMP_DIR}/$@-blank.csv | head -1`; [ "$$h" = "id,subtype,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@h=`${PREFIX} $< --rename 'name=n' ${TMP_DIR}/$@-dup.csv | head -1`; [ "$$h" = "id,n,n,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@h=`${PREFIX} $< --rename '#2=first_name' ${TMP_DIR}/$@-dup.csv | head -1`; [ "$$h" = "id,first_name,name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@h=`${PREFIX} $< -n --rename '#2=subtype' ${TMP_DIR}/$@-blank.csv -- 1 2 | head -1`; [ "$$h" = "id,subtype" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv | head -1 | ${STRIP_CR}`; [ "$$h" = "id,full_name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#3=amt' ${TMP_DIR}/$@-r.csv | head -1 | ${STRIP_CR}`; [ "$$h" = "id,name,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#2=subtype' ${TMP_DIR}/$@-blank.csv | head -1 | ${STRIP_CR}`; [ "$$h" = "id,subtype,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename 'name=n' ${TMP_DIR}/$@-dup.csv | head -1 | ${STRIP_CR}`; [ "$$h" = "id,n,n,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#2=first_name' ${TMP_DIR}/$@-dup.csv | head -1 | ${STRIP_CR}`; [ "$$h" = "id,first_name,name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< -n --rename '#2=subtype' ${TMP_DIR}/$@-blank.csv -- 1 2 | head -1 | ${STRIP_CR}`; [ "$$h" = "id,subtype" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv | tail -n +2 > ${TMP_DIR}/$@-data.out; tail -n +2 ${TMP_DIR}/$@-r.csv > ${TMP_DIR}/$@-data.exp; ${CMP} ${TMP_DIR}/$@-data.out ${TMP_DIR}/$@-data.exp && ${TEST_PASS} || ${TEST_FAIL}
 	@${RC_PREFIX} $< --rename 'nope=x' ${TMP_DIR}/$@-r.csv >/dev/null 2>${TMP_DIR}/$@-err.txt; rc=$$?; grep -q nope ${TMP_DIR}/$@-err.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${RC_PREFIX} $< --rename '#9=x' ${TMP_DIR}/$@-r.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 # hash-escape addendum (AC14-AC18): address columns whose name begins with '#'
 	@printf 'id,#foo,amt\n1,a,10\n' > ${TMP_DIR}/$@-hf.csv
 	@printf 'id,#5,amt\n1,a,10\n' > ${TMP_DIR}/$@-h5.csv
-	@h=`${PREFIX} $< --rename '\#foo=x' ${TMP_DIR}/$@-hf.csv | head -1`; [ "$$h" = "id,x,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@h=`${PREFIX} $< --rename '#foo=x' ${TMP_DIR}/$@-hf.csv | head -1`; [ "$$h" = "id,x,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@h=`${PREFIX} $< --rename '\#5=NEW' ${TMP_DIR}/$@-h5.csv | head -1`; [ "$$h" = "id,NEW,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
-	@h=`${PREFIX} $< --rename '#2=b' ${TMP_DIR}/$@-r.csv | head -1`; [ "$$h" = "id,b,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '\#foo=x' ${TMP_DIR}/$@-hf.csv | head -1 | ${STRIP_CR}`; [ "$$h" = "id,x,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#foo=x' ${TMP_DIR}/$@-hf.csv | head -1 | ${STRIP_CR}`; [ "$$h" = "id,x,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '\#5=NEW' ${TMP_DIR}/$@-h5.csv | head -1 | ${STRIP_CR}`; [ "$$h" = "id,NEW,amt" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`${PREFIX} $< --rename '#2=b' ${TMP_DIR}/$@-r.csv | head -1 | ${STRIP_CR}`; [ "$$h" = "id,b,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${RC_PREFIX} $< --rename '#5=oops' ${TMP_DIR}/$@-h5.csv >/dev/null 2>&1; rc=$$?; [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 # unmatched escaped selector reports the RESOLVED literal name (#9), not the raw arg (\#9)
 	@${RC_PREFIX} $< --rename '\#9=x' ${TMP_DIR}/$@-hf.csv >/dev/null 2>${TMP_DIR}/$@-err2.txt; rc=$$?; grep -q '"#9"' ${TMP_DIR}/$@-err2.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
@@ -665,7 +689,12 @@ test-rename-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 # F1b: a pre-existing -o target is preserved (not truncated) on a header-phase error
 	@printf 'KEEP\n' > ${TMP_DIR}/$@-okeep.csv; ${PREFIX} $< --rename '#9=x' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-okeep.csv >/dev/null 2>&1; g=`cat ${TMP_DIR}/$@-okeep.csv 2>/dev/null`; [ "$$g" = "KEEP" ] && ${TEST_PASS} || ${TEST_FAIL}
 # F1b: a successful --rename with -o still writes the file with the renamed header
-	@rm -f ${TMP_DIR}/$@-ook.csv; ${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-ook.csv >/dev/null 2>&1; h=`head -1 ${TMP_DIR}/$@-ook.csv 2>/dev/null`; [ "$$h" = "id,full_name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@rm -f ${TMP_DIR}/$@-ook.csv; ${PREFIX} $< --rename 'name=full_name' ${TMP_DIR}/$@-r.csv -o ${TMP_DIR}/$@-ook.csv >/dev/null 2>&1; h=`head -1 ${TMP_DIR}/$@-ook.csv 2>/dev/null | ${STRIP_CR}`; [ "$$h" = "id,full_name,amount" ] && ${TEST_PASS} || ${TEST_FAIL}
+
+# Under WSL a Windows executable receives stdin redirected from a file as a pipe, so the
+# test-sample-select checks that redirect a file into stdin also accept the pipe result there;
+# the comparison with the file result, which is expected to fail, is silenced
+SAMPLE_OR_PIPE=$(if $(filter 1,${WIN}),>/dev/null || ${CMP} $(1) $(2),)
 
 # --sample-size: n rows chosen uniformly at random, in input order, from the rows passing -D/-H/-s.
 # A regular file (or stdin redirected from one) is counted then sampled (Algorithm S); a pipe is
@@ -677,7 +706,7 @@ test-sample-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${PREFIX} $< --sample-size 5 --seed 42 ${TMP_DIR}/$@.csv ${REDIRECT} ${TMP_DIR}/$@-file.out
 	@${CMP} ${TMP_DIR}/$@-file.out expected/$@-file.out && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< --sample-size 5 --seed 42 < ${TMP_DIR}/$@.csv ${REDIRECT} ${TMP_DIR}/$@-redirect.out
-	@${CMP} ${TMP_DIR}/$@-redirect.out expected/$@-file.out && ${TEST_PASS} || ${TEST_FAIL}
+	@${CMP} ${TMP_DIR}/$@-redirect.out expected/$@-file.out $(call SAMPLE_OR_PIPE,${TMP_DIR}/$@-redirect.out,expected/$@-pipe.out) && ${TEST_PASS} || ${TEST_FAIL}
 	@cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --sample-size 5 --seed 42 ${REDIRECT} ${TMP_DIR}/$@-pipe.out
 	@${CMP} ${TMP_DIR}/$@-pipe.out expected/$@-pipe.out && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< -s 7 --sample-size 3 --seed 1 ${TMP_DIR}/$@.csv ${REDIRECT} ${TMP_DIR}/$@-search-file.out
@@ -692,17 +721,17 @@ test-sample-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	  if [ "$$in" = "-" ]; then cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --sample-size 7 > ${TMP_DIR}/$@-prop.out; \
 	  else ${PREFIX} $< --sample-size 7 $$in > ${TMP_DIR}/$@-prop.out; fi; \
 	  [ `wc -l < ${TMP_DIR}/$@-prop.out` -eq 8 ] && ${TEST_PASS} || { ${TEST_FAIL}; f=1; }; \
-	  [ "`head -1 ${TMP_DIR}/$@-prop.out`" = "id,val" ] && ${TEST_PASS} || { ${TEST_FAIL}; f=1; }; \
+	  [ "`head -1 ${TMP_DIR}/$@-prop.out | ${STRIP_CR}`" = "id,val" ] && ${TEST_PASS} || { ${TEST_FAIL}; f=1; }; \
 	  tail -n +2 ${TMP_DIR}/$@-prop.out | cut -d, -f1 | awk 'NR>1 && $$1<=p {exit 1} {p=$$1}' && ${TEST_PASS} || { ${TEST_FAIL}; f=1; }; \
-	  grep -vFxf ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-prop.out | grep -q . && { ${TEST_FAIL}; f=1; } || ${TEST_PASS}; \
+	  ${STRIP_CR} < ${TMP_DIR}/$@-prop.out | grep -vFxf ${TMP_DIR}/$@.csv | grep -q . && { ${TEST_FAIL}; f=1; } || ${TEST_PASS}; \
 	done; [ $$f -eq 0 ]
 # n >= N: identical to the input, on both paths; header-only input: header only
 	@${PREFIX} $< --sample-size 1000 ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-all-file.out; ${CMP} ${TMP_DIR}/$@-all-file.out ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL}
 	@cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --sample-size 1000 > ${TMP_DIR}/$@-all-pipe.out; ${CMP} ${TMP_DIR}/$@-all-pipe.out ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL}
-	@h=`printf 'a,b\n' | ${PREFIX} $< --sample-size 3`; [ "$$h" = "a,b" ] && ${TEST_PASS} || ${TEST_FAIL}
+	@h=`printf 'a,b\n' | ${PREFIX} $< --sample-size 3 | ${STRIP_CR}`; [ "$$h" = "a,b" ] && ${TEST_PASS} || ${TEST_FAIL}
 # a stream handed over already positioned past byte 0 is counted from that position, not rewound to 0
 # (seeded, n < N: a count pass that rewound to byte 0 would count a different population and pick different rows)
-	@tail -c +13 ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-pos.csv; ${PREFIX} $< --sample-size 5 --seed 3 ${TMP_DIR}/$@-pos.csv > ${TMP_DIR}/$@-pos.exp; { dd bs=1 count=12 >/dev/null 2>&1; ${PREFIX} $< --sample-size 5 --seed 3; } < ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-pos.out; ${CMP} ${TMP_DIR}/$@-pos.out ${TMP_DIR}/$@-pos.exp && [ `wc -l < ${TMP_DIR}/$@-pos.out` -eq 6 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@tail -c +13 ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-pos.csv; ${PREFIX} $< --sample-size 5 --seed 3 ${TMP_DIR}/$@-pos.csv > ${TMP_DIR}/$@-pos.exp; $(if $(filter 1,${WIN}),cat ${TMP_DIR}/$@-pos.csv | ${PREFIX} $< --sample-size 5 --seed 3 > ${TMP_DIR}/$@-pos-pipe.exp;) { dd bs=1 count=12 >/dev/null 2>&1; ${PREFIX} $< --sample-size 5 --seed 3; } < ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-pos.out; ${CMP} ${TMP_DIR}/$@-pos.out ${TMP_DIR}/$@-pos.exp $(call SAMPLE_OR_PIPE,${TMP_DIR}/$@-pos.out,${TMP_DIR}/$@-pos-pipe.exp) && [ `wc -l < ${TMP_DIR}/$@-pos.out` -eq 6 ] && ${TEST_PASS} || ${TEST_FAIL}
 # -D and -H bound the population on both paths (-H 5 with -D 3 leaves rows 4 and 5)
 	@c=`${PREFIX} $< -D 90 --sample-size 20 ${TMP_DIR}/$@.csv | tail -n +2 | awk -F, '$$1>90' | wc -l`; [ "$$c" -eq 10 ] && ${TEST_PASS} || ${TEST_FAIL}
 	@c=`cat ${TMP_DIR}/$@.csv | ${PREFIX} $< -D 90 --sample-size 20 | tail -n +2 | awk -F, '$$1>90' | wc -l`; [ "$$c" -eq 10 ] && ${TEST_PASS} || ${TEST_FAIL}
@@ -725,13 +754,14 @@ test-sample-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${PREFIX} $< ${TMP_DIR}/$@-q.csv > ${TMP_DIR}/$@-q.exp; cat ${TMP_DIR}/$@-q.csv | ${PREFIX} $< --sample-size 10 > ${TMP_DIR}/$@-q.out; ${CMP} ${TMP_DIR}/$@-q.out ${TMP_DIR}/$@-q.exp && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< -w ${TMP_DIR}/$@-q.csv > ${TMP_DIR}/$@-qw.exp; cat ${TMP_DIR}/$@-q.csv | ${PREFIX} $< -w --sample-size 10 > ${TMP_DIR}/$@-qw.out; ${CMP} ${TMP_DIR}/$@-qw.out ${TMP_DIR}/$@-qw.exp && ${TEST_PASS} || ${TEST_FAIL}
 # column selection and --no-header compose with sampling
-	@c=`cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --no-header -n --sample-size 5 -- 2 | grep -cx x`; [ "$$c" -eq 5 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@c=`cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --no-header -n --sample-size 5 -- 2 | ${STRIP_CR} | grep -cx x`; [ "$$c" -eq 5 ] && ${TEST_PASS} || ${TEST_FAIL}
 # --seed is reproducible, for --sample-pct too
 	@${PREFIX} $< --sample-pct 30 --seed 7 ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-pct1.out; ${PREFIX} $< --sample-pct 30 --seed 7 ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-pct2.out; ${CMP} ${TMP_DIR}/$@-pct1.out ${TMP_DIR}/$@-pct2.out && [ `wc -l < ${TMP_DIR}/$@-pct1.out` -gt 1 ] && ${TEST_PASS} || ${TEST_FAIL}
 	@${PREFIX} $< --sample-pct 30 --seed 8 ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@-pct3.out; cmp -s ${TMP_DIR}/$@-pct1.out ${TMP_DIR}/$@-pct3.out && ${TEST_FAIL} || ${TEST_PASS}
-	@cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --sample-size 5 --seed 8 > ${TMP_DIR}/$@-seed8.out; cmp -s ${TMP_DIR}/$@-seed8.out expected/$@-pipe.out && ${TEST_FAIL} || ${TEST_PASS}
-# a FIFO has a path but is not rewindable: must take the reservoir path rather than draining it in a count pass
-	@if command -v mkfifo >/dev/null 2>&1; then rm -f ${TMP_DIR}/$@.fifo; mkfifo ${TMP_DIR}/$@.fifo; (cat ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@.fifo &); c=`${PREFIX} $< --sample-size 5 ${TMP_DIR}/$@.fifo | wc -l`; rm -f ${TMP_DIR}/$@.fifo; [ "$$c" -eq 6 ] && ${TEST_PASS} || ${TEST_FAIL}; fi
+	@cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --sample-size 5 --seed 8 > ${TMP_DIR}/$@-seed8.out; ${CMP} ${TMP_DIR}/$@-seed8.out expected/$@-pipe.out >/dev/null && ${TEST_FAIL} || ${TEST_PASS}
+# a FIFO has a path but is not rewindable: must take the reservoir path rather than draining it in a count pass.
+# Not on Windows, where a Linux FIFO reached through WSL's file share can block the executable
+	@if [ "${WIN}" = 1 ]; then ${TEST_SKIP}; elif command -v mkfifo >/dev/null 2>&1; then rm -f ${TMP_DIR}/$@.fifo; mkfifo ${TMP_DIR}/$@.fifo; (cat ${TMP_DIR}/$@.csv > ${TMP_DIR}/$@.fifo &); c=`${PREFIX} $< --sample-size 5 ${TMP_DIR}/$@.fifo | wc -l`; rm -f ${TMP_DIR}/$@.fifo; [ "$$c" -eq 6 ] && ${TEST_PASS} || ${TEST_FAIL}; fi
 # a --sample-size far beyond the input must not reserve memory for it up front
 	@c=`cat ${TMP_DIR}/$@.csv | ${PREFIX} $< --sample-size 1000000000000 | wc -l`; [ "$$c" -eq 101 ] && ${TEST_PASS} || ${TEST_FAIL}
 # errors: non-zero exit (< 128), nothing on stdout
@@ -743,23 +773,23 @@ test-sample-select: ${BUILD_DIR}/bin/zsv_select${EXE}
 	@awk 'BEGIN{for(r=0;r<2;r++){for(i=1;i<=300;i++)printf "%s%d", (i>1?",":""), r*1000+i; print ""}}' > ${TMP_DIR}/$@-wide.csv
 	@c=`${PREFIX} $< -W ${TMP_DIR}/$@-wide.csv | tail -1 | tr ',' '\n' | wc -l`; [ "$$c" -eq 300 ] && ${TEST_PASS} || ${TEST_FAIL}
 
-test-rng: ${TMP_DIR}/test_rng
+test-rng: ${TMP_DIR}/test_rng${HOST_EXE}
 	@${TEST_INIT}
 	@$< && ${TEST_PASS} || ${TEST_FAIL}
 
-${TMP_DIR}/test_rng: test_rng.c ../utils/rng.c
+${TMP_DIR}/test_rng${HOST_EXE}: test_rng.c ../utils/rng.c
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -I../../include test_rng.c ../utils/rng.c -o $@
 
-test-sheet-edits: ${TMP_DIR}/test_sheet_edits
+test-sheet-edits: ${TMP_DIR}/test_sheet_edits${HOST_EXE}
 	@${TEST_INIT}
 	@$< && ${TEST_PASS} || ${TEST_FAIL}
 
-${TMP_DIR}/test_sheet_edits: test_sheet_edits.c ../sheet/edits.c ../sheet/edits.h
+${TMP_DIR}/test_sheet_edits${HOST_EXE}: test_sheet_edits.c ../sheet/edits.c ../sheet/edits.h
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} test_sheet_edits.c ../sheet/edits.c -o $@
 
-test-args: ${TMP_DIR}/test_args
+test-args: ${TMP_DIR}/test_args${HOST_EXE}
 	@${TEST_INIT}
 	@$< 2>${TMP_DIR}/$@.err && ${TEST_PASS} || (cat ${TMP_DIR}/$@.err; ${TEST_FAIL})
 
@@ -771,11 +801,11 @@ else
 TEST_ARGS_CC=${CC} ${CFLAGS} ${CFLAGS_AUTO}
 endif
 
-${TMP_DIR}/test_args: test_args.c ../utils/arg.c ../../include/zsv/utils/arg.h
+${TMP_DIR}/test_args${HOST_EXE}: test_args.c ../utils/arg.c ../../include/zsv/utils/arg.h
 	@mkdir -p ${TMP_DIR}
 	@${TEST_ARGS_CC} -DZSV_EXTRAS -I../../include test_args.c ../utils/arg.c -o $@
 
-test-mkdirs: ${TMP_DIR}/test_mkdirs
+test-mkdirs: ${TMP_DIR}/test_mkdirs${HOST_EXE}
 	@${TEST_INIT}
 	@rm -rf ${TMP_DIR}/$@ && mkdir -p ${TMP_DIR}/$@
 	@$< ${TMP_DIR}/$@ && ${TEST_PASS} || ${TEST_FAIL}
@@ -785,11 +815,11 @@ test-mkdirs: ${TMP_DIR}/test_mkdirs
 ../../include/zsv.h: ../../include/zsv.h.in
 	${MAKE} -C ../../src ../include/zsv.h CONFIGFILE=${CONFIGFILEPATH}
 
-${TMP_DIR}/test_mkdirs: test_mkdirs.c ../utils/dirs.c ../../include/zsv/utils/dirs.h ../../include/zsv.h
+${TMP_DIR}/test_mkdirs${HOST_EXE}: test_mkdirs.c ../utils/dirs.c ../../include/zsv/utils/dirs.h ../../include/zsv.h
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -DZSV_NO_JQ -I../../include test_mkdirs.c ../utils/dirs.c -o $@
 
-test-replace-file: ${TMP_DIR}/test_replace_file${EXE}
+test-replace-file: ${TMP_DIR}/test_replace_file${HOST_EXE}
 	@${TEST_INIT}
 	@$< ${TMP_DIR} 2>${TMP_DIR}/$@.err && ${TEST_PASS} || (cat ${TMP_DIR}/$@.err; ${TEST_FAIL})
 
@@ -802,11 +832,11 @@ ifeq ($(WIN),1)
   TEST_REPLACE_FILE_DEP+=../utils/win/io.h ../utils/win/fopen_longpath.c ../utils/win/remove_longpath.c
 endif
 
-${TMP_DIR}/test_replace_file${EXE}: ${TEST_REPLACE_FILE_SRC} ${TEST_REPLACE_FILE_DEP}
+${TMP_DIR}/test_replace_file${HOST_EXE}: ${TEST_REPLACE_FILE_SRC} ${TEST_REPLACE_FILE_DEP}
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -I../../include ${TEST_REPLACE_FILE_SRC} -o $@
 
-test-strcasestr: ${TMP_DIR}/test_strcasestr
+test-strcasestr: ${TMP_DIR}/test_strcasestr${HOST_EXE}
 	@${TEST_INIT}
 	@$< && ${TEST_PASS} || ${TEST_FAIL}
 
@@ -816,7 +846,7 @@ UTF8PROC_SRC=$(realpath ..)/external/utf8proc-2.11.3
 ${UTF8PROC_SRC}/utf8proc.c:
 	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
-${TMP_DIR}/test_strcasestr: test_strcasestr.c ../utils/string.c ${UTF8PROC_SRC}/utf8proc.c
+${TMP_DIR}/test_strcasestr${HOST_EXE}: test_strcasestr.c ../utils/string.c ${UTF8PROC_SRC}/utf8proc.c
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -I../../include -I${UTF8PROC_SRC} -DUTF8PROC_STATIC \
 	  -DZSV_UTILS_STRING_STANDALONE -DZSV_STRING_LIB_ONLY \
@@ -1018,7 +1048,7 @@ test-stack: test-stack1 test-stack2 test-stack3 test-stack4 test-stack-filename
 
 test-stack-filename: ${BUILD_DIR}/bin/zsv_stack${EXE}
 	@${TEST_INIT}
-	@cd ${TEST_DATA_DIR} && ${PREFIX} $< --prepend-filename stack[12].csv ${REDIRECT} ${TMP_DIR}/$@.out
+	@cd ${TEST_DATA_DIR} && ${PREFIX} $< --prepend-filename stack[12].csv ${REDIRECT} $(abspath ${TMP_DIR})/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-stack1: ${BUILD_DIR}/bin/zsv_stack${EXE}
@@ -1212,7 +1242,7 @@ test-sql-dupcol-default: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@printf 'BV_NUM,name,amount,BV_NUM\n1,a,10,100\n' > ${TMP_DIR}/$@.csv
 	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err; \
-	  rc=$$?; h=$$(sed -n '1p' ${TMP_DIR}/$@.out); n=$$(grep -c -i 'auto-renamed' ${TMP_DIR}/$@.err); \
+	  rc=$$?; h=$$(sed -n '1p' ${TMP_DIR}/$@.out | ${STRIP_CR}); n=$$(grep -c -i 'auto-renamed' ${TMP_DIR}/$@.err); \
 	  [ "$$rc" = "0" ] && [ "$$h" = "BV_NUM,name,amount,BV_NUM_2" ] && [ "$$n" = "1" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 # F7 G3/G4: three 'a' columns -> a,a_2,a_3,b, and the two renames COLLAPSE to one line.
@@ -1220,7 +1250,7 @@ test-sql-dupcol-3x: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@printf 'a,a,a,b\n1,2,3,4\n' > ${TMP_DIR}/$@.csv
 	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err; \
-	  rc=$$?; h=$$(sed -n '1p' ${TMP_DIR}/$@.out); n=$$(grep -c -i 'auto-renamed' ${TMP_DIR}/$@.err); \
+	  rc=$$?; h=$$(sed -n '1p' ${TMP_DIR}/$@.out | ${STRIP_CR}); n=$$(grep -c -i 'auto-renamed' ${TMP_DIR}/$@.err); \
 	  [ "$$rc" = "0" ] && [ "$$h" = "a,a_2,a_3,b" ] && [ "$$n" = "1" ] && ${TEST_PASS} || ${TEST_FAIL}
 
 # F7 G8 + decision D1 (collision-stability): a,a,a_2 -> a,a_3,a_2. The synthesized name
@@ -1229,7 +1259,7 @@ test-sql-dupcol-collide: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@printf 'a,a,a_2\n1,2,3\n' > ${TMP_DIR}/$@.csv
 	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err; \
-	  rc=$$?; h=$$(sed -n '1p' ${TMP_DIR}/$@.out); \
+	  rc=$$?; h=$$(sed -n '1p' ${TMP_DIR}/$@.out | ${STRIP_CR}); \
 	  uq=$$(printf '%s' "$$h" | tr ',' '\n' | sort -u | grep -c .); \
 	  [ "$$rc" = "0" ] && [ "$$h" = "a,a_3,a_2" ] && [ "$$uq" = "3" ] && ${TEST_PASS} || ${TEST_FAIL}
 
@@ -1238,7 +1268,7 @@ test-sql-dupcol-caseins: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	@${TEST_INIT}
 	@printf 'BV_NUM,bv_num\n1,2\n' > ${TMP_DIR}/$@.csv
 	@${PREFIX} $< ${TMP_DIR}/$@.csv 'select * from data' > ${TMP_DIR}/$@.out 2> ${TMP_DIR}/$@.err; \
-	  rc=$$?; h=$$(sed -n '1p' ${TMP_DIR}/$@.out); \
+	  rc=$$?; h=$$(sed -n '1p' ${TMP_DIR}/$@.out | ${STRIP_CR}); \
 	  tot=$$(printf '%s' "$$h" | tr ',' '\n' | grep -c .); \
 	  [ "$$rc" = "0" ] && [ "$$tot" = "2" ] && ${TEST_PASS} || ${TEST_FAIL}
 

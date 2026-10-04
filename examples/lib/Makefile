@@ -66,6 +66,10 @@ TEST_SKIP=printf "${COLOR_BLUE}$@: ${COLOR_YELLOW}Skipped${COLOR_NONE}\n"
 TEST_PASS=printf "${COLOR_BLUE}$@: ${COLOR_GREEN}Passed${COLOR_NONE}\n"
 TEST_FAIL=(printf "${COLOR_BLUE}$@: ${COLOR_RED}Failed!${COLOR_NONE}\n" && exit 1)
 
+ifeq ($(WIN),1)
+  # Windows programs end their output lines in \r\n
+  CMP ?= diff --strip-trailing-cr
+endif
 CMP ?= cmp
 export CMP
 

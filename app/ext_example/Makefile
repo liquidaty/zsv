@@ -45,6 +45,10 @@ else
   TOON_HELP_FILTER=cat
 endif
 
+ifeq ($(WIN),1)
+  # Windows programs end their output lines in \r\n
+  CMP ?= diff --strip-trailing-cr
+endif
 CMP ?= cmp
 export CMP
 
@@ -135,11 +139,17 @@ endif
 
 CLI=${BUILD_DIR}/bin/cli${EXE}
 
+# RUN_CLI sets ZSV_CONFIG_DIR and ZSV_PROG_NAME, and WSL passes a Windows executable only the
+# variables WSLENV names. ZSV_CONFIG_DIR needs no /p path translation because TMP_DIR is relative
+ifeq ($(WIN),1)
+  export WSLENV:=$(if ${WSLENV},${WSLENV}:)ZSV_CONFIG_DIR:ZSV_PROG_NAME
+endif
+
 # Pin the program name so help/usage output matches the expected fixtures
 # regardless of the build-dir binary name (basename(argv[0]) would otherwise be "cli").
 RUN_CLI=ZSV_CONFIG_DIR=${TMP_DIR} ZSV_PROG_NAME=zsv ${CLI}
 
-${BUILD_DIR}/bin/cli:
+${CLI}:
 	${MAKE} -C .. build-cli CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
 
 ${BUILD_DIR}/objs/utils/%.o:

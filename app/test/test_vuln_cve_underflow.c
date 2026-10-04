@@ -86,7 +86,9 @@ static int run_case(const char *name, const unsigned char *payload, size_t paylo
   zsv_set_context(parser, parser);
 
   signal(SIGSEGV, signal_handler);
+#ifdef SIGBUS // not defined on Windows
   signal(SIGBUS, signal_handler);
+#endif
   signal(SIGABRT, signal_handler);
 
   if (setjmp(crash_jmp) != 0) {
