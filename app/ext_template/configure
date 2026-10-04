@@ -319,6 +319,13 @@ case "$host" in
 	;;
 esac
 
+# config.mk's MINGW tells the Makefiles to build for Windows (.exe, Win32 code). An
+# MSYS-runtime host shares the settings above but runs POSIX code, so it gets 0
+case "$host" in
+    *-*msys*) MINGW_TARGET=0 ;;
+    *) MINGW_TARGET=$MINGW ;;
+esac
+
 if test "$usepie" = "auto" ; then
 usepie=yes
 fi
@@ -434,6 +441,7 @@ MANPREFIX = $MANDIR
 SHAREPREFIX = $SHAREDIR
 CC = $CC
 AWK = $AWK
+MINGW = $MINGW_TARGET
 AR = $AR
 RANLIB = $RANLIB
 LLVM_PROFDATA = $LLVM_PROFDATA

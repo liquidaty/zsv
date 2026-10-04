@@ -594,13 +594,20 @@ case "$host" in
     ;;
 esac
 
+# config.mk's MINGW tells the Makefiles to build for Windows (.exe, Win32 code). An
+# MSYS-runtime host shares the settings above but runs POSIX code, so it gets 0
+case "$host" in
+    *-*msys*) MINGW_TARGET=0 ;;
+    *) MINGW_TARGET=$MINGW ;;
+esac
+
 #
 # Find windres, which compiles the application manifest every Windows executable
 # links (app/win/utf8-manifest.rc). A prefixed one (from the host triple, or from
 # CC as in x86_64-w64-mingw32-clang) targets the right machine; a bare windres
 # may default to another
 #
-if test "$MINGW" = "1" ; then
+if test "$MINGW_TARGET" = "1" ; then
     printf "checking for windres... "
     for w in "$host-windres" "${CC%-*}-windres" windres; do trywindres "$w"; done
     printf "%s\n" "$WINDRES"
@@ -1012,6 +1019,7 @@ CC = $CC
 AWK = $AWK
 MAKE = $MAKE
 
+MINGW = $MINGW_TARGET
 AR = $AR
 RANLIB = $RANLIB
 WINDRES = $WINDRES
