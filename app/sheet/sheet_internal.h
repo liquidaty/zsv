@@ -1,8 +1,14 @@
 #ifndef ZSVSHEET_INTERNAL_H
 #define ZSVSHEET_INTERNAL_H
 
+#include <stddef.h>
+
 #define ZSVSHEET_ROWNUM_HEADER "Row #"
 #define ZSVSHEET_ROWNUM_HEADER_LEN strlen(ZSVSHEET_ROWNUM_HEADER)
+
+// tenths of a second getch() waits for a key before returning ERR (halfdelay()'s unit). The
+// tick this sets is also the idle clock of the cell overlay, so both follow this setting
+#define ZSVSHEET_INPUT_TIMEOUT_TENTHS 2
 
 enum zsvsheet_priv_status {
   zsvsheet_priv_status_ok = 0,

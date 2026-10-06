@@ -109,6 +109,7 @@ static int zsvsheet_parse_compare(const char *spec, struct zsvsheet_compare_opts
 }
 
 #include "sheet/utf8-width.c"
+#include "sheet/cell-overlay.c"
 #include "sheet/edits.c"
 #include "sheet/ui_buffer.c"
 #include "sheet/index.c"
@@ -165,9 +166,10 @@ static size_t zsvsheet_cell_display_width(struct zsvsheet_ui_buffer *ui_buffer,
   return width < ZSVSHEET_CELL_DISPLAY_MIN_WIDTH ? ZSVSHEET_CELL_DISPLAY_MIN_WIDTH : width;
 }
 
-static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t input_header_span,
-                                    struct zsvsheet_display_dimensions *ddims, const struct zsvsheet_compare_opts *cmp,
-                                    char edit_mode);
+struct zsvsheet_sheet_context;
+
+static void display_buffer_subtable(struct zsvsheet_sheet_context *state, struct zsvsheet_ui_buffer *ui_buffer,
+                                    size_t input_header_span);
 
 static void zsvsheet_priv_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt,
                                      ...);
@@ -194,6 +196,7 @@ struct zsvsheet_sheet_context {
   size_t keypress_count;         // keys pressed so far
   size_t discard_offer_keypress; // the <esc> that offered to discard a modified buffer (0: none);
                                  // only the next key can accept, so it is on the same buffer
+  size_t idle_ticks;             // input timeouts since the last key, the cell overlay's idle clock
 };
 
 static void update_numeric_input(const int ch, struct zsvsheet_sheet_context *state) {
@@ -552,6 +555,8 @@ static void zsvsheet_status_prefix(const struct zsvsheet_display_dimensions *ddi
   zsvsheet_display_status_text(ddims);
 }
 
+static char *zsvsheet_one_line(char *dst, size_t dstsz, const char *src);
+
 static void zsvsheet_priv_set_status(const struct zsvsheet_display_dimensions *ddims, int overwrite, const char *fmt,
                                      ...) {
   if (overwrite || !*zsvsheet_status_text) {
@@ -564,6 +569,10 @@ static void zsvsheet_priv_set_status(const struct zsvsheet_display_dimensions *d
     }
     va_end(args);
     // note: if (n < (int)sizeof(zsvsheet_status_text)), then we just ignore
+    // a status message can echo what the user typed (a file name, a search term): map what a
+    // terminal would draw in a width of its own, as a cell value is mapped, so that the columns
+    // this text measures as are the columns it is drawn as and the cell value placed after it
+    zsvsheet_one_line(zsvsheet_status_text, sizeof(zsvsheet_status_text), zsvsheet_status_text);
   }
   zsvsheet_display_status_text(ddims);
 }
@@ -1471,11 +1480,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 #endif
 
   zsvsheet_check_buffer_worker_updates(current_ui_buffer, &display_dims, &handler_state);
-  display_buffer_subtable(current_ui_buffer, header_span, &display_dims, &handler_state.compare,
-                          handler_state.edit_mode);
+  display_buffer_subtable(&handler_state, current_ui_buffer, header_span);
 
-  // now ncurses getch() will fire every 2-tenths of a second so we can check for status update
-  halfdelay(2);
+  // now ncurses getch() will fire every ZSVSHEET_INPUT_TIMEOUT_TENTHS tenths of a second so we can
+  // check for status update
+  halfdelay(ZSVSHEET_INPUT_TIMEOUT_TENTHS);
   if (zsvsheet_keys_reach_app()) // after halfdelay(), which sets its own terminal mode
     zsvsheet_ui_buffer_set_status(current_ui_buffer, "Unable to set up the terminal: <ctrl>c may quit");
 
@@ -1488,6 +1497,11 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
 
     if (ch != ERR) {
       handler_state.keypress_count++;
+      handler_state.idle_ticks = 0;
+      // the key takes any overlay away, and a handler that prompts draws only on the footer line,
+      // so repaint the grid the overlay covered before the handler runs
+      if (zsvsheet_cell_overlay_painted())
+        display_buffer_subtable(&handler_state, current_ui_buffer, header_span);
       if (!handler_state.edit_mode && isdigit(ch)) { // in edit mode, digits are typed into cells
         update_numeric_input(ch, &handler_state);
         continue;
@@ -1501,7 +1515,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         break;
       if (status != zsvsheet_status_ok)
         continue;
-    }
+    } else
+      handler_state.idle_ticks++; // no key: the cell overlay counts down to its delay
 
     struct zsvsheet_ui_buffer *ub = current_ui_buffer;
     zsvsheet_check_buffer_worker_updates(ub, &display_dims, &handler_state);
@@ -1517,7 +1532,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         zsvsheet_apply_compare_attrs(ub, &handler_state.compare);
     }
 
-    display_buffer_subtable(ub, header_span, &display_dims, &handler_state.compare, handler_state.edit_mode);
+    display_buffer_subtable(&handler_state, ub, header_span);
   }
 
   endwin();
@@ -1533,9 +1548,13 @@ zsvsheet_exit:
 // Most bytes of a cell value that the screen draws: more than any screen row can show
 #define ZSVSHEET_CELL_SHOWN_MAX 1024
 
-// Copy src into dst (dstsz bytes) as one line to draw: line breaks become spaces, and a UTF-8
-// character that does not fit is left out whole. Returns dst. The value itself (in the screen
-// buffer) keeps its line breaks for copying and editing
+// Copy src into dst (dstsz bytes) as one line to draw: every character a terminal would draw in a
+// width of its own becomes a space (the cell overlay's mapping, so that what the footer and the
+// grid show here is what the overlay measures there), a line break becomes a space, and a UTF-8
+// character that does not fit is left out whole. Drawn as itself, a tab would advance the rest of
+// the line to the next tab stop and a control byte would take ncurses' two-column ^X form, either
+// of which would put what is drawn out of step with the widths this display counts on. The value
+// itself (in the screen buffer) keeps its bytes for copying and editing
 static char *zsvsheet_one_line(char *dst, size_t dstsz, const char *src) {
   size_t len = strlen(src);
   if (len > dstsz - 1) {
@@ -1543,8 +1562,11 @@ static char *zsvsheet_one_line(char *dst, size_t dstsz, const char *src) {
     while (len > 0 && ZSV_UTF8_SUBSEQUENT_CHAR_OK((unsigned char)src[len])) // don't split a character
       len--;
   }
-  for (size_t i = 0; i < len; i++)
-    dst[i] = src[i] == '\n' || src[i] == '\r' ? ' ' : src[i];
+  zsvsheet_cell_overlay_sanitize((unsigned char *)dst, (const unsigned char *)src, len);
+  for (size_t i = 0; i < len; i++) {
+    if (dst[i] == '\n' || dst[i] == '\r')
+      dst[i] = ' '; // one line: the line breaks the overlay's wrap reads are spaces here
+  }
   dst[len] = '\0';
   return dst;
 }
@@ -1607,29 +1629,17 @@ static size_t zsvsheet_compare_paired_col(const struct zsvsheet_compare_opts *cm
   return (size_t)-1;
 }
 
-// Print a UTF-8 string at the given position, handling Win32 encoding
-static void zsvsheet_footer_print(int row, int col, const char *text) {
-#if defined(WIN32) || defined(_WIN32)
-  size_t nbytes = strlen(text);
-  wchar_t wbuf[512] = {0};
-  int wlen = MultiByteToWideChar(CP_UTF8, 0, text, (int)nbytes, wbuf, sizeof(wbuf) / sizeof(wbuf[0]));
-  if (wlen > 0)
-    mvaddnwstr(row, col, wbuf, wlen);
-#else
-  // not mvprintw: ncurses 6.3 printw formats text longer than the screen from a spent va_list
-  mvaddstr(row, col, text);
-#endif
-}
-
 static size_t zsvsheet_max_buffer_cols(struct zsvsheet_ui_buffer *ui_buffer) {
   size_t col_count = ui_buffer->dimensions.col_count + (ui_buffer->rownum_col_offset ? 1 : 0);
   return col_count > zsvsheet_screen_buffer_cols(ui_buffer->buffer) ? zsvsheet_screen_buffer_cols(ui_buffer->buffer)
                                                                     : col_count;
 }
 
-static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t input_header_span,
-                                    struct zsvsheet_display_dimensions *ddims, const struct zsvsheet_compare_opts *cmp,
-                                    char edit_mode) {
+static void display_buffer_subtable(struct zsvsheet_sheet_context *state, struct zsvsheet_ui_buffer *ui_buffer,
+                                    size_t input_header_span) {
+  struct zsvsheet_display_dimensions *ddims = state->display_info.dimensions;
+  const struct zsvsheet_compare_opts *cmp = &state->compare;
+  char edit_mode = state->edit_mode;
   struct zsvsheet_screen_buffer *buffer = ui_buffer->buffer;
   size_t start_row = ui_buffer->buff_offset.row;
   size_t buffer_used_row_count = ui_buffer->buff_used_rows;
@@ -1694,27 +1704,35 @@ static void display_buffer_subtable(struct zsvsheet_ui_buffer *ui_buffer, size_t
   else
     zsvsheet_priv_set_status(ddims, 0, "? for help");
 
+  // the footer line shows the cursor cell's value after the status text: its width, not its byte
+  // count, is where the value starts and what the cell overlay measures against
+  int footer_row = (int)(ddims->rows - ddims->footer_span);
+  size_t footer_col =
+    zsvsheet_cell_overlay_text_width((const unsigned char *)zsvsheet_status_text, strlen(zsvsheet_status_text));
+
   if (cursor_value) {
-    char value_line[ZSVSHEET_CELL_SHOWN_MAX]; // the value on one line
-    int footer_row = ddims->rows - ddims->footer_span;
-    int footer_col = strlen(zsvsheet_status_text);
+    char value_line[ZSVSHEET_CELL_SHOWN_MAX];                       // the value on one line
+    char paired_line[ZSVSHEET_CELL_SHOWN_MAX];                      // its compare partner, when there is one
+    char footer_tail[2 * ZSVSHEET_CELL_SHOWN_MAX + sizeof(" vs ")]; // what the footer line shows for it
     size_t col_offset = ui_buffer->rownum_col_offset ? 1 : 0;
     size_t data_col = cursor_buf_col >= col_offset ? cursor_buf_col - col_offset : 0;
-    size_t paired_data_col = cmp ? zsvsheet_compare_paired_col(cmp, data_col) : (size_t)-1;
+    size_t paired_data_col = zsvsheet_compare_paired_col(cmp, data_col);
 
+    zsvsheet_one_line(value_line, sizeof(value_line), cursor_value);
     if (paired_data_col != (size_t)-1 && cursor_row > 0) {
-      size_t paired_buf_col = paired_data_col + col_offset;
-      const unsigned char *paired_val = zsvsheet_screen_buffer_cell_display(buffer, cursor_data_row, paired_buf_col);
+      const unsigned char *paired_val =
+        zsvsheet_screen_buffer_cell_display(buffer, cursor_data_row, paired_data_col + col_offset);
       const char *pv = paired_val ? (const char *)paired_val : "";
-      char pv_line[ZSVSHEET_CELL_SHOWN_MAX], footer_buf[2 * ZSVSHEET_CELL_SHOWN_MAX + sizeof(" vs ")];
-      snprintf(footer_buf, sizeof(footer_buf), "%s vs %s",
-               zsvsheet_one_line(value_line, sizeof(value_line), cursor_value),
-               zsvsheet_one_line(pv_line, sizeof(pv_line), pv));
-      zsvsheet_footer_print(footer_row, footer_col, footer_buf);
-    } else {
-      zsvsheet_footer_print(footer_row, footer_col, zsvsheet_one_line(value_line, sizeof(value_line), cursor_value));
-    }
+      snprintf(footer_tail, sizeof(footer_tail), "%s vs %s", value_line,
+               zsvsheet_one_line(paired_line, sizeof(paired_line), pv));
+    } else
+      snprintf(footer_tail, sizeof(footer_tail), "%s", value_line);
+
+    zsvsheet_mvaddnstr_utf8(footer_row, (int)footer_col, footer_tail, strlen(footer_tail));
   }
+
+  // the overlay sees every repaint: one without a box is what takes the last one off the screen
+  zsvsheet_cell_overlay_draw(ddims, footer_col, cursor_value, state->idle_ticks);
 
   refresh();
 }

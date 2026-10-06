@@ -42,6 +42,8 @@ for improvement (of existing features) and expansion (of new features).
 Current features:
 
 - View & navigate: view a tabular data file as a grid and navigate around
+  - a cell value too long for the status bar is shown whole, word-wrapped in the
+    middle of the screen, when the cursor rests on the cell
 - vim-like key bindings
   - emacs-like key bindings are still experimental
   - both vim- and emacs- key bindings can be improved
@@ -289,6 +291,18 @@ Editing the text restarts the cycle from the new prefix.
 Use arrow keys to move one row or column at a time, or `Shift-right`,
 `Shirt-left`, `G` or `g g` to move to the last column, the first column, the
 last row or the first row, respectively
+
+## Viewing a whole cell value
+
+The status bar shows the cursor cell's value, cut off at the right edge of the
+screen. Leave the cursor on such a cell for a second and the whole value appears
+in the middle of the screen, word-wrapped. Any key removes it: the overlay is
+not a mode, so the key you press next does its usual work.
+
+A value longer than the screen can show ends with a count of the lines that do
+not fit; the overlay does not scroll, so save the buffer with `:w` to read the
+rest. In the compare view the overlay shows the cell under the cursor; move to
+the paired column to read that value whole.
 
 ## Search syntax
 

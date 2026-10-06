@@ -140,6 +140,10 @@ ifneq ($(CROSS_COMPILING),1)
   TESTS+=test-rng # host-compiled reference-vector check of zsv/utils/rng
   TESTS+=test-strcasestr # host-compiled unit test of the caseless UTF-8 search in zsv/utils/string
   TESTS+=test-sheet-edits # host-compiled unit test of the sheet cell-edit container
+  # the overlay reaches curses through sheet/terminal.h, so it is built only where sheet is
+  ifeq ($(ZSVSHEET_BUILD),1)
+    TESTS+=test-sheet-cell-overlay # host-compiled unit test of the sheet whole-cell overlay
+  endif
   TESTS+=test-args # host-compiled unit test of the common option matching in zsv/utils/arg
   ifeq ($(WIN),0)
     TESTS+=test-mkdirs # host-compiled check that zsv_mkdirs folders follow the umask (POSIX only)
@@ -794,7 +798,8 @@ test-args: ${TMP_DIR}/test_args${HOST_EXE}
 
 # under ASan and UBSan where SAN_CC can link them, so a read past an arg is a failure
 TEST_ARGS_SAN=-fsanitize=address,undefined -fno-sanitize-recover=all
-ifeq ($(shell printf 'int main(void){return 0;}\n' | ${SAN_CC} ${TEST_ARGS_SAN} -x c - -o /dev/null 2>/dev/null && echo yes),yes)
+SAN_CC_OK:=$(shell printf 'int main(void){return 0;}\n' | ${SAN_CC} ${TEST_ARGS_SAN} -x c - -o /dev/null 2>/dev/null && echo yes)
+ifeq ($(SAN_CC_OK),yes)
 TEST_ARGS_CC=${SAN_CC} ${TEST_ARGS_SAN} -g -std=gnu11 -fsigned-char
 else
 TEST_ARGS_CC=${CC} ${CFLAGS} ${CFLAGS_AUTO}
@@ -853,6 +858,25 @@ ${TMP_DIR}/test_strcasestr${HOST_EXE}: test_strcasestr.c ../utils/string.c ${UTF
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -I../../include -I${UTF8PROC_SRC} -DUTF8PROC_STATIC \
 	  -DZSV_UTILS_STRING_STANDALONE -DZSV_STRING_LIB_ONLY \
 	  test_strcasestr.c ../utils/string.c ${UTF8PROC_SRC}/utf8proc.c -o $@
+
+test-sheet-cell-overlay: ${TMP_DIR}/test_sheet_cell_overlay${HOST_EXE}
+	@${TEST_INIT}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
+
+# cell-overlay.c is plain C plus the utf8proc the app links, but it reaches curses through
+# sheet/terminal.h, so the curses flags and library build and link it
+CELL_OVERLAY_SRC=test_sheet_cell_overlay.c ../sheet/cell-overlay.c ${UTF8PROC_SRC}/utf8proc.c
+CELL_OVERLAY_CFLAGS=${CFLAGS} ${CFLAGS_AUTO} ${CFLAGS_NCURSES} -I${UTF8PROC_SRC} -DUTF8PROC_STATIC
+ifeq ($(SAN_CC_OK),yes)
+CELL_OVERLAY_CC=${SAN_CC} ${TEST_ARGS_SAN} -g -std=gnu11 -fsigned-char
+else
+CELL_OVERLAY_CC=${CC}
+endif
+
+${TMP_DIR}/test_sheet_cell_overlay${HOST_EXE}: ${CELL_OVERLAY_SRC} ../sheet/cell-overlay.h \
+		../sheet/sheet_internal.h ../sheet/terminal.h ../sheet/curses.h
+	@mkdir -p ${TMP_DIR}
+	@${CELL_OVERLAY_CC} ${CELL_OVERLAY_CFLAGS} ${CELL_OVERLAY_SRC} -o $@ ${LDFLAGS_NCURSES}
 
 test-quotebuff-select test-quotebuff-select-pull: test-quotebuff-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -1666,6 +1690,8 @@ test-sheet-all: \
 	test-sheet-edit-mode \
 	test-sheet-edit-mode-saveas \
 	test-sheet-edit-mode-long \
+	test-sheet-overlay \
+	test-sheet-overlay-more \
 	test-sheet-edit-mode-no-boundary \
 	test-sheet-edit-mode-no-boundary-clear \
 	test-sheet-edit-cut-refused \
@@ -3042,6 +3068,53 @@ test-sheet-footer-long: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ Right && \
 	${EXPECT} $@ footer && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# a value too long for the status bar is shown whole, wrapped and centered, after the cursor has
+# rested on it (two Rights: past the row-number column, then from the Name to the Description cell).
+# The resting stage pins the delay: it compares the screen from 0.4 s after the key until the
+# second of rest raises the overlay, so a box that came sooner fails here. The idle stage
+# must show the box drawn in reverse, and the moved stage that the key which takes the box away
+# still does its work (j moves to row 2)
+test-sheet-overlay: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{s="The quick brown fox jumps over the lazy dog and then keeps running past the fence and into the deep dark woods where nobody ever goes at night"; printf "Name,Description\nalpha,%s\nbeta,short\n", s}' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 24 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	sleep 2 && \
+	tmux -L $@ send-keys -t $@ Right Right && \
+	sleep 0.4 && \
+	export EXPECT_TIMEOUT=1 && \
+	${EXPECT} $@ resting && \
+	export EXPECT_TIMEOUT=2 && \
+	${EXPECT} $@ idle && \
+	tmux -L $@ capture-pane -t $@ -p -e | grep -q -E "$$(printf '\033')\[7m[^[:cntrl:]]*The quick brown fox jumps over the lazy dog" && \
+	tmux -L $@ send-keys -t $@ ":" && \
+	${EXPECT} $@ prompt && \
+	tmux -L $@ send-keys -t $@ Escape && \
+	tmux -L $@ send-keys -t $@ "j" && \
+	${EXPECT} $@ moved && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# a value with more lines than the screen holds: the last row of the overlay says how many are not
+# shown, and shrinking the pane to 21 columns makes that note fall back to a bare mark
+test-sheet-overlay-more: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{s="the quick brown fox jumps over the lazy dog and then keeps running past the fence"; printf "Name,Description\nalpha,"; for(i=0;i<6;i++) printf "%s%s", (i?" ":""), s; print ""}' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ Right Right && \
+	export EXPECT_TIMEOUT=2 && \
+	${EXPECT} $@ idle && \
+	tmux -L $@ resize-window -t $@ -x 21 -y 5 && \
+	tmux -L $@ send-keys -t $@ h l && \
+	${EXPECT} $@ narrow && \
 	tmux -L $@ send-keys -t $@ ":q" Enter && \
 	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
