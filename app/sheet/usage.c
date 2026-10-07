@@ -23,7 +23,10 @@ const char *zsvsheet_usage_msg[] = {
   "  :editmode types keys into cells as in a spreadsheet (Enter, Tab and arrows",
   "  store and move, F2 edits the current value, <ctrl>c/<ctrl>v copy and paste,",
   "  <ctrl>s saves, <esc> leaves). With unsaved changes, :q asks you to type yes.",
-  "  <ctrl>c does not quit; it shows how to.",
+  "  <ctrl>c (or :copy) copies the cell under the cursor to the system clipboard,",
+  "  in edit mode along with sheet's own clipboard for <ctrl>v; a message on the",
+  "  status line clears after a few seconds (ZSVSHEET_STATUS_TIMEOUT_MS sets that,",
+  "  0 to keep it until replaced). :quithint shows how to quit.",
   "",
   NULL,
 };

@@ -116,15 +116,8 @@ static void zsvsheet_filter_file_on_done(zsvsheet_transformation trn) {
   if (uib && ctx) {
     char *status;
     if (asprintf(&status, "(%zu filtered rows) ", ctx->passed ? ctx->passed - 1 : 0) == -1)
-      status = NULL; // asprintf leaves its output indeterminate on failure
-
-    pthread_mutex_lock(&uib->mutex);
-    char *old_status = uib->status;
-    uib->status = status;
-    uib->status_is_index_placeholder = 0; // never set on a transformation buffer; keep the invariant local
-    pthread_mutex_unlock(&uib->mutex);
-
-    free(old_status);
+      status = NULL;                             // asprintf leaves its output indeterminate on failure
+    zsvsheet_ui_buffer_take_status(uib, status); // a message: it expires like any other
   }
   if (ctx)
     zsvsheet_pattern_free(&ctx->pattern);

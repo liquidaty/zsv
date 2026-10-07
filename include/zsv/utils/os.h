@@ -135,4 +135,11 @@ void zsv_win_to_unicode(const void *path, wchar_t *wbuf, size_t wbuf_len);
  * get number of cores
  */
 unsigned int zsv_get_number_of_cores(void);
+
+/**
+ * zsv_now_ms(): milliseconds from a monotonic clock, for measuring elapsed time; only
+ * differences are meaningful. Returns 0 if the platform clock is unavailable, in which
+ * case a caller that compares two readings should treat the difference as unknown
+ */
+unsigned long long zsv_now_ms(void);
 #endif // ZSV_OS_H

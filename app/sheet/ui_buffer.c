@@ -1,5 +1,6 @@
 #include <unistd.h> // unlink()
 #include <pthread.h>
+#include <zsv/utils/os.h> // zsv_now_ms()
 #include "../utils/index.h"
 #include "index.h"
 #include "edits.h"
@@ -49,6 +50,9 @@ struct zsvsheet_ui_buffer {
   struct zsvsheet_rowcol buff_offset;
   size_t buff_used_rows;
   char *status;
+  // when status was set, for a message that expires (status-message.h); 0 when there is no
+  // status, and for a status that reports state, which does not expire
+  unsigned long long status_set_ms;
 
   void *ext_ctx; // extension context via zsvsheet_ext_set_ctx() zsvsheet_ext_get_ctx()
 
@@ -80,7 +84,8 @@ struct zsvsheet_ui_buffer {
   unsigned char worker_cancelled : 1;
   // status is the "(building index) " placeholder the index worker must
   // restore on completion; cleared by whoever replaces (and frees) status
-  // first, so the string is never freed twice
+  // first, so the string is never freed twice. A placeholder reports state,
+  // not an event: it carries no clock and does not time out (status-message.h)
   unsigned char status_is_index_placeholder : 1;
   // informational view (help, errors): <esc> may close it even when it is the
   // only buffer above the blank base, unlike a buffer the user opened
@@ -98,14 +103,63 @@ int zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*star
   return rc;
 }
 
+// Free the buffer's status and clear the flag that says whose string it was. The caller holds
+// the mutex, so the applier can retire an expired message in the same critical section that
+// decides to, and a worker's placeholder restore cannot interleave with either
+void zsvsheet_ui_buffer_status_clear_locked(struct zsvsheet_ui_buffer *ub) {
+  free(ub->status); // may be the index worker's placeholder; the cleared flag tells it
+  ub->status = NULL;
+  ub->status_is_index_placeholder = 0;
+  ub->status_set_ms = 0;
+}
+
 void zsvsheet_ui_buffer_set_status(struct zsvsheet_ui_buffer *ub, const char *status) {
   if (!ub) // e.g. pivot/sqlfilter report "not available" on a NULL buffer
     return;
   assert(ub->mutex_inited);
   pthread_mutex_lock(&ub->mutex);
-  free(ub->status); // may be the index worker's placeholder; the cleared flag tells it
+  zsvsheet_ui_buffer_status_clear_locked(ub);
   ub->status = status ? strdup(status) : NULL;
-  ub->status_is_index_placeholder = 0;
+  ub->status_set_ms = ub->status ? zsv_now_ms() : 0; // the message's clock starts now
+  pthread_mutex_unlock(&ub->mutex);
+}
+
+// Take text and make it the buffer's status: a message, which starts its clock now, for a
+// caller that has built the string itself
+void zsvsheet_ui_buffer_take_status(struct zsvsheet_ui_buffer *ub, char *text) {
+  assert(ub->mutex_inited);
+  pthread_mutex_lock(&ub->mutex);
+  zsvsheet_ui_buffer_status_clear_locked(ub);
+  ub->status = text;
+  ub->status_set_ms = text ? zsv_now_ms() : 0;
+  pthread_mutex_unlock(&ub->mutex);
+}
+
+// Take text and make it the buffer's "(building index) " placeholder: a status the index worker
+// restores the displaced one after. It reports state, so it carries no clock, and the displaced
+// status stays the caller's to hand to zsvsheet_ui_buffer_index_done()
+void zsvsheet_ui_buffer_take_index_placeholder(struct zsvsheet_ui_buffer *ub, char *text) {
+  assert(ub->mutex_inited);
+  pthread_mutex_lock(&ub->mutex);
+  ub->status = text;
+  ub->status_is_index_placeholder = 1;
+  ub->status_set_ms = 0; // state, not a message: no clock, so it never times out
+  pthread_mutex_unlock(&ub->mutex);
+}
+
+// The index worker is done, or never started: put back the status its placeholder displaced
+// (ownership taken), or free that status when something replaced the placeholder meanwhile.
+// The restored status is a message again, and it starts its clock over: what it says is news,
+// not history the placeholder had already shown
+void zsvsheet_ui_buffer_index_done(struct zsvsheet_ui_buffer *ub, char *displaced_status) {
+  pthread_mutex_lock(&ub->mutex);
+  if (ub->status_is_index_placeholder) {
+    free(ub->status);
+    ub->status = displaced_status; // a message again, and it starts over: what it says is news
+    ub->status_is_index_placeholder = 0;
+    ub->status_set_ms = displaced_status ? zsv_now_ms() : 0;
+  } else
+    free(displaced_status); // set_status() replaced the placeholder and freed it
   pthread_mutex_unlock(&ub->mutex);
 }
 

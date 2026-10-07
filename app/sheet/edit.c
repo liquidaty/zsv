@@ -406,25 +406,41 @@ struct zsvsheet_cell_pos {
   size_t buff_row;   // row in the screen buffer: 0 is the header
   size_t raw_row;    // row in the input: 0 is the header
   size_t screen_col; // column in the screen buffer
-  size_t col;        // data column
+  char row_num_col;  // the cursor is on a row-number column, which is not data
 };
 
-// Find the cell under the cursor. Returns 0 if it can be edited, else -1 (after saying why
-// in the status if the reason is not obvious, e.g. the row-number column)
-static int zsvsheet_cell_under_cursor(struct zsvsheet_ui_buffer *uib, struct zsvsheet_cell_pos *pos) {
+// Data column of the cell the cursor is on. Only for a cell that is not a row-number cell:
+// those columns are not data, and callers refuse them first
+static size_t zsvsheet_cell_data_col(const struct zsvsheet_ui_buffer *uib, const struct zsvsheet_cell_pos *pos) {
+  assert(!pos->row_num_col);
+  return pos->screen_col - zsvsheet_ui_buffer_data_col_offset(uib);
+}
+
+// Find the cell under the cursor. Returns 0 if there is one; every displayed cell counts,
+// row-number columns included, but not the blank start screen
+static int zsvsheet_cell_at_cursor(struct zsvsheet_ui_buffer *uib, struct zsvsheet_cell_pos *pos) {
   // buffer row 0 is the header (raw row 0); buffer row b >= 1 is raw row input_offset.row + b
   pos->buff_row = uib->cursor_row ? uib->buff_offset.row + uib->cursor_row : 0;
   pos->raw_row = pos->buff_row ? uib->input_offset.row + pos->buff_row : 0;
   pos->screen_col = uib->buff_offset.col + uib->cursor_col;
   // row numbers (sheet's own column, or the "Row #" a derived view's file carries) are not data
-  const size_t col_offset = zsvsheet_ui_buffer_data_col_offset(uib);
-  if (pos->screen_col < col_offset + uib->has_row_num) {
+  pos->row_num_col = pos->screen_col < zsvsheet_ui_buffer_data_col_offset(uib) + uib->has_row_num;
+  if (pos->buff_row >= uib->buff_used_rows || pos->screen_col >= zsvsheet_screen_buffer_cols(uib->buffer))
+    return -1; // no cell under the cursor, e.g. the blank start screen
+  return 0;
+}
+
+// Find the cell under the cursor. Returns 0 if it can be edited, else -1 (after saying why
+// in the status if the reason is not obvious, e.g. the row-number column)
+static int zsvsheet_cell_under_cursor(struct zsvsheet_ui_buffer *uib, struct zsvsheet_cell_pos *pos) {
+  if (zsvsheet_cell_at_cursor(uib, pos))
+    return -1;
+  if (pos->row_num_col) {
     zsvsheet_ui_buffer_set_status(uib, "Row numbers cannot be edited");
     return -1;
   }
-  pos->col = pos->screen_col - col_offset;
-  if (pos->buff_row >= uib->buff_used_rows || pos->col >= uib->dimensions.col_count)
-    return -1; // no cell under the cursor, e.g. the blank start screen
+  if (zsvsheet_cell_data_col(uib, pos) >= uib->dimensions.col_count)
+    return -1;
   return 0;
 }
 
@@ -455,11 +471,19 @@ static int zsvsheet_edit_prompt_fits(const struct zsvsheet_sheet_context *state,
   return 0;
 }
 
-// For a modified buffer, a status naming the key that saves in the current mode (in edit
-// mode ':' types a colon, and outside it <ctrl>s is unbound)
+// What the footer says about a buffer with unsaved changes: set as the status of an edit that
+// just landed, and derived by display_buffer_subtable() whenever no message is up, so the two
+// always read the same
+static const char *zsvsheet_modified_text(int edit_mode) {
+  return edit_mode ? "Modified; <ctrl>s to save" : "Modified; :w to save";
+}
+
+// Put the text of the current mode on a modified buffer, replacing whatever message was up:
+// the key that saves changes with the mode, so leaving or entering edit mode updates what the
+// footer says
 static void zsvsheet_modified_status(const struct zsvsheet_sheet_context *state, struct zsvsheet_ui_buffer *uib) {
   if (uib->modified)
-    zsvsheet_ui_buffer_set_status(uib, state->edit_mode ? "Modified; <ctrl>s to save" : "Modified; :w to save");
+    zsvsheet_ui_buffer_set_status(uib, zsvsheet_modified_text(state->edit_mode));
 }
 
 // Set the cell at pos to value, recording it as an edit. Returns 0, or -1 (after setting
@@ -472,7 +496,8 @@ static int zsvsheet_set_cell(struct zsvsheet_sheet_context *state, struct zsvshe
       !strcmp(value, zsvsheet_cell_value(uib, pos)))
     return 0;
   if (zsvsheet_ui_buffer_has_file(uib) &&
-      zsvsheet_edits_set(&uib->edits, pos->raw_row, pos->col, (const unsigned char *)value, len)) {
+      zsvsheet_edits_set(&uib->edits, pos->raw_row, zsvsheet_cell_data_col(uib, pos), (const unsigned char *)value,
+                         len)) {
     zsvsheet_ui_buffer_set_status(uib, "Out of memory");
     return -1;
   }
@@ -488,7 +513,7 @@ static int zsvsheet_set_cell(struct zsvsheet_sheet_context *state, struct zsvshe
   if (wstat != zsvsheet_priv_status_ok && !pos->buff_row)
     zsvsheet_ui_buffer_set_status(uib, "Out of memory: the edit is kept but not shown");
   else
-    zsvsheet_modified_status(state, uib);
+    zsvsheet_modified_status(state, uib); // the edit landed
   if (state->compare.active)
     zsvsheet_apply_compare_attrs(uib, &state->compare);
   return 0;
@@ -555,7 +580,41 @@ static zsvsheet_status zsvsheet_edit_mode_clipboard(int ch, struct zsvsheet_shee
   }
   free(state->clipboard);
   state->clipboard = copy;
-  zsvsheet_ui_buffer_set_status(uib, "Copied; <ctrl>v pastes");
+  // the same value goes to the system clipboard, as <ctrl>c does outside edit mode: sheet's own
+  // copy is what <ctrl>v pastes, so its failure is what the status reports, and the system copy
+  // failing (no tool on this host) says so
+  zsvsheet_ui_buffer_set_status(uib, zsvsheet_clipboard_put(copy, strlen(copy)) == zsvsheet_clipboard_ok
+                                       ? "Copied; <ctrl>v pastes"
+                                       : "Copied in sheet; no system clipboard");
+  return zsvsheet_status_ok;
+}
+
+// The buffer view's <ctrl>c: copy the cell under the cursor to the system clipboard. A
+// row-number cell is copied too: it is a value the grid shows, though it cannot be edited
+static zsvsheet_status zsvsheet_copy_cell_handler(struct zsvsheet_proc_context *ctx) {
+  struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
+  struct zsvsheet_ui_buffer *uib = *state->display_info.ui_buffers.current;
+  struct zsvsheet_cell_pos pos;
+  if (zsvsheet_cell_at_cursor(uib, &pos)) {
+    zsvsheet_ui_buffer_set_status(uib, "No cell to copy"); // e.g. the blank start screen
+    return zsvsheet_status_ok;
+  }
+  if (zsvsheet_screen_buffer_cell_is_cut(uib->buffer, pos.buff_row, pos.screen_col)) {
+    zsvsheet_ui_buffer_set_status(uib, "Too long to copy"); // the buffer holds only a prefix
+    return zsvsheet_status_ok;
+  }
+  const char *value = zsvsheet_cell_value(uib, &pos);
+  switch (zsvsheet_clipboard_put(value, strlen(value))) {
+  case zsvsheet_clipboard_ok:
+    zsvsheet_ui_buffer_set_status(uib, "Copied to clipboard");
+    break;
+  case zsvsheet_clipboard_no_tool:
+    zsvsheet_ui_buffer_set_status(uib, "Copy failed: no clipboard command");
+    break;
+  default:
+    zsvsheet_ui_buffer_set_status(uib, "Copy failed");
+    break;
+  }
   return zsvsheet_status_ok;
 }
 

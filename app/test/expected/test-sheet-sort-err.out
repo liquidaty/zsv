@@ -1,5 +1,5 @@
 Key(s)                    Action                    Description
 :q!                       quit!                     Exit the application, dis
 :editmode                 editmode                  Type into cells as in a s
-<ctrl>c                   quithint                  Show how to quit (in edit
+<ctrl>c                   copy                      Copy the cell to the clip
 Sort only available for tabular data buffers <ctrl>c

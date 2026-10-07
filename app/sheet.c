@@ -110,6 +110,8 @@ static int zsvsheet_parse_compare(const char *spec, struct zsvsheet_compare_opts
 
 #include "sheet/utf8-width.c"
 #include "sheet/cell-overlay.c"
+#include "sheet/status-message.c"
+#include "sheet/clipboard.c"
 #include "sheet/edits.c"
 #include "sheet/ui_buffer.c"
 #include "sheet/index.c"
@@ -387,6 +389,7 @@ static int zsvsheet_prompt_edit(const char *prompt, char *buff, size_t buffsize,
       else {
         free(*clipboard);
         *clipboard = copy;
+        zsvsheet_clipboard_put(buff, idx); // and the system clipboard, as outside edit mode
       }
       continue;
     } else if (clipboard && ch == ZSVSHEET_KEY_PASTE) {
@@ -1311,7 +1314,8 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_edit,             "cell",           NULL, "Edit the cell under the cursor (or :cell <value>)",               zsvsheet_edit_handler },
   { zsvsheet_builtin_proc_write,            "write",          "w",  "Save this buffer as CSV (or :w <file>)",                          zsvsheet_write_handler },
   { zsvsheet_builtin_proc_edit_mode,        "editmode",       NULL, "Type into cells as in a spreadsheet; <esc> leaves",               zsvsheet_edit_mode_handler },
-  { zsvsheet_builtin_proc_quit_hint,        "quithint",       NULL, "Show how to quit (in edit mode, <ctrl>c copies)",                 zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_quit_hint,        "quithint",       NULL, "Show how to quit",                                                zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_copy_cell,        "copy",           NULL, "Copy the cell to the clipboard",          zsvsheet_copy_cell_handler },
   { -1, NULL, NULL, NULL, NULL }
 };
 /* clang-format on */
@@ -1324,13 +1328,20 @@ void zsvsheet_register_builtin_procedures(void) {
   }
 }
 
-static void zsvsheet_check_buffer_worker_updates(struct zsvsheet_ui_buffer *ub,
-                                                 struct zsvsheet_display_dimensions *display_dims,
-                                                 struct zsvsheet_sheet_context *handler_state) {
+static void zsvsheet_check_buffer_updates(struct zsvsheet_ui_buffer *ub,
+                                          struct zsvsheet_display_dimensions *display_dims,
+                                          struct zsvsheet_sheet_context *handler_state) {
   pthread_mutex_lock(&ub->mutex);
   if (ub->status) {
-    if (display_dims)
-      zsvsheet_priv_set_status(display_dims, 1, "%s", ub->status);
+    // a message the user has had time to read goes away, and the footer's own hint returns with
+    // this repaint; the "(building index) " placeholder is state, not a message, and stays until
+    // the worker ends it (zsvsheet_status_message_expired() is the whole rule)
+    if (zsvsheet_status_message_expired(ub->status_set_ms, zsv_now_ms(), zsvsheet_status_message_timeout_ms()))
+      zsvsheet_ui_buffer_status_clear_locked(ub);
+    else if (display_dims)
+      // overwrite=0: a message a handler just set on the display channel is the newer news, and
+      // this one comes back on the next pass
+      zsvsheet_priv_set_status(display_dims, 0, "%s", ub->status);
   }
   if (ub->index_ready && ub->dimensions.row_count != ub->index->row_count + 1) {
     ub->dimensions.row_count = ub->index->row_count + 1;
@@ -1479,7 +1490,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   napms(100);
 #endif
 
-  zsvsheet_check_buffer_worker_updates(current_ui_buffer, &display_dims, &handler_state);
+  zsvsheet_check_buffer_updates(current_ui_buffer, &display_dims, &handler_state);
   display_buffer_subtable(&handler_state, current_ui_buffer, header_span);
 
   // now ncurses getch() will fire every ZSVSHEET_INPUT_TIMEOUT_TENTHS tenths of a second so we can
@@ -1519,7 +1530,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       handler_state.idle_ticks++; // no key: the cell overlay counts down to its delay
 
     struct zsvsheet_ui_buffer *ub = current_ui_buffer;
-    zsvsheet_check_buffer_worker_updates(ub, &display_dims, &handler_state);
+    zsvsheet_check_buffer_updates(ub, &display_dims, &handler_state);
 
     if (handler_state.display_info.update_buffer && zsvsheet_ui_buffer_has_file(ub)) {
       struct zsvsheet_opts zsvsheet_opts = {0};
@@ -1696,10 +1707,15 @@ static void display_buffer_subtable(struct zsvsheet_sheet_context *state, struct
     }
   }
 
+  // The footer line shows a message if one is up (applied above with overwrite), else the
+  // buffer's own state: an unsaved edit stays visible as long as it is true, unlike a message
   if (edit_mode) { // '?' and ':' type into cells here
-    zsvsheet_priv_set_status(ddims, 0, "<esc> leaves edit mode, <ctrl>s saves");
+    zsvsheet_priv_set_status(ddims, 0,
+                             ui_buffer->modified ? zsvsheet_modified_text(1) : "<esc> leaves edit mode, <ctrl>s saves");
     zsvsheet_status_prefix(ddims, ZSVSHEET_EDIT_MODE_STATUS);
-  } else if (ui_buffer->parse_errs.count > 0)
+  } else if (ui_buffer->modified)
+    zsvsheet_priv_set_status(ddims, 0, "%s", zsvsheet_modified_text(0));
+  else if (ui_buffer->parse_errs.count > 0)
     zsvsheet_priv_set_status(ddims, 0, "? for help, :errors for errors");
   else
     zsvsheet_priv_set_status(ddims, 0, "? for help");

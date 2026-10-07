@@ -178,9 +178,9 @@ zsvsheet_status pivot_drill_down(zsvsheet_proc_context_t ctx) {
   return zst;
 }
 
-static void zsvsheet_check_buffer_worker_updates(struct zsvsheet_ui_buffer *ub,
-                                                 struct zsvsheet_display_dimensions *display_dims,
-                                                 struct zsvsheet_sheet_context *handler_state);
+static void zsvsheet_check_buffer_updates(struct zsvsheet_ui_buffer *ub,
+                                          struct zsvsheet_display_dimensions *display_dims,
+                                          struct zsvsheet_sheet_context *handler_state);
 
 /**
  * Here we define a custom command for the zsv `sheet` feature
@@ -297,7 +297,7 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
             struct zsvsheet_display_info *di = &state->display_info;
             struct zsvsheet_pattern pattern;
             zsvsheet_pattern_literal(&pattern, selected_cell_str_dup, 1); // whole-cell match
-            zsvsheet_check_buffer_worker_updates(buff, di->dimensions, NULL);
+            zsvsheet_check_buffer_updates(buff, di->dimensions, NULL);
             zsvsheet_handle_find_next(di, buff, &pattern,
                                       1, // find value in first column
                                       1, // header_span
