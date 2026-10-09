@@ -38,7 +38,7 @@ enum zsvsheet_clipboard_status zsvsheet_clipboard_put(const char *text, size_t l
       wtext[0] = L'\0'; // an empty value: an empty clipboard string, as on the other platforms
     GlobalUnlock(block);
   }
-  if (converted != wlen)
+  if (!wtext || converted != wlen) // a block that could not be locked was never filled in
     goto out;
 
   for (int tries = 0; tries < 5; tries++) {
