@@ -226,8 +226,9 @@ void zsvsheet_cell_overlay_draw(const struct zsvsheet_display_dimensions *ddims,
     if (n > 0)
       note_len = (size_t)n < sizeof(note) ? (size_t)n : sizeof(note) - 1;
     if (note_len > text_cols) {
-      // no room for the count: a mark still says the value goes on. The gates above keep text_cols
-      // at six columns or more, so the three fit
+      // no room for the count: a mark still says the value goes on. The gates above leave as few
+      // as seven screen columns (text_cols 1), where the mark is wider than text_cols but the
+      // five-column box it makes still fits on the screen
       note_len = 3;
       memcpy(note, "...", note_len);
     }
