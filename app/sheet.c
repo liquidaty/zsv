@@ -1334,8 +1334,8 @@ static void zsvsheet_check_buffer_updates(struct zsvsheet_ui_buffer *ub,
   pthread_mutex_lock(&ub->mutex);
   if (ub->status) {
     // a message the user has had time to read goes away, and the footer's own hint returns with
-    // this repaint; the "(building index) " placeholder is state, not a message, and stays until
-    // the worker ends it (zsvsheet_status_message_expired() is the whole rule)
+    // this repaint; a worker's state note ("(building index) ", "(working) ") is state, not a
+    // message, and stays until its owner ends it (zsvsheet_status_message_expired() is the whole rule)
     if (zsvsheet_status_message_expired(ub->status_set_ms, zsv_now_ms(), zsvsheet_status_message_timeout_ms()))
       zsvsheet_ui_buffer_status_clear_locked(ub);
     else if (display_dims)

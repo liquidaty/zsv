@@ -22,7 +22,6 @@ struct zsvsheet_transformation {
   void *user_context;
 
   struct zsvsheet_ui_buffer *ui_buffer;
-  char *default_status;
   void (*on_done)(zsvsheet_transformation trn);
 };
 
@@ -176,7 +175,6 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   zsv_parser parser = trn->parser;
   pthread_mutex_t *mutex = &uib->mutex;
   enum zsv_status zst;
-  char *default_status = trn->default_status;
 
   char cancelled = 0;
   while (!cancelled && (zst = zsv_parse_more(parser)) == zsv_status_ok) {
@@ -199,18 +197,14 @@ static void *zsvsheet_run_buffer_transformation(void *arg) {
   zsvsheet_transformation_delete(trn); // frees user_context
 
   pthread_mutex_lock(mutex);
-  char *buff_status_old = uib->status;
   uib->write_done = 1;
   zsv_index_commit_rows(uib->index);
   uib->index_ready = 1;
-  if (buff_status_old == default_status) {
-    uib->status = NULL;
-    uib->status_is_index_placeholder = 0; // never set on a transformation buffer; keep the invariant local
-  }
+  // end the "(working) " note, but only while it is still this worker's: a newer status took
+  // ownership when it replaced (and freed) the note
+  if (uib->status_owner == zsvsheet_status_owner_transformation)
+    zsvsheet_ui_buffer_status_clear_locked(uib);
   pthread_mutex_unlock(mutex);
-
-  if (buff_status_old == default_status)
-    free(buff_status_old);
 
   return NULL;
 }
@@ -350,17 +344,17 @@ enum zsvsheet_status zsvsheet_push_transformation(zsvsheet_proc_context_t ctx,
     return stat;
   }
 
-  if (asprintf(&trn->default_status, "(working) Press ESC to cancel ") == -1)
-    trn->default_status = NULL; // asprintf leaves its output indeterminate on failure
-  nbuff->status = trn->default_status;
+  char *working_note;
+  if (asprintf(&working_note, "(working) Press ESC to cancel ") == -1)
+    working_note = NULL; // asprintf leaves its output indeterminate on failure
+  // state: it lasts until the worker, its owner, ends it
+  zsvsheet_ui_buffer_take_state_status(nbuff, working_note, zsvsheet_status_owner_transformation);
 
   if (zsvsheet_ui_buffer_create_worker(nbuff, zsvsheet_run_buffer_transformation, trn) != 0) {
     // no worker will ever run: release what it would have and unstick the buffer
     nbuff->write_done = 1;
     nbuff->index_ready = 1;
-    nbuff->status = NULL;
-    free(trn->default_status);
-    trn->default_status = NULL;
+    zsvsheet_ui_buffer_set_status(nbuff, NULL); // clears (frees) the "(working) " note
     if (trn->on_done)
       trn->on_done(trn);
     zsvsheet_transformation_delete(trn); // frees user_context
