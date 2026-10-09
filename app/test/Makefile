@@ -286,7 +286,7 @@ ${TIMINGS_CSV}:
 
 .SECONDARY: worldcitiespop_mil.csv
 
-.PHONY: help test test-% test-stack clean
+.PHONY: help test test-% test-stack clean FORCE
 
 test-prop:
 	@${TEST_INIT}
@@ -1353,15 +1353,31 @@ test-sql-dupcol-nodup: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	  rc=$$?; n=$$(grep -c -i 'auto-renamed' ${TMP_DIR}/$@.err); \
 	  [ "$$rc" = "0" ] && [ "$$n" = "0" ] && ${TEST_PASS} || ${TEST_FAIL}
 
-${BUILD_DIR}/bin/zsv_%${EXE}:
-	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+# The parent app/Makefile owns the binaries' dependencies, so every run asks it whether a
+# binary is current: FORCE makes these rules recurse even when the binary exists, and an edit
+# the parent tracks (a tool's .c file, a utils object's sources, or any file a unity build's
+# -MMD depfile lists) rebuilds the binary before a test runs it. Other headers a non-unity tool
+# includes, such as include/zsv.h, are untracked, and the parent does not rebuild an existing
+# libzsv for a src/ edit. Make re-checks the binary's time after the recipe, so it remakes a
+# target built from the binary (e.g. worldcitiespop_mil.tsv) only when the binary changed. Each
+# binary's check runs its own parent make, so run the suite serially: under -j, two of them can
+# rebuild the same object file at once
+FORCE:
+
+# QUIET=1 keeps the per-binary check to the parent's one config line. ${MAKE} stays literal in
+# each recipe so make treats the line as recursive (runs it under -n, passes the jobserver)
+PARENT_MAKE_ECHO=$(if $(filter 1,$(QUIET)),@)
+PARENT_MAKE_FLAGS=$(if $(filter 1,$(QUIET)),-s --no-print-directory) -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+
+${BUILD_DIR}/bin/zsv_%${EXE}: FORCE
+	${PARENT_MAKE_ECHO}${MAKE} ${PARENT_MAKE_FLAGS}
 
 # The unified `cli` (zsv) multitool is built by the parent app/Makefile, not by the
 # zsv_% pattern rule above. test-compare-redline-v2 exercises `cli help compare <topic>`
 # routing, so the standalone suite must be able to build it on a clean tree (CI) the same
 # way it builds the zsv_* binaries -- by delegating to the parent.
-${BUILD_DIR}/bin/cli${EXE}:
-	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+${BUILD_DIR}/bin/cli${EXE}: FORCE
+	${PARENT_MAKE_ECHO}${MAKE} ${PARENT_MAKE_FLAGS}
 
 test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
