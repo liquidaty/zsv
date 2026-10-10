@@ -1856,6 +1856,9 @@ test-sheet-9: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ send-keys -t $@ -N 4096 "k" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
+# The filter reports "(N filtered rows) " from its on_done callback, and the worker commits the
+# last index row after that, when it deletes the writer. <G> goes to the last committed row, so
+# a <G> sent on the message alone can stop one row short: repeat it until the last row shows
 test-sheet-10: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.tsv ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
@@ -1864,7 +1867,8 @@ test-sheet-10: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.tsv ${TIMINGS
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "f" "e" ENTER && \
 	${EXPECT} $@ filtered && \
-	tmux -L $@ send-keys -t $@ "G" && \
+	for i in $$(seq 100); do tmux -L $@ send-keys -t $@ "G"; \
+	  tmux -L $@ capture-pane -p -t $@ | grep -q '^999999 ' && break; sleep 0.05; done && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-11: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
