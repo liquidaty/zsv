@@ -3238,7 +3238,7 @@ test-sheet-ctrl-c: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@printf '#!/bin/sh\n/bin/cat > "$$CLIP_FILE"\n' > ${TMP_DIR}/$@-bin/xsel
 	@chmod +x ${TMP_DIR}/$@-bin/pbcopy ${TMP_DIR}/$@-bin/wl-copy ${TMP_DIR}/$@-bin/xclip ${TMP_DIR}/$@-bin/xsel
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
-	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && PATH=${TMP_DIR}/$@-bin:$$PATH CLIP_FILE=${TMP_DIR}/$@-clip.txt ${PREFIX} $< $@.csv" && \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && exec env PATH=${TMP_DIR}/$@-bin:$$PATH CLIP_FILE=${TMP_DIR}/$@-clip.txt ${PREFIX} $< $@.csv" && \
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ Right Right C-c && \
 	${EXPECT} $@ copied && \
@@ -3261,7 +3261,7 @@ test-sheet-copy-no-tool: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@printf 'A,B\n1,xyzzy\n' > ${TMP_DIR}/$@.csv
 	@rm -rf ${TMP_DIR}/$@-empty && mkdir -p ${TMP_DIR}/$@-empty
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
-	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && PATH=${TMP_DIR}/$@-empty ${PREFIX} $< $@.csv" && \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && exec env PATH=${TMP_DIR}/$@-empty ${PREFIX} $< $@.csv" && \
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ Right Right C-c && \
 	${EXPECT} $@ no-tool && \
@@ -3299,7 +3299,7 @@ test-sheet-status-timeout: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@printf '#!/bin/sh\n/bin/cat > /dev/null\n' > ${TMP_DIR}/$@-bin/xsel
 	@chmod +x ${TMP_DIR}/$@-bin/pbcopy ${TMP_DIR}/$@-bin/wl-copy ${TMP_DIR}/$@-bin/xclip ${TMP_DIR}/$@-bin/xsel
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
-	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && PATH=${TMP_DIR}/$@-bin:$$PATH ZSVSHEET_STATUS_TIMEOUT_MS=1500 ${PREFIX} $< $@.csv" && \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && exec env PATH=${TMP_DIR}/$@-bin:$$PATH ZSVSHEET_STATUS_TIMEOUT_MS=1500 ${PREFIX} $< $@.csv" && \
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ Right Right C-c && \
 	${EXPECT} $@ copied && \
@@ -3330,7 +3330,7 @@ test-sheet-edit-mode-clipboard: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@printf '#!/bin/sh\n/bin/cat > "$$CLIP_FILE"\n' > ${TMP_DIR}/$@-bin/xsel
 	@chmod +x ${TMP_DIR}/$@-bin/pbcopy ${TMP_DIR}/$@-bin/wl-copy ${TMP_DIR}/$@-bin/xclip ${TMP_DIR}/$@-bin/xsel
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
-	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && PATH=${TMP_DIR}/$@-bin:$$PATH CLIP_FILE=${TMP_DIR}/$@-clip.txt ${PREFIX} $< $@.csv" && \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && exec env PATH=${TMP_DIR}/$@-bin:$$PATH CLIP_FILE=${TMP_DIR}/$@-clip.txt ${PREFIX} $< $@.csv" && \
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ ":editmode" Enter Right C-v && \
 	${EXPECT} $@ empty && \
