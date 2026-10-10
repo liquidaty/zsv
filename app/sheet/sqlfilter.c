@@ -39,9 +39,9 @@ static struct sqlfilter_data *sqlfilter_data_new(const char *data_filename, cons
   return NULL;
 }
 
-static void zsvsheet_check_buffer_worker_updates(struct zsvsheet_ui_buffer *ub,
-                                                 struct zsvsheet_display_dimensions *display_dims,
-                                                 struct zsvsheet_sheet_context *handler_state);
+static void zsvsheet_check_buffer_updates(struct zsvsheet_ui_buffer *ub,
+                                          struct zsvsheet_display_dimensions *display_dims,
+                                          struct zsvsheet_sheet_context *handler_state);
 
 /**
  * Here we define a custom command for the zsv `sheet` feature

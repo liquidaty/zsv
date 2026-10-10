@@ -50,7 +50,8 @@ enum {
   zsvsheet_builtin_proc_edit,
   zsvsheet_builtin_proc_write,
   zsvsheet_builtin_proc_edit_mode,
-  zsvsheet_builtin_proc_quit_hint
+  zsvsheet_builtin_proc_quit_hint,
+  zsvsheet_builtin_proc_copy_cell
 };
 
 #define ZSVSHEET_PROC_INVALID 0

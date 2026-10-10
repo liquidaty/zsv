@@ -67,6 +67,12 @@ export THIS_LIB_BASE=$(shell cd ../.. && pwd)
 CCBN=$(shell basename ${CC})
 BUILD_DIR=${THIS_LIB_BASE}/build/${BUILD_SUBDIR}/${CCBN}
 export TMP_DIR=${THIS_LIB_BASE}/tmp
+
+# sheet's status messages must stay up for as long as a test needs to compare a fixture
+# against the screen: 0 keeps each message until another replaces it. test-sheet-status-timeout
+# sets a value of its own. tmux passes the environment of the recipe that starts its server on
+# to the session, and every sheet test starts its server fresh
+export ZSVSHEET_STATUS_TIMEOUT_MS=0
 TEST_DATA_DIR=${THIS_LIB_BASE}/data
 
 ifeq ($(WIN),1)
@@ -140,6 +146,14 @@ ifneq ($(CROSS_COMPILING),1)
   TESTS+=test-rng # host-compiled reference-vector check of zsv/utils/rng
   TESTS+=test-strcasestr # host-compiled unit test of the caseless UTF-8 search in zsv/utils/string
   TESTS+=test-sheet-edits # host-compiled unit test of the sheet cell-edit container
+  # the overlay reaches curses through sheet/terminal.h, so it is built only where sheet is
+  ifeq ($(ZSVSHEET_BUILD),1)
+    TESTS+=test-sheet-cell-overlay # host-compiled unit test of the sheet whole-cell overlay
+    TESTS+=test-sheet-status-message # host-compiled unit test of the sheet status message lifetime
+    ifeq ($(WIN),0)
+      TESTS+=test-sheet-clipboard # host-compiled unit test of the sheet clipboard module
+    endif
+  endif
   TESTS+=test-args # host-compiled unit test of the common option matching in zsv/utils/arg
   ifeq ($(WIN),0)
     TESTS+=test-mkdirs # host-compiled check that zsv_mkdirs folders follow the umask (POSIX only)
@@ -272,7 +286,7 @@ ${TIMINGS_CSV}:
 
 .SECONDARY: worldcitiespop_mil.csv
 
-.PHONY: help test test-% test-stack clean
+.PHONY: help test test-% test-stack clean FORCE
 
 test-prop:
 	@${TEST_INIT}
@@ -794,7 +808,8 @@ test-args: ${TMP_DIR}/test_args${HOST_EXE}
 
 # under ASan and UBSan where SAN_CC can link them, so a read past an arg is a failure
 TEST_ARGS_SAN=-fsanitize=address,undefined -fno-sanitize-recover=all
-ifeq ($(shell printf 'int main(void){return 0;}\n' | ${SAN_CC} ${TEST_ARGS_SAN} -x c - -o /dev/null 2>/dev/null && echo yes),yes)
+SAN_CC_OK:=$(shell printf 'int main(void){return 0;}\n' | ${SAN_CC} ${TEST_ARGS_SAN} -x c - -o /dev/null 2>/dev/null && echo yes)
+ifeq ($(SAN_CC_OK),yes)
 TEST_ARGS_CC=${SAN_CC} ${TEST_ARGS_SAN} -g -std=gnu11 -fsigned-char
 else
 TEST_ARGS_CC=${CC} ${CFLAGS} ${CFLAGS_AUTO}
@@ -853,6 +868,62 @@ ${TMP_DIR}/test_strcasestr${HOST_EXE}: test_strcasestr.c ../utils/string.c ${UTF
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -I../../include -I${UTF8PROC_SRC} -DUTF8PROC_STATIC \
 	  -DZSV_UTILS_STRING_STANDALONE -DZSV_STRING_LIB_ONLY \
 	  test_strcasestr.c ../utils/string.c ${UTF8PROC_SRC}/utf8proc.c -o $@
+
+test-sheet-cell-overlay: ${TMP_DIR}/test_sheet_cell_overlay${HOST_EXE}
+	@${TEST_INIT}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
+
+# cell-overlay.c is plain C plus the utf8proc the app links, but it reaches curses through
+# sheet/terminal.h, so the curses flags and library build and link it
+CELL_OVERLAY_SRC=test_sheet_cell_overlay.c ../sheet/cell-overlay.c ${UTF8PROC_SRC}/utf8proc.c
+CELL_OVERLAY_CFLAGS=${CFLAGS} ${CFLAGS_AUTO} ${CFLAGS_NCURSES} -I${UTF8PROC_SRC} -DUTF8PROC_STATIC
+ifeq ($(SAN_CC_OK),yes)
+CELL_OVERLAY_CC=${SAN_CC} ${TEST_ARGS_SAN} -g -std=gnu11 -fsigned-char
+else
+CELL_OVERLAY_CC=${CC}
+endif
+
+${TMP_DIR}/test_sheet_cell_overlay${HOST_EXE}: ${CELL_OVERLAY_SRC} ../sheet/cell-overlay.h \
+		../sheet/sheet_internal.h ../sheet/terminal.h ../sheet/curses.h
+	@mkdir -p ${TMP_DIR}
+	@${CELL_OVERLAY_CC} ${CELL_OVERLAY_CFLAGS} ${CELL_OVERLAY_SRC} -o $@ ${LDFLAGS_NCURSES}
+
+test-sheet-status-message: ${TMP_DIR}/test_sheet_status_message${HOST_EXE}
+	@${TEST_INIT}
+	@env -u ZSVSHEET_STATUS_TIMEOUT_MS $< 4000 && \
+	env ZSVSHEET_STATUS_TIMEOUT_MS=1234 $< 1234 && \
+	env ZSVSHEET_STATUS_TIMEOUT_MS=abc $< 4000 && \
+	env ZSVSHEET_STATUS_TIMEOUT_MS=4294967297 $< 4294967295 && ${TEST_PASS} || ${TEST_FAIL}
+
+# status-message.c is plain C (no curses, no other sheet source), so it links on its own
+STATUS_MESSAGE_SRC=test_sheet_status_message.c ../sheet/status-message.c
+ifeq ($(SAN_CC_OK),yes)
+STATUS_MESSAGE_CC=${SAN_CC} ${TEST_ARGS_SAN} -g -std=gnu11 -fsigned-char
+else
+STATUS_MESSAGE_CC=${CC}
+endif
+
+${TMP_DIR}/test_sheet_status_message${HOST_EXE}: ${STATUS_MESSAGE_SRC} ../sheet/status-message.h
+	@mkdir -p ${TMP_DIR}
+	@${STATUS_MESSAGE_CC} ${CFLAGS} ${CFLAGS_AUTO} ${STATUS_MESSAGE_SRC} -o $@
+
+test-sheet-clipboard: ${TMP_DIR}/test_sheet_clipboard${HOST_EXE}
+	@${TEST_INIT}
+	@$< ${TMP_DIR}/$@ && ${TEST_PASS} || ${TEST_FAIL}
+
+# clipboard.c hands the text to a tool with fork/exec, and needs no curses; the test puts fake
+# tools on the module's own path. Its budget uses zsv_now_ms() from zsv/utils/os
+CLIPBOARD_SRC=test_sheet_clipboard.c ../sheet/clipboard.c ../utils/os.c
+CLIPBOARD_CFLAGS=${CFLAGS} ${CFLAGS_AUTO} -I${THIS_LIB_BASE}/include
+ifeq ($(SAN_CC_OK),yes)
+CLIPBOARD_CC=${SAN_CC} ${TEST_ARGS_SAN} -g -std=gnu11 -fsigned-char
+else
+CLIPBOARD_CC=${CC}
+endif
+
+${TMP_DIR}/test_sheet_clipboard${HOST_EXE}: ${CLIPBOARD_SRC} ../sheet/clipboard.h
+	@mkdir -p ${TMP_DIR}
+	@${CLIPBOARD_CC} ${CLIPBOARD_CFLAGS} ${CLIPBOARD_SRC} -o $@
 
 test-quotebuff-select test-quotebuff-select-pull: test-quotebuff-% : ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${TEST_INIT}
@@ -1282,15 +1353,31 @@ test-sql-dupcol-nodup: ${BUILD_DIR}/bin/zsv_sql${EXE}
 	  rc=$$?; n=$$(grep -c -i 'auto-renamed' ${TMP_DIR}/$@.err); \
 	  [ "$$rc" = "0" ] && [ "$$n" = "0" ] && ${TEST_PASS} || ${TEST_FAIL}
 
-${BUILD_DIR}/bin/zsv_%${EXE}:
-	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+# The parent app/Makefile owns the binaries' dependencies, so every run asks it whether a
+# binary is current: FORCE makes these rules recurse even when the binary exists, and an edit
+# the parent tracks (a tool's .c file, a utils object's sources, or any file a unity build's
+# -MMD depfile lists) rebuilds the binary before a test runs it. Other headers a non-unity tool
+# includes, such as include/zsv.h, are untracked, and the parent does not rebuild an existing
+# libzsv for a src/ edit. Make re-checks the binary's time after the recipe, so it remakes a
+# target built from the binary (e.g. worldcitiespop_mil.tsv) only when the binary changed. Each
+# binary's check runs its own parent make, so run the suite serially: under -j, two of them can
+# rebuild the same object file at once
+FORCE:
+
+# QUIET=1 keeps the per-binary check to the parent's one config line. ${MAKE} stays literal in
+# each recipe so make treats the line as recursive (runs it under -n, passes the jobserver)
+PARENT_MAKE_ECHO=$(if $(filter 1,$(QUIET)),@)
+PARENT_MAKE_FLAGS=$(if $(filter 1,$(QUIET)),-s --no-print-directory) -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+
+${BUILD_DIR}/bin/zsv_%${EXE}: FORCE
+	${PARENT_MAKE_ECHO}${MAKE} ${PARENT_MAKE_FLAGS}
 
 # The unified `cli` (zsv) multitool is built by the parent app/Makefile, not by the
 # zsv_% pattern rule above. test-compare-redline-v2 exercises `cli help compare <topic>`
 # routing, so the standalone suite must be able to build it on a clean tree (CI) the same
 # way it builds the zsv_* binaries -- by delegating to the parent.
-${BUILD_DIR}/bin/cli${EXE}:
-	${MAKE} -C .. $@ CONFIGFILE=${CONFIGFILEPATH} DEBUG=${DEBUG}
+${BUILD_DIR}/bin/cli${EXE}: FORCE
+	${PARENT_MAKE_ECHO}${MAKE} ${PARENT_MAKE_FLAGS}
 
 test-2db: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} worldcitiespop_mil.csv ${BUILD_DIR}/bin/zsv_2json${EXE} ${BUILD_DIR}/bin/zsv_select${EXE}
 	@${TEST_INIT}
@@ -1666,6 +1753,8 @@ test-sheet-all: \
 	test-sheet-edit-mode \
 	test-sheet-edit-mode-saveas \
 	test-sheet-edit-mode-long \
+	test-sheet-overlay \
+	test-sheet-overlay-more \
 	test-sheet-edit-mode-no-boundary \
 	test-sheet-edit-mode-no-boundary-clear \
 	test-sheet-edit-cut-refused \
@@ -1673,6 +1762,9 @@ test-sheet-all: \
 	test-sheet-edit-mode-clipboard \
 	test-sheet-quit-confirm \
 	test-sheet-ctrl-c \
+	test-sheet-copy-no-tool \
+	test-sheet-copy-too-long \
+	test-sheet-status-timeout \
 	test-sheet-suspend \
 	test-sheet-quit-signal \
 	test-sheet-quit-signal-ignored \
@@ -1764,6 +1856,9 @@ test-sheet-9: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ send-keys -t $@ -N 4096 "k" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
+# The filter reports "(N filtered rows) " from its on_done callback, and the worker commits the
+# last index row after that, when it deletes the writer. <G> goes to the last committed row, so
+# a <G> sent on the message alone can stop one row short: repeat it until the last row shows
 test-sheet-10: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.tsv ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
@@ -1772,7 +1867,8 @@ test-sheet-10: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.tsv ${TIMINGS
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "f" "e" ENTER && \
 	${EXPECT} $@ filtered && \
-	tmux -L $@ send-keys -t $@ "G" && \
+	for i in $$(seq 100); do tmux -L $@ send-keys -t $@ "G"; \
+	  tmux -L $@ capture-pane -p -t $@ | grep -q '^999999 ' && break; sleep 0.05; done && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-11: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
@@ -3045,6 +3141,53 @@ test-sheet-footer-long: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ send-keys -t $@ ":q" Enter && \
 	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
+# a value too long for the status bar is shown whole, wrapped and centered, after the cursor has
+# rested on it (two Rights: past the row-number column, then from the Name to the Description cell).
+# The resting stage pins the delay: it compares the screen from 0.4 s after the key until the
+# second of rest raises the overlay, so a box that came sooner fails here. The idle stage
+# must show the box drawn in reverse, and the moved stage that the key which takes the box away
+# still does its work (j moves to row 2)
+test-sheet-overlay: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{s="The quick brown fox jumps over the lazy dog and then keeps running past the fence and into the deep dark woods where nobody ever goes at night"; printf "Name,Description\nalpha,%s\nbeta,short\n", s}' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 24 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	sleep 2 && \
+	tmux -L $@ send-keys -t $@ Right Right && \
+	sleep 0.4 && \
+	export EXPECT_TIMEOUT=1 && \
+	${EXPECT} $@ resting && \
+	export EXPECT_TIMEOUT=2 && \
+	${EXPECT} $@ idle && \
+	tmux -L $@ capture-pane -t $@ -p -e | grep -q -E "$$(printf '\033')\[7m[^[:cntrl:]]*The quick brown fox jumps over the lazy dog" && \
+	tmux -L $@ send-keys -t $@ ":" && \
+	${EXPECT} $@ prompt && \
+	tmux -L $@ send-keys -t $@ Escape && \
+	tmux -L $@ send-keys -t $@ "j" && \
+	${EXPECT} $@ moved && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# a value with more lines than the screen holds: the last row of the overlay says how many are not
+# shown, and shrinking the pane to 21 columns makes that note fall back to a bare mark
+test-sheet-overlay-more: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{s="the quick brown fox jumps over the lazy dog and then keeps running past the fence"; printf "Name,Description\nalpha,"; for(i=0;i<6;i++) printf "%s%s", (i?" ":""), s; print ""}' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ Right Right && \
+	export EXPECT_TIMEOUT=2 && \
+	${EXPECT} $@ idle && \
+	tmux -L $@ resize-window -t $@ -x 21 -y 5 && \
+	tmux -L $@ send-keys -t $@ h l && \
+	${EXPECT} $@ narrow && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
 # <ctrl>s in edit mode on a view without a file of its own asks for a name
 test-sheet-edit-mode-saveas: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
@@ -3085,40 +3228,119 @@ test-sheet-quit-confirm: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	${WAIT_FOR_EXIT} $@ && \
 	printf 'A,B\n1,x\n' | cmp - ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
 
-# <ctrl>c does not quit: it says how to quit, and cancels a prompt
+# <ctrl>c outside edit mode copies the cell under the cursor to the system clipboard, and
+# cancels a prompt or a picker. The clipboard tool is a fake on PATH, so what it receives can
+# be compared here without touching the developer's own clipboard
 test-sheet-ctrl-c: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
-	@printf 'A,B\n1,x\n' > ${TMP_DIR}/$@.csv
+	@printf 'A,B\n1,xyzzy\n' > ${TMP_DIR}/$@.csv
+	@rm -rf ${TMP_DIR}/$@-bin ${TMP_DIR}/$@-clip.txt && mkdir -p ${TMP_DIR}/$@-bin
+	@printf '#!/bin/sh\n/bin/cat > "$$CLIP_FILE"\n' > ${TMP_DIR}/$@-bin/pbcopy
+	@printf '#!/bin/sh\n/bin/cat > "$$CLIP_FILE"\n' > ${TMP_DIR}/$@-bin/wl-copy
+	@printf '#!/bin/sh\n/bin/cat > "$$CLIP_FILE"\n' > ${TMP_DIR}/$@-bin/xclip
+	@printf '#!/bin/sh\n/bin/cat > "$$CLIP_FILE"\n' > ${TMP_DIR}/$@-bin/xsel
+	@chmod +x ${TMP_DIR}/$@-bin/pbcopy ${TMP_DIR}/$@-bin/wl-copy ${TMP_DIR}/$@-bin/xclip ${TMP_DIR}/$@-bin/xsel
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
-	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && exec env PATH=${TMP_DIR}/$@-bin:$$PATH CLIP_FILE=${TMP_DIR}/$@-clip.txt ${PREFIX} $< $@.csv" && \
 	${EXPECT} $@ open && \
-	tmux -L $@ send-keys -t $@ C-c && \
-	${EXPECT} $@ hint && \
+	tmux -L $@ send-keys -t $@ Right Right C-c && \
+	${EXPECT} $@ copied && \
+	printf 'xyzzy' | cmp -s - ${TMP_DIR}/$@-clip.txt && \
 	tmux -L $@ send-keys -t $@ ":" "abc" && \
 	${EXPECT} $@ prompt && \
 	tmux -L $@ send-keys -t $@ C-c && \
-	${EXPECT} $@ hint && \
+	${EXPECT} $@ prompt-cancelled && \
 	tmux -L $@ send-keys -t $@ ":compare" Enter && \
 	${EXPECT} $@ picker && \
 	tmux -L $@ send-keys -t $@ C-c && \
-	${EXPECT} $@ hint && \
+	${EXPECT} $@ picker-cancelled && \
 	tmux -L $@ send-keys -t $@ ":q" Enter && \
 	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
-# edit mode: <ctrl>c copies the cell, <ctrl>v pastes into a cell (line breaks kept, though the
-# screen shows them as spaces) or, while typing, into the value (line breaks become spaces)
+# with no clipboard tool to run, <ctrl>c says so instead of copying
+test-sheet-copy-no-tool: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B\n1,xyzzy\n' > ${TMP_DIR}/$@.csv
+	@rm -rf ${TMP_DIR}/$@-empty && mkdir -p ${TMP_DIR}/$@-empty
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && exec env PATH=${TMP_DIR}/$@-empty ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ Right Right C-c && \
+	${EXPECT} $@ no-tool && \
+	tmux -L $@ send-keys -t $@ ":editmode" Enter Right C-c && \
+	${EXPECT} $@ edit-mode-no-tool && \
+	tmux -L $@ send-keys -t $@ Escape ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# a cell too long for the screen buffer holds only a prefix, so <ctrl>c refuses it
+test-sheet-copy-too-long: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{print "A,B"; for(i=0;i<40000;i++) printf "z"; print ",x"}' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ Right C-c && \
+	${EXPECT} $@ too-long && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# a message has its few seconds on the status line, gives the line back to the usual hint, and
+# reappears when the action is repeated. The timeout is set small here so the test is quick;
+# every other sheet test keeps messages up for as long as it needs them. The filtered stage is
+# the one that would fail if a message a worker installs itself (the "(N filtered rows) " note)
+# were born expired
+test-sheet-status-timeout: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B\n1,xyzzy\n' > ${TMP_DIR}/$@.csv
+	@rm -rf ${TMP_DIR}/$@-bin && mkdir -p ${TMP_DIR}/$@-bin
+	@printf '#!/bin/sh\n/bin/cat > /dev/null\n' > ${TMP_DIR}/$@-bin/pbcopy
+	@printf '#!/bin/sh\n/bin/cat > /dev/null\n' > ${TMP_DIR}/$@-bin/wl-copy
+	@printf '#!/bin/sh\n/bin/cat > /dev/null\n' > ${TMP_DIR}/$@-bin/xclip
+	@printf '#!/bin/sh\n/bin/cat > /dev/null\n' > ${TMP_DIR}/$@-bin/xsel
+	@chmod +x ${TMP_DIR}/$@-bin/pbcopy ${TMP_DIR}/$@-bin/wl-copy ${TMP_DIR}/$@-bin/xclip ${TMP_DIR}/$@-bin/xsel
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && exec env PATH=${TMP_DIR}/$@-bin:$$PATH ZSVSHEET_STATUS_TIMEOUT_MS=1500 ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ Right Right C-c && \
+	${EXPECT} $@ copied && \
+	sleep 0.5 && \
+	${EXPECT} $@ copied && \
+	sleep 2 && \
+	${EXPECT} $@ gone && \
+	tmux -L $@ send-keys -t $@ C-c && \
+	${EXPECT} $@ copied && \
+	tmux -L $@ send-keys -t $@ "f" "xyzzy" Enter && \
+	${EXPECT} $@ filtered && \
+	sleep 2 && \
+	${EXPECT} $@ filtered-gone && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# edit mode: <ctrl>c copies the cell, both into sheet's own clipboard and to the one the fakes
+# on PATH stand in for, and <ctrl>v pastes into a cell (line breaks kept, though the screen shows
+# them as spaces) or, while typing, into the value (line breaks become spaces)
 test-sheet-edit-mode-clipboard: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@printf 'A,B\n1,x\n2,y\n"\303\251\nb",w\n' > ${TMP_DIR}/$@.csv
+	@rm -rf ${TMP_DIR}/$@-bin ${TMP_DIR}/$@-clip.txt && mkdir -p ${TMP_DIR}/$@-bin
+	@printf '#!/bin/sh\n/bin/cat > "$$CLIP_FILE"\n' > ${TMP_DIR}/$@-bin/pbcopy
+	@printf '#!/bin/sh\n/bin/cat > "$$CLIP_FILE"\n' > ${TMP_DIR}/$@-bin/wl-copy
+	@printf '#!/bin/sh\n/bin/cat > "$$CLIP_FILE"\n' > ${TMP_DIR}/$@-bin/xclip
+	@printf '#!/bin/sh\n/bin/cat > "$$CLIP_FILE"\n' > ${TMP_DIR}/$@-bin/xsel
+	@chmod +x ${TMP_DIR}/$@-bin/pbcopy ${TMP_DIR}/$@-bin/wl-copy ${TMP_DIR}/$@-bin/xclip ${TMP_DIR}/$@-bin/xsel
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
-	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && exec env PATH=${TMP_DIR}/$@-bin:$$PATH CLIP_FILE=${TMP_DIR}/$@-clip.txt ${PREFIX} $< $@.csv" && \
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ ":editmode" Enter Right C-v && \
 	${EXPECT} $@ empty && \
 	tmux -L $@ send-keys -t $@ C-c && \
 	${EXPECT} $@ copied && \
+	printf '1' | cmp -s - ${TMP_DIR}/$@-clip.txt && \
 	tmux -L $@ send-keys -t $@ Right C-v && \
 	${EXPECT} $@ pasted && \
 	tmux -L $@ send-keys -t $@ Down "z" C-v && \
@@ -3146,7 +3368,7 @@ test-sheet-quit-signal: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	${WAIT_FOR_EXIT} $@ && \
 	grep -Eq '(^| )icanon' ${TMP_DIR}/$@.stty && grep -Eq '(^| )echo( |$$)' ${TMP_DIR}/$@.stty && ${TEST_PASS} || ${TEST_FAIL})
 
-# a parent that ignores SIGQUIT keeps <ctrl>\ from ending sheet
+# a parent that ignores SIGQUIT keeps <ctrl>\ from ending sheet, and keys still reach it
 test-sheet-quit-signal-ignored: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
@@ -3154,7 +3376,7 @@ test-sheet-quit-signal-ignored: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
 	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && exec sh -c \"trap '' QUIT; exec ${PREFIX} $< $@.csv\"" && \
 	${EXPECT} $@ open && \
-	tmux -L $@ send-keys -t $@ 'C-\' C-c && \
+	tmux -L $@ send-keys -t $@ 'C-\' l l && \
 	${EXPECT} $@ still-running && \
 	tmux -L $@ send-keys -t $@ ":q" Enter && \
 	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
@@ -3175,8 +3397,8 @@ test-sheet-suspend: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ capture-pane -p -t $@ | grep -q SUSPENDED && \
 	${TYPE_COMMAND} $@ fg && \
 	${EXPECT} $@ open && \
-	tmux -L $@ send-keys -t $@ C-c && \
-	${EXPECT} $@ hint && \
+	tmux -L $@ send-keys -t $@ l l && \
+	${EXPECT} $@ moved && \
 	tmux -L $@ send-keys -t $@ ":q" Enter && \
 	${TYPE_COMMAND} $@ exit && \
 	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})

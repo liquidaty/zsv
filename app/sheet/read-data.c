@@ -76,10 +76,8 @@ static enum zsvsheet_priv_status zsvsheet_ui_buffer_apply_edits(struct zsvsheet_
 static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char *filename, struct zsv_opts *optsp,
                                  struct zsv_prop_handler *custom_prop_handler, char *old_ui_status) {
   struct zsvsheet_index_opts *ixopts = calloc(1, sizeof(*ixopts));
-  if (!ixopts) {           // the index is an optimization; without it the buffer still works
-    free(uibuffp->status); // restore the pre-"(building index)" status
-    uibuffp->status = old_ui_status;
-    uibuffp->status_is_index_placeholder = 0;
+  if (!ixopts) { // the index is an optimization; without it the buffer still works
+    zsvsheet_ui_buffer_index_done(uibuffp, old_ui_status);
     return;
   }
   ixopts->mutexp = &uibuffp->mutex;
@@ -93,9 +91,7 @@ static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char 
   if (uibuffp->worker_active)
     zsvsheet_ui_buffer_join_worker(uibuffp);
   if (zsvsheet_ui_buffer_create_worker(uibuffp, get_data_index, ixopts) != 0) {
-    free(uibuffp->status); // restore the pre-"(building index)" status
-    uibuffp->status = old_ui_status;
-    uibuffp->status_is_index_placeholder = 0;
+    zsvsheet_ui_buffer_index_done(uibuffp, old_ui_status);
     uibuffp->ixopts = NULL;
     free(ixopts);
   }
@@ -325,8 +321,7 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
         rc = -1; // so on failure leave uibuff->status holding old_ui_status
         goto done;
       }
-      uibuff->status = ix_placeholder;
-      uibuff->status_is_index_placeholder = 1; // no worker yet, so no lock needed
+      zsvsheet_ui_buffer_take_index_placeholder(uibuff, ix_placeholder);
 
       opts.stream = NULL;
       get_data_index_async(uibuff, filename, &opts, custom_prop_handler, old_ui_status);
@@ -355,17 +350,10 @@ static void *get_data_index(void *gdi) {
   pthread_mutex_lock(mutexp);
   if (ix_status != zsv_index_status_ok && d->errp != NULL)
     *d->errp = errno;
-  char *to_free;
-  if (uib->status_is_index_placeholder) { // restore the pre-"(building index)" status
-    to_free = uib->status;
-    uib->status = d->old_ui_status;
-    uib->status_is_index_placeholder = 0;
-  } else // set_status() replaced (and freed) the placeholder mid-build
-    to_free = d->old_ui_status;
   uib->ixopts = NULL; // ui_buffer_delete writes through ixopts if left set
   pthread_mutex_unlock(mutexp);
 
-  free(to_free);
+  zsvsheet_ui_buffer_index_done(uib, d->old_ui_status); // takes ownership either way
   free(d);
 
   return NULL;

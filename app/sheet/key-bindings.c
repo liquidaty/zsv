@@ -12,7 +12,7 @@
 #endif
 
 #define ZSVSHEET_KEY_ESC 27
-#define ZSVSHEET_KEY_COPY ZSVSHEET_CTRL('c')  // edit mode; elsewhere it shows how to quit
+#define ZSVSHEET_KEY_COPY ZSVSHEET_CTRL('c')  // copy the cell under the cursor (in edit mode, to sheet's own clipboard)
 #define ZSVSHEET_KEY_PASTE ZSVSHEET_CTRL('v') // edit mode
 
 #if 0
@@ -241,7 +241,7 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
     .ch_name = ":editmode",
     .proc_id = zsvsheet_builtin_proc_edit_mode,
   },
-  { .ch = ZSVSHEET_KEY_COPY,   .proc_id = zsvsheet_builtin_proc_quit_hint,     },
+  { .ch = ZSVSHEET_KEY_COPY,   .proc_id = zsvsheet_builtin_proc_copy_cell,     },
   { .ch = -1                                                                   }
 };
 /* clang-format on */
@@ -289,6 +289,7 @@ struct zsvsheet_key_binding zsvsheet_emacs_key_bindings[] = {
 
   { .ch = ZSVSHEET_CTRL('v'),  .proc_id = zsvsheet_builtin_proc_pg_down,       },
   { .ch = ZSVSHEET_CTRL('u'),  .proc_id = zsvsheet_builtin_proc_pg_up,         },
+  { .ch = ZSVSHEET_KEY_COPY,   .proc_id = zsvsheet_builtin_proc_copy_cell,     },
   { .ch = KEY_NPAGE,           .proc_id = zsvsheet_builtin_proc_pg_down,       },
   { .ch = KEY_PPAGE,           .proc_id = zsvsheet_builtin_proc_pg_up,         },
 

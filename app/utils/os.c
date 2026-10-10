@@ -408,3 +408,22 @@ unsigned int zsv_get_number_of_cores(void) {
   // Ensure we return a positive value
   return (unsigned int)(ncores > 0 ? ncores : 1);
 }
+
+/**
+ * zsv_now_ms(): milliseconds from a monotonic clock
+ */
+#ifdef _WIN32
+#include <windows.h>
+unsigned long long zsv_now_ms(void) {
+  // 64-bit: a 32-bit tick count wraps around after 49.7 days
+  return (unsigned long long)GetTickCount64();
+}
+#else
+#include <time.h>
+unsigned long long zsv_now_ms(void) {
+  struct timespec ts;
+  if (clock_gettime(CLOCK_MONOTONIC, &ts))
+    return 0; // unavailable: what the header promises
+  return (unsigned long long)ts.tv_sec * 1000 + (unsigned long long)ts.tv_nsec / 1000000;
+}
+#endif

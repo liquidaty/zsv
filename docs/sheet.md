@@ -42,6 +42,9 @@ for improvement (of existing features) and expansion (of new features).
 Current features:
 
 - View & navigate: view a tabular data file as a grid and navigate around
+  - a cell value too long for the status bar is shown whole, word-wrapped in the
+    middle of the screen, when the cursor rests on the cell
+- Copy: `Ctrl-C` puts the cell under the cursor on the system clipboard
 - vim-like key bindings
   - emacs-like key bindings are still experimental
   - both vim- and emacs- key bindings can be improved
@@ -100,7 +103,7 @@ Press `?` to see a list of commands:
 | -------------- | ---------- | --------------------------------------------------- |
 | :q             | quit       | Exit the application (also `:quit`)                 |
 | :q!            | quit!      | Exit, discarding unsaved changes                    |
-| <ctrl>c        | quithint   | Show how to quit (in edit mode, copy)               |
+| <ctrl>c        | copy       | Copy the cell under the cursor to the clipboard     |
 | i              | cell       | Edit the cell under the cursor (or `:cell <value>`) |
 | :w             | write      | Save this buffer as CSV (or `:w <file>`)            |
 | :editmode      | editmode   | Type into cells as in a spreadsheet; `Esc` leaves   |
@@ -244,10 +247,15 @@ line starts with `-- EDIT --` while it is on.
 | `Ctrl-V`            | paste into the cell                 | add the copied value       |
 | `Esc`               | leave edit mode                     | cancel; the cell is unchanged |
 
-The copied value stays within sheet; it is not the system clipboard, but your
-terminal's own paste types its text into the cell. Windows terminals usually keep
-`Ctrl-V` (and `Ctrl-C` while text is selected) for the system clipboard, so there
-`Ctrl-V` types the system clipboard's text. A cell too long for sheet to show in full (over 32767
+`Ctrl-C` in edit mode copies the cell (or, while typing, what has been typed)
+both within sheet, for `Ctrl-V` to paste, and to the system clipboard, as it does
+outside edit mode; sheet's own copy is what the status reports, and a host with no
+clipboard tool says "Copied in sheet; no system clipboard". The value pasted into a
+cell with `Ctrl-V` is the copy sheet keeps, which your terminal's own paste can
+also read back from the system clipboard. Windows
+terminals usually keep `Ctrl-V` (and `Ctrl-C` while text is selected) for the
+system clipboard, so there `Ctrl-V` types the system clipboard's text. A cell too
+long for sheet to show in full (over 32767
 bytes) cannot be copied or edited with `F2` or `i`, and neither key edits a value that is longer than the
 screen line or has line breaks; use `:cell "<value>"` outside edit mode for those. Line breaks in a value pasted
 while typing become spaces, since typing edits one line. Other keys, such as
@@ -273,7 +281,10 @@ immediately after closes it and discards the changes. While any buffer has unsav
 changes, `:q` asks for confirmation and quits only if you type `yes` in full; `:w`
 saves the changes first, and `:q!` quits without asking.
 
-`Ctrl-C` does not quit: it shows how to, and cancels a prompt. `Ctrl-Z` suspends
+`Ctrl-C` does not quit. Outside edit mode it copies the cell under the cursor to
+the system clipboard; inside a prompt it cancels the prompt; in edit mode it
+copies the cell there too, keeping a copy within sheet for `Ctrl-V` (see [Edit
+mode](#edit-mode)). `Ctrl-Z` suspends
 sheet to the shell as usual, and `Ctrl-\` still quits at once, without saving.
 
 ## Commands and Tab completion
@@ -289,6 +300,43 @@ Editing the text restarts the cycle from the new prefix.
 Use arrow keys to move one row or column at a time, or `Shift-right`,
 `Shirt-left`, `G` or `g g` to move to the last column, the first column, the
 last row or the first row, respectively
+
+## Viewing a whole cell value
+
+The status bar shows the cursor cell's value, cut off at the right edge of the
+screen. Leave the cursor on such a cell for a second and the whole value appears
+in the middle of the screen, word-wrapped. Any key removes it: the overlay is
+not a mode, so the key you press next does its usual work.
+
+A value longer than the screen can show ends with a count of the lines that do
+not fit; the overlay does not scroll, so save the buffer with `:w` to read the
+rest. In the compare view the overlay shows the cell under the cursor; move to
+the paired column to read that value whole.
+
+## Copying a cell to the clipboard
+
+Outside edit mode, `Ctrl-C` (or `:copy`) copies the value of the cell under the
+cursor, line breaks and all, including a cell whose value is longer than the
+status line can show. macOS hands the text to `pbcopy`; other Unix systems try
+`wl-copy`, then `xclip`, then `xsel`, and the status line says so when none of
+them is installed. Windows builds use the Windows clipboard. A cell too long for
+the screen buffer (over 32767 bytes) cannot be copied: sheet says "Too long to
+copy", as edit mode's `Ctrl-C` does. A cell in the row-number column copies too,
+though edit mode refuses to edit that column. The copy lands on the clipboard of
+the machine running sheet, which over `ssh` is not the clipboard of the machine in
+front of you.
+
+## Status line messages
+
+The status line shows what just happened ("Copied to clipboard", the file a
+buffer was saved to, a filter's row count) and then gives way to the usual hint
+after a few seconds; a repeated action shows its message again.
+`ZSVSHEET_STATUS_TIMEOUT_MS` sets how long such a message stays, in milliseconds,
+and 0 keeps each message until another replaces it. An error a command reports
+(an unknown command, a column that is not there) clears on the next pass of the
+main loop, a fraction of a second later, and a message that reports work in
+progress, such as `(building index)`, stays until the work ends. `:quithint`
+shows the reminder of how to quit at any time.
 
 ## Search syntax
 

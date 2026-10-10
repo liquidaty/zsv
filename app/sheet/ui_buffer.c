@@ -1,5 +1,6 @@
 #include <unistd.h> // unlink()
 #include <pthread.h>
+#include <zsv/utils/os.h> // zsv_now_ms()
 #include "../utils/index.h"
 #include "index.h"
 #include "edits.h"
@@ -25,6 +26,16 @@ static void uib_parse_errs_clear(struct uib_parse_errs *parse_errs) {
   uib_parse_errs_init(parse_errs, max);
 }
 
+// Who set the buffer's status. A worker that shows state ("(building index) ", "(working) ")
+// ends its own note when the work ends, but only while the status is still its own: whoever
+// replaces (and frees) the status takes ownership with it, so the worker compares the owner
+// tag rather than the freed string's address
+enum zsvsheet_status_owner {
+  zsvsheet_status_owner_none = 0,       // no status, or a message that expires on its own clock
+  zsvsheet_status_owner_index,          // the index worker's "(building index) " placeholder
+  zsvsheet_status_owner_transformation, // a transformation worker's "(working) " note
+};
+
 struct zsvsheet_ui_buffer {
   char *filename;
   char *data_filename;              // if this dataset was filtered from another, the filtered data is stored here
@@ -49,6 +60,11 @@ struct zsvsheet_ui_buffer {
   struct zsvsheet_rowcol buff_offset;
   size_t buff_used_rows;
   char *status;
+  // when status was set, for a message that expires (status-message.h); 0 when there is no
+  // status, and for a status that reports state, which does not expire
+  unsigned long long status_set_ms;
+  // who set status (written under mutex, like status itself)
+  enum zsvsheet_status_owner status_owner;
 
   void *ext_ctx; // extension context via zsvsheet_ext_set_ctx() zsvsheet_ext_get_ctx()
 
@@ -78,14 +94,10 @@ struct zsvsheet_ui_buffer {
   unsigned char write_in_progress : 1;
   unsigned char write_done : 1;
   unsigned char worker_cancelled : 1;
-  // status is the "(building index) " placeholder the index worker must
-  // restore on completion; cleared by whoever replaces (and frees) status
-  // first, so the string is never freed twice
-  unsigned char status_is_index_placeholder : 1;
   // informational view (help, errors): <esc> may close it even when it is the
   // only buffer above the blank base, unlike a buffer the user opened
   unsigned char transient : 1;
-  unsigned char _ : 6;
+  unsigned char _ : 7;
 };
 
 int zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*start_func)(void *), void *arg) {
@@ -98,14 +110,77 @@ int zsvsheet_ui_buffer_create_worker(struct zsvsheet_ui_buffer *ub, void *(*star
   return rc;
 }
 
+// Free the buffer's status and reset the owner that says whose string it was. The caller holds
+// the mutex, so the applier can retire an expired message in the same critical section that
+// decides to, and a worker's placeholder restore cannot interleave with either
+void zsvsheet_ui_buffer_status_clear_locked(struct zsvsheet_ui_buffer *ub) {
+  free(ub->status); // may be a worker's state note; the reset owner tells it
+  ub->status = NULL;
+  ub->status_owner = zsvsheet_status_owner_none;
+  ub->status_set_ms = 0;
+}
+
 void zsvsheet_ui_buffer_set_status(struct zsvsheet_ui_buffer *ub, const char *status) {
   if (!ub) // e.g. pivot/sqlfilter report "not available" on a NULL buffer
     return;
   assert(ub->mutex_inited);
   pthread_mutex_lock(&ub->mutex);
-  free(ub->status); // may be the index worker's placeholder; the cleared flag tells it
+  zsvsheet_ui_buffer_status_clear_locked(ub);
   ub->status = status ? strdup(status) : NULL;
-  ub->status_is_index_placeholder = 0;
+  ub->status_set_ms = ub->status ? zsv_now_ms() : 0; // the message's clock starts now
+  pthread_mutex_unlock(&ub->mutex);
+}
+
+// Free the buffer's status and take text in its place, with set_ms as its clock (0: none)
+// and owner as its owner tag
+static void zsvsheet_ui_buffer_take_status_at(struct zsvsheet_ui_buffer *ub, char *text, unsigned long long set_ms,
+                                              enum zsvsheet_status_owner owner) {
+  assert(ub->mutex_inited);
+  pthread_mutex_lock(&ub->mutex);
+  zsvsheet_ui_buffer_status_clear_locked(ub);
+  ub->status = text;
+  ub->status_set_ms = text ? set_ms : 0;
+  ub->status_owner = text ? owner : zsvsheet_status_owner_none;
+  pthread_mutex_unlock(&ub->mutex);
+}
+
+// Take text and make it the buffer's status: a message, which starts its clock now, for a
+// caller that has built the string itself
+void zsvsheet_ui_buffer_take_status(struct zsvsheet_ui_buffer *ub, char *text) {
+  zsvsheet_ui_buffer_take_status_at(ub, text, zsv_now_ms(), zsvsheet_status_owner_none);
+}
+
+// Take text and make it the buffer's status: state, such as a worker's "(working) " note, which
+// has no clock and stays until owner ends it or a newer status replaces it
+void zsvsheet_ui_buffer_take_state_status(struct zsvsheet_ui_buffer *ub, char *text, enum zsvsheet_status_owner owner) {
+  zsvsheet_ui_buffer_take_status_at(ub, text, 0, owner);
+}
+
+// Take text and make it the buffer's "(building index) " placeholder: a status the index worker
+// restores the displaced one after. It reports state, so it carries no clock, and the displaced
+// status stays the caller's to hand to zsvsheet_ui_buffer_index_done()
+void zsvsheet_ui_buffer_take_index_placeholder(struct zsvsheet_ui_buffer *ub, char *text) {
+  assert(ub->mutex_inited);
+  pthread_mutex_lock(&ub->mutex);
+  ub->status = text;
+  ub->status_owner = zsvsheet_status_owner_index;
+  ub->status_set_ms = 0; // state, not a message: no clock, so it never times out
+  pthread_mutex_unlock(&ub->mutex);
+}
+
+// The index worker is done, or never started: put back the status its placeholder displaced
+// (ownership taken), or free that status when something replaced the placeholder meanwhile.
+// The restored status is a message again, and it starts its clock over: what it says is news,
+// not history the placeholder had already shown
+void zsvsheet_ui_buffer_index_done(struct zsvsheet_ui_buffer *ub, char *displaced_status) {
+  pthread_mutex_lock(&ub->mutex);
+  if (ub->status_owner == zsvsheet_status_owner_index) {
+    free(ub->status);
+    ub->status = displaced_status; // a message again, and it starts over: what it says is news
+    ub->status_owner = zsvsheet_status_owner_none;
+    ub->status_set_ms = displaced_status ? zsv_now_ms() : 0;
+  } else
+    free(displaced_status); // set_status() replaced the placeholder and freed it
   pthread_mutex_unlock(&ub->mutex);
 }
 
