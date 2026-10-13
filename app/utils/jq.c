@@ -317,8 +317,16 @@ size_t zsv_jq_write(const char *s, size_t n, size_t m, zsv_jq_handle h) {
 
 enum zsv_jq_status zsv_jq_parse_file(zsv_jq_handle h, FILE *f) {
   char buff[4096];
-  for (size_t bytes_read = fread(buff, 1, sizeof(buff), f); bytes_read && h->status == zsv_jq_status_ok;
-       bytes_read = fread(buff, 1, sizeof(buff), f)) {
+  size_t bytes_read = fread(buff, 1, sizeof(buff), f);
+  // A UTF-16 BOM would otherwise surface as a misleading jq "Invalid numeric literal" parse error.
+  // (FF FE is also the UTF-32LE BOM, hence the wording below.)
+  if (bytes_read > 1 && (((unsigned char)buff[0] == 0xFF && (unsigned char)buff[1] == 0xFE) ||
+                         ((unsigned char)buff[0] == 0xFE && (unsigned char)buff[1] == 0xFF))) {
+    fprintf(stderr, "jq: unsupported input encoding: UTF-16/UTF-32 byte-order mark found; only UTF-8 is supported\n");
+    h->status = zsv_jq_status_error;
+    return h->status;
+  }
+  for (; bytes_read && h->status == zsv_jq_status_ok; bytes_read = fread(buff, 1, sizeof(buff), f)) {
     zsv_jq_parse(h, buff, bytes_read);
     if (feof(f))
       break;
