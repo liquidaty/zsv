@@ -94,3 +94,10 @@ default.profraw
 fuzz/afl
 fuzz/df
 crash*
+debian/.debhelper
+debian/debhelper-build-stamp
+debian/zsv
+debian/zsv-dev
+debian/files
+debian/zsv.substvars
+debian/zsv-dev.substvars

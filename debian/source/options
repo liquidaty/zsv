@@ -1,0 +1,7 @@
+extend-diff-ignore = "(^|/)(.github|.vscode)/"
+extend-diff-ignore = "(^|/)(.clang-format|.cppcheck|.dockerignore|.fpm|.markdownlint.json|.shellcheck)/"
+extend-diff-ignore = "(^|/)(build|tmp|pkg)/"
+extend-diff-ignore = "(^|/)(df-fuzz-watch.sh|Dockerfile|Dockerfile.ci|schema.jsonc)/"
+extend-diff-ignore = "(^|/)(data|test|docs|examples|fuzz|infra|playground|setup-action)/"
+extend-diff-ignore = "(^|/)(app/ext_example|app/benchmark)/"
+extend-diff-ignore = "(^|/)(app/external/utf8proc-2.11.3)/"
