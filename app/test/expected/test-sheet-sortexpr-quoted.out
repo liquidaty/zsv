@@ -1,0 +1,6 @@
+Row #                            name                             city
+2                                b                                New York
+1                                a                                Boston
+3                                c                                Austin
+
+Sorted by case when city = 'Boston' then 9 else instr('New York|Austin', city) end (ascending) 2

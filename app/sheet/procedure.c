@@ -100,7 +100,7 @@ zsvsheet_status zsvsheet_proc_invoke_from_keypress(zsvsheet_proc_id_t proc_id, i
 
 zsvsheet_status zsvsheet_proc_invoke_from_command(const char *command, struct zsvsheet_proc_context *context,
                                                   char *unrecognized) {
-  char *toks[10] = {0};
+  char *toks[ZSVSHEET_PROC_MAX_ARGS + 2]; // the command name and the arguments, and a stop
   char tokbuf[1024];
   struct zsvsheet_lexer lexer;
   char *proc_name;

@@ -1,3 +1,4 @@
+#include <ctype.h> // isspace()
 #include <string.h>
 #include <stdbool.h>
 
@@ -44,7 +45,7 @@ void zsvsheet_lexer_init(struct zsvsheet_lexer *lexer, const char *string, char 
 
 int zsvsheet_lexer_skip_space(struct zsvsheet_lexer *lexer) {
   int orig_left = lexer->left;
-  while (lexer->left > 0 && isspace(*lexer->rover)) {
+  while (lexer->left > 0 && isspace((unsigned char)*lexer->rover)) {
     lexer->rover++;
     lexer->left--;
   }
@@ -53,7 +54,7 @@ int zsvsheet_lexer_skip_space(struct zsvsheet_lexer *lexer) {
 
 int zsvsheet_lexer_skip_not_space(struct zsvsheet_lexer *lexer) {
   int orig_left = lexer->left;
-  while (lexer->left > 0 && !isspace(*lexer->rover)) {
+  while (lexer->left > 0 && !isspace((unsigned char)*lexer->rover)) {
     lexer->rover++;
     lexer->left--;
   }

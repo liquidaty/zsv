@@ -143,6 +143,8 @@ Press `?` to see a list of commands:
 | o              | sort       | Sort rows by the column under the …                 |
 | O              | sortdesc   | (alias: sort!) Sort rows…                           |
 |                | sortexpr   | Sort rows by SQL expression                         |
+|                | hide-column | Hide the column under the cursor, or columns named… |
+|                | unhide-column | Unhide all hidden columns, or only those named…   |
 
 # Quick usage guide
 
@@ -300,6 +302,34 @@ Editing the text restarts the cycle from the new prefix.
 Use arrow keys to move one row or column at a time, or `Shift-right`,
 `Shirt-left`, `G` or `g g` to move to the last column, the first column, the
 last row or the first row, respectively
+
+## Hiding columns
+
+`:hide-column` hides the column under the cursor. `:hide-column <name>...` hides every
+column whose header matches any of the given names; names match case-insensitively
+(ASCII only, as `:sort`'s column names do), `*` stands for any run of characters
+(`:hide-column Pop*`, `:hide-column *id`), and a name containing spaces needs double
+quotes (`:hide-column "Accent City"`).
+
+While a buffer has hidden columns the status line ends in `[N hidden]`, and the status text
+and the cell value beside it stop where the marker begins (the overlay, after the usual
+pause, shows a value that no longer fits in full). On a narrow terminal, where the long
+form would leave no room for the value, the marker shortens to `[Nh]`. An open prompt
+(`:`, `/`, `Save as`, `Edit:`) takes the footer line; the marker returns when the prompt
+closes. The grid and the
+arrow / `h` `l` / `^` `$` column movement skip the hidden columns, as do the `|` and `\`
+column search and the `/` find (a value that occurs only in a hidden column reports "not
+found"). `:unhide-column` unhides every column of the buffer, and
+`:unhide-column <name>...` unhides the hidden columns matching a name, with the same
+matching rules as `:hide-column`.
+
+Hiding belongs to the view you are looking at. The data is untouched: `:w` saves every
+column, and sort, filter, pivot and `:where` read the hidden columns like the rest. A
+filter, sort or pivot result opens in a new buffer with every column visible. The
+row-number column cannot be hidden: sheet's own, or the `Row #` column that a filter,
+sort or pivot result (or any data file whose first column is `Row #`) starts with. At
+least one data column always stays on screen: a command that would hide the last one is
+refused.
 
 ## Viewing a whole cell value
 

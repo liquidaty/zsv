@@ -4,6 +4,7 @@
 #include "../utils/index.h"
 #include "index.h"
 #include "edits.h"
+#include "hidden-columns.h"
 
 struct uib_parse_errs {
   size_t count;
@@ -79,6 +80,7 @@ struct zsvsheet_ui_buffer {
 
   struct zsv_prop_handler *custom_prop_handler; // what read_data() parses this buffer's files with
   struct zsvsheet_edits edits;                  // cell edits not yet in the data file
+  struct zsvsheet_hidden_cols hidden_cols;      // view state: screen columns the display skips
 
   // main-thread state; not bit-fields, which would share a memory location with the
   // flags below that workers write under the mutex
@@ -253,6 +255,7 @@ void zsvsheet_ui_buffer_delete(struct zsvsheet_ui_buffer *ub) {
       unlink(ub->data_filename);
     uib_parse_errs_clear(&ub->parse_errs);
     zsvsheet_edits_clear(&ub->edits);
+    zsvsheet_hidden_cols_clear(&ub->hidden_cols);
     free(ub->data_filename);
     free(ub->filename);
     free(ub);
@@ -401,8 +404,58 @@ static size_t zsvsheet_ui_buffer_data_col_offset(const struct zsvsheet_ui_buffer
   return !uib->buffer->opts.no_rownum_column;
 }
 
+// Screen columns, from column 0, that hold row numbers rather than data: sheet's own, or the
+// "Row #" a file carries (a filter, sort or pivot result's, or one a data file starts with)
+static size_t zsvsheet_ui_buffer_rownum_cols(const struct zsvsheet_ui_buffer *uib) {
+  return zsvsheet_ui_buffer_data_col_offset(uib) + uib->has_row_num;
+}
+
 static const char *zsvsheet_ui_buffer_get_header(struct zsvsheet_ui_buffer *uib, size_t col) {
   struct zsvsheet_screen_buffer *sb = uib->buffer;
 
   return (char *)zsvsheet_screen_buffer_cell_display(sb, 0, col);
+}
+
+/* Hidden columns: a view setting of this buffer (see hidden-columns.h). The screen buffer
+ * keeps every column, so the display, the cursor and the column searches consult these to
+ * stay on the columns a reader can still see */
+
+static int zsvsheet_ui_buffer_col_hidden(const struct zsvsheet_ui_buffer *uib, size_t col) {
+  return zsvsheet_hidden_cols_has(&uib->hidden_cols, col);
+}
+
+static size_t zsvsheet_ui_buffer_hidden_count(const struct zsvsheet_ui_buffer *uib) {
+  return uib->hidden_cols.count;
+}
+
+static int zsvsheet_ui_buffer_hide_col(struct zsvsheet_ui_buffer *uib, size_t col) {
+  return zsvsheet_hidden_cols_add(&uib->hidden_cols, col);
+}
+
+static void zsvsheet_ui_buffer_unhide_col(struct zsvsheet_ui_buffer *uib, size_t col) {
+  zsvsheet_hidden_cols_remove(&uib->hidden_cols, col);
+}
+
+static void zsvsheet_ui_buffer_unhide_all(struct zsvsheet_ui_buffer *uib) {
+  zsvsheet_hidden_cols_clear(&uib->hidden_cols);
+}
+
+// The i-th hidden column, by ascending index; (size_t)-1 past the last
+static size_t zsvsheet_ui_buffer_hidden_col(const struct zsvsheet_ui_buffer *uib, size_t i) {
+  return i < uib->hidden_cols.count ? uib->hidden_cols.cols[i] : (size_t)-1;
+}
+
+// First column in [col, end) that is not hidden, else end
+static size_t zsvsheet_ui_buffer_visible_col(const struct zsvsheet_ui_buffer *uib, size_t col, size_t end) {
+  return zsvsheet_hidden_cols_visible(&uib->hidden_cols, col, end);
+}
+
+// Last column before col that is not hidden, else (size_t)-1
+static size_t zsvsheet_ui_buffer_visible_col_before(const struct zsvsheet_ui_buffer *uib, size_t col) {
+  return zsvsheet_hidden_cols_visible_before(&uib->hidden_cols, col);
+}
+
+// How many columns in [from, to) are not hidden
+static size_t zsvsheet_ui_buffer_visible_col_count(const struct zsvsheet_ui_buffer *uib, size_t from, size_t to) {
+  return zsvsheet_hidden_cols_visible_count(&uib->hidden_cols, from, to);
 }

@@ -146,6 +146,8 @@ ifneq ($(CROSS_COMPILING),1)
   TESTS+=test-rng # host-compiled reference-vector check of zsv/utils/rng
   TESTS+=test-strcasestr # host-compiled unit test of the caseless UTF-8 search in zsv/utils/string
   TESTS+=test-sheet-edits # host-compiled unit test of the sheet cell-edit container
+  TESTS+=test-sheet-lexer # host-compiled unit test of the sheet command lexer
+  TESTS+=test-sheet-hidden-columns # host-compiled unit test of the sheet hidden-column set and name matcher
   # the overlay reaches curses through sheet/terminal.h, so it is built only where sheet is
   ifeq ($(ZSVSHEET_BUILD),1)
     TESTS+=test-sheet-cell-overlay # host-compiled unit test of the sheet whole-cell overlay
@@ -801,6 +803,23 @@ test-sheet-edits: ${TMP_DIR}/test_sheet_edits${HOST_EXE}
 ${TMP_DIR}/test_sheet_edits${HOST_EXE}: test_sheet_edits.c ../sheet/edits.c ../sheet/edits.h
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} test_sheet_edits.c ../sheet/edits.c -o $@
+
+test-sheet-lexer: ${TMP_DIR}/test_sheet_lexer${HOST_EXE}
+	@${TEST_INIT}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
+
+# lexer.c has no header: the test includes it, so it is a prerequisite, not a source argument
+${TMP_DIR}/test_sheet_lexer${HOST_EXE}: test_sheet_lexer.c ../sheet/lexer.c
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} ${CFLAGS_AUTO} test_sheet_lexer.c -o $@
+
+test-sheet-hidden-columns: ${TMP_DIR}/test_sheet_hidden_columns${HOST_EXE}
+	@${TEST_INIT}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
+
+${TMP_DIR}/test_sheet_hidden_columns${HOST_EXE}: test_sheet_hidden_columns.c ../sheet/hidden-columns.c ../sheet/hidden-columns.h
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} ${CFLAGS_AUTO} test_sheet_hidden_columns.c ../sheet/hidden-columns.c -o $@
 
 test-args: ${TMP_DIR}/test_args${HOST_EXE}
 	@${TEST_INIT}
@@ -1706,6 +1725,9 @@ test-sheet-all: \
 	test-sheet-1 test-sheet-2 test-sheet-3 test-sheet-4 test-sheet-5 test-sheet-6 test-sheet-7 test-sheet-8 test-sheet-9 \
 	test-sheet-10 test-sheet-11 test-sheet-12 test-sheet-13 test-sheet-14 test-sheet-15 test-sheet-16 test-sheet-17 \
 	test-sheet-18 test-sheet-19 test-sheet-20 \
+	test-sheet-hide-1 test-sheet-hide-2 test-sheet-hide-3 test-sheet-hide-4 test-sheet-hide-5 test-sheet-hide-6 \
+	test-sheet-hide-7 test-sheet-hide-8 test-sheet-hide-9 test-sheet-hide-10 test-sheet-hide-11 \
+	test-sheet-hide-12 test-sheet-hide-13 test-sheet-sortexpr-quoted \
 	test-sheet-esc-last test-sheet-find-after-filter \
 	test-sheet-subcommand \
 	test-sheet-caseless-find test-sheet-caseless-filter test-sheet-caseless-find-file \
@@ -2021,6 +2043,214 @@ test-sheet-20: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS
 	tmux -L $@ send-keys -t $@ "?" && \
 	${EXPECT} $@ help && \
 	tmux -L $@ send-keys -t $@ "f" "Filter" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# :hide-column <name> (double-quoted): the column goes, the remaining cells widen, and the
+# footer marks the state with [1 hidden] at its right-hand end. The cursor steps over the
+# hidden column with <l> (two presses land on AccentCity, not on the hidden City) and back
+# with <h>; <G> reloads from the bottom of the file and the column stays hidden
+test-sheet-hide-1: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ ':hide-column "City"' ENTER && \
+	${EXPECT} $@ hidden && \
+	tmux -L $@ send-keys -t $@ "l" "l" && \
+	${EXPECT} $@ across && \
+	tmux -L $@ send-keys -t $@ "h" "h" && \
+	tmux -L $@ send-keys -t $@ "G" && \
+	${EXPECT} $@ bottom && ${TEST_PASS} || ${TEST_FAIL})
+
+# no argument: the row-number column under the cursor is refused, the same name in quotes is
+# refused too (quoting keeps its space), and the column under the cursor ($ = the last one,
+# Longitude) is hidden
+test-sheet-hide-2: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ ":hide-column" ENTER && \
+	${EXPECT} $@ rownum && \
+	tmux -L $@ send-keys -t $@ ':hide-column "Row #"' ENTER && \
+	${EXPECT} $@ rownum-name && \
+	tmux -L $@ send-keys -t $@ '$$' ":hide-column" ENTER && \
+	${EXPECT} $@ lastcol && ${TEST_PASS} || ${TEST_FAIL})
+
+# several arguments, '*' (any run) and double quotes, then six names in one command (past
+# the five the procedure system used to cap arguments at)
+test-sheet-hide-3: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ ':hide-column "AccentCity" Pop* Region' ENTER && \
+	${EXPECT} $@ three && \
+	tmux -L $@ send-keys -t $@ ":hide-column Country City AccentCity Region Population Latitude" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# :unhide-column <name> brings one column back, and the bare command brings all of them back
+test-sheet-hide-4: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ ":hide-column City Region" ENTER && \
+	${EXPECT} $@ hid-two && \
+	tmux -L $@ send-keys -t $@ ":unhide-column City" ENTER && \
+	${EXPECT} $@ one-back && \
+	tmux -L $@ send-keys -t $@ ":unhide-column" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# column search and find skip a hidden column: with City hidden, | "ity" and / "hoseynkhani"
+# both land on AccentCity (the visible match; City's own value is sarmaj-e hoseynkhani)
+test-sheet-hide-5: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ ":hide-column City" ENTER && \
+	tmux -L $@ send-keys -t $@ "|" "ity" ENTER && \
+	${EXPECT} $@ goto && \
+	tmux -L $@ send-keys -t $@ "g" "g" "^" "/" "hoseynkhani" ENTER && \
+	${EXPECT} $@ find && ${TEST_PASS} || ${TEST_FAIL})
+
+# hiding is a view setting: :w saves every column, byte for byte as before
+test-sheet-hide-6: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,City,C\n1,x,y\n2,z,w\n' > ${TMP_DIR}/$@.csv
+	@rm -f ${TMP_DIR}/$@-copy.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":hide-column City" ENTER && \
+	${EXPECT} $@ hidden && \
+	tmux -L $@ send-keys -t $@ ":w $@-copy.csv" ENTER && \
+	${EXPECT} $@ saved && \
+	tmux -L $@ send-keys -t $@ ":q" ENTER && \
+	${WAIT_FOR_EXIT} $@ && \
+	cmp ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-copy.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# a narrower window still shows the cursor: the settle after the resize scrolls the window,
+# with no key press needed
+test-sheet-hide-7: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ '$$' && \
+	tmux -L $@ send-keys -t $@ ":hide-column" ENTER && \
+	tmux -L $@ resize-window -t $@ -x 40 -y 5 && \
+	${EXPECT} $@ narrow && ${TEST_PASS} || ${TEST_FAIL})
+
+# the help screen lists both commands (they have no keys, like :w and :editmode)
+test-sheet-hide-8: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 12 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ "?" && \
+	${EXPECT} $@ help && \
+	tmux -L $@ send-keys -t $@ "G" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# a filter result opens as a new buffer with every column visible, and hiding there stops
+# short of the last visible column: the filter result's file carries its own "Row #", so
+# every one of its columns is data
+test-sheet-hide-9: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ ":hide-column City" ENTER && \
+	tmux -L $@ send-keys -t $@ ":filter ir" ENTER && \
+	export EXPECT_TIMEOUT=20 && \
+	${EXPECT} $@ filtered && \
+	tmux -L $@ send-keys -t $@ ":hide-column City" ENTER && \
+	tmux -L $@ send-keys -t $@ ":hide-column *" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# the marker takes its columns out of the footer: a value that reaches into them is cut
+# there, and the overlay that had judged it already shown appears with the whole value
+test-sheet-hide-10: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{s=""; for(i=0;i<60;i++) s=s "X"; printf "A,B,C\n1,%sTAILXX,x\n", s}' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 12 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "l" "l" && \
+	tmux -L $@ send-keys -t $@ ":hide-column C" ENTER && \
+	${EXPECT} $@ hidden && \
+	export EXPECT_TIMEOUT=10 && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# on a terminal too narrow for the long marker and a value beside it, the compact marker
+# keeps both readable
+test-sheet-hide-11: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{s=""; for(i=0;i<40;i++) s=s "X"; printf "A,B,C\n1,%sTAILXX,x\n", s}' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 20 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "l" "l" && \
+	tmux -L $@ send-keys -t $@ ":hide-column C" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# the last data column cannot be hidden, though sheet's row-number column would remain: refused
+# when one command names every column, when a second command names the last, and when the
+# cursor is on the last
+test-sheet-hide-12: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'a,b\n1,x\n2,y\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 60 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":hide-column a b" ENTER && \
+	${EXPECT} $@ both && \
+	tmux -L $@ send-keys -t $@ ":hide-column a" ENTER ":hide-column b" ENTER && \
+	${EXPECT} $@ last && \
+	tmux -L $@ send-keys -t $@ "l" ":hide-column" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# a data file that starts with its own "Row #" column shows it as the row-number column: it
+# cannot be hidden by name or from the cursor, and does not count as the column that remains
+test-sheet-hide-13: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'Row #,a,b\n1,x,p\n2,y,q\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 60 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ':hide-column "Row #"' ENTER && \
+	${EXPECT} $@ name && \
+	tmux -L $@ send-keys -t $@ ":hide-column *" ENTER && \
+	${EXPECT} $@ star && \
+	tmux -L $@ send-keys -t $@ ":hide-column" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# :sortexpr arguments keep SQL string literals: single quotes are not lexer quoting, so
+# 'Boston' and 'New York|Austin' (its space included) reach SQL as typed, sorting
+# New York (1), Boston (9), Austin (10)
+test-sheet-sortexpr-quoted: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'name,city\na,Boston\nb,New York\nc,Austin\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 100 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":sortexpr case when city = 'Boston' then 9 else instr('New York|Austin', city) end" ENTER && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-subcommand: \

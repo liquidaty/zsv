@@ -242,6 +242,18 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
     .proc_id = zsvsheet_builtin_proc_edit_mode,
   },
   { .ch = ZSVSHEET_KEY_COPY,   .proc_id = zsvsheet_builtin_proc_copy_cell,     },
+  /* Command-only, like :q and :w above: the help screen ('?') lists them, and they keep
+     their usual action if given a key later */
+  {
+    .ch = '\0',
+    .ch_name = ":hide-column",
+    .proc_id = zsvsheet_builtin_proc_hide_column,
+  },
+  {
+    .ch = '\0',
+    .ch_name = ":unhide-column",
+    .proc_id = zsvsheet_builtin_proc_unhide_column,
+  },
   { .ch = -1                                                                   }
 };
 /* clang-format on */

@@ -1,5 +1,5 @@
 Key(s)                    Action                    Description
-:q!                       quit!                     Exit the application, dis
-:editmode                 editmode                  Type into cells as in a s
 <ctrl>c                   copy                      Copy the cell to the clip
-<esc> to exit help <ctrl>c
+:hide-column              hide-column               Hide the column under the
+:unhide-column            unhide-column             Unhide all hidden columns
+<esc> to exit help :unhide-column

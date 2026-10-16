@@ -16,9 +16,12 @@
 #include <zsv/utils/writer.h>
 #include <zsv/utils/file.h>
 
-// zsvsheet_found_in_row: return 0 if not found, else 1-based index of column
-static size_t zsvsheet_found_in_row(zsv_parser parser, size_t col_start, size_t col_count,
-                                    const struct zsvsheet_pattern *pattern, size_t specified_column_plus_1) {
+// zsvsheet_found_in_row: return 0 if not found, else 1-based index of column. Indexes here
+// are parser columns, which this pass writes at screen column `col_offset` + index; a cell
+// whose screen column is hidden is skipped, so a find cannot land out of sight
+static size_t zsvsheet_found_in_row(struct zsvsheet_ui_buffer *uib, zsv_parser parser, size_t col_offset,
+                                    size_t col_start, size_t col_count, const struct zsvsheet_pattern *pattern,
+                                    size_t specified_column_plus_1) {
   if (col_start >= col_count)
     return 0;
 
@@ -30,7 +33,8 @@ static size_t zsvsheet_found_in_row(zsv_parser parser, size_t col_start, size_t 
     return 0;
 
   for (size_t i = col_start; i < col_count; i++) {
-    if (specified_column_plus_1 == 0 || i + 1 == specified_column_plus_1) {
+    if ((specified_column_plus_1 == 0 || i + 1 == specified_column_plus_1) &&
+        !zsvsheet_ui_buffer_col_hidden(uib, i + col_offset)) {
       struct zsv_cell c = zsv_get_cell(parser, i);
       if (zsvsheet_pattern_match(pattern, c.str, c.len))
         return i + 1;
@@ -261,8 +265,11 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
 
     if (zsvsheet_opts->find) { // find the next occurrence
       rows_searched++;
-      size_t colIndexPlus1 = zsvsheet_found_in_row(parser, zsvsheet_opts->found_colnum, col_count, zsvsheet_opts->find,
-                                                   zsvsheet_opts->find_specified_column_plus_1);
+      // the screen column this pass writes parser column 0 at, as the cell writes below do
+      const size_t find_col_offset = zsvsheet_opts->hide_row_nums ? 0 : 1;
+      size_t colIndexPlus1 =
+        zsvsheet_found_in_row(uibuff, parser, find_col_offset, zsvsheet_opts->found_colnum, col_count,
+                              zsvsheet_opts->find, zsvsheet_opts->find_specified_column_plus_1);
       if (colIndexPlus1) {
         zsvsheet_opts->found_rownum = rows_searched + start_row;
         zsvsheet_opts->found_colnum = colIndexPlus1 - 1;

@@ -1,5 +1,5 @@
 Key(s)                    Action                    Description
-:q!                       quit!                     Exit the application, dis
-:editmode                 editmode                  Type into cells as in a s
 <ctrl>c                   copy                      Copy the cell to the clip
-Sort only available for tabular data buffers <ctrl>c
+:hide-column              hide-column               Hide the column under the
+:unhide-column            unhide-column             Unhide all hidden columns
+Sort only available for tabular data buffers :unhide-column
