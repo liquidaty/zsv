@@ -1727,7 +1727,7 @@ test-sheet-all: \
 	test-sheet-18 test-sheet-19 test-sheet-20 \
 	test-sheet-hide-1 test-sheet-hide-2 test-sheet-hide-3 test-sheet-hide-4 test-sheet-hide-5 test-sheet-hide-6 \
 	test-sheet-hide-7 test-sheet-hide-8 test-sheet-hide-9 test-sheet-hide-10 test-sheet-hide-11 \
-	test-sheet-hide-12 test-sheet-hide-13 test-sheet-sortexpr-quoted \
+	test-sheet-hide-12 test-sheet-hide-13 test-sheet-sortexpr-quoted test-sheet-status-persists \
 	test-sheet-esc-last test-sheet-find-after-filter \
 	test-sheet-subcommand \
 	test-sheet-caseless-find test-sheet-caseless-filter test-sheet-caseless-find-file \
@@ -2251,6 +2251,20 @@ test-sheet-sortexpr-quoted: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ new-session -x 100 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ ":sortexpr case when city = 'Boston' then 9 else instr('New York|Austin', city) end" ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# a handler's error message outlasts the input timeout ticks: each stage waits a second
+# (five ticks) before comparing, so a message the next tick erased would fail it
+test-sheet-status-persists: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'name,city\na,Boston\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":nosuchcommand" ENTER && sleep 1 && \
+	${EXPECT} $@ invalid && \
+	tmux -L $@ send-keys -t $@ "/" "zzzz" ENTER && sleep 1 && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 test-sheet-subcommand: \
@@ -2802,7 +2816,8 @@ test-sheet-tab-complete: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 # reaches a cell no regex stage did.
 # The last three stages check that a pattern that fails to compile is reported and
 # then *ignored*: the previous pattern must survive, so the following 'n' advances
-# from xabc to abc rather than doing nothing.
+# from xabc to abc rather than doing nothing. The error fills the footer, so the last
+# stage shows the cursor cell in the whole-cell overlay.
 test-sheet-regex-find: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf

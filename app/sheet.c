@@ -877,7 +877,7 @@ static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di, struct z
     zsvsheet_move_hor_to(di, zsvsheet_opts.found_colnum + col_offset);
     return 1;
   }
-  zsvsheet_priv_set_status(ddims, 1, "%s", zsvsheet_pattern_not_found_text(pattern));
+  zsvsheet_ui_buffer_set_status(uib, zsvsheet_pattern_not_found_text(pattern));
   return 0;
 }
 
@@ -943,7 +943,7 @@ static zsvsheet_status zsvsheet_goto_column(struct zsvsheet_sheet_context *state
       if (found)
         zsvsheet_move_hor_to(di, found - 1);
       else
-        zsvsheet_priv_set_status(di->dimensions, 1, "Column not found");
+        zsvsheet_ui_buffer_set_status(current_ui_buffer, "Column not found");
     }
   }
   free(fold);
@@ -970,7 +970,7 @@ static zsvsheet_status zsvsheet_find(struct zsvsheet_sheet_context *state, bool 
     struct zsvsheet_pattern pattern;
     enum zsvsheet_pattern_status pstat = zsvsheet_pattern_parse(&pattern, prompt_buffer, errbuf, sizeof(errbuf));
     if (pstat != zsvsheet_pattern_status_ok) {
-      zsvsheet_priv_set_status(di->dimensions, 1, "%s", zsvsheet_pattern_status_message(pstat, errbuf));
+      zsvsheet_ui_buffer_set_status(current_ui_buffer, zsvsheet_pattern_status_message(pstat, errbuf));
       return zsvsheet_status_ok;
     }
     zsvsheet_pattern_free(&state->find);
@@ -1013,11 +1013,11 @@ static zsvsheet_status zsvsheet_open_file_handler(struct zsvsheet_proc_context *
   if ((err = zsvsheet_ui_buffer_open_file(filename, NULL, state->custom_prop_handler, di->ui_buffers.base,
                                           di->ui_buffers.current))) {
     if (err > 0)
-      zsvsheet_priv_set_status(di->dimensions, 1, "%s: %s", filename, strerror(err));
+      zsvsheet_ui_buffer_set_statusf(*di->ui_buffers.current, "%s: %s", filename, strerror(err));
     else if (err < 0)
-      zsvsheet_priv_set_status(di->dimensions, 1, "Unexpected error");
+      zsvsheet_ui_buffer_set_status(*di->ui_buffers.current, "Unexpected error");
     else
-      zsvsheet_priv_set_status(di->dimensions, 1, "Not found: %s", filename);
+      zsvsheet_ui_buffer_set_statusf(*di->ui_buffers.current, "Not found: %s", filename);
     return zsvsheet_status_ignore;
   }
 no_input:
@@ -1068,7 +1068,7 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   char errbuf[256] = {0};
   zsvsheet_status stat = zsvsheet_filter_file(ctx, filter, single_column, errbuf, sizeof(errbuf));
   if (*errbuf) { // a pattern that would not compile: say so rather than fail silently
-    zsvsheet_priv_set_status(di->dimensions, 1, "%s", errbuf);
+    zsvsheet_ui_buffer_set_status(current_ui_buffer, errbuf);
     return zsvsheet_status_ok;
   }
   return stat;
@@ -1095,7 +1095,7 @@ static zsvsheet_status zsvsheet_subcommand_handler(struct zsvsheet_proc_context 
   if (unrecognized) {
     // an unknown command, or one the lexer rejected (e.g. an unsupported backslash
     // escape inside quotes), must not silently do nothing
-    zsvsheet_priv_set_status(di->dimensions, 1, "Invalid command: %s", prompt_buffer);
+    zsvsheet_ui_buffer_set_statusf(*di->ui_buffers.current, "Invalid command: %s", prompt_buffer);
     return zsvsheet_status_ok;
   }
   return rc;
@@ -1263,11 +1263,11 @@ static zsvsheet_status zsvsheet_compare_handler(struct zsvsheet_proc_context *ct
         strcpy(spec_buffer + first_len + 2, second);
       }
       if (zsvsheet_parse_compare(spec_buffer, &cmp, zsvsheet_colname_lookup, zsvsheet_colname_at, &lookup_ctx) != 0) {
-        zsvsheet_priv_set_status(di->dimensions, 1, "Invalid compare ranges");
+        zsvsheet_ui_buffer_set_status(uib, "Invalid compare ranges");
         goto compare_done;
       }
     } else {
-      zsvsheet_priv_set_status(di->dimensions, 1, "Invalid spec. Use A-B v C-D, A v C (1-based), or column names");
+      zsvsheet_ui_buffer_set_status(uib, "Invalid spec. Use A-B v C-D, A v C (1-based), or column names");
       goto compare_done;
     }
   }
@@ -1643,7 +1643,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       struct zsvsheet_opts zsvsheet_opts = {0};
       if (read_data(&ub, NULL, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col, header_span,
                     &zsvsheet_opts, custom_prop_handler)) {
-        zsvsheet_priv_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
+        zsvsheet_ui_buffer_set_status(ub, "Unexpected error!"); // to do: better error message
         continue;
       }
       if (handler_state.compare.active)
