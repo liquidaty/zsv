@@ -2196,6 +2196,8 @@ test-sheet-hide-10: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 
 # on a terminal too narrow for the long marker and a value beside it, the compact marker
 # keeps both readable
+# The value does not fit the footer, so the last stage is the settled screen with the whole-cell
+# overlay; the wait lets the overlay appear on any runner.
 test-sheet-hide-11: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
@@ -2204,7 +2206,7 @@ test-sheet-hide-11: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ new-session -x 20 -y 5 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
 	${EXPECT} $@ open && \
 	tmux -L $@ send-keys -t $@ "l" "l" && \
-	tmux -L $@ send-keys -t $@ ":hide-column C" ENTER && \
+	tmux -L $@ send-keys -t $@ ":hide-column C" ENTER && sleep 2 && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 # the last data column cannot be hidden, though sheet's row-number column would remain: refused
