@@ -398,7 +398,7 @@ jobs:
       uses: cross-platform-actions/action@v1.6.0
       with:
         operating_system: freebsd
-        version: '13.2'
+        version: '14.5'
         environment_variables: TAG ARTIFACT_DIR
         shell: sh
 
