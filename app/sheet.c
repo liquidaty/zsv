@@ -310,7 +310,7 @@ static size_t prompt_append(char *buff, size_t idx, size_t buffsize, int ch) {
 static void prompt_redraw(int y, int x, const char *buff) {
   move(y, x);
   clrtoeol();
-  mvprintw(y, x, "%s", buff);
+  mvaddstr(y, x, buff);
 }
 
 // Replace the prompt's edit buffer and the text shown after the prompt.
@@ -404,7 +404,8 @@ static int zsvsheet_prompt_edit(const char *prompt, char *buff, size_t buffsize,
   for (int i = 0; i < max_screen_width; i++)
     mvprintw(footer_row, i, "%c", ' ');
 
-  mvprintw(footer_row, 0, "%s: ", prompt);
+  mvaddstr(footer_row, 0, prompt);
+  addstr(": ");
 
   int ch;
   int y, x;
@@ -414,7 +415,7 @@ static int zsvsheet_prompt_edit(const char *prompt, char *buff, size_t buffsize,
     strncpy(buff, default_value, buffsize);
     buff[buffsize - 1] = '\0';
     idx = strlen(buff); // strlen(buff), not strlen(default_value): the copy is clamped
-    printw("%s", buff);
+    addstr(buff);
   }
 
   char comp_prefix[ZSVSHEET_COMPLETE_MAX_PREFIX]; // fixed while cycling; buff changes under us
@@ -508,7 +509,8 @@ static void get_subcommand_with_columns(const char *prompt, char *buff, size_t b
   else
     snprintf(full_prompt, sizeof(full_prompt), "%s", prompt);
 
-  mvprintw(footer_row, 0, "%s: ", full_prompt);
+  mvaddstr(footer_row, 0, full_prompt);
+  addstr(": ");
 
   int ch;
   int y, x;
@@ -603,13 +605,16 @@ char zsvsheet_status_text[256] = {0};
 
 // shown before the status while keys type into cells
 #define ZSVSHEET_EDIT_MODE_STATUS "-- EDIT -- "
+// Text drawn here goes through addstr() rather than printw(): some ncurses builds format printw()
+// output in a buffer the size of the screen, and crash on text longer than that buffer
 static void zsvsheet_display_status_text(const struct zsvsheet_display_dimensions *ddims) {
   // clear the entire line
-  mvprintw(ddims->rows - ddims->footer_span, 0, "%-*s", (int)sizeof(zsvsheet_status_text), "");
+  move(ddims->rows - ddims->footer_span, 0);
+  clrtoeol();
 
   // add status, highlighted
   attron(A_REVERSE);
-  mvprintw(ddims->rows - ddims->footer_span, 0, "%s", zsvsheet_status_text);
+  mvaddstr(ddims->rows - ddims->footer_span, 0, zsvsheet_status_text);
   attroff(A_REVERSE);
 }
 
@@ -1853,7 +1858,8 @@ static void display_buffer_subtable(struct zsvsheet_sheet_context *state, struct
       marker_cols = ddims->columns;
     footer_limit = ddims->columns - marker_cols;
     // repaint the status text, which the branches above drew to the screen's edge, clipped
-    mvprintw(footer_row, 0, "%-*s", (int)sizeof(zsvsheet_status_text), "");
+    move(footer_row, 0);
+    clrtoeol();
     status_bytes = utf8_bytes_up_to_max_width_and_replace_newlines(
       (unsigned char *)zsvsheet_status_text, strlen(zsvsheet_status_text), footer_limit, &status_cols, &err);
     attron(A_REVERSE);
@@ -1900,7 +1906,7 @@ static void display_buffer_subtable(struct zsvsheet_sheet_context *state, struct
   // status text itself alone (this repaint may run twice for one key)
   if (marker_cols) {
     attron(A_REVERSE);
-    mvprintw(footer_row, (int)footer_limit, "%s", marker);
+    mvaddstr(footer_row, (int)footer_limit, marker);
     attroff(A_REVERSE);
   }
 
