@@ -424,7 +424,7 @@ static int zsvsheet_cell_at_cursor(struct zsvsheet_ui_buffer *uib, struct zsvshe
   pos->raw_row = pos->buff_row ? uib->input_offset.row + pos->buff_row : 0;
   pos->screen_col = uib->buff_offset.col + uib->cursor_col;
   // row numbers (sheet's own column, or the "Row #" a derived view's file carries) are not data
-  pos->row_num_col = pos->screen_col < zsvsheet_ui_buffer_data_col_offset(uib) + uib->has_row_num;
+  pos->row_num_col = pos->screen_col < zsvsheet_ui_buffer_rownum_cols(uib);
   if (pos->buff_row >= uib->buff_used_rows || pos->screen_col >= zsvsheet_screen_buffer_cols(uib->buffer))
     return -1; // no cell under the cursor, e.g. the blank start screen
   return 0;

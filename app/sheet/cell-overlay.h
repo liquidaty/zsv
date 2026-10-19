@@ -34,8 +34,9 @@ void zsvsheet_cell_overlay_sanitize(unsigned char *dst, const unsigned char *src
 
 // Whether the overlay appears: the feature is enabled, the cursor has rested for the configured
 // delay, and the footer line cannot show the whole cell value. value_cols is the width of the
-// value's one-line form and footer_col the columns of status text the footer line shows before it
-// (what the compare view adds after the value is not part of the cell)
+// value's one-line form and footer_col the columns of the footer line the value starts after --
+// the status text and any state marker the line shows at its right-hand end (what the compare
+// view adds after the value is not part of the cell)
 int zsvsheet_cell_overlay_wanted(const struct zsvsheet_cell_overlay_settings *settings, size_t idle_ticks,
                                  size_t footer_col, size_t value_cols, size_t columns);
 
@@ -62,9 +63,9 @@ size_t zsvsheet_cell_overlay_wrap(const unsigned char *value, size_t value_len, 
 
 // Draw the whole-cell overlay over the screen just drawn, when zsvsheet_cell_overlay_wanted()
 // says so: value is the cell's value, which the overlay wraps, centers and shows, and footer_col
-// is the columns of status text the footer line shows before it. idle_ticks is how many input
-// timeouts have passed since the last key. Call it after every repaint, with a NULL value when
-// the cursor is on no cell: a call that draws nothing clears zsvsheet_cell_overlay_painted()
+// is the columns of the footer line the value starts after (status text and any state marker). idle_ticks is how many
+// input timeouts have passed since the last key. Call it after every repaint, with a NULL value when the cursor is on
+// no cell: a call that draws nothing clears zsvsheet_cell_overlay_painted()
 void zsvsheet_cell_overlay_draw(const struct zsvsheet_display_dimensions *ddims, size_t footer_col, const char *value,
                                 size_t idle_ticks);
 

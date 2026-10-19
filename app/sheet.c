@@ -113,6 +113,7 @@ static int zsvsheet_parse_compare(const char *spec, struct zsvsheet_compare_opts
 #include "sheet/status-message.c"
 #include "sheet/clipboard.c"
 #include "sheet/edits.c"
+#include "sheet/hidden-columns.c"
 #include "sheet/ui_buffer.c"
 #include "sheet/index.c"
 #include "sheet/read-data.c"
@@ -160,12 +161,79 @@ static void zsvsheet_apply_compare_attrs(struct zsvsheet_ui_buffer *uib, const s
   }
 }
 
+// One past the last screen column the display can reach
+static size_t zsvsheet_max_buffer_cols(struct zsvsheet_ui_buffer *ui_buffer) {
+  size_t col_count = ui_buffer->dimensions.col_count + (ui_buffer->rownum_col_offset ? 1 : 0);
+  return col_count > zsvsheet_screen_buffer_cols(ui_buffer->buffer) ? zsvsheet_screen_buffer_cols(ui_buffer->buffer)
+                                                                    : col_count;
+}
+
+// Columns the grid can draw: every screen column up to that bound that is not hidden
+static size_t zsvsheet_ui_buffer_visible_cols(struct zsvsheet_ui_buffer *ui_buffer) {
+  return zsvsheet_ui_buffer_visible_col_count(ui_buffer, 0, zsvsheet_max_buffer_cols(ui_buffer));
+}
+
+// Columns the footer line keeps for the status text and the cell value beside the
+// hidden-column marker before the marker shortens to its compact form
+#define ZSVSHEET_FOOTER_LEFT_MIN 15
+
 #define ZSVSHEET_CELL_DISPLAY_MIN_WIDTH 10
+// Width one cell is drawn at: the screen is split evenly across the columns the grid can
+// draw, so hiding a column widens the rest
 static size_t zsvsheet_cell_display_width(struct zsvsheet_ui_buffer *ui_buffer,
                                           struct zsvsheet_display_dimensions *ddims) {
-  size_t width = ddims->columns /
-                 (ui_buffer->dimensions.col_count + (ui_buffer->rownum_col_offset && !ui_buffer->has_row_num ? 1 : 0));
+  size_t shown = zsvsheet_ui_buffer_visible_cols(ui_buffer);
+  size_t width;
+  if (!shown) // nothing is drawn at all; any divisor keeps this finite
+    shown = 1;
+  width = ddims->columns / shown;
   return width < ZSVSHEET_CELL_DISPLAY_MIN_WIDTH ? ZSVSHEET_CELL_DISPLAY_MIN_WIDTH : width;
+}
+
+// Cells the screen draws at once, all of one width
+static size_t zsvsheet_display_slots(struct zsvsheet_ui_buffer *ui_buffer, struct zsvsheet_display_dimensions *ddims) {
+  return ddims->columns / zsvsheet_cell_display_width(ui_buffer, ddims);
+}
+
+// After the buffer's hidden-column set changed, or the window resized, put the cursor and
+// the display window back on columns that are not hidden: the cursor takes the nearest
+// visible column (the next one to its right, else the one to its left), and the window
+// starts at a visible column no later than the cursor and shifts right until the cursor's
+// slot is inside it
+static void zsvsheet_settle_view_cols(struct zsvsheet_ui_buffer *ui_buffer, struct zsvsheet_display_dimensions *ddims) {
+  const size_t max_cols = zsvsheet_max_buffer_cols(ui_buffer);
+  size_t abs, start, slots;
+
+  if (!max_cols) {
+    ui_buffer->buff_offset.col = 0;
+    ui_buffer->cursor_col = 0;
+    return;
+  }
+  abs = ui_buffer->buff_offset.col + ui_buffer->cursor_col; // the cursor's column
+  if (abs >= max_cols)
+    abs = max_cols - 1;
+  if (zsvsheet_ui_buffer_col_hidden(ui_buffer, abs)) {
+    const size_t next = zsvsheet_ui_buffer_visible_col(ui_buffer, abs + 1, max_cols);
+    if (next < max_cols)
+      abs = next;
+    else {
+      const size_t prev = zsvsheet_ui_buffer_visible_col_before(ui_buffer, abs);
+      if (prev == (size_t)-1) // every column hidden: the handler refuses to reach this state
+        return;
+      abs = prev;
+    }
+  }
+  start = ui_buffer->buff_offset.col < abs ? ui_buffer->buff_offset.col : abs;
+  start = zsvsheet_ui_buffer_visible_col(ui_buffer, start, abs + 1);
+  slots = zsvsheet_display_slots(ui_buffer, ddims);
+  while (zsvsheet_ui_buffer_visible_col_count(ui_buffer, start, abs) >= slots) {
+    const size_t next_start = zsvsheet_ui_buffer_visible_col(ui_buffer, start + 1, abs + 1);
+    if (next_start > abs)
+      break; // abs is visible, so this cannot happen; it ends the loop regardless
+    start = next_start;
+  }
+  ui_buffer->buff_offset.col = start;
+  ui_buffer->cursor_col = abs - start;
 }
 
 struct zsvsheet_sheet_context;
@@ -242,7 +310,7 @@ static size_t prompt_append(char *buff, size_t idx, size_t buffsize, int ch) {
 static void prompt_redraw(int y, int x, const char *buff) {
   move(y, x);
   clrtoeol();
-  mvprintw(y, x, "%s", buff);
+  mvaddstr(y, x, buff);
 }
 
 // Replace the prompt's edit buffer and the text shown after the prompt.
@@ -336,7 +404,8 @@ static int zsvsheet_prompt_edit(const char *prompt, char *buff, size_t buffsize,
   for (int i = 0; i < max_screen_width; i++)
     mvprintw(footer_row, i, "%c", ' ');
 
-  mvprintw(footer_row, 0, "%s: ", prompt);
+  mvaddstr(footer_row, 0, prompt);
+  addstr(": ");
 
   int ch;
   int y, x;
@@ -346,7 +415,7 @@ static int zsvsheet_prompt_edit(const char *prompt, char *buff, size_t buffsize,
     strncpy(buff, default_value, buffsize);
     buff[buffsize - 1] = '\0';
     idx = strlen(buff); // strlen(buff), not strlen(default_value): the copy is clamped
-    printw("%s", buff);
+    addstr(buff);
   }
 
   char comp_prefix[ZSVSHEET_COMPLETE_MAX_PREFIX]; // fixed while cycling; buff changes under us
@@ -440,7 +509,8 @@ static void get_subcommand_with_columns(const char *prompt, char *buff, size_t b
   else
     snprintf(full_prompt, sizeof(full_prompt), "%s", prompt);
 
-  mvprintw(footer_row, 0, "%s: ", full_prompt);
+  mvaddstr(footer_row, 0, full_prompt);
+  addstr(": ");
 
   int ch;
   int y, x;
@@ -535,13 +605,16 @@ char zsvsheet_status_text[256] = {0};
 
 // shown before the status while keys type into cells
 #define ZSVSHEET_EDIT_MODE_STATUS "-- EDIT -- "
+// Text drawn here goes through addstr() rather than printw(): some ncurses builds format printw()
+// output in a buffer the size of the screen, and crash on text longer than that buffer
 static void zsvsheet_display_status_text(const struct zsvsheet_display_dimensions *ddims) {
   // clear the entire line
-  mvprintw(ddims->rows - ddims->footer_span, 0, "%-*s", (int)sizeof(zsvsheet_status_text), "");
+  move(ddims->rows - ddims->footer_span, 0);
+  clrtoeol();
 
   // add status, highlighted
   attron(A_REVERSE);
-  mvprintw(ddims->rows - ddims->footer_span, 0, "%s", zsvsheet_status_text);
+  mvaddstr(ddims->rows - ddims->footer_span, 0, zsvsheet_status_text);
   attroff(A_REVERSE);
 }
 
@@ -647,22 +720,39 @@ static zsvsheet_status zsvsheet_move_ver(struct zsvsheet_display_info *di, bool 
   return zsvsheet_status_ok;
 }
 
-/* Common horizontal movement function */
+/* Common horizontal movement function: one column that is not hidden */
 static zsvsheet_status zsvsheet_move_hor(struct zsvsheet_display_info *di, bool right) {
-  struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
+  struct zsvsheet_ui_buffer *uib = *(di->ui_buffers.current);
+  const size_t max_cols = zsvsheet_max_buffer_cols(uib); // one past the last column the display can reach
+  const size_t slots = zsvsheet_display_slots(uib, di->dimensions);
+  const size_t start = uib->buff_offset.col;
+  const size_t abs = start + uib->cursor_col; // the cursor's column
 
   if (right) {
-    cursor_right(di->dimensions->columns, zsvsheet_cell_display_width(current_ui_buffer, di->dimensions),
-                 current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset >
-                     zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
-                   ? zsvsheet_screen_buffer_cols(current_ui_buffer->buffer)
-                   : current_ui_buffer->dimensions.col_count + current_ui_buffer->rownum_col_offset,
-                 &current_ui_buffer->cursor_col, &current_ui_buffer->buff_offset.col);
+    const size_t next = zsvsheet_ui_buffer_visible_col(uib, abs + 1, max_cols);
+    if (next >= max_cols)
+      return zsvsheet_status_ok; // nothing to the right
+    if (zsvsheet_ui_buffer_visible_col_count(uib, start, next) < slots)
+      uib->cursor_col = next - start; // the next column fits within the window
+    else {                            // the cursor is on the window's last slot: scroll one column
+      const size_t new_start = zsvsheet_ui_buffer_visible_col(uib, start + 1, max_cols);
+      if (new_start < max_cols) {
+        uib->buff_offset.col = new_start;
+        uib->cursor_col = next - new_start;
+      }
+    }
   } else {
-    if (current_ui_buffer->cursor_col > 0) {
-      current_ui_buffer->cursor_col--;
-    } else if (current_ui_buffer->buff_offset.col > 0) {
-      current_ui_buffer->buff_offset.col--;
+    const size_t prev = zsvsheet_ui_buffer_visible_col_before(uib, abs);
+    if (prev == (size_t)-1)
+      return zsvsheet_status_ok; // nothing to the left
+    if (prev >= start)
+      uib->cursor_col = prev - start;
+    else { // the cursor is on the window's first slot: scroll one column
+      const size_t new_start = zsvsheet_ui_buffer_visible_col_before(uib, start);
+      if (new_start != (size_t)-1) {
+        uib->buff_offset.col = new_start;
+        uib->cursor_col = prev - new_start;
+      }
     }
   }
   return zsvsheet_status_ok;
@@ -731,20 +821,32 @@ static zsvsheet_status zsvsheet_move_ver_to_row(struct zsvsheet_display_info *di
 
 static zsvsheet_status zsvsheet_move_hor_to(struct zsvsheet_display_info *di, size_t move_to) {
   // to do: directly set current_ui_buffer->cursor_col and buff_offset.col
-  struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
+  struct zsvsheet_ui_buffer *uib = *(di->ui_buffers.current);
   enum zsvsheet_status stat = zsvsheet_status_ok;
-  size_t start_col = current_ui_buffer->buff_offset.col;
-  size_t current_absolute_col = start_col + current_ui_buffer->cursor_col;
-  if (current_absolute_col < move_to) {
-    for (size_t i = 0, j = move_to - current_absolute_col; i < j; i++) {
-      if ((stat = zsvsheet_move_hor(di, true)) != zsvsheet_status_ok)
-        break;
-    }
-  } else if (current_absolute_col > move_to) {
-    for (size_t i = 0, j = current_absolute_col - move_to; i < j; i++) {
-      if ((stat = zsvsheet_move_hor(di, false)) != zsvsheet_status_ok)
-        break;
-    }
+  const size_t max_cols = zsvsheet_max_buffer_cols(uib);
+  if (!max_cols)
+    return zsvsheet_status_ok;
+
+  // the cursor rests only on a visible column, so aim at one: the last before the target,
+  // else the first after it. Aiming exactly at a hidden column would make the steps below
+  // skip past it and turn back, never arriving
+  if (move_to >= max_cols)
+    move_to = max_cols - 1;
+  if (zsvsheet_ui_buffer_col_hidden(uib, move_to)) {
+    const size_t prev = zsvsheet_ui_buffer_visible_col_before(uib, move_to);
+    move_to = prev != (size_t)-1 ? prev : zsvsheet_ui_buffer_visible_col(uib, move_to + 1, max_cols);
+    if (move_to >= max_cols)
+      return zsvsheet_status_ok; // no visible column at all
+  }
+
+  // step one visible column at a time, so the cursor's screen slot and the window follow
+  for (size_t current = uib->buff_offset.col + uib->cursor_col; current != move_to;) {
+    if ((stat = zsvsheet_move_hor(di, current < move_to)) != zsvsheet_status_ok)
+      break;
+    const size_t next = uib->buff_offset.col + uib->cursor_col;
+    if (next == current)
+      break; // nothing moved: no visible column in that direction
+    current = next;
   }
   return stat;
 }
@@ -780,19 +882,24 @@ static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di, struct z
     zsvsheet_move_hor_to(di, zsvsheet_opts.found_colnum + col_offset);
     return 1;
   }
-  zsvsheet_priv_set_status(ddims, 1, "%s", zsvsheet_pattern_not_found_text(pattern));
+  zsvsheet_ui_buffer_set_status(uib, zsvsheet_pattern_not_found_text(pattern));
   return 0;
 }
 
 /* Scan column headers for the first case-insensitive substring match of a
- * needle folded by zsv_strfold(). Scanning begins at column start_col and wraps
- * around so every column is examined exactly once.
+ * needle folded by zsv_strfold(), skipping hidden columns, which the cursor cannot
+ * land on. Scanning begins at column start_col and wraps around so every remaining
+ * column is examined exactly once.
  * Returns 1 + the matching column index, or 0 if no column matches. */
-static size_t zsvsheet_find_column_match(zsvsheet_screen_buffer_t buffer, size_t colcount, const int32_t *fold,
-                                         size_t fold_len, char ascii, size_t start_col) {
+static size_t zsvsheet_find_column_match(const struct zsvsheet_ui_buffer *uib, zsvsheet_screen_buffer_t buffer,
+                                         size_t colcount, const int32_t *fold, size_t fold_len, char ascii,
+                                         size_t start_col) {
   for (size_t n = 0; n < colcount; n++) {
     size_t i = (start_col + n) % colcount;
-    const unsigned char *colname = zsvsheet_screen_buffer_cell_display(buffer, 0, i);
+    const unsigned char *colname;
+    if (zsvsheet_ui_buffer_col_hidden(uib, i))
+      continue;
+    colname = zsvsheet_screen_buffer_cell_display(buffer, 0, i);
     if (colname && zsv_strcasestr_folded(colname, strlen((const char *)colname), fold, fold_len, ascii))
       return i + 1;
   }
@@ -836,12 +943,12 @@ static zsvsheet_status zsvsheet_goto_column(struct zsvsheet_sheet_context *state
         size_t current_col = current_ui_buffer->buff_offset.col + current_ui_buffer->cursor_col;
         start_col = (current_col + 1) % colcount;
       }
-      size_t found =
-        zsvsheet_find_column_match(buffer, colcount, fold, fold_len, (flags & ZSV_STRFOLD_ASCII) != 0, start_col);
+      size_t found = zsvsheet_find_column_match(current_ui_buffer, buffer, colcount, fold, fold_len,
+                                                (flags & ZSV_STRFOLD_ASCII) != 0, start_col);
       if (found)
         zsvsheet_move_hor_to(di, found - 1);
       else
-        zsvsheet_priv_set_status(di->dimensions, 1, "Column not found");
+        zsvsheet_ui_buffer_set_status(current_ui_buffer, "Column not found");
     }
   }
   free(fold);
@@ -868,7 +975,7 @@ static zsvsheet_status zsvsheet_find(struct zsvsheet_sheet_context *state, bool 
     struct zsvsheet_pattern pattern;
     enum zsvsheet_pattern_status pstat = zsvsheet_pattern_parse(&pattern, prompt_buffer, errbuf, sizeof(errbuf));
     if (pstat != zsvsheet_pattern_status_ok) {
-      zsvsheet_priv_set_status(di->dimensions, 1, "%s", zsvsheet_pattern_status_message(pstat, errbuf));
+      zsvsheet_ui_buffer_set_status(current_ui_buffer, zsvsheet_pattern_status_message(pstat, errbuf));
       return zsvsheet_status_ok;
     }
     zsvsheet_pattern_free(&state->find);
@@ -911,11 +1018,11 @@ static zsvsheet_status zsvsheet_open_file_handler(struct zsvsheet_proc_context *
   if ((err = zsvsheet_ui_buffer_open_file(filename, NULL, state->custom_prop_handler, di->ui_buffers.base,
                                           di->ui_buffers.current))) {
     if (err > 0)
-      zsvsheet_priv_set_status(di->dimensions, 1, "%s: %s", filename, strerror(err));
+      zsvsheet_ui_buffer_set_statusf(*di->ui_buffers.current, "%s: %s", filename, strerror(err));
     else if (err < 0)
-      zsvsheet_priv_set_status(di->dimensions, 1, "Unexpected error");
+      zsvsheet_ui_buffer_set_status(*di->ui_buffers.current, "Unexpected error");
     else
-      zsvsheet_priv_set_status(di->dimensions, 1, "Not found: %s", filename);
+      zsvsheet_ui_buffer_set_statusf(*di->ui_buffers.current, "Not found: %s", filename);
     return zsvsheet_status_ignore;
   }
 no_input:
@@ -923,6 +1030,7 @@ no_input:
 }
 
 #include "sheet/filter.c"
+#include "sheet/hide.c"
 
 static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx) {
   char prompt_buffer[256] = {0};
@@ -965,7 +1073,7 @@ static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx
   char errbuf[256] = {0};
   zsvsheet_status stat = zsvsheet_filter_file(ctx, filter, single_column, errbuf, sizeof(errbuf));
   if (*errbuf) { // a pattern that would not compile: say so rather than fail silently
-    zsvsheet_priv_set_status(di->dimensions, 1, "%s", errbuf);
+    zsvsheet_ui_buffer_set_status(current_ui_buffer, errbuf);
     return zsvsheet_status_ok;
   }
   return stat;
@@ -992,7 +1100,7 @@ static zsvsheet_status zsvsheet_subcommand_handler(struct zsvsheet_proc_context 
   if (unrecognized) {
     // an unknown command, or one the lexer rejected (e.g. an unsupported backslash
     // escape inside quotes), must not silently do nothing
-    zsvsheet_priv_set_status(di->dimensions, 1, "Invalid command: %s", prompt_buffer);
+    zsvsheet_ui_buffer_set_statusf(*di->ui_buffers.current, "Invalid command: %s", prompt_buffer);
     return zsvsheet_status_ok;
   }
   return rc;
@@ -1160,11 +1268,11 @@ static zsvsheet_status zsvsheet_compare_handler(struct zsvsheet_proc_context *ct
         strcpy(spec_buffer + first_len + 2, second);
       }
       if (zsvsheet_parse_compare(spec_buffer, &cmp, zsvsheet_colname_lookup, zsvsheet_colname_at, &lookup_ctx) != 0) {
-        zsvsheet_priv_set_status(di->dimensions, 1, "Invalid compare ranges");
+        zsvsheet_ui_buffer_set_status(uib, "Invalid compare ranges");
         goto compare_done;
       }
     } else {
-      zsvsheet_priv_set_status(di->dimensions, 1, "Invalid spec. Use A-B v C-D, A v C (1-based), or column names");
+      zsvsheet_ui_buffer_set_status(uib, "Invalid spec. Use A-B v C-D, A v C (1-based), or column names");
       goto compare_done;
     }
   }
@@ -1210,6 +1318,8 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
     return zsvsheet_status_exit;
   case zsvsheet_builtin_proc_resize:
     *(state->display_info.dimensions) = get_display_dimensions(1, 1);
+    // the new width holds fewer cells, so the window may no longer show the cursor at all
+    zsvsheet_settle_view_cols(current_ui_buffer, state->display_info.dimensions);
     break;
 
   case zsvsheet_builtin_proc_move_up:
@@ -1316,6 +1426,8 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_edit_mode,        "editmode",       NULL, "Type into cells as in a spreadsheet; <esc> leaves",               zsvsheet_edit_mode_handler },
   { zsvsheet_builtin_proc_quit_hint,        "quithint",       NULL, "Show how to quit",                                                zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_copy_cell,        "copy",           NULL, "Copy the cell to the clipboard",          zsvsheet_copy_cell_handler },
+  { zsvsheet_builtin_proc_hide_column,      "hide-column",    NULL, "Hide the column under the cursor, or columns named by an argument", zsvsheet_hide_columns_handler },
+  { zsvsheet_builtin_proc_unhide_column,    "unhide-column",  NULL, "Unhide all hidden columns, or only those named by an argument",   zsvsheet_hide_columns_handler },
   { -1, NULL, NULL, NULL, NULL }
 };
 /* clang-format on */
@@ -1536,7 +1648,7 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       struct zsvsheet_opts zsvsheet_opts = {0};
       if (read_data(&ub, NULL, current_ui_buffer->input_offset.row, current_ui_buffer->input_offset.col, header_span,
                     &zsvsheet_opts, custom_prop_handler)) {
-        zsvsheet_priv_set_status(&display_dims, 1, "Unexpected error!"); // to do: better error message
+        zsvsheet_ui_buffer_set_status(ub, "Unexpected error!"); // to do: better error message
         continue;
       }
       if (handler_state.compare.active)
@@ -1640,12 +1752,6 @@ static size_t zsvsheet_compare_paired_col(const struct zsvsheet_compare_opts *cm
   return (size_t)-1;
 }
 
-static size_t zsvsheet_max_buffer_cols(struct zsvsheet_ui_buffer *ui_buffer) {
-  size_t col_count = ui_buffer->dimensions.col_count + (ui_buffer->rownum_col_offset ? 1 : 0);
-  return col_count > zsvsheet_screen_buffer_cols(ui_buffer->buffer) ? zsvsheet_screen_buffer_cols(ui_buffer->buffer)
-                                                                    : col_count;
-}
-
 static void display_buffer_subtable(struct zsvsheet_sheet_context *state, struct zsvsheet_ui_buffer *ui_buffer,
                                     size_t input_header_span) {
   struct zsvsheet_display_dimensions *ddims = state->display_info.dimensions;
@@ -1671,39 +1777,44 @@ static void display_buffer_subtable(struct zsvsheet_sheet_context *state, struct
     end_row = buffer_used_row_count;
 
   size_t cell_display_width = zsvsheet_cell_display_width(ui_buffer, ddims);
-  size_t end_col = start_col + ddims->columns / cell_display_width;
-  if (end_col > max_col_count)
-    end_col = max_col_count;
+  size_t slots = zsvsheet_display_slots(ui_buffer, ddims); // cells the screen draws at once
 
   const char *cursor_value = NULL;
   size_t cursor_data_row = 0; // buffer row of cursor cell (set when cursor is on data)
   size_t cursor_buf_col = 0;  // buffer column of cursor cell
 
-  // First, display header row (buffer[0]) at screen row 0
+  // First, display header row (buffer[0]) at screen row 0. Hidden columns take no screen
+  // slot, so the loop fills the screen with the columns that remain, however many are hidden
   attron(A_REVERSE);
-  for (size_t j = start_col; j < end_col; j++) {
+  for (size_t j = start_col, slot = 0; j < max_col_count && slot < slots; j++) {
+    if (zsvsheet_ui_buffer_col_hidden(ui_buffer, j))
+      continue;
     if (cursor_row == 0 && cursor_col + start_col == j) {
       attroff(A_REVERSE);
-      cursor_value = display_cell(buffer, 0, j, 0, j - start_col, cell_display_width);
+      cursor_value = display_cell(buffer, 0, j, 0, (int)slot, cell_display_width);
       attron(A_REVERSE);
     } else
-      display_cell(buffer, 0, j, 0, j - start_col, cell_display_width);
+      display_cell(buffer, 0, j, 0, (int)slot, cell_display_width);
+    slot++;
   }
   attroff(A_REVERSE);
 
   // Then display data starting from start_row + DATA_START_ROW
   size_t screen_row = SCREEN_DATA_START_ROW;
   for (size_t i = start_row + DATA_START_ROW; i < end_row; i++, screen_row++) {
-    for (size_t j = start_col; j < end_col; j++) {
+    for (size_t j = start_col, slot = 0; j < max_col_count && slot < slots; j++) {
+      if (zsvsheet_ui_buffer_col_hidden(ui_buffer, j))
+        continue;
       if (screen_row == cursor_row && j == cursor_col + start_col) {
         attron(A_REVERSE);
-        cursor_value = display_cell(buffer, i, j, screen_row, j - start_col, cell_display_width);
+        cursor_value = display_cell(buffer, i, j, screen_row, (int)slot, cell_display_width);
         attroff(A_REVERSE);
         cursor_data_row = i;
         cursor_buf_col = j;
       } else {
-        display_cell(buffer, i, j, screen_row, j - start_col, cell_display_width);
+        display_cell(buffer, i, j, screen_row, (int)slot, cell_display_width);
       }
+      slot++;
     }
   }
 
@@ -1720,11 +1831,45 @@ static void display_buffer_subtable(struct zsvsheet_sheet_context *state, struct
   else
     zsvsheet_priv_set_status(ddims, 0, "? for help");
 
-  // the footer line shows the cursor cell's value after the status text: its width, not its byte
-  // count, is where the value starts and what the cell overlay measures against
+  // The footer line shows the cursor cell's value after the status text (its width, not its
+  // byte count, is where the value starts and what the cell overlay measures against), and a
+  // hidden-column count at its right-hand end. The marker's columns belong to neither: the
+  // status text and the value are drawn only up to it, so neither runs under the marker and a
+  // wide character cannot straddle the two
   int footer_row = (int)(ddims->rows - ddims->footer_span);
-  size_t footer_col =
-    zsvsheet_cell_overlay_text_width((const unsigned char *)zsvsheet_status_text, strlen(zsvsheet_status_text));
+  const size_t hidden_count = zsvsheet_ui_buffer_hidden_count(ui_buffer);
+  char marker[48] = {0};
+  size_t marker_cols = 0;
+  size_t footer_limit = ddims->columns; // what the status text and the value may use
+  size_t footer_col;
+
+  if (hidden_count) {
+    size_t status_cols = 0, status_bytes;
+    int err = 0;
+    snprintf(marker, sizeof(marker), "[%zu hidden]", hidden_count);
+    marker_cols = zsvsheet_cell_overlay_text_width((const unsigned char *)marker, strlen(marker));
+    // on a line too narrow for that and the value beside it, the compact form keeps both: the
+    // usual hint is eleven columns, and a value needs room too
+    if (ddims->columns < marker_cols + ZSVSHEET_FOOTER_LEFT_MIN) {
+      snprintf(marker, sizeof(marker), "[%zuh]", hidden_count);
+      marker_cols = zsvsheet_cell_overlay_text_width((const unsigned char *)marker, strlen(marker));
+    }
+    if (marker_cols > ddims->columns)
+      marker_cols = ddims->columns;
+    footer_limit = ddims->columns - marker_cols;
+    // repaint the status text, which the branches above drew to the screen's edge, clipped
+    move(footer_row, 0);
+    clrtoeol();
+    status_bytes = utf8_bytes_up_to_max_width_and_replace_newlines(
+      (unsigned char *)zsvsheet_status_text, strlen(zsvsheet_status_text), footer_limit, &status_cols, &err);
+    attron(A_REVERSE);
+    if (status_bytes)
+      zsvsheet_mvaddnstr_utf8(footer_row, 0, zsvsheet_status_text, status_bytes);
+    attroff(A_REVERSE);
+    footer_col = status_cols;
+  } else
+    footer_col =
+      zsvsheet_cell_overlay_text_width((const unsigned char *)zsvsheet_status_text, strlen(zsvsheet_status_text));
 
   if (cursor_value) {
     char value_line[ZSVSHEET_CELL_SHOWN_MAX];                       // the value on one line
@@ -1744,11 +1889,31 @@ static void display_buffer_subtable(struct zsvsheet_sheet_context *state, struct
     } else
       snprintf(footer_tail, sizeof(footer_tail), "%s", value_line);
 
-    zsvsheet_mvaddnstr_utf8(footer_row, (int)footer_col, footer_tail, strlen(footer_tail));
+    if (hidden_count) { // the value stops where the marker begins
+      size_t value_cols = 0;
+      int err = 0;
+      size_t avail = footer_limit > footer_col ? footer_limit - footer_col : 0;
+      size_t value_bytes = utf8_bytes_up_to_max_width_and_replace_newlines(
+        (unsigned char *)footer_tail, strlen(footer_tail), avail, &value_cols, &err);
+      if (value_bytes)
+        zsvsheet_mvaddnstr_utf8(footer_row, (int)footer_col, footer_tail, value_bytes);
+    } else
+      zsvsheet_mvaddnstr_utf8(footer_row, (int)footer_col, footer_tail, strlen(footer_tail));
   }
 
-  // the overlay sees every repaint: one without a box is what takes the last one off the screen
-  zsvsheet_cell_overlay_draw(ddims, footer_col, cursor_value, state->idle_ticks);
+  // How many columns are hidden is state, not a message: paint it at the right-hand end of the
+  // footer on every repaint, where no status text can push it out of sight, and leave the
+  // status text itself alone (this repaint may run twice for one key)
+  if (marker_cols) {
+    attron(A_REVERSE);
+    mvaddstr(footer_row, (int)footer_limit, marker);
+    attroff(A_REVERSE);
+  }
+
+  // the overlay sees every repaint: one without a box is what takes the last one off the screen.
+  // It is told the columns the footer line has already used, the marker's included, so a value
+  // that reaches into the marker is one the footer cannot show in full
+  zsvsheet_cell_overlay_draw(ddims, footer_col + marker_cols, cursor_value, state->idle_ticks);
 
   refresh();
 }

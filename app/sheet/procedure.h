@@ -51,11 +51,15 @@ enum {
   zsvsheet_builtin_proc_write,
   zsvsheet_builtin_proc_edit_mode,
   zsvsheet_builtin_proc_quit_hint,
-  zsvsheet_builtin_proc_copy_cell
+  zsvsheet_builtin_proc_copy_cell,
+  zsvsheet_builtin_proc_hide_column,
+  zsvsheet_builtin_proc_unhide_column
 };
 
 #define ZSVSHEET_PROC_INVALID 0
-#define ZSVSHEET_PROC_MAX_ARGS 5
+/* Most arguments one command line can carry (procedure.c sizes its token array from this,
+ * so the two cannot drift apart) */
+#define ZSVSHEET_PROC_MAX_ARGS 16
 
 /* Procedures perform various actions in the editor. Procedures can be invoked
  * by key-bindings, prompt invocation, another procedure or script. */

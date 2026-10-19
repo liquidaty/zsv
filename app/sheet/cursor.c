@@ -101,19 +101,3 @@ static int zsvsheet_goto_input_raw_row(struct zsvsheet_ui_buffer *uib, size_t in
   set_window_to_cursor(buff_offset, input_raw_num, input_offset, input_header_span, ddims, *cursor_rowp);
   return update_buffer;
 }
-
-static int cursor_right(int max_x, unsigned display_width, size_t max_col_count, size_t *cursor_colp,
-                        size_t *start_colp) {
-  size_t cursor_col = *cursor_colp;
-  size_t start_col = *start_colp;
-  int rc = 1;
-  if (cursor_col + 1 < max_x / display_width && start_col + cursor_col + 1 < max_col_count) {
-    cursor_col++;
-  } else if ((start_col + max_x / display_width) < max_col_count) {
-    start_col++;
-  } else
-    rc = 0;
-  *cursor_colp = cursor_col;
-  *start_colp = start_col;
-  return rc;
-}
