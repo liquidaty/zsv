@@ -163,10 +163,9 @@ int zsv_dir_from_json(const unsigned char *target_dir, FILE *src,
       src = NULL;
       tmp_fn = zsv_get_temp_filename("zpr");
       FILE *tmp_f;
-      if (!tmp_fn) {
-        err = errno = ENOMEM;
-        perror(NULL);
-      } else if (!(tmp_f = zsv_fopen(tmp_fn, "wb"))) {
+      if (!tmp_fn)
+        err = errno ? errno : ENOMEM;
+      else if (!(tmp_f = zsv_fopen(tmp_fn, "wb"))) {
         err = errno;
         perror(tmp_fn);
       } else {

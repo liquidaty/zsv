@@ -52,9 +52,7 @@ static int config_save(struct cli_config *config) {
   }
   int err = 1;
   char *tmp = zsv_get_temp_filename("zcf");
-  if (!tmp)
-    fprintf(stderr, "Out of memory!\n");
-  else {
+  if (tmp) {
     FILE *f = fopen(tmp, "wb");
     if (!f)
       perror(tmp);
