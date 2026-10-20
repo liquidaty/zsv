@@ -83,10 +83,8 @@ zsvsheet_status my_test_command_handler(zsvsheet_proc_context_t ctx) {
     return zsvsheet_status_ok;
 
   char *temp_filename = zsv_get_temp_filename("zEE");
-  if (!temp_filename) {
-    fprintf(stderr, "Out of memory!\n");
+  if (!temp_filename)
     return zsvsheet_status_error;
-  }
 
   FILE *f = fopen(temp_filename, "wb");
   if (!f)

@@ -159,6 +159,9 @@ ifneq ($(CROSS_COMPILING),1)
   TESTS+=test-args # host-compiled unit test of the common option matching in zsv/utils/arg
   ifeq ($(WIN),0)
     TESTS+=test-mkdirs # host-compiled check that zsv_mkdirs folders follow the umask (POSIX only)
+    ifneq ($(CCBN),emcc)
+      TESTS+=test-temp-filename # host-compiled check of zsv_get_temp_filename directory fallback (POSIX only)
+    endif
   endif
   # under emcc the test runs in node's in-memory filesystem, where ${TMP_DIR} does not exist
   ifneq ($(CCBN),emcc)
@@ -851,6 +854,16 @@ test-mkdirs: ${TMP_DIR}/test_mkdirs${HOST_EXE}
 ${TMP_DIR}/test_mkdirs${HOST_EXE}: test_mkdirs.c ../utils/dirs.c ../../include/zsv/utils/dirs.h ../../include/zsv.h
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -DZSV_NO_JQ -I../../include test_mkdirs.c ../utils/dirs.c -o $@
+
+# ZSV_SYSTEM_TMPDIR is relative so each case controls it from its own working directory
+test-temp-filename: ${TMP_DIR}/test_temp_filename${HOST_EXE}
+	@${TEST_INIT}
+	@chmod -R u+w ${TMP_DIR}/$@ 2>/dev/null; rm -rf ${TMP_DIR}/$@ && mkdir -p ${TMP_DIR}/$@
+	@$< ${TMP_DIR}/$@ && ${TEST_PASS} || ${TEST_FAIL}
+
+${TMP_DIR}/test_temp_filename${HOST_EXE}: test_temp_filename.c ../utils/file.c ../utils/file-mem.c ../utils/os.c ../utils/dirs.c ../../include/zsv/utils/file.h ../../include/zsv.h
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -DZSV_NO_JQ -DZSV_SYSTEM_TMPDIR='"systmp"' -I../../include test_temp_filename.c ../utils/file.c ../utils/os.c ../utils/dirs.c -o $@
 
 test-replace-file: ${TMP_DIR}/test_replace_file${HOST_EXE}
 	@${TEST_INIT}

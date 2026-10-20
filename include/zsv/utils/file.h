@@ -24,9 +24,12 @@
  * value, if any, will have been allocated on the heap, and the caller should
  * `free()`.
  *
- * On POSIX the directory is `$TMPDIR`, falling back to the current directory
- * when it is unset, empty, or unusable (a fallback warns on stderr). On Windows
- * it is `GetTempPath()` (TMP/TEMP/USERPROFILE) with no fallback.
+ * On POSIX the directory is the first usable one of `$TMPDIR` (unless unset or
+ * empty), `/tmp` (not on wasi) and the current directory. Each directory that
+ * fails is reported on stderr with its system error, and a fallback that
+ * succeeds warns. On Windows it is `GetTempPath()` (TMP/TEMP/USERPROFILE) with
+ * no fallback. On failure, returns NULL with errno set; the cause has already
+ * been printed to stderr.
  *
  * @param prefix string with which the resulting file name will be prefixed
  */

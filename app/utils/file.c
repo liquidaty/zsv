@@ -38,22 +38,42 @@ char *zsv_get_temp_filename(const char *prefix) {
   TCHAR lpTempPathBuffer[MAX_PATH];
   DWORD dwRetVal = GetTempPath(MAX_PATH,          // length of the buffer
                                lpTempPathBuffer); // buffer for path
-  if (!(dwRetVal > 0 && dwRetVal < MAX_PATH))
+  if (!(dwRetVal > 0 && dwRetVal < MAX_PATH)) {
     zsv_perror("GetTempPath");
-  else {
+    errno = ENOENT;
+  } else {
     char szTempFileName[MAX_PATH];
     UINT uRetVal = GetTempFileName(lpTempPathBuffer, // directory for tmp files
                                    TEXT(prefix),     // temp file name prefix
                                    0,                // create unique name
                                    szTempFileName);  // buffer for name
-    if (uRetVal > 0)
-      return strdup(szTempFileName);
-    zsv_perror(lpTempPathBuffer);
+    if (uRetVal > 0) {
+      char *s = strdup(szTempFileName);
+      if (s)
+        return s;
+      DeleteFile(szTempFileName); // GetTempFileName() created it
+      fprintf(stderr, "%s: out of memory\n", szTempFileName);
+      errno = ENOMEM;
+    } else {
+      zsv_perror(lpTempPathBuffer);
+      errno = EACCES;
+    }
   }
 
   return NULL;
 }
 #else
+
+// the system temp dir tried after $TMPDIR. "/tmp" rather than P_tmpdir, which is the
+// persistent "/var/tmp/" on macOS. wasi has none: only preopened directories are
+// reachable. Overridable so tests can control it
+#ifndef ZSV_SYSTEM_TMPDIR
+#ifdef __wasi__
+#define ZSV_SYSTEM_TMPDIR NULL
+#else
+#define ZSV_SYSTEM_TMPDIR "/tmp"
+#endif
+#endif
 
 char *zsv_get_temp_filename(const char *prefix) {
   const char *tmpdir = getenv("TMPDIR");
@@ -61,36 +81,38 @@ char *zsv_get_temp_filename(const char *prefix) {
     tmpdir = NULL;
   if (!prefix)
     prefix = "";
-  // Try $TMPDIR, then the current directory. The fallback matters on wasi,
-  // where an inherited TMPDIR is an absolute host path that is almost never
-  // among the preopened directories, so every temp file would otherwise fail;
-  // "." is already this function's behavior when TMPDIR is unset.
-  for (unsigned i = 0; i < 2; i++) {
-    const char *dir = (i == 0 && tmpdir) ? tmpdir : ".";
-    char *s = NULL;
-    asprintf(&s, "%s%c%sXXXXXXXX", dir, FILESLASH, prefix);
-    if (!s) {
-      // asprintf() is not guaranteed to set errno, so don't report a stale one;
-      // allocation failure is the only way it fails
+  // "." is the last resort: on wasi an inherited TMPDIR is a host path that is
+  // almost never preopened, and a host may have no usable /tmp
+  const char *dirs[] = {tmpdir, ZSV_SYSTEM_TMPDIR, "."};
+  int e = 0; // nonzero once a directory has failed
+  for (size_t i = 0; i < sizeof(dirs) / sizeof(*dirs); i++) {
+    const char *dir = dirs[i];
+    if (!dir)
+      continue;
+    char *s;
+    if (asprintf(&s, "%s%c%sXXXXXXXX", dir, FILESLASH, prefix) < 0) {
+      // asprintf() is not guaranteed to set errno; allocation failure is the only way it fails
       fprintf(stderr, "%s%c%s: out of memory\n", dir, FILESLASH, prefix);
+      errno = ENOMEM;
       return NULL;
     }
     int fd = zsv_mkstemp(s);
     if (fd >= 0) { // 0 is a legal descriptor
       close(fd);
+      // not silent: a large spill file may now be somewhere unexpected
+      if (e)
+        fprintf(stderr, "Warning: using %s for temporary files\n", dir);
       return s;
     }
-    int e = errno; // free() may clobber it before we return
+    e = errno;
     free(s);
+    // perror() rather than strerror(), which is not thread-safe: parallel
+    // select reaches this from its worker threads
+    fputs("cannot create temporary file in ", stderr);
     errno = e;
-    if (!tmpdir) // the fallback is what we just tried
-      break;
-    // not silent: the retry can put a large spill file somewhere unexpected.
-    // Warned per occurrence rather than once -- a plain `static` flag would be a
-    // data race, since parallel select reaches this from its worker threads.
-    if (i == 0)
-      fprintf(stderr, "Warning: $TMPDIR (%s) is not usable; trying the current directory\n", tmpdir);
+    perror(dir);
   }
+  errno = e; // the prints above may clobber it
   return NULL;
 }
 
