@@ -7,7 +7,6 @@ Standards-Version: 4.7.4
 Homepage: https://github.com/liquidaty/zsv
 Vcs-Browser: https://github.com/liquidaty/zsv
 Vcs-Git: https://github.com/liquidaty/zsv.git
-Rules-Requires-Root: no
 
 Package: zsv
 Architecture: any

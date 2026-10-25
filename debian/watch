@@ -1,2 +1,4 @@
-version=4
-https://github.com/liquidaty/zsv/tags .*/v?(\d.*)@ARCHIVE_EXT@
+Version: 5
+
+Template: Github
+Dist: https://github.com/liquidaty/zsv
