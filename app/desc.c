@@ -519,7 +519,9 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
         data.header_only = 1;
       else if (!strcmp(argv[arg_i], "-C")) {
         arg_i++;
-        if (!(arg_i < argc && atoi(argv[arg_i]) > 9))
+        if (arg_i >= argc)
+          data.err = zsv_printerr(zsv_desc_status_error, "-C (max cols) requires a value");
+        else if (atoi(argv[arg_i]) <= 9)
           data.err = zsv_printerr(zsv_desc_status_error,
                                   "-C (max cols) invalid: should be positive integer > 9 (got %s)", argv[arg_i]);
         else
