@@ -474,7 +474,7 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
           scanner->quoted |= ZSV_PARSER_QUOTE_CLOSED;
           scanner->quoted &= ~ZSV_PARSER_QUOTE_UNCLOSED;
           scanner->quote_close_position = pending;
-          if (scanner->last != quote)
+          if (scanner->buff.buff[scanner->cell_start + pending - 1] != quote)
             scanner->scanned_length++;
         }
       }
