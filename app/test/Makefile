@@ -145,6 +145,7 @@ ifneq ($(CROSS_COMPILING),1)
   TESTS+=test-vuln-cve-underflow
   TESTS+=test-rng # host-compiled reference-vector check of zsv/utils/rng
   TESTS+=test-strcasestr # host-compiled unit test of the caseless UTF-8 search in zsv/utils/string
+  TESTS+=test-eof-quote-chunk # host-compiled check of parse_bytes chunk boundaries inside a quoted cell
   TESTS+=test-sheet-edits # host-compiled unit test of the sheet cell-edit container
   TESTS+=test-sheet-lexer # host-compiled unit test of the sheet command lexer
   TESTS+=test-sheet-hidden-columns # host-compiled unit test of the sheet hidden-column set and name matcher
@@ -343,6 +344,16 @@ ifneq ($(ZSV_EXTRAS),)
 	@${CC} ${CFLAGS} -I../../include test_limit_rows_pull.c -L${BUILD_DIR}/lib -lzsv -o $@
 endif
 
+# zsv_parse_bytes() chunk boundary immediately after a quoted cell's opening
+# quote: zsv_finish() must not drop the final cell byte.
+test-eof-quote-chunk: ${TMP_DIR}/test_eof_quote_chunk${HOST_EXE}
+	@${TEST_INIT}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
+
+${TMP_DIR}/test_eof_quote_chunk${HOST_EXE}: test_eof_quote_chunk.c ${BUILD_DIR}/lib/libzsv.a
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} -I../../include test_eof_quote_chunk.c -L${BUILD_DIR}/lib -lzsv -o $@
+
 # -----------------------------------------------------------------------------
 # Sanitizer-driven reproduction of the integer-underflow investigation.
 #
@@ -484,7 +495,7 @@ test-echo1: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-echo-eol: test-echo-eol-1 test-echo-eol-2 test-echo-eol-3 test-echo-eol-4
+test-echo-eol: test-echo-eol-1 test-echo-eol-2 test-echo-eol-3 test-echo-eol-4 test-echo-eol-5
 
 test-echo-eol-%: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
