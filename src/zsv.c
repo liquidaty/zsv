@@ -414,6 +414,10 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
      * For a stray single `"` (pending < 2) the input is malformed; drop
      * the quoted flag so the byte is emitted as plain content.
      *
+     * A pending quote is the closing quote at EOF: no following byte can
+     * pair with it (see zsv_scan_delim.c's chunk-boundary resolution).
+     * Handle this before the EMBEDDED case, which also matches such cells.
+     *
      * Otherwise we synthesize a virtual closing quote and let cell_dl
      * strip the surrounding quotes via its easy fast-path. cell_dl's
      * easy path only adjusts pointer/length (no reads past the cell),
@@ -438,6 +442,12 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
       if (pending > 0) {
         if (pending < 2) {
           scanner->quoted = 0;
+        } else if (scanner->quoted & ZSV_PARSER_QUOTE_PENDING) {
+          /* EOF resolves the pending quote as the closing quote. */
+          scanner->quoted = (scanner->quoted & ~(ZSV_PARSER_QUOTE_UNCLOSED | ZSV_PARSER_QUOTE_PENDING)) |
+                            ZSV_PARSER_QUOTE_CLOSED;
+          scanner->quote_close_position = pending - 1;
+          scanner->scanned_length = scanner->cell_start + pending;
         } else if (scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) {
           /* In-place de-escape of `""` pairs in the cell interior
            * (everything after the leading `"`). After this, cell_dl's

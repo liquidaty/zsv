@@ -484,7 +484,7 @@ test-echo1: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${PREFIX} $< ${TEST_DATA_DIR}/loans_1.csv ${REDIRECT} ${TMP_DIR}/$@.out
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 
-test-echo-eol: test-echo-eol-1 test-echo-eol-2 test-echo-eol-3 test-echo-eol-4
+test-echo-eol: test-echo-eol-1 test-echo-eol-2 test-echo-eol-3 test-echo-eol-4 test-echo-eol-5
 
 test-echo-eol-%: ${BUILD_DIR}/bin/zsv_echo${EXE}
 	@${TEST_INIT}
