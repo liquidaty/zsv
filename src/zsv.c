@@ -444,8 +444,8 @@ enum zsv_status zsv_finish(struct zsv_scanner *scanner) {
           scanner->quoted = 0;
         } else if (scanner->quoted & ZSV_PARSER_QUOTE_PENDING) {
           /* EOF resolves the pending quote as the closing quote. */
-          scanner->quoted = (scanner->quoted & ~(ZSV_PARSER_QUOTE_UNCLOSED | ZSV_PARSER_QUOTE_PENDING)) |
-                            ZSV_PARSER_QUOTE_CLOSED;
+          scanner->quoted =
+            (scanner->quoted & ~(ZSV_PARSER_QUOTE_UNCLOSED | ZSV_PARSER_QUOTE_PENDING)) | ZSV_PARSER_QUOTE_CLOSED;
           scanner->quote_close_position = pending - 1;
           scanner->scanned_length = scanner->cell_start + pending;
         } else if (scanner->quoted & ZSV_PARSER_QUOTE_EMBEDDED) {

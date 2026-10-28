@@ -32,8 +32,7 @@ static void row_handler(void *ctx) {
   g_last.have = 1;
 }
 
-static void run_case(const char *label, int engine, const char *chunk1, const char *chunk2,
-                     const char *expect) {
+static void run_case(const char *label, int engine, const char *chunk1, const char *chunk2, const char *expect) {
   struct zsv_opts opts;
   memset(&opts, 0, sizeof opts);
   opts.scan_engine = (unsigned char)engine;
