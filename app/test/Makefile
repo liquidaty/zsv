@@ -2134,7 +2134,8 @@ test-sheet-hide-4: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIM
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 # column search and find skip a hidden column: with City hidden, | "ity" and / "hoseynkhani"
-# both land on AccentCity (the visible match; City's own value is sarmaj-e hoseynkhani)
+# both land on AccentCity (the visible match; City's own value is sarmaj-e hoseynkhani), and
+# N stays there, so the backward scan skips the hidden match too
 test-sheet-hide-5: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
@@ -2145,7 +2146,9 @@ test-sheet-hide-5: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_mil.csv ${TIM
 	tmux -L $@ send-keys -t $@ "|" "ity" ENTER && \
 	${EXPECT} $@ goto && \
 	tmux -L $@ send-keys -t $@ "g" "g" "^" "/" "hoseynkhani" ENTER && \
-	${EXPECT} $@ find && ${TEST_PASS} || ${TEST_FAIL})
+	${EXPECT} $@ find && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ find-prev && ${TEST_PASS} || ${TEST_FAIL})
 
 # hiding is a view setting: :w saves every column, byte for byte as before
 test-sheet-hide-6: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
@@ -3078,19 +3081,18 @@ test-sheet-find-prev-header: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ send-keys -t $@ "N" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
-# N through a file larger than one screen buffer: with the index ready, find previous scans
-# backwards a screen buffer (1024 rows) at a time, so the rows on the chunk edges are the
-# ones an off-by-one in the chunk walk would skip. From needle-b (row 2900) the first chunk
-# is 1877..2900, pinning its start with needle-c at 1877; the next N starts one row lower
-# and must reach needle-d at 1876. The last N walks from 1876, whose first chunk (853..1876)
-# holds no pin: the walk must step to 852, the last row of the next chunk, or a gap at the
-# seam would report "Not found". G waits for the index: EXPECT retries until it lands on the
-# true last row.
+# N through a file larger than one screen buffer: with the index ready, find previous walks
+# backwards an index block (1024 rows) at a time, so the rows on a block edge are the ones a
+# gap in the walk would skip. The needle stages pin the row order across the walk. The last
+# N starts at row 1876, whose first block (1025..1876) holds no pin: the walk must step into
+# the next block and reach its last row, 1024, or a gap at the seam would report "Not found".
+# The stages pin seam results; a single top scan would produce the same values. G waits for
+# the index: EXPECT retries until it lands on the true last row.
 test-sheet-find-prev-chunks: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	@${TEST_INIT}
 	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
 	@awk 'BEGIN{print "A,B"; for(i=1;i<=3000;i++){ if(i==5) print "5,needle-a"; \
-	  else if(i==852) print "852,pin-c"; else if(i==1876) print "1876,needle-d"; \
+	  else if(i==1024) print "1024,pin-c"; else if(i==1876) print "1876,needle-d"; \
 	  else if(i==1877) print "1877,needle-c"; else if(i==2900) print "2900,needle-b"; \
 	  else printf "%d,r%d\n", i, i }}' > ${TMP_DIR}/$@.csv
 	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \

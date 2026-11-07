@@ -19,7 +19,7 @@
 // Parser column where a row's data begins: a data file that carries its own leading "Row #"
 // column (filter, sort or pivot output) has no data there
 static size_t zsvsheet_find_base_col(const struct zsvsheet_ui_buffer *uib) {
-  return uib && uib->has_row_num ? 1 : 0;
+  return uib->has_row_num ? 1 : 0;
 }
 
 // Screen columns that precede parser column 0: sheet's own row-number column, which a data
@@ -291,8 +291,8 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       const size_t rownum = ++rows_searched + start_row;
       if (zsvsheet_opts->find_stop_rownum && rownum > zsvsheet_opts->find_stop_rownum)
         break; // past the range: the last match, if any, is already recorded
-      // the screen column this pass writes parser column 0 at, as the cell writes below do
-      const size_t find_col_offset = zsvsheet_opts->hide_row_nums ? 0 : 1;
+      // the screen column this pass maps parser column 0 to, for the hidden-column check
+      const size_t find_col_offset = zsvsheet_find_col_offset(uibuff);
       const size_t col_stop = zsvsheet_opts->find_stop_rownum && rownum == zsvsheet_opts->find_stop_rownum
                                 ? zsvsheet_opts->find_stop_colnum
                                 : (size_t)-1;
@@ -478,22 +478,25 @@ static int zsvsheet_find_range(struct zsvsheet_ui_buffer *uib, struct zsvsheet_o
 }
 
 // The last match before the cursor cell, whose row's scan stops at stop_col. A file with a
-// row index is scanned a screen buffer's worth of rows at a time from the cursor backwards,
-// so a nearby match costs a chunk rather than the whole prefix; without one, a single scan
-// from the top does the same work. Returns 1 if found, 0 if not, -1 on a read error
+// row index is scanned a row index block at a time from the cursor backwards, so a nearby
+// match costs a block rather than the whole prefix; without one, a single scan from the top
+// does the same work. Returns 1 if found, 0 if not, -1 on a read error
 static int zsvsheet_find_prev(struct zsvsheet_ui_buffer *uib, struct zsvsheet_opts *zsvsheet_opts, size_t header_span,
                               struct zsv_prop_handler *custom_prop_handler, size_t cursor_row, size_t stop_col) {
   const size_t base_col = zsvsheet_find_base_col(uib);
-  const size_t chunk = zsvsheet_screen_buffer_rows(uib->buffer);
   size_t end = cursor_row, end_col = stop_col;
 
   if (!zsvsheet_ui_buffer_has_file(uib) || !zsvsheet_ui_buffer_index_ready(uib, 0))
     return zsvsheet_find_range(uib, zsvsheet_opts, header_span, custom_prop_handler, header_span, base_col, cursor_row,
                                stop_col, 1);
   while (end >= header_span) {
-    const size_t start = end > header_span + chunk - 1 ? end - chunk + 1 : header_span;
-    int found =
-      zsvsheet_find_range(uib, zsvsheet_opts, header_span, custom_prop_handler, start, base_col, end, end_col, 1);
+    // each block starts on an index boundary, where zsv_index_seek_row() seeks in constant
+    // time instead of re-parsing up to ZSV_INDEX_ROW_N - 1 rows
+    size_t start = (end - 1) / ZSV_INDEX_ROW_N * ZSV_INDEX_ROW_N + 1;
+    int found;
+    if (start < header_span)
+      start = header_span;
+    found = zsvsheet_find_range(uib, zsvsheet_opts, header_span, custom_prop_handler, start, base_col, end, end_col, 1);
     if (found > 0)
       return 1;
     if (found < 0) // e.g. a seek past a partially committed index: scan from the top instead

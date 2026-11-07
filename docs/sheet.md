@@ -319,8 +319,8 @@ form would leave no room for the value, the marker shortens to `[Nh]`. An open p
 (`:`, `/`, `Save as`, `Edit:`) takes the footer line; the marker returns when the prompt
 closes. The grid and the
 arrow / `h` `l` / `^` `$` column movement skip the hidden columns, as do the `|` and `\`
-column search and the `/` find (a value that occurs only in a hidden column reports "not
-found"). `:unhide-column` unhides every column of the buffer, and
+column search and the `/` find and its `n`/`N` repeats (a value that occurs only in a
+hidden column reports "not found"). `:unhide-column` unhides every column of the buffer, and
 `:unhide-column <name>...` unhides the hidden columns matching a name, with the same
 matching rules as `:hide-column`.
 
