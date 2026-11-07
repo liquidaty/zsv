@@ -128,6 +128,7 @@ Press `?` to see a list of commands:
 | G              | bottom     | Jump to the last row (nG for specific row e.g. 10G) |
 | /              | find       | Find a cell (any case); /re = regex; /re/i…         |
 | n              | next       | Find the next match                                 |
+| N              | prev       | Find the previous match                             |
 | \|             | gotocolumn | Find a column by name and jump to the first match   |
 | \\             | gotocolumnnext | Jump to the next column matching the find-column term |
 | e              | open       | Open another CSV file                               |
@@ -318,8 +319,8 @@ form would leave no room for the value, the marker shortens to `[Nh]`. An open p
 (`:`, `/`, `Save as`, `Edit:`) takes the footer line; the marker returns when the prompt
 closes. The grid and the
 arrow / `h` `l` / `^` `$` column movement skip the hidden columns, as do the `|` and `\`
-column search and the `/` find (a value that occurs only in a hidden column reports "not
-found"). `:unhide-column` unhides every column of the buffer, and
+column search and the `/` find and its `n`/`N` repeats (a value that occurs only in a
+hidden column reports "not found"). `:unhide-column` unhides every column of the buffer, and
 `:unhide-column <name>...` unhides the hidden columns matching a name, with the same
 matching rules as `:hide-column`.
 
@@ -420,8 +421,11 @@ quotes, and splits on spaces. `\/abc` typed at the `f` prompt works; `:filter
 ## Find
 
 Press `/` and enter a search value to find the next matching cell. Press `n` to
-find again. Matching ignores case unless you use a regular expression; see
-[Search syntax](#search-syntax).
+find the next match and `N` the previous one. A search that runs past the last
+match, or before the first, continues at the other end and the status line says
+so: `search hit BOTTOM, continuing at TOP` for a forward search and
+`search hit TOP, continuing at BOTTOM` for a backward one. Matching ignores case
+unless you use a regular expression; see [Search syntax](#search-syntax).
 
 ## Filter
 

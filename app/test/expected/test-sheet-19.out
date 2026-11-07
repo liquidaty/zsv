@@ -1,5 +1,5 @@
 Key(s)                    Action                    Description
 /                         find                      Find a cell (any case); /
 n                         next                      Find the next match
-|                         gotocolumn                Find a column by name and
+N                         prev                      Find the previous match
 <esc> to exit help Find a cell (any case); /re = regex; /re/i = regex, any case

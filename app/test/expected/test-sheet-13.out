@@ -21,6 +21,7 @@ g g                       top                       Jump to the first row
 G                         bottom                    Jump to the last row (nG
 /                         find                      Find a cell (any case); /
 n                         next                      Find the next match
+N                         prev                      Find the previous match
 |                         gotocolumn                Find a column by name and
 \                         gotocolumnnext            Jump to the next column m
 e                         open                      Open another CSV file
@@ -36,5 +37,4 @@ V                         pivotexpr                 Group rows with group-by
                           errors                    Show errors (if any)
                           errors-clear              Clear any/all errors
                           compare                   Highlight differences bet
-o                         sort                      Sort rows by the column u
 <esc> to exit help Key(s)

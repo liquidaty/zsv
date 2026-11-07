@@ -53,7 +53,8 @@ enum {
   zsvsheet_builtin_proc_quit_hint,
   zsvsheet_builtin_proc_copy_cell,
   zsvsheet_builtin_proc_hide_column,
-  zsvsheet_builtin_proc_unhide_column
+  zsvsheet_builtin_proc_unhide_column,
+  zsvsheet_builtin_proc_find_prev
 };
 
 #define ZSVSHEET_PROC_INVALID 0

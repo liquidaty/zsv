@@ -1,0 +1,10 @@
+Key(s)                    Action                    Description
+n                         next                      Find the next match
+N                         prev                      Find the previous match
+|                         gotocolumn                Find a column by name and
+\                         gotocolumnnext            Jump to the next column m
+e                         open                      Open another CSV file
+f                         filter                    Filter rows (any case); /
+F                         filtercol                 Filter on this column
+:                         subcommand                Editor subcommand
+<esc> to exit help Find the previous match
