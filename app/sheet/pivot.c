@@ -298,10 +298,10 @@ static zsvsheet_status zsvsheet_pivot_handler(struct zsvsheet_proc_context *ctx)
             struct zsvsheet_pattern pattern;
             zsvsheet_pattern_literal(&pattern, selected_cell_str_dup, 1); // whole-cell match
             zsvsheet_check_buffer_updates(buff, di->dimensions, NULL);
-            zsvsheet_handle_find_next(di, buff, &pattern,
-                                      1, // find value in first column
-                                      1, // header_span
-                                      di->dimensions, &di->update_buffer, NULL);
+            zsvsheet_handle_find(di, buff, &pattern,
+                                 1, // find value in first column
+                                 1, // header_span
+                                 di->dimensions, &di->update_buffer, NULL, false);
             zsvsheet_pattern_free(&pattern);
           }
         }

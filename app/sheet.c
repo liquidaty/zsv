@@ -48,6 +48,10 @@ struct zsvsheet_opts {
   char hide_row_nums;                  // if 1, will load row nums
   const struct zsvsheet_pattern *find; // borrowed; NULL when not searching
   size_t find_specified_column_plus_1; // if 0, find in any column; else only search specified column (1-based)
+  size_t find_start_colnum;            // parser column where the first row searched begins
+  size_t find_stop_rownum;             // last row searched; 0 searches through the last row
+  size_t find_stop_colnum;             // on the stop row, search columns before this one; SIZE_MAX: the whole row
+  char find_last;                      // report the last match in the range rather than the first
   size_t found_rownum;
   size_t found_colnum;
 };
@@ -861,28 +865,37 @@ static zsvsheet_status zsvsheet_move_hor_end(struct zsvsheet_display_info *di, b
   return zsvsheet_status_ok;
 }
 
-// zsvsheet_handle_find_next: return non-zero if a result was found
-static char zsvsheet_handle_find_next(struct zsvsheet_display_info *di, struct zsvsheet_ui_buffer *uib,
-                                      const struct zsvsheet_pattern *pattern, size_t specified_column_plus_1,
-                                      size_t header_span, struct zsvsheet_display_dimensions *ddims, int *update_buffer,
-                                      struct zsv_prop_handler *custom_prop_handler) {
+// zsvsheet_handle_find: return non-zero if a result was found. backward searches from the
+// cursor cell towards the beginning (find previous) rather than towards the end
+static char zsvsheet_handle_find(struct zsvsheet_display_info *di, struct zsvsheet_ui_buffer *uib,
+                                 const struct zsvsheet_pattern *pattern, size_t specified_column_plus_1,
+                                 size_t header_span, struct zsvsheet_display_dimensions *ddims, int *update_buffer,
+                                 struct zsv_prop_handler *custom_prop_handler, bool backward) {
   // find reads the file, so it must hold the edits; the status says why if they could not be written
   if (zsvsheet_ui_buffer_has_file(uib) && !zsvsheet_buffer_data_filename(uib))
     return 0;
   struct zsvsheet_opts zsvsheet_opts = {0};
   zsvsheet_opts.find = pattern;
   zsvsheet_opts.find_specified_column_plus_1 = specified_column_plus_1;
-  zsvsheet_opts.found_rownum = 0;
   // parser-to-screen column offset: the screen leads with a row-number column,
   // which a data file that carries its own "Row #" (filter/sort output) already counts
-  const size_t col_offset = uib->rownum_col_offset && !uib->has_row_num ? 1 : 0;
-  zsvsheet_opts.found_colnum = uib->cursor_col + uib->buff_offset.col + 1 - col_offset; // parser col after the cursor
-  if (zsvsheet_find_next(uib, &zsvsheet_opts, header_span, custom_prop_handler) > 0) {
+  const size_t col_offset = zsvsheet_find_col_offset(uib);
+  const size_t cursor_row = zsvsheet_get_input_raw_row(&uib->input_offset, &uib->buff_offset, uib->cursor_row);
+  const size_t start_col = uib->cursor_col + uib->buff_offset.col + 1 - col_offset; // parser col after the cursor
+  char wrapped = 0;
+  const int found = zsvsheet_find_search(uib, &zsvsheet_opts, header_span, custom_prop_handler, cursor_row, start_col,
+                                         backward, &wrapped);
+
+  if (found > 0) {
     *update_buffer = zsvsheet_goto_input_raw_row(uib, zsvsheet_opts.found_rownum, header_span, ddims, (size_t)-1);
     zsvsheet_move_hor_to(di, zsvsheet_opts.found_colnum + col_offset);
+    if (wrapped) // vim's message for a search that passed the end it was heading for
+      zsvsheet_ui_buffer_set_status(uib, backward ? "search hit TOP, continuing at BOTTOM"
+                                                  : "search hit BOTTOM, continuing at TOP");
     return 1;
   }
-  zsvsheet_ui_buffer_set_status(uib, zsvsheet_pattern_not_found_text(pattern));
+  // a failed read is not an empty result
+  zsvsheet_ui_buffer_set_status(uib, found < 0 ? "Find failed" : zsvsheet_pattern_not_found_text(pattern));
   return 0;
 }
 
@@ -955,14 +968,14 @@ static zsvsheet_status zsvsheet_goto_column(struct zsvsheet_sheet_context *state
   return zsvsheet_status_ok;
 }
 
-/* Find and find-next handler */
-static zsvsheet_status zsvsheet_find(struct zsvsheet_sheet_context *state, bool next) {
+/* Find, find-next and find-previous handler */
+static zsvsheet_status zsvsheet_find(struct zsvsheet_sheet_context *state, bool prompt, bool backward) {
   struct zsvsheet_display_info *di = &state->display_info;
   struct zsvsheet_ui_buffer *current_ui_buffer = *(di->ui_buffers.current);
 
   // Note: no data-file guard here; static (in-memory) buffers such as help are searched directly.
 
-  if (!next) {
+  if (prompt) {
     char prompt_buffer[256] = {0};
     char errbuf[256];
     int prompt_footer_row = (int)(di->dimensions->rows - di->dimensions->footer_span);
@@ -983,8 +996,8 @@ static zsvsheet_status zsvsheet_find(struct zsvsheet_sheet_context *state, bool 
   }
 
   if (zsvsheet_pattern_is_set(&state->find))
-    zsvsheet_handle_find_next(di, current_ui_buffer, &state->find, 0, // any column
-                              di->header_span, di->dimensions, &di->update_buffer, state->custom_prop_handler);
+    zsvsheet_handle_find(di, current_ui_buffer, &state->find, 0, // any column
+                         di->header_span, di->dimensions, &di->update_buffer, state->custom_prop_handler, backward);
 
   return zsvsheet_status_ok;
 }
@@ -1368,9 +1381,11 @@ zsvsheet_status zsvsheet_builtin_proc_handler(struct zsvsheet_proc_context *ctx)
     break;
 
   case zsvsheet_builtin_proc_find:
-    return zsvsheet_find(state, false);
+    return zsvsheet_find(state, true, false);
   case zsvsheet_builtin_proc_find_next:
-    return zsvsheet_find(state, true);
+    return zsvsheet_find(state, false, false);
+  case zsvsheet_builtin_proc_find_prev:
+    return zsvsheet_find(state, false, true);
   case zsvsheet_builtin_proc_goto_column:
     return zsvsheet_goto_column(state, false);
   case zsvsheet_builtin_proc_goto_column_next:
@@ -1403,6 +1418,7 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_move_right,       "right",          NULL, "Move right one column",                                           zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_find,             "find",           NULL, "Find a cell (any case); /re = regex; /re/i = regex, any case",    zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_find_next,        "next",           NULL, "Find the next match",                                             zsvsheet_builtin_proc_handler },
+  { zsvsheet_builtin_proc_find_prev,        "prev",           NULL, "Find the previous match",                                         zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_goto_column,      "gotocolumn",     NULL, "Find a column by name and jump to the first match",               zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_goto_column_next, "gotocolumnnext", NULL, "Jump to the next column matching the find-column term",           zsvsheet_builtin_proc_handler },
   { zsvsheet_builtin_proc_resize,           "resize",         NULL, "Resize the layout to fit new terminal dimensions",                zsvsheet_builtin_proc_handler },

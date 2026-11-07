@@ -1784,6 +1784,9 @@ test-sheet-all: \
 	test-sheet-tab-complete \
 	test-sheet-pivot-exact \
 	test-sheet-find-blank-rows \
+	test-sheet-find-prev \
+	test-sheet-find-prev-header \
+	test-sheet-find-prev-chunks \
 	test-sheet-reload-blank-rows \
 	test-sheet-edit-save \
 	test-sheet-edit-inplace-big \
@@ -2980,6 +2983,144 @@ test-sheet-caseless-find-file: ${BUILD_DIR}/bin/zsv_sheet${EXE} worldcitiespop_m
 	tmux -u -L $@ new-session -x 80 -y 6 -d -s $@ "${PREFIX} $< worldcitiespop_mil.csv" && \
 	${EXPECT} $@ indexed && \
 	tmux -L $@ send-keys -t $@ "/" 'DÖNENÇAY' ENTER && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# N finds the previous match. Both directions wrap at the end of the data with vim's message,
+# and the wrap pass includes the cursor cell, so a sole match is reported with the wrap
+# message and the cursor stays (vim 9.1 does the same). Every target has its own value: a
+# capture shows no cursor attributes, so the footer's cell value is the only witness of where
+# the cursor landed. Statuses do not expire in tests, so a successful search without a wrap
+# keeps the previous stage's message; the value is the assertion. The later stages search the
+# in-memory help buffer, a different path from the file scans, and pin the not-found message
+# for both directions. A status from another command separates the two stages, so the later
+# EXPECT cannot match the earlier screen before its key is processed. The last stages remove
+# the data file: n and N report "Find failed" rather than claiming the pattern is absent,
+# separated by the column search's "Column not found" for the same reason.
+test-sheet-find-prev: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B,C\nr1,alpha-one,z\nr2,alpha-two,alpha-two-b\nr3,beta,gamma\nr4,alpha-four,z\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 10 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "/" "gamma" ENTER && \
+	${EXPECT} $@ found-gamma && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ wrap-next-gamma && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ wrap-prev-gamma && \
+	tmux -L $@ send-keys -t $@ "/" "alpha" ENTER && \
+	${EXPECT} $@ found-alpha && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ wrap-next && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ next-1 && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ next-2 && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ prev-1 && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ prev-2 && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ wrap-prev && \
+	tmux -L $@ send-keys -t $@ "^" "N" && \
+	${EXPECT} $@ prev-rownum && \
+	tmux -L $@ send-keys -t $@ "?" && \
+	${EXPECT} $@ help && \
+	tmux -L $@ send-keys -t $@ "/" "Find the" ENTER && \
+	${EXPECT} $@ help-found && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ help-next && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ help-back && \
+	tmux -L $@ send-keys -t $@ "/" "zzzz" ENTER && \
+	${EXPECT} $@ not-found && \
+	tmux -L $@ send-keys -t $@ ":quithint" ENTER && \
+	${EXPECT} $@ quit-hint && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ not-found-prev && \
+	tmux -L $@ send-keys -t $@ ESCAPE && \
+	${EXPECT} $@ back-to-data && \
+	rm -f ${TMP_DIR}/$@.csv && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ find-failed && \
+	tmux -L $@ send-keys -t $@ "|" "nosuch" ENTER && \
+	${EXPECT} $@ column-not-found && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# A search from the header row starts at the top of the data: the header column under the
+# cursor must not offset the first data row ('l' twice lands on header column B, so a header
+# case that kept that column would start past alpha-one and land on alpha-three instead).
+# This file heads its first column "Row #", so parser column 0 is not data:
+# the wrapped /1 must find x1, not the "1" Row# cell, and N must not walk back through the
+# Row # column either. The last N searches from the header and must still wrap to the
+# file's last match.
+test-sheet-find-prev-header: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'Row #,A,B\n1,x1,alpha-one\n2,x2,beta\n3,x3,alpha-three\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 10 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "k" "l" "l" && \
+	${EXPECT} $@ header && \
+	tmux -L $@ send-keys -t $@ "/" "alpha" ENTER && \
+	${EXPECT} $@ found-header && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ wrap-prev && \
+	tmux -L $@ send-keys -t $@ "/" "1" ENTER && \
+	${EXPECT} $@ wrap-next && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ prev && \
+	tmux -L $@ send-keys -t $@ "/" "alpha" ENTER "k" && \
+	${EXPECT} $@ header-back && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# N through a file larger than one screen buffer: with the index ready, find previous scans
+# backwards a screen buffer (1024 rows) at a time, so the rows on the chunk edges are the
+# ones an off-by-one in the chunk walk would skip. From needle-b (row 2900) the first chunk
+# is 1877..2900, pinning its start with needle-c at 1877; the next N starts one row lower
+# and must reach needle-d at 1876. The last N walks from 1876, whose first chunk (853..1876)
+# holds no pin: the walk must step to 852, the last row of the next chunk, or a gap at the
+# seam would report "Not found". G waits for the index: EXPECT retries until it lands on the
+# true last row.
+test-sheet-find-prev-chunks: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@awk 'BEGIN{print "A,B"; for(i=1;i<=3000;i++){ if(i==5) print "5,needle-a"; \
+	  else if(i==852) print "852,pin-c"; else if(i==1876) print "1876,needle-d"; \
+	  else if(i==1877) print "1877,needle-c"; else if(i==2900) print "2900,needle-b"; \
+	  else printf "%d,r%d\n", i, i }}' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 8 -d -s $@ "${PREFIX} $< ${TMP_DIR}/$@.csv" && \
+	${EXPECT} $@ indexed && \
+	tmux -L $@ send-keys -t $@ "G" && \
+	${EXPECT} $@ bottom && \
+	tmux -L $@ send-keys -t $@ "/" "needle" ENTER && \
+	${EXPECT} $@ wrap-next && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ wrap-prev && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ prev-chunk-start && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ prev-chunk-end && \
+	tmux -L $@ send-keys -t $@ "N" && \
+	${EXPECT} $@ prev-top && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ next-1 && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ next-2 && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ next-3 && \
+	tmux -L $@ send-keys -t $@ "n" && \
+	${EXPECT} $@ wrap-next-again && \
+	tmux -L $@ send-keys -t $@ "/" "pin" ENTER && \
+	${EXPECT} $@ pin-found && \
+	tmux -L $@ send-keys -t $@ "1876G" && \
+	${EXPECT} $@ pin-jump && \
+	tmux -L $@ send-keys -t $@ "N" && \
 	${EXPECT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 # A blank row is data, not an "empty header row". find seeks via the row index and

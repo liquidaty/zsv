@@ -1,5 +1,5 @@
 Key(s)                    Action                    Description
 n                         next                      Find the next match
+N                         prev                      Find the previous match
 |                         gotocolumn                Find a column by name and
-\                         gotocolumnnext            Jump to the next column m
 <esc> to exit help next

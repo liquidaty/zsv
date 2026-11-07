@@ -182,6 +182,9 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
 
   { .ch = '/',                 .proc_id = zsvsheet_builtin_proc_find,          },
   { .ch = 'n',                 .proc_id = zsvsheet_builtin_proc_find_next,     },
+  /* next to n on purpose: the help screen lists bindings in this order, and the find keys
+     belong together there */
+  { .ch = 'N',                 .proc_id = zsvsheet_builtin_proc_find_prev,     },
 
   { .ch = '|',                 .proc_id = zsvsheet_builtin_proc_goto_column,   },
   { .ch = '\\',                .proc_id = zsvsheet_builtin_proc_goto_column_next, },
