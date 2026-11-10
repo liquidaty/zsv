@@ -1,6 +1,8 @@
 #ifndef ZSVSHEET_HANDLER_INTERNAL_H
 #define ZSVSHEET_HANDLER_INTERNAL_H
 
+#include "struct-ops.h"
+
 struct zsvsheet_context {
   const char *subcommand_value; // e.g. "/path/to/myfile.csv"
   int ch;                       // key press value from getch()
@@ -20,17 +22,20 @@ struct zsvsheet_subcommand_context {
 };
 
 /**
- * Write a buffer's unsaved cell edits into the data file it reads (defined in edit.c).
- * Returns 0, or -1 with the reason in err
+ * Write a buffer's unsaved cell edits into a new temp data file that the buffer then reads, and
+ * show that file's header row (defined in edit.c). Returns 0 (also when there are no edits, or
+ * when the header could not be fully shown, which the status then says), or -1 with the reason
+ * in err
  */
 static int zsvsheet_ui_buffer_commit_edits(struct zsvsheet_ui_buffer *uib, char *err, size_t errsz);
 
 /**
- * Write a buffer's rows, with unsaved edits applied, as CSV to out, indexing them in ix if
- * non-NULL (defined in edit.c). Returns 0, or -1 with the reason in err
+ * Write a buffer's rows, with unsaved edits and op (if non-NULL: a row or column insert or
+ * delete) applied, as CSV to out, indexing them in ix if non-NULL (defined in edit.c).
+ * Returns 0, or -1 with the reason in err
  */
-static int zsvsheet_ui_buffer_export(struct zsvsheet_ui_buffer *uib, FILE *out, struct zsv_index *ix, char *err,
-                                     size_t errsz);
+static int zsvsheet_ui_buffer_export(struct zsvsheet_ui_buffer *uib, FILE *out, struct zsv_index *ix,
+                                     struct zsvsheet_struct_op *op, char *err, size_t errsz);
 
 struct zsvsheet_key_data {
   struct zsvsheet_key_data *next;

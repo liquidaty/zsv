@@ -1,8 +1,8 @@
 /*
  * Unit test of the sheet hidden-column set and its column-name matcher
  * (app/sheet/hidden-columns.c): membership stays sorted and idempotent, range and
- * boundary queries hold at the ends, and the matcher folds ASCII case with '*' matching
- * any run
+ * boundary queries hold at the ends, members follow an inserted or deleted column, and
+ * the matcher folds ASCII case with '*' matching any run
  */
 #include <stdio.h>
 #include <string.h>
@@ -98,6 +98,37 @@ int main(void) {
   CHECK(zsvsheet_hidden_cols_visible_before(&h, 4) == (size_t)-1);
   CHECK(zsvsheet_hidden_cols_visible_count(&h, 0, 4) == 0);
   CHECK(zsvsheet_hidden_cols_visible_count(&h, 4, 6) == 2);
+  zsvsheet_hidden_cols_clear(&h);
+
+  // shift: an inserted column moves members at or after it right; a deleted one leaves the
+  // set and moves members after it left
+  zsvsheet_hidden_cols_shift(&h, 3, 1); // empty set: nothing to move
+  CHECK(h.count == 0);
+  CHECK(!zsvsheet_hidden_cols_add(&h, 2) && !zsvsheet_hidden_cols_add(&h, 5) && !zsvsheet_hidden_cols_add(&h, 7));
+  zsvsheet_hidden_cols_shift(&h, 5, 1); // at a member: it moves too
+  CHECK(h.count == 3 && h.cols[0] == 2 && h.cols[1] == 6 && h.cols[2] == 8 && check_sorted(&h));
+  zsvsheet_hidden_cols_shift(&h, 0, 1); // before every member
+  CHECK(h.count == 3 && h.cols[0] == 3 && h.cols[1] == 7 && h.cols[2] == 9);
+  zsvsheet_hidden_cols_shift(&h, 10, 1); // after every member
+  CHECK(h.count == 3 && h.cols[0] == 3 && h.cols[1] == 7 && h.cols[2] == 9);
+  zsvsheet_hidden_cols_shift(&h, 5, 0); // delete a column that is not a member
+  CHECK(h.count == 3 && h.cols[0] == 3 && h.cols[1] == 6 && h.cols[2] == 8 && check_sorted(&h));
+  zsvsheet_hidden_cols_shift(&h, 6, 0); // delete a member: it leaves, the next takes its place
+  CHECK(h.count == 2 && h.cols[0] == 3 && h.cols[1] == 7 && check_sorted(&h));
+  zsvsheet_hidden_cols_shift(&h, 4, 0); // a member right after the deleted column becomes adjacent
+  CHECK(h.count == 2 && h.cols[0] == 3 && h.cols[1] == 6 && zsvsheet_hidden_cols_has(&h, 6) && check_sorted(&h));
+  zsvsheet_hidden_cols_shift(&h, 9, 0); // after every member
+  CHECK(h.count == 2 && h.cols[0] == 3 && h.cols[1] == 6);
+
+  // truncate: members at or after the end go, those before it stay
+  zsvsheet_hidden_cols_truncate(&h, 7); // past every member
+  CHECK(h.count == 2 && h.cols[0] == 3 && h.cols[1] == 6);
+  zsvsheet_hidden_cols_truncate(&h, 6); // at a member
+  CHECK(h.count == 1 && h.cols[0] == 3 && !zsvsheet_hidden_cols_has(&h, 6) && check_sorted(&h));
+  zsvsheet_hidden_cols_truncate(&h, 0); // before every member
+  CHECK(h.count == 0);
+  CHECK(!zsvsheet_hidden_cols_add(&h, 4)); // still usable
+  CHECK(h.count == 1 && h.cols[0] == 4);
   zsvsheet_hidden_cols_clear(&h);
 
   // the matcher: ASCII case-insensitive, a pattern without '*' matches a whole name

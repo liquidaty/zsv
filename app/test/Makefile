@@ -149,6 +149,7 @@ ifneq ($(CROSS_COMPILING),1)
   TESTS+=test-sheet-edits # host-compiled unit test of the sheet cell-edit container
   TESTS+=test-sheet-lexer # host-compiled unit test of the sheet command lexer
   TESTS+=test-sheet-hidden-columns # host-compiled unit test of the sheet hidden-column set and name matcher
+  TESTS+=test-index # host-compiled unit test of the row index sheet seeks through
   # the overlay reaches curses through sheet/terminal.h, so it is built only where sheet is
   ifeq ($(ZSVSHEET_BUILD),1)
     TESTS+=test-sheet-cell-overlay # host-compiled unit test of the sheet whole-cell overlay
@@ -834,6 +835,14 @@ test-sheet-hidden-columns: ${TMP_DIR}/test_sheet_hidden_columns${HOST_EXE}
 ${TMP_DIR}/test_sheet_hidden_columns${HOST_EXE}: test_sheet_hidden_columns.c ../sheet/hidden-columns.c ../sheet/hidden-columns.h
 	@mkdir -p ${TMP_DIR}
 	@${CC} ${CFLAGS} ${CFLAGS_AUTO} test_sheet_hidden_columns.c ../sheet/hidden-columns.c -o $@
+
+test-index: ${TMP_DIR}/test_index${HOST_EXE}
+	@${TEST_INIT}
+	@$< && ${TEST_PASS} || ${TEST_FAIL}
+
+${TMP_DIR}/test_index${HOST_EXE}: test_index.c ../utils/index.c ../utils/index.h ../utils/writer.c ${BUILD_DIR}/lib/libzsv.a
+	@mkdir -p ${TMP_DIR}
+	@${CC} ${CFLAGS} ${CFLAGS_AUTO} -I../../include test_index.c ../utils/index.c ../utils/writer.c -L${BUILD_DIR}/lib -lzsv -o $@
 
 test-args: ${TMP_DIR}/test_args${HOST_EXE}
 	@${TEST_INIT}
@@ -1802,6 +1811,19 @@ test-sheet-all: \
 	test-sheet-edit-mode \
 	test-sheet-edit-mode-saveas \
 	test-sheet-edit-mode-long \
+	test-sheet-rows \
+	test-sheet-columns \
+	test-sheet-columns-ragged \
+	test-sheet-rows-refused \
+	test-sheet-rows-blank-header \
+	test-sheet-rows-large \
+	test-sheet-rows-keys \
+	test-sheet-rows-more \
+	test-sheet-columns-more \
+	test-sheet-rows-shrink \
+	test-sheet-columns-far \
+	test-sheet-columns-limit \
+	test-sheet-compare-grow \
 	test-sheet-overlay \
 	test-sheet-overlay-more \
 	test-sheet-edit-mode-no-boundary \
@@ -3619,6 +3641,339 @@ test-sheet-edit-mode-saveas: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
 	tmux -L $@ send-keys -t $@ Escape Escape ":q" Enter && \
 	${WAIT_FOR_EXIT} $@ && \
 	printf 'Row #,A,B\n2,2,W\n' | cmp - ${TMP_DIR}/$@-out.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# <ctrl>o row keys in edit mode: O inserts above the cursor and o below it, each an empty row
+# as wide as the header, with the cursor on its first cell; d d and d r delete the row (the
+# last row's delete leaves the cursor on the new last row and the old row off the screen);
+# on the header, o inserts the first data row, O a new header and d d deletes it. A pending
+# cell edit survives each rewrite, and goes with a deleted row; an unknown key cancels with a
+# message, <esc> silently
+test-sheet-rows: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B,C\n1,x,y\n2,"a,b",z\n3,p,q\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 10 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":editmode" Enter Right "X" Enter C-o && \
+	${EXPECT} $@ prefix && \
+	tmux -L $@ send-keys -t $@ "O" && \
+	${EXPECT} $@ above && \
+	tmux -L $@ send-keys -t $@ "n" Tab "m" Enter C-o "o" "o" Enter C-o "d" "d" && \
+	${EXPECT} $@ deleted-last && \
+	tmux -L $@ send-keys -t $@ Up Up Up Up C-o "o" "f" Enter C-o "x" && \
+	${EXPECT} $@ cancelled && \
+	tmux -L $@ send-keys -t $@ C-o Escape Down "w" Enter Up C-o "d" "r" && \
+	${EXPECT} $@ deleted && \
+	tmux -L $@ send-keys -t $@ Up Up Up C-o "O" "h" "1" Tab "h" "2" Tab "z" Enter Up C-o "O" && \
+	${EXPECT} $@ header-above && \
+	tmux -L $@ send-keys -t $@ C-o "d" "d" C-s && \
+	${EXPECT} $@ saved && \
+	tmux -L $@ send-keys -t $@ Escape ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf 'h1,h2,z\nA,B,C\nf,,\nX,x,y\n2,"a,b",z\no,,\n' | cmp - ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# <ctrl>o column keys and commands in normal mode: c on the last column appends an empty cell to
+# every row, d c takes it away (and $ then stops at the last column), C inserts on the left;
+# deleting a column moves a hidden column to its right along, and the cursor to a visible column;
+# :insert-column left, :delete-column, and the usage message for a bad argument. A pending edit
+# in a deleted column goes with it, and one to its right moves left with its column
+test-sheet-columns: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B,C\n1,"x,y",2\n3,4,5\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "$$" C-o "c" && \
+	${EXPECT} $@ appended && \
+	tmux -L $@ send-keys -t $@ C-o "d" "c" "$$" && \
+	${EXPECT} $@ deleted && \
+	tmux -L $@ send-keys -t $@ "^" Right C-o "C" ":cell new" Enter "$$" ":hide-column" Enter C-o "d" "c" && \
+	${EXPECT} $@ hidden-moved && \
+	tmux -L $@ send-keys -t $@ ":unhide-column" Enter ":insert-column left" Enter ":delete-column" Enter && \
+	${EXPECT} $@ commands && \
+	tmux -L $@ send-keys -t $@ ":insert-column bad" Enter && \
+	${EXPECT} $@ usage && \
+	tmux -L $@ send-keys -t $@ "^" Right ":cell p" Enter Right ":cell q" Enter Left C-o "d" "c" ":w" Enter ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf 'A,C\nq,2\n3,5\n' | cmp - ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# ragged rows: a column op changes only rows that have a cell at the cursor's column; c on the
+# last column of a file whose widest row is a data row reaches the new column at once; an
+# inserted row is as wide as the header, whatever the width of the rows around it
+test-sheet-columns-ragged: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B\n1\n2,3,4\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ Right C-o "C" Down "$$" C-o "c" ":cell z" Enter && \
+	${EXPECT} $@ appended && \
+	tmux -L $@ send-keys -t $@ "^" Right Right Right C-o "C" Up C-o "o" ":w" Enter ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf ',A,,B\n,1\n,,,\n,2,,3,4,z\n' | cmp - ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# row and column ops are refused, with the reason, on the row-number column (column ops), in a
+# filter or pivot result (also once saved under a name, which gives it a file), in help, while
+# :compare is on (column ops), and for the only row or the only column
+test-sheet-rows-refused: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B\n1,x\n2,y\n' > ${TMP_DIR}/$@.csv
+	@printf 'A\n' > ${TMP_DIR}/$@-1.csv
+	@rm -f ${TMP_DIR}/$@-f.csv ${TMP_DIR}/$@-p.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ Left C-o "c" && \
+	${EXPECT} $@ rownum && \
+	tmux -L $@ send-keys -t $@ Right "f" "2" Enter C-o "o" && \
+	${EXPECT} $@ filter && \
+	tmux -L $@ send-keys -t $@ ":w $@-f.csv" Enter C-o "o" && \
+	${EXPECT} $@ filter-saved && \
+	tmux -L $@ send-keys -t $@ Escape "v" C-o "o" && \
+	${EXPECT} $@ pivot && \
+	tmux -L $@ send-keys -t $@ ":w $@-p.csv" Enter C-o "o" && \
+	${EXPECT} $@ pivot-saved && \
+	tmux -L $@ send-keys -t $@ Escape "?" C-o "o" && \
+	${EXPECT} $@ help && \
+	tmux -L $@ send-keys -t $@ Escape ":compare 1v2" Enter C-o "c" && \
+	${EXPECT} $@ compare && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@-1.csv" && \
+	${EXPECT} $@ open-1 && \
+	tmux -L $@ send-keys -t $@ Up C-o "d" "d" && \
+	${EXPECT} $@ only-row && \
+	tmux -L $@ send-keys -t $@ Right ":cell z" Enter C-o "d" "c" && \
+	${EXPECT} $@ only-column && \
+	tmux -L $@ send-keys -t $@ ":w" Enter ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf 'A,B\n1,x\n2,y\n' | cmp - ${TMP_DIR}/$@.csv && printf 'z\n' | cmp - ${TMP_DIR}/$@-1.csv && \
+	${TEST_PASS} || ${TEST_FAIL})
+
+# a blank first row, which a single-column file writes as an empty line, stays a row: after
+# O on the header, G reaches the last row and an edit lands on it; saving, to another file or to
+# its own, warns that opening the file again skips that row. d d on a header followed by a blank
+# row makes the blank row the header
+test-sheet-rows-blank-header: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A\n1\n2\n' > ${TMP_DIR}/$@.csv
+	@printf 'A\n\nx\n' > ${TMP_DIR}/$@-2.csv
+	@rm -f ${TMP_DIR}/$@-c.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 160 -y 7 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ Up C-o "O" && \
+	${EXPECT} $@ inserted && \
+	tmux -L $@ send-keys -t $@ ":w $@-c.csv" Enter && \
+	${EXPECT} $@ saved-copy && \
+	printf '\nA\n1\n2\n' | cmp - ${TMP_DIR}/$@-c.csv && \
+	tmux -L $@ send-keys -t $@ "G" ":cell z" Enter ":w" Enter && \
+	${EXPECT} $@ saved && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf '\nA\n1\nz\n' | cmp - ${TMP_DIR}/$@.csv && \
+	tmux -L $@ new-session -x 160 -y 7 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@-2.csv" && \
+	${EXPECT} $@ open-2 && \
+	tmux -L $@ send-keys -t $@ Up Right C-o "d" "d" "G" ":cell q" Enter ":w" Enter && \
+	${EXPECT} $@ saved-2 && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf '\nq\n' | cmp - ${TMP_DIR}/$@-2.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# a file taller than the screen buffer: row ops at the end and mid-file use the raw row the
+# cursor is on; after deleting the last rows, gg G at once lands on the new last row, and o
+# there appends a row after it
+test-sheet-rows-large: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(echo n,v; seq 1 3000 | sed 's/.*/&,&/') > ${TMP_DIR}/$@.csv
+	@(echo n,v; seq 1 1499 | sed 's/.*/&,&/'; echo new,; seq 1500 2997 | sed 's/.*/&,&/'; echo end,) > ${TMP_DIR}/$@-expected.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "G" C-o "d" "d" C-o "d" "d" C-o "d" "d" "g" "g" "G" && \
+	${EXPECT} $@ bottom && \
+	tmux -L $@ send-keys -t $@ C-o "o" ":cell end" Enter && \
+	${EXPECT} $@ appended && \
+	tmux -L $@ send-keys -t $@ "1500G" C-o "O" ":cell new" Enter && \
+	${EXPECT} $@ inserted && \
+	tmux -L $@ send-keys -t $@ ":w" Enter ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	cmp ${TMP_DIR}/$@-expected.csv ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# deleting the only data row leaves the cursor on the header, where the next op works; an op
+# after :w rewrites the saved file again; a terminal resize while <ctrl>o waits leaves it
+# waiting; <ctrl>o <esc> in normal mode cancels only the sequence, with no offer to discard
+test-sheet-rows-more: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A,B\n1,2\n' > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ C-o "d" "d" && \
+	${EXPECT} $@ only-header && \
+	tmux -L $@ send-keys -t $@ C-o "o" ":cell n" Enter ":w" Enter C-o && \
+	tmux -L $@ resize-window -t $@ -x 70 && \
+	tmux -L $@ send-keys -t $@ "o" ":cell m" Enter && \
+	${EXPECT} $@ resized && \
+	tmux -L $@ send-keys -t $@ C-o Escape && \
+	${EXPECT} $@ cancelled && \
+	tmux -L $@ send-keys -t $@ ":w" Enter ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf 'A,B\nn,\nm,\n' | cmp - ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# a row delete that takes away the widest row, and with it the cursor's column (or the columns
+# the window was scrolled to), leaves the cursor on the last column left, where an edit works;
+# a delete that leaves only hidden columns, of the last visible column or of the rows that had
+# the visible ones, shows them; a row delete drops a hidden column that no row has any more
+test-sheet-rows-shrink: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A\n1\n2,3,4\n' > ${TMP_DIR}/$@.csv
+	@(echo A; echo 1; seq 1 30 | paste -sd, -) > ${TMP_DIR}/$@-2.csv
+	@printf 'A,B\n1,2\n' > ${TMP_DIR}/$@-3.csv
+	@printf 'A\n1,2,3\n' > ${TMP_DIR}/$@-4.csv
+	@printf 'A\n1,2,3\n' > ${TMP_DIR}/$@-5.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ Down Right Right C-o "d" "d" && \
+	${EXPECT} $@ shrunk && \
+	tmux -L $@ send-keys -t $@ ":cell z" Enter ":w" Enter ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf 'A\nz\n' | cmp - ${TMP_DIR}/$@.csv && \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@-2.csv" && \
+	${EXPECT} $@ open-2 && \
+	tmux -L $@ send-keys -t $@ Down "$$" C-o "d" "d" && \
+	${EXPECT} $@ scrolled && \
+	tmux -L $@ send-keys -t $@ ":q!" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@-3.csv" && \
+	${EXPECT} $@ open-3 && \
+	tmux -L $@ send-keys -t $@ Right ":hide-column" Enter C-o "d" "c" && \
+	${EXPECT} $@ last-visible && \
+	tmux -L $@ send-keys -t $@ ":w" Enter ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@-4.csv" && \
+	${EXPECT} $@ open-4 && \
+	tmux -L $@ send-keys -t $@ Right ":hide-column" Enter C-o "d" "d" && \
+	${EXPECT} $@ all-hidden && \
+	tmux -L $@ send-keys -t $@ ":w" Enter ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@-5.csv" && \
+	${EXPECT} $@ open-5 && \
+	tmux -L $@ send-keys -t $@ Right Right Right ":hide-column" Enter C-o "d" "d" && \
+	${EXPECT} $@ hidden-dropped && \
+	tmux -L $@ send-keys -t $@ ":w" Enter ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf 'A\n' | cmp - ${TMP_DIR}/$@-4.csv && printf 'A\n1\n' | cmp - ${TMP_DIR}/$@-3.csv && \
+	printf 'A\n' | cmp - ${TMP_DIR}/$@-5.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# a file whose widest row lies past the first load: deleting the one column loaded so far is not
+# refused (the rewrite reads every row), and once an op has counted every column, deleting the
+# one visible column loaded so far is not refused either
+test-sheet-columns-far: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(echo A; seq 1 2000; echo 1,2,3) > ${TMP_DIR}/$@.csv
+	@(seq 0 2000 | sed 's/.*//'; echo 2,3) > ${TMP_DIR}/$@-expected.csv
+	@(echo A,B; seq 1 2000 | sed 's/.*/&,&/'; echo 1,2,3,4) > ${TMP_DIR}/$@-2.csv
+	@(echo A; echo 1; echo; seq 2 2000; echo 1,3,4) > ${TMP_DIR}/$@-2-expected.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ Right C-o "d" "c" && \
+	${EXPECT} $@ deleted && \
+	tmux -L $@ send-keys -t $@ ":w" Enter ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	cmp ${TMP_DIR}/$@-expected.csv ${TMP_DIR}/$@.csv && \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@-2.csv" && \
+	${EXPECT} $@ open-2 && \
+	tmux -L $@ send-keys -t $@ Right ":hide-column" Enter C-o "o" C-o "d" "c" && \
+	${EXPECT} $@ deleted-2 && \
+	tmux -L $@ send-keys -t $@ ":w" Enter ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	cmp ${TMP_DIR}/$@-2-expected.csv ${TMP_DIR}/$@-2.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# after the widest row is deleted, the column count is the widest row left, so $ then c inserts a
+# column every row has; with the first data column hidden, o puts the cursor on the first
+# visible column of the new row
+test-sheet-columns-more: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@printf 'A\n1\n2,3,4\n' > ${TMP_DIR}/$@.csv
+	@printf 'A,B\n1,2\n' > ${TMP_DIR}/$@-2.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ Down C-o "d" "d" "$$" C-o "c" && \
+	${EXPECT} $@ inserted && \
+	tmux -L $@ send-keys -t $@ ":w" Enter ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf 'A,\n1,\n' | cmp - ${TMP_DIR}/$@.csv && \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@-2.csv" && \
+	${EXPECT} $@ open-2 && \
+	tmux -L $@ send-keys -t $@ Right ":hide-column" Enter C-o "o" ":cell v" Enter && \
+	${EXPECT} $@ hidden-first && \
+	tmux -L $@ send-keys -t $@ ":w" Enter ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	printf 'A,B\n1,2\n,v\n' | cmp - ${TMP_DIR}/$@-2.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# a column insert that would give a row more than the most columns the parser reads (1024 by
+# default) is not done: refused at once when the cursor has passed such a row, else the rewrite
+# finds it (here, a row past the first load) and stops, leaving the buffer unmodified
+test-sheet-columns-limit: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(echo A,B,C; seq 1 2000 | sed 's/.*/&,&,&/'; seq 1 1024 | paste -sd, -) > ${TMP_DIR}/$@.csv
+	@cp ${TMP_DIR}/$@.csv ${TMP_DIR}/$@-orig.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 6 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ Right C-o "C" && \
+	${EXPECT} $@ not-done && \
+	tmux -L $@ send-keys -t $@ "G" C-o "c" && \
+	${EXPECT} $@ refused && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && \
+	cmp ${TMP_DIR}/$@-orig.csv ${TMP_DIR}/$@.csv && ${TEST_PASS} || ${TEST_FAIL})
+
+# with :compare highlighting on, a load that widens the screen buffer (here, a wide last row
+# past the first load) re-sizes the highlights with the cells; built with ASan
+# (-fsanitize=address), it checks that no highlight is read or written past its array
+test-sheet-compare-grow: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(echo A,B; seq 1 2000 | sed 's/.*/&,&/'; echo 1,2,3,4,5,6,7,8) > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 8 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ ":compare 1v2" Enter "G" && \
+	${EXPECT} $@ bottom && \
+	tmux -L $@ send-keys -t $@ ":q" Enter && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
+
+# a <ctrl>o sequence leaves no key state behind in normal mode: 3 <ctrl>o o G goes to the last
+# row, not row 3 (the count does not carry over), and g <ctrl>o o g does not pair the two g's
+test-sheet-rows-keys: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}
+	@${TEST_INIT}
+	@echo 'set-option default-terminal "${TMUX_TERM}"' > ~/.tmux.conf
+	@(echo A; seq 1 9) > ${TMP_DIR}/$@.csv
+	@(tmux -L $@ kill-server 2>/dev/null; rm -f ${TMP_DIR}/tmux-$$(id -u)/$@ 2>/dev/null; \
+	tmux -L $@ new-session -x 80 -y 14 -d -s $@ "cd ${TMP_DIR} && ${PREFIX} $< $@.csv" && \
+	${EXPECT} $@ open && \
+	tmux -L $@ send-keys -t $@ "3" C-o "o" "G" && \
+	${EXPECT} $@ count && \
+	tmux -L $@ send-keys -t $@ "g" C-o "o" "g" && \
+	${EXPECT} $@ g && \
+	tmux -L $@ send-keys -t $@ ":q!" Enter && \
+	${WAIT_FOR_EXIT} $@ && ${TEST_PASS} || ${TEST_FAIL})
 
 # :q with unsaved changes quits only when "yes" is typed in full
 test-sheet-quit-confirm: ${BUILD_DIR}/bin/zsv_sheet${EXE} ${TIMINGS_CSV}

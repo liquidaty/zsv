@@ -47,6 +47,17 @@ int zsvsheet_hidden_cols_remove(struct zsvsheet_hidden_cols *h, size_t col) {
   return 1;
 }
 
+void zsvsheet_hidden_cols_shift(struct zsvsheet_hidden_cols *h, size_t screen_col, char inserted) {
+  if (!inserted)
+    zsvsheet_hidden_cols_remove(h, screen_col);
+  for (size_t i = zsvsheet_hidden_cols_lower_bound(h, screen_col); i < h->count; i++)
+    h->cols[i] = inserted ? h->cols[i] + 1 : h->cols[i] - 1;
+}
+
+void zsvsheet_hidden_cols_truncate(struct zsvsheet_hidden_cols *h, size_t end) {
+  h->count = zsvsheet_hidden_cols_lower_bound(h, end);
+}
+
 void zsvsheet_hidden_cols_clear(struct zsvsheet_hidden_cols *h) {
   free(h->cols);
   memset(h, 0, sizeof(*h));

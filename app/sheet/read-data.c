@@ -124,6 +124,47 @@ static void get_data_index_async(struct zsvsheet_ui_buffer *uibuffp, const char 
   }
 }
 
+// Make the screen buffer wide enough for a row of ncols parser columns
+static enum zsvsheet_priv_status zsvsheet_ui_buffer_fit_cols(struct zsvsheet_ui_buffer *uib, size_t ncols) {
+  zsvsheet_screen_buffer_t buffer = uib->buffer;
+  if (ncols + !buffer->opts.no_rownum_column > buffer->cols)
+    return zsvsheet_screen_buffer_grow(buffer, ncols);
+  return zsvsheet_priv_status_ok;
+}
+
+// Write the parser's current row, from parser column start_col, into buffer row buff_row at
+// screen column col_offset onwards: every cell across the buffer's width, including empty and
+// missing ones, since the buffer row may still hold a longer row from a previous load, and an
+// unwritten cell would keep showing that stale content. Returns the first write failure
+static enum zsvsheet_priv_status zsvsheet_ui_buffer_write_parsed_row(struct zsvsheet_ui_buffer *uib, zsv_parser parser,
+                                                                     size_t buff_row, size_t start_col,
+                                                                     size_t col_offset) {
+  const size_t col_count = zsv_cell_count(parser);
+  enum zsvsheet_priv_status stat = zsvsheet_priv_status_ok;
+  for (size_t i = start_col; i + col_offset < zsvsheet_screen_buffer_cols(uib->buffer); i++) {
+    struct zsv_cell c = i < col_count ? zsv_get_cell(parser, i) : (struct zsv_cell){0};
+    enum zsvsheet_priv_status wstat =
+      zsvsheet_screen_buffer_write_cell_w_len(uib->buffer, buff_row, i + col_offset, c.str, c.len);
+    if (stat == zsvsheet_priv_status_ok)
+      stat = wstat;
+  }
+  return stat;
+}
+
+// Most cells a row of uib's data may have: the parser drops cells beyond it
+static size_t zsvsheet_ui_buffer_max_cols(const struct zsvsheet_ui_buffer *uib) {
+  return uib->zsv_opts.max_columns ? uib->zsv_opts.max_columns : ZSV_MAX_COLS_DEFAULT;
+}
+
+// Show the parser's current row, row 0 of uib's data file, as the header: a reload through the
+// index starts past it and never rewrites buffer row 0 (see read_data())
+static enum zsvsheet_priv_status zsvsheet_ui_buffer_show_header(struct zsvsheet_ui_buffer *uib, zsv_parser parser) {
+  enum zsvsheet_priv_status stat = zsvsheet_ui_buffer_fit_cols(uib, zsv_cell_count(parser));
+  if (stat == zsvsheet_priv_status_ok)
+    stat = zsvsheet_ui_buffer_write_parsed_row(uib, parser, 0, 0, zsvsheet_ui_buffer_data_col_offset(uib));
+  return stat;
+}
+
 static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_ui_buffer will be allocated
                      struct zsvsheet_ui_buffer_opts *uibopts, // if *uibufferp == NULL and uibopts != NULL
                      size_t start_row, size_t start_col, size_t header_span, struct zsvsheet_opts *zsvsheet_opts,
@@ -272,11 +313,9 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       continue;
     }
     if (uibuff) {
-      if (col_count + !buffer->opts.no_rownum_column > buffer->cols) {
-        if (zsvsheet_screen_buffer_grow(buffer, col_count) != zsvsheet_priv_status_ok) {
-          rc = -1;
-          goto done;
-        }
+      if (zsvsheet_ui_buffer_fit_cols(uibuff, col_count) != zsvsheet_priv_status_ok) {
+        rc = -1;
+        goto done;
       }
       if (col_count > uibuff->dimensions.col_count)
         uibuff->dimensions.col_count = col_count;
@@ -323,12 +362,10 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       rownum_column_offset = 1;
     }
 
-    // Write every cell across the buffer's width, including empty and missing ones:
-    // this buffer row may still hold a longer row from a previous load, and an
-    // unwritten cell would keep showing that stale content
-    for (size_t i = start_col; i + rownum_column_offset < zsvsheet_screen_buffer_cols(buffer); i++) {
-      struct zsv_cell c = i < col_count ? zsv_get_cell(parser, i) : (struct zsv_cell){0};
-      zsvsheet_screen_buffer_write_cell_w_len(buffer, rows_read, i + rownum_column_offset, c.str, c.len);
+    if (uibuff && zsvsheet_ui_buffer_write_parsed_row(uibuff, parser, rows_read, start_col, rownum_column_offset) !=
+                    zsvsheet_priv_status_ok) {
+      rc = -1;
+      goto done;
     }
 
     rows_read++;
@@ -364,9 +401,12 @@ static int read_data(struct zsvsheet_ui_buffer **uibufferp,   // a new zsvsheet_
       opts.stream = NULL;
       get_data_index_async(uibuff, filename, &opts, custom_prop_handler, old_ui_status);
     }
-  } else if (rows_read > uibuff->buff_used_rows) {
+  } else if (!zsvsheet_opts->find) { // a find loads nothing into the buffer
+    // exact, so rows a delete took away are not shown. The row count only grows here, to the
+    // rows seen so far; an index's count (zsvsheet_check_buffer_updates()) is never less
     uibuff->buff_used_rows = rows_read;
-    uibuff->dimensions.row_count = rows_read;
+    if (start_row + rows_read > uibuff->dimensions.row_count)
+      uibuff->dimensions.row_count = start_row + rows_read;
   }
 
 done:

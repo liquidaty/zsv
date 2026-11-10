@@ -20,6 +20,13 @@ int zsvsheet_hidden_cols_add(struct zsvsheet_hidden_cols *h, size_t col);
 // Remove col if it is a member. Returns 1 if it was, else 0
 int zsvsheet_hidden_cols_remove(struct zsvsheet_hidden_cols *h, size_t col);
 
+// Follow a column inserted at, or deleted from, screen column screen_col: on insert, members at
+// or after it move right by one; on delete, it leaves the set and members after it move left
+void zsvsheet_hidden_cols_shift(struct zsvsheet_hidden_cols *h, size_t screen_col, char inserted);
+
+// Remove every member at or after screen column end
+void zsvsheet_hidden_cols_truncate(struct zsvsheet_hidden_cols *h, size_t end);
+
 // Free the set; `h` is empty and reusable afterwards
 void zsvsheet_hidden_cols_clear(struct zsvsheet_hidden_cols *h);
 

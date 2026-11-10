@@ -1,0 +1,6 @@
+Row #               A                   B                   C
+1                   1                   1                   1
+2                   2                   2                   2
+3                   3                   3                   3
+4                   4                   4                   4
+Not done: a row would have more than 1024 columns (--max-column-count) 1

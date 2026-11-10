@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <zsv.h>
-#include <zsv/utils/prop.h>
+#include <stdio.h>
 #include "index.h"
 
 struct zsv_index *zsv_index_new(void) {
@@ -14,6 +14,10 @@ struct zsv_index *zsv_index_new(void) {
 
   const size_t init_cap = 512;
   ix->first = calloc(1, sizeof(*ix->first) + init_cap * sizeof(ix->first->u64s[0]));
+  if (!ix->first) {
+    free(ix);
+    return NULL;
+  }
   ix->first->capacity = init_cap;
 
   return ix;
@@ -37,8 +41,9 @@ enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, uint64_t line_end)
   struct zsv_index_array *arr = ix->first;
   size_t len = arr->len, cap = arr->capacity;
 
-  if (!ix->header_line_end) {
+  if (!ix->header_recorded) {
     ix->header_line_end = line_end;
+    ix->header_recorded = 1;
     return zsv_index_status_ok;
   }
 
@@ -69,6 +74,10 @@ enum zsv_index_status zsv_index_add_row(struct zsv_index *ix, uint64_t line_end)
   arr->len++;
 
   return zsv_index_status_ok;
+}
+
+enum zsv_index_status zsv_index_add_last_row(struct zsv_index *ix, uint64_t bytes_written) {
+  return bytes_written ? zsv_index_add_row(ix, bytes_written - 1) : zsv_index_status_ok;
 }
 
 void zsv_index_commit_rows(struct zsv_index *ix) {

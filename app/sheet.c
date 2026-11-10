@@ -35,6 +35,7 @@
 #include "../include/zsv/utils/string.h"
 #include "../include/zsv/utils/utf8.h"
 #include "sheet/sheet_internal.h"
+#include "sheet/struct-ops.h"
 #include "sheet/pattern.c"
 #include "sheet/screen_buffer.c"
 #include "sheet/lexer.c"
@@ -271,6 +272,8 @@ struct zsvsheet_sheet_context {
   size_t discard_offer_keypress; // the <esc> that offered to discard a modified buffer (0: none);
                                  // only the next key can accept, so it is on the same buffer
   size_t idle_ticks;             // input timeouts since the last key, the cell overlay's idle clock
+  // a <ctrl>o sequence waiting for its next key
+  enum zsvsheet_struct_prefix struct_prefix;
 };
 
 static void update_numeric_input(const int ch, struct zsvsheet_sheet_context *state) {
@@ -1044,6 +1047,7 @@ no_input:
 
 #include "sheet/filter.c"
 #include "sheet/hide.c"
+#include "sheet/struct-ops.c"
 
 static zsvsheet_status zsvsheet_filter_handler(struct zsvsheet_proc_context *ctx) {
   char prompt_buffer[256] = {0};
@@ -1444,6 +1448,10 @@ struct builtin_proc_desc {
   { zsvsheet_builtin_proc_copy_cell,        "copy",           NULL, "Copy the cell to the clipboard",          zsvsheet_copy_cell_handler },
   { zsvsheet_builtin_proc_hide_column,      "hide-column",    NULL, "Hide the column under the cursor, or columns named by an argument", zsvsheet_hide_columns_handler },
   { zsvsheet_builtin_proc_unhide_column,    "unhide-column",  NULL, "Unhide all hidden columns, or only those named by an argument",   zsvsheet_hide_columns_handler },
+  { zsvsheet_builtin_proc_insert_row,       "insert-row",     NULL, "Insert an empty row below the cursor (or :insert-row above)",     zsvsheet_struct_op_handler },
+  { zsvsheet_builtin_proc_delete_row,       "delete-row",     NULL, "Delete the row under the cursor",                                 zsvsheet_struct_op_handler },
+  { zsvsheet_builtin_proc_insert_col,       "insert-column",  NULL, "Insert an empty column right of the cursor (or :insert-column left)", zsvsheet_struct_op_handler },
+  { zsvsheet_builtin_proc_delete_col,       "delete-column",  NULL, "Delete the column under the cursor",                              zsvsheet_struct_op_handler },
   { -1, NULL, NULL, NULL, NULL }
 };
 /* clang-format on */
@@ -1625,7 +1633,8 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
   // check for status update
   halfdelay(ZSVSHEET_INPUT_TIMEOUT_TENTHS);
   if (zsvsheet_keys_reach_app()) // after halfdelay(), which sets its own terminal mode
-    zsvsheet_ui_buffer_set_status(current_ui_buffer, "Unable to set up the terminal: <ctrl>c may quit");
+    zsvsheet_ui_buffer_set_status(current_ui_buffer,
+                                  "Unable to set up the terminal: <ctrl>c may quit, and <ctrl>o may not reach sheet");
 
   int ch;
   while (true) {
@@ -1641,14 +1650,15 @@ int ZSV_MAIN_FUNC(ZSV_COMMAND)(int argc, const char *argv[], struct zsv_opts *op
       // so repaint the grid the overlay covered before the handler runs
       if (zsvsheet_cell_overlay_painted())
         display_buffer_subtable(&handler_state, current_ui_buffer, header_span);
-      if (!handler_state.edit_mode && isdigit(ch)) { // in edit mode, digits are typed into cells
+      if (zsvsheet_struct_key(ch, &handler_state, &status)) // a <ctrl>o row or column key, in either mode
+        ;
+      else if (!handler_state.edit_mode && isdigit(ch)) { // in edit mode, digits are typed into cells
         update_numeric_input(ch, &handler_state);
         continue;
-      }
-
-      status =
-        handler_state.edit_mode ? zsvsheet_edit_mode_key(ch, &handler_state) : zsvsheet_key_press(ch, &handler_state);
-      reset_numeric_input(&handler_state);
+      } else
+        status =
+          handler_state.edit_mode ? zsvsheet_edit_mode_key(ch, &handler_state) : zsvsheet_key_press(ch, &handler_state);
+      reset_numeric_input(&handler_state); // e.g. 3 <ctrl>o o: the count does not carry past the sequence
 
       if (status == zsvsheet_status_exit)
         break;
@@ -1835,7 +1845,11 @@ static void display_buffer_subtable(struct zsvsheet_sheet_context *state, struct
   }
 
   // The footer line shows a message if one is up (applied above with overwrite), else the
-  // buffer's own state: an unsaved edit stays visible as long as it is true, unlike a message
+  // buffer's own state: an unsaved edit stays visible as long as it is true, unlike a message.
+  // A <ctrl>o sequence waiting for its next key says which keys it takes, in place of either
+  const char *struct_hint = zsvsheet_struct_prefix_hint(state->struct_prefix);
+  if (struct_hint)
+    zsvsheet_priv_set_status(ddims, 1, "%s", struct_hint);
   if (edit_mode) { // '?' and ':' type into cells here
     zsvsheet_priv_set_status(ddims, 0,
                              ui_buffer->modified ? zsvsheet_modified_text(1) : "<esc> leaves edit mode, <ctrl>s saves");

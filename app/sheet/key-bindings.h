@@ -57,6 +57,10 @@ int zsvsheet_register_key_binding(struct zsvsheet_key_binding *binding);
 
 zsvsheet_status zsvsheet_key_press(int ch, void *subcommand_context);
 
+/* Forget the key zsvsheet_key_press() saw last, for keys a caller consumed itself, so that a
+ * two-key binding (e.g. g g) does not pair the key before them with the key after them */
+void zsvsheet_key_press_reset(void);
+
 struct zsvsheet_key_binding *zsvsheet_get_key_binding(size_t i);
 struct zsvsheet_key_binding *zsvsheet_find_key_binding(int ch);
 

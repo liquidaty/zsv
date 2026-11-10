@@ -1,0 +1,6 @@
+Row #                     A                         B
+1                         1                         x
+2                         2                         y
+
+
+Columns cannot be inserted or deleted while :compare is on 1 vs x

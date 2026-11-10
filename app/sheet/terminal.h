@@ -44,11 +44,12 @@ static inline void zsvsheet_mvaddnstr_utf8(int row, int col, const char *text, s
 #endif
 }
 
-// zsvsheet_keys_reach_app(): make <ctrl>c, <ctrl>s, <ctrl>q and <ctrl>v keys the app reads,
-// rather than an interrupt, flow control or the terminal's literal-next. Other keys keep
-// their meaning, so <ctrl>z still suspends and <ctrl>\ still quits at once (restoring the
-// terminal first, as curses does for other signals that end the program). Call after curses'
-// own terminal settings (cbreak/halfdelay). Returns 0, or -1 if the terminal could not be set
+// zsvsheet_keys_reach_app(): make <ctrl>c, <ctrl>s, <ctrl>q, <ctrl>v and <ctrl>o keys the app
+// reads, rather than an interrupt, flow control, the terminal's literal-next or (macOS/BSD) its
+// discard-output key. Other keys keep their meaning, so <ctrl>z still suspends and
+// <ctrl>\ still quits at once (restoring the terminal first, as curses does for other signals
+// that end the program). Call after curses' own terminal settings (cbreak/halfdelay). Returns
+// 0, or -1 if the terminal could not be set
 #if defined(WIN32) || defined(_WIN32)
 
 static inline int zsvsheet_keys_reach_app(void) {
@@ -72,7 +73,7 @@ static inline int zsvsheet_keys_reach_app(void) {
   if (tcgetattr(STDIN_FILENO, &t))
     return -1;
   t.c_iflag &= ~(tcflag_t)IXON;    // <ctrl>s, <ctrl>q
-  t.c_lflag &= ~(tcflag_t)IEXTEN;  // <ctrl>v
+  t.c_lflag &= ~(tcflag_t)IEXTEN;  // <ctrl>v; <ctrl>o (VDISCARD on macOS/BSD)
   t.c_cc[VINTR] = _POSIX_VDISABLE; // <ctrl>c
   if (tcsetattr(STDIN_FILENO, TCSANOW, &t))
     return -1;
