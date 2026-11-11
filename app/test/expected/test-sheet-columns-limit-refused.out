@@ -1,0 +1,6 @@
+Row #     A         B         C
+1998      1998      1998      1998
+1999      1999      1999      1999
+2000      2000      2000      2000
+2001      1         2         3         4         5         6         7
+Rows already have the most columns --max-column-count allows 1

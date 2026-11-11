@@ -37,8 +37,7 @@ static void zsvsheet_export_index_row(void *p) {
 
 static void zsvsheet_export_index_end(void *p) {
   struct zsvsheet_export_index *xi = p;
-  uint64_t written = zsv_writer_cum_bytes_written(xi->writer);
-  if (written && zsv_index_add_row(xi->ix, written) != zsv_index_status_ok)
+  if (zsv_index_add_last_row(xi->ix, zsv_writer_cum_bytes_written(xi->writer)) != zsv_index_status_ok)
     xi->failed = 1;
   zsv_index_commit_rows(xi->ix);
 }
@@ -69,8 +68,17 @@ static int zsvsheet_export_warn(void *ctx, const char *fmt, ...) {
   return 0;
 }
 
-// Write the rows of the file-backed uib, with pending edits applied, to w
-static int zsvsheet_export_file_rows(struct zsvsheet_ui_buffer *uib, zsv_csv_writer w, char *err, size_t errsz) {
+// Write an empty row of `cols` cells (at least one: a row needs a cell to be written)
+static enum zsv_writer_status zsvsheet_export_blank_row(zsv_csv_writer w, size_t cols) {
+  enum zsv_writer_status wstat = zsv_writer_status_ok;
+  for (size_t i = 0; i < (cols ? cols : 1) && wstat == zsv_writer_status_ok; i++)
+    wstat = zsv_writer_cell(w, i == 0, NULL, 0, 0);
+  return wstat;
+}
+
+// Write the rows of the file-backed uib, with pending edits and op (if non-NULL) applied, to w
+static int zsvsheet_export_file_rows(struct zsvsheet_ui_buffer *uib, zsv_csv_writer w, struct zsvsheet_struct_op *op,
+                                     char *err, size_t errsz) {
   int rc = -1;
   const char *src = uib->data_filename ? uib->data_filename : uib->filename;
   zsv_parser parser = NULL;
@@ -87,13 +95,28 @@ static int zsvsheet_export_file_rows(struct zsvsheet_ui_buffer *uib, zsv_csv_wri
     goto out;
   }
 
+  // the written file is read back with the same column limit, so no row may exceed it
+  const size_t max_cols = zsvsheet_ui_buffer_max_cols(uib);
+  const struct zsvsheet_struct_op *row_op = op && op->axis == zsvsheet_struct_axis_row ? op : NULL;
+  const struct zsvsheet_struct_op *col_op = op && op->axis == zsvsheet_struct_axis_col ? op : NULL;
+  // the row an inserted empty row goes before (SIZE_MAX: none), and the row a delete skips
+  const size_t row_insert_at =
+    row_op && row_op->kind == zsvsheet_struct_op_insert ? zsvsheet_struct_op_pos(row_op) : SIZE_MAX;
+  const size_t row_delete_at = row_op && row_op->kind == zsvsheet_struct_op_delete ? row_op->at : SIZE_MAX;
+  size_t header_cols = 0; // cells the header is written with: the width of an inserted row
+  size_t widest = 0;      // cells in the widest row written
+  size_t src_widest = 0;  // cells in the widest row read, pending edits included
+
   // rows arrive in order, so one pass over the sorted edits suffices
   const struct zsvsheet_edits *e = &uib->edits;
   size_t k = 0; // next edit to write
+  char too_wide = 0;
   enum zsv_status zst = zsv_status_ok;
   enum zsv_writer_status wstat = zsv_writer_status_ok;
-  for (size_t row = 0;
-       wstat == zsv_writer_status_ok && !warning.warned && (zst = zsv_next_row(parser)) == zsv_status_row; row++) {
+  size_t row = 0;
+  for (;
+       wstat == zsv_writer_status_ok && !warning.warned && !too_wide && (zst = zsv_next_row(parser)) == zsv_status_row;
+       row++) {
     size_t n = zsv_cell_count(parser);
     size_t row_end = k; // edits [k, row_end) belong to this row
     while (row_end < e->count && e->items[row_end].row == row)
@@ -101,27 +124,81 @@ static int zsvsheet_export_file_rows(struct zsvsheet_ui_buffer *uib, zsv_csv_wri
     size_t cols = n ? n : 1; // a blank line is one empty cell
     if (row_end > k && e->items[row_end - 1].col >= cols)
       cols = e->items[row_end - 1].col + 1;
-    for (size_t i = 0; i < cols && wstat == zsv_writer_status_ok; i++) {
+    src_widest = cols > src_widest ? cols : src_widest;
+    if (row == row_insert_at) {
+      const size_t insert_cols = row ? header_cols : cols;
+      if ((wstat = zsvsheet_export_blank_row(w, insert_cols)) != zsv_writer_status_ok)
+        break;
+      widest = insert_cols > widest ? insert_cols : widest;
+    }
+    if (row == row_delete_at) {
+      k = row_end; // the row's edits go with it
+      continue;
+    }
+
+    // a column op changes only rows that have a cell at the cursor's column
+    const char col_op_here = col_op && col_op->at < cols;
+    const size_t col_insert_at =
+      col_op_here && col_op->kind == zsvsheet_struct_op_insert ? zsvsheet_struct_op_pos(col_op) : SIZE_MAX;
+    const size_t col_delete_at = col_op_here && col_op->kind == zsvsheet_struct_op_delete ? col_op->at : SIZE_MAX;
+    const size_t out_cols = cols + (col_insert_at != SIZE_MAX) - (col_delete_at != SIZE_MAX);
+    if (out_cols > max_cols) {
+      too_wide = 1;
+      break;
+    }
+    if (!out_cols) // its only cell was deleted
+      wstat = zsvsheet_export_blank_row(w, 0);
+    for (size_t j = 0, i = 0; j < out_cols && wstat == zsv_writer_status_ok; j++) { // j: written cell; i: source cell
+      if (j == col_insert_at) {
+        wstat = zsv_writer_cell(w, j == 0, NULL, 0, 0);
+        continue;
+      }
+      if (i == col_delete_at)
+        i++;
+      while (k < row_end && e->items[k].col < i) // the edit of a deleted cell goes with it
+        k++;
       if (k < row_end && e->items[k].col == i) {
-        wstat = zsv_writer_cell(w, i == 0, e->items[k].value, e->items[k].len, 1);
+        wstat = zsv_writer_cell(w, j == 0, e->items[k].value, e->items[k].len, 1);
         k++;
       } else {
         struct zsv_cell c = i < n ? zsv_get_cell(parser, i) : (struct zsv_cell){0};
-        wstat = zsv_writer_cell(w, i == 0, c.str, c.len, c.quoted); // flags commas for any delimiter
+        wstat = zsv_writer_cell(w, j == 0, c.str, c.len, c.quoted); // flags commas for any delimiter
       }
+      i++;
     }
+    k = row_end;                                         // an edit of a deleted last cell goes with it
+    const size_t written_cols = out_cols ? out_cols : 1; // a blank line is one empty cell
+    if (row == 0)
+      header_cols = written_cols;
+    widest = written_cols > widest ? written_cols : widest;
+  }
+  const char read_all = !warning.warned && !too_wide && wstat == zsv_writer_status_ok &&
+                        (zst == zsv_status_done || zst == zsv_status_no_more_input);
+  if (read_all && row == row_insert_at) { // after the last row
+    wstat = zsvsheet_export_blank_row(w, header_cols);
+    widest = header_cols > widest ? header_cols : widest;
   }
 
   if (warning.warned)
     snprintf(err, errsz, "%s", warning.msg);
+  else if (too_wide)
+    snprintf(err, errsz, "a row would have more than %zu columns (--max-column-count)", max_cols);
   else if (wstat != zsv_writer_status_ok)
     snprintf(err, errsz, "write failed");
-  else if (zst != zsv_status_done && zst != zsv_status_no_more_input)
+  else if (!read_all)
     snprintf(err, errsz, "unable to read %s", src);
-  else if (k < e->count) // an edit names a row the file no longer has
+  // decided here, after every row, rather than from col_count, which before the first op counts
+  // only the rows loaded so far
+  else if (col_op && col_op->kind == zsvsheet_struct_op_delete && src_widest <= 1) // every row would be blank
+    snprintf(err, errsz, "the only column cannot be deleted");
+  else if (k < e->count || (row_insert_at != SIZE_MAX && row_insert_at > row) ||
+           (row_delete_at != SIZE_MAX && row_delete_at >= row)) // an edit or op names a row the file no longer has
     snprintf(err, errsz, "%s has fewer rows than when it was edited", src);
-  else
+  else {
     rc = 0;
+    if (op)
+      op->widest = widest;
+  }
 
 out:
   zsv_delete(parser);
@@ -145,11 +222,12 @@ static int zsvsheet_export_screen_rows(struct zsvsheet_ui_buffer *uib, zsv_csv_w
   return -1;
 }
 
-// Write uib's contents as CSV to out: its file with pending edits applied, or, for a buffer
-// without a file, its screen cells. If ix is non-NULL, index the rows written.
-// Returns 0, or -1 with a message in err
-static int zsvsheet_ui_buffer_export(struct zsvsheet_ui_buffer *uib, FILE *out, struct zsv_index *ix, char *err,
-                                     size_t errsz) {
+// Write uib's contents as CSV to out: its file with pending edits and op (if non-NULL; its
+// widest is set) applied, or, for a buffer without a file (which takes no op), its screen
+// cells. If ix is non-NULL, index the rows written. Returns 0, or -1 with a message in err
+static int zsvsheet_ui_buffer_export(struct zsvsheet_ui_buffer *uib, FILE *out, struct zsv_index *ix,
+                                     struct zsvsheet_struct_op *op, char *err, size_t errsz) {
+  assert(!op || zsvsheet_ui_buffer_has_file(uib));
   struct zsvsheet_buffer_info_internal info = zsvsheet_buffer_info_internal(uib);
   if (info.write_in_progress && !info.write_done) { // its file is still being written
     snprintf(err, errsz, "still loading; try again when it finishes");
@@ -168,7 +246,7 @@ static int zsvsheet_ui_buffer_export(struct zsvsheet_ui_buffer *uib, FILE *out, 
     return -1;
   }
   xi.writer = w;
-  int rc = zsvsheet_ui_buffer_has_file(uib) ? zsvsheet_export_file_rows(uib, w, err, errsz)
+  int rc = zsvsheet_ui_buffer_has_file(uib) ? zsvsheet_export_file_rows(uib, w, op, err, errsz)
                                             : zsvsheet_export_screen_rows(uib, w, err, errsz);
   if (zsv_writer_delete(w) != zsv_writer_status_ok && !rc) {
     snprintf(err, errsz, "write failed");
@@ -181,10 +259,19 @@ static int zsvsheet_ui_buffer_export(struct zsvsheet_ui_buffer *uib, FILE *out, 
   return rc;
 }
 
+// Options a file that a buffer's export wrote is read with: it is plain CSV, and every row in
+// it is a row, a blank first row included; only the limits that decide its rows carry over
+static struct zsv_opts zsvsheet_data_file_opts(const struct zsv_opts *src) {
+  return (struct zsv_opts){
+    .max_columns = src->max_columns,
+    .max_row_size = src->max_row_size,
+    .keep_empty_header_rows = 1,
+  };
+}
+
 // Make uib read a file that already holds every edit and the rows ix indexes: take
 // ownership of new_data_filename (NULL: keep reading the current file, which has been
-// rewritten) and of ix. The file is plain CSV, so parse it with default options, except
-// for those that decide which rows it has
+// rewritten) and of ix
 static void zsvsheet_ui_buffer_adopt(struct zsvsheet_ui_buffer *uib, char *new_data_filename, struct zsv_index *ix) {
   zsvsheet_ui_buffer_stop_worker(uib); // it may be reading the old file or index
 
@@ -204,43 +291,78 @@ static void zsvsheet_ui_buffer_adopt(struct zsvsheet_ui_buffer *uib, char *new_d
     uib->data_filename = new_data_filename;
   }
   zsvsheet_edits_clear(&uib->edits);
-  uib->zsv_opts = (struct zsv_opts){
-    .max_columns = uib->zsv_opts.max_columns,
-    .max_row_size = uib->zsv_opts.max_row_size,
-    .keep_empty_header_rows = uib->zsv_opts.keep_empty_header_rows, // leading blank rows were written as rows
-  };
+  uib->zsv_opts = zsvsheet_data_file_opts(&uib->zsv_opts);
 }
 
-// Write uib's pending edits into a new temp data file that uib then reads, so that
-// whatever reads the file sees them. Returns 0 (also when there are none), or -1 with a
-// message in err
-static int zsvsheet_ui_buffer_commit_edits(struct zsvsheet_ui_buffer *uib, char *err, size_t errsz) {
-  if (!uib->edits.count)
-    return 0;
-  int rc = -1;
-  FILE *f = NULL;
+// Outcome of zsvsheet_ui_buffer_rewrite()
+enum zsvsheet_rewrite_status {
+  zsvsheet_rewrite_failed = -1,    // nothing changed; the reason is in err
+  zsvsheet_rewrite_ok = 0,         // done (also when there was nothing to write)
+  zsvsheet_rewrite_header_unshown, // done, but the header row is not fully shown; the reason is in err
+};
+
+// Write uib's pending edits, and op if non-NULL (setting its widest), into a new temp data file
+// that uib then reads, so that whatever reads the file sees them, and show the file's header row
+static enum zsvsheet_rewrite_status zsvsheet_ui_buffer_rewrite(struct zsvsheet_ui_buffer *uib,
+                                                               struct zsvsheet_struct_op *op, char *err, size_t errsz) {
+  if (!uib->edits.count && !op)
+    return zsvsheet_rewrite_ok;
+  enum zsvsheet_rewrite_status rc = zsvsheet_rewrite_failed;
+  FILE *f = NULL, *header_f = NULL;
+  zsv_parser header = NULL;
   struct zsv_index *ix = NULL;
   char *tmp = zsv_get_temp_filename(ZSVSHEET_COMMIT_TEMP_PREFIX);
   if (!tmp || !(ix = zsv_index_new()) || !(f = zsv_fopen(tmp, "wb"))) {
     snprintf(err, errsz, "unable to create a temporary file: %s", strerror(errno));
     goto out;
   }
-  rc = zsvsheet_ui_buffer_export(uib, f, ix, err, errsz);
-  if (fclose(f) && !rc) {
+  int failed = zsvsheet_ui_buffer_export(uib, f, ix, op, err, errsz);
+  if (fclose(f) && !failed) {
     snprintf(err, errsz, "write failed: %s", strerror(errno));
-    rc = -1;
+    failed = 1;
   }
-  if (!rc) {
-    zsvsheet_ui_buffer_adopt(uib, tmp, ix);
-    return 0;
+  if (failed)
+    goto out;
+
+  // read the new header before uib adopts the file, so a failure leaves uib as it was
+  struct zsv_opts header_opts = zsvsheet_data_file_opts(&uib->zsv_opts);
+  if ((header_f = zsv_fopen(tmp, "rb"))) {
+    header_opts.stream = header_f;
+    header = zsv_new(&header_opts);
   }
+  if (!header || zsv_next_row(header) != zsv_status_row) {
+    snprintf(err, errsz, "unable to read the temporary file");
+    goto out;
+  }
+  zsvsheet_ui_buffer_adopt(uib, tmp, ix);
+  tmp = NULL;
+  ix = NULL;
+  rc = zsvsheet_rewrite_ok;
+  if (zsvsheet_ui_buffer_show_header(uib, header) != zsvsheet_priv_status_ok) { // the data is committed either way
+    snprintf(err, errsz, "Out of memory: the header is not fully shown");
+    rc = zsvsheet_rewrite_header_unshown;
+  }
+
 out:
+  zsv_delete(header);
+  if (header_f)
+    fclose(header_f);
   zsv_index_delete(ix);
   if (tmp) {
     zsv_remove(tmp);
     free(tmp);
   }
   return rc;
+}
+
+// Write uib's pending edits into a new temp data file that uib then reads. Returns 0 (also when
+// there are none, or the header could not be fully shown, which the status then says), or -1
+// with a message in err
+static int zsvsheet_ui_buffer_commit_edits(struct zsvsheet_ui_buffer *uib, char *err, size_t errsz) {
+  enum zsvsheet_rewrite_status rc = zsvsheet_ui_buffer_rewrite(uib, NULL, err, errsz);
+  if (rc == zsvsheet_rewrite_header_unshown)
+    zsvsheet_ui_buffer_set_status(uib, err);
+  return rc == zsvsheet_rewrite_failed ? -1 : 0;
 }
 
 // Save uib as CSV to path, the file target names. Rows are written to a temp file beside
@@ -323,7 +445,7 @@ static int zsvsheet_ui_buffer_save_to(struct zsvsheet_ui_buffer *uib, const char
     snprintf(err, errsz, "out of memory");
     goto out;
   }
-  if (zsvsheet_ui_buffer_export(uib, f, ix, err, errsz))
+  if (zsvsheet_ui_buffer_export(uib, f, ix, NULL, err, errsz))
     goto out;
   int close_failed = fflush(f) || zsv_fsync(fileno(f));
   close_failed = fclose(f) || close_failed;
@@ -664,6 +786,17 @@ static zsvsheet_status zsvsheet_edit_mode_key(int ch, struct zsvsheet_sheet_cont
   return zsvsheet_proc_invoke_from_keypress(zsvsheet_edit_nav_proc(end), end, state);
 }
 
+// Whether every data cell of uib's header row is empty: the parser drops blank leading rows, so
+// such rows are skipped when the file is opened again
+static int zsvsheet_header_blank(struct zsvsheet_ui_buffer *uib) {
+  for (size_t c = zsvsheet_ui_buffer_data_col_offset(uib); c < zsvsheet_screen_buffer_cols(uib->buffer); c++) {
+    const unsigned char *cell = zsvsheet_screen_buffer_cell_display(uib->buffer, 0, c);
+    if (cell && *cell)
+      return 0;
+  }
+  return 1;
+}
+
 static zsvsheet_status zsvsheet_write_handler(struct zsvsheet_proc_context *ctx) {
   struct zsvsheet_sheet_context *state = (struct zsvsheet_sheet_context *)ctx->subcommand_context;
   struct zsvsheet_display_info *di = &state->display_info;
@@ -691,9 +824,14 @@ static zsvsheet_status zsvsheet_write_handler(struct zsvsheet_proc_context *ctx)
   char err[256];
   if (zsvsheet_ui_buffer_save(uib, target, err, sizeof(err)))
     zsvsheet_ui_buffer_set_statusf(uib, "Not saved: %s", err);
-  else if (uib->modified) // saved elsewhere, e.g. :w other.csv, or to another name (hard link) of the file
-    zsvsheet_ui_buffer_set_statusf(uib, "Saved %s; %s still has unsaved changes", target, uib->filename);
-  else
-    zsvsheet_ui_buffer_set_statusf(uib, "Saved %s", target);
+  else {
+    const char *blank = zsvsheet_ui_buffer_has_file(uib) && zsvsheet_header_blank(uib)
+                          ? "; reopening it skips its blank leading rows"
+                          : "";
+    if (uib->modified) // saved elsewhere, e.g. :w other.csv, or to another name (hard link) of the file
+      zsvsheet_ui_buffer_set_statusf(uib, "Saved %s%s; %s still has unsaved changes", target, blank, uib->filename);
+    else
+      zsvsheet_ui_buffer_set_statusf(uib, "Saved %s%s", target, blank);
+  }
   return zsvsheet_status_ok;
 }

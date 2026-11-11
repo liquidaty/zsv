@@ -1,0 +1,6 @@
+Row #                                   A                   C
+1                   new                 1                   2
+2                                       3                   5
+
+
+Usage: :insert-column [left] 1

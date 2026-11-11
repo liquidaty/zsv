@@ -106,6 +106,10 @@ not_found:
   return ret;
 }
 
+void zsvsheet_key_press_reset(void) {
+  prev_ch = -1;
+}
+
 /*
  * Specific key bindings
  */
@@ -256,6 +260,28 @@ struct zsvsheet_key_binding zsvsheet_vim_key_bindings[] = {
     .ch = '\0',
     .ch_name = ":unhide-column",
     .proc_id = zsvsheet_builtin_proc_unhide_column,
+  },
+  /* <ctrl>o sequences, which zsvsheet_struct_key() reads before any binding in either mode;
+     ch_name is what the help screen shows, naming the ZSVSHEET_STRUCT_KEY_* keys (struct-ops.c) */
+  {
+    .ch = '\0',
+    .ch_name = "<ctrl>o o, O",
+    .proc_id = zsvsheet_builtin_proc_insert_row,
+  },
+  {
+    .ch = '\0',
+    .ch_name = "<ctrl>o d d, d r",
+    .proc_id = zsvsheet_builtin_proc_delete_row,
+  },
+  {
+    .ch = '\0',
+    .ch_name = "<ctrl>o c, C",
+    .proc_id = zsvsheet_builtin_proc_insert_col,
+  },
+  {
+    .ch = '\0',
+    .ch_name = "<ctrl>o d c",
+    .proc_id = zsvsheet_builtin_proc_delete_col,
   },
   { .ch = -1                                                                   }
 };

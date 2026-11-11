@@ -1,5 +1,5 @@
 Key(s)                    Action                    Description
-<ctrl>c                   copy                      Copy the cell to the clip
-:hide-column              hide-column               Hide the column under the
-:unhide-column            unhide-column             Unhide all hidden columns
-<esc> to exit help :unhide-column
+<ctrl>o d d, d r          delete-row                Delete the row under the
+<ctrl>o c, C              insert-column             Insert an empty column ri
+<ctrl>o d c               delete-column             Delete the column under t
+<esc> to exit help <ctrl>o d c

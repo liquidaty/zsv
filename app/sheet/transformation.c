@@ -47,9 +47,7 @@ static void transformation_writer_index_on_row(void *p) {
 
 static void transformation_writer_index_delete(void *p) {
   struct transformation_writer_index_ctx *ctx = p;
-  uint64_t written = zsv_writer_cum_bytes_written(ctx->writer);
-  if (written)
-    zsv_index_add_row(ctx->index, written);
+  zsv_index_add_last_row(ctx->index, zsv_writer_cum_bytes_written(ctx->writer));
   free(ctx);
 }
 
@@ -219,7 +217,7 @@ static char *zsvsheet_buffer_to_temp_csv(struct zsvsheet_ui_buffer *uib) {
   FILE *f = zsv_fopen(tmpfn, "wb");
   if (!f)
     snprintf(err, sizeof(err), "%s", strerror(errno));
-  int failed = !f || zsvsheet_ui_buffer_export(uib, f, NULL, err, sizeof(err));
+  int failed = !f || zsvsheet_ui_buffer_export(uib, f, NULL, NULL, err, sizeof(err));
   if (f && fclose(f) && !failed) {
     snprintf(err, sizeof(err), "write failed: %s", strerror(errno));
     failed = 1;

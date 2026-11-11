@@ -123,22 +123,27 @@ enum zsvsheet_priv_status zsvsheet_screen_buffer_grow(zsvsheet_screen_buffer_t b
 
   assert(cols > old_cols);
 
-  void *old_data = buff->data;
-  void *data = calloc(rows, cols * cell_buff_len);
-  if (!data)
+  // cell_attrs, when present, is indexed by the same cols: re-size it with the cells. Both are
+  // allocated before either is replaced, so a failure leaves the buffer as it was
+  void *data = calloc(rows, row_len);
+  zsvsheet_cell_attr_t *attrs = buff->cell_attrs ? calloc(rows, cols * sizeof(*attrs)) : NULL;
+  if (!data || (buff->cell_attrs && !attrs)) {
+    free(data);
+    free(attrs);
     return zsvsheet_priv_status_memory;
-
-  for (size_t i = 0; i < rows; i++) {
-    size_t old_row_off = i * old_row_len;
-    size_t row_off = i * row_len;
-
-    memcpy((char *)data + row_off, (char *)old_data + old_row_off, old_row_len);
   }
 
-  buff->data = data;
-  buff->cols = cols;
+  for (size_t i = 0; i < rows; i++) {
+    memcpy((char *)data + i * row_len, buff->data + i * old_row_len, old_row_len);
+    if (attrs)
+      memcpy(attrs + i * cols, buff->cell_attrs + i * old_cols, old_cols * sizeof(*attrs));
+  }
 
-  free(old_data);
+  free(buff->data);
+  buff->data = data;
+  free(buff->cell_attrs);
+  buff->cell_attrs = attrs;
+  buff->cols = cols;
 
   return zsvsheet_priv_status_ok;
 }

@@ -146,6 +146,10 @@ Press `?` to see a list of commands:
 |                | sortexpr   | Sort rows by SQL expression                         |
 |                | hide-column | Hide the column under the cursor, or columns named… |
 |                | unhide-column | Unhide all hidden columns, or only those named…   |
+| <ctrl>o o, O   | insert-row | Insert an empty row below the cursor (or…           |
+| <ctrl>o d d, d r | delete-row | Delete the row under the cursor                   |
+| <ctrl>o c, C   | insert-column | Insert an empty column right of the…             |
+| <ctrl>o d c    | delete-column | Delete the column under the cursor               |
 
 # Quick usage guide
 
@@ -205,7 +209,9 @@ cells can be edited to rename a column; row numbers cannot.
 
 Any buffer can be edited: the file you opened, another file opened with `e`, a
 filter, sort or pivot result, or the help view. Filters, sorts, pivots and finds
-on an edited buffer see the edited values.
+on an edited buffer see the edited values. Rows and columns can be inserted and
+deleted only in a file you opened (see [Inserting and deleting rows and
+columns](#inserting-and-deleting-rows-and-columns)).
 
 `:w` saves the buffer to the file it was opened from; `:w <file>` saves it to
 another file. A filter, sort or pivot result prompts for a file name the first
@@ -248,6 +254,7 @@ line starts with `-- EDIT --` while it is on.
 | `Ctrl-S`            | save, as `:w` does                  |                            |
 | `Ctrl-C`            | copy the cell's value               | copy what has been typed   |
 | `Ctrl-V`            | paste into the cell                 | add the copied value       |
+| `Ctrl-O`            | insert or delete a row or column (see below) |                   |
 | `Esc`               | leave edit mode                     | cancel; the cell is unchanged |
 
 `Ctrl-C` in edit mode copies the cell (or, while typing, what has been typed)
@@ -269,6 +276,46 @@ and function keys the terminal does not describe, arrive as `Esc` followed by
 characters: while typing, the `Esc` cancels the edit and the characters start a new
 value; otherwise the `Esc` leaves edit mode and the characters act as ordinary keys
 (`Alt-f`, for example, then opens the filter prompt).
+
+## Inserting and deleting rows and columns
+
+`Ctrl-O` followed by one or two more keys inserts a row or column beside the cursor,
+or deletes the one under it, in edit mode and outside it. While sheet waits for the next key, the
+status line lists the keys it takes.
+
+| Keys                    | Action                                     | Command               |
+| ----------------------- | ------------------------------------------ | --------------------- |
+| `Ctrl-O o`              | insert an empty row below the cursor       | `:insert-row`         |
+| `Ctrl-O O`              | insert an empty row above the cursor       | `:insert-row above`   |
+| `Ctrl-O d d` (or `d r`) | delete the row under the cursor            | `:delete-row`         |
+| `Ctrl-O c`              | insert an empty column right of the cursor | `:insert-column`      |
+| `Ctrl-O C`              | insert an empty column left of the cursor  | `:insert-column left` |
+| `Ctrl-O d c`            | delete the column under the cursor         | `:delete-column`      |
+
+An inserted row has as many cells as the header, and the cursor moves to its first
+visible cell. On the header row, `Ctrl-O O` inserts a new, empty header and `Ctrl-O d d`
+deletes the header, so the next row becomes the header. An inserted column is
+empty, header included; it is added to every row that has a cell at the cursor's
+column, and shorter rows keep their length. `Esc`, or `Ctrl-O` again, cancels a
+waiting `Ctrl-O`; any other key cancels it and the status line says so.
+
+As with a cell edit, the file changes only when the buffer is saved. Each insert
+or delete writes a full-size temporary copy of the data and blocks until it
+completes.
+
+Rows and columns cannot be inserted or deleted:
+- in a filter, sort, pivot or `:sql` result, the help view, or any view whose
+  first column is `Row #`
+- to delete the only row or the only column
+- for columns, while `:compare` highlights differences or with the cursor on the
+  row-number column
+- where a row would have more columns than the parser keeps (`--max-column-count`)
+
+A delete that would leave only hidden columns on screen shows every column again.
+
+A file saved while its first rows are blank, for example after inserting a row
+above the header, opens without those rows: the parser skips blank leading rows
+unless `--keep-blank-headers` is given. The status line says so after the save.
 
 ## Closing a buffer or the application
 

@@ -1,0 +1,6 @@
+Key(s)                    Action                    Description
+:q                        quit                      Exit the application
+<esc>                     escape                    Leave the current view or
+^                         first                     Jump to the first column
+$                         last                      Jump to the last column
+Rows and columns can be inserted or deleted only in a file you opened Key(s)
