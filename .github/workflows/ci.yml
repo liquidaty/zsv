@@ -240,7 +240,7 @@ jobs:
     - name: Install apt dependencies
       uses: awalsh128/cache-apt-pkgs-action@v1
       with:
-        packages: rpm dpkg-dev createrepo-c
+        packages: rpm dpkg-dev createrepo-c apt-utils
 
     - name: Install fpm gem
       run: sudo gem install --no-document fpm
