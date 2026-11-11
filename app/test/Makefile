@@ -1511,6 +1511,8 @@ test-jq: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@${CMP} ${TMP_DIR}/$@.out expected/$@.out && ${TEST_PASS} || ${TEST_FAIL}
 	@(${PREFIX} $< 'keys|.[]' ./../../docs/db.schema.json --raw-output ${REDIRECT1} ${TMP_DIR}/$@.raw.out)
 	@${CMP} ${TMP_DIR}/$@.raw.out expected/$@.raw.out && ${TEST_PASS} || ${TEST_FAIL}
+	@(${PREFIX} $< 'keys|.[]' ./../../docs/db.schema.json -r ${REDIRECT1} ${TMP_DIR}/$@.r.out)
+	@${CMP} ${TMP_DIR}/$@.r.out expected/$@.raw.out && ${TEST_PASS} || ${TEST_FAIL}
 
 test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} ${BUILD_DIR}/bin/zsv_select${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}
