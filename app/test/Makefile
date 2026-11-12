@@ -1516,8 +1516,8 @@ test-jq: test-%: ${BUILD_DIR}/bin/zsv_%${EXE}
 	@# UTF-16 input (BOM) must fail with an encoding error, from a file and from stdin
 	@printf '\377\376{\000}\000' > ${TMP_DIR}/$@-utf16le.json
 	@printf '\376\377\000{\000}' > ${TMP_DIR}/$@-utf16be.json
-	@${RC_PREFIX} $< . ${TMP_DIR}/$@-utf16le.json >/dev/null 2>${TMP_DIR}/$@-err1.txt; rc=$$?; grep -q 'UTF-16/UTF-32' ${TMP_DIR}/$@-err1.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
-	@${RC_PREFIX} $< . < ${TMP_DIR}/$@-utf16be.json >/dev/null 2>${TMP_DIR}/$@-err2.txt; rc=$$?; grep -q 'UTF-16/UTF-32' ${TMP_DIR}/$@-err2.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${RC_PREFIX} $< . ${TMP_DIR}/$@-utf16le.json >/dev/null 2>${TMP_DIR}/$@-err1.txt; rc=$$?; grep -q 'UTF-16 byte-order mark' ${TMP_DIR}/$@-err1.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
+	@${RC_PREFIX} $< . < ${TMP_DIR}/$@-utf16be.json >/dev/null 2>${TMP_DIR}/$@-err2.txt; rc=$$?; grep -q 'UTF-16 byte-order mark' ${TMP_DIR}/$@-err2.txt && [ "$$rc" -ne 0 ] && [ "$$rc" -lt 128 ] && ${TEST_PASS} || ${TEST_FAIL}
 
 test-2json: test-%: ${BUILD_DIR}/bin/zsv_%${EXE} ${BUILD_DIR}/bin/zsv_2db${EXE} ${BUILD_DIR}/bin/zsv_select${EXE} worldcitiespop_mil.csv
 	@${TEST_INIT}

@@ -322,10 +322,10 @@ enum zsv_jq_status zsv_jq_parse_file(zsv_jq_handle h, FILE *f) {
   char buff[4096];
   size_t bytes_read = fread(buff, 1, sizeof(buff), f);
   // A UTF-16 BOM would otherwise surface as a misleading jq "Invalid numeric literal" parse error.
-  // (FF FE is also the UTF-32LE BOM, hence the wording below.)
+  // (FF FE also starts a UTF-32LE file; UTF-32BE is not detected and keeps the generic parse error.)
   if (bytes_read > 1 && (((unsigned char)buff[0] == 0xFF && (unsigned char)buff[1] == 0xFE) ||
                          ((unsigned char)buff[0] == 0xFE && (unsigned char)buff[1] == 0xFF))) {
-    fprintf(stderr, "jq: unsupported input encoding: UTF-16/UTF-32 byte-order mark found; only UTF-8 is supported\n");
+    fprintf(stderr, "jq: unsupported input encoding: UTF-16 byte-order mark found; only UTF-8 is supported\n");
     h->status = zsv_jq_status_error;
     return h->status;
   }
