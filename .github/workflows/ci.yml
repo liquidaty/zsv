@@ -157,6 +157,11 @@ jobs:
       run: |
         ./scripts/ci-build.sh
 
+    - name: Test shared library
+      env:
+        CC: ${{ matrix.cc }}
+      run: ./scripts/ci-test-shared-library.sh
+
     - name: Build
       env:
         PREFIX: ${{ matrix.prefix }}
