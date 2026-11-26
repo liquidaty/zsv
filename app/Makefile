@@ -559,7 +559,7 @@ ${CLI}: cli_internal.c.in cli_internal.h cli_internal.h.in ${CLI_APP_OBJECT} ${L
 
 cli_internal.h.in: ${THIS_MAKEFILE_DIR}/../include/zsv/ext/implementation_private.h
 	@( \
-		OUTPUT=`cat $< | awk '/ZSV_EXT_EXPORT/,/;/' | sed 's/ZSV_EXT_EXPORT *//g' | sed $$'s/ *;.*/;\\\n/' | sed 's/(/)(/' | sed 's/zsv_ext_\([a-z]*\))/(*\1)/' | grep -v '^$$'`; \
+		OUTPUT=`cat $< | awk '/ZSV_EXT_EXPORT/,/;/' | sed 's/ZSV_EXT_EXPORT *//g' | sed 's/ *;.*/;/' | sed 's/(/)(/' | sed 's/zsv_ext_\([a-z]*\))/(*\1)/' | grep -v '^$$'`; \
 		echo "$$OUTPUT" | cmp -s - $@ || echo "$$OUTPUT" > $@; \
 	)
 
