@@ -1,6 +1,33 @@
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#elif defined(__APPLE__) && !defined(_DARWIN_C_SOURCE)
+#define _DARWIN_C_SOURCE
+#endif
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <zsv.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <dlfcn.h>
+#endif
+
+static int loaded_from(const char *installed_library) {
+#ifdef _WIN32
+  return GetModuleHandleA(installed_library) != NULL;
+#else
+  Dl_info info;
+  char *loaded = dladdr((const void *)zsv_new, &info) ? realpath(info.dli_fname, NULL) : NULL;
+  char *installed = realpath(installed_library, NULL);
+  int matches = loaded && installed && strcmp(loaded, installed) == 0;
+  free(loaded);
+  free(installed);
+  return matches;
+#endif
+}
 
 int main(int argc, char **argv) {
   const char *expected[][2] = {{"name", "city"}, {"Ada", "London, UK"}};
@@ -8,10 +35,16 @@ int main(int argc, char **argv) {
   size_t row = 0;
   int result = 1;
 
-  if (argc != 2) {
-    fprintf(stderr, "Usage: %s <csv-file>\n", argv[0]);
+  if (argc != 3) {
+    fprintf(stderr, "Usage: %s <csv-file> <installed-library>\n", argv[0]);
     return 1;
   }
+  if (!loaded_from(argv[2])) {
+    fprintf(stderr, "Expected installed shared library was not loaded: %s\n", argv[2]);
+    return 1;
+  }
+  printf("Loaded installed shared library: %s\n", argv[2]);
+
   FILE *input = fopen(argv[1], "rb");
   if (!input) {
     perror(argv[1]);
