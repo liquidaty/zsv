@@ -8,15 +8,16 @@ THIS_MAKE=`basename ${MAKE}`
 
 CONFIGFILE ?= config.mk
 
-ifneq (,$(filter help test-asan,$(MAKECMDGOALS)))
-  CONFIGFILEPATH :=
-else
+# Standalone tests configure their own builds.
+ifneq (,$(filter-out help test-asan test-shared-lib,$(or $(MAKECMDGOALS),default)))
   include ${CONFIGFILE}
 
   CONFIGFILEPATH=$(shell ls ${CONFIGFILE} >/dev/null 2>/dev/null && realpath ${CONFIGFILE})
   ifeq (${CONFIGFILEPATH},)
     $(error Config file ${CONFIGFILE} not found)
   endif
+else
+  CONFIGFILEPATH :=
 endif
 
 help:
@@ -54,6 +55,7 @@ help:
 	@echo
 	@echo "To test:"
 	@echo "  ${THIS_MAKE} test"
+	@echo "  ${THIS_MAKE} test-shared-lib  # test an installed shared library"
 	@echo
 	@echo "To install/uninstall to/from a stage directory with DESTDIR:"
 	@echo "  ${THIS_MAKE} install DESTDIR=/tmp/stage"
@@ -81,6 +83,9 @@ check test:
 	else \
 		${MAKE} -C app/ext_example test CONFIGFILE=${CONFIGFILEPATH}; \
 	fi
+
+test-shared-lib:
+	@CC="${CC}" MAKE="${MAKE_COMMAND}" ./scripts/test-shared-library.sh
 
 DESTDIR ?=
 
@@ -121,4 +126,4 @@ clean-asan:
 	@rm -f ${ASAN_CONFIGFILE}
 	@rm -rf /tmp/zsv-build-asan
 
-.PHONY: help build install uninstall clean check test test-asan clean-asan
+.PHONY: help build install uninstall clean check test test-shared-lib test-asan clean-asan
